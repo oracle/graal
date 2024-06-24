@@ -135,7 +135,7 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
 
     @Override
     protected void initializeThread(PanamaNFIContext context, Thread thread) {
-        errorContext.get().initialize();
+        errorContext.get(thread).initialize();
     }
 
     @Override
