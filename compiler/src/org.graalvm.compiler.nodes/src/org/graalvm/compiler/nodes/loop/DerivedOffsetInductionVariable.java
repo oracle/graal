@@ -27,18 +27,17 @@ package org.graalvm.compiler.nodes.loop;
 import static org.graalvm.compiler.nodes.loop.MathUtil.add;
 import static org.graalvm.compiler.nodes.loop.MathUtil.sub;
 
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
+import org.graalvm.compiler.nodes.calc.IntegerExactArithmeticNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
-import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerExactArithmeticNode;
-
 
 public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
