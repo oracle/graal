@@ -65,15 +65,9 @@ public class HostedReplacements extends SubstrateReplacements {
     private final HostedUniverse hUniverse;
     private final SubstrateReplacements aReplacements;
 
-<<<<<<< HEAD
-    public HostedReplacements(HostedUniverse hUniverse, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target, HostedProviders anaylysisProviders,
+    public HostedReplacements(HostedUniverse hUniverse, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target, HostedProviders analysisProviders,
                     BytecodeProvider bytecodeProvider, WordTypes wordTypes) {
         super(providers, snippetReflection, bytecodeProvider, target, wordTypes, null);
-=======
-    public HostedReplacements(HostedUniverse hUniverse, Providers providers, TargetDescription target, HostedProviders analysisProviders,
-                    BytecodeProvider bytecodeProvider) {
-        super(providers, bytecodeProvider, target, null);
->>>>>>> b0d6deb55be (Fix typo.)
         this.hUniverse = hUniverse;
         this.aReplacements = (SubstrateReplacements) analysisProviders.getReplacements();
     }
