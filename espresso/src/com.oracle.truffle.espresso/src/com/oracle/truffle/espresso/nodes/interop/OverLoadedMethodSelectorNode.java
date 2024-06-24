@@ -46,12 +46,12 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
     public abstract CandidateMethodWithArgs execute(Method[] candidates, Object[] arguments);
 
     @Specialization(guards = {"same(candidates, cachedCandidates)"}, limit = "LIMIT")
-    CandidateMethodWithArgs doCached(Method[] candidates,
+    CandidateMethodWithArgs doCached(@SuppressWarnings("unused") Method[] candidates,
                     Object[] arguments,
-                    @SuppressWarnings("unused") @Cached(value = "candidates", dimensions = 1) Method[] cachedCandidates,
+                    @Cached(value = "candidates", dimensions = 1) Method[] cachedCandidates,
                     @Cached(value = "resolveParameterKlasses(candidates)", dimensions = 2) Klass[][] parameterKlasses,
                     @Cached ToEspressoNode.DynamicToEspresso toEspressoNode) {
-        return selectMatchingOverloads(candidates, arguments, parameterKlasses, toEspressoNode);
+        return selectMatchingOverloads(cachedCandidates, arguments, parameterKlasses, toEspressoNode);
     }
 
     @Specialization(replaces = "doCached")

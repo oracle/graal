@@ -57,7 +57,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -81,14 +81,10 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
-import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
-import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethodNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.LookupFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupFieldNodeGen;
-import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
-import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeFactory;
 import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
@@ -102,6 +98,8 @@ import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InteropLookupAndInvoke;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InteropLookupAndInvokeFactory;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -179,15 +177,18 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         @Specialization(guards = "language.isShared()")
         static Object doShared(Klass receiver, String member,
                         @CachedLibrary("receiver") InteropLibrary lib,
+                        @Bind("$node") Node node,
+                        @Cached @Shared InlinedBranchProfile error,
                         @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException {
-            return readMember(receiver, member, LookupFieldNodeGen.getUncached(), LookupDeclaredMethodNodeGen.getUncached(), BranchProfile.getUncached(), lib, language);
+            return readMember(receiver, member, LookupFieldNodeGen.getUncached(), LookupDeclaredMethodNodeGen.getUncached(), node, error, lib, language);
         }
 
         @Specialization
         static Object readMember(Klass receiver, String member,
                         @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
                         @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
-                        @Shared("error") @Cached BranchProfile error,
+                        @Bind("$node") Node node,
+                        @Cached @Shared InlinedBranchProfile error,
                         @CachedLibrary("receiver") InteropLibrary lib,
                         @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException {
             EspressoContext ctx = EspressoContext.get(lib);
@@ -229,7 +230,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 return receiver.getSuperKlass();
             }
 
-            error.enter();
+            error.enter(node);
             throw UnknownIdentifierException.create(member);
         }
     }
@@ -263,24 +264,26 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         // Specialization prevents caching a node that would leak the context
         @Specialization(guards = "language.isShared()")
         static void doShared(Klass receiver, String member, Object value,
-                        @Shared("error") @Cached BranchProfile error,
+                        @Bind("$node") Node node,
+                        @Cached @Shared InlinedBranchProfile error,
                         @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary lib,
                         @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException, UnsupportedTypeException {
-            writeMember(receiver, member, value, LookupFieldNodeGen.getUncached(), ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached(), error);
+            writeMember(receiver, member, value, LookupFieldNodeGen.getUncached(), ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached(), node, error);
         }
 
         @Specialization
         static void writeMember(Klass receiver, String member, Object value,
                         @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
                         @Exclusive @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
-                        @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException, UnsupportedTypeException {
+                        @Bind("$node") Node node,
+                        @Cached @Shared InlinedBranchProfile error) throws UnknownIdentifierException, UnsupportedTypeException {
             Field field = lookupFieldNode.execute(receiver, member, true);
             // Can only write to non-final fields.
             if (field != null && !field.isFinalFlagSet()) {
                 Object espressoValue = toEspressoNode.execute(value, field.resolveTypeKlass());
                 field.set(receiver.tryInitializeAndGetStatics(), espressoValue);
             } else {
-                error.enter();
+                error.enter(node);
                 throw UnknownIdentifierException.create(member);
             }
         }
@@ -308,35 +311,27 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         // Specialization prevents caching a node that would leak the context
         @Specialization(guards = "language.isShared()")
         static Object doShared(Klass receiver, String member, Object[] arguments,
+                        @Bind("$node") Node node,
+                        @Cached @Shared InlinedBranchProfile error,
                         @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary receiverInterop,
                         @Bind("getLang(receiverInterop)") @SuppressWarnings("unused") EspressoLanguage language) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-            return invokeMember(receiver, member, arguments, receiverInterop, LookupDeclaredMethodNodeGen.getUncached(), OverLoadedMethodSelectorNodeGen.getUncached(),
-                            InvokeEspressoNodeGen.getUncached(),
-                            ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached());
+            return invokeMember(receiver, member, arguments, node, receiverInterop, error, InteropLookupAndInvokeFactory.NonVirtualNodeGen.getUncached());
         }
 
         @Specialization
         static Object invokeMember(Klass receiver, String member,
                         Object[] arguments,
+                        @Bind("$node") Node node,
                         @CachedLibrary("receiver") InteropLibrary receiverInterop,
-                        @Cached LookupDeclaredMethod lookupMethod,
-                        @Cached OverLoadedMethodSelectorNode overloadSelector,
-                        @Exclusive @Cached InvokeEspressoNode invoke,
-                        @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
+                        @Cached InlinedBranchProfile error,
+                        @Cached InteropLookupAndInvoke.NonVirtual lookupAndInvoke)
                         throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
             if (!receiverInterop.isMemberInvocable(receiver, member)) {
                 // Not invocable, no matter the arity or argument types.
+                error.enter(node);
                 throw UnknownIdentifierException.create(member);
             }
-            // The member (static method) may be invocable only for a certain arity and argument
-            // types.
-            Method[] candidates = lookupMethod.execute(receiver, member, true, true, arguments.length);
-            if (candidates != null) {
-                return EspressoInterop.invokeEspressoMethodHelper(null, member, arguments, overloadSelector, invoke, toEspressoNode, candidates);
-            }
-            // TODO(peterssen): The expected arity is not known, only that the given one is not
-            // correct.
-            throw ArityException.create(arguments.length + 1, -1, arguments.length);
+            return lookupAndInvoke.execute(null, receiver, arguments, member);
         }
     }
 
@@ -415,6 +410,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         @Specialization(guards = "language.isShared()")
         static Object doShared(Klass receiver, Object[] args,
                         @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary receiverInterop,
+                        @Bind("$node") Node node,
                         @Bind("getLang(receiverInterop)") @SuppressWarnings("unused") EspressoLanguage language) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
             if (receiver.isPrimitive()) {
                 return doPrimitive(receiver, args);
@@ -426,11 +422,10 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 return doReferenceArray(receiver, args, ToPrimitiveFactory.ToIntNodeGen.getUncached());
             }
             if (isMultidimensionalArray(receiver)) {
-                return doMultidimensionalArray(receiver, args, ToPrimitiveFactory.ToIntNodeGen.getUncached());
+                return doMultidimensionalArray(receiver, args, node, InlinedBranchProfile.getUncached(), ToPrimitiveFactory.ToIntNodeGen.getUncached());
             }
             if (isObjectKlass(receiver)) {
-                return doObject(receiver, args, receiverInterop, LookupDeclaredMethodNodeGen.getUncached(), OverLoadedMethodSelectorNodeGen.getUncached(), InvokeEspressoNodeGen.getUncached(),
-                                ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached());
+                return doObject(receiver, args, node, InlinedBranchProfile.getUncached(), receiverInterop, InteropLookupAndInvokeFactory.NonVirtualNodeGen.getUncached());
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
@@ -498,10 +493,13 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
         @Specialization(guards = "isMultidimensionalArray(receiver)")
         static StaticObject doMultidimensionalArray(Klass receiver, Object[] arguments,
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile error,
                         @Cached ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getElementalType().getJavaKind() != JavaKind.Void;
             if (arrayKlass.getDimension() != arguments.length) {
+                error.enter(node);
                 throw ArityException.create(arrayKlass.getDimension(), arrayKlass.getDimension(), arguments.length);
             }
             EspressoContext context = EspressoContext.get(toInt);
@@ -517,24 +515,18 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
         @Specialization(guards = "isObjectKlass(receiver)")
         static Object doObject(Klass receiver, Object[] arguments,
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile error,
                         @CachedLibrary("receiver") InteropLibrary receiverInterop,
-                        @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
-                        @Cached OverLoadedMethodSelectorNode overloadSelector,
-                        @Exclusive @Cached InvokeEspressoNode invoke,
-                        @Cached ToEspressoNode.DynamicToEspresso toEspressoNode) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+                        @Cached InteropLookupAndInvoke.NonVirtual lookupAndInvoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             if (!receiverInterop.isInstantiable(receiver)) {
+                error.enter(node);
                 throw UnsupportedMessageException.create();
             }
             ObjectKlass objectKlass = (ObjectKlass) receiver;
-            Method[] initCandidates = lookupMethod.execute(receiver, INIT_NAME, true, false, arguments.length);
-            if (initCandidates != null) {
-                StaticObject instance = allocateNewInstance(EspressoContext.get(invoke), objectKlass);
-                EspressoInterop.invokeEspressoMethodHelper(instance, INIT_NAME, arguments, overloadSelector, invoke, toEspressoNode, initCandidates);
-                return instance;
-            }
-            // TODO(peterssen): We don't know the expected arity of this method, only that the given
-            // arity is incorrect.
-            throw ArityException.create(arguments.length + 1, -1, arguments.length);
+            StaticObject instance = allocateNewInstance(EspressoContext.get(lookupAndInvoke), objectKlass);
+            lookupAndInvoke.execute(instance, objectKlass, arguments, INIT_NAME);
+            return instance;
         }
 
         private static StaticObject allocateNewInstance(EspressoContext context, ObjectKlass objectKlass) {
