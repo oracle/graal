@@ -29,7 +29,6 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.ReportPolymorphism.Megamorphic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -113,7 +112,6 @@ public abstract class ToEspressoNode extends EspressoNode {
 
     @NodeInfo(shortName = "Dynamic toEspresso node")
     @GenerateUncached
-    @ReportPolymorphism
     public abstract static class DynamicToEspresso extends EspressoNode {
         protected static final int LIMIT = 4;
 
