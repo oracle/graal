@@ -715,7 +715,7 @@ public class NativeImageGenerator {
                         createAbstractImage(k, hostedEntryPoints, heap, hMetaAccess, codeCache);
 
                         FeatureImpl.AfterAbstractImageCreationAccessImpl access = new FeatureImpl.AfterAbstractImageCreationAccessImpl(featureHandler, loader, debug, image);
-                        featureHandler.forEachFeature(feature -> feature.afterAbstractImageCreation(access));
+                        featureHandler.forEachGraalFeature(feature -> feature.afterAbstractImageCreation(access));
 
                         image.build(imageName, debug);
 

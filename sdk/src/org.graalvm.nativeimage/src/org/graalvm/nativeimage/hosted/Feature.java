@@ -487,10 +487,6 @@ public interface Feature {
     interface BeforeImageWriteAccess extends FeatureAccess {
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    interface AfterAbstractImageCreationAccess extends FeatureAccess {
-    }
-
     /**
      * Access methods available for {@link Feature#afterImageWrite}.
      *
@@ -660,18 +656,6 @@ public interface Feature {
      * @since 19.0
      */
     default void beforeImageWrite(BeforeImageWriteAccess access) {
-    }
-
-    /**
-     * Handler to add feature specific sections to the image. Note that it is necessary to define
-     * symbols in such sections before the normal build process to ensure CGlobals referring to them
-     * are able to pick up these symbols.
-     *
-     * @param access The supported operations that the feature can perform at this time.
-     *
-     * @since 24.2
-     */
-    default void afterAbstractImageCreation(AfterAbstractImageCreationAccess access) {
     }
 
     /**
