@@ -555,6 +555,9 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMIn
         vmArgs.push_back("-Djdk.module.main=" LAUNCHER_MAIN_MODULE_STR);
         vmArgs.push_back("-Dgraalvm.locatorDisabled=true");
 #endif
+
+        // Allow Truffle NFI Panama to use Linker#{downcallHandle,upcallStub} without warnings
+        vmArgs.push_back("--enable-native-access=com.oracle.truffle.truffle_nfi_panama");
     }
 
     jint nOptions = jvmMode ? vmArgs.size() : 1 + vmArgs.size();
