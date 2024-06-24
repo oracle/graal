@@ -743,6 +743,19 @@ public class FeatureImpl {
         }
     }
 
+    public static class AfterAbstractImageCreationAccessImpl extends FeatureAccessImpl implements Feature.AfterAbstractImageCreationAccess {
+        protected final AbstractImage abstractImage;
+
+        AfterAbstractImageCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, AbstractImage abstractImage) {
+            super(featureHandler, imageClassLoader, debugContext);
+            this.abstractImage = abstractImage;
+        }
+
+        public AbstractImage getImage() {
+            return abstractImage;
+        }
+    }
+
     public static class AfterImageWriteAccessImpl extends FeatureAccessImpl implements Feature.AfterImageWriteAccess {
         private final HostedUniverse hUniverse;
         protected final LinkerInvocation linkerInvocation;

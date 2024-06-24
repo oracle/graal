@@ -57,7 +57,6 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFla
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
-import com.oracle.svm.hosted.code.ObjectFileTransformer;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -85,7 +84,7 @@ import jdk.vm.ci.meta.JavaConstant;
  * </pre>
  */
 @AutomaticallyRegisteredFeature
-public final class ImageLayerSectionFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton, ObjectFileTransformer {
+public final class ImageLayerSectionFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
 
     private static final SectionName SVM_LAYER_SECTION = new SectionName.ProgbitsSectionName("svm_layer");
 
@@ -117,7 +116,6 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(ImageLayerSection.class, createImageLayerSection());
-        ImageSingletons.add(ObjectFileTransformer.class, this);
     }
 
     private static byte[] createWords(int count, WordBase initialValue) {
@@ -170,7 +168,9 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
      * referring to them are able to pick up this symbol and not refer to an undefined symbol.
      */
     @Override
-    public void afterAbstractImageCreation(ObjectFile objectFile) {
+    public void afterAbstractImageCreation(AfterAbstractImageCreationAccess access) {
+        ObjectFile objectFile = ((FeatureImpl.AfterAbstractImageCreationAccessImpl) access).getImage().getObjectFile();
+
         int numSingletonSlots = ImageSingletons.lookup(LoadImageSingletonFeature.class).getConstantToTableSlotMap().size();
         layeredSectionDataByteBuffer = ByteBuffer.wrap(new byte[STATIC_SECTION_SIZE + (ConfigurationValues.getObjectLayout().getReferenceSize() * numSingletonSlots)]).order(ByteOrder.LITTLE_ENDIAN);
         layeredSectionData = new BasicProgbitsSectionImpl(layeredSectionDataByteBuffer.array());
