@@ -123,6 +123,12 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         return name;
     }
 
+    @Override
+    @TruffleBoundary
+    public String toString() {
+        return String.format("%s(%s)", this.getClass().getSimpleName(), getName());
+    }
+
     // Expose the protected cloneUninitialized method for testing.
     public BasicInterpreter doCloneUninitialized() {
         return (BasicInterpreter) cloneUninitialized();

@@ -3094,8 +3094,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startCase().staticReference(serializationElements.codeEndSerialize).end().startBlock();
 
             if (model.serializedFields.size() != 0) {
-                b.startFor().string("int i = 0; i < context.builtNodes.size(); i++").end().startBlock();
-                b.declaration(bytecodeNodeGen.asType(), "node", "context.builtNodes.get(i)");
+                b.startFor().string("int i = 0; i < this.builtNodes.size(); i++").end().startBlock();
+                b.declaration(bytecodeNodeGen.asType(), "node", "this.builtNodes.get(i)");
                 for (int i = 0; i < model.serializedFields.size(); i++) {
                     VariableElement var = model.serializedFields.get(i);
                     b.startStatement();

@@ -237,19 +237,25 @@ public abstract class AbstractBasicInterpreterTest {
 
         BytecodeRootNodes<BasicInterpreter> result = invokeCreate(interpreterClass, config, builder);
         if (testSerialize) {
-            // Perform a serialize-deserialize round trip.
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
-            try {
-                result.serialize(new DataOutputStream(output), SERIALIZER);
-            } catch (IOException ex) {
-                throw new AssertionError(ex);
-            }
-            Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
-            BytecodeRootNodes<BasicInterpreter> deserialized = invokeDeserialize(interpreterClass, LANGUAGE, config, input, DESERIALIZER);
-
-            assertBytecodeNodesEqual(result, deserialized);
+            assertBytecodeNodesEqual(result, doRoundTrip(interpreterClass, config, result));
         }
         return result;
+    }
+
+    public static <T extends BasicInterpreter> BytecodeRootNodes<T> doRoundTrip(Class<? extends BasicInterpreter> interpreterClass, BytecodeConfig config, BytecodeRootNodes<BasicInterpreter> nodes) {
+        // Perform a serialize-deserialize round trip.
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try {
+            nodes.serialize(new DataOutputStream(output), SERIALIZER);
+        } catch (IOException ex) {
+            throw new AssertionError(ex);
+        }
+        Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
+        return invokeDeserialize(interpreterClass, LANGUAGE, config, input, DESERIALIZER);
+    }
+
+    public BytecodeRootNodes<BasicInterpreter> doRoundTrip(BytecodeRootNodes<BasicInterpreter> nodes) {
+        return AbstractBasicInterpreterTest.doRoundTrip(run.interpreterClass, BytecodeConfig.DEFAULT, nodes);
     }
 
     public static <T extends BasicInterpreterBuilder> RootCallTarget parse(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize, String rootName, BytecodeParser<T> builder) {
