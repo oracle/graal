@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.graal.hosted.runtimecompilation;
 
-import static com.oracle.svm.common.meta.MultiMethod.DEOPT_TARGET_METHOD;
 import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
 import static com.oracle.svm.core.util.VMError.guarantee;
+import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
 
@@ -78,9 +78,9 @@ import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -598,11 +598,11 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             for (var e : exception.getExceptions()) {
                 if (e instanceof AnalysisError.ParsingError parsingError) {
                     AnalysisMethod errorMethod = parsingError.getMethod();
-                    if (errorMethod.isDeoptTarget() || SubstrateCompilationDirectives.isRuntimeCompiledMethod(errorMethod)) {
+                    if (SubstrateCompilationDirectives.isDeoptTarget(errorMethod) || SubstrateCompilationDirectives.isRuntimeCompiledMethod(errorMethod)) {
                         AnalysisMethod failingRuntimeMethod = null;
                         if (SubstrateCompilationDirectives.isRuntimeCompiledMethod(errorMethod)) {
                             failingRuntimeMethod = errorMethod;
-                        } else if (errorMethod.isDeoptTarget()) {
+                        } else if (SubstrateCompilationDirectives.isDeoptTarget(errorMethod)) {
                             failingRuntimeMethod = errorMethod.getMultiMethod(RUNTIME_COMPILED_METHOD);
                         }
                         printFailingRuntimeMethodTrace(treeInfo, failingRuntimeMethod, errorMethod);
@@ -656,7 +656,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         @Override
         public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
-            if (method.isDeoptTarget()) {
+            if (SubstrateCompilationDirectives.isDeoptTarget(method)) {
                 /*
                  * The assertion setting for the deoptTarget and the runtime compiled method must
                  * match.
@@ -758,7 +758,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                  * If new frame states are found, then redo the type flow
                  */
                 for (ResolvedJavaMethod method : recomputeMethods) {
-                    assert MultiMethod.isDeoptTarget(method);
+                    assert SubstrateCompilationDirectives.isDeoptTarget(method);
                     ((PointsToAnalysisMethod) method).getTypeFlow().updateFlowsGraph(bb, MethodFlowsGraph.GraphKind.FULL, null, true);
                 }
 
@@ -779,7 +779,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         @Override
         public void afterParsingHook(AnalysisMethod method, StructuredGraph graph) {
-            if (method.isDeoptTarget()) {
+            if (SubstrateCompilationDirectives.isDeoptTarget(method)) {
                 new RuntimeCompiledMethodSupport.ConvertMacroNodes().apply(graph);
             }
         }
@@ -1099,7 +1099,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         @Override
         public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation) {
-            if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD || implementation.isDeoptTarget()) {
+            if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD || SubstrateCompilationDirectives.isDeoptTarget(implementation)) {
                 /*
                  * If the method may be intrinsified later, the implementation can change.
                  *

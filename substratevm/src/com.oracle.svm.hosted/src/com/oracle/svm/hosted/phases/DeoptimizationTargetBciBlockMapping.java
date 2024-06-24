@@ -82,7 +82,7 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
 
     private DeoptimizationTargetBciBlockMapping(Bytecode code, DebugContext debug) {
         super(code, debug);
-        VMError.guarantee(MultiMethod.isDeoptTarget(code.getMethod()), "Deoptimization Target expected.");
+        VMError.guarantee(SubstrateCompilationDirectives.isDeoptTarget(code.getMethod()), "Deoptimization Target expected.");
         insertedBlocks = new HashSet<>();
     }
 

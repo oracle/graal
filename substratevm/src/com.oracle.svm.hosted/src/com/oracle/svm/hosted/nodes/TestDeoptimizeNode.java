@@ -22,9 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package com.oracle.svm.hosted.nodes;
 
-import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
@@ -53,7 +53,7 @@ public class TestDeoptimizeNode extends FixedWithNextNode implements Canonicaliz
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (MultiMethod.isDeoptTarget(graph().method())) {
+        if (SubstrateCompilationDirectives.isDeoptTarget(graph().method())) {
             /* no-op for deoptimization target methods. */
             return null;
         } else {

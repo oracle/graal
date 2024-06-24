@@ -874,7 +874,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         protected final boolean isMethodDeoptTarget() {
-            return MultiMethod.isDeoptTarget(method);
+            return SubstrateCompilationDirectives.isDeoptTarget(method);
         }
 
         @Override
