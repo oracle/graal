@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.meta;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -56,7 +55,9 @@ import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
+import com.oracle.graal.pointsto.meta.AnalysisElement.MethodOverrideReachableNotification;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -99,13 +100,6 @@ public class AnalysisUniverse implements Universe {
     final AtomicInteger nextMethodId = new AtomicInteger(1);
     final AtomicInteger nextFieldId = new AtomicInteger(1);
 
-    /**
-     * True if the analysis has converged and the analysis data is valid. This is similar to
-     * {@link #sealed} but in contrast to {@link #sealed}, the analysis data can be set to invalid
-     * again, e.g. if features modify the universe.
-     */
-    boolean analysisDataValid;
-
     protected final SubstitutionProcessor substitutions;
 
     private Function<Object, Object>[] objectReplacers;
@@ -128,6 +122,8 @@ public class AnalysisUniverse implements Universe {
     private HeapSnapshotVerifier heapVerifier;
     private BigBang bb;
     private DuringAnalysisAccess concurrentAnalysisAccess;
+
+    private final Map<AnalysisMethod, Set<MethodOverrideReachableNotification>> methodOverrideReachableNotifications = new ConcurrentHashMap<>();
 
     public JavaKind getWordKind() {
         return wordKind;
@@ -177,13 +173,6 @@ public class AnalysisUniverse implements Universe {
 
     public boolean sealed() {
         return sealed;
-    }
-
-    public void setAnalysisDataValid(boolean dataIsValid) {
-        if (dataIsValid) {
-            collectMethodImplementations();
-        }
-        analysisDataValid = dataIsValid;
     }
 
     public AnalysisType optionalLookup(ResolvedJavaType type) {
@@ -425,10 +414,27 @@ public class AnalysisUniverse implements Universe {
         }
         AnalysisMethod newValue = analysisFactory.createMethod(this, method);
         AnalysisMethod oldValue = methods.putIfAbsent(method, newValue);
-        if (oldValue == null && newValue.isInBaseLayer()) {
-            getImageLayerLoader().patchBaseLayerMethod(newValue);
+
+        if (oldValue == null) {
+            if (newValue.isInBaseLayer()) {
+                getImageLayerLoader().patchBaseLayerMethod(newValue);
+            }
+            prepareMethodImplementations(newValue);
         }
         return oldValue != null ? oldValue : newValue;
+    }
+
+    /** Prepare information that {@link AnalysisMethod#collectMethodImplementations} needs. */
+    private static void prepareMethodImplementations(AnalysisMethod method) {
+        if (!method.canBeStaticallyBound() && !method.isConstructor()) {
+            ConcurrentLightHashSet.addElement(method.declaringClass, AnalysisType.overrideableMethodsUpdater, method);
+            for (AnalysisType subtype : method.declaringClass.getAllSubtypes()) {
+                AnalysisMethod override = subtype.resolveConcreteMethod(method, null);
+                if (override != null && !override.equals(method)) {
+                    ConcurrentLightHashSet.addElement(method, AnalysisMethod.allImplementationsUpdater, override);
+                }
+            }
+        }
     }
 
     public AnalysisMethod[] lookup(JavaMethod[] inputs) {
@@ -599,45 +605,24 @@ public class AnalysisUniverse implements Universe {
         return destination;
     }
 
-    public static Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
-        return getMethodImplementations(baseMethod, true);
+    public void registerOverrideReachabilityNotification(AnalysisMethod declaredMethod, MethodOverrideReachableNotification notification) {
+        methodOverrideReachableNotifications.computeIfAbsent(declaredMethod, m -> ConcurrentHashMap.newKeySet()).add(notification);
     }
 
-    private void collectMethodImplementations() {
-        for (AnalysisMethod method : methods.values()) {
-            Set<AnalysisMethod> implementations = getMethodImplementations(method, false);
-            method.implementations = implementations.toArray(new AnalysisMethod[implementations.size()]);
-        }
-    }
-
-    public static Set<AnalysisMethod> getMethodImplementations(AnalysisMethod method, boolean includeInlinedMethods) {
-        Set<AnalysisMethod> implementations = new LinkedHashSet<>();
-        if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
-            if (includeInlinedMethods ? method.isReachable() : method.isImplementationInvoked()) {
-                implementations.add(method);
+    public void runAtFixedPoint() {
+        /*
+         * It is too expensive to immediately send out override notifications when a new method
+         * becomes reachable. We therefore send them out after the analysis has reached a fixed
+         * point. When new tasks are scheduled, the parallel analysis must be restarted.
+         */
+        for (var entry : methodOverrideReachableNotifications.entrySet()) {
+            var method = entry.getKey();
+            for (var override : method.collectMethodImplementations(true)) {
+                for (var notification : entry.getValue()) {
+                    notification.notifyCallback(this, override);
+                }
             }
-        } else {
-            collectMethodImplementations(method, method.getDeclaringClass(), implementations, includeInlinedMethods);
         }
-        return implementations;
-    }
-
-    private static boolean collectMethodImplementations(AnalysisMethod method, AnalysisType holder, Set<AnalysisMethod> implementations, boolean includeInlinedMethods) {
-        boolean holderOrSubtypeInstantiated = holder.isInstantiated();
-        for (AnalysisType subClass : holder.getSubTypes()) {
-            if (subClass.equals(holder)) {
-                /* Subtypes include the holder type itself. The holder is processed below. */
-                continue;
-            }
-            holderOrSubtypeInstantiated |= collectMethodImplementations(method, subClass, implementations, includeInlinedMethods);
-        }
-
-        AnalysisMethod resolved = method.resolveInType(holder, holderOrSubtypeInstantiated);
-        if (resolved != null && (includeInlinedMethods ? resolved.isReachable() : resolved.isImplementationInvoked())) {
-            implementations.add(resolved);
-        }
-
-        return holderOrSubtypeInstantiated;
     }
 
     /**

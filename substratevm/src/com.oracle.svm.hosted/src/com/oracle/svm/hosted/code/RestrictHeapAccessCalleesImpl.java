@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -131,7 +132,8 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
         if (aggregation.get(method) != null) {
             return;
         }
-        for (AnalysisMethod impl : method.getImplementations()) {
+        Set<AnalysisMethod> implementations = method.collectMethodImplementations(false);
+        for (AnalysisMethod impl : implementations) {
             if (impl.isAnnotationPresent(RestrictHeapAccess.class) && !impl.equals(method)) {
                 /* Annotated overrides take precedence, so process them first. */
                 setMethodRestrictionInfo(impl, aggregation);
@@ -140,7 +142,7 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
         assert aggregation.get(method) == null;
         Access access = method.getAnnotation(RestrictHeapAccess.class).access();
         aggregation.put(method, new RestrictionInfo(access, null, null, method));
-        for (AnalysisMethod impl : method.getImplementations()) {
+        for (AnalysisMethod impl : implementations) {
             aggregation.putIfAbsent(impl, new RestrictionInfo(access, null, null, impl));
         }
     }

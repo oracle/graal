@@ -597,10 +597,12 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public boolean finish() throws InterruptedException {
         try (Indent indent = debug.logAndIndent("starting analysis in BigBang.finish")) {
-            universe.setAnalysisDataValid(false);
-            boolean didSomeWork = doTypeflow();
-            assert executor.getPostedOperations() == 0 : executor.getPostedOperations();
-            universe.setAnalysisDataValid(true);
+            boolean didSomeWork = false;
+            do {
+                didSomeWork |= doTypeflow();
+                assert executor.getPostedOperations() == 0 : executor.getPostedOperations();
+                universe.runAtFixedPoint();
+            } while (executor.getPostedOperations() > 0);
             return didSomeWork;
         }
     }

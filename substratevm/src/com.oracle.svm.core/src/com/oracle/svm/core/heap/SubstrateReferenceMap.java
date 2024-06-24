@@ -34,15 +34,15 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.core.common.NumUtil;
+import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.Value;
-import org.graalvm.nativeimage.ImageInfo;
 
 public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapEncoder.Input {
     /**
@@ -220,7 +220,14 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
 
     @Override
     public int hashCode() {
-        return shift ^ (shiftedOffsets == null ? 0 : shiftedOffsets.hashCode()) ^ (derived == null ? 0 : derived.hashCode());
+        int result = shift * 31 + (derived == null ? 42 : derived.hashCode());
+        if (shiftedOffsets != null) {
+            /* We do not use BitSet.hashCode because it has a too high collision rate. */
+            for (int idx = shiftedOffsets.nextSetBit(0); idx != -1; idx = shiftedOffsets.nextSetBit(idx + 1)) {
+                result = result * 31 + idx + 42;
+            }
+        }
+        return result;
     }
 
     @Override
