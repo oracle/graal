@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.DowncallStubsHolder;
@@ -47,6 +46,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -134,7 +134,7 @@ class DowncallStub extends NonBytecodeMethod {
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
         FrameStateBuilder state = kit.getFrameState();
-        boolean deoptimizationTarget = MultiMethod.isDeoptTarget(method);
+        boolean deoptimizationTarget = SubstrateCompilationDirectives.isDeoptTarget(method);
         List<ValueNode> arguments = kit.getInitialArguments();
 
         assert arguments.size() == 1;

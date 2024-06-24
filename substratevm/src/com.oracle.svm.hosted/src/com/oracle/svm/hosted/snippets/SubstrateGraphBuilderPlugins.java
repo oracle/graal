@@ -55,7 +55,6 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.NeverInline;
@@ -71,12 +70,10 @@ import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.FarReturnNode;
 import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
-import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 import com.oracle.svm.core.graal.nodes.ReadReturnAddressNode;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.nodes.SubstrateReflectionGetCallerClassNode;
-import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
 import com.oracle.svm.core.graal.stackvalue.LateStackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.UnsafeLateStackValue;
@@ -99,7 +96,10 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
+import com.oracle.svm.hosted.nodes.ReadReservedRegister;
+import com.oracle.svm.hosted.nodes.TestDeoptimizeNode;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -643,7 +643,7 @@ public class SubstrateGraphBuilderPlugins {
             } else if (successor instanceof FullInfopointNode) {
                 successor = ((FullInfopointNode) successor).next();
             } else if (successor instanceof DeoptEntryNode) {
-                assert MultiMethod.isDeoptTarget(successor.graph().method());
+                assert SubstrateCompilationDirectives.isDeoptTarget(successor.graph().method());
                 successor = ((DeoptEntryNode) successor).next();
             } else if (successor instanceof AbstractBeginNode) {
                 /* Useless block begins can occur during parsing or graph decoding. */
@@ -958,7 +958,7 @@ public class SubstrateGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("isDeoptimizationTarget") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(MultiMethod.isDeoptTarget(b.getGraph().method())));
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(SubstrateCompilationDirectives.isDeoptTarget(b.getGraph().method())));
                 return true;
             }
         });

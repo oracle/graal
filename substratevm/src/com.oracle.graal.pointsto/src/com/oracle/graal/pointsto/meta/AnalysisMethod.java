@@ -394,7 +394,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public boolean registerAsImplementationInvoked(Object reason) {
         assert isValidReason(reason) : "Registering a method as implementation invoked needs to provide a valid reason, found: " + reason;
-        assert isImplementationInvokable() : this;
         assert !Modifier.isAbstract(getModifiers()) : this;
 
         /*
@@ -1032,6 +1031,4 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     protected abstract AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey);
-
-    public abstract boolean isImplementationInvokable();
 }

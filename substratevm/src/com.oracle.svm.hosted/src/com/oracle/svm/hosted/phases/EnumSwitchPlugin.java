@@ -38,6 +38,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -135,7 +136,7 @@ final class EnumSwitchFeature implements InternalFeature {
         boolean methodSafeForExecution = graph.getNodes().filter(node -> node instanceof EnsureClassInitializedNode).isEmpty();
 
         Boolean existingValue = methodsSafeForExecution.put(method, methodSafeForExecution);
-        assert existingValue == null || method.isDeoptTarget() : "Method parsed twice: " + method.format("%H.%n(%p)");
+        assert existingValue == null || SubstrateCompilationDirectives.isDeoptTarget(method) : "Method parsed twice: " + method.format("%H.%n(%p)");
     }
 
     @Override
