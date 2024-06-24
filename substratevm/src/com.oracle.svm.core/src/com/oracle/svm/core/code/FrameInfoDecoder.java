@@ -288,7 +288,7 @@ public class FrameInfoDecoder {
 
         FrameInfoQueryResult result;
         if (CompressedFrameDecoderHelper.isCompressedFrameSlice(state.firstValue)) {
-            result = decodeCompressedFrameInfo(isDeoptEntry, readBuffer, resultAllocator, state);
+            result = decodeCompressedFrameInfo(isDeoptEntry, readBuffer, resultAllocator, state, CodeInfoAccess.getMethodTableFirstId(info));
         } else {
             result = decodeUncompressedFrameInfo(isDeoptEntry, readBuffer, info, resultAllocator, valueInfoAllocator, constantAccess, state);
         }
@@ -302,7 +302,8 @@ public class FrameInfoDecoder {
      * compressed encoding format.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static FrameInfoQueryResult decodeCompressedFrameInfo(boolean isDeoptEntry, ReusableTypeReader readBuffer, FrameInfoQueryResultAllocator resultAllocator, FrameInfoState state) {
+    private static FrameInfoQueryResult decodeCompressedFrameInfo(boolean isDeoptEntry, ReusableTypeReader readBuffer, FrameInfoQueryResultAllocator resultAllocator, FrameInfoState state,
+                    int methodIdAddend) {
         FrameInfoQueryResult result = null;
         FrameInfoQueryResult prev = null;
 
@@ -340,13 +341,13 @@ public class FrameInfoDecoder {
 
                 int methodId = readBuffer.getSVInt();
                 VMError.guarantee(!CompressedFrameDecoderHelper.isSharedFramePointer(methodId));
-                decodeCompressedFrameData(readBuffer, state, methodId, cur);
+                decodeCompressedFrameData(readBuffer, state, methodId, cur, methodIdAddend);
 
                 // jump back to frame slice information
                 readBuffer.setByteIndex(bufferIndexToRestore);
                 bufferIndexToRestore = -1;
             } else {
-                decodeCompressedFrameData(readBuffer, state, firstEntry, cur);
+                decodeCompressedFrameData(readBuffer, state, firstEntry, cur, methodIdAddend);
             }
 
             if (bufferIndexToRestore != -1) {
@@ -373,8 +374,8 @@ public class FrameInfoDecoder {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void decodeCompressedFrameData(ReusableTypeReader readBuffer, FrameInfoState state, int methodId, FrameInfoQueryResult queryResult) {
-        queryResult.sourceMethodId = methodId;
+    private static void decodeCompressedFrameData(ReusableTypeReader readBuffer, FrameInfoState state, int methodId, FrameInfoQueryResult queryResult, int methodIdAddend) {
+        queryResult.sourceMethodId = methodId + methodIdAddend;
 
         int encodedSourceLineNumber = readBuffer.getSVInt();
         long compressedBci = readBuffer.getSV();
@@ -400,6 +401,7 @@ public class FrameInfoDecoder {
         FrameInfoQueryResult prev = null;
         ValueInfo[][] virtualObjects = null;
 
+        int methodIdAddend = CodeInfoAccess.getMethodTableFirstId(info);
         while (!state.isDone) {
             long start = readBuffer.getByteIndex();
             long encodedBci = readBuffer.getUV();
@@ -460,7 +462,7 @@ public class FrameInfoDecoder {
             }
             cur.virtualObjects = virtualObjects;
 
-            cur.sourceMethodId = readBuffer.getSVInt();
+            cur.sourceMethodId = readBuffer.getSVInt() + methodIdAddend;
             cur.sourceLineNumber = readBuffer.getSVInt();
 
             if (prev == null) {

@@ -1052,15 +1052,16 @@ public class FrameInfoEncoder {
         for (FrameData expectedData : allDebugInfos) {
             ReusableTypeReader reader = new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), expectedData.encodedFrameInfoIndex);
             FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry, reader, info, constantAccess);
-            FrameInfoVerifier.verifyFrames(expectedData, expectedData.frame, actualFrame);
+            FrameInfoVerifier.verifyFrames(expectedData, expectedData.frame, actualFrame, info);
         }
     }
 }
 
 class FrameInfoVerifier {
-    protected static void verifyFrames(FrameInfoEncoder.FrameData expectedData, FrameInfoQueryResult expectedTopFrame, FrameInfoQueryResult actualTopFrame) {
+    protected static void verifyFrames(FrameInfoEncoder.FrameData expectedData, FrameInfoQueryResult expectedTopFrame, FrameInfoQueryResult actualTopFrame, CodeInfo info) {
         FrameInfoQueryResult expectedFrame = expectedTopFrame;
         FrameInfoQueryResult actualFrame = actualTopFrame;
+        int methodIdAddend = CodeInfoAccess.getMethodTableFirstId(info);
         while (expectedFrame != null) {
             assert actualFrame != null;
             assert expectedFrame.isDeoptEntry() == actualFrame.isDeoptEntry() : actualFrame;
@@ -1079,7 +1080,7 @@ class FrameInfoVerifier {
                 assert actualFrame.getVirtualObjects() == actualTopFrame.getVirtualObjects() : actualFrame;
             }
 
-            assert expectedFrame.getSourceMethodId() == actualFrame.getSourceMethodId() : actualFrame;
+            assert expectedFrame.getSourceMethodId() == (actualFrame.getSourceMethodId() - methodIdAddend) : actualFrame;
             assert expectedFrame.getSourceLineNumber() == actualFrame.getSourceLineNumber() : actualFrame;
 
             expectedFrame = expectedFrame.caller;
