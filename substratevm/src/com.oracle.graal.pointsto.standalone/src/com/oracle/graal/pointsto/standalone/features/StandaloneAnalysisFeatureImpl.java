@@ -158,7 +158,7 @@ public class StandaloneAnalysisFeatureImpl {
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
-            return AnalysisUniverse.getMethodImplementations(baseMethod, true);
+            return baseMethod.collectMethodImplementations(true);
         }
     }
 

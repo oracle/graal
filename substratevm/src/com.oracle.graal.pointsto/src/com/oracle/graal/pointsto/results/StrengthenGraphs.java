@@ -145,6 +145,26 @@ public abstract class StrengthenGraphs {
         public static final OptionKey<Boolean> StrengthenGraphWithConstants = new OptionKey<>(true);
     }
 
+    /**
+     * The hashCode implementation of {@link JavaMethodProfile} is bad because it does not take the
+     * actual methods into account, only the number of methods in the profile. This wrapper class
+     * provides a proper hashCode.
+     */
+    record CachedJavaMethodProfile(JavaMethodProfile profile, int hash) {
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof CachedJavaMethodProfile other) {
+                return profile.equals(other.profile);
+            }
+            return false;
+        }
+    }
+
     protected final BigBang bb;
     /**
      * The universe used to convert analysis metadata to hosted metadata, or {@code null} if no
@@ -153,7 +173,7 @@ public abstract class StrengthenGraphs {
     protected final Universe converter;
 
     private final Map<JavaTypeProfile, JavaTypeProfile> cachedTypeProfiles = new ConcurrentHashMap<>();
-    private final Map<JavaMethodProfile, JavaMethodProfile> cachedMethodProfiles = new ConcurrentHashMap<>();
+    private final Map<CachedJavaMethodProfile, CachedJavaMethodProfile> cachedMethodProfiles = new ConcurrentHashMap<>();
 
     /* Cached option values to avoid repeated option lookup. */
     private final int analysisSizeCutoff;
@@ -1010,19 +1030,21 @@ public abstract class StrengthenGraphs {
         }
         var created = createMethodProfile(callees);
         var existing = cachedMethodProfiles.putIfAbsent(created, created);
-        return existing != null ? existing : created;
+        return existing != null ? existing.profile : created.profile;
     }
 
-    private JavaMethodProfile createMethodProfile(Collection<AnalysisMethod> callees) {
+    private CachedJavaMethodProfile createMethodProfile(Collection<AnalysisMethod> callees) {
         JavaMethodProfile.ProfiledMethod[] pitems = new JavaMethodProfile.ProfiledMethod[callees.size()];
+        int hashCode = 0;
         double probability = 1d / pitems.length;
 
         int idx = 0;
         for (AnalysisMethod aMethod : callees) {
             ResolvedJavaMethod convertedMethod = converter == null ? aMethod : converter.lookup(aMethod);
             pitems[idx++] = new JavaMethodProfile.ProfiledMethod(convertedMethod, probability);
+            hashCode = hashCode * 31 + convertedMethod.hashCode();
         }
-        return new JavaMethodProfile(0, pitems);
+        return new CachedJavaMethodProfile(new JavaMethodProfile(0, pitems), hashCode);
     }
 }
 
