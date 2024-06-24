@@ -68,6 +68,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
@@ -109,8 +110,6 @@ public class SubstrateDiagnostics {
     private static final ImageCodeLocationInfoPrinter imageCodeLocationInfoPrinter = new ImageCodeLocationInfoPrinter();
     private static final Stage0StackFramePrintVisitor[] printVisitors = new Stage0StackFramePrintVisitor[]{new StackFramePrintVisitor(), new Stage1StackFramePrintVisitor(),
                     new Stage0StackFramePrintVisitor()};
-
-    private static volatile boolean loopOnFatalError;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setOnlyAttachedForCrashHandler(IsolateThread thread) {
@@ -272,7 +271,7 @@ public class SubstrateDiagnostics {
          * In the debugger, it is possible to change the value of loopOnFatalError to false if
          * necessary.
          */
-        while (loopOnFatalError) {
+        while (Options.shouldLoopOnFatalError()) {
             PauseNode.pause();
         }
 
@@ -1301,14 +1300,41 @@ public class SubstrateDiagnostics {
         }
     }
 
+    @AutomaticallyRegisteredImageSingleton
     public static class Options {
         @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
         public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates) {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 super.onValueUpdate(values, oldValue, newValue);
-                SubstrateDiagnostics.loopOnFatalError = newValue;
+
+                /*
+                 * Copy the value to a field in the image heap so that it is safe to access. During
+                 * image build, it can happen that the singleton does not exist yet. In that case,
+                 * the value will be copied to the image heap when executing the constructor of the
+                 * singleton. This is a bit cumbersome but necessary because we can't use a static
+                 * field.
+                 */
+                if (ImageSingletons.contains(Options.class)) {
+                    Options.singleton().loopOnFatalError = newValue;
+                }
             }
         };
+
+        private volatile boolean loopOnFatalError;
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public Options() {
+            this.loopOnFatalError = Options.LoopOnFatalError.getValue();
+        }
+
+        @Fold
+        static Options singleton() {
+            return ImageSingletons.lookup(Options.class);
+        }
+
+        public static boolean shouldLoopOnFatalError() {
+            return singleton().loopOnFatalError;
+        }
     }
 }

@@ -30,8 +30,8 @@ import org.graalvm.compiler.options.OptionValues;
 
 public class HostedOptionCustomizer implements HostedOptionProvider {
 
-    private EconomicMap<OptionKey<?>, Object> hostedValues;
-    private EconomicMap<OptionKey<?>, Object> runtimeValues;
+    private final EconomicMap<OptionKey<?>, Object> hostedValues;
+    private final EconomicMap<OptionKey<?>, Object> runtimeValues;
 
     public HostedOptionCustomizer(HostedOptionProvider original) {
         hostedValues = OptionValues.newOptionMap();
