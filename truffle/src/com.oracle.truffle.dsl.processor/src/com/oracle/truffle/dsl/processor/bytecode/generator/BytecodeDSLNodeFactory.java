@@ -3982,7 +3982,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startStatement().string("RootData operationData = ");
             b.tree(createOperationData("RootData", "language", "numRoots++"));
             b.end();
-            b.startIf().string("numRoots >= builtNodes.size()").end().startBlock();
+            b.startIf().string("reparseReason == null").end().startBlock();
             b.statement("builtNodes.add(null)");
             b.end();
 
