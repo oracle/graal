@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.nodes.arithmetic;
+package org.graalvm.compiler.nodes.calc;
 
 public interface IntegerExactArithmeticNode {
 }
