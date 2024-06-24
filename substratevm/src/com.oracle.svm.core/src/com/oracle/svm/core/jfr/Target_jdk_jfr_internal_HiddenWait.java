@@ -27,8 +27,8 @@
 package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import com.oracle.svm.core.jdk.JDK23OrLater;
 
-@TargetClass(className = "jdk.jfr.internal.JVM$ChunkRotationMonitor", onlyWith = {HasJfrSupport.class, JDK21OrEarlier.class})
-public final class Target_jdk_jfr_internal_JVM_ChunkRotationMonitor {
+@TargetClass(className = "jdk.jfr.internal.HiddenWait", onlyWith = {HasJfrSupport.class, JDK23OrLater.class})
+public final class Target_jdk_jfr_internal_HiddenWait {
 }
