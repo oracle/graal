@@ -53,7 +53,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Predicate;
+import java.util.function.IntPredicate;
 
 import org.graalvm.collections.Pair;
 
@@ -457,7 +457,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         return c;
     }
 
-    private String getMany(Predicate<Integer> pred) {
+    private String getMany(IntPredicate pred) {
         StringBuilder out = new StringBuilder();
         while (!atEnd() && pred.test(curChar())) {
             out.appendCodePoint(consumeChar());
@@ -465,7 +465,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         return out.toString();
     }
 
-    private String getUpTo(int count, Predicate<Integer> pred) {
+    private String getUpTo(int count, IntPredicate pred) {
         StringBuilder out = new StringBuilder();
         int found = 0;
         while (found < count && !atEnd() && pred.test(curChar())) {
