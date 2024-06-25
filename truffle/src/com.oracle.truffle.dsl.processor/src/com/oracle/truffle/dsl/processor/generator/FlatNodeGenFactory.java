@@ -3018,9 +3018,7 @@ public class FlatNodeGenFactory {
 
         if (reportPolymorphismAction.required()) {
             builder.end().startFinallyBlock();
-            if (reportPolymorphismAction.required()) {
-                generateCheckNewPolymorphismState(builder, frameState, reportPolymorphismAction);
-            }
+            generateCheckNewPolymorphismState(builder, frameState, reportPolymorphismAction);
             builder.end();
         }
 
