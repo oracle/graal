@@ -8993,6 +8993,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.tree(createValidationError("bytecode array must not be null"));
             b.end();
 
+            // Bytecode validation
             b.startWhile().string("bci < bc.length").end().startBlock();
             b.startTryBlock();
             b.startSwitch().string("bc[bci]").end().startBlock();
@@ -9018,7 +9019,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 b.string(localName, " < 0");
                             }
                             b.string(" || ").string(localName).string(" >= bc.length").end().startBlock();
-                            b.tree(createValidationError("bytecode index is out of bounds"));
+                            b.tree(createValidationErrorWithBci("bytecode index is out of bounds"));
                             b.end();
                             break;
                         case INTEGER:
@@ -9033,7 +9034,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             }
                             b.startIf().string(localName).string(" - USER_LOCALS_START_IDX").string(" < 0 || ").string(localName).string(" - USER_LOCALS_START_IDX").string(
                                             " >= root.numLocals").end().startBlock();
-                            b.tree(createValidationError("local offset is out of bounds"));
+                            b.tree(createValidationErrorWithBci("local offset is out of bounds"));
                             b.end();
                             break;
                         }
@@ -9045,7 +9046,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 b.startAssign("root").string("this.getRoot().getBytecodeRootNodeImpl(", readBc("bci + " + root.offset()), ")").end();
                             }
                             b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= root.bytecode.locals.length").end().startBlock();
-                            b.tree(createValidationError("local index is out of bounds"));
+                            b.tree(createValidationErrorWithBci("local index is out of bounds"));
                             b.end();
                             break;
                         }
@@ -9054,18 +9055,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             break;
                         case CONSTANT:
                             b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= constants.length").end().startBlock();
-                            b.tree(createValidationError("constant is out of bounds"));
+                            b.tree(createValidationErrorWithBci("constant is out of bounds"));
                             b.end();
                             break;
                         case NODE_PROFILE:
                             b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= numNodes").end().startBlock();
-                            b.tree(createValidationError("node profile is out of bounds"));
+                            b.tree(createValidationErrorWithBci("node profile is out of bounds"));
                             b.end();
                             break;
                         case BRANCH_PROFILE:
                             b.startIf().string("branchProfiles != null").end().startBlock();
                             b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= branchProfiles.length").end().startBlock();
-                            b.tree(createValidationError("branch profile is out of bounds"));
+                            b.tree(createValidationErrorWithBci("branch profile is out of bounds"));
                             b.end();
                             b.end();
                             break;
@@ -9073,7 +9074,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.startIf().string("tagNodes != null").end().startBlock();
                             b.declaration(tagNode.asType(), "node", readTagNodeSafe(CodeTreeBuilder.singleString(immediate.name())));
                             b.startIf().string("node == null").end().startBlock();
-                            b.tree(createValidationError("tagNode is null"));
+                            b.tree(createValidationErrorWithBci("tagNode is null"));
                             b.end();
                             b.end();
                             break;
@@ -9097,11 +9098,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("throw e");
             b.end();
             b.startCatchBlock(type(Throwable.class), "e");
-            b.tree(createValidationError(null, "e"));
+            b.tree(createValidationError(null, "e", false));
             b.end();
 
             b.end(); // while
 
+            // Exception handler validation
             b.declaration(arrayOf(type(int.class)), "ex", "this.handlers");
 
             b.startIf().string("ex.length % EXCEPTION_HANDLER_LENGTH != 0").end().startBlock();
@@ -9116,12 +9118,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration(type(int.class), "exceptionLocal", "ex[i + EXCEPTION_HANDLER_OFFSET_LOCAL]");
 
             b.startIf().string("startBci").string(" < 0 || ").string("startBci").string(" >= bc.length").end().startBlock();
-            b.tree(createValidationError("startBci index is out of bounds"));
+            b.tree(createValidationError("exception handler startBci is out of bounds"));
             b.end();
 
             // exclusive
             b.startIf().string("endBci").string(" < 0 || ").string("endBci").string(" > bc.length").end().startBlock();
-            b.tree(createValidationError("endBci index is out of bounds"));
+            b.tree(createValidationError("exception handler endBci is out of bounds"));
+            b.end();
+
+            b.startIf().string("startBci > endBci").end().startBlock();
+            b.tree(createValidationError("exception handler bci range is malformed"));
             b.end();
 
             b.startSwitch().string("exceptionLocal").end().startBlock();
@@ -9129,11 +9135,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startCase().string("HANDLER_EPILOG_EXCEPTIONAL").end().startCaseBlock();
 
                 b.startIf().string("handlerBci").string(" != -1").end().startBlock();
-                b.tree(createValidationError("handlerBci index is invalid"));
+                b.tree(createValidationError("exception handler handlerBci is invalid"));
                 b.end();
 
                 b.startIf().string("spStart").string(" != -1").end().startBlock();
-                b.tree(createValidationError("handlerBci index is invalid"));
+                b.tree(createValidationError("exception handler handlerBci is invalid"));
                 b.end();
 
                 b.statement("break");
@@ -9156,17 +9162,36 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.caseDefault().startCaseBlock();
             b.startIf().string("handlerBci").string(" < 0 || ").string("handlerBci").string(" >= bc.length").end().startBlock();
-            b.tree(createValidationError("handlerBci index is out of bounds"));
+            b.tree(createValidationError("exception handler handlerBci is out of bounds"));
             b.end();
 
             b.startIf().string("exceptionLocal").string(" < 0 || ").string("exceptionLocal").string(" >= getRoot().numLocals").end().startBlock();
-            b.tree(createValidationError("exceptionLocal index is out of bounds"));
+            b.tree(createValidationError("exception handler exceptionLocal index is out of bounds"));
             b.end();
             b.statement("break");
             b.end(); // case default
 
             b.end(); // switch
             b.end(); // for handler
+
+            // Source information validation
+            b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
+            b.declaration(generic(declaredType(List.class), types.Source), "localSources", "this.sources");
+
+            b.startIf().string("info != null").end().startBlock();
+            b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
+            b.declaration(type(int.class), "encodedBci", "info[i + SOURCE_INFO_OFFSET_BCI]");
+            b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
+            b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
+            b.declaration(type(int.class), "sourceIndex", "info[i + SOURCE_INFO_OFFSET_SOURCE]");
+            b.startIf().string("beginBci > endBci").end().startBlock();
+            b.tree(createValidationError("source bci range is malformed"));
+            b.end().startElseIf().string("sourceIndex < 0 || sourceIndex > localSources.size()").end().startBlock();
+            b.tree(createValidationError("source index is out of bounds"));
+            b.end();
+
+            b.end(); // for sources
+            b.end(); // if sources
 
             b.startReturn().string("true").end();
 
@@ -9213,20 +9238,31 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeTree createValidationError(String message) {
-            return createValidationError(message, null);
+            return createValidationError(message, null, false);
         }
 
-        private CodeTree createValidationError(String message, String cause) {
+        private CodeTree createValidationErrorWithBci(String message) {
+            return createValidationError(message, null, true);
+        }
+
+        private CodeTree createValidationError(String message, String cause, boolean includeBci) {
             CodeTreeBuilder b = new CodeTreeBuilder(null);
             b.startThrow().startStaticCall(types.CompilerDirectives, "shouldNotReachHere");
             b.startGroup();
             b.startStaticCall(type(String.class), "format");
-            if (message == null) {
-                b.doubleQuote("Bytecode validation error at index: %s.%n%s");
+            b.startGroup().string("\"Bytecode validation error");
+            if (includeBci) {
+                b.string(" at index: %s.");
             } else {
-                b.doubleQuote("Bytecode validation error at index: %s. " + message + "%n%s");
+                b.string(":");
             }
-            b.string("bci");
+            if (message != null) {
+                b.string(" " + message);
+            }
+            b.string("%s%n\"").end(); // group
+            if (includeBci) {
+                b.string("bci");
+            }
             b.string("dumpInvalid(findLocation(bci))");
             b.end(); // String.format
             b.end(); // group
