@@ -304,7 +304,6 @@ public abstract class ToReference extends ToEspressoNode {
 
     @NodeInfo(shortName = "Dynamic toEspresso node")
     @GenerateUncached
-    @ReportPolymorphism
     public abstract static class DynamicToReference extends EspressoNode {
         protected static final int LIMIT = 4;
 
