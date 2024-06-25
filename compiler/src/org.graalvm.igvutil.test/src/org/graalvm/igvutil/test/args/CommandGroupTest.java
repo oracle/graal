@@ -26,9 +26,9 @@ package org.graalvm.igvutil.test.args;
 
 import org.graalvm.igvutil.args.Command;
 import org.graalvm.igvutil.args.CommandGroup;
+import org.graalvm.igvutil.args.CommandParsingException;
 import org.graalvm.igvutil.args.HelpRequestedException;
 import org.graalvm.igvutil.args.InvalidArgumentException;
-import org.graalvm.igvutil.args.MissingArgumentException;
 import org.graalvm.igvutil.args.OptionValue;
 import org.graalvm.igvutil.args.StringValue;
 import org.junit.Assert;
@@ -37,8 +37,8 @@ import org.junit.Test;
 public class CommandGroupTest {
 
     @Test
-    public void testSimpleSubcommand() throws InvalidArgumentException, MissingArgumentException, HelpRequestedException {
-        CommandGroup<Command> group = new CommandGroup<>();
+    public void testSimpleSubcommand() throws InvalidArgumentException, HelpRequestedException, CommandParsingException {
+        CommandGroup<Command> group = new CommandGroup<>("subcommand", "");
         Command subA = group.addCommand(new Command("cmda", ""));
         Command subB = group.addCommand(new Command("cmdb", ""));
         Command subC = group.addCommand(new Command("cmdc", ""));
@@ -62,10 +62,10 @@ public class CommandGroupTest {
     }
 
     @Test
-    public void testSubcommandSeparator() throws InvalidArgumentException, MissingArgumentException, HelpRequestedException {
+    public void testSubcommandSeparator() throws HelpRequestedException, CommandParsingException {
         Command outer = new Command("test", "");
         OptionValue<String> outerOption = outer.addNamed("--option", new StringValue("VAL", "default", ""));
-        CommandGroup<Command> group = outer.addCommandGroup(new CommandGroup<>());
+        CommandGroup<Command> group = outer.addCommandGroup(new CommandGroup<>("subcommand", ""));
         Command inner = group.addCommand(new Command("sub", ""));
         OptionValue<String> innerOption = inner.addNamed("--option", new StringValue("VAL", "default", ""));
 
@@ -89,9 +89,25 @@ public class CommandGroupTest {
     }
 
     @Test
+    public void testPositionalAndSubcommand() throws HelpRequestedException, CommandParsingException {
+        Command outer = new Command("test", "");
+        OptionValue<String> positional = outer.addPositional(new StringValue("VAL", ""));
+        CommandGroup<Command> group = outer.addCommandGroup(new CommandGroup<>("subcommand", ""));
+        Command inner = group.addCommand(new Command("sub", ""));
+        OptionValue<String> innerOption = inner.addNamed("--option", new StringValue("VAL", "default", ""));
+
+        String[] args = new String[]{"value1", "sub", "--option", "value2"};
+        int parsed = outer.parse(args, 0);
+        Assert.assertEquals(args.length, parsed);
+        Assert.assertTrue(positional.isSet());
+        Assert.assertEquals("value1", positional.getValue());
+        Assert.assertEquals("value2", innerOption.getValue());
+    }
+
+    @Test
     public void testSubcommandHelp() {
         Command c = new Command("test", "");
-        CommandGroup<Command> inner = c.addCommandGroup(new CommandGroup<>());
+        CommandGroup<Command> inner = c.addCommandGroup(new CommandGroup<>("subcommand", ""));
         Command subcommand = inner.addCommand(new Command("sub", ""));
 
         // Help on outer command
@@ -101,7 +117,7 @@ public class CommandGroupTest {
             c.parse(args, 0);
             Assert.fail("Expected HelpRequestedException");
         } catch (HelpRequestedException e) {
-            Assert.assertSame(c, e.command);
+            Assert.assertSame(c, e.getCommand());
         } catch (Exception e) {
             Assert.fail("Expected HelpRequestedException");
         }
@@ -111,7 +127,7 @@ public class CommandGroupTest {
             c.parse(args, 0);
             Assert.fail("Expected HelpRequestedException");
         } catch (HelpRequestedException e) {
-            Assert.assertSame(subcommand, e.command);
+            Assert.assertSame(subcommand, e.getCommand());
         } catch (Exception e) {
             Assert.fail("Expected HelpRequestedException");
         }

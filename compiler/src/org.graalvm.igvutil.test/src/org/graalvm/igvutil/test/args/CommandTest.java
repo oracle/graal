@@ -27,6 +27,7 @@ package org.graalvm.igvutil.test.args;
 import java.util.List;
 
 import org.graalvm.igvutil.args.Command;
+import org.graalvm.igvutil.args.CommandParsingException;
 import org.graalvm.igvutil.args.Flag;
 import org.graalvm.igvutil.args.HelpRequestedException;
 import org.graalvm.igvutil.args.IntegerValue;
@@ -40,7 +41,7 @@ import org.junit.Test;
 public class CommandTest {
 
     @Test
-    public void testSimpleCommand() throws InvalidArgumentException, MissingArgumentException, HelpRequestedException {
+    public void testSimpleCommand() throws HelpRequestedException, CommandParsingException {
         Command c = new Command("test", "");
         OptionValue<String> arg1 = c.addPositional(new StringValue("ARG1", ""));
         OptionValue<String> arg2 = c.addPositional(new StringValue("ARG2", ""));
@@ -68,8 +69,8 @@ public class CommandTest {
             args = new String[]{};
             c.parse(args, 0);
             Assert.fail("Expected missing argument exception");
-        } catch (MissingArgumentException e) {
-            // expected
+        } catch (CommandParsingException e) {
+            Assert.assertTrue("Expected missing argument exception", e.getCause() instanceof MissingArgumentException);
         } catch (Exception e) {
             Assert.fail("Expected missing argument exception");
         }
@@ -78,25 +79,25 @@ public class CommandTest {
             args = new String[]{"a", "b"};
             c.parse(args, 0);
             Assert.fail("Expected missing argument exception");
-        } catch (MissingArgumentException e) {
-            // expected
+        } catch (CommandParsingException e) {
+            Assert.assertTrue("Expected missing argument exception", e.getCause() instanceof MissingArgumentException);
         } catch (Exception e) {
             Assert.fail("Expected missing argument exception");
         }
-        // Missing value for named argument
+        // No value provided to named option
         try {
             args = new String[]{"a", "b", "--arg3"};
             c.parse(args, 0);
             Assert.fail("Expected InvalidArgumentException");
-        } catch (InvalidArgumentException e) {
-            // expected
+        } catch (CommandParsingException e) {
+            Assert.assertTrue("Expected InvalidArgumentException", e.getCause() instanceof InvalidArgumentException);
         } catch (Exception e) {
             Assert.fail("Expected InvalidArgumentException");
         }
     }
 
     @Test
-    public void testNamedValueEquals() throws InvalidArgumentException, MissingArgumentException, HelpRequestedException {
+    public void testNamedValueEquals() throws HelpRequestedException, CommandParsingException {
         Command c = new Command("test", "");
         OptionValue<String> arg1 = c.addNamed("--arg1", new StringValue("ARG1", ""));
         OptionValue<String> arg2 = c.addNamed("--arg2", new StringValue("ARG2", ""));
@@ -110,7 +111,7 @@ public class CommandTest {
     }
 
     @Test
-    public void testFlags() throws InvalidArgumentException, MissingArgumentException, HelpRequestedException {
+    public void testFlags() throws HelpRequestedException, CommandParsingException {
         Command c = new Command("test", "");
         OptionValue<Boolean> flag = c.addNamed("--flag", new Flag(""));
         OptionValue<String> positional = c.addPositional(new StringValue("ARG", ""));
@@ -134,7 +135,7 @@ public class CommandTest {
     }
 
     @Test
-    public void testPositionalList() throws InvalidArgumentException, MissingArgumentException, HelpRequestedException {
+    public void testPositionalList() throws HelpRequestedException, CommandParsingException {
         Command c = new Command("test", "");
         OptionValue<List<Integer>> arg1 = c.addPositional(new IntegerValue("ARG1", "").repeated());
         OptionValue<String> arg2 = c.addPositional(new StringValue("ARG2", "default", ""));

@@ -28,32 +28,38 @@ import java.io.PrintWriter;
 
 import org.graalvm.collections.EconomicMap;
 
+import jdk.graal.compiler.debug.GraalError;
+
 /**
  * Encapsulates a set of sub-{@link Command}s of which the user can select one explicitly by name.
  *
  * @param <C> Common type of all subcommands in the group. Useful when subcommands share common
  *            functionality by inheriting from the same subclass of {@link Command}.
  */
-public class CommandGroup<C extends Command> {
+public class CommandGroup<C extends Command> extends OptionValue<C> {
     private final EconomicMap<String, C> subCommands = EconomicMap.create();
 
-    /**
-     * Subcommand specified by the arguments, or null if none was selected.
-     */
-    private C selectedCommand = null;
+    public CommandGroup(String name, String help) {
+        super(name, help);
+    }
 
     /**
      * Parses and updates the selected subcommand based on {@code args[offset]}.
      *
      * @see Command#parse(String[], int)
      */
-    public int parse(String[] args, int offset) throws InvalidArgumentException, MissingArgumentException, HelpRequestedException {
+    public int parse(String[] args, int offset) throws InvalidArgumentException, HelpRequestedException, CommandParsingException {
         String arg = args[offset];
-        selectedCommand = subCommands.get(arg);
-        if (selectedCommand == null) {
-            throw new InvalidArgumentException("SUBCOMMAND", String.format("no subcommand named '%s'", arg));
+        value = subCommands.get(arg);
+        if (value == null) {
+            throw new InvalidArgumentException(getName(), String.format("no subcommand named '%s'", arg));
         }
-        return selectedCommand.parse(args, offset + 1);
+        return value.parse(args, offset + 1);
+    }
+
+    @Override
+    public final boolean parseValue(String arg) throws InvalidArgumentException {
+        throw GraalError.unimplementedOverride();
     }
 
     /**
@@ -69,33 +75,22 @@ public class CommandGroup<C extends Command> {
      *         selected (yet).
      */
     public C getSelectedCommand() {
-        return selectedCommand;
+        return getValue();
     }
 
-    public void clear() {
-        selectedCommand = null;
-    }
-
-    public void printUsage(PrintWriter writer) {
-        if (selectedCommand == null) {
-            writer.print("<SUBCOMMAND>");
-        } else {
-            selectedCommand.printUsage(writer);
-        }
-    }
-
-    public void printHelp(PrintWriter writer) {
-        if (selectedCommand != null) {
-            selectedCommand.printHelp(writer);
+    @Override
+    public void printHelp(PrintWriter writer, int indentLevel) {
+        if (value != null) {
+            value.printHelp(writer, indentLevel);
             return;
         }
-        writer.println("SUBCOMMANDS:");
         boolean separate = false;
         for (C command : subCommands.getValues()) {
             if (separate) {
                 writer.println();
             }
-            writer.format(Command.HELP_ITEM_FMT, command.getName(), command.getDescription());
+            OptionValue.printIndented(writer, command.getName(), indentLevel + 1);
+            OptionValue.printIndented(writer, command.getDescription(), indentLevel + 2);
             separate = true;
         }
     }

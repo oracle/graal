@@ -24,6 +24,8 @@
  */
 package org.graalvm.igvutil.args;
 
+import static org.graalvm.igvutil.args.OptionValue.INDENT;
+
 import java.io.PrintWriter;
 
 /**
@@ -40,33 +42,41 @@ public class Program extends Command {
         try {
             int parsed = parse(args, 0);
             if (parsed < args.length) {
-                throw new UnknownArgumentException(args[parsed]);
+                throw new CommandParsingException(new UnknownArgumentException(args[parsed]), this);
             }
-        } catch (InvalidArgumentException | MissingArgumentException | UnknownArgumentException e) {
-            System.err.printf("Argument parsing error: %s%n", e.getMessage());
+        } catch (CommandParsingException e) {
+            System.err.println(e.getMessage());
             if (errorIsFatal) {
-                printHelpAndExit(1);
+                printHelpAndExit(e.getCommand(), 1);
             }
         } catch (HelpRequestedException e) {
-            printHelpAndExit(0);
+            printHelpAndExit(e.getCommand(), 0);
         }
     }
 
-    public void printHelpAndExit(int exitCode) {
+    public void printHelpAndExit(Command c, int exitCode) {
         try (PrintWriter writer = new PrintWriter(System.out)) {
-            printHelp(writer);
+            printHelp(c, writer);
         }
         System.exit(exitCode);
     }
 
-    @Override
-    public void printHelp(PrintWriter writer) {
+    private void printUsage(Command c, PrintWriter writer) {
+        if (c != this) {
+            // Printing usage for subcommand
+            writer.append(getName());
+            writer.append(' ');
+        }
+        c.printUsage(writer);
+    }
+
+    public void printHelp(Command c, PrintWriter writer) {
         writer.println();
         writer.println("USAGE:");
         writer.append(INDENT);
-        printUsage(writer);
+        printUsage(c, writer);
         writer.println();
         writer.println();
-        super.printHelp(writer);
+        c.printHelp(writer);
     }
 }

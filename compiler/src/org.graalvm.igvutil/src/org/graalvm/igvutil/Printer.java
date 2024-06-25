@@ -44,7 +44,7 @@ public final class Printer {
     }
 
     /**
-     * Prints the contents of {@code document}
+     * Prints the contents of {@code document}.
      *
      * @param name name to print for the outermost element in the document, needed as
      *            {@code document.getName()} can be {@code null}.

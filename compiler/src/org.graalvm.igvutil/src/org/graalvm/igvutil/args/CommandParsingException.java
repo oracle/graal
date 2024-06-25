@@ -25,18 +25,20 @@
 package org.graalvm.igvutil.args;
 
 /**
- * Thrown when a {@code --help} flag is encountered when parsing command-line arguments.
+ * Wraps an exception thrown during parsing of a command.
  */
 @SuppressWarnings("serial")
-public class HelpRequestedException extends Exception {
-    /**
-     * The command that the user requested help for.
-     */
+public class CommandParsingException extends Exception {
     private final Command command;
 
-    HelpRequestedException(Command command) {
-        super();
+    CommandParsingException(Exception cause, Command command) {
+        super(cause);
         this.command = command;
+    }
+
+    @Override
+    public String getMessage() {
+        return "Argument parsing error: " + getCause().getMessage();
     }
 
     public Command getCommand() {

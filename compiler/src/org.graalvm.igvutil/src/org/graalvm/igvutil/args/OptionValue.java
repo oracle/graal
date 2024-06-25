@@ -24,6 +24,7 @@
  */
 package org.graalvm.igvutil.args;
 
+import java.io.PrintWriter;
 import java.util.List;
 
 /**
@@ -158,5 +159,18 @@ public abstract class OptionValue<T> {
             usage += String.format(" (default: \"%s\")", defaultValue);
         }
         return usage;
+    }
+
+    static final String INDENT = "  ";
+
+    static void printIndented(PrintWriter writer, String string, int indentLevel) {
+        for (int i = 0; i <= indentLevel; ++i) {
+            writer.append(INDENT);
+        }
+        writer.println(string);
+    }
+
+    public void printHelp(PrintWriter writer, int indentLevel) {
+        printIndented(writer, getDescription(), indentLevel);
     }
 }

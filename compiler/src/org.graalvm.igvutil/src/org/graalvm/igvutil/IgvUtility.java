@@ -96,7 +96,7 @@ public class IgvUtility {
         private final OptionValue<String> flattenKey;
 
         FlattenCommand() {
-            super("flatten", "Group graphs across multiple files/dumps by name or some other graph property, e.g. date, type or compilationId.");
+            super("flatten", "group graphs across multiple files/dumps by name or some other graph property, e.g. date, type or compilationId.");
             outputFile = addNamed("--output-file", new StringValue("PATH",
                             "Path that the flattened BGV file will be saved under"));
             flattenKey = addNamed("--by", new StringValue("PROPERTY",
@@ -174,7 +174,7 @@ public class IgvUtility {
 
     public static void main(String[] args) throws IOException {
         Program program = new Program("mx igvutil", "Various utilities to inspect and manipulate IGV dump files");
-        CommandGroup<GraphCommand> subcommand = program.addCommandGroup(new CommandGroup<>());
+        CommandGroup<GraphCommand> subcommand = program.addCommandGroup(new CommandGroup<>("SUBCOMMAND", "Choose a subcommand"));
         subcommand.addCommand(new FlattenCommand());
         subcommand.addCommand(new FilterCommand());
         subcommand.addCommand(new ListCommand());

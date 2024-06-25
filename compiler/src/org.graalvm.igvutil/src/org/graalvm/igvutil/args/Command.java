@@ -67,11 +67,6 @@ public class Command {
      */
     private final List<OptionValue<?>> positional = new ArrayList<>();
 
-    /**
-     * Set of subcommands. May be null.
-     */
-    private CommandGroup<? extends Command> commandGroup = null;
-
     private final String name;
     private final String description;
 
@@ -104,16 +99,13 @@ public class Command {
     }
 
     /**
-     * Sets the command's subcommand group.
+     * Adds a subcommand group to this command.
      *
      * @return the value of {@code commandGroup}. New instantiations of {@link CommandGroup} should
      *         always be wrapped by a call to this function.
      */
     public <C extends Command> CommandGroup<C> addCommandGroup(CommandGroup<C> group) {
-        if (this.commandGroup != null) {
-            throw new RuntimeException("Only one subcommand per command is supported");
-        }
-        this.commandGroup = group;
+        addPositional(group);
         return group;
     }
 
@@ -150,71 +142,71 @@ public class Command {
      * @param offset starting index from which arguments in {@code args} should be parsed.
      * @return the index of the first argument in {@code args} that was not consumed during parsing
      *         of the command.
-     * @throws InvalidArgumentException if an option could not be parsed successfully.
-     * @throws MissingArgumentException if a required argument was not present among {@code args}
+     * @throws CommandParsingException if an exception was raised while parsing this command.
      * @throws HelpRequestedException if the --help flag was present among {@code args}.
      */
-    public int parse(String[] args, int offset) throws InvalidArgumentException, MissingArgumentException, HelpRequestedException {
+    public int parse(String[] args, int offset) throws CommandParsingException, HelpRequestedException {
         int nextPositionalArg = 0;
         int index = offset;
         ListValue<?> currentListValue = null;
-        while (index < args.length) {
-            String arg = args[index];
-            if (arg.contentEquals(HELP)) {
-                throw new HelpRequestedException(this);
-            }
-            if (commandGroup != null && commandGroup.getSelectedCommand() == null) {
-                index = commandGroup.parse(args, index);
-                continue;
-            }
-            if (arg.contentEquals(SEPARATOR)) {
-                index++;
-                if (currentListValue != null) {
+        try {
+            while (index < args.length) {
+                String arg = args[index];
+                if (arg.contentEquals(HELP)) {
+                    throw new HelpRequestedException(this);
+                }
+                if (arg.contentEquals(SEPARATOR)) {
+                    index++;
+                    if (currentListValue != null) {
+                        currentListValue = null;
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
+                // Handle argument of the form option=value
+                int equalSignIndex = arg.indexOf(EQUAL_SIGN);
+                if (equalSignIndex > -1 && parseEqualsValue(arg, equalSignIndex)) {
+                    index++;
                     currentListValue = null;
                     continue;
-                } else {
-                    break;
                 }
-            }
-            // Handle argument of the form option=value
-            int equalSignIndex = arg.indexOf(EQUAL_SIGN);
-            if (equalSignIndex > -1 && parseEqualsValue(arg, equalSignIndex)) {
-                index++;
-                currentListValue = null;
-                continue;
-            }
-            OptionValue<?> value = named.get(arg);
-            if (value != null) {
-                index++;
-                currentListValue = null;
-            } else if (currentListValue != null) {
-                value = currentListValue;
-            } else {
-                if (nextPositionalArg == positional.size()) {
-                    break;
-                }
-                value = positional.get(nextPositionalArg++);
-            }
-            arg = index == args.length ? null : args[index];
-            if (!value.parseValue(arg)) {
-                if (currentListValue != null) {
+                OptionValue<?> value = named.get(arg);
+                if (value != null) {
+                    index++;
                     currentListValue = null;
+                } else if (currentListValue != null) {
+                    value = currentListValue;
+                } else {
+                    if (nextPositionalArg == positional.size()) {
+                        break;
+                    }
+                    value = positional.get(nextPositionalArg++);
                 }
-            } else {
-                index++;
-                if (value instanceof ListValue<?> listValue) {
-                    currentListValue = listValue;
+                if (value instanceof CommandGroup<?> commandGroup) {
+                    index = commandGroup.parse(args, index);
+                    continue;
+                }
+                arg = (index == args.length ? null : args[index]);
+                if (!value.parseValue(arg)) {
+                    if (currentListValue != null) {
+                        currentListValue = null;
+                    }
+                } else {
+                    index++;
+                    if (value instanceof ListValue<?> listValue) {
+                        currentListValue = listValue;
+                    }
                 }
             }
+            verifyOptions(nextPositionalArg);
+        } catch (InvalidArgumentException | MissingArgumentException e) {
+            throw new CommandParsingException(e, this);
         }
-        verifyOptions(nextPositionalArg);
         return index;
     }
 
     private void verifyOptions(int nextPositionalArg) throws MissingArgumentException {
-        if (commandGroup != null && commandGroup.getSelectedCommand() == null) {
-            throw new MissingArgumentException("SUBCOMMAND");
-        }
         var cursor = named.getEntries();
         while (cursor.advance()) {
             String key = cursor.getKey();
@@ -231,34 +223,22 @@ public class Command {
         }
     }
 
-    static final String INDENT = "  ";
-
-    static final String HELP_ITEM_FMT = "  %s%n    %s%n";
-
     public void printUsage(PrintWriter writer) {
         writer.append(getName());
-        if (commandGroup != null) {
-            writer.append(' ');
-            commandGroup.printUsage(writer);
-            if (!named.isEmpty() || !positional.isEmpty()) {
-                writer.append(" --");
-            }
+        if (!named.isEmpty()) {
+            writer.append(" [OPTIONS]");
         }
         for (OptionValue<?> option : positional) {
             writer.append(' ');
             writer.append(option.getUsage());
         }
-        if (!named.isEmpty()) {
-            writer.append(" [OPTIONS]");
-        }
     }
 
-    public void printHelp(PrintWriter writer) {
-        if (commandGroup != null) {
-            commandGroup.printHelp(writer);
-            return;
-        }
+    public final void printHelp(PrintWriter writer) {
+        printHelp(writer, 0);
+    }
 
+    public void printHelp(PrintWriter writer, int indentLevel) {
         boolean separate = false;
         if (!positional.isEmpty()) {
             writer.println("ARGS:");
@@ -266,7 +246,8 @@ public class Command {
                 if (separate) {
                     writer.println();
                 }
-                writer.format(HELP_ITEM_FMT, arg.getUsage(), arg.getDescription());
+                OptionValue.printIndented(writer, arg.getUsage(), indentLevel);
+                arg.printHelp(writer, indentLevel + 1);
                 separate = true;
             }
         }
@@ -283,7 +264,8 @@ public class Command {
                 }
                 String key = cursor.getKey();
                 OptionValue<?> value = cursor.getValue();
-                writer.format(HELP_ITEM_FMT, String.format("%s %s", key, value.getUsage()), value.getDescription());
+                OptionValue.printIndented(writer, String.format("%s %s", key, value.getUsage()), indentLevel);
+                value.printHelp(writer, indentLevel + 1);
                 separate = true;
             }
         }
