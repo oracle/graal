@@ -95,8 +95,6 @@ public class CaseFoldData {
                 // no differences in the case folding table between those two Unicode versions, so
                 // we can use the same table on all supported JDK versions for now.
                 return UNICODE_15_0_0_JAVA;
-            case OracleDBSimple:
-                return UNICODE_15_0_0_ODB_SIMPLE_EQ;
             case PythonUnicode:
                 return UNICODE_15_0_0_PY;
             default:
@@ -314,6 +312,12 @@ public class CaseFoldData {
             final int[][] ret = new int[1][];
             caseFold(new Range(codepoint, codepoint), (cp, caseFolded) -> ret[0] = caseFolded);
             return ret[0];
+        }
+
+        public void caseFold(CodePointSet cps, BiConsumer<Integer, int[]> caseFoldItem) {
+            for (Range r : cps) {
+                caseFold(r, caseFoldItem);
+            }
         }
 
         public void caseFold(CodePointSetAccumulator cps, BiConsumer<Integer, int[]> caseFoldItem) {
@@ -1442,57 +1446,6 @@ public class CaseFoldData {
                     0x00fb06, 0x00fb06, INTEGER_OFFSET, 0,
                     0x00fb13, 0x00fb17, INTEGER_OFFSET, 0,
     });
-    private static final CaseFoldEquivalenceTable UNICODE_15_0_0_ODB_SIMPLE_EQ = new CaseFoldEquivalenceTable(UNICODE_15_1_0_PY, new CodePointSet[]{
-                    rangeSet(0x000049, 0x000049, 0x000069, 0x000069, 0x000130, 0x000130),
-                    rangeSet(0x000398, 0x000398, 0x0003b8, 0x0003b8, 0x0003f4, 0x0003f4),
-    }, new int[]{
-                    0x000049, 0x000049, DIRECT_MAPPING, 0,
-                    0x000053, 0x00005a, INTEGER_OFFSET, 32,
-                    0x000069, 0x000069, DIRECT_MAPPING, 0,
-                    0x000073, 0x00007a, INTEGER_OFFSET, -32,
-                    0x0000b5, 0x0000b5, INTEGER_OFFSET, 0,
-                    0x000130, 0x000130, DIRECT_MAPPING, 0,
-                    0x000131, 0x000131, INTEGER_OFFSET, 0,
-                    0x00017f, 0x00017f, INTEGER_OFFSET, 0,
-                    0x000345, 0x000345, INTEGER_OFFSET, 0,
-                    0x000390, 0x000390, INTEGER_OFFSET, 0,
-                    0x000392, 0x000397, INTEGER_OFFSET, 32,
-                    0x000398, 0x000398, DIRECT_MAPPING, 1,
-                    0x000399, 0x0003a1, INTEGER_OFFSET, 32,
-                    0x0003a3, 0x0003a8, INTEGER_OFFSET, 32,
-                    0x0003b0, 0x0003b0, INTEGER_OFFSET, 0,
-                    0x0003b2, 0x0003b7, INTEGER_OFFSET, -32,
-                    0x0003b8, 0x0003b8, DIRECT_MAPPING, 1,
-                    0x0003b9, 0x0003c1, INTEGER_OFFSET, -32,
-                    0x0003c2, 0x0003c2, INTEGER_OFFSET, 0,
-                    0x0003c3, 0x0003c8, INTEGER_OFFSET, -32,
-                    0x0003d0, 0x0003d0, INTEGER_OFFSET, 0,
-                    0x0003d1, 0x0003d1, INTEGER_OFFSET, 0,
-                    0x0003d5, 0x0003d5, INTEGER_OFFSET, 0,
-                    0x0003d6, 0x0003d6, INTEGER_OFFSET, 0,
-                    0x0003f0, 0x0003f0, INTEGER_OFFSET, 0,
-                    0x0003f1, 0x0003f1, INTEGER_OFFSET, 0,
-                    0x0003f4, 0x0003f4, DIRECT_MAPPING, 1,
-                    0x0003f5, 0x0003f5, INTEGER_OFFSET, 0,
-                    0x000412, 0x00042f, INTEGER_OFFSET, 32,
-                    0x000432, 0x00044f, INTEGER_OFFSET, -32,
-                    0x000462, 0x000481, ALTERNATING_AL, 0,
-                    0x001c80, 0x001c80, INTEGER_OFFSET, 0,
-                    0x001c81, 0x001c81, INTEGER_OFFSET, 0,
-                    0x001c82, 0x001c82, INTEGER_OFFSET, 0,
-                    0x001c83, 0x001c83, INTEGER_OFFSET, 0,
-                    0x001c84, 0x001c85, INTEGER_OFFSET, 0,
-                    0x001c86, 0x001c86, INTEGER_OFFSET, 0,
-                    0x001c87, 0x001c87, INTEGER_OFFSET, 0,
-                    0x001c88, 0x001c88, INTEGER_OFFSET, 0,
-                    0x001e60, 0x001e95, ALTERNATING_AL, 0,
-                    0x001e9b, 0x001e9b, INTEGER_OFFSET, 0,
-                    0x001fbe, 0x001fbe, INTEGER_OFFSET, 0,
-                    0x001fd3, 0x001fd3, INTEGER_OFFSET, 0,
-                    0x001fe3, 0x001fe3, INTEGER_OFFSET, 0,
-                    0x00a64a, 0x00a66d, ALTERNATING_AL, 0,
-                    0x00fb05, 0x00fb06, INTEGER_OFFSET, 0,
-    });
     private static final CaseFoldTable UNICODE_15_0_0_ODB_AI = new CaseFoldTable(null, new int[]{
                     0x000041, 0x00005a, INTEGER_OFFSET, 32,
                     0x000084, 0x000084, ALTERNATING_AL, 0,
@@ -1995,6 +1948,7 @@ public class CaseFoldData {
                     0x00ff10, 0x00ff19, INTEGER_OFFSET, -65248,
                     0x00ff21, 0x00ff3a, INTEGER_OFFSET, -65216,
                     0x00ff41, 0x00ff5a, INTEGER_OFFSET, -65248,
+                    0x010400, 0x010425, INTEGER_OFFSET, 40,
     });
     public static final CodePointSet FOLDABLE_CHARACTERS = rangeSet(0x000041, 0x00005a, 0x0000b5, 0x0000b5, 0x0000c0, 0x0000d6, 0x0000d8, 0x0000de, 0x000100, 0x000100, 0x000102, 0x000102, 0x000104,
                     0x000104, 0x000106, 0x000106, 0x000108, 0x000108, 0x00010a, 0x00010a, 0x00010c, 0x00010c, 0x00010e, 0x00010e, 0x000110, 0x000110, 0x000112, 0x000112, 0x000114, 0x000114, 0x000116,

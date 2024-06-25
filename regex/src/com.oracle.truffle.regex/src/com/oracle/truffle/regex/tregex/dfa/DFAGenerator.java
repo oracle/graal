@@ -98,6 +98,7 @@ import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplitBailoutException
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
@@ -591,8 +592,13 @@ public final class DFAGenerator implements JsonConvertible {
 
     private void optimizeDFA() {
         RegexProperties props = nfa.getAst().getProperties();
+        Group root = nfa.getAst().getRoot();
 
-        doSimpleCG = (isForward() || !nfa.getAst().getProperties().hasQuantifiers() && !nfa.getAst().getProperties().hasEmptyCaptureGroups()) &&
+        boolean doSimpleCGBackward = !props.hasQuantifiers() && !props.hasEmptyCaptureGroups() &&
+                        (!root.hasCaret() || root.startsWithCaret()) &&
+                        (!root.hasDollar() || root.endsWithDollar());
+
+        doSimpleCG = (isForward() || doSimpleCGBackward) &&
                         !isBooleanMatch() &&
                         executorProps.isAllowSimpleCG() &&
                         !hasAmbiguousStates &&
@@ -677,8 +683,10 @@ public final class DFAGenerator implements JsonConvertible {
                 bfsNext.clear();
             }
         }
-        assert literalFirstState != null;
-        assert literalLastState != null;
+        if (literalFirstState == null || literalLastState == null) {
+            // may happen when transitions to the literal have been pruned during NFA generation
+            return;
+        }
 
         // find the literal's beginning and end in the DFA
         DFAStateNodeBuilder literalFirstDFAState = null;
