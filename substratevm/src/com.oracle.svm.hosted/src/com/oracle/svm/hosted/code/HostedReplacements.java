@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,11 +65,11 @@ public class HostedReplacements extends SubstrateReplacements {
     private final HostedUniverse hUniverse;
     private final SubstrateReplacements aReplacements;
 
-    public HostedReplacements(HostedUniverse hUniverse, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target, HostedProviders anaylysisProviders,
+    public HostedReplacements(HostedUniverse hUniverse, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target, HostedProviders analysisProviders,
                     BytecodeProvider bytecodeProvider, WordTypes wordTypes) {
         super(providers, snippetReflection, bytecodeProvider, target, wordTypes, null);
         this.hUniverse = hUniverse;
-        this.aReplacements = (SubstrateReplacements) anaylysisProviders.getReplacements();
+        this.aReplacements = (SubstrateReplacements) analysisProviders.getReplacements();
     }
 
     @Override
