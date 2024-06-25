@@ -7021,6 +7021,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNodes, "serialize");
             ex.renameArguments("buffer", "callback");
             addOverride(ex);
+            mergeSuppressWarnings(ex, "cast");
 
             addJavadoc(ex, """
                             Serializes the given bytecode nodes
@@ -8001,7 +8002,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("return null");
                 b.end();
                 b.startReturn();
-                b.tree(readTagNodeSafe(types.TagTreeNode, CodeTreeBuilder.singleString("bc[bci]")));
+                b.tree(readTagNodeSafe(CodeTreeBuilder.singleString("bc[bci]")));
                 b.end();
                 return ex;
             }
@@ -9070,7 +9071,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             break;
                         case TAG_NODE:
                             b.startIf().string("tagNodes != null").end().startBlock();
-                            b.declaration(tagNode.asType(), "node", readTagNodeSafe(tagNode.asType(), CodeTreeBuilder.singleString(immediate.name())));
+                            b.declaration(tagNode.asType(), "node", readTagNodeSafe(CodeTreeBuilder.singleString(immediate.name())));
                             b.startIf().string("node == null").end().startBlock();
                             b.tree(createValidationError("tagNode is null"));
                             b.end();
@@ -9143,7 +9144,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startCase().string("HANDLER_TAG_EXCEPTIONAL").end().startCaseBlock();
 
                 b.startIf().string("tagNodes != null").end().startBlock();
-                b.declaration(tagNode.asType(), "node", readTagNodeSafe(tagNode.asType(), CodeTreeBuilder.singleString("handlerBci")));
+                b.declaration(tagNode.asType(), "node", readTagNodeSafe(CodeTreeBuilder.singleString("handlerBci")));
                 b.startIf().string("node == null").end().startBlock();
                 b.tree(createValidationError("tagNode is null"));
                 b.end();
@@ -13801,9 +13802,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return b.build();
     }
 
-    private static CodeTree readTagNodeSafe(TypeMirror expectedType, CodeTree index) {
+    private static CodeTree readTagNodeSafe(CodeTree index) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.cast(expectedType);
         b.string("tagRoot.tagNodes[" + index + "]");
         b.end();
         return b.build();

@@ -65,7 +65,7 @@ public abstract class SLJavaTypeBuiltin extends SLBuiltinNode {
              */
             return SLContext.get(this).getEnv().lookupHostSymbol(interop.asString(symbolName));
         } catch (UnsupportedMessageException e) {
-            throw new SLException("The java builtin expected a String argument, but a non-string argument was provided.", this);
+            throw SLException.create("The java builtin expected a String argument, but a non-string argument was provided.", this);
         }
     }
 

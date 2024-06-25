@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.bytecode.AbstractBytecodeException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -53,26 +54,45 @@ import com.oracle.truffle.sl.runtime.SLLanguageView;
 
 /**
  * SL does not need a sophisticated error checking and reporting mechanism, so all unexpected
- * conditions just abort execution. This exception class is used when we abort from within the SL
- * implementation.
+ * conditions just abort execution. The exceptions defined in this class are used when we abort from
+ * within the SL implementation.
  */
-public class SLException extends AbstractBytecodeException {
-
-    private static final long serialVersionUID = -6799734410727348507L;
+public final class SLException {
     private static final InteropLibrary UNCACHED_LIB = InteropLibrary.getFactory().getUncached();
 
     @TruffleBoundary
-    public SLException(String message, Node location, int bci) {
-        super(message, location, bci);
+    public static AbstractTruffleException create(String message, Node location) {
+        return create(message, location, -1);
     }
 
     @TruffleBoundary
-    public SLException(String message, Node location) {
-        super(message, location, -1);
+    public static AbstractTruffleException create(String message, Node location, int bci) {
+        if (bci < 0) {
+            return new SLASTException(message, location);
+        } else {
+            return new SLBytecodeException(message, location, bci);
+        }
+    }
+
+    private static final class SLASTException extends AbstractTruffleException {
+        private static final long serialVersionUID = -6799734410727348507L;
+
+        SLASTException(String message, Node location) {
+            super(message, location);
+        }
+    }
+
+    private static final class SLBytecodeException extends AbstractBytecodeException {
+
+        private static final long serialVersionUID = -7929801061264899171L;
+
+        SLBytecodeException(String message, Node location, int bci) {
+            super(message, location, bci);
+        }
     }
 
     @TruffleBoundary
-    public static SLException typeError(Node operation, int bci, Object... values) {
+    public static AbstractTruffleException typeError(Node operation, int bci, Object... values) {
         String operationName = null;
         if (operation != null) {
             NodeInfo nodeInfo = SLLanguage.lookupNodeInfo(operation.getClass());
@@ -90,11 +110,11 @@ public class SLException extends AbstractBytecodeException {
      */
     @TruffleBoundary
     @SuppressWarnings("deprecation")
-    public static SLException typeError(Node location, String operationName, int bci, Object... values) {
+    public static AbstractTruffleException typeError(Node location, String operationName, int bci, Object... values) {
         StringBuilder result = new StringBuilder();
         result.append("Type error");
 
-        SLException ex = new SLException("", location, bci);
+        AbstractTruffleException ex = SLException.create("", location, bci);
         if (location != null) {
             SourceSection ss = ex.getEncapsulatingSourceSection();
             if (ss != null && ss.isAvailable()) {
@@ -145,7 +165,17 @@ public class SLException extends AbstractBytecodeException {
                 }
             }
         }
-        return new SLException(result.toString(), location, bci);
+        return SLException.create(result.toString(), location, bci);
+    }
+
+    @TruffleBoundary
+    public static AbstractTruffleException undefinedFunction(Node location, int bci, Object name) {
+        throw create("Undefined function: " + name, location, bci);
+    }
+
+    @TruffleBoundary
+    public static AbstractTruffleException undefinedProperty(Node location, int bci, Object name) {
+        throw create("Undefined property: " + name, location, bci);
     }
 
 }

@@ -71,6 +71,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -90,7 +91,6 @@ import com.oracle.truffle.sl.nodes.util.SLToBooleanNode;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
-import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 @GenerateBytecode(//
                 languageClass = SLLanguage.class, //
@@ -249,7 +249,7 @@ public abstract sealed class SLBytecodeRootNode extends SLRootNode implements By
                 return library.execute(function, arguments);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 /* Execute was not successful. */
-                throw SLUndefinedNameException.undefinedFunction(node, bci, function);
+                throw SLException.undefinedFunction(node, bci, function);
             }
         }
     }

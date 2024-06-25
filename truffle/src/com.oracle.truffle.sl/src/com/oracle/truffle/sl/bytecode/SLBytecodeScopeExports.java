@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.bytecode;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -282,7 +281,7 @@ final class SLBytecodeScopeExports {
         }
 
         @TruffleBoundary
-        final int slotToIndex(String member) {
+        int slotToIndex(String member) {
             Map<String, Integer> locals = getNameToIndex();
             Integer index = locals.get(member);
             if (index == null) {

@@ -50,10 +50,10 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLNull;
-import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
  * Built-in function to create a new object. Objects in SL are simply made up of name/value pairs.
@@ -79,7 +79,7 @@ public abstract class SLNewObjectBuiltin extends SLBuiltinNode {
             return values.instantiate(obj);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             /* Foreign access was not successful. */
-            throw SLUndefinedNameException.undefinedFunction(this, -1, obj);
+            throw SLException.undefinedFunction(this, -1, obj);
         }
     }
 }

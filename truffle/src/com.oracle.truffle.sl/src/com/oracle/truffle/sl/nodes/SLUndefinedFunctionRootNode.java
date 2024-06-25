@@ -45,14 +45,14 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLFunction;
-import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
  * The initial {@link RootNode} of {@link SLFunction functions} when they are created, i.e., when
  * they are still undefined. Executing it throws an
- * {@link SLUndefinedNameException#undefinedFunction exception}.
+ * {@link SLException#undefinedFunction exception}.
  */
 public final class SLUndefinedFunctionRootNode extends SLRootNode {
 
@@ -67,7 +67,7 @@ public final class SLUndefinedFunctionRootNode extends SLRootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        throw SLUndefinedNameException.undefinedFunction(null, -1, name);
+        throw SLException.undefinedFunction(null, -1, name);
     }
 
     @Override

@@ -131,7 +131,7 @@ public final class SLAstRootNode extends SLRootNode {
         return localNames;
     }
 
-    public final SLWriteLocalVariableNode[] getDeclaredArguments() {
+    public SLWriteLocalVariableNode[] getDeclaredArguments() {
         SLWriteLocalVariableNode[] argumentNodes = argumentNodesCache;
         if (argumentNodes == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

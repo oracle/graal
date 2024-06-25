@@ -78,7 +78,7 @@ public abstract class SLReadlnBuiltin extends SLBuiltinNode {
         try {
             return in.readLine();
         } catch (IOException ex) {
-            throw new SLException(ex.getMessage(), this);
+            throw SLException.create(ex.getMessage(), this);
         }
     }
 }

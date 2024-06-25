@@ -59,7 +59,7 @@ public abstract class SLGetSizeBuiltin extends SLBuiltinNode {
         try {
             return arrays.getArraySize(obj);
         } catch (UnsupportedMessageException e) {
-            throw new SLException("Element is not a valid array.", this);
+            throw SLException.create("Element is not a valid array.", this);
         }
     }
 }

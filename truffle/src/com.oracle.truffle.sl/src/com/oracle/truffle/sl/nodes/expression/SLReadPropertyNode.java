@@ -54,11 +54,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.util.SLToMemberNode;
 import com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode;
 import com.oracle.truffle.sl.runtime.SLObject;
-import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
  * The node for reading a property of an object. When executed, this node:
@@ -86,13 +86,12 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
             return arrays.readArrayElement(receiver, numbers.asLong(index));
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(node, bci, index);
+            throw SLException.undefinedProperty(node, bci, index);
         }
     }
 
     @Specialization(limit = "LIBRARY_LIMIT")
     public static Object readSLObject(SLObject receiver, Object name,
-                    @Bind("$root") Node rootNode,
                     @Bind("this") Node node,
                     @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
                     @Cached SLToTruffleStringNode toTruffleStringNode,
@@ -101,7 +100,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
         Object result = objectLibrary.getOrDefault(receiver, nameTS, null);
         if (result == null) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(rootNode, bci, nameTS);
+            throw SLException.undefinedProperty(node, bci, nameTS);
         }
         return result;
     }
@@ -116,7 +115,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
             return objects.readMember(receiver, asMember.execute(node, name));
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(node, bci, name);
+            throw SLException.undefinedProperty(node, bci, name);
         }
     }
 

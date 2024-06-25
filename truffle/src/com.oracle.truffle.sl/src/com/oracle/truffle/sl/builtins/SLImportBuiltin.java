@@ -67,7 +67,7 @@ public abstract class SLImportBuiltin extends SLBuiltinNode {
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             return SLNull.SINGLETON;
         } catch (SecurityException e) {
-            throw new SLException("No polyglot access allowed.", this);
+            throw SLException.create("No polyglot access allowed.", this);
         }
     }
 

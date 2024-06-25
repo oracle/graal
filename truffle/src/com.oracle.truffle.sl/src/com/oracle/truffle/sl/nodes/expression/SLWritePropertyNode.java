@@ -54,11 +54,11 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.util.SLToMemberNode;
 import com.oracle.truffle.sl.nodes.util.SLToTruffleStringNode;
 import com.oracle.truffle.sl.runtime.SLObject;
-import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
  * The node for writing a property of an object. When executed, this node:
@@ -89,7 +89,7 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
             arrays.writeArrayElement(receiver, numbers.asLong(index), value);
         } catch (UnsupportedMessageException | UnsupportedTypeException | InvalidArrayIndexException e) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(node, bci, index);
+            throw SLException.undefinedProperty(node, bci, index);
         }
         return value;
     }
@@ -113,7 +113,7 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
             objectLibrary.writeMember(receiver, asMember.execute(node, name), value);
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
             // write was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(node, bci, name);
+            throw SLException.undefinedProperty(node, bci, name);
         }
         return value;
     }
