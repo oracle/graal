@@ -111,6 +111,40 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testManySourceSections() {
+        final int numSourceSections = 1000;
+        StringBuilder sb = new StringBuilder(numSourceSections);
+        for (int i = 0; i < numSourceSections; i++) {
+            sb.append("x");
+        }
+        Source source = Source.newBuilder("test", sb.toString(), "test.test").build();
+        BasicInterpreter node = parseNodeWithSource("source", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginSource(source);
+            for (int i = 0; i < numSourceSections; i++) {
+                b.beginSourceSection(0, numSourceSections - i);
+            }
+
+            b.beginReturn();
+            b.emitGetSourcePositions();
+            b.endReturn();
+
+            for (int i = 0; i < numSourceSections; i++) {
+                b.endSourceSection();
+            }
+            b.endSource();
+            b.endRoot();
+        });
+
+        SourceSection[] result = (SourceSection[]) node.getCallTarget().call();
+        assertEquals(numSourceSections, result.length);
+        for (int i = 0; i < numSourceSections; i++) {
+            // sections are emitted in order of closing
+            assertSourceSection(result[i], source, 0, i + 1);
+        }
+    }
+
+    @Test
     public void testWithoutSource() {
         BasicInterpreter node = parseNode("source", b -> {
             b.beginRoot(LANGUAGE);

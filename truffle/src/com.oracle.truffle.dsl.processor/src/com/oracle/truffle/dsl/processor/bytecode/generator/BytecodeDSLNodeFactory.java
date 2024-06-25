@@ -9921,30 +9921,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
-            b.declaration(generic(type(List.class), types.Source), "localSources", "this.sources");
-            b.startIf().string("info == null").end().startBlock();
-            b.declaration(type.asType(), "newNode", "getRoot().ensureSources()");
-            b.statement("info = newNode.sourceInfo");
-            b.statement("localSources = newNode.sources");
-            b.end();
-
-            b.declaration(type(int.class), "sectionIndex", "0");
-            b.startDeclaration(arrayOf(types.SourceSection), "sections").startNewArray(arrayOf(types.SourceSection), CodeTreeBuilder.singleString("8")).end().end();
-
-            b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
-            b.declaration(type(int.class), "encodedBci", "info[i + SOURCE_INFO_OFFSET_BCI]");
-            b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
-            b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
-
-            b.startIf().string("bci >= beginBci && bci < endBci").end().startBlock();
-            b.startStatement().string("sections[sectionIndex] = createSourceSection(localSources, info, i)").end();
-            b.statement("sectionIndex++");
-            b.end(); // if
-
-            b.end(); // for block
-
-            b.startReturn().startStaticCall(type(Arrays.class), "copyOf").string("sections").string("sectionIndex").end().end();
+            b.startReturn().startCall("findSourceLocations");
+            b.string("bci");
+            b.string("bci + 1"); // searchEndBci is inclusive.
+            b.end(2);
             return ex;
         }
 
@@ -9971,8 +9951,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
 
             b.startIf().string("searchBeginBci >= beginBci && searchEndBci <= endBci").end().startBlock();
-            b.startStatement().string("sections[sectionIndex] = createSourceSection(localSources, info, i)").end();
-            b.statement("sectionIndex++");
+
+            b.startIf().string("sectionIndex == sections.length").end().startBlock();
+            b.startAssign("sections").startStaticCall(type(Arrays.class), "copyOf");
+            b.string("sections");
+            // Double the size of the array, but cap it at the number of source section entries.
+            b.startStaticCall(type(Math.class), "min").string("sections.length * 2").string("info.length / SOURCE_INFO_LENGTH").end();
+            b.end(2); // assign
+            b.end(); // if
+
+            b.startStatement().string("sections[sectionIndex++] = createSourceSection(localSources, info, i)").end();
+
             b.end(); // if
 
             b.end(); // for block
