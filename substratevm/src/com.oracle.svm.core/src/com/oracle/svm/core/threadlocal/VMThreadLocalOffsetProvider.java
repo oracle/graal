@@ -22,18 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.layeredimagesingleton;
+package com.oracle.svm.core.threadlocal;
 
-import java.util.EnumSet;
+import org.graalvm.nativeimage.ImageSingletons;
 
-/**
- * Feature singletons are hosted only and can only be accessed during build time. Further, we
- * currently do not allow features to save information across layers.
- */
-public interface FeatureSingleton extends UnsavedSingleton {
+import com.oracle.svm.core.SubstrateUtil;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    @Override
-    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
+public interface VMThreadLocalOffsetProvider {
+
+    static int getOffset(FastThreadLocal threadLocal) {
+        if (SubstrateUtil.HOSTED) {
+            return ImageSingletons.lookup(VMThreadLocalOffsetProvider.class).offsetOf(threadLocal);
+        } else {
+            return VMThreadLocalInfos.getOffset(threadLocal);
+        }
+
     }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    int offsetOf(FastThreadLocal threadLocal);
 }

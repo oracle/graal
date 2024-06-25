@@ -24,16 +24,14 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
-import java.util.EnumSet;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.util.VMError;
 
-/**
- * Feature singletons are hosted only and can only be accessed during build time. Further, we
- * currently do not allow features to save information across layers.
- */
-public interface FeatureSingleton extends UnsavedSingleton {
+public interface InitialLayerOnlyImageSingleton extends LayeredImageSingleton {
 
     @Override
-    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
+    default PersistFlags preparePersist(ImageSingletonWriter writer) {
+        VMError.guarantee(ImageLayerBuildingSupport.buildingInitialLayer(), "This singleton should only be installed in the initial layer");
+        return PersistFlags.FORBIDDEN;
     }
 }
