@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -50,9 +49,10 @@ import java.util.Collection;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
-import org.junit.Rule;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.IsInstanceOf;
+import org.junit.Assert;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -155,17 +155,18 @@ public class FloatingNFITest extends NFITest {
         }
     }
 
-    @SuppressWarnings("deprecation") @Rule public ExpectedException expectedException = ExpectedException.none();
-
     @Test
     public void testIntParameter(@Inject(IncrementIntNode.class) CallTarget increment) {
         long intValue = (long) exactNumericValue;
-        if (intValue != exactNumericValue) {
-            // this should only work if the number is actually an integer
-            expectedException.expectCause(instanceOf(UnsupportedTypeException.class));
+        Runnable testRunnable = () -> {
+            Object ret = increment.call(value);
+            assertThat("return value", ret, is(number(intValue + 1)));
+        };
+        if (intValue == exactNumericValue) {
+            testRunnable.run();
+        } else {
+            AssertionError error = Assert.assertThrows(AssertionError.class, testRunnable::run);
+            MatcherAssert.assertThat(error.getCause(), IsInstanceOf.instanceOf(UnsupportedTypeException.class));
         }
-
-        Object ret = increment.call(value);
-        assertThat("return value", ret, is(number(intValue + 1)));
     }
 }

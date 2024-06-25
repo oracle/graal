@@ -39,7 +39,7 @@ public class ReadPolyglotArrayTestBase extends PolyglotArrayTestBase {
 
     // create test entries
 
-    protected static void addTestIntern(Collection<Object[]> configs, String function, ResultConsumer assertion, ExpectedExceptionConsumer expectedException, ExpectedResultMarker support,
+    protected static void addTestIntern(Collection<Object[]> configs, String function, ResultConsumer assertion, TestRunnableConsumer expectedException, ExpectedResultMarker support,
                     Object... parameters) {
         configs.add(new Object[]{function, assertion, expectedException, support, new ParameterArray(parameters)});
     }
@@ -47,7 +47,7 @@ public class ReadPolyglotArrayTestBase extends PolyglotArrayTestBase {
     /**
      * Adds a test that is expected to fail.
      */
-    protected static void addUnsupported(Collection<Object[]> configs, String function, Object object, int index, ExpectedExceptionConsumer expectedException) {
+    protected static void addUnsupported(Collection<Object[]> configs, String function, Object object, int index, TestRunnableConsumer expectedException) {
         addTestIntern(configs, function, PolyglotArrayTestBase::doNothing, expectedException, ExpectedResultMarker.UNSUPPORTED, object, index);
     }
 
@@ -55,7 +55,7 @@ public class ReadPolyglotArrayTestBase extends PolyglotArrayTestBase {
      * Adds a test that is expected to succeed.
      */
     protected static void addSupported(Collection<Object[]> configs, String function, Object object, int index, ResultConsumer assertion) {
-        addTestIntern(configs, function, assertion, PolyglotArrayTestBase::doNothing, ExpectedResultMarker.SUPPORTED, object, index);
+        addTestIntern(configs, function, assertion, PolyglotArrayTestBase.expectNoException(), ExpectedResultMarker.SUPPORTED, object, index);
     }
 
     protected interface ResultConsumer extends Consumer<Value> {

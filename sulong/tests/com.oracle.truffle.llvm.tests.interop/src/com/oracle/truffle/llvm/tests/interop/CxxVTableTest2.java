@@ -30,11 +30,11 @@
 package com.oracle.truffle.llvm.tests.interop;
 
 import org.graalvm.polyglot.Value;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.StringContains;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
@@ -118,16 +118,12 @@ public class CxxVTableTest2 extends InteropTestBase {
         Assert.assertEquals(12, foo2Result);
     }
 
-    @SuppressWarnings("deprecation") @Rule public ExpectedException expectedException = ExpectedException.none();
-
     @Test
     public void testNonExistingVirtualMethod() {
         Value a = preparePolyglotBasA.execute();
 
-        expectedException.expect(UnsupportedOperationException.class);
-        expectedException.expectMessage("Non readable or non-existent member key 'foo3'");
-
-        a.invokeMember("foo3").asInt();
+        UnsupportedOperationException exception = Assert.assertThrows(UnsupportedOperationException.class, () -> a.invokeMember("foo3").asInt());
+        MatcherAssert.assertThat(exception.getMessage(), StringContains.containsString("Non readable or non-existent member key 'foo3'"));
     }
 
     @Test

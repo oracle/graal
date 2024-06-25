@@ -40,18 +40,17 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import java.util.ArrayList;
 import java.util.Collection;
 
 import org.hamcrest.Matcher;
+import org.hamcrest.core.IsInstanceOf;
 import org.junit.Assert;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -247,31 +246,37 @@ public class IntegerLimitsNFITest extends NFITest {
 
     // errors
 
-    @SuppressWarnings("deprecation") @Rule public ExpectedException expectedException = ExpectedException.none();
-
     @Test
     public void testLowerBound(@Inject(IncrementNode.class) CallTarget increment) {
-        expectedException.expectCause(instanceOf(UnsupportedTypeException.class));
-        increment.call(minSigned - 1);
+        AssertionError error = assertThrows(AssertionError.class, () -> {
+            increment.call(minSigned - 1);
+        });
+        assertThat(error.getCause(), IsInstanceOf.instanceOf(UnsupportedTypeException.class));
     }
 
     @Test
     public void testLowerBoundClosureRet(@Inject(CallClosureNode.class) CallTarget callClosure) {
-        expectedException.expectCause(instanceOf(UnsupportedTypeException.class));
-        TestCallback c = new TestCallback(1, (args) -> minSigned - 1);
-        callClosure.call(c, 0);
+        AssertionError error = assertThrows(AssertionError.class, () -> {
+            TestCallback c = new TestCallback(1, (args) -> minSigned - 1);
+            callClosure.call(c, 0);
+        });
+        assertThat(error.getCause(), IsInstanceOf.instanceOf(UnsupportedTypeException.class));
     }
 
     @Test
     public void testUpperBound(@Inject(IncrementNode.class) CallTarget increment) {
-        expectedException.expectCause(instanceOf(UnsupportedTypeException.class));
-        increment.call(maxUnsigned + 1);
+        AssertionError error = assertThrows(AssertionError.class, () -> {
+            increment.call(maxUnsigned + 1);
+        });
+        assertThat(error.getCause(), IsInstanceOf.instanceOf(UnsupportedTypeException.class));
     }
 
     @Test
     public void testUpperBoundClosureRet(@Inject(CallClosureNode.class) CallTarget callClosure) {
-        expectedException.expectCause(instanceOf(UnsupportedTypeException.class));
-        TestCallback c = new TestCallback(1, (args) -> maxUnsigned + 1);
-        callClosure.call(c, 0);
+        AssertionError error = assertThrows(AssertionError.class, () -> {
+            TestCallback c = new TestCallback(1, (args) -> maxUnsigned + 1);
+            callClosure.call(c, 0);
+        });
+        assertThat(error.getCause(), IsInstanceOf.instanceOf(UnsupportedTypeException.class));
     }
 }
