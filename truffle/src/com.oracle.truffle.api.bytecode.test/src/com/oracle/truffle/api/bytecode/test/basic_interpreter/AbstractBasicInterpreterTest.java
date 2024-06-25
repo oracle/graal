@@ -91,7 +91,7 @@ public abstract class AbstractBasicInterpreterTest {
                             interpreterClass == BasicInterpreterProductionGlobalScopes.class;
         }
 
-        public boolean hasUncachedIntereter() {
+        public boolean hasUncachedInterpreter() {
             return interpreterClass == BasicInterpreterWithUncached.class ||
                             interpreterClass == BasicInterpreterProductionLocalScopes.class ||
                             interpreterClass == BasicInterpreterProductionGlobalScopes.class;

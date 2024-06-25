@@ -6451,10 +6451,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startCase().tree(createOperationConstant(model.sourceSectionOperation)).end();
                 b.startCaseBlock();
                 emitCastOperationData(b, model.sourceSectionOperation, "i");
-
+                /**
+                 * Any source section on the stack encloses the root. The entire root node's
+                 * bytecode range should map to the source section.
+                 */
                 b.startStatement().startCall("doEmitSourceInfo");
                 b.string("operationData.sourceIndex");
-                b.string("operationData.beginBci");
+                b.string("0");
                 b.string("bci");
                 b.string("operationData.start");
                 b.string("operationData.length");

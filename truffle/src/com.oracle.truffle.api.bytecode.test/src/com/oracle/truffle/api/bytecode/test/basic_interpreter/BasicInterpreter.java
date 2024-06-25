@@ -410,12 +410,12 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
-    public static final class GetSourcePosition {
+    public static final class GetSourcePositions {
         @Specialization
         public static Object doOperation(VirtualFrame frame,
                         @Bind("$node") Node node,
                         @Bind("$bytecode") BytecodeNode bytecode) {
-            return bytecode.getSourceLocation(frame, node);
+            return bytecode.getSourceLocations(frame, node);
         }
     }
 

@@ -340,7 +340,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         ContinuationResult r1 = (ContinuationResult) rootNode.getCallTarget().call();
         BytecodeLocation before = (BytecodeLocation) r1.getResult();
 
-        if (!run.hasUncachedIntereter()) {
+        if (!run.hasUncachedInterpreter()) {
             /**
              * Tricky behaviour: interpreters that don't have an uncached interpreter start with
              * uninitialized bytecode. Though rootNode will transition to cached on first execution,
@@ -382,7 +382,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
             b.emitLoadConstant(42L);
 
             b.beginSourceSection(27, 8);
-            b.emitGetSourcePosition();
+            b.emitGetSourcePositions();
             b.endSourceSection();
 
             b.endConditional();
@@ -399,15 +399,17 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         // A suspended invocation should transition.
         cont = (ContinuationResult) rootNode.getCallTarget().call(123L);
         rootNode.getRootNodes().ensureSources();
-        SourceSection result = (SourceSection) cont.continueWith(false);
-        assertEquals(source, result.getSource());
-        assertEquals("position", result.getCharacters());
+        SourceSection[] result = (SourceSection[]) cont.continueWith(false);
+        assertEquals(1, result.length);
+        assertEquals(source, result[0].getSource());
+        assertEquals("position", result[0].getCharacters());
 
         // Subsequent invocations work as expected.
         cont = (ContinuationResult) rootNode.getCallTarget().call(123L);
-        result = (SourceSection) cont.continueWith(false);
-        assertEquals(source, result.getSource());
-        assertEquals("position", result.getCharacters());
+        result = (SourceSection[]) cont.continueWith(false);
+        assertEquals(1, result.length);
+        assertEquals(source, result[0].getSource());
+        assertEquals("position", result[0].getCharacters());
     }
 
     @Test

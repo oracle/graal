@@ -168,8 +168,8 @@ public abstract class BytecodeNode extends Node {
      *
      * @param frame the current frame
      * @param location the current location
-     * @return a source section corresponding to the bci, or {@code null} if no source section is
-     *         available
+     * @return an array of source sections corresponding to the bci, or {@code null} if no source
+     *         sections are available
      */
     public final SourceSection[] getSourceLocations(Frame frame, Node location) {
         int bci = findBytecodeIndexImpl(frame, location);
