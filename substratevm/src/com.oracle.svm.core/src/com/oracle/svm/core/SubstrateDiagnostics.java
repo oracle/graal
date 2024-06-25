@@ -716,32 +716,6 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpTopDeoptimizedFrame extends DiagnosticThunk {
-        @Override
-        public int maxInvocationCount() {
-            return 1;
-        }
-
-        @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            Pointer sp = context.getStackPointer();
-            CodePointer ip = context.getInstructionPointer();
-
-            if (sp.isNonNull() && ip.isNonNull()) {
-                long totalFrameSize = getTotalFrameSize(sp, ip);
-                DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
-                if (deoptFrame != null) {
-                    log.string("Top frame info:").indent(true);
-                    log.string("RSP ").zhex(sp).string(" frame was deoptimized:").newline();
-                    log.string("SourcePC ").zhex(deoptFrame.getSourcePC()).newline();
-                    log.string("SourceTotalFrameSize ").signed(totalFrameSize).newline();
-                    log.indent(false);
-                }
-            }
-        }
-    }
-
     private static class DumpThreads extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
@@ -1244,9 +1218,6 @@ public class SubstrateDiagnostics {
             thunks.add(new DumpRegisters());
             thunks.add(new DumpInstructions());
             thunks.add(new DumpTopOfCurrentThreadStack());
-            if (RuntimeCompilation.isEnabled()) {
-                thunks.add(new DumpTopDeoptimizedFrame());
-            }
             thunks.add(new DumpCurrentThreadLocals());
             thunks.add(new DumpCurrentThreadFrameAnchors());
             thunks.add(new DumpCurrentThreadDecodedStackTrace());
