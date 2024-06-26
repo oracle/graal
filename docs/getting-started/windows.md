@@ -1,8 +1,9 @@
 ---
 layout: docs
 toc_group: getting-started
-link_title:  Installation on Windows
-permalink: /docs/getting-started/windows/
+link_title: Installation on Windows
+permalink: /getting-started/windows/
+redirect_from: /docs/getting-started/windows/
 ---
 
 # Installation on Windows Platforms
@@ -16,25 +17,25 @@ We recommend installing GraalVM on Windows from an archive.
 
 ## Installing from an Archive
 
-1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **23** for the Java version, **Windows** for the operating system, and download.
+1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/){:target="_blank"}. Select the Java version, **Windows** for the operating system, and download.
 
 2. Change to the directory where you want to install GraalVM, then move the _.zip_ archive file to it.
 
 3. Unzip the archive to your file system.
 
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 8, 10, and 11.
-  - Set the `JAVA_HOME` environment variable to resolve to the GraalVM installation directory:
-    ```shell
+  - Set the `JAVA_HOME` environment variable to resolve to the GraalVM installation directory, for example:
+    ```bash
     setx /M JAVA_HOME "C:\Progra~1\Java\<graalvm>"
     ```
   - Set the value of the `PATH` environment variable to the GraalVM _bin_ directory:
-    ```shell
+    ```bash
     setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
     ```
   Note that the `/M` flag, equivalent to `-m`, requires elevated user privileges.
 
 5. Restart Command Prompt to reload the environment variables. Then use the following command to check whether the variables were set correctly:
-    ```shell
+    ```bash
     echo %PATH%
     echo %JAVA_HOME%
     ```
@@ -61,11 +62,11 @@ Use **Visual Studio 2022 version 17.6.0 or later**.
 
 2. Start the installation by opening the file you downloaded, and then click **Continue**:
 
-    ![Install Visual Studio Build Tools](../img/visual_studio_installer.png)
+    ![Install Visual Studio Build Tools](img/visual_studio_installer.png)
 
 3. Select the **Desktop development with C++** checkbox in the main window. On the right side under Installation Details, make sure that the two requirements, **Windows 11 SDK** and **MSVC (...) C++ x64/x86 build tools**, are selected. Continue by clicking **Install**.
 
-    ![Select Desktop development with C++](../img/desktop_development_with_C.png)
+    ![Select Desktop development with C++](img/desktop_development_with_C.png)
 
 You should now be able to build with GraalVM Native Image.
 
@@ -75,11 +76,11 @@ If Visual Studio is already installed on your system, follow these steps to chec
 
 1. Open the Visual Studio Installer:
 
-    ![Open the Visual Studio Installer](../img/open_vs_installer.png)
+    ![Open the Visual Studio Installer](img/open_vs_installer.png)
 
 2. Under the Installed tab, click **Modify** and choose **Individual Components**:
 
-    ![Visual Studio Installed Components](../img/visual-studio-installed-components-modify.png)
+    ![Visual Studio Installed Components](img/visual-studio-installed-components-modify.png)
 
 3. Then scroll to the bottom and confirm that the Windows 11 SDK and Visual Studio SDK checkboxes are selected. Now you can start using Native Image.
 
@@ -89,17 +90,17 @@ Native Image sets up build environments automatically if it can find an appropri
 With the GraalVM JDK on your `PATH`, you can therefore now run the `native-image` utility in a Command Prompt (`cmd`) or a PowerShell (`pwsh`).
 
 To check the `native-image` version, run:
-```shell
+```bash
 C:\> native-image.cmd --version
 ```
 
 To build a project using the [Native Build Tools Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html){:target="_blank"}, run:
-```shell
+```bash
 mvnw.cmd native:compile
 ```
 
 To build a project using the [Native Build Tools Gradle plugin](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html){:target="_blank"}, run:
-```shell
+```bash
 gradlew.bat nativeCompile
 ```
 
@@ -107,4 +108,4 @@ This guide was written for Windows 11, but should be valid for Windows 8 and 10.
 
 ## Other Installation Options
 
-For other installation options for Windows, visit the [GraalVM Downloads page](https://www.graalvm.org/downloads/).
+For other installation options for Windows, visit the [GraalVM Downloads page](https://www.graalvm.org/downloads/){:target="_blank"}.
