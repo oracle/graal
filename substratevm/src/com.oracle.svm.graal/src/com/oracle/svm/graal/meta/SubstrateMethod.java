@@ -87,6 +87,8 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     private final String name;
     private final int hashCode;
     private SubstrateType declaringClass;
+    private int encodedGraphStartOffset;
+    private LocalVariableTable localVariableTable;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) private int encodedGraphStartOffset;
     @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int vTableIndex;
 
@@ -175,9 +177,10 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         return hashCode;
     }
 
-    public void setLinks(SubstrateSignature signature, SubstrateType declaringClass) {
+    public void setLinks(SubstrateSignature signature, SubstrateType declaringClass, LocalVariableTable localVariableTable) {
         this.signature = signature;
         this.declaringClass = declaringClass;
+        this.localVariableTable = localVariableTable;
     }
 
     public void setImplementations(SubstrateMethod[] rawImplementations) {
@@ -445,7 +448,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
 
     @Override
     public LocalVariableTable getLocalVariableTable() {
-        return null;
+        return localVariableTable;
     }
 
     @Override
