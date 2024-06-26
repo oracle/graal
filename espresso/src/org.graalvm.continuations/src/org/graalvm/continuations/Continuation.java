@@ -184,6 +184,32 @@ public abstract class Continuation extends ContinuationSerializable {
      */
     public abstract boolean resume();
 
+    // region debug
+
+    /**
+     * Provides programmatic access to the stack information captured by this continuation, or
+     * {@code null} if there is no recorded frames.
+     * <p>
+     * Returns an array of stack trace elements, each representing one stack frame. The zeroth
+     * element of the array (assuming the array's length is non-zero) represents the top of the
+     * stack, which is the last method invocation in the sequence. Typically, this is the point at
+     * which this continuation was suspended. The last element of the array (assuming the array's
+     * length is non-zero) represents the bottom of the stack, which is the first method invocation
+     * in the sequence.
+     *
+     * @return an array of stack trace elements representing the stack trace pertaining to this
+     *         continuation, or {@code null} if there is no recorded frames.
+     */
+    public abstract StackTraceElement[] getRecordedFrames();
+
+    /**
+     * Returns a string describing this continuation's state, along with description of its recorded
+     * frames, as described in {@link #getRecordedFrames()}.
+     */
+    public abstract String toDebugString();
+
+    // endregion debug
+
     // region internals
 
     private static boolean supported() {

@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import java.util.ArrayList;
+import java.util.Collections;
+
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -32,6 +35,7 @@ import com.oracle.truffle.espresso.nodes.ContinuableMethodWithBytecode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.VM;
 import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
@@ -188,5 +192,25 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
         // if successful, we can clear the guest side record
         meta.continuum.org_graalvm_continuations_ContinuationImpl_stackFrameHead.setObject(self, StaticObject.NULL);
         meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.setHiddenObject(self, hfr, true);
+    }
+
+    @Substitution(hasReceiver = true)
+    static @JavaType(StackTraceElement[].class) StaticObject getRecordedFrames0(StaticObject self, @Inject EspressoContext context, @Inject Meta meta) {
+        HostFrameRecord hfr = (HostFrameRecord) meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true);
+        if (hfr == null) {
+            // no frame to return.
+            return StaticObject.NULL;
+        }
+        ArrayList<StaticObject> trace = new ArrayList<>();
+        while (hfr != null) {
+            StaticObject ste = meta.java_lang_StackTraceElement.allocateInstance(context);
+            VM.fillInElement(ste, new VM.EspressoStackElement(hfr.methodVersion.getMethod(), hfr.bci()), meta);
+            trace.add(ste);
+            hfr = hfr.next;
+        }
+        // Frames are recorded with 'run' first, which is the reverse order of what a stack trace
+        // is usually looking like.
+        Collections.reverse(trace);
+        return StaticObject.wrap(trace.toArray(StaticObject.EMPTY_ARRAY), meta);
     }
 }
