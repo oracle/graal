@@ -8,12 +8,31 @@ permalink: /docs/getting-started/linux/
 ## Installation on Linux Platforms
 
 GraalVM is available for Linux on x64 and AArch64 architectures.
+You can install GraalVM on Linux:
+* [using SDKMAN!](#sdkman)
+* [from an archive](#from-an-archive)
+* [using script-friendly URLs](#script-friendly-urls)
 
-You can install GraalVM on Linux from an archive (_.tar.gz_) for the current user into any location, without affecting other JDK installations.
+Select the installation option that you prefer.
 
-Follow these steps to install GraalVM: 
+## SDKMAN!
 
-1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **22** for the Java version, **Linux** for the operating system, **x64** or **aarch64** for the architecture, and download.
+Install GraalVM with [SDKMAN!](https://sdkman.io/):
+```
+sdk install java 23-graalce
+```
+
+SDKMAN! helps you install and easily switch between JDKs.
+Check which GraalVM releases are available for installation by running: 
+```bash
+sdk list java
+```
+
+## From an Archive
+
+Install GraalVM from an archive (_.tar.gz_) for the current user into any location, without affecting other JDK installations.
+
+1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **23** for the Java version, **Linux** for the operating system, **x64** or **aarch64** for the architecture, and download.
 
 2. Change to directory where you want to install GraalVM, then move the _.tar.gz_ file to that directory.
 
@@ -21,7 +40,8 @@ Follow these steps to install GraalVM:
     ```shell
     tar -xzf graalvm-jdk-<version>_linux-<architecture>.tar.gz
     ```
-4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
+
+4. There can be multiple JDKs installed on the machine. Configure the runtime environment:
   - Set the value of the `JAVA_HOME` environment variable to the installation directory:
     ```shell
     export JAVA_HOME=/path/to/<graalvm>
@@ -29,7 +49,24 @@ Follow these steps to install GraalVM:
   - Set the value of the `PATH` environment variable to the GraalVM _bin_ directory:
     ```shell
     export PATH=/path/to/<graalvm>/bin:$PATH
-    ```  
-5. To confirm that the installation was successful, run the `java -version` command.
+    ```
 
+To confirm that the installation was successful, run the `java -version` command.
 Optionally, you can specify GraalVM as the default JRE or JDK installation in your Java IDE.
+
+## Script-Friendly URLs
+
+[Script-friendly URLs](https://www.oracle.com/java/technologies/jdk-script-friendly-urls/) enable you to download GraalVM from a command line, or automatically in your script and Dockerfile by using a download URL. 
+Substitute `<version>` and `<architecture>` with the JDK version and `aarch64` or `x64` architecture.
+```bash
+# Download with wget
+wget https://download.oracle.com/graalvm/23/latest/graalvm-jdk-23_linux-<architecture>_bin.tar.gz
+
+# Download with curl
+curl https://download.oracle.com/graalvm/23/latest/graalvm-jdk-23_linux-<architecture>_bin.tar.gz
+
+# Download from archive
+curl https://download.oracle.com/java/23/archive/jdk-23_linux-<architecture>_bin.tar.gz
+```
+
+For other installation options, visit the [GraalVM Downloads page](https://www.graalvm.org/downloads/).
