@@ -34,17 +34,23 @@ import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.Collections;
 import java.util.Set;
+import jdk.internal.org.objectweb.asm.ClassReader;
+import jdk.internal.org.objectweb.asm.ClassWriter;
+import jdk.internal.org.objectweb.asm.ClassVisitor;
+import jdk.internal.org.objectweb.asm.MethodVisitor;
+import jdk.internal.org.objectweb.asm.Opcodes;
 
 public class TestJavaAgent1 {
+
     public static void premain(
                     String agentArgs, Instrumentation inst) {
         AgentPremainHelper.parseOptions(agentArgs);
         System.setProperty("instrument.enable", "true");
+        AgentPremainHelper.load(TestJavaAgent1.class);
         if (!ImageInfo.inImageRuntimeCode()) {
-            DemoTransformer dt = new DemoTransformer("com.oracle.svm.test.javaagent.TestJavaAgent1");
+            DemoTransformer dt = new DemoTransformer();
             inst.addTransformer(dt, true);
         } else {
-            AgentPremainHelper.load(TestJavaAgent1.class);
             /**
              * Test {@code inst} is {@link NativeImageNoOpRuntimeInstrumentation} and behaves as
              * defined.
@@ -127,12 +133,15 @@ public class TestJavaAgent1 {
         }
     }
 
+    /**
+     * Change the return value of {@code AgentTest#getCounter()} from 10 to 11 in the agent.
+     */
     static class DemoTransformer implements ClassFileTransformer {
 
         private String internalClassName;
 
-        DemoTransformer(String name) {
-            internalClassName = name.replaceAll("\\.", "/");
+        DemoTransformer() {
+            internalClassName = "com/oracle/svm/test/javaagent/AgentTest";
         }
 
         @Override
@@ -142,13 +151,36 @@ public class TestJavaAgent1 {
                         Class<?> classBeingRedefined,
                         ProtectionDomain protectionDomain,
                         byte[] classfileBuffer) {
-            byte[] byteCode = classfileBuffer;
-
             if (internalClassName.equals(className)) {
-                System.out.println("Let's do transformation for " + className);
-                // Do class transformation here
+                ClassReader cr = new ClassReader(classfileBuffer);
+                ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+
+                ClassVisitor cv = new ClassVisitor(Opcodes.ASM9, cw) {
+                    @Override
+                    public MethodVisitor visitMethod(int access, String name, String descriptor,
+                                    String signature, String[] exceptions) {
+                        MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                        if ("getCounter".equals(name) && "()I".equals(descriptor)) {
+                            return new MethodVisitor(api, mv) {
+                                @Override
+                                public void visitInsn(int opcode) {
+                                    if (opcode == Opcodes.IRETURN) {
+                                        super.visitLdcInsn(11);
+                                    }
+                                    super.visitInsn(opcode);
+                                }
+                            };
+                        }
+                        return mv;
+                    }
+                };
+
+                cr.accept(cv, 0);
+
+                return cw.toByteArray();
             }
-            return byteCode;
+
+            return null;
         }
     }
 }
