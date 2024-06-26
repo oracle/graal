@@ -47,6 +47,8 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+
+import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -549,11 +551,13 @@ public class CountedLoopTest extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore("GR-54120: Loops requiring overflow to terminate must not be counted in graal, CountedLoopInfo API does not support that")
     public void decrementUnsigned7() {
         testCounted("decrementUnsignedSnippet", Integer.MAX_VALUE + 10, 0, 1);
     }
 
     @Test
+    @Ignore("GR-54120: Loops requiring overflow to terminate must not be counted in graal, CountedLoopInfo API does not support that")
     public void decrementUnsigned8() {
         testCounted("decrementUnsignedSnippet", Integer.MAX_VALUE + 11, 0, 2);
     }
