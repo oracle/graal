@@ -116,7 +116,7 @@ public class SubstrateOptions {
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false, key -> {
         if (!LibCBase.targetLibCIs(MuslLibC.class)) {
-            throw UserError.invalidOptionValue(key, key.getValue(),
+            throw UserError.abort(
                             "Building static executable images is only supported with musl libc. Remove the '--static' option or add the '--libc=musl' option.");
         }
     });

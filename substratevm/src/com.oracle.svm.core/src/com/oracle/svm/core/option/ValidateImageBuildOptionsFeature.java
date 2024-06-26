@@ -30,8 +30,6 @@ import org.graalvm.compiler.options.OptionKey;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 
-import jdk.graal.compiler.options.OptionKey;
-
 @AutomaticallyRegisteredFeature
 public class ValidateImageBuildOptionsFeature implements InternalFeature {
     @Override
