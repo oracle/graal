@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.BiConsumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -56,14 +57,25 @@ public class ResourceConfigurationParser extends ConfigurationParser {
     private void parseTopLevelObject(EconomicMap<String, Object> obj) {
         Object resourcesObject = null;
         Object bundlesObject = null;
+        Object globsObject = null;
         MapCursor<String, Object> cursor = obj.getEntries();
         while (cursor.advance()) {
             if ("resources".equals(cursor.getKey())) {
                 resourcesObject = cursor.getValue();
             } else if ("bundles".equals(cursor.getKey())) {
                 bundlesObject = cursor.getValue();
+            } else if ("globs".equals(cursor.getKey())) {
+                globsObject = cursor.getValue();
             }
         }
+
+        if (globsObject != null) {
+            List<Object> globs = asList(globsObject, "Attribute 'globs' must be a list of glob patterns");
+            for (Object object : globs) {
+                parseGlobEntry(object, registry::addResources);
+            }
+        }
+
         if (resourcesObject != null) {
             if (resourcesObject instanceof EconomicMap) { // New format
                 EconomicMap<String, Object> resourcesObjectMap = (EconomicMap<String, Object>) resourcesObject;
@@ -143,5 +155,97 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         Object valueObject = resource.get(valueKey);
         String value = asString(valueObject, valueKey);
         resourceRegistry.accept(condition, value);
+    }
+
+    private void parseGlobEntry(Object data, BiConsumer<ConfigurationCondition, String> resourceRegistry) {
+        EconomicMap<String, Object> globObject = asMap(data, "Elements of 'globs' list must be glob descriptor objects");
+        checkAttributes(globObject, "resource and resource bundle descriptor object", Collections.singletonList(GLOB_KEY), List.of(CONDITIONAL_KEY, MODULE_KEY));
+        ConfigurationCondition condition = parseCondition(globObject);
+
+        Object moduleObject = globObject.get(MODULE_KEY);
+        String module = moduleObject == null ? "" : asString(moduleObject);
+
+        Object valueObject = globObject.get(GLOB_KEY);
+        String value = asString(valueObject, GLOB_KEY);
+        resourceRegistry.accept(condition, globToRegex(module, value));
+    }
+
+    public static String globToRegex(String module, String glob) {
+        return (module == null || module.isEmpty() ? "" : module + ":") + globToRegex(glob);
+    }
+
+    private static String globToRegex(String glob) {
+        /* this char will trigger last wildcard dump if the glob ends with the wildcard */
+        String tmpGlob = glob + '#';
+        StringBuilder sb = new StringBuilder();
+
+        int quoteStartIndex = 0;
+        Wildcard previousWildcard = Wildcard.START;
+        for (int i = 0; i < tmpGlob.length(); i++) {
+            char c = tmpGlob.charAt(i);
+            Wildcard currentWildcard = previousWildcard.next(c);
+
+            boolean wildcardStart = previousWildcard == Wildcard.START && currentWildcard != Wildcard.START;
+            if (wildcardStart && quoteStartIndex != i) {
+                /* start of the new wildcard => quote previous content */
+                sb.append(Pattern.quote(tmpGlob.substring(quoteStartIndex, i)));
+            }
+
+            boolean consecutiveWildcards = previousWildcard == Wildcard.DOUBLE_STAR_SLASH && currentWildcard != Wildcard.START;
+            boolean wildcardEnd = previousWildcard != Wildcard.START && currentWildcard == Wildcard.START;
+            if (wildcardEnd || consecutiveWildcards) {
+                /* end of the wildcard => append regex and move start of next quote after it */
+                sb.append(previousWildcard.regex);
+                quoteStartIndex = i;
+            }
+
+            previousWildcard = currentWildcard;
+        }
+
+        /* remove the last char we added artificially */
+        tmpGlob = tmpGlob.substring(0, tmpGlob.length() - 1);
+        if (quoteStartIndex < tmpGlob.length()) {
+            sb.append(Pattern.quote(tmpGlob.substring(quoteStartIndex)));
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * This enum acts like a state machine that helps to identify glob wildcards.
+     */
+    private enum Wildcard {
+        START("") {
+            @Override
+            public Wildcard next(char c) {
+                return c == '*' ? STAR : START;
+            }
+        },
+        STAR("[^/]*") {
+            @Override
+            public Wildcard next(char c) {
+                return c == '*' ? DOUBLE_STAR : START;
+            }
+        },
+        DOUBLE_STAR(".*") {
+            @Override
+            public Wildcard next(char c) {
+                return c == '/' ? DOUBLE_STAR_SLASH : START;
+            }
+        },
+        DOUBLE_STAR_SLASH("([^/]*(/|$))*") {
+            @Override
+            public Wildcard next(char c) {
+                return c == '*' ? STAR : START;
+            }
+        };
+
+        final String regex;
+
+        Wildcard(String val) {
+            regex = val;
+        }
+
+        public abstract Wildcard next(char c);
     }
 }
