@@ -129,7 +129,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // @formatter:off
         // try {
         //   throw();
-        // } finally ex {
+        // } finally {
         //   return 42;
         //   <dead>
         // }
@@ -138,8 +138,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
-            var local = b.createLocal();
-            b.beginFinallyTry(local, () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                 b.beginReturn();
                 b.emitLoadConstant(42);
@@ -214,6 +213,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "pop",
                         "load.constant",
                         "return",
+                        "store.local",
                         "load.constant",
                         "return");
 
@@ -319,6 +319,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "pop",
                         "load.constant",
                         "return",
+                        "store.local",
                         "load.constant",
                         "pop",
                         "load.constant",
@@ -369,6 +370,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "load.constant",
                         "pop",
                         "branch",
+                        "store.local",
                         "load.constant",
                         "return",
                         "load.constant",
@@ -423,6 +425,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "pop",
                         "load.constant",
                         "return",
+                        "store.local",
                         "load.constant",
                         "return");
 
@@ -722,7 +725,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.emitLoadConstant(42);
             b.endReturn();
 
-            b.beginFinallyTry(b.createLocal(), () -> b.emitLoadArgument(0));
+            b.beginFinallyTry(() -> b.emitLoadArgument(0));
             b.beginBlock();
             b.emitLabel(b.createLabel());
             b.endBlock();
@@ -772,7 +775,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.beginBlock();
 
             BytecodeLabel lbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> b.emitLoadArgument(0));
+            b.beginFinallyTry(() -> b.emitLoadArgument(0));
 
             b.beginBlock(); // begin try
             b.beginReturn();
@@ -797,7 +800,6 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "load.argument",
                         "pop",
                         "throw",
-                        "clear.local",
                         "load.constant",
                         "return");
         node.getBytecodeNode().getInstructionsAsList().stream() //
@@ -828,14 +830,13 @@ public class DeadCodeTest extends AbstractInstructionTest {
         b.endReturn();
         b.endIfThen();
 
-        var e = b.createLocal();
-        b.beginFinallyTry(e, () -> b.emitLoadConstant(41));
+        b.beginFinallyTry(() -> b.emitLoadConstant(41));
         b.beginReturn();
         b.emitLoadConstant(41);
         b.endReturn();
         b.endFinallyTry();
 
-        e = b.createLocal();
+        var e = b.createLocal();
         b.beginTryCatch(e);
         b.emitLoadConstant(41);
         b.emitLoadConstant(41);

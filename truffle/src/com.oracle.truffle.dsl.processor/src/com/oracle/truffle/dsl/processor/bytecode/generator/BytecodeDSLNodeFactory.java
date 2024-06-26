@@ -319,11 +319,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             bytecodeNodeGen.add(new ContinuationLocationFactory().create());
         }
 
+        int numSpecialLocals = 1; // -1 reserved for finally handlers with no exceptions
         if (model.epilogExceptional != null) {
-            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "HANDLER_EPILOG_EXCEPTIONAL")).createInitBuilder().string("-1");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "HANDLER_EPILOG_EXCEPTIONAL")).createInitBuilder().string("-" + ++numSpecialLocals);
         }
         if (model.enableTagInstrumentation) {
-            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "HANDLER_TAG_EXCEPTIONAL")).createInitBuilder().string("-2");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "HANDLER_TAG_EXCEPTIONAL")).createInitBuilder().string("-" + ++numSpecialLocals);
         }
 
         // Define the generated node's constructor.
@@ -2060,8 +2061,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         name = "TryCatchData";
                         fields = List.of(//
                                         field(context.getType(int.class), "tryStartBci"),
-                                        field(context.getType(int.class), "startStackHeight").asFinal(),
-                                        field(context.getType(int.class), "exceptionLocalFrameIndex").asFinal(),
+                                        field(bytecodeLocalImpl.asType(), "exceptionLocal").asFinal(),
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(boolean.class), "tryReachable"),
                                         field(context.getType(boolean.class), "catchReachable"),
@@ -2075,7 +2075,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         fields = List.of(//
                                         field(context.getDeclaredType(Runnable.class), "finallyParser").asFinal(),
                                         field(context.getType(int.class), "tryStartBci"),
-                                        field(context.getType(int.class), "exceptionLocalFrameIndex").asFinal(),
+                                        field(bytecodeLocalImpl.asType(), "exceptionLocal").asFinal(),
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(boolean.class), "tryReachable"),
                                         field(context.getType(boolean.class), "catchReachable"),
@@ -4114,27 +4114,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         yield CodeTreeBuilder.singleString(local);
                     }
                 }
-                case LOAD_LOCAL_MATERIALIZED, LOAD_LOCAL -> {
-                    yield CodeTreeBuilder.singleString("(BytecodeLocalImpl)" + operation.getOperationBeginArgumentName(0));
-                }
+                case LOAD_LOCAL_MATERIALIZED, LOAD_LOCAL -> CodeTreeBuilder.singleString("(BytecodeLocalImpl)" + operation.getOperationBeginArgumentName(0));
                 case IF_THEN -> createOperationData(className, "this.reachable");
                 case IF_THEN_ELSE -> createOperationData(className, "this.reachable", "this.reachable");
                 case CONDITIONAL -> createOperationData(className, "this.reachable", "this.reachable");
                 case WHILE -> createOperationData(className, "bci", "this.reachable");
-                case TRY_CATCH -> createOperationData(className, "bci", "currentStackHeight", "((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").frameIndex",
+                case TRY_CATCH -> createOperationData(className, "bci", "(BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0),
                                 "this.reachable", "this.reachable", "this.reachable");
-                case FINALLY_TRY, FINALLY_TRY_CATCH -> {
+                case FINALLY_TRY -> createOperationData(className, operation.getOperationBeginArgumentName(0), "bci", "null", "this.reachable", "this.reachable", "false");
+                case FINALLY_TRY_CATCH -> {
                     assert operation.operationBeginArguments[0].kind() == Encoding.LOCAL;
                     assert operation.operationBeginArguments[1].kind() == Encoding.FINALLY_PARSER;
                     String exceptionLocal = CodeTreeBuilder.createBuilder() //
-                                    .startParantheses() //
                                     .cast(bytecodeLocalImpl.asType()).string(operation.getOperationBeginArgumentName(0)) //
-                                    .end() //
-                                    .string(".frameIndex").toString();
-                    String catchReachable = (operation.kind == OperationKind.FINALLY_TRY_CATCH) ? "this.reachable" : "false";
-
-                    yield createOperationData(className, operation.getOperationBeginArgumentName(1), "bci", exceptionLocal, "this.reachable", "this.reachable", catchReachable);
+                                    .toString();
+                    yield createOperationData(className, operation.getOperationBeginArgumentName(1), "bci", exceptionLocal, "this.reachable", "this.reachable", "this.reachable");
                 }
+
                 case FINALLY_HANDLER -> createOperationData(className, "finallyOperationSp");
                 case CUSTOM, CUSTOM_INSTRUMENTATION -> {
                     if (operation.isTransparent) {
@@ -4990,13 +4986,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          * emits the regular handler.
          */
         private void emitFinallyHandlersAfterTry(CodeTreeBuilder b, OperationModel op, String finallyHandlerSp) {
-            b.declaration(type(short.class), "exceptionIndex", "(short) operationData.exceptionLocalFrameIndex");
-            b.declaration(type(int.class), "handlerSp", "currentStackHeight");
+            b.declaration(type(int.class), "handlerSp", "currentStackHeight + 1 /* reserve space for the exception */");
+            b.statement("maxStackHeight = Math.max(maxStackHeight, handlerSp)");
             b.declaration(type(int.class), "exHandlerIndex", UNINIT);
 
             b.startIf().string("operationData.operationReachable").end().startBlock();
             b.lineComment("register exception table entry");
-            b.statement("exHandlerIndex = doCreateExceptionHandler(operationData.tryStartBci, bci, " + UNINIT + " /* handler start */, handlerSp, exceptionIndex)");
+            String exceptionIndex = (op.kind == OperationKind.FINALLY_TRY_CATCH) ? "(short) operationData.exceptionLocal.frameIndex" : UNINIT;
+            b.statement("exHandlerIndex = doCreateExceptionHandler(operationData.tryStartBci, bci, " + UNINIT + " /* handler start */, handlerSp, " + exceptionIndex + ")");
             b.end();
 
             b.startIf().string("operationData.tryReachable").end().startBlock();
@@ -5024,17 +5021,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
              */
             b.startFor().string("int i = 0; i < operationData.exceptionTableEntryCount; i++").end().startBlock();
             b.declaration(type(int.class), "tableEntryIndex", "operationData.exceptionTableEntries[i]");
-            b.statement("exHandlers[tableEntryIndex + 2] = handlerBci /* handler start */");
-            b.statement("exHandlers[tableEntryIndex + 3] = handlerSp /* stack height */");
+            b.statement("exHandlers[tableEntryIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = handlerBci");
+            b.statement("exHandlers[tableEntryIndex + EXCEPTION_HANDLER_OFFSET_STACK_POINTER] = handlerSp");
             b.end();
             b.startIf().string("exHandlerIndex != ", UNINIT).end().startBlock();
-            b.statement("exHandlers[exHandlerIndex + 2] = handlerBci /* handler start */");
+            b.statement("exHandlers[exHandlerIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = handlerBci");
             b.end();
 
             if (op.kind != OperationKind.FINALLY_TRY_CATCH) {
                 b.lineComment("emit handler for exceptional case");
+                b.statement("currentStackHeight = handlerSp");
                 b.statement("doEmitFinallyHandler(operationData.finallyParser, " + finallyHandlerSp + ")");
-                buildEmitInstruction(b, model.throwInstruction, new String[]{"exceptionIndex"});
+                buildEmitInstruction(b, model.throwInstruction);
             }
             b.end();
         }
@@ -5067,17 +5065,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case STORE_LOCAL -> {
                     emitCastCurrentOperationData(b, operation);
                     if (model.usesBoxingElimination()) {
-                        if (model.enableLocalScoping) {
-                            yield new String[]{
-                                            "operationData.local.frameIndex",
-                                            "operationData.local.localIndex",
-                                            "operationData.childBci"};
-                        } else {
-                            yield new String[]{"operationData.local.frameIndex",
-                                            "operationData.childBci"};
-                        }
+                        yield createStoreLocalArgsWithBE("operationData.local", "operationData.childBci");
                     } else {
-                        yield new String[]{"operationData.frameIndex"};
+                        yield createStoreLocalArgs("operationData.frameIndex");
                     }
                 }
                 case STORE_LOCAL_MATERIALIZED -> {
@@ -5132,6 +5122,22 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 default -> throw new AssertionError("Reached an operation " + operation.name + " that cannot be initialized. This is a bug in the Bytecode DSL processor.");
             };
             buildEmitInstruction(b, operation.instruction, args);
+        }
+
+        private String[] createStoreLocalArgs(String frameIndex) {
+            return new String[]{frameIndex};
+        }
+
+        private String[] createStoreLocalArgsWithBE(String local, String childBci) {
+            if (model.enableLocalScoping) {
+                return new String[]{
+                                local + ".frameIndex",
+                                local + ".localIndex",
+                                childBci};
+            } else {
+                return new String[]{local + ".frameIndex",
+                                childBci};
+            }
         }
 
         private void buildEmitLabel(CodeTreeBuilder b, OperationModel operation) {
@@ -5484,6 +5490,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             TRANSPARENT,
             SHORT_CIRCUIT,
             UPDATE_REACHABLE,
+            EXCEPTION_HANDLER,
             DEFAULT,
         }
 
@@ -5503,13 +5510,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     return BeforeChildKind.TRANSPARENT;
                 } else if (op.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                     return BeforeChildKind.SHORT_CIRCUIT;
-                } else if (op.kind == OperationKind.TRY_CATCH ||
-                                op.kind == OperationKind.IF_THEN_ELSE ||
+                } else if (op.kind == OperationKind.IF_THEN_ELSE ||
                                 op.kind == OperationKind.IF_THEN ||
                                 op.kind == OperationKind.CONDITIONAL ||
-                                op.kind == OperationKind.FINALLY_TRY ||
-                                op.kind == OperationKind.FINALLY_TRY_CATCH) {
+                                op.kind == OperationKind.FINALLY_TRY) {
                     return BeforeChildKind.UPDATE_REACHABLE;
+                } else if (op.kind == OperationKind.TRY_CATCH ||
+                                op.kind == OperationKind.FINALLY_TRY_CATCH) {
+                    return BeforeChildKind.EXCEPTION_HANDLER;
                 } else {
                     return BeforeChildKind.DEFAULT;
                 }
@@ -5558,16 +5566,43 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
             }
 
+            // Update reachability for control-flow operations.
             if (groupedOperations.containsKey(BeforeChildKind.UPDATE_REACHABLE)) {
                 for (OperationModel op : groupedOperations.get(BeforeChildKind.UPDATE_REACHABLE)) {
                     b.startCase().tree(createOperationConstant(op)).end();
                 }
                 b.startCaseBlock();
 
-                // catch block is always assumed reachable
                 b.startIf().string("childIndex >= 1").end().startBlock();
                 b.statement("updateReachable()");
                 b.end();
+
+                b.statement("break");
+                b.end();
+            }
+
+            assert groupedOperations.containsKey(BeforeChildKind.EXCEPTION_HANDLER);
+            assert groupedOperations.get(BeforeChildKind.EXCEPTION_HANDLER).size() == 2;
+            for (OperationModel op : groupedOperations.get(BeforeChildKind.EXCEPTION_HANDLER)) {
+                b.startCase().tree(createOperationConstant(op)).end();
+
+                b.startBlock();
+                emitCastOperationData(b, op, "operationSp - 1");
+                b.startIf().string("childIndex == 1").end().startBlock();
+                b.statement("updateReachable()");
+                b.statement("currentStackHeight = currentStackHeight + 1");
+                b.statement("maxStackHeight = Math.max(maxStackHeight, currentStackHeight)");
+
+                // Store exception into local.
+                String[] storeLocalArgs;
+                if (model.usesBoxingElimination()) {
+                    storeLocalArgs = createStoreLocalArgsWithBE("operationData.exceptionLocal", UNINIT);
+                } else {
+                    storeLocalArgs = createStoreLocalArgs("operationData.exceptionLocal.frameIndex");
+                }
+                buildEmitInstruction(b, model.storeLocalInstruction, storeLocalArgs);
+
+                b.end(); // if
 
                 b.statement("break");
                 b.end();
@@ -5846,6 +5881,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
                         b.end(); // if tryReachable
 
+                        b.declaration(type(int.class), "handlerSp", "currentStackHeight + 1");
                         /**
                          * The handler can guard more than one bci range if the try block has an
                          * early exit (return/branch), because we need to close the range before
@@ -5854,9 +5890,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                          */
                         b.startFor().string("int i = 0; i < operationData.exceptionTableEntryCount; i++").end().startBlock();
                         b.declaration(type(int.class), "tableEntryIndex", "operationData.exceptionTableEntries[i]");
-                        b.statement("exHandlers[tableEntryIndex + 2] = bci /* handler start */");
+                        b.statement("exHandlers[tableEntryIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = bci");
+                        b.statement("exHandlers[tableEntryIndex + EXCEPTION_HANDLER_OFFSET_STACK_POINTER] = handlerSp");
                         b.end();
-                        b.statement("doCreateExceptionHandler(operationData.tryStartBci, tryEndBci, bci, operationData.startStackHeight, operationData.exceptionLocalFrameIndex)");
+                        b.statement("doCreateExceptionHandler(operationData.tryStartBci, tryEndBci, bci, handlerSp, operationData.exceptionLocal.frameIndex)");
 
                         b.end(); // if operationReachable
                         b.end();
@@ -6166,11 +6203,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case TAG_RESUME:
                 case TAG_YIELD:
                 case LOAD_LOCAL_MATERIALIZED:
-                case THROW:
                 case YIELD:
                 case CLEAR_LOCAL:
                     break;
                 case RETURN:
+                case THROW:
                 case BRANCH_FALSE:
                 case POP:
                 case STORE_LOCAL:
@@ -6615,20 +6652,22 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end(); // case epilog
                 }
 
-                b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY))).end();
-                b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY_CATCH))).end();
-                b.startBlock();
-                emitCastOperationData(b, model.finallyTryOperation, "i");
-                b.startIf().string("operationStack[i].childCount == 0 /* still in try */ && reachable").end().startBlock();
-                b.startStatement().startCall("operationData.addExceptionTableEntry");
-                b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, ", UNINIT, " /* handler start */, ", UNINIT,
-                                " /* stack height */, operationData.exceptionLocalFrameIndex)");
-                b.end(2);
-                b.statement("handlerClosed = true");
-                b.statement("doEmitFinallyHandler(operationData.finallyParser, i)");
-                b.end();
-                b.statement("break");
-                b.end(); // case finally
+                for (OperationKind finallyOpKind : List.of(OperationKind.FINALLY_TRY, OperationKind.FINALLY_TRY_CATCH)) {
+                    b.startCase().tree(createOperationConstant(model.findOperation(finallyOpKind))).end();
+                    b.startBlock();
+                    emitCastOperationData(b, model.finallyTryOperation, "i");
+                    b.startIf().string("operationStack[i].childCount == 0 /* still in try */ && reachable").end().startBlock();
+                    b.startStatement().startCall("operationData.addExceptionTableEntry");
+                    String exceptionIndex = (finallyOpKind == OperationKind.FINALLY_TRY_CATCH) ? "operationData.exceptionLocal.frameIndex" : UNINIT;
+                    b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, ", UNINIT, " /* handler start */, ", UNINIT,
+                                    " /* stack height */, ", exceptionIndex, ")");
+                    b.end(2);
+                    b.statement("handlerClosed = true");
+                    b.statement("doEmitFinallyHandler(operationData.finallyParser, i)");
+                    b.end();
+                    b.statement("break");
+                    b.end(); // case finally
+                }
 
                 b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.TRY_CATCH))).end();
                 b.startBlock();
@@ -6636,7 +6675,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startIf().string("operationStack[i].childCount == 0 /* still in try */ && reachable");
                 b.end().startBlock();
                 b.startStatement().startCall("operationData.addExceptionTableEntry");
-                b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, ", UNINIT, " /* handler start */, operationData.startStackHeight, operationData.exceptionLocalFrameIndex)");
+                b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, ", UNINIT, " /* handler start */, ", UNINIT,
+                                " /* stack height */, operationData.exceptionLocal.frameIndex)");
                 b.end(2);
                 b.statement("handlerClosed = true");
                 b.end();
@@ -9165,7 +9205,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.tree(createValidationError("exception handler handlerBci is out of bounds"));
             b.end();
 
-            b.startIf().string("exceptionLocal").string(" < 0 || ").string("exceptionLocal").string(" >= getRoot().numLocals").end().startBlock();
+            b.startIf().string("exceptionLocal").string(" < -1 || ").string("exceptionLocal").string(" >= getRoot().numLocals").end().startBlock();
             b.tree(createValidationError("exception handler exceptionLocal index is out of bounds"));
             b.end();
             b.statement("break");
@@ -9205,14 +9245,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (instr.isShortCircuitConverter() || instr.isEpilogReturn()) {
                 return true;
             }
-            if (instr.getQuickeningRoot() == model.popInstruction && //
-                            (!instr.isQuickening() || //
-                                            ElementUtils.typeEquals(instr.signature.getSpecializedType(0), context.getDeclaredType(Object.class)))) {
-                // For pop, if we don't know the child bci we'll quicken to generic.
-                // Pops with specialized types should have valid child bci's, though.
+            return isSameOrGenericQuickening(instr, model.popInstruction) || isSameOrGenericQuickening(instr, model.storeLocalInstruction);
+        }
+
+        private boolean isSameOrGenericQuickening(InstructionModel instr, InstructionModel expected) {
+            if (instr == expected) {
                 return true;
             }
-            return false;
+            return instr.getQuickeningRoot() == expected && ElementUtils.typeEquals(instr.signature.getSpecializedType(0), context.getDeclaredType(Object.class));
         }
 
         // calls dump, but catches any exceptions and falls back on an error string
@@ -9259,7 +9299,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (message != null) {
                 b.string(" " + message);
             }
-            b.string("%s%n\"").end(); // group
+            b.string("%n%s\"").end(); // group
             if (includeBci) {
                 b.string("bci");
             }
@@ -11293,7 +11333,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("sp -= 1");
                         break;
                     case THROW:
-                        b.statement("throw sneakyThrow((Throwable) " + getFrameObject(localFrame(), readBc("bci + 1")) + ")");
+                        b.statement("throw sneakyThrow((Throwable) " + getFrameObject("frame", "sp - 1") + ")");
                         break;
                     case YIELD:
                         storeBciInFrameIfNecessary(b);
@@ -11451,7 +11491,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssert().string("ex instanceof ").type(types.AbstractTruffleException).end();
             b.statement("bci = localHandlers[handler + 2]");
             b.statement("targetSp = localHandlers[handler + 3]");
-            b.statement(setFrameObject(localFrame(), "localHandlers[handler + 4]", "ex"));
+            b.statement(setFrameObject("targetSp - 1 + $root.numLocals", "ex"));
 
             if (hasSpecialHandler) {
                 b.statement("break");
@@ -11467,10 +11507,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             b.statement("int handlerSp = targetSp + $root.numLocals");
-            b.statement("assert sp >= handlerSp");
+            /**
+             * handlerSp - 1 is the sp before pushing the exception. The current sp should be at or
+             * above this height.
+             */
+            b.statement("assert sp >= handlerSp - 1");
             b.startWhile().string("sp > handlerSp").end().startBlock();
             b.statement(clearFrame("frame", "--sp"));
             b.end();
+            b.statement("sp = handlerSp");
             b.statement("continue loop");
 
             b.end(); // while
@@ -11742,7 +11787,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.lineComment("Reenter by jumping to the begin bci.");
             b.statement("return (handlerSp << 16) | node.enterBci");
             b.end().startElseBlock();
-            b.lineComment("We jump to the return adress which is at sp + 1.");
+            b.lineComment("We jump to the return address which is at sp + 1.");
 
             b.declaration(type(int.class), "targetSp");
             b.declaration(type(int.class), "targetBci");
@@ -12867,14 +12912,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = method.createBuilder();
 
             b.declaration(type(short.class), "newInstruction");
-            b.declaration(type(short.class), "newOperand");
-            b.declaration(type(int.class), "operandIndex", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
-            b.declaration(type(short.class), "operand", "ACCESS.shortArrayRead(bc, operandIndex)");
             b.declaration(type(int.class), "slot", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_OFFSET)));
-
             if (model.enableLocalScoping) {
                 b.declaration(type(int.class), "localIndex", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_INDEX)));
             }
+            b.declaration(type(int.class), "operandIndex", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
 
             String bytecodeNode;
             if (materialized) {
@@ -12887,6 +12929,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             } else {
                 bytecodeNode = "this";
             }
+
+            // Store local may not have a valid child bci.
+            b.startIf().string("operandIndex != -1").end().startBlock();
+            b.declaration(type(short.class), "newOperand");
+            b.declaration(type(short.class), "operand", "ACCESS.shortArrayRead(bc, operandIndex)");
+
             b.startDeclaration(types.FrameSlotKind, "oldKind");
             b.startCall(bytecodeNode, "getCachedLocalKindInternal");
             b.string("frame").string("slot");
@@ -12985,6 +13033,21 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end().end();
 
             emitQuickeningOperand(b, "this", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
+
+            b.end(); // case operandIndex != -1
+            b.startElseBlock();
+            b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
+            b.statement(setFrameObject("slot", "local"));
+            b.startStatement().startCall(bytecodeNode, "setCachedLocalKindInternal");
+            b.string("slot");
+            b.staticReference(types.FrameSlotKind, "Object");
+            if (model.enableLocalScoping) {
+                b.string("localIndex");
+            }
+            b.end().end();
+
+            b.end(); // case operandIndex == -1
+
             emitQuickening(b, "this", "bc", "bci", null, "newInstruction");
 
             b.statement(clearFrame(stackFrame, "sp - 1"));

@@ -68,8 +68,9 @@ public class BytecodeDSLBuiltins {
         m.branchFalseInstruction = m.instruction(InstructionKind.BRANCH_FALSE, "branch.false", m.signature(void.class, Object.class)) //
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target") //
                         .addImmediate(ImmediateKind.BRANCH_PROFILE, "branch_profile");
-        m.throwInstruction = m.instruction(InstructionKind.THROW, "throw", m.signature(void.class, void.class)) //
-                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "exception_local");
+        m.storeLocalInstruction = m.instruction(InstructionKind.STORE_LOCAL, "store.local", m.signature(void.class, Object.class)) //
+                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset");
+        m.throwInstruction = m.instruction(InstructionKind.THROW, "throw", m.signature(void.class, Object.class));
         m.loadConstantInstruction = m.instruction(InstructionKind.LOAD_CONSTANT, "load.constant", m.signature(Object.class)) //
                         .addImmediate(ImmediateKind.CONSTANT, "constant");
 
@@ -143,15 +144,13 @@ public class BytecodeDSLBuiltins {
                                         FinallyTry implements a finally handler. It runs the given {@code finallyParser} to parse a {@code finally} operation.
                                         FinallyTry executes {@code try}, and after execution finishes it always executes {@code finally}.
                                         If {@code try} finishes normally, {@code finally} executes and control continues after the FinallyTry operation.
-                                        If {@code try} finishes exceptionally, the Truffle exception is stored in {@code exceptionLocal} and {@code finally} executes. The exception is rethrown after {@code finally}.
+                                        If {@code try} finishes exceptionally, {@code finally} executes and then rethrows the exception.
                                         If {@code try} finishes with a control flow operation, {@code finally} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
                                         This is a void operation; both {@code finally} and {@code try} can also be void.
                                         """) //
                         .setVoid(true) //
-                        .setOperationBeginArguments(
-                                        new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind a thrown exception to (if available)"), //
-                                        new OperationArgument(parserType, Encoding.FINALLY_PARSER, "finallyParser",
-                                                        "a runnable that uses the builder to parse the finally operation (must be idempotent)") //
+                        .setOperationBeginArguments(new OperationArgument(parserType, Encoding.FINALLY_PARSER, "finallyParser",
+                                        "a runnable that uses the builder to parse the finally operation (must be idempotent)") //
                         ).setDynamicOperands(voidableChild("try"));
         m.operation(OperationKind.FINALLY_TRY_CATCH, "FinallyTryCatch",
                         """
@@ -229,8 +228,7 @@ public class BytecodeDSLBuiltins {
                         .setVoid(true) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to store to")) //
                         .setDynamicOperands(child("value")) //
-                        .setInstruction(m.instruction(InstructionKind.STORE_LOCAL, "store.local", m.signature(void.class, Object.class)) //
-                                        .addImmediate(ImmediateKind.LOCAL_OFFSET, "localOffset"));
+                        .setInstruction(m.storeLocalInstruction);
         m.storeLocalMaterializedOperation = m.operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized", """
                         StoreLocalMaterialized writes the value produced by {@code value} into the {@code local} in the frame produced by {@code frame}.
                         This operation can be used to store locals into materialized frames. The materialized frame must belong to the same root node or an enclosing root node.

@@ -51,7 +51,6 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -224,24 +223,17 @@ public class PrologEpilogTest extends AbstractInstructionTest {
         // @formatter:off
         // try {
         //    if (arg0) return 42 else throw "oops"
-        // } finally (ex) {
-        //    if (ex != null) return -1
+        // } finally {
+        //    return -1
         // }
         // @formatter:on
         PrologEpilogBytecodeNode root = parseNode(b -> {
             // @formatter:off
             b.beginRoot(null);
-            BytecodeLocal exception = b.createLocal();
-            b.beginFinallyTry(exception, () -> {
-                b.beginIfThen();
-                    b.beginNotNull();
-                        b.emitLoadLocal(exception);
-                    b.endNotNull();
-
-                    b.beginReturn();
-                        b.emitLoadConstant(-1);
-                    b.endReturn();
-                b.endIfThen();
+            b.beginFinallyTry(() -> {
+                b.beginReturn();
+                    b.emitLoadConstant(-1);
+                b.endReturn();
             });
                 b.beginIfThenElse();
                     b.emitLoadArgument(0);
@@ -255,6 +247,51 @@ public class PrologEpilogTest extends AbstractInstructionTest {
                     b.endThrowException();
                 b.endIfThenElse();
             b.endFinallyTry();
+            b.endRoot();
+            // @formatter:on
+        });
+
+        assertEquals(-1, root.getCallTarget().call(true));
+        assertEquals(true, root.argument);
+        assertEquals(-1, root.returnValue);
+        assertNull(root.thrownValue);
+
+        assertEquals(-1, root.getCallTarget().call(false));
+        assertEquals(false, root.argument);
+        assertEquals(-1, root.returnValue);
+        assertNull(root.thrownValue);
+    }
+
+    @Test
+    public void testTryCatch() {
+        // @formatter:off
+        // try {
+        //    if (arg0) return 42 else throw "oops"
+        // } catch (ex) {
+        //    return -1
+        // }
+        // @formatter:on
+        PrologEpilogBytecodeNode root = parseNode(b -> {
+            // @formatter:off
+            b.beginRoot(null);
+            BytecodeLocal ex = b.createLocal();
+            b.beginTryCatch(ex);
+                b.beginIfThenElse();
+                    b.emitLoadArgument(0);
+
+                    b.beginReturn();
+                        b.emitLoadConstant(42);
+                    b.endReturn();
+
+                    b.beginThrowException();
+                        b.emitLoadConstant("oops");
+                    b.endThrowException();
+                b.endIfThenElse();
+
+                b.beginReturn();
+                    b.emitLoadConstant(-1);
+                b.endReturn();
+            b.endTryCatch();
             b.endRoot();
             // @formatter:on
         });

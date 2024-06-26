@@ -303,7 +303,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.beginSource(source);
             b.beginSourceSection(0, 11);
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 // finally
                 b.beginSourceSection(4, 7);
                 b.beginReturn();
@@ -385,7 +385,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.beginSource(source);
             b.beginSourceSection(0, 39);
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 // finally
                 b.beginSourceSection(14, 23);
 

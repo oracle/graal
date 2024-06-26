@@ -387,7 +387,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // }
         BasicInterpreter root = parseNode("finallyTry", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "B"));
+            b.beginFinallyTry(() -> emitNop(b, "B"));
                 emitNop(b, "A");
             b.endFinallyTry();
             b.endRoot();
@@ -413,7 +413,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "D"));
+            b.beginFinallyTry(() -> emitNop(b, "D"));
                 b.beginBlock();
                     emitNop(b, "A");
                     emitReturnIf(b, 0, 42);
@@ -449,7 +449,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "C"));
+            b.beginFinallyTry(() -> emitNop(b, "C"));
                 b.beginBlock();
                     emitNop(b, "A");
                     emitReturnIf(b, 0, 42);
@@ -485,7 +485,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitNop(b, "B");
                     emitReturnIf(b, 0, 42);
@@ -520,8 +520,8 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // }
         BasicInterpreter root = parseNode("finallyTry", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "C"));
-                b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "B"));
+            b.beginFinallyTry(() -> emitNop(b, "C"));
+                b.beginFinallyTry(() -> emitNop(b, "B"));
                     emitNop(b, "A");
                 b.endFinallyTry();
             b.endFinallyTry();
@@ -557,10 +557,10 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
 
             BytecodeLabel outerLbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "G"));
+            b.beginFinallyTry(() -> emitNop(b, "G"));
                 b.beginBlock();
                     BytecodeLabel innerLbl = b.createLabel();
-                    b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "E"));
+                    b.beginFinallyTry(() -> emitNop(b, "E"));
                         b.beginBlock();
                             emitNop(b, "A");
                             emitReturnIf(b, 0, 42);
@@ -607,9 +607,9 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // outerLbl:
         BasicInterpreter root = parseNode("finallyTryNestedEarlyExitsInFinally", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry(b.createLocal(), () -> emitNop(b, "G"));
+            b.beginFinallyTry(() -> emitNop(b, "G"));
                 b.beginBlock();
-                    b.beginFinallyTry(b.createLocal(), () -> {
+                    b.beginFinallyTry(() -> {
                         b.beginBlock();
                             emitNop(b, "B");
                             emitReturnIf(b, 0, 42);

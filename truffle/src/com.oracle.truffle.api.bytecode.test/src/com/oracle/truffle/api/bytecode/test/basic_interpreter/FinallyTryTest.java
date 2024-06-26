@@ -100,7 +100,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
         RootCallTarget root = parse("finallyTryBasic", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry(b.createLocal(), () -> emitAppend(b, 2));
+            b.beginFinallyTry(() -> emitAppend(b, 2));
             emitAppend(b, 1);
             b.endFinallyTry();
 
@@ -124,7 +124,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
         RootCallTarget root = parse("finallyTryException", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry(b.createLocal(), () -> emitAppend(b, 3));
+            b.beginFinallyTry(() -> emitAppend(b, 3));
                 b.beginBlock();
                     emitAppend(b, 1);
                     emitThrow(b, 0);
@@ -152,112 +152,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
         RootCallTarget root = parse("finallyTryReturn", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry(b.createLocal(), () -> emitAppend(b, 1));
-                b.beginBlock();
-                    emitAppend(b, 2);
-
-                    emitReturn(b, 0);
-                b.endBlock();
-            b.endFinallyTry();
-
-            emitAppend(b, 3);
-
-            b.endRoot();
-        });
-
-        testOrdering(false, root, 2L, 1L);
-    }
-
-    @Test
-    public void testFinallyTryBindBasic() {
-        // try {
-        //   arg0.append(1);
-        // } finally(ex) {
-        //   if (ex) arg0.append(3) else arg0.append(2)
-        // }
-
-        RootCallTarget root = parse("finallyTryBindBasic", b -> {
-            b.beginRoot(LANGUAGE);
-            BytecodeLocal ex = b.createLocal();
-            b.beginFinallyTry(ex, () -> {
-                b.beginIfThenElse();
-                b.beginNonNull();
-                b.emitLoadLocal(ex);
-                b.endNonNull();
-                emitAppend(b, 3);
-                emitAppend(b, 2);
-                b.endIfThenElse();
-            });
-            emitAppend(b, 1);
-            b.endFinallyTry();
-
-            emitReturn(b, 0);
-
-            b.endRoot();
-        });
-
-        testOrdering(false, root, 1L, 2L);
-    }
-
-    @Test
-    public void testFinallyTryBindException() {
-        // try {
-        //   arg0.append(1);
-        //   throw 0;
-        //   arg0.append(2);
-        // } finally(ex) {
-        //   if (ex) arg0.append(3) else arg0.append(4);
-        // }
-
-        BasicInterpreter root = parseNode("finallyTryBindException", b -> {
-            b.beginRoot(LANGUAGE);
-            BytecodeLocal ex = b.createLocal();
-            b.beginFinallyTry(ex, () -> {
-                b.beginIfThenElse();
-                b.beginNonNull();
-                b.emitLoadLocal(ex);
-                b.endNonNull();
-                emitAppend(b, 3);
-                emitAppend(b, 4);
-                b.endIfThenElse();
-            });
-                b.beginBlock();
-                    emitAppend(b, 1);
-                    emitThrow(b, 0);
-                    emitAppend(b, 2);
-                b.endBlock();
-            b.endFinallyTry();
-
-            emitReturn(b, 0);
-
-            b.endRoot();
-        });
-
-        testOrdering(true, root.getCallTarget(), 1L, 3L);
-    }
-
-    @Test
-    public void testFinallyTryBindReturn() {
-        // try {
-        //   arg0.append(2);
-        //   return 0;
-        // } finally(ex) {
-        //   if (ex) arg0.append(4) else arg0.append(1);
-        // }
-        // arg0.append(3);
-
-        RootCallTarget root = parse("finallyTryBindReturn", b -> {
-            b.beginRoot(LANGUAGE);
-            BytecodeLocal ex = b.createLocal();
-            b.beginFinallyTry(ex, () -> {
-                b.beginIfThenElse();
-                b.beginNonNull();
-                b.emitLoadLocal(ex);
-                b.endNonNull();
-                emitAppend(b, 4);
-                emitAppend(b, 1);
-                b.endIfThenElse();
-            });
+            b.beginFinallyTry(() -> emitAppend(b, 1));
                 b.beginBlock();
                     emitAppend(b, 2);
 
@@ -290,7 +185,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginFinallyTry(b.createLocal(), () -> emitAppend(b, 3));
+            b.beginFinallyTry(() -> emitAppend(b, 3));
                 b.beginBlock();
                     emitAppend(b, 1);
                     b.emitBranch(lbl);
@@ -325,7 +220,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 2);
                     b.emitBranch(lbl);
@@ -370,7 +265,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 2);
                     b.emitBranch(lbl);
@@ -438,7 +333,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
                 b.endBlock();
             b.endIfThen();
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 3);
                     b.emitBranch(lbl);
@@ -489,7 +384,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     BytecodeLabel lbl = b.createLabel();
                     emitAppend(b, 5);
@@ -544,7 +439,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 5);
                     b.beginIfThen();
@@ -606,7 +501,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 5);
                     b.beginIfThenElse();
@@ -667,7 +562,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 5);
                     b.beginConditional();
@@ -746,7 +641,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
             BytecodeLocal local = b.createLocal();
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 3);
 
@@ -812,7 +707,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         RootCallTarget root = parse("finallyTryShortCircuitOpWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 3);
 
@@ -890,7 +785,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         RootCallTarget root = parse("finallyTryNonThrowingTryCatchWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 3);
                     b.beginTryCatch(b.createLocal());
@@ -936,7 +831,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
         RootCallTarget root = parse("finallyTryThrowingTryCatchWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 3);
                     b.beginTryCatch(b.createLocal());
@@ -980,7 +875,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         parse("finallyTryBranchWithinHandlerNoLabel", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     b.emitBranch(b.createLabel());
                     emitReturn(b, 0);
@@ -1011,7 +906,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         parse("finallyTryBranchIntoTry", b -> {
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     b.emitBranch(lbl);
                     emitReturn(b, 0);
@@ -1044,7 +939,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         parse("finallyTryBranchIntoFinally", b -> {
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     b.emitLabel(lbl);
                     emitReturn(b, 0);
@@ -1090,10 +985,10 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     BytecodeLabel lbl = b.createLabel();
-                    b.beginFinallyTry(b.createLocal(), () -> {
+                    b.beginFinallyTry(() -> {
                         b.beginBlock();
                             emitAppend(b, 6);
                             b.emitBranch(lbl);
@@ -1156,11 +1051,11 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         BasicInterpreter root = parseNode("finallyTryBranchWhileInParentHandler", b -> {
             b.beginRoot(LANGUAGE);
             b.beginBlock();
-                b.beginFinallyTry(b.createLocal(), () -> {
+                b.beginFinallyTry(() -> {
                     b.beginBlock();
                         emitAppend(b, 3);
 
-                        b.beginFinallyTry(b.createLocal(), () -> emitAppend(b, 7));
+                        b.beginFinallyTry(() -> emitAppend(b, 7));
                             b.beginBlock();
                                 BytecodeLabel lbl = b.createLabel();
                                 emitAppend(b, 4);
@@ -1209,8 +1104,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         RootCallTarget root = parse("finallyTryNestedFinally", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry(b.createLocal(), () -> {
-                b.beginFinallyTry(b.createLocal(), () -> emitAppend(b, 5));
+            b.beginFinallyTry(() -> {
+                b.beginFinallyTry(() -> emitAppend(b, 5));
                     b.beginBlock();
                         emitAppend(b, 3);
                         emitReturnIf(b, 2, 0);
@@ -1258,8 +1153,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> emitAppend(b, 6));
-                b.beginFinallyTry(b.createLocal(), () -> emitAppend(b, 5));
+            b.beginFinallyTry(() -> emitAppend(b, 6));
+                b.beginFinallyTry(() -> emitAppend(b, 5));
                     b.beginBlock();
                         emitAppend(b, 1);
                         emitReturnIf(b, 1, 0);
@@ -1313,8 +1208,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> {
-                b.beginFinallyTry(b.createLocal(), () -> emitAppend(b, 9));
+            b.beginFinallyTry(() -> {
+                b.beginFinallyTry(() -> emitAppend(b, 9));
                     b.beginBlock();
                         emitAppend(b, 5);
                         emitReturnIf(b, 1, 0);
@@ -1384,12 +1279,12 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
         RootCallTarget root = parse("finallyTryNestedInFinally", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry(b.createLocal(), () -> emitAppend(b, 11));
+            b.beginFinallyTry(() -> emitAppend(b, 11));
                 b.beginBlock();
                 BytecodeLabel outerLbl = b.createLabel();
 
-                b.beginFinallyTry(b.createLocal(), () -> {
-                    b.beginFinallyTry(b.createLocal(), () -> emitAppend(b, 9));
+                b.beginFinallyTry(() -> {
+                    b.beginFinallyTry(() -> emitAppend(b, 9));
                         b.beginBlock();
                             emitAppend(b, 5);
                             emitReturnIf(b, 1, 0);
@@ -1448,7 +1343,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         BasicInterpreter root = parseNode("finallyTryNestedTryThrow", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry(b.createLocal(), () -> emitAppend(b, 5));
+            b.beginFinallyTry(() -> emitAppend(b, 5));
                 b.beginTryCatch(b.createLocal());
                     b.beginBlock();
                         emitAppend(b, 1);
@@ -1481,7 +1376,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         //   arg0.append(2);
         //   if (arg2) goto lbl
         //   arg0.append(3);
-        // } finally ex {
+        // } finally {
         //   arg0.append(4);
         //   throw MyException(123);
         // }
@@ -1489,9 +1384,8 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
         RootCallTarget root = parse("finallyTryHandlerNotGuarded", b -> {
             b.beginRoot(LANGUAGE);
-            BytecodeLocal ex = b.createLocal();
             BytecodeLabel lbl = b.createLabel();
-            b.beginFinallyTry(ex, () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 4L);
                     emitThrow(b, 123);
@@ -1547,7 +1441,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         RootCallTarget root = parse("finallyTryOuterHandlerNotGuarded", b -> {
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 5);
                     emitThrow(b, 123);
@@ -1555,7 +1449,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             });
                 b.beginBlock();
                     emitAppend(b, 1);
-                    b.beginFinallyTry(b.createLocal(), () -> emitAppend(b, 4));
+                    b.beginFinallyTry(() -> emitAppend(b, 4));
                         b.beginBlock();
                             b.beginIfThen();
                                 b.emitLoadArgument(1);
@@ -1607,7 +1501,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         RootCallTarget root = parse("finallyTryOuterHandlerNotGuardedByTryCatch", b -> {
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 5);
                     emitThrow(b, 123);
@@ -2049,7 +1943,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
 
                     for (int i = 0; i < 10; i++) {
@@ -2131,7 +2025,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
             BytecodeLocal x = b.createLocal();
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     for (int i = 0; i < 10; i++) {
                         // Create extra root nodes to detect any serialization mismatches
@@ -2206,7 +2100,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     for (int i = 0; i < 10; i++) {
                         // Create extra root nodes to detect any serialization mismatches
@@ -2318,7 +2212,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     for (int i = 0; i < 10; i++) {
                         // Create extra root nodes to detect any serialization mismatches
@@ -2400,7 +2294,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
             emitAppend(b, 3);
             BasicInterpreter g = b.endRoot();
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginBlock();
                     for (int i = 0; i < 10; i++) {
                         // Create extra root nodes to detect any serialization mismatches

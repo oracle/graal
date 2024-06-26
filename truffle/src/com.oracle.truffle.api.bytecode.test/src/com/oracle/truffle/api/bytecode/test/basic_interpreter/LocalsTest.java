@@ -133,14 +133,13 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
 
             BytecodeLocal l0 = b.createLocal("l0", null);
-            BytecodeLocal e = b.createLocal("e", null);
 
             // l0 = 1
             b.beginStoreLocal(l0);
             b.emitLoadConstant(1L);
             b.endStoreLocal();
 
-            b.beginFinallyTry(e, () -> {
+            b.beginFinallyTry(() -> {
                 // finally block
                 b.beginBlock();
                 BytecodeLocal l1 = b.createLocal("l1", null);

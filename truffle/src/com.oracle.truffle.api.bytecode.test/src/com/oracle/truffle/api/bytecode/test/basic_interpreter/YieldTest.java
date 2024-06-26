@@ -242,7 +242,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         RootCallTarget root = parse("yieldFromFinally", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginYield();
                 b.emitLoadConstant(4L);
                 b.endYield();
@@ -572,7 +572,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         BasicInterpreter rootNode = parseNode("yieldFromFinally", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry(b.createLocal(), () -> {
+            b.beginFinallyTry(() -> {
                 b.beginYield();
                 b.beginIncrementValue();
                 b.emitLoadConstant(4L);
