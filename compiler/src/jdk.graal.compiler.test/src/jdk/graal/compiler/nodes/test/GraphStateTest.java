@@ -69,7 +69,7 @@ public class GraphStateTest extends GraalCompilerTest {
         Assert.assertFalse(andGraphState.isAfterStages(GraphState.MandatoryStages.getFromName("enterprise").getHighTier()));
         Assert.assertFalse(andGraphState.isAfterStages(GraphState.MandatoryStages.getFromName("").getHighTier()));
 
-        Assert.assertEquals(1, andGraphState.countMissingStages(GraphState.MandatoryStages.ECONOMY.getHighTier()));
+        Assert.assertEquals(2, andGraphState.countMissingStages(GraphState.MandatoryStages.ECONOMY.getHighTier()));
         Assert.assertFalse(andGraphState.hasAllMandatoryStages(GraphState.MandatoryStages.ECONOMY));
 
         Assert.assertFalse(andGraphState.requiresFutureStages());

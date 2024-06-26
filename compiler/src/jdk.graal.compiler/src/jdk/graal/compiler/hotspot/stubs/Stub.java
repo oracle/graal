@@ -62,6 +62,7 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.Speculative;
+import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
@@ -313,6 +314,7 @@ public abstract class Stub {
         Suites defaultSuites = providers.getSuites().getDefaultSuites(options, providers.getLowerer().getTarget().arch).copy();
 
         PhaseSuite<HighTierContext> emptyHighTier = new PhaseSuite<>();
+        emptyHighTier.appendPhase(new DisableOverflownCountedLoopsPhase());
         emptyHighTier.appendPhase(new EmptyHighTier());
 
         defaultSuites.getMidTier().removeSubTypePhases(Speculative.class);

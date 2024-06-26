@@ -44,6 +44,7 @@ import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
 import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 
 public class LoopUnswitchTest extends GraalCompilerTest {
 
@@ -374,7 +375,10 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     private void test(String snippet, String referenceSnippet, LoopPolicies policies) {
         DebugContext debug = getDebugContext();
         final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
+        new DisableOverflownCountedLoopsPhase().apply(graph);
+
         final StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
+        new DisableOverflownCountedLoopsPhase().apply(referenceGraph);
 
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         new LoopUnswitchingPhase(policies, canonicalizer).apply(graph, getDefaultHighTierContext());
@@ -475,6 +479,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     public void test05() {
         final StructuredGraph graph = parseEager("manySwitch", AllowAssumptions.NO);
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        new DisableOverflownCountedLoopsPhase().apply(graph);
         new LoopUnswitchingPhase(new DefaultLoopPolicies(), canonicalizer).apply(graph, getDefaultHighTierContext());
     }
 
@@ -512,6 +517,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     @Test
     public void testImpreciseProfile() {
         final StructuredGraph graph = parseEager("testImpreciseProfileSnippet", AllowAssumptions.NO);
+        new DisableOverflownCountedLoopsPhase().apply(graph);
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         // Apply canonicalizer to inject switch probabilities
         canonicalizer.apply(graph, getDefaultHighTierContext());
