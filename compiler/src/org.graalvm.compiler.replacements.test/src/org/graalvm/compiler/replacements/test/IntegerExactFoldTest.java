@@ -48,8 +48,6 @@ import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
-import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerExactArithmeticNode;
-import org.graalvm.compiler.replacements.nodes.arithmetic.BinaryIntegerExactArithmeticSplitNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerExactArithmeticSplitNode;
 import org.junit.Assert;
 import org.junit.Test;
