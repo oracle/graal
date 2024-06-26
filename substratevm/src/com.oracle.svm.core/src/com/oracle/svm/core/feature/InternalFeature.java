@@ -26,6 +26,8 @@ package com.oracle.svm.core.feature;
 
 import java.util.Map;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.ParsingReason;
@@ -115,5 +117,21 @@ public interface InternalFeature extends Feature {
      */
     default boolean isHidden() {
         return false;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface AfterAbstractImageCreationAccess extends FeatureAccess {
+    }
+
+    /**
+     * Handler to add feature specific sections to the image. Note that it is necessary to define
+     * symbols in such sections before the normal build process to ensure CGlobals referring to them
+     * are able to pick up these symbols.
+     *
+     * @param access The supported operations that the feature can perform at this time.
+     *
+     * @since 24.2
+     */
+    default void afterAbstractImageCreation(AfterAbstractImageCreationAccess access) {
     }
 }
