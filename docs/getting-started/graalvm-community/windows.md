@@ -7,12 +7,16 @@ permalink: /docs/getting-started/windows/
 
 # Installation on Windows Platforms
 
-GraalVM Community Edition is available for Windows on the x64 architecture. 
-You can install it on Windows from an archive file (_zip_).
+GraalVM is available for Windows on the x64 architecture.
+We recommend installing GraalVM on Windows from an archive.
 
-Follow these steps to install GraalVM:
+* [Installing from an Archive](#installing-from-an-archive)
+* [Prerequisites for Native Image on Windows](#prerequisites-for-native-image-on-windows)
+* [Other Installation Options](#other-installation-options)
 
-1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **22** for the Java version, **Windows** for the operating system, and download.
+## Installing from an Archive
+
+1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **23** for the Java version, **Windows** for the operating system, and download.
 
 2. Change to the directory where you want to install GraalVM, then move the _.zip_ archive file to it.
 
@@ -100,3 +104,7 @@ gradlew.bat nativeCompile
 ```
 
 This guide was written for Windows 11, but should be valid for Windows 8 and 10.
+
+## Other Installation Options
+
+For other installation options for Windows, visit the [GraalVM Downloads page](https://www.graalvm.org/downloads/).

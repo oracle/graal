@@ -7,11 +7,10 @@ permalink: /docs/getting-started/
 
 # Getting Started with GraalVM
 
-GraalVM compiles your Java applications ahead of time into standalone binaries that start instantly, provide peak performance with no warmup, and use fewer resources.
-
+GraalVM is an advanced JDK with ahead-of-time Native Image compilation.
 Here you will find information about installing GraalVM and running basic applications with it.
 
-If you are new to GraalVM, we recommend starting with the [introduction to GraalVM](../../introduction.md), where you will find information about GraalVM's benefits, distributions available, supported platforms, features support, and licensing.
+If you are new to GraalVM, we recommend starting with the [introduction to GraalVM](../../introduction.md), where you will find information about GraalVM's benefits, distributions, certified platforms, available features, and licensing.
 
 If you have GraalVM already installed and have experience using it, you can skip this page and proceed to the in-depth [reference manuals](../../reference-manual/reference-manuals.md).
 
@@ -30,7 +29,7 @@ You can use the GraalVM JDK just like any other JDK in your IDE, so having insta
 The `java` launcher runs the JVM with Graal as the last-tier compiler.
 Check the installed Java version:
 ```shell
-$JAVA_HOME/bin/java -version
+java -version
 ```
 
 Using [GraalVM Native Image](../../reference-manual/native-image/README.md) you can compile Java bytecode into a platform-specific, self-contained native executable to achieve faster startup and a smaller footprint for your application.
@@ -47,6 +46,7 @@ public class HelloWorld {
 ```shell
 javac HelloWorld.java
 ```
+
 ```shell
 native-image HelloWorld
 ```
