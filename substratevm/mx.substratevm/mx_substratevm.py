@@ -879,6 +879,32 @@ def _cinterfacetutorial(native_image, args=None):
     mx.run([join(build_dir, 'cinterfacetutorial')])
 
 
+def _runtimedebuginfotest(native_image, args=None):
+    """Build and run the runtimedebuginfotest"""
+
+    args = [] if args is None else args
+    build_dir = join(svmbuild_dir(), 'runtimedebuginfotest')
+
+    # clean / create output directory
+    if exists(build_dir):
+        mx.rmtree(build_dir)
+    mx_util.ensure_dir_exists(build_dir)
+
+    # Build the native image from Java code
+    native_image([
+                     '-g', '-O0', '--no-fallback',
+                     '-o', join(build_dir, 'runtimedebuginfotest'),
+                     '-cp', classpath('com.oracle.svm.test'),
+                     '--features=com.oracle.svm.test.debug.RuntimeCompileDebugInfoTest$RegisterMethodsFeature',
+                     'com.oracle.svm.test.debug.RuntimeCompileDebugInfoTest',
+                 ] + svm_experimental_options([
+        '-H:DebugInfoSourceSearchPath=' + mx.project('com.oracle.svm.test').source_dirs()[0],
+        ]) + args)
+
+    # Start the native image
+    mx.run([join(build_dir, 'runtimedebuginfotest')])
+
+
 _helloworld_variants = {
     'traditional': '''
 public class HelloWorld {
@@ -1842,6 +1868,14 @@ def cinterfacetutorial(args):
     native_image_context_run(_cinterfacetutorial, args)
 
 
+@mx.command(suite.name, 'runtimedebuginfotest', 'Runs the runtime debuginfo generation test')
+def runtimedebuginfotest(args):
+    """
+    runs a native image that compiles code and creates debug info at runtime.
+    """
+    native_image_context_run(_runtimedebuginfotest, args)
+
+
 @mx.command(suite.name, 'javaagenttest', 'Runs tests for java agent with native image')
 def java_agent_test(args):
     def build_and_run(args, binary_path, native_image, agents, agents_arg):
@@ -1879,6 +1913,7 @@ def java_agent_test(args):
             build_and_run(args, join(tmp_dir, 'agenttest2'), native_image, agents, 'com.oracle.svm.test.javaagent.agent2.TestJavaAgent2,com.oracle.svm.test.javaagent.agent1.TestJavaAgent1')
 
     native_image_context_run(build_and_test_java_agent_image, args)
+
 
 @mx.command(suite.name, 'clinittest', 'Runs the ')
 def clinittest(args):

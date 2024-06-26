@@ -1119,6 +1119,10 @@ suite = {
                     "jdk.internal.misc",
                     "sun.security.jca",
                 ],
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.meta",
+                ],
             },
             "checkstyle": "com.oracle.svm.test",
             "checkstyleVersion" : "10.21.0",
