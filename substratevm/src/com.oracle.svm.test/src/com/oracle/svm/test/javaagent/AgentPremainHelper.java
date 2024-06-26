@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, 2024, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,14 +34,6 @@ public class AgentPremainHelper {
         } else {
             System.setProperty("first.load.agent", agentClass.getName());
         }
-    }
-
-    public static String getFirst() {
-        return System.getProperty("first.load.agent");
-    }
-
-    public static String getSecond() {
-        return System.getProperty("second.load.agent");
     }
 
     public static void parseOptions(String agentArgs) {
