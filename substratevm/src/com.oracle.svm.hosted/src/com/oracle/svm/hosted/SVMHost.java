@@ -76,6 +76,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
+import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -120,6 +121,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.util.HostedStringDeduplication;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.CustomTypeFieldHandler;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
@@ -532,6 +534,15 @@ public class SVMHost extends HostVM {
             message += "To fix the issue you must reset all static state from the bootclasspath and application classpath that points to the application objects. ";
             message += "If the offending code is in JDK code please file a bug with GraalVM. ";
             throw new UnsupportedFeatureException(message);
+        }
+        if (originalClass.isRecord()) {
+            for (var recordComponent : originalClass.getRecordComponents()) {
+                if (WordBase.class.isAssignableFrom(recordComponent.getType())) {
+                    throw UserError.abort("Records cannot use Word types. " +
+                                    "The equals/hashCode/toString implementation of records uses method handles, and Word types are not supported as parameters of method handle invocations. " +
+                                    "Record type: `" + originalClass.getTypeName() + "`, component: `" + recordComponent.getName() + "` of type `" + recordComponent.getType().getTypeName() + "`");
+                }
+            }
         }
     }
 
