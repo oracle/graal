@@ -993,6 +993,7 @@ suite = {
                 "java.base" : [
                     "jdk.internal.misc",
                     "sun.security.jca",
+                    "jdk.internal.org.objectweb.asm"
                 ],
             },
             "checkstyle": "com.oracle.svm.test",

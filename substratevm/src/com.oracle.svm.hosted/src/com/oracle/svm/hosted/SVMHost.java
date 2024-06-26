@@ -1087,4 +1087,17 @@ public class SVMHost extends HostVM {
         // return OpenTypeWorldFeature.loadDispatchTable(type);
         return Set.of();
     }
+
+    @Override
+    public boolean isFromJavaAgent(Class<?> clazz) {
+        if (SubstrateOptions.JavaAgent.hasBeenSet()) {
+            try {
+                String classLocation = clazz.getProtectionDomain().getCodeSource().getLocation().getFile();
+                return SubstrateOptions.JavaAgent.getValue().values().stream().map(s -> s.split("=")[0]).anyMatch(s -> s.equals(classLocation));
+            } catch (Exception e) {
+                return false;
+            }
+        }
+        return false;
+    }
 }
