@@ -26,7 +26,12 @@ package com.oracle.svm.core.heap;
 
 import com.oracle.svm.core.hub.Hybrid;
 
-/** A filler object with a variable size, for filling gaps in the heap. */
+/**
+ * A filler object with a variable size, for filling gaps in the heap. This is not a normal hybrid
+ * object and instead behaves more like a primitive array. Note that this class must have an empty
+ * reference map and that it may only be used by the GCs. We must never allocate any instances of
+ * that class at run-time.
+ */
 @Hybrid(componentType = int.class)
 public final class FillerArray {
 }
