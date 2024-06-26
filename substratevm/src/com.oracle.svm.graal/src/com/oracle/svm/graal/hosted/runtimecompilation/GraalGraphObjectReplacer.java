@@ -29,6 +29,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
+import jdk.vm.ci.meta.Local;
+import jdk.vm.ci.meta.LocalVariableTable;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 
@@ -279,7 +281,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
                  * The links to other meta objects must be set after adding to the methods to avoid
                  * infinite recursion.
                  */
-                sMethod.setLinks(createSignature(aMethod.getSignature()), createType(aMethod.getDeclaringClass()));
+                sMethod.setLinks(createSignature(aMethod.getSignature()), createType(aMethod.getDeclaringClass()), createLocalVariableTable(aMethod.getLocalVariableTable()));
             }
         }
         return sMethod;
@@ -406,6 +408,25 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             }
         }
         return sSignature;
+    }
+
+    private synchronized LocalVariableTable createLocalVariableTable(LocalVariableTable original) {
+        if (original == null) {
+            return null;
+        }
+        try {
+            Local[] origLocals = original.getLocals();
+            Local[] newLocals = new Local[origLocals.length];
+            for (int i = 0; i < newLocals.length; ++i) {
+                Local origLocal = origLocals[i];
+                JavaType origType = origLocal.getType();
+                SubstrateType newType = createType(origType);
+                newLocals[i] = new Local(origLocal.getName(), newType, origLocal.getStartBCI(), origLocal.getEndBCI(), origLocal.getSlot());
+            }
+            return new LocalVariableTable(newLocals);
+        } catch (UnsupportedFeatureException e) {
+            return null;
+        }
     }
 
     /**
