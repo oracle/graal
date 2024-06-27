@@ -71,7 +71,9 @@ public final class Arguments {
     private static final Set<String> IGNORED_XX_OPTIONS = Set.of(
                     "ReservedCodeCacheSize",
                     // `TieredStopAtLevel=0` is handled separately, other values are ignored
-                    "TieredStopAtLevel");
+                    "TieredStopAtLevel",
+                    "MaxMetaspaceSize",
+                    "HeapDumpOnOutOfMemoryError");
 
     private static final Map<String, String> MAPPED_XX_OPTIONS = Map.of(
                     "TieredCompilation", "engine.MultiTier");
@@ -258,16 +260,16 @@ public final class Arguments {
     }
 
     private static String maybeAdjustMaxHeapSize(String optionString) {
-        // (Jan 2024) Espresso uses more memory than HotSpot does, so if the user has set a very
-        // small heap size that would work on HotSpot then we have to bump it up. 32mb is too small
-        // to run Gradle's JDK version probe program which is required to use Espresso with Gradle,
-        // so, we go to the next power of two beyond that. This number can be reduced in future when
+        // (Jun 2024) Espresso uses more memory than HotSpot does, so if the user has set a very
+        // small heap size that would work on HotSpot then we have to bump it up. 64mb is too small
+        // to run Gradle's wrapper program which is required to use Espresso with Gradle, so, we
+        // go to the next power of two beyond that. This number can be reduced in future when
         // memory efficiency is better.
         if (!optionString.startsWith("-Xmx")) {
             return optionString;
         }
         long maxHeapSizeBytes = parseLong(optionString.substring(4));
-        final int floorMB = 64;
+        final int floorMB = 128;
         if (maxHeapSizeBytes < floorMB * 1024 * 1024) {
             return "-Xmx" + floorMB + "m";
         } else {

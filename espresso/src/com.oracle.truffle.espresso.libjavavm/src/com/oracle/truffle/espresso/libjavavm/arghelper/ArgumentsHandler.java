@@ -73,6 +73,8 @@ public class ArgumentsHandler {
     private boolean helpExpert = false;
     private boolean helpInternal = false;
 
+    private boolean showIgnored;
+
     @SuppressWarnings("this-escape")
     public ArgumentsHandler(Context.Builder builder, Set<String> ignoredXXOptions, Map<String, String> mappedXXOptions, JNIJavaVMInitArgs args) {
         assert mappedXXOptions.values().stream().allMatch(s -> s.contains("."));
@@ -81,10 +83,11 @@ public class ArgumentsHandler {
         this.nativeAccess = new Native(this);
         this.modulePropertyCounter = new ModulePropertyCounter(builder);
         this.polyglotAccess = new PolyglotArgs(builder, this);
-        this.experimental = checkExperimental(args);
+        parseEarlyArguments(args);
     }
 
-    private static boolean checkExperimental(JNIJavaVMInitArgs args) {
+    private void parseEarlyArguments(JNIJavaVMInitArgs args) {
+        boolean foundFirstExperimental = false;
         Pointer p = (Pointer) args.getOptions();
         for (int i = 0; i < args.getNOptions(); i++) {
             JNIJavaVMOption option = (JNIJavaVMOption) p.add(i * SizeOf.get(JNIJavaVMOption.class));
@@ -94,14 +97,28 @@ public class ArgumentsHandler {
                 switch (optionString) {
                     case "--experimental-options":
                     case "--experimental-options=true":
-                        return true;
+                        if (!foundFirstExperimental) {
+                            this.experimental = true;
+                        }
+                        foundFirstExperimental = true;
+                        break;
                     case "--experimental-options=false":
-                        return false;
+                        if (!foundFirstExperimental) {
+                            this.experimental = false;
+                        }
+                        foundFirstExperimental = true;
+                        break;
+                    case "--log.level=CONFIG":
+                    case "--log.level=FINE":
+                    case "--log.level=FINER":
+                    case "--log.level=FINEST":
+                    case "--log.level=ALL":
+                        this.showIgnored = true;
+                        break;
                     default:
                 }
             }
         }
-        return false;
     }
 
     public boolean isModulesOption(String key) {
@@ -170,8 +187,9 @@ public class ArgumentsHandler {
             }
         }
         if (ignoredXXOptions.contains(name)) {
-            // ignore
-            warn("Ignoring option: " + optionString);
+            if (showIgnored) {
+                warn("Ignoring option: " + optionString);
+            }
             return;
         }
         String mapped = mappedXXOptions.get(name);
