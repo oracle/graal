@@ -37,6 +37,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.BoxNodeOptimizationPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import jdk.graal.compiler.phases.util.GraphOrder;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -252,6 +253,7 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
     public void testCompare() throws InvalidInstalledCodeException {
         final OptionValues testOptions = new OptionValues(getInitialOptions(), DefaultLoopPolicies.Options.FullUnrollMaxNodes, 10000, DefaultLoopPolicies.Options.ExactFullUnrollMaxNodes, 10000);
         StructuredGraph g = parseEager(getResolvedJavaMethod("snippetConstantCompare"), AllowAssumptions.NO, testOptions);
+        new DisableOverflownCountedLoopsPhase().apply(g);
         CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
         new LoopFullUnrollPhase(createCanonicalizerPhase(), new DefaultLoopPolicies()).apply(g, getDefaultHighTierContext());
         CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());

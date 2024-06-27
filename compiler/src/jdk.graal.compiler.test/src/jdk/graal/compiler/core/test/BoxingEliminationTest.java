@@ -32,6 +32,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
+import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.junit.Assert;
@@ -387,6 +388,8 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         graph = parseEager(snippet, AllowAssumptions.NO);
         HighTierContext context = getDefaultHighTierContext();
         CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase();
+        new DisableOverflownCountedLoopsPhase().apply(graph);
+
         canonicalizer.apply(graph, context);
         createInliningPhase().apply(graph, context);
         if (loopPeeling) {
@@ -400,6 +403,8 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         canonicalizer.apply(graph, context);
 
         StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.YES);
+        new DisableOverflownCountedLoopsPhase().apply(referenceGraph);
+
         createInliningPhase().apply(referenceGraph, context);
         new DeadCodeEliminationPhase().apply(referenceGraph);
         this.createCanonicalizerPhase().apply(referenceGraph, context);
