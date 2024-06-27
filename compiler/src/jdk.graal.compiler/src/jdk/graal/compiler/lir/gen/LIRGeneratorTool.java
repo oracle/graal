@@ -274,6 +274,12 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
         throw GraalError.unimplemented("Array.copy with variable stride substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }
 
+    /**
+     * Variants of {@link jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode}. This
+     * intrinsic calculates the code range and codepoint length of strings in various encodings. The
+     * code range of a string is a flag that coarsely describes upper and lower bounds of all
+     * codepoints contained in a string, or indicates whether a string was encoded correctly.
+     */
     enum CalcStringAttributesEncoding {
         /**
          * Calculate the code range of a LATIN-1/ISO-8859-1 string. The result is either CR_7BIT or
@@ -355,6 +361,62 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
          * The string is not encoded correctly in the given multi-byte/variable-width encoding.
          */
         public static final int CR_BROKEN_MULTIBYTE = CR_BROKEN | FLAG_MULTIBYTE;
+
+        /**
+         * Copyright (c) 2008-2010 Bjoern Hoehrmann <bjoern@hoehrmann.de>
+         *
+         * Permission is hereby granted, free of charge, to any person obtaining a copy of this
+         * software and associated documentation files (the "Software"), to deal in the Software
+         * without restriction, including without limitation the rights to use, copy, modify, merge,
+         * publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+         * persons to whom the Software is furnished to do so, subject to the following conditions:
+         *
+         * The above copyright notice and this permission notice shall be included in all copies or
+         * substantial portions of the Software.
+         *
+         * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+         * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+         * PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+         * FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+         * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+         * DEALINGS IN THE SOFTWARE.
+         *
+         * See http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
+         *
+         * <p>
+         * Automaton for decoding/verifying UTF-8 strings. To use, initialize a state variable to
+         * {@link #UTF_8_STATE_MACHINE_ACCEPTING_STATE}, and calculate next states with
+         * {@link #utf8GetNextState(int, int)}. If the state after consuming all bytes of a UTF-8
+         * string is {@link #UTF_8_STATE_MACHINE_ACCEPTING_STATE}, the string is valid.
+         */
+        public static final byte[] UTF_8_STATE_MACHINE = {
+                        // The first part of the table maps bytes to character classes
+                        // to reduce the size of the transition table and create bitmasks.
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+                        7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+                        8, 8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                        10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 11, 6, 6, 6, 5, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+
+                        // The second part is a transition table that maps a combination
+                        // of a state of the automaton and a character class to a state.
+                        0, 12, 24, 36, 60, 96, 84, 12, 12, 12, 48, 72, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+                        12, 0, 12, 12, 12, 12, 12, 0, 12, 0, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12, 12,
+                        12, 12, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 12, 12, 24, 12, 12,
+                        12, 12, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12, 12, 36, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12,
+                        12, 36, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
+        };
+        public static final int UTF_8_STATE_MACHINE_ACCEPTING_STATE = 0;
+
+        private static final int POSSIBLE_BYTE_VALUES = 256;
+
+        public static int utf8GetNextState(int currentState, int currentByte) {
+            final int byteClassification = UTF_8_STATE_MACHINE[currentByte];
+            return UTF_8_STATE_MACHINE[POSSIBLE_BYTE_VALUES + currentState + byteClassification];
+        }
     }
 
     @SuppressWarnings("unused")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,37 +25,47 @@
 package jdk.graal.compiler.truffle.test.strings;
 
 import java.util.List;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import java.util.stream.Collectors;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
-import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@RunWith(Parameterized.class)
-public class TStringOpsCompareConstantTest extends TStringOpsCompareTest {
+public abstract class TStringOpsConstantTest<T extends Node> extends TStringOpsTest<T> {
 
-    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {12}")
-    public static List<Object[]> data() {
-        return TStringOpsConstantTest.reduceTestData(TStringOpsCompareTest.data(), 6, 7);
+    Object[] constantArgs;
+
+    final byte[] arrayA;
+    final int offsetA;
+    final int lengthA;
+
+    protected TStringOpsConstantTest(Class<T> nodeClass, byte[] arrayA, int offsetA, int lengthA) {
+        super(nodeClass);
+        this.arrayA = arrayA;
+        this.offsetA = offsetA;
+        this.lengthA = lengthA;
     }
 
-    final Object[] constantArgs;
+    static List<Object[]> reduceTestData(List<Object[]> data, int argIndex, int... accept) {
+        // constant folding tests take much longer than intrinsic stub tests, reduce number of test
+        // cases
+        return data.stream().filter(args -> {
+            int length = (int) args[argIndex];
+            for (int i : accept) {
+                if (length == i) {
+                    return true;
+                }
+            }
+            return false;
+        }).collect(Collectors.toList());
+    }
 
-    public TStringOpsCompareConstantTest(
-                    byte[] arrayA, int offsetA, int strideA,
-                    byte[] arrayB, int offsetB, int strideB, int lengthCMP) {
-        super(arrayA, offsetA, strideA, arrayB, offsetB, strideB, lengthCMP);
-        constantArgs = new Object[]{DUMMY_LOCATION,
-                        arrayA, offsetA, strideA,
-                        arrayB, offsetB, strideB, lengthCMP};
+    void setConstantArgs(Object... args) {
+        constantArgs = args;
     }
 
     @Override
@@ -71,23 +81,12 @@ public class TStringOpsCompareConstantTest extends TStringOpsCompareTest {
 
     @Override
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean ignoreForceCompile, boolean ignoreInstallAsDefault, OptionValues options) {
+        // Force recompile if constant binding should be done
         return super.getCode(installedCodeOwner, graph, true, false, options);
     }
 
     @Override
-    @Test
-    public void testMemCmp() {
-        test(getMemcmpWithStrideIntl(), null, DUMMY_LOCATION,
-                        arrayA, offsetA, strideA,
-                        arrayB, offsetB, strideB, lengthCMP);
-    }
-
-    @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
-        if (isSupportedArchitecture()) {
-            if ((lengthCMP << Math.max(strideA, strideB)) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(graph.getOptions())) {
-                assertConstantReturn(graph);
-            }
-        }
+        assertConstantReturnForLength(graph, lengthA);
     }
 }

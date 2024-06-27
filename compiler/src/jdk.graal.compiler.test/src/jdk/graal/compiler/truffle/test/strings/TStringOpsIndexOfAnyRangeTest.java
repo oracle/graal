@@ -27,11 +27,12 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 
 @RunWith(Parameterized.class)
 public class TStringOpsIndexOfAnyRangeTest extends TStringOpsTest<ArrayIndexOfNode> {

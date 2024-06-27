@@ -26,18 +26,20 @@ package jdk.graal.compiler.truffle.test.strings;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
-import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
+
 @RunWith(Parameterized.class)
 public class TStringOpsCalcStringAttributesLatin1Test extends TStringOpsTest<CalcStringAttributesNode> {
 
     @Parameters(name = "{index}: args: {1}, {2}")
-    public static Iterable<Object[]> data() {
+    public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;
         int padding = 20;
@@ -63,11 +65,11 @@ public class TStringOpsCalcStringAttributesLatin1Test extends TStringOpsTest<Cal
         return ret;
     }
 
-    private final Object array;
-    private final int offset;
-    private final int length;
+    final byte[] array;
+    final int offset;
+    final int length;
 
-    public TStringOpsCalcStringAttributesLatin1Test(Object array, int offset, int length) {
+    public TStringOpsCalcStringAttributesLatin1Test(byte[] array, int offset, int length) {
         super(CalcStringAttributesNode.class);
         this.array = array;
         this.offset = offset;
