@@ -25,6 +25,8 @@
 package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
 import jdk.graal.compiler.core.common.util.MethodKey;
+import jdk.graal.compiler.hotspot.CompilationContext;
+import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleElementCache;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
@@ -51,10 +53,13 @@ final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected TruffleCompilerImpl createCompiler(TruffleCompilable ast) {
-        HotSpotTruffleCompilerImpl compiler = HotSpotTruffleCompilerImpl.create(runtime());
-        compiler.initialize(ast, true);
-        return compiler;
+        try (CompilationContext compilationContext = HotSpotGraalServices.enterGlobalCompilationContext()) {
+            HotSpotTruffleCompilerImpl compiler = HotSpotTruffleCompilerImpl.create(runtime());
+            compiler.initialize(ast, true);
+            return compiler;
+        }
     }
 
     final class HostMethodInfoCache extends TruffleElementCache<ResolvedJavaMethod, HostMethodInfo> {
