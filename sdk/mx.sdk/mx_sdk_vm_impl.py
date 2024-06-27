@@ -2501,6 +2501,7 @@ class PolyglotIsolateLibraryBuildTask(GraalVmLibraryBuildTask):
             '--features=com.oracle.svm.enterprise.truffle.PolyglotIsolateGuestFeature',
             '-H:APIFunctionPrefix=truffle_isolate_',
         ] + svm_experimental_options([
+            '-H:+IgnoreMaxHeapSizeWhileInVMOperation',
             '-H:+BuildOutputPrefix',
             '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
         ]) + mx.get_runtime_jvm_args(self.subject.native_image_jar_distributions) + \
