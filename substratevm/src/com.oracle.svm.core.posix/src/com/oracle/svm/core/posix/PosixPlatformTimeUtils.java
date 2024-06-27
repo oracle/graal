@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.posix;
 
-package com.oracle.svm.core.jfr;
+import org.graalvm.nativeimage.StackValue;
 
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.posix.headers.Time;
+import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.core.util.PlatformTimeUtils;
 
-@TargetClass(className = "jdk.jfr.internal.JVM$ChunkRotationMonitor", onlyWith = {HasJfrSupport.class, JDK21OrEarlier.class})
-public final class Target_jdk_jfr_internal_JVM_ChunkRotationMonitor {
+@AutomaticallyRegisteredImageSingleton(PlatformTimeUtils.class)
+public final class PosixPlatformTimeUtils extends PlatformTimeUtils {
+
+    @Override
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/posix/os_posix.cpp#L1409-L1415")
+    protected SecondsNanos javaTimeSystemUTC() {
+        Time.timespec ts = StackValue.get(Time.timespec.class);
+        int status = PosixUtils.clock_gettime(Time.CLOCK_REALTIME(), ts);
+        PosixUtils.checkStatusIs0(status, "javaTimeSystemUTC: clock_gettime(CLOCK_REALTIME) failed.");
+        return new SecondsNanos(ts.tv_sec(), ts.tv_nsec());
+    }
 }

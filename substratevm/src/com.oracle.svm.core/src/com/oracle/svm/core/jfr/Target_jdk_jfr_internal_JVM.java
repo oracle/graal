@@ -43,6 +43,7 @@ import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
 import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
+import com.oracle.svm.core.util.PlatformTimeUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -196,6 +197,13 @@ public final class Target_jdk_jfr_internal_JVM {
     @TargetElement(onlyWith = JDK22OrLater.class)
     public static long getTicksFrequency() {
         return JfrTicks.getTicksFrequency();
+    }
+
+    /** See {@code JVM#nanosNow}. */
+    @Substitute
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    public static long nanosNow() {
+        return PlatformTimeUtils.singleton().nanosNow();
     }
 
     /** See {@link JVM#log}. */
