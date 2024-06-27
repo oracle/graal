@@ -33,13 +33,13 @@ import java.lang.invoke.StringConcatFactory;
 import java.lang.invoke.TypeDescriptor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.lang.runtime.ObjectMethods;
 import java.lang.runtime.SwitchBootstraps;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
@@ -47,6 +47,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -161,7 +162,14 @@ public class BootstrapMethodConfiguration implements InternalFeature {
      * Check if the provided method is allowed to be executed at build time.
      */
     public boolean isCondyAllowedAtBuildTime(Executable method) {
-        return method != null && condyBuildTimeAllowList.contains(method);
+        return method != null && (condyBuildTimeAllowList.contains(method) || isProxyCondy(method));
+    }
+
+    /**
+     * Every {@link Proxy} class has its own bootstrap method that is used for a constant dynamic.
+     */
+    private static boolean isProxyCondy(Executable method) {
+        return Proxy.isProxyClass(method.getDeclaringClass()) && method.getName().equals("$getMethod");
     }
 
     /**
