@@ -30,9 +30,12 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 
-public final class SubstrateCompilationResult extends CompilationResult {
+public class SubstrateCompilationResult extends CompilationResult {
 
     private List<NodeSourcePosition> deoptimizationSourcePositions;
+
+    private int frameSize;
+    private int framePointerSaveAreaOffset;
 
     public SubstrateCompilationResult(CompilationIdentifier compilationId, String name) {
         super(compilationId, name);
@@ -46,6 +49,22 @@ public final class SubstrateCompilationResult extends CompilationResult {
         assert this.deoptimizationSourcePositions == null;
         assert deoptimizationSourcePositions.get(0) == null : "First index is reserved for unknown source positions";
         this.deoptimizationSourcePositions = deoptimizationSourcePositions;
+    }
+
+    public int getFrameSize() {
+        return frameSize;
+    }
+
+    public void setFrameSize(int frameSize) {
+        this.frameSize = frameSize;
+    }
+
+    public int getFramePointerSaveAreaOffset() {
+        return framePointerSaveAreaOffset;
+    }
+
+    public void setFramePointerSaveAreaOffset(int framePointerSaveAreaOffset) {
+        this.framePointerSaveAreaOffset = framePointerSaveAreaOffset;
     }
 
     @Override
