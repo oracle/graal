@@ -31,14 +31,14 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
-final class JNIHeaderDirectivesJDK23OrLater extends JNIHeaderDirectives {
+final class JNIHeaderDirectivesJDKLatest extends JNIHeaderDirectives {
     @Override
     public boolean isInConfiguration() {
-        return JavaVersionUtil.JAVA_SPEC >= 22;
+        return JavaVersionUtil.JAVA_SPEC > 21;
     }
 }
 
-@CContext(JNIHeaderDirectivesJDK23OrLater.class)
+@CContext(JNIHeaderDirectivesJDKLatest.class)
 public final class JNIVersionJDKLatest {
 
     // Checkstyle: stop

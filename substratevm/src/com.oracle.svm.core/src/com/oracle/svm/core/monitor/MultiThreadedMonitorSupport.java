@@ -46,7 +46,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDK23OrLater;
+import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.JavaMonitorInflateEvent;
 import com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer.JavaMonitorConditionObject;
@@ -536,10 +536,10 @@ final class Target_jdk_internal_misc_Blocker {
     public static native void endJDK22(long compensateReturn);
 
     @Alias
-    @TargetElement(onlyWith = JDK23OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static native boolean begin();
 
     @Alias
-    @TargetElement(onlyWith = JDK23OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static native void end(boolean attempted);
 }
