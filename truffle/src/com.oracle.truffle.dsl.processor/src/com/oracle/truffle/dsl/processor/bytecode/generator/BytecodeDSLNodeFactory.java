@@ -188,7 +188,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     // Implementations of public classes that Truffle interpreters interact with.
     private final CodeTypeElement bytecodeRootNodesImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeRootNodesImpl");
-    private final CodeTypeElement bytecodeLabelImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeLabelImpl");
 
     // Helper classes that map instructions/operations to constant integral values.
     private final CodeTypeElement instructionsElement = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "Instructions");
@@ -299,7 +298,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         // Define implementations for the public classes that Truffle interpreters interact with.
         bytecodeNodeGen.add(new BytecodeRootNodesImplFactory().create());
-        bytecodeNodeGen.add(new BytecodeLabelImplFactory().create());
 
         // Define helper classes containing the constants for instructions and operations.
         bytecodeNodeGen.add(new InstructionConstantsFactory().create());
@@ -1814,6 +1812,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         CodeTypeElement unresolvedBranchImmediate = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "UnresolvedBranchTarget");
 
         private final CodeTypeElement bytecodeLocalImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeLocalImpl");
+        private final CodeTypeElement bytecodeLabelImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeLabelImpl");
 
         TypeMirror unresolvedLabelsType = generic(HashMap.class, types.BytecodeLabel, generic(context.getDeclaredType(ArrayList.class), context.getDeclaredType(Integer.class)));
 
@@ -2515,10 +2514,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         class BytecodeLocalImplFactory {
-
             private CodeTypeElement create() {
-                bytecodeLocalImpl.setSuperClass(generic(types.BytecodeLocal, model.templateType.asType()));
-                bytecodeLocalImpl.setEnclosingElement(bytecodeNodeGen);
+                bytecodeLocalImpl.setSuperClass(types.BytecodeLocal);
 
                 bytecodeLocalImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "frameIndex"));
                 bytecodeLocalImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "localIndex"));
@@ -2547,12 +2544,107 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startReturn().string("frameIndex - USER_LOCALS_START_IDX").end();
                 return ex;
             }
+        }
 
+        class BytecodeLabelImplFactory {
+            private CodeTypeElement create() {
+                bytecodeLabelImpl.setSuperClass(types.BytecodeLabel);
+
+                bytecodeLabelImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "id"));
+                bytecodeLabelImpl.add(new CodeVariableElement(context.getType(int.class), "bci"));
+                bytecodeLabelImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "declaringOp"));
+
+                CodeExecutableElement constructor = createConstructorUsingFields(Set.of(), bytecodeLabelImpl, null);
+                CodeTree tree = constructor.getBodyTree();
+                CodeTreeBuilder b = constructor.createBuilder();
+                b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
+                b.tree(tree);
+                bytecodeLabelImpl.add(constructor);
+
+                bytecodeLabelImpl.add(createIsDefined());
+                bytecodeLabelImpl.add(createEquals());
+                bytecodeLabelImpl.add(createHashCode());
+
+                return bytecodeLabelImpl;
+            }
+
+            private CodeExecutableElement createIsDefined() {
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(boolean.class), "isDefined");
+                CodeTreeBuilder b = ex.createBuilder();
+                b.startReturn().string("bci != -1").end();
+                return ex;
+            }
+
+            private CodeExecutableElement createEquals() {
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(boolean.class), "equals");
+                ex.addParameter(new CodeVariableElement(context.getType(Object.class), "other"));
+
+                CodeTreeBuilder b = ex.createBuilder();
+                b.startIf().string("!(other instanceof BytecodeLabelImpl)").end().startBlock();
+                b.returnFalse();
+                b.end();
+
+                b.startReturn().string("this.id == ((BytecodeLabelImpl) other).id").end();
+                return ex;
+            }
+
+            private CodeExecutableElement createHashCode() {
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(int.class), "hashCode");
+                CodeTreeBuilder b = ex.createBuilder();
+
+                b.startReturn().string("this.id").end();
+                return ex;
+            }
+        }
+
+        class BytecodeLocalSerializationImplFactory {
+            private CodeTypeElement create() {
+                CodeTypeElement result = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeLocalSerializationImpl");
+                result.setSuperClass(generic(types.BytecodeLocal, model.templateType.asType()));
+                result.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "contextDepth"));
+                result.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "localIndex"));
+
+                CodeExecutableElement constructor = result.add(createConstructorUsingFields(Set.of(), result, null));
+                CodeTree tree = constructor.getBodyTree();
+                CodeTreeBuilder b = constructor.createBuilder();
+                b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
+                b.tree(tree);
+
+                result.add(createGetLocalOffset());
+
+                return result;
+            }
+
+            private CodeExecutableElement createGetLocalOffset() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeLocal, "getLocalOffset");
+                CodeTreeBuilder b = ex.createBuilder();
+                emitThrowIllegalStateException(b, null);
+                return ex;
+            }
+        }
+
+        class BytecodeLabelSerializationImplFactory {
+            private CodeTypeElement create() {
+                CodeTypeElement result = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeLabelSerializationImpl");
+                result.setSuperClass(generic(types.BytecodeLabel, model.templateType.asType()));
+                result.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "contextDepth"));
+                result.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "localIndex"));
+
+                CodeExecutableElement constructor = result.add(createConstructorUsingFields(Set.of(), result, null));
+                CodeTree tree = constructor.getBodyTree();
+                CodeTreeBuilder b = constructor.createBuilder();
+                b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
+                b.tree(tree);
+
+                return result;
+            }
         }
 
         private SerializationStateElements serializationElements;
         private DeserializationStateElements deserializationElements;
         private CodeVariableElement serialization;
+        private CodeTypeElement bytecodeLocalSerializationImpl;
+        private CodeTypeElement bytecodeLabelSerializationImpl;
 
         private CodeTypeElement create() {
             addJavadoc(builder, """
@@ -2572,6 +2664,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(createOperationNames());
 
             builder.add(new BytecodeLocalImplFactory().create());
+            builder.add(new BytecodeLabelImplFactory().create());
 
             builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), bytecodeRootNodesImpl.asType(), "nodes"));
             builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(CharSequence.class), "reparseReason"));
@@ -2593,6 +2686,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 deserializationElements = new DeserializationStateElements();
                 builder.add(deserializationElements.deserializationState);
+                bytecodeLocalSerializationImpl = new BytecodeLocalSerializationImplFactory().create();
+                builder.add(bytecodeLocalSerializationImpl);
+                bytecodeLabelSerializationImpl = new BytecodeLabelSerializationImplFactory().create();
+                builder.add(bytecodeLabelSerializationImpl);
             }
 
             builder.add(createReparseConstructor());
@@ -3208,35 +3305,38 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     before.statement("serialization.language = language");
                     break;
                 case LOCAL:
-                    serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + ").frameIndex /* context depth */");
-                    serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + ").localIndex /* local index */");
+                    String serializationLocalCls = bytecodeLocalSerializationImpl.getSimpleName().toString();
+                    serializationElements.writeShort(after, String.format("(short) ((%s) %s).contextDepth", serializationLocalCls, argumentName));
+                    serializationElements.writeShort(after, String.format("(short) ((%s) %s).localIndex", serializationLocalCls, argumentName));
                     break;
                 case LOCAL_ARRAY:
                     serializationElements.writeShort(after, "(short) " + argumentName + ".length");
+                    // Emit the depth once then assert that all locals have the same depth.
                     String depth = argumentName + "Depth";
                     after.startIf().string(argumentName, ".length > 0").end().startBlock();
                     after.startDeclaration(type(short.class), depth);
                     after.cast(type(short.class));
-                    after.startParantheses().cast(bytecodeLocalImpl.asType()).string(argumentName, "[0]").end();
-                    after.string(".frameIndex /* context depth */");
+                    after.startParantheses().cast(bytecodeLocalSerializationImpl.asType()).string(argumentName, "[0]").end();
+                    after.string(".contextDepth");
                     after.end();
 
                     serializationElements.writeShort(after, depth);
 
                     after.startFor().string("int i = 0; i < " + argumentName + ".length; i++").end().startBlock();
-                    after.startDeclaration(bytecodeLocalImpl.asType(), "localImpl");
-                    after.cast(bytecodeLocalImpl.asType()).string(argumentName, "[i]");
+                    after.startDeclaration(bytecodeLocalSerializationImpl.asType(), "localImpl");
+                    after.cast(bytecodeLocalSerializationImpl.asType()).string(argumentName, "[i]");
                     after.end();
 
-                    after.startAssert().string(depth, " == (short) localImpl.frameIndex /* context depth */").end();
-                    serializationElements.writeShort(after, "(short) localImpl.localIndex /* local index */");
+                    after.startAssert().string(depth, " == (short) localImpl.contextDepth").end();
+                    serializationElements.writeShort(after, "(short) localImpl.localIndex");
 
                     after.end(); // for
                     after.end(); // if
                     break;
                 case LABEL:
-                    serializationElements.writeShort(after, "(short) ((BytecodeLabelImpl) " + argumentName + ").bci /* context depth */");
-                    serializationElements.writeShort(after, "(short) ((BytecodeLabelImpl) " + argumentName + ").declaringOp /* label index */");
+                    String serializationLabelCls = bytecodeLabelSerializationImpl.getSimpleName().toString();
+                    serializationElements.writeShort(after, String.format("(short) ((%s) %s).contextDepth", serializationLabelCls, argumentName));
+                    serializationElements.writeShort(after, String.format("(short) ((%s) %s).localIndex", serializationLabelCls, argumentName));
                     break;
                 case TAGS:
                     serializationElements.writeInt(after, "encodedTags");
@@ -3285,9 +3385,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
                 case LOCAL_ARRAY:
                     b.startDeclaration(argType, argumentName).startNewArray(arrayOf(types.BytecodeLocal), CodeTreeBuilder.singleString("buffer.readShort()")).end().end();
+                    b.startIf().string(argumentName, ".length != 0").end().startBlock();
                     b.declaration(deserializationElements.deserializationState.asType(), "setterContext", "context.getContext(buffer.readShort())");
                     b.startFor().string("int i = 0; i < ", argumentName, ".length; i++").end().startBlock();
                     b.statement(argumentName, "[i] = setterContext.locals.get(buffer.readShort())");
+                    b.end(); // if
                     b.end();
                     break;
                 case OBJECT:
@@ -3371,21 +3473,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     serializationElements.writeShort(b, "nameId");
                     serializationElements.writeShort(b, "infoId");
                 });
-                b.startReturn();
-
-                b.startNew(bytecodeLocalImpl.asType());
-                // Stuff the data needed for serialization into the locals' fields
+                b.startReturn().startNew(bytecodeLocalSerializationImpl.asType());
                 b.string("serialization.depth");
                 b.string("serialization.localCount++");
-                if (model.usesBoxingElimination()) {
-                    b.string("-1");
-                }
-                if (model.enableLocalScoping) {
-                    b.string("null");
-                }
-                b.end(); // new
-
-                b.end();
+                b.end(2);
                 b.end();
             }
 
@@ -3464,8 +3555,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     serializationElements.writeShort(b, serializationElements.codeCreateLabel);
                 });
 
-                b.startReturn().startNew(bytecodeLabelImpl.asType());
-                b.string("numLabels++");
+                b.startReturn().startNew(bytecodeLabelSerializationImpl.asType());
                 b.string(serialization.getName(), ".", serializationElements.depth.getName());
                 b.string(serialization.getName(), ".", serializationElements.labelCount.getName(), "++");
                 b.end(2);
@@ -13418,52 +13508,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return List.of(storeParentFrameInArguments, restoreParentFrameFromArguments);
         }
 
-    }
-
-    class BytecodeLabelImplFactory {
-        private CodeTypeElement create() {
-            bytecodeLabelImpl.setSuperClass(generic(types.BytecodeLabel, model.templateType.asType()));
-            bytecodeLabelImpl.setEnclosingElement(bytecodeNodeGen);
-
-            bytecodeLabelImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "id"));
-            bytecodeLabelImpl.add(new CodeVariableElement(context.getType(int.class), "bci"));
-            bytecodeLabelImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "declaringOp"));
-
-            bytecodeLabelImpl.add(createConstructorUsingFields(Set.of(), bytecodeLabelImpl, null));
-            bytecodeLabelImpl.add(createIsDefined());
-            bytecodeLabelImpl.add(createEquals());
-            bytecodeLabelImpl.add(createHashCode());
-
-            return bytecodeLabelImpl;
-        }
-
-        private CodeExecutableElement createIsDefined() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(boolean.class), "isDefined");
-            CodeTreeBuilder b = ex.createBuilder();
-            b.startReturn().string("bci != -1").end();
-            return ex;
-        }
-
-        private CodeExecutableElement createEquals() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(boolean.class), "equals");
-            ex.addParameter(new CodeVariableElement(context.getType(Object.class), "other"));
-
-            CodeTreeBuilder b = ex.createBuilder();
-            b.startIf().string("!(other instanceof BytecodeLabelImpl)").end().startBlock();
-            b.returnFalse();
-            b.end();
-
-            b.startReturn().string("this.id == ((BytecodeLabelImpl) other).id").end();
-            return ex;
-        }
-
-        private CodeExecutableElement createHashCode() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(int.class), "hashCode");
-            CodeTreeBuilder b = ex.createBuilder();
-
-            b.startReturn().string("this.id").end();
-            return ex;
-        }
     }
 
     class ContinuationRootNodeImplFactory {

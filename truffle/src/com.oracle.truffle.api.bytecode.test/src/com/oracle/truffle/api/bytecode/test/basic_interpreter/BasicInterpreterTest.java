@@ -693,6 +693,28 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testTeeLocalRangeEmptyRange() {
+        // teeRange([], []));
+        // return 42;
+
+        RootCallTarget root = parse("teeLocalRangeEmptyRange", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginTeeLocalRange(new BytecodeLocal[] {});
+            b.emitLoadConstant(new long[] {});
+            b.endTeeLocalRange();
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(42L, root.call());
+    }
+
+    @Test
     public void testAddConstant() {
         // return 40 + arg0
         RootCallTarget root = parse("addConstant", b -> {

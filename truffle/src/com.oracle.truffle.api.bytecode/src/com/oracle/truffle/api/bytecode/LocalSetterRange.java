@@ -149,6 +149,9 @@ public final class LocalSetterRange {
     }
 
     public static LocalSetterRange constantOf(BytecodeLocal[] locals) {
+        if (locals.length == 0) {
+            return CACHE[0][0];
+        }
         int start = locals[0].getLocalOffset();
         for (int i = 1; i < locals.length; i++) {
             if (start + i != locals[i].getLocalOffset()) {

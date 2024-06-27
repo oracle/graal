@@ -56,6 +56,7 @@ public abstract class BytecodeLabel {
      *
      * @since 24.1
      */
-    public BytecodeLabel() {
+    public BytecodeLabel(Object token) {
+        BytecodeRootNodes.checkToken(token);
     }
 }
