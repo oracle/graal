@@ -67,9 +67,7 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -954,7 +952,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
 
     @Parameterized.Parameter(0) public String function;
     @Parameterized.Parameter(1) public InputConsumer assertion;
-    @Parameterized.Parameter(2) public ExpectedExceptionConsumer expectedException;
+    @Parameterized.Parameter(2) public TestRunnableConsumer expectedException;
     /**
      * This parameter is only used to indicate whether the call is expected to work or not.
      */
@@ -985,19 +983,18 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
         return pointerTypeId;
     }
 
-    @SuppressWarnings("deprecation") @Rule public ExpectedException thrown = ExpectedException.none();
-
     @Test
     public void test() {
         Value write = polyglotWritePointerLibrary.getMember(function);
         Assert.assertNotNull("Function not found: " + function, write);
-        expectedException.accept(thrown);
-        Object[] arguments = parameters.getArguments();
-        write.execute(arguments);
-        Object modifiedArray = arguments[0];
-        Object freshPolyglotArray = parameters.getArguments()[0];
-        int idx = (Integer) arguments[1];
-        Object value = arguments[2];
-        assertion.accept(modifiedArray, PolyglotArrayBuilder.create(freshPolyglotArray), idx, value);
+        expectedException.accept(() -> {
+            Object[] arguments = parameters.getArguments();
+            write.execute(arguments);
+            Object modifiedArray = arguments[0];
+            Object freshPolyglotArray = parameters.getArguments()[0];
+            int idx = (Integer) arguments[1];
+            Object value = arguments[2];
+            assertion.accept(modifiedArray, PolyglotArrayBuilder.create(freshPolyglotArray), idx, value);
+        });
     }
 }
