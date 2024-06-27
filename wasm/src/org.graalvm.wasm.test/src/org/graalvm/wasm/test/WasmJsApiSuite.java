@@ -965,6 +965,14 @@ public class WasmJsApiSuite {
         });
     }
 
+    public void interopReadBuffer(Object buffer, long byteOffset, byte[] destination, int destinationOffset, int length)
+                    throws UnsupportedMessageException, InvalidBufferOffsetException {
+        InteropLibrary interop = InteropLibrary.getUncached(buffer);
+        for (int i = 0; i < length; i++) {
+            destination[destinationOffset + i] = interop.readBufferByte(buffer, byteOffset + i);
+        }
+    }
+
     @Test
     public void testCustomSectionBuffer() throws IOException {
         runTest(context -> {
@@ -1000,9 +1008,9 @@ public class WasmJsApiSuite {
                 Assert.assertEquals("Read last long LE", Double.longBitsToDouble(0x1615141312111009L), interop.readBufferDouble(customSection, ByteOrder.LITTLE_ENDIAN, bufferSize - 8), 0.001);
                 Assert.assertEquals("Read last long BE", Double.longBitsToDouble(0x0910111213141516L), interop.readBufferDouble(customSection, ByteOrder.BIG_ENDIAN, bufferSize - 8), 0.001);
                 final byte[] b = new byte[12];
-                interop.readBuffer(customSection, 0, b, 0, 12);
+                interopReadBuffer(customSection, 0, b, 0, 12);
                 Assert.assertArrayEquals("Read first 12 bytes", new byte[]{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12}, b);
-                interop.readBuffer(customSection, bufferSize - 12, b, 0, 12);
+                interopReadBuffer(customSection, bufferSize - 12, b, 0, 12);
                 Assert.assertArrayEquals("Read last 12 bytes", new byte[]{0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16}, b);
 
                 assertThrowsIBOE(() -> interop.readBufferByte(customSection, -1));
@@ -1019,7 +1027,7 @@ public class WasmJsApiSuite {
 
                 assertThrowsIBOE(() -> {
                     final byte[] b2 = new byte[12];
-                    interop.readBuffer(customSection, -1, b2, 0, 8);
+                    interopReadBuffer(customSection, -1, b2, 0, 8);
                     return null;
                 });
 
@@ -1037,7 +1045,7 @@ public class WasmJsApiSuite {
 
                 assertThrowsIBOE(() -> {
                     final byte[] b2 = new byte[12];
-                    interop.readBuffer(customSection, bufferSize - 11, b2, 0, 12);
+                    interopReadBuffer(customSection, bufferSize - 11, b2, 0, 12);
                     return null;
                 });
             } catch (InteropException ex) {
@@ -1123,9 +1131,9 @@ public class WasmJsApiSuite {
                 Assert.assertEquals("Read last double BE", 0d, interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 8), 0.001);
 
                 final byte[] b = new byte[12];
-                interop.readBuffer(buffer, 0, b, 0, 12);
+                interopReadBuffer(buffer, 0, b, 0, 12);
                 Assert.assertArrayEquals("Read first 12 bytes", new byte[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, b);
-                interop.readBuffer(buffer, bufferSize - 12, b, 0, 12);
+                interopReadBuffer(buffer, bufferSize - 12, b, 0, 12);
                 Assert.assertArrayEquals("Read last 12 bytes", new byte[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, b);
 
                 interop.writeBufferByte(buffer, 0, (byte) 1);
@@ -1221,13 +1229,13 @@ public class WasmJsApiSuite {
                 interop.writeBufferInt(buffer, ByteOrder.LITTLE_ENDIAN, 12, 0x13141516);
                 final byte[] b1 = new byte[12];
                 final byte[] b2 = {0x04, 0x03, 0x02, 0x01, 0x08, 0x07, 0x06, 0x05, 0x12, 0x11, 0x10, 0x09};
-                interop.readBuffer(buffer, 0, b1, 0, 12);
+                interopReadBuffer(buffer, 0, b1, 0, 12);
                 Assert.assertArrayEquals("Read first 12 bytes", b2, b1);
 
                 final byte[] b3 = new byte[8];
                 b3[0] = 0x02;
                 final byte[] b4 = {0x02, 0x11, 0x10, 0x09, 0x16, 0x15, 0x14, 0x13};
-                interop.readBuffer(buffer, 9, b3, 1, 7);
+                interopReadBuffer(buffer, 9, b3, 1, 7);
                 Assert.assertArrayEquals("Read last 7 bytes", b4, b3);
 
                 // Offset too small
@@ -1245,7 +1253,7 @@ public class WasmJsApiSuite {
 
                 assertThrowsIBOE(() -> {
                     final byte[] b6 = new byte[12];
-                    interop.readBuffer(buffer, -1, b6, 0, 8);
+                    interopReadBuffer(buffer, -1, b6, 0, 8);
                     return null;
                 });
 
@@ -1263,7 +1271,7 @@ public class WasmJsApiSuite {
                 assertThrowsIBOE(() -> interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 7));
                 assertThrowsIBOE(() -> {
                     final byte[] b6 = new byte[12];
-                    interop.readBuffer(buffer, bufferSize - 11, b6, 0, 12);
+                    interopReadBuffer(buffer, bufferSize - 11, b6, 0, 12);
                     return null;
                 });
             } catch (InteropException ex) {

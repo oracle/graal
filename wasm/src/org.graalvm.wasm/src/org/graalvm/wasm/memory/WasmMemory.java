@@ -628,7 +628,6 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         }
     }
 
-    @ExportMessage
     final void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length,
                     @Bind("$node") Node node,
                     @Shared("errorBranch") @Cached InlinedBranchProfile errorBranch) throws InvalidBufferOffsetException {

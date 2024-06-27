@@ -251,7 +251,6 @@ public final class Vector128 implements TruffleObject {
         return bytes[(int) byteOffset];
     }
 
-    @ExportMessage
     protected void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length) throws InvalidBufferOffsetException {
         validateReadByteOffset(byteOffset, length);
         System.arraycopy(bytes, (int) byteOffset, destination, destinationOffset, length);

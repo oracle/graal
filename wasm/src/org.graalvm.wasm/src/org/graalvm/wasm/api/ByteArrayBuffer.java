@@ -137,7 +137,6 @@ public class ByteArrayBuffer implements TruffleObject {
         }
     }
 
-    @ExportMessage
     final void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int opLength) throws InvalidBufferOffsetException {
         checkBufferOffset(byteOffset, opLength);
         System.arraycopy(data, offset + (int) byteOffset, destination, destinationOffset, opLength);
