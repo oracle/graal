@@ -1337,10 +1337,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         ExceptionHandler h2 = handlers.get(0);
         ExceptionHandler h3 = handlers.get(2);
 
-        // h1 and h2 share an exception local. h3 does not
-        assertEquals(h1.getExceptionVariableIndex(), h2.getExceptionVariableIndex());
-        assertNotEquals(h1.getExceptionVariableIndex(), h3.getExceptionVariableIndex());
-
         // they all have unique handler bci's
         assertNotEquals(h1.getHandlerIndex(), h2.getHandlerIndex());
         assertNotEquals(h2.getHandlerIndex(), h3.getHandlerIndex());

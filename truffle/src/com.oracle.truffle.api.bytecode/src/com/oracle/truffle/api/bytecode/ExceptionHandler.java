@@ -94,17 +94,6 @@ public abstract class ExceptionHandler {
     }
 
     /**
-     * Returns the target exception variable index of this exception handler if this exception
-     * handler is of kind {@link HandlerKind#CUSTOM}.
-     *
-     * @throws UnsupportedOperationException for handlers not of kind {@link HandlerKind#CUSTOM}
-     * @since 24.1
-     */
-    public int getExceptionVariableIndex() throws UnsupportedOperationException {
-        throw new UnsupportedOperationException("getExceptionVariableIndex() is not supported for handler kind: " + getKind());
-    }
-
-    /**
      * Returns the tag tree of this exception handler if this exception handler is of kind
      * {@link HandlerKind#TAG}.
      *
@@ -120,7 +109,7 @@ public abstract class ExceptionHandler {
         String description;
         switch (getKind()) {
             case CUSTOM:
-                description = String.format("%04x ex: local(%d)", getHandlerIndex(), getExceptionVariableIndex());
+                description = String.format("%04x ex", getHandlerIndex());
                 break;
             case EPILOG:
                 description = "epilog.exceptional";
