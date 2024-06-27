@@ -119,7 +119,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
 @OperationProxy(SLToBooleanNode.class)
 @ShortCircuitOperation(name = "SLAnd", booleanConverter = SLToBooleanNode.class, operator = Operator.AND_RETURN_CONVERTED)
 @ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, operator = Operator.OR_RETURN_CONVERTED)
-public abstract sealed class SLBytecodeRootNode extends SLRootNode implements BytecodeRootNode permits SLBytecodeRootNodeGen {
+public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeRootNode {
 
     protected SLBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super((SLLanguage) language, frameDescriptor);
