@@ -99,23 +99,10 @@ jobs:
         include:
           # /compiler
           - env:
-              JDK_VERSION: "21"
-              GATE_TAGS: "style,fullbuild,test"
-              PRIMARY: "compiler"
-          - env:
               JDK_VERSION: "latest"
-              GATE_TAGS: "build,bootstraplite"
+              GATE_TAGS: "build,test,bootstraplite"
               PRIMARY: "compiler"
-          # /espresso
-          - env:
-              JDK_VERSION: "21"
-              GATE_TAGS: "style,fullbuild"
-              PRIMARY: "espresso"
           # /substratevm
-          - env:
-              JDK_VERSION: "21"
-              GATE_TAGS: "style,fullbuild"
-              PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "latest"
               GATE_TAGS: "build,helloworld,native_unittests"
@@ -131,12 +118,12 @@ jobs:
               PRIMARY: "substratevm"
           # /sulong
           - env:
-              JDK_VERSION: "21"
-              GATE_TAGS: "style,fullbuild,sulongBasic"
+              JDK_VERSION: "latest"
+              GATE_TAGS: "build,sulongBasic"
               PRIMARY: "sulong"
           # /truffle
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "" # Truffle does not use tags
               PRIMARY: "truffle"
           # /vm
