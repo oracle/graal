@@ -48,6 +48,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.meta.CompressedNullConstant;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -310,6 +311,9 @@ public abstract class NativeImageCodeCache {
 
         @Override
         public JavaConstant forObject(Object object, boolean isCompressedReference) {
+            if (object == null) {
+                return isCompressedReference ? CompressedNullConstant.COMPRESSED_NULL : JavaConstant.NULL_POINTER;
+            }
             JavaConstant constant = snippetReflection.forObject(object);
             if (constant instanceof CompressibleConstant compressible && isCompressedReference != compressible.isCompressed()) {
                 return isCompressedReference ? compressible.compress() : compressible.uncompress();
