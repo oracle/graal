@@ -28,12 +28,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 
 @RunWith(Parameterized.class)
 public class VectorizedMismatchTest extends TStringOpsTest<VectorizedMismatchNode> {

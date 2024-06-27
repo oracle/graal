@@ -27,7 +27,7 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.nio.ByteOrder;
 
 import jdk.graal.compiler.asm.amd64.AVXKind;
-import jdk.graal.compiler.replacements.test.MethodSubstitutionTest;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
 import jdk.graal.compiler.lir.amd64.AMD64ComplexVectorOp;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -37,8 +37,8 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.replacements.ConstantBindingParameterPlugin;
+import jdk.graal.compiler.replacements.test.MethodSubstitutionTest;
 import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -63,6 +63,14 @@ public abstract class TStringTest extends MethodSubstitutionTest {
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         TruffleInvocationPlugins.register(getBackend().getTarget().arch, invocationPlugins, getReplacements());
         super.registerInvocationPlugins(invocationPlugins);
+    }
+
+    void assertConstantReturnForLength(StructuredGraph graph, int length) {
+        if (isSupportedArchitecture()) {
+            if (length < GraalOptions.StringIndexOfConstantLimit.getValue(graph.getOptions())) {
+                assertConstantReturn(graph);
+            }
+        }
     }
 
     protected static void assertConstantReturn(StructuredGraph graph) {

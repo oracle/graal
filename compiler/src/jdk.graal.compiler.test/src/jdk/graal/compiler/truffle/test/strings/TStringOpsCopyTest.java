@@ -27,12 +27,13 @@ package jdk.graal.compiler.truffle.test.strings;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 
 @RunWith(Parameterized.class)
 public class TStringOpsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsNode> {

@@ -26,8 +26,10 @@ package jdk.graal.compiler.nodes.util;
 
 import java.nio.ByteOrder;
 
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -46,6 +48,14 @@ public final class ConstantReflectionUtil {
     private ConstantReflectionUtil() {
     }
 
+    /**
+     * Checks if the given value is a {@link JavaConstant} with at least one
+     * {@link ConstantNode#getStableDimension() stable dimension}.
+     */
+    public static boolean isStableJavaArray(ValueNode array) {
+        return array.isJavaConstant() && ((ConstantNode) array).getStableDimension() > 0;
+    }
+
     public static int[] loadIntArrayConstant(ConstantReflectionProvider crp, JavaConstant targetArg, int maxLength) {
         int targetArgLength = Integer.min(maxLength, crp.readArrayLength(targetArg));
         int[] targetCharArray = new int[targetArgLength];
@@ -53,6 +63,33 @@ public final class ConstantReflectionUtil {
             targetCharArray[i] = (char) crp.readArrayElement(targetArg, i).asInt();
         }
         return targetCharArray;
+    }
+
+    public static boolean shouldConstantFoldArrayOperation(CanonicalizerTool tool, int arrayLength) {
+        // constant-folding huge arrays takes too long, do it only for reasonably small arrays
+        return arrayLength < GraalOptions.StringIndexOfConstantLimit.getValue(tool.getOptions());
+    }
+
+    /**
+     * Performs a type punned array bounds check on the given type punned array properties vs actual
+     * array properties. A type punned array access is an array access whose bit width not the same
+     * as the array element's bit width, e.g. reading a {@code char} value from a {@code byte}
+     * array.
+     *
+     * @param typePunnedLength array length in relation to the type punned element size, e.g.
+     *            "number of char elements in this byte array".
+     * @param typePunnedStride type punned array element size.
+     * @param arrayLength actual array length, e.g. actual byte size of the {@code byte} array we
+     *            want to read a {@code char} from.
+     * @param arrayKind actual array kind, e.g. {@link JavaKind#Byte} for a {@code byte} array we
+     *            want to read a {@code char} from.
+     */
+    public static void boundsCheckTypePunned(int typePunnedLength, Stride typePunnedStride, int arrayLength, JavaKind arrayKind) {
+        GraalError.guarantee(typePunnedLength * typePunnedStride.value <= arrayLength * arrayKind.getByteCount(), Assertions.errorMessageContext(
+                        "typePunnedLength", typePunnedLength,
+                        "typePunnedStride", typePunnedStride.value,
+                        "arrayLength", arrayLength,
+                        "arrayKind", arrayKind));
     }
 
     /**

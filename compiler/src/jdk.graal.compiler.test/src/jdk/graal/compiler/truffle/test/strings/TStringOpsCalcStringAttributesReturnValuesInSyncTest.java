@@ -26,9 +26,10 @@ package jdk.graal.compiler.truffle.test.strings;
 
 import java.lang.reflect.Field;
 
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import org.junit.Assert;
 import org.junit.Test;
+
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 
 public class TStringOpsCalcStringAttributesReturnValuesInSyncTest {
 
