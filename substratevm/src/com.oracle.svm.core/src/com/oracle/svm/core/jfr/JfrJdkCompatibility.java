@@ -36,7 +36,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDK22OrEarlier;
 import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.util.VMError;
@@ -154,6 +153,6 @@ final class Target_jdk_jfr_internal_PlatformRecording {
     public native void setDumpDirectory(SecuritySupport.SafePath directory);
 
     @Alias
-    @TargetElement(onlyWith = JDK22OrEarlier.class)
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     public native void setDumpOnExitDirectory(SecuritySupport.SafePath directory);
 }

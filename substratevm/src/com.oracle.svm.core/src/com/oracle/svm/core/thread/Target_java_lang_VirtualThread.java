@@ -46,7 +46,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDK22OrEarlier;
 import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.jfr.HasJfrSupport;
@@ -221,7 +220,7 @@ public final class Target_java_lang_VirtualThread {
     }
 
     @Substitute
-    @TargetElement(name = "notifyJvmtiHideFrames", onlyWith = JDK22OrEarlier.class)
+    @TargetElement(name = "notifyJvmtiHideFrames", onlyWith = JDK21OrEarlier.class)
     @SuppressWarnings({"static-method", "unused"})
     private void notifyJvmtiHideFramesJDK22(boolean hide) {
         // unimplemented (GR-45392)
