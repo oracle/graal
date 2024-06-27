@@ -43,6 +43,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.NonmovableByteArrayTypeReader;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.FrameState.StackState;
@@ -176,6 +177,7 @@ public class FrameInfoDecoder {
                     switch (valueInfo.kind) {
                         case Object:
                             valueInfo.value = constantAccess.forObject(null, valueInfo.isCompressedReference);
+                            assert valueInfo.isCompressedReference == CompressibleConstant.isCompressed(valueInfo.value);
                             assert valueInfo.value.isDefaultForKind() : valueInfo;
                             break;
                         default:
@@ -187,6 +189,7 @@ public class FrameInfoDecoder {
                         case Object:
                             valueInfo.value = constantAccess.forObject(NonmovableArrays.getObject(frameInfoObjectConstants, TypeConversion.asS4(valueInfo.data)),
                                             valueInfo.isCompressedReference);
+                            assert valueInfo.isCompressedReference == CompressibleConstant.isCompressed(valueInfo.value);
                             break;
                         case Float:
                             valueInfo.value = JavaConstant.forFloat(Float.intBitsToFloat(TypeConversion.asS4(valueInfo.data)));
