@@ -7,13 +7,21 @@ permalink: /reference-manual/native-image/guides/include-resources/
 
 # Include Resources in a Native Executable
 
-The following steps illustrate how to include a resource in a native executable. 
-The application `fortune` simulates the traditional `fortune` Unix program (for more information, see [fortune](https://en.wikipedia.org/wiki/Fortune_(Unix))).
+By default, the `native-image` tool does not integrate any Java resource files into a native executable.
+You must specify resources that should be accessible by your application at runtime.
 
-### Prerequisite 
+This guide demonstrates how to register resources to be included in a native executable by providing a resource configuration file.
+See [Accessing Resources in Native Image](../Resources.md) for more ways to include resources.
+
+### Prerequisite
+
 Make sure you have installed a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
+
+## Run a Demo
+
+In the following example, you run a "fortune teller" application that simulates the traditional `fortune` Unix program (for more information, see [fortune](https://en.wikipedia.org/wiki/Fortune_(Unix))).
 
 1. Save the following Java source code as a file named _Fortune.java_:
     ```java
@@ -56,21 +64,42 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
 2. Download the [_fortunes.u8_](https://github.com/oracle/graal/blob/3ed4a7ebc5004c51ae310e48be3828cd7c7802c2/docs/reference-manual/native-image/assets/fortunes.u8) resource file and save it in the same directory as _Fortune.java_.
 
-3. Compile the Java source code:
+3. Create a configuration file, named _resource-config.json_, and save it in the _META-INF/native-image/_ subdirectory. Register the resource using a [glob pattern](../Resources.md#resource-configuration-file):
+    ```json
+    {
+    "globs": [
+        {
+        "glob": "fortunes.u8"
+        }
+      ]
+    }
+    ```
+    The `native-image` tool picks up all configuration files that it finds in the _META-INF/native-image/_ directory automatically.
+
+4. Compile the application:
     ```shell
-    $JAVA_HOME/bin/javac Fortune.java
+    javac Fortune.java
     ```
 
-4. Build a native executable by specifying the resource path:
+5. Build a native executable:
     ```shell
-    $JAVA_HOME/bin/native-image Fortune -H:IncludeResources=".*u8$"
+    native-image Fortune
     ```
 
-5. Run the executable: 
+6. Run the fortune teller application to test: 
     ```shell
     ./fortune
     ```
 
+To see which resources were included in your native executable, pass the option `--emit build-report` to the `native-image` tool at build time.
+It generates an HTML file that can be examined with a regular web browser.
+The information about all included resources will be under the `Resources` tab.
+
+In this demo the path to the resource file is straightforward, but it may be more complex in a real-world use case.
+Resources are specified via globs. For more advanced use-cases, you can register resources using the API methods (see [class RuntimeResourceAccess](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/RuntimeResourceAccess.html)). 
+Learn more about specifying a resource path using a glob and some syntax rules to be observed from [Accessing Resources in Native Image](../Resources.md).
+
 ### Related Documentation
 
 * [Accessing Resources in Native Image](../Resources.md)
+* [Resource Metadata in JSON](../ReachabilityMetadata.md#resource-metadata-in-json)
