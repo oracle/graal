@@ -117,7 +117,7 @@ final class Target_jdk_internal_foreign_FunctionDescriptorImpl {
 final class Target_java_lang_foreign_FunctionDescriptor {
 }
 
-@TargetClass(className = "jdk.internal.foreign.SegmentFactories", onlyWith = {ForeignDisabled.class, JDK22OrLater.class})
+@TargetClass(className = "jdk.internal.foreign.SegmentFactories", onlyWith = {ForeignDisabled.class, JDK23OrLater.class})
 final class Target_jdk_internal_foreign_SegmentFactories {
     @Substitute
     @AlwaysInline("Make remaining code in callers unreachable.")
@@ -143,7 +143,7 @@ final class Target_jdk_internal_foreign_LayoutPath {
 final class Target_java_lang_foreign_MemoryLayout_PathElement {
 }
 
-@TargetClass(className = "jdk.internal.foreign.layout.AbstractLayout", onlyWith = {ForeignDisabled.class, JDK22OrLater.class})
+@TargetClass(className = "jdk.internal.foreign.layout.AbstractLayout", onlyWith = {ForeignDisabled.class, JDK23OrLater.class})
 final class Target_jdk_internal_foreign_layout_AbstractLayout {
     @Substitute
     @AlwaysInline("Make remaining code in callers unreachable.")

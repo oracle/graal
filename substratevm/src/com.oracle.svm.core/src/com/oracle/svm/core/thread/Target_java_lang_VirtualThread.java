@@ -46,7 +46,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -69,13 +68,13 @@ public final class Target_java_lang_VirtualThread {
     @Alias static int PARKED;
     @Alias static int PINNED;
     @Alias static int YIELDING;
-    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int YIELDED;
+    @TargetElement(onlyWith = JDK23OrLater.class) @Alias static int YIELDED;
     @Alias static int TERMINATED;
     @Alias static int SUSPENDED;
-    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PARKING;
-    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PARKED;
-    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PINNED;
-    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int UNPARKED;
+    @TargetElement(onlyWith = JDK23OrLater.class) @Alias static int TIMED_PARKING;
+    @TargetElement(onlyWith = JDK23OrLater.class) @Alias static int TIMED_PARKED;
+    @TargetElement(onlyWith = JDK23OrLater.class) @Alias static int TIMED_PINNED;
+    @TargetElement(onlyWith = JDK23OrLater.class) @Alias static int UNPARKED;
     @Alias static Target_jdk_internal_vm_ContinuationScope VTHREAD_SCOPE;
 
     /**
