@@ -92,7 +92,18 @@ public class NativeImageGeneratorRunner {
     public static final String IMAGE_BUILDER_ARG_FILE_OPTION = "--image-args-file=";
 
     public static void main(String[] args) {
-        new NativeImageGeneratorRunner().start(args);
+        List<NativeImageGeneratorRunnerProvider> providers = new ArrayList<>();
+        ServiceLoader.load(NativeImageGeneratorRunnerProvider.class).forEach(providers::add);
+
+        if (providers.isEmpty()) {
+            new NativeImageGeneratorRunner().start(args);
+        } else {
+            if (providers.size() > 1) {
+                throw VMError.shouldNotReachHere("There are multiple services provided under %s: %s", NativeImageGeneratorRunnerProvider.class.getName(), providers);
+            }
+
+            providers.getFirst().run(args);
+        }
     }
 
     protected void start(String[] args) {
