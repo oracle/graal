@@ -55,7 +55,7 @@ public abstract class Generator<E> implements Enumeration<E>, Serializable {
     @Serial private static final long serialVersionUID = -5614372125614425080L;
 
     private final Continuation continuation;
-    private Continuation.SuspendCapability suspendCapability;
+    private SuspendCapability suspendCapability;
     private transient E currentElement;
     private transient boolean hasProduced;
 
@@ -64,7 +64,7 @@ public abstract class Generator<E> implements Enumeration<E>, Serializable {
      */
     @SuppressWarnings("this-escape")
     protected Generator() {
-        continuation = new Continuation((EntryPoint & Serializable) cap -> {
+        continuation = Continuation.create((ContinuationEntryPoint & Serializable) cap -> {
             this.suspendCapability = cap;
             generate();
         });
@@ -79,8 +79,7 @@ public abstract class Generator<E> implements Enumeration<E>, Serializable {
         if (hasProduced) {
             return true;
         }
-        Continuation.State state = continuation.getState();
-        boolean ready = state == Continuation.State.SUSPENDED || state == Continuation.State.NEW;
+        boolean ready = continuation.isResumable();
         if (!ready) {
             return false;
         }
