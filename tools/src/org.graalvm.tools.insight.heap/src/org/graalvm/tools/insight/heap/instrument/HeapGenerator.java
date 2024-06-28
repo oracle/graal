@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -339,14 +339,36 @@ final class HeapGenerator {
         }
     }
 
+    private static boolean isArrayMember(int len, String name) {
+        if (len > 0 && !name.isEmpty() && ("0".equals(name) || ('1' <= name.charAt(0) && name.charAt(0) <= '9'))) {
+            long index = 0;
+            for (int i = 0; i < name.length(); i++) {
+                char c = name.charAt(i);
+                if ('0' <= c && c <= '9') {
+                    index *= 10;
+                    index += (c - '0');
+                    if (index >= len) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     ClassInstance findClass(InteropLibrary iop, HeapDump seg, String metaHint, Object obj) throws IOException {
         TreeSet<String> sortedNames = new TreeSet<>();
         try {
+            int arrayLen = findArrayLength(iop, obj);
             Object names = iop.getMembers(obj, true);
             long len = iop.getArraySize(names);
             for (long i = 0; i < len; i++) {
                 final String ithName = iop.asString(iop.readArrayElement(names, i));
-                if (iop.isMemberReadable(obj, ithName) && !iop.hasMemberReadSideEffects(obj, ithName)) {
+                if (iop.isMemberReadable(obj, ithName) && !iop.hasMemberReadSideEffects(obj, ithName) && !isArrayMember(arrayLen, ithName)) {
                     sortedNames.add(ithName);
                 }
             }
