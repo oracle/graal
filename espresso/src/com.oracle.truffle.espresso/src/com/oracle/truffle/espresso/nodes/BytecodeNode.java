@@ -568,7 +568,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 return;
             } else {
                 InstrumentationSupport instrument = instrumentation;
-                int statementIndex = instrument == null ? 0 : instrument.hookBCIToNodeIndex.lookup(0, 0, bs.endBCI());
+                int statementIndex = instrument == null ? 0 : instrument.getStatementIndexAfterJump(0, 0, bs.endBCI());
                 quickenInvoke(top, bci, opcode, statementIndex);
                 // continue loop, will execute at most once more.
             }

@@ -10,7 +10,8 @@ can be serialized to resume execution in a different JVM running the same code (
 See the JavaDoc of the `org.graalvm.continuations` package, and make sure to add the `continuations.jar` in the Espresso
 distribution to your classpath when compiling (but not at runtime).
 
-Currently, only the Espresso VM supports the continuations feature.
+Currently, only the Espresso VM supports the continuations feature. Since it is still experimental, the option needs to
+be enabled by using the flags `--experimental-options --java.Continuum=true`.
 
 ### High level
 
@@ -21,36 +22,36 @@ implement `generate` and call `emit` from inside it.
 ### Low level
 
 You create a new `Continuation` by passing the constructor an object that implements the functional
-interface `Continuation.EntryPoint` (which can be a lambda). That object's `start` method receives
-a `Continuation.SuspendCapability` that lets you trigger a suspend. You can do that from _any_ depth in the stack as
-long as the code was invoked via the entry point, and all the frames between the call to `suspend` and `start` will be
+interface `ContinuationEntryPoint` (which can be a lambda). That object's `start` method receives
+a `SuspendCapability` that lets you trigger suspension. You can do that from _any_ depth in the stack as
+long as the code was invoked via the entry point, and all the frames between the call to `suspend` and `resume` will be
 unwound and stored inside the `Continuation` object. You can then call `resume()` on it to kick it off for the first
 time or to restart from the last suspend point.
 
 Continuations are single-threaded constructs. There are no second threads involved, and the `resume()` method blocks
-until the continuation either finishes successfully, throws an exception or calls suspend. The difference can be seen in
-the result of the `getState()` method.
+until the continuation either finishes successfully, throws an exception or calls suspend. `isResumable()` can be called
+to determine if the continuation can be resumed (if the continuation has been freshly created or it has been previously
+suspended), and `isCompleted()` can be called to determine if the continuation has completed (either by returning
+normally, or if an exception escaped).
 
-`Continuation` implements `Externalizable` and can serialize to a backwards compatible format (not guaranteed until
-final release). Because frames can point to anything in their parameters and local variables, it must be persisted by a
-serialization engine that can handle arbitrary objects like [Kryo](https://github.com/EsotericSoftware/kryo/)
-or `ObjectOutputStream`.
+`Continuation` implements `Serializable` and can serialize to a backwards compatible format. Because frames can point to
+anything in their parameters and local variables, the class `ContinuationSerializable` provides static
+methods `readObjectExternal` and `writeObjectExternal` which may be used to coordinate serialization of
+continuation-related objects with a non-jdk serialization engine.
 
 ## Security
 
 Continuations that have **not** been _materialized_ are safe, as the frame record is kept internal to the VM.
 
 Materializing a continuation refers to making the record visible to Java code, through the
-private `Continuation.stackFrameHead` field.
-
-Currently, the only path for materialization is through serialization.
+private `ContinuationImpl.stackFrameHead` field. Currently, the only path for materialization is through serialization.
 
 When restoring from a materialized frame (_dematerialization_), only minimal checks are performed by the VM, and only to
 prevent a VM crash. Examples of these checks are:
 
 - Ensures that resume only happens on `invoke` bytecodes.
 - Ensures that the recorded frame data is consistent with what was computed by the bytecode verifier.
-- Ensures that the last frame in the record is `Continuation.suspend`.
+- Ensures that the last frame in the record is `ContinuationImpl.suspend`.
 
 Deserializing a continuation supplied by an attacker will allow complete takeover of the JVM. Only resume continuations
 you persisted yourself!
@@ -129,15 +130,15 @@ Furthermore, there is currently no support for continuation-in-continuation.
 
 *This section is only relevant for people working on Espresso itself.*
 
-Continuations interact with the VM via private intrinsics registered on the `Continuation` class.
+Continuations interact with the VM via private intrinsics registered on the `Continuation` and `ContinuationImpl` class.
 
 A continuation starts by calling into the VM. Execution resurfaces in the guest world at the private `run` method of
-`Continuation`, which then invokes the user's given entry point.
+`ContinuationImpl`, which then invokes the user's given entry point.
 
 Suspending throws a host-side exception that is caught by the `BytecodeNode` interpreter loop. The stack frame is copied
 into a new host-side object called a `HostFrameRecord` (HFR). The exception is then rethrown. The HFRs are chained
-together in a linked list. Once execution reaches the private `run` method of `Continuation` the HFR list is attached
-into a hidden field of `Continuation`. Control is then returned to the guest.
+together in a linked list. Once execution reaches the private `run` method of `ContinuationImpl` the HFR list is
+attached into a hidden field of `ContinuationImpl`. Control is then returned to the guest.
 
 On resuming a `Continuation`, the entire call stack needs to be re-winded. This happens through a different `CallTarget`
 than for regular calls, and there is one such call target per encountered resume `bci`.
@@ -149,7 +150,7 @@ we pass the rest of the records to the next method. This is all done in a specia
 The separation of the call targets has two advantages:
 
 - It does not interfere with regular calls.
-- Resuming and suspending can be PE'd, leading to fast suspend/resume cycles.
+- Resuming and suspending can be partial-evaluated, leading to fast suspend/resume cycles.
 
-Serialization is done entirely in guest-side code, by having the `Continuation` class implement `Externalizable`. The
+Serialization is done entirely in guest-side code, by having the `Continuation` class implement `Serializable`. The
 format is designed to enable backwards-compatible evolution of the format.
