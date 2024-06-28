@@ -1528,6 +1528,11 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                  */
                 // Get the frame from the stack into the VM heap.
                 copyFrameToUnwindRequest(frame, unwindContinuationExceptionRequest, curBCI, top);
+                // Truffle requires paired probes, so we need to notify the probe for the current
+                // statement if applicable.
+                if (instrument != null) {
+                    instrument.notifyExceptionAt(frame, unwindContinuationExceptionRequest, statementIndex);
+                }
 
                 // This branch must not be a loop exit. Let the next loop iteration throw this
                 top = startingStackOffset(getMethodVersion().getMaxLocals());
