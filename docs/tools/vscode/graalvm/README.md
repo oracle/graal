@@ -1,13 +1,12 @@
 ---
-layout: docs-experimental
+layout: docs
 toc_group: graalvm-extension
 link_title: GraalVM Tools for Java
 permalink: /tools/vscode/graalvm-extension/
-redirect_to: https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm
 ---
 
 # GraalVM Tools for Java
 
-The [GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) extension provides GraalVM installation and configuration wizard in Visual Studio (VS) Code. 
-
-The extension is no longer in active development and is in maintenance mode. The latest version of the documentation that includes the GraalVM Tools for Java extension support is [GraalVM for JDK 17 (23.0.0)](https://www.graalvm.org/jdk17/tools/vscode/graalvm-extension/).
+The GraalVM Tools for Java extension for Visual Studio (VS) Code has been deprecated and removed. 
+You can install GraalVM from within VS Code, the same way as any other JDK: open **View** > **Command Palette** > **Java: Install New JDK** > **Others** > Select **Oracle GraalVM**.
+For more information, check [Installing and setting up a Java Development Kit (JDK)](https://code.visualstudio.com/docs/java/java-tutorial#_installing-and-setting-up-a-java-development-kit-jdk).
