@@ -80,10 +80,10 @@ public final class InspectServerSession implements MessageEndpoint {
         this.domainLock = domainLock;
     }
 
-    public static InspectServerSession create(InspectorExecutionContext context, boolean debugBreak, ConnectionWatcher connectionWatcher) {
+    public static InspectServerSession create(InspectorExecutionContext context, boolean debugBreak, ConnectionWatcher connectionWatcher, Runnable sessionDisposal) {
         ReadWriteLock domainLock = new ReentrantReadWriteLock();
         RuntimeDomain runtime = new InspectorRuntime(context);
-        DebuggerDomain debugger = new InspectorDebugger(context, debugBreak, domainLock);
+        DebuggerDomain debugger = new InspectorDebugger(context, debugBreak, domainLock, sessionDisposal);
         ProfilerDomain profiler = new InspectorProfiler(context, connectionWatcher);
         return new InspectServerSession(runtime, debugger, profiler, context, domainLock);
     }

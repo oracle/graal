@@ -380,7 +380,7 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
             if (iss == null) {
                 // Do the initial break for the first time only, do not break on reconnect
                 boolean debugBreak = Boolean.TRUE.equals(session.getDebugBrkAndReset());
-                iss = InspectServerSession.create(session.getContext(), debugBreak, session.getConnectionWatcher());
+                iss = InspectServerSession.create(session.getContext(), debugBreak, session.getConnectionWatcher(), () -> doClose(token));
             }
             InspectWebSocketHandler iws = new InspectWebSocketHandler(token, conn, iss, session.getConnectionWatcher());
             session.activeWS = iws;
@@ -478,6 +478,14 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
             } catch (InterruptedException ex) {
                 throw new IOException(ex);
             }
+        }
+    }
+
+    private void doClose(Token token) {
+        try {
+            close(token);
+        } catch (IOException e) {
+            // Ignore, we're closing on dispose here
         }
     }
 
