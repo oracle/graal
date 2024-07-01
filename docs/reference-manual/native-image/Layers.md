@@ -7,11 +7,10 @@ permalink: /reference-manual/native-image/overview/Layers/
 
 # Layered Native Image
 
-Native Image provides a feature that enables users to build layered native executables.
-In contrast to regular `native-image` building, this mode of operation splits the application and its
-supporting libraries in distinct binaries: a thin layer executable supported by a chain of shared libraries.
-This enables common libraries and VM/JDK code to be shared between multiple applications, resulting in reduced footprint
-at execution time.
+The Layered Native Image feature allows splitting an application and its required libraries into separate binaries: a
+thin layer executable supported by a chain of shared libraries.
+In contrast to regular Native Image building, this mode of operation enables sharing common libraries and VM/JDK code
+between multiple applications, resulting in reduced footprint at run time.
 Moreover, it reduces the time to build an application since shared layers are only built once.
 
 ### Table of Contents
