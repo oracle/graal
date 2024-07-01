@@ -123,6 +123,15 @@ native-image --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --shared
     - config compatibility: GC config, etc.
     - access compatibility: no additional unsafe and field accesses are allowed
 
+### Limitations
+
+- Layers are platform dependent. A layer created with `--layer-create` on a specific OS/architecture
+  cannot be loaded by `--layer-use` on a different OS/architecture.
+- Each layer can only depend on a previous layer. We explicitly make it impossible to depend on more than one layer to
+  avoid any potential issues that can stem from _multiple inheritance_.
+- A shared layer is using the _.so_ extension to conform with the standard OS loader restrictions. However, it is not a
+  standard shared library file, and it cannot be used with other applications.
+
 ## Packaging Layers
 
 At build time a shared layer is stored in a layer archive that contains the following artifacts:
