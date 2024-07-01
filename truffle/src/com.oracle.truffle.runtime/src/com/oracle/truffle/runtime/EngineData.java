@@ -165,6 +165,7 @@ public final class EngineData {
     @CompilationFinal public int callAndLoopThresholdInInterpreter;
     @CompilationFinal public int callThresholdInFirstTier;
     @CompilationFinal public int callAndLoopThresholdInFirstTier;
+    @CompilationFinal public long interpreterCallStackHeadRoom;
 
     // Cached parsed CompileOnly includes and excludes
     private volatile Pair<List<String>, List<String>> parsedCompileOnly;

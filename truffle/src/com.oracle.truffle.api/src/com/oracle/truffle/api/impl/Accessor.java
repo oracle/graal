@@ -780,6 +780,8 @@ public abstract class Accessor {
         public abstract Collection<String> getResourceIds(String componentId);
 
         public abstract void setIsolatePolyglot(AbstractPolyglotImpl instance);
+
+        public abstract Object getEngineData(Object polyglotEngine);
     }
 
     public abstract static class LanguageSupport extends Support {

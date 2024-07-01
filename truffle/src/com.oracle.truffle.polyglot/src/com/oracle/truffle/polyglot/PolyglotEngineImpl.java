@@ -485,6 +485,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     void notifyCreated() {
         RUNTIME.onEngineCreate(this, this.runtimeData);
+        impl.getRootImpl().onEngineCreated(this);
     }
 
     @SuppressWarnings("unchecked")
