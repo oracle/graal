@@ -56,7 +56,7 @@ public final class IntegerPolynomialTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testIntegerPolynomial() {
-        IntegerPolynomial testFields[] = new IntegerPolynomial[]{
+        IntegerPolynomial[] testFields = {
                         IntegerPolynomial1305.ONE,
                         IntegerPolynomial25519.ONE,
                         IntegerPolynomial448.ONE,

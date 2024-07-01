@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,13 +30,12 @@ import static jdk.graal.compiler.core.common.util.TypeConversion.asS4;
 import static jdk.graal.compiler.core.common.util.TypeConversion.asU1;
 import static jdk.graal.compiler.core.common.util.TypeConversion.asU2;
 import static jdk.graal.compiler.core.common.util.TypeConversion.asU4;
-import static jdk.graal.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.nio.ByteBuffer;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
 import jdk.graal.compiler.debug.Assertions;
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Provides low-level sequential write access to a byte[] array for signed and unsigned values of
@@ -49,7 +48,7 @@ import sun.misc.Unsafe;
  * fallback that works on every hardware.
  */
 public abstract class UnsafeArrayTypeWriter implements TypeWriter {
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final int MIN_CHUNK_LENGTH = 200;
     private static final int MAX_CHUNK_LENGTH = 16000;
 
@@ -246,7 +245,7 @@ public abstract class UnsafeArrayTypeWriter implements TypeWriter {
 }
 
 final class UnalignedUnsafeArrayTypeWriter extends UnsafeArrayTypeWriter {
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     @Override
     protected void putS2(long value, Chunk chunk, long offset) {
@@ -265,7 +264,7 @@ final class UnalignedUnsafeArrayTypeWriter extends UnsafeArrayTypeWriter {
 }
 
 final class AlignedUnsafeArrayTypeWriter extends UnsafeArrayTypeWriter {
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     @Override
     protected void putS2(long value, Chunk chunk, long offset) {
@@ -297,7 +296,7 @@ final class AlignedUnsafeArrayTypeWriter extends UnsafeArrayTypeWriter {
 }
 
 final class BigEndianUnsafeArrayTypeWriter extends UnsafeArrayTypeWriter {
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     @Override
     protected void putS2(long value, Chunk chunk, long offset) {
