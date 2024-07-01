@@ -77,7 +77,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     "gate-vm-libgraal_compiler_zgc-labsjdk-21-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-21-linux-amd64": {},
     "gate-vm-libgraal_truffle_quickbuild-labsjdk-21-linux-amd64": t("1:10:00"),
-    "gate-vm-libgraal_compiler-oraclejdk-22-linux-amd64": {},
   },
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -148,7 +147,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     ]
     for os_arch in all_os_arches
     for task in [
-      "libgraal_compiler",
+
     ]
   ],
 
