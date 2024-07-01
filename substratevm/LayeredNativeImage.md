@@ -25,7 +25,8 @@ A Layered Native Image application is logically composed of the final applicatio
 layers containing code that the application requires.
 The supporting layers are called _shared layers_ and the application executable is referred to as either the
 _application layer_ or _executable layer_.
-The _initial_ or _base_ layer is a shared layer containing VM internals and core _java.base_ functionality.
+The _initial_ or _base_ layer is a shared layer containing VM internals and core _java.base_ functionality at a minimum.
+It can also contain modules specific to a certain framework that the application may be built upon.
 
 At run time a shared layer is a shared object file on which other intermediate layers or executable application
 layers can be dependent.
