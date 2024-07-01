@@ -10,8 +10,8 @@ permalink: /reference-manual/native-image/overview/Layers/
 Native Image provides a feature that enables users to build layered native executables.
 In contrast to regular `native-image` building, this mode of operation splits the application and its
 supporting libraries in distinct binaries: a thin layer executable supported by a chain of shared libraries.
-This enables common libraries and VM/JDK code to be shared between multiple applications, resulting in reduced footprint at
-execution time.
+This enables common libraries and VM/JDK code to be shared between multiple applications, resulting in reduced footprint
+at execution time.
 Moreover, it reduces the time to build an application since shared layers are only built once.
 
 ### Table of Contents
@@ -22,8 +22,23 @@ Moreover, it reduces the time to build an application since shared layers are on
 
 ## Layers Architecture
 
-**At runtime** a layer is a shared object on which other layers or executable applications can be dependent.
-The hierarchy of layers forms a tree structure.
+A Layered Native Image application is logically composed of the final application executable plus all the supporting
+layers containing code that the application requires.
+The supporting layers are called _shared layers_ and the application executable is referred to as either the
+_application layer_ or _executable layer_.
+The _initial_ or _base_ layer is a shared layer containing VM internals and core _java.base_ functionality.
+
+**At runtime** a shared layer is a shared object file on which other intermediate layers or executable application
+layers can be dependent.
+Thus, the application and its supporting shared layers form a chain:
+
+```shell
+base-layer.so                    # initial layer (includes VM/JDK code)
+└── mid-layer.so                 # intermediate layer, depends on base-layer.so, adds extra functionality 
+         └── executable-image    # final application executable, depends on mid-layer-0.so and base-layer.so
+```
+
+This architecture enables sharing of layers between applications and the hierarchy of layers forms a tree structure.
 For example at run time there could be four applications that share one base layer and two intermediate layers:
 
 ```shell
@@ -38,13 +53,13 @@ base-layer.so                    # initial layer (includes VM/JDK code)
 
 > Note: The current implementation is limited to only a base layer and an application layer.
 
-**At build time** a layer is stored in a layer archive that contains the following artifacts:
+**At build time** a shared layer is stored in a layer archive that contains the following artifacts:
 
 ```shell
-[base-layer.nil]                   # base layer archive file
-  ├── base-layer.json              # snapshot of the base layer metadata; used by subsequent build processes
-  ├── base-layer.so                # shared object of the base layer; used by subsequent build processes and at run time
-  └── base-layer.properties        # contains info about layer input data
+[shared-layer.nil]                   # shared layer archive file
+  ├── shared-layer.json              # snapshot of the shared layer metadata; used by subsequent build processes
+  ├── shared-layer.so                # shared object of the shared layer; used by subsequent build processes and at run time
+  └── shared-layer.properties        # contains info about layer input data
 ```
 
 A layer archive file has a _.nil_ extension, acronym for **N**ative **I**mage **L**ayer.
@@ -54,8 +69,8 @@ It contains Native Image metadata, such as the analysis universe and available i
 The shared object file will be used at build time for symbol resolution, and at run time for application execution.
 The layer properties file contains metadata that uniquely identifies this layer: the options used to create the
 layer, all the input files and their checksum.
-Subsequent layer builds use the properties file to validate the layers they depend on: the JAR files that the build depends
-on must exactly match those that were used to build the previous layers.
+Subsequent layer builds use the properties file to validate the layers they depend on: the JAR files that the build
+depends on must exactly match those that were used to build the previous layers.
 
 ### Interaction with Native Image Bundles
 
