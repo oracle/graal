@@ -200,7 +200,7 @@ public class SerializationSupport implements SerializationRegistry {
             String targetConstructorClassName = targetConstructorClass.getName();
             if (ThrowMissingRegistrationErrors.hasBeenSet()) {
                 MissingSerializationRegistrationUtils.missingSerializationRegistration(declaringClass,
-                                "type " + declaringClass.getName() + " with target constructor class: " + targetConstructorClassName);
+                                "type " + declaringClass.getTypeName() + " with target constructor class: " + targetConstructorClassName);
             } else {
                 throw VMError.unsupportedFeature("SerializationConstructorAccessor class not found for declaringClass: " + declaringClass.getName() +
                                 " (targetConstructorClass: " + targetConstructorClassName + "). Usually adding " + declaringClass.getName() +
