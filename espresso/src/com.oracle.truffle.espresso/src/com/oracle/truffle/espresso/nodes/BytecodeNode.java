@@ -221,12 +221,14 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RET;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN_VALUE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SASTORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SIPUSH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SLIM_QUICK;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.THROW_VALUE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.clear;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.createFrameDescriptor;
@@ -266,6 +268,7 @@ import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalObjectOrRe
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.startingStackOffset;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.swapSingle;
 
+import java.io.Serial;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -381,7 +384,6 @@ import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 /**
  * Bytecode interpreter loop.
  *
- *
  * Calling convention uses strict Java primitive types although internally the VM basic types are
  * used with conversions at the boundaries.
  *
@@ -393,7 +395,6 @@ import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
 public final class BytecodeNode extends AbstractInstrumentableBytecodeNode implements BytecodeOSRNode, GuestAllocator.AllocationProfiler {
-
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
     private static final DebugCounter QUICKENED_INVOKES = DebugCounter.create("Quickened invokes (excluding INDY)");
@@ -456,13 +457,19 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private final MethodVersion methodVersion;
 
     @CompilationFinal(dimensions = 1) private final byte[] code;
+    private final int returnValueBci;
+    private final int throwValueBci;
 
     public BytecodeNode(MethodVersion methodVersion) {
         CompilerAsserts.neverPartOfCompilation();
         Method method = methodVersion.getMethod();
         assert method.hasBytecodes();
         this.methodVersion = methodVersion;
-        this.code = method.getOriginalCode().clone();
+        byte[] originalCode = method.getOriginalCode();
+        byte[] customCode = Arrays.copyOf(originalCode, originalCode.length + 2);
+        customCode[returnValueBci = originalCode.length] = (byte) Bytecodes.RETURN_VALUE;
+        customCode[throwValueBci = originalCode.length + 1] = (byte) THROW_VALUE;
+        this.code = customCode;
         this.bs = new BytecodeStream(code);
         this.stackOverflowErrorInfo = method.getSOEHandlerInfo();
         this.frameDescriptor = createFrameDescriptor(methodVersion.getMaxLocals(), methodVersion.getMaxStackSize());
@@ -473,7 +480,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
          * The "triviality" is partially computed here since isTrivial is called from a compiler
          * thread where the context is not accessible.
          */
-        this.trivialBytecodesCache = method.getOriginalCode().length <= method.getContext().getEspressoEnv().TrivialMethodSize
+        this.trivialBytecodesCache = originalCode.length <= method.getContext().getEspressoEnv().TrivialMethodSize
                         ? TRIVIAL_UNINITIALIZED
                         : TRIVIAL_NO;
     }
@@ -1283,7 +1290,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         if (instrument != null) {
                             instrument.exitAt(frame, statementIndex, returnValue);
                         }
-                        return returnValue;
+
+                        // This branch must not be a loop exit.
+                        // Let the next loop iteration return this
+                        top = startingStackOffset(getMethodVersion().getMaxLocals());
+                        frame.setObjectStatic(top, returnValue);
+                        top++;
+                        curBCI = returnValueBci;
+                        continue loop;
                     }
                     // @formatter:off
                     // TODO(peterssen): Order shuffled.
@@ -1484,6 +1498,24 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     case SLIM_QUICK:
                         top += sparseNodes[curBCI].execute(frame, false);
                         break;
+                    case RETURN_VALUE:
+                        /*
+                         * Synthetic bytecode used to avoid merging interpreter loop exits too early
+                         * (and thus lose partial-evaluation constants too early). When reached, the
+                         * object at stack slot 0 should be returned.
+                         */
+                        assert top == startingStackOffset(getMethodVersion().getMaxLocals()) + 1;
+                        assert curBCI == returnValueBci;
+                        return frame.getObjectStatic(top - 1);
+                    case THROW_VALUE:
+                        /*
+                         * Synthetic bytecode used to avoid merging interpreter loop exits too early
+                         * (and thus lose partial-evaluation constants too early). When reached, the
+                         * object at stack slot 0 should be thrown.
+                         */
+                        assert top == startingStackOffset(getMethodVersion().getMaxLocals()) + 1;
+                        assert curBCI == throwValueBci;
+                        throw new ThrowOutOfInterpreterLoop((RuntimeException) frame.getObjectStatic(top - 1));
 
                     default:
                         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1496,7 +1528,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                  */
                 // Get the frame from the stack into the VM heap.
                 copyFrameToUnwindRequest(frame, unwindContinuationExceptionRequest, curBCI, top);
-                throw unwindContinuationExceptionRequest;
+
+                // This branch must not be a loop exit. Let the next loop iteration throw this
+                top = startingStackOffset(getMethodVersion().getMaxLocals());
+                frame.setObjectStatic(top, unwindContinuationExceptionRequest);
+                top++;
+                curBCI = throwValueBci;
+                continue loop;
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 // Handle both guest and host StackOverflowError.
@@ -1536,6 +1574,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
                         LoopNode.reportLoopCount(this, loopCount.value);
                     }
+                    // this branch is not compiled, it can be a loop exit
                     throw wrappedStackOverflowError;
 
                 } else /* EspressoException or AbstractTruffleException or OutOfMemoryError */ {
@@ -1547,6 +1586,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             CompilerDirectives.transferToInterpreter();
                             getRoot().abortMonitor(frame);
                             // Tearing down the VM, no need to report loop count.
+                            // this branch is not compiled, it can be a loop exit
                             throw e;
                         }
                         assert getContext().getEspressoEnv().Polyglot;
@@ -1596,7 +1636,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
                             LoopNode.reportLoopCount(this, loopCount.value);
                         }
-                        throw e;
+
+                        // This branch must not be a loop exit.
+                        // Let the next loop iteration throw this
+                        top = startingStackOffset(getMethodVersion().getMaxLocals());
+                        frame.setObjectStatic(top, wrappedException);
+                        top++;
+                        curBCI = throwValueBci;
+                        continue loop;
                     }
                 }
             } catch (EspressoOSRReturnException e) {
@@ -1607,7 +1654,15 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 if (instrument != null) {
                     instrument.notifyReturn(frame, statementIndex, returnValue);
                 }
-                return returnValue;
+
+                // This branch must not be a loop exit. Let the next loop iteration return this
+                top = startingStackOffset(getMethodVersion().getMaxLocals());
+                frame.setObjectStatic(top, returnValue);
+                top++;
+                curBCI = returnValueBci;
+                continue loop;
+            } catch (ThrowOutOfInterpreterLoop e) {
+                throw e.reThrow();
             }
             assert curOpcode != WIDE && curOpcode != LOOKUPSWITCH && curOpcode != TABLESWITCH;
 
@@ -1618,6 +1673,19 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             }
             top += Bytecodes.stackEffectOf(curOpcode);
             curBCI = targetBCI;
+        }
+    }
+
+    private static final class ThrowOutOfInterpreterLoop extends ControlFlowException {
+        @Serial private static final long serialVersionUID = 774753014650104744L;
+        private final RuntimeException exception;
+
+        private ThrowOutOfInterpreterLoop(RuntimeException exception) {
+            this.exception = exception;
+        }
+
+        RuntimeException reThrow() {
+            throw exception;
         }
     }
 
