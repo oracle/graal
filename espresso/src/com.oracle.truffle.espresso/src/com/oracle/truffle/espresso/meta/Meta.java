@@ -1054,8 +1054,8 @@ public final class Meta extends ContextAccessImpl {
             java_util_regex_IntHashSet = null;
         }
 
-        java_util_concurrent_locks_abstractOwnableSynchronizer = knownKlass(Type.java_util_concurrent_locks_AbstractOwnableSynchronizer);
-        java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread = java_util_concurrent_locks_abstractOwnableSynchronizer.requireDeclaredField(Name.exclusiveOwnerThread,
+        java_util_concurrent_locks_AbstractOwnableSynchronizer = knownKlass(Type.java_util_concurrent_locks_AbstractOwnableSynchronizer);
+        java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread = java_util_concurrent_locks_AbstractOwnableSynchronizer.requireDeclaredField(Name.exclusiveOwnerThread,
                         Type.java_lang_Thread);
 
         java_math_BigInteger = knownKlass(Type.java_math_BigInteger);
@@ -1886,7 +1886,7 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_util_regex_Matcher_requireEnd;
     public final Method java_util_regex_Matcher_groupCount;
 
-    public final ObjectKlass java_util_concurrent_locks_abstractOwnableSynchronizer;
+    public final ObjectKlass java_util_concurrent_locks_AbstractOwnableSynchronizer;
     public final Field java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread;
 
     public final ObjectKlass java_math_BigInteger;
