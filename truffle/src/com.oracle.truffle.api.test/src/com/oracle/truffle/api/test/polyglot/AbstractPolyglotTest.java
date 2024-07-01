@@ -487,11 +487,23 @@ public abstract class AbstractPolyglotTest {
 
     }
 
-    // When using this method, the caller test should use:
-    // Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
-    // at the start of the test to avoid extra unnecessary work.
+    /**
+     * When using this method, the caller test should use:
+     * {@code Assume.assumeFalse(vthreads && !canCreateVirtualThreads());} at the start of the test
+     * to avoid extra unnecessary work.
+     */
     public static ExecutorService threadPool(int threads, boolean vthreads) {
-        return vthreads ? Executors.newVirtualThreadPerTaskExecutor() : Executors.newFixedThreadPool(threads);
+        if (vthreads) {
+            /*
+             * It might be tempting to use Executors.newVirtualThreadPerTaskExecutor() here but that
+             * would then be surprising for the caller which expects a thread pool with N threads
+             * and not more. For example, if many tasks are sent and a new thread is created for
+             * each task it tests something different from executing multiple tasks per thread.
+             */
+            return Executors.newFixedThreadPool(threads, runnable -> Thread.ofVirtual().unstarted(runnable));
+        } else {
+            return Executors.newFixedThreadPool(threads);
+        }
     }
 
     public static void runInVirtualThread(Runnable runnable) throws Throwable {
