@@ -422,7 +422,7 @@ public final class JDWP {
                     controller.fine(() -> "Redefine successful");
                 } finally {
                     for (Object guestThread : allGuestThreads) {
-                        controller.resume(guestThread, false);
+                        controller.resume(guestThread);
                     }
                     controller.leaveTruffleContext(prev);
                 }
@@ -2017,7 +2017,7 @@ public final class JDWP {
 
                 controller.fine(() -> "resume thread packet for thread: " + controller.getContext().getThreadName(thread));
 
-                controller.resume(thread, false);
+                controller.resume(thread);
                 return new CommandResult(reply);
             }
         }
@@ -2388,19 +2388,18 @@ public final class JDWP {
                     // return type methods anyway
                     returnValue = controller.getContext().getNullObject();
                 }
+
                 CallFrame[] stackFrames = info.getStackFrames();
                 CallFrame topFrame = stackFrames.length > 0 ? stackFrames[0] : null;
                 if (topFrame == null || !controller.forceEarlyReturn(info, thread, topFrame, returnValue)) {
+
                     reply.errorCode(ErrorCodes.OPAQUE_FRAME);
                 }
 
                 // make sure owned monitors taken in frame are exited
-                ThreadJob<Void> job = new ThreadJob<>(thread, new Callable<Void>() {
-                    @Override
-                    public Void call() {
-                        controller.getContext().clearFrameMonitors(topFrame);
-                        return null;
-                    }
+                ThreadJob<Void> job = new ThreadJob<>(thread, () -> {
+                    controller.getContext().clearFrameMonitors(topFrame);
+                    return null;
                 });
                 controller.postJobForThread(job);
                 // don't return here before job completed

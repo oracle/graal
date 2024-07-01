@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-
-import java.util.Arrays;
 
 public abstract class AbstractBreakpointInfo implements BreakpointInfo {
 
@@ -115,11 +115,6 @@ public abstract class AbstractBreakpointInfo implements BreakpointInfo {
 
     @Override
     public boolean isExceptionBreakpoint() {
-        return false;
-    }
-
-    @Override
-    public boolean isLineBreakpoint() {
         return false;
     }
 }
