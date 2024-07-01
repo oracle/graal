@@ -328,6 +328,7 @@ static void parse_vm_option(
 /* parse the VM arguments that should be passed to JNI_CreateJavaVM */
 static void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs *vmInitArgs, std::vector<std::string>& optionVarsArgs, bool jvmMode) {
     std::vector<std::string> vmArgs;
+    bool panamaModule = false;
 
     /* check if vm args have been set on relaunch already */
     int vmArgCount = 0;
@@ -382,6 +383,11 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMIn
             if (i < launcherModulePathCnt-1) {
                 modulePath << CP_SEP_STR;
             }
+
+            entry << DIR_SEP_STR << "truffle-nfi-panama.jar";
+            if (exists(entry.str())) {
+                panamaModule = true;
+            }
         }
     }
     #endif
@@ -428,6 +434,12 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMIn
                 FindClose(dir);
             }
             #endif
+        }
+
+        std::stringstream panamaPath;
+        panamaPath << exeDir << DIR_SEP_STR << LANGUAGES_DIR_STR << DIR_SEP_STR << "nfi" << DIR_SEP_STR << "truffle-nfi-panama.jar";
+        if (exists(panamaPath.str())) {
+            panamaModule = true;
         }
     }
     #endif
@@ -555,6 +567,13 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMIn
         vmArgs.push_back("-Djdk.module.main=" LAUNCHER_MAIN_MODULE_STR);
         vmArgs.push_back("-Dgraalvm.locatorDisabled=true");
 #endif
+
+        if (panamaModule) {
+            /* Allow Truffle NFI Panama to use Linker#{downcallHandle,upcallStub} without warnings.
+             * TODO (GR-54905) this should become --enable-native-access=org.graalvm.truffle
+             * to avoid exposing the internal Panama module directly. */
+            vmArgs.push_back("--enable-native-access=com.oracle.truffle.truffle_nfi_panama");
+        }
     }
 
     jint nOptions = jvmMode ? vmArgs.size() : 1 + vmArgs.size();
