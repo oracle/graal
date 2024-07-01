@@ -313,6 +313,7 @@ import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FloatConstant;
@@ -338,6 +339,7 @@ import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
+import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode.MethodHandleInvoker;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.InstanceOfQuickNode;
@@ -2488,7 +2490,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         InvokeQuickNode invoke;
         if (resolved.isPolySignatureIntrinsic()) {
-            invoke = new InvokeHandleNode(resolved, getDeclaringKlass(), top, curBCI);
+            MethodHandleInvoker invoker = null;
+            if ((resolvedOpCode == INVOKEVIRTUAL || resolvedOpCode == INVOKESPECIAL) && (getConstantPool().resolvedMethodRefAt(getDeclaringKlass(), cpi) instanceof ClassMethodRefConstant methodRef)) {
+                // There might be an invoker if it's an InvokeGeneric
+                invoker = methodRef.invoker();
+            }
+            invoke = new InvokeHandleNode(resolved, invoker, top, curBCI);
         } else {
             // @formatter:off
             switch (resolvedOpCode) {
