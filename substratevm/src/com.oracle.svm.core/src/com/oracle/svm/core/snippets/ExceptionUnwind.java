@@ -213,6 +213,7 @@ public abstract class ExceptionUnwind {
             }
 
             /* No handler found in this frame, walk to caller frame. */
+            VMError.guarantee(!JavaFrames.isEntryPoint(frame), "Entry point methods must have an exception handler.");
             hasCalleeSavedRegisters = CodeInfoQueryResult.hasCalleeSavedRegisters(frame.getEncodedFrameSize());
         }
     }
