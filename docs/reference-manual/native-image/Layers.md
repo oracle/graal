@@ -22,7 +22,7 @@ Moreover, it reduces the time to build an application since shared layers are on
 
 ## Layers Architecture
 
-**At runtime** a layer is a shared object that other layers or executable applications can depend on.
+**At runtime** a layer is a shared object on which other layers or executable applications can be dependent.
 The hierarchy of layers forms a tree structure.
 For example at run time there could be four applications that share one base layer and two intermediate layers:
 
