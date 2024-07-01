@@ -316,6 +316,7 @@ public class NativeImage {
          * of com.oracle.svm.util.ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM environment variable use.
          */
         private static final Method isModulePathBuild = ReflectionUtil.lookupMethod(ModuleSupport.class, "isModulePathBuild");
+        private static final String JAVA_EXECUTABLE_OVERRIDE = System.getProperty("com.oracle.svm.driver.java.executable.override");
 
         protected boolean modulePathBuild;
         String imageBuilderModeEnforcer;
@@ -405,6 +406,9 @@ public class NativeImage {
          * @return path to Java executable
          */
         public Path getJavaExecutable() {
+            if (JAVA_EXECUTABLE_OVERRIDE != null) {
+                return Paths.get(JAVA_EXECUTABLE_OVERRIDE);
+            }
             Path binJava = Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
             if (Files.isExecutable(rootDir.resolve(binJava))) {
                 return rootDir.resolve(binJava);
