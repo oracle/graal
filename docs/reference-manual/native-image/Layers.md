@@ -18,7 +18,6 @@ Moreover, it reduces the time to build an application since shared layers are on
 * [Layers Architecture](#layers-architecture)
 * [Creating Layered Executables](#creating-layered-executables)
 * [Packaging Layers](#packaging-layers)
-* [Example Usage](#example-usage)
 
 ## Layers Architecture
 
@@ -57,7 +56,7 @@ base-layer.so                    # initial layer (includes VM/JDK code)
 
 To create layered executables `native-image` accepts two options: `--layer-create` and `--layer-use`.
 
-First, `--layer-create` builds an image layer from code available on the class or module path:
+First, `--layer-create` builds an image layer archive from code available on the class or module path:
 
 ```
 --layer-create[=layer.nil][,module[=<module-name>][,package=<package-name>]]
@@ -70,6 +69,8 @@ First, `--layer-create` builds an image layer from code available on the class o
                       The option can be extended with ",module" and ",package" to specify which code should be included in the layer.
 ```
 
+A layer archive file has a _.nil_ extension, acronym for **N**ative **I**mage **L**ayer.
+
 Second, `--layer-use` consumes an existing layer, and it can extend it or create a final executable:
 
 ```
@@ -80,7 +81,47 @@ Second, `--layer-use` consumes an existing layer, and it can extend it or create
                       If no other layer option is specified then a native executable that depends on the specified layer will be created.
 ```
 
-See [Example Usage](#example-usage) section for more details.
+#### Example Layers Option Usage
+
+```shell
+# given an application that would usually be built like this
+native-image --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --another-extra-option -cp . AwesomeHelloWorld
+
+# you can now create a base-layer.nil layer from the java.base and java.awesome.lib modules
+native-image --layer-create=base-layer.nil,module=java.base,module=java.awesome.lib --module-path target/AwesomeLib-1.0-SNAPSHOT.jar
+
+# then build the application on top of the preexisting base layer 
+native-image --layer-use=base-layer.nil --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --another-extra-option -cp . AwesomeHelloWorld
+
+# extend the base layer with a mid layer that adds an extra module, chaining the layers together
+native-image --layer-use=base-layer.nil --layer-create=mid-layer.nil,module=java.ultimate.io.lib --module-path target/UltimateIoLib-1.0-SNAPSHOT.jar
+
+# create an executable based on the mid layer (and implicitly on the base layer) and using the additional UltimateAwesomeHelloWorld.class from the classpath
+native-image --layer-use=mid-layer.nil --module-path target/AwesomeLib-1.0-SNAPSHOT.jar:target/UltimateIoLib-1.0-SNAPSHOT.jar -cp . UltimateAwesomeHelloWorld
+
+# the same application can be built directly on the base-layer.nil
+native-image --layer-use=base-layer.nil --module-path target/AwesomeLib-1.0-SNAPSHOT.jar:target/UltimateIoLib-1.0-SNAPSHOT.jar -cp . UltimateAwesomeHelloWorld
+
+# again, the same application can be built without any layers
+native-image --module-path target/AwesomeLib-1.0-SNAPSHOT.jar:target/UltimateIoLib-1.0-SNAPSHOT.jar -cp . UltimateAwesomeHelloWorld
+
+# additionally a shared library can be built as a top layer containing the extra C entry points, based on a preexisting layer
+native-image --layer-use=base-layer.nil --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --shared
+
+# or without the layer
+native-image --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --shared
+
+```
+
+### Invariants
+
+- Every image build only creates one layer.
+- The image build command must work without `--layer-use` and create a standalone image
+    - The standalone command must completely specify the module/classpath and all other necessary configuration options
+- The layer specified by `--layer-use` must be compatible with the standalone command line
+    - class/jar file compatibility (`-cp`, `-p`, same JDK, same GraalVM, same libs, etc.)
+    - config compatibility: GC config, etc.
+    - access compatibility: no additional unsafe and field accesses are allowed
 
 ## Packaging Layers
 
@@ -92,8 +133,6 @@ At build time a shared layer is stored in a layer archive that contains the foll
   ├── shared-layer.so                # shared object of the shared layer; used by subsequent build processes and at run time
   └── shared-layer.properties        # contains info about layer input data
 ```
-
-A layer archive file has a _.nil_ extension, acronym for **N**ative **I**mage **L**ayer.
 
 The layer snapshot file will be consumed by subsequent build processes that depend on this layer.
 It contains Native Image metadata, such as the analysis universe and available image singletons.
@@ -155,51 +194,7 @@ Similarly, a bundle of a build process that uses a `base-layer.nil` and produces
             └── mid-layer.properties
 ```
 
-### Invariants
-
-- Every image build only creates one layer.
-- The image build command must work without `--layer-use` and create a standalone image
-    - The standalone command must completely specify the module/classpath and all other necessary configuration options
-- The layer specified by `--layer-use` must be compatible with the standalone command line
-    - class/jar file compatibility (`-cp`, `-p`, same JDK, same GraalVM, same libs, etc.)
-    - config compatibility: GC config, etc.
-    - access compatibility: no additional unsafe and field accesses are allowed
-
-### Example Usage
-
-#### Basic layers option usage
-
-```shell
-# given an application that would usually be built like this
-native-image --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --another-extra-option -cp . AwesomeHelloWorld
-
-# you can now create a base-layer.nil layer from the java.base and java.awesome.lib modules
-native-image --layer-create=base-layer.nil,module=java.base,module=java.awesome.lib --module-path target/AwesomeLib-1.0-SNAPSHOT.jar
-
-# then build the application on top of the preexisting base layer 
-native-image --layer-use=base-layer.nil --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --another-extra-option -cp . AwesomeHelloWorld
-
-# extend the base layer with a mid layer that adds an extra module, chaining the layers together
-native-image --layer-use=base-layer.nil --layer-create=mid-layer.nil,module=java.ultimate.io.lib --module-path target/UltimateIoLib-1.0-SNAPSHOT.jar
-
-# create an executable based on the mid layer (and implicitly on the base layer) and using the additional UltimateAwesomeHelloWorld.class from the classpath
-native-image --layer-use=mid-layer.nil --module-path target/AwesomeLib-1.0-SNAPSHOT.jar:target/UltimateIoLib-1.0-SNAPSHOT.jar -cp . UltimateAwesomeHelloWorld
-
-# the same application can be built directly on the base-layer.nil
-native-image --layer-use=base-layer.nil --module-path target/AwesomeLib-1.0-SNAPSHOT.jar:target/UltimateIoLib-1.0-SNAPSHOT.jar -cp . UltimateAwesomeHelloWorld
-
-# again, the same application can be built without any layers
-native-image --module-path target/AwesomeLib-1.0-SNAPSHOT.jar:target/UltimateIoLib-1.0-SNAPSHOT.jar -cp . UltimateAwesomeHelloWorld
-
-# additionally a shared library can be built as a top layer containing the extra C entry points, based on a preexisting layer
-native-image --layer-use=base-layer.nil --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --shared
-
-# or without the layer
-native-image --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --shared
-
-```
-
-#### Interaction with bundles
+#### Example Layers and Bundles Option Usage
 
 ```shell
 # given an application that would usually be built just like in the previous section, but this time creating a bundle
