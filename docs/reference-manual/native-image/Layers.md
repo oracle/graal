@@ -47,7 +47,7 @@ base-layer.so                    # initial layer (includes VM/JDK code)
   └── base-layer.properties        # contains info about layer input data
 ```
 
-A layer archive file has a `.nil` extension, acronym for **N**ative **I**mage **L**ayer.
+A layer archive file has a _.nil_ extension, acronym for **N**ative **I**mage **L**ayer.
 
 The layer snapshot file will be consumed by subsequent build processes that depend on this layer.
 It contains Native Image metadata, such as the analysis universe and available image singletons.
