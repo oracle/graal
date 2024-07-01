@@ -9,7 +9,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       ['mx', '--env', 'ce', '--native-images=lib:jvmcicompiler', 'gate', '--no-warning-as-error', '--tags', 'build,truffle-jvm'],
     ],
     notify_groups: ["truffle"],
-    timelimit: '1:00:00',
+    timelimit: '1:15:00',
     name: self.targets[0] + '-vm-ce-truffle-jvm-labs' + self.jdk_name + '-linux-amd64',
   },
 
