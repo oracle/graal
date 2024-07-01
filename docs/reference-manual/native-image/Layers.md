@@ -83,7 +83,7 @@ For example a bundle of a build process that uses a `base-layer.nil` and produce
 ```
 
 The `classes` entry captures all class-path and module-path entries passed to the builder.
-This includes all jars that were used to build `base-layer.nil`, and they must match the checksums
+This includes all JAR files that were used to build `base-layer.nil`, and they must match the checksums
 in `base-layer.properties`.
 
 Similarly, a bundle of a build process that uses a `base-layer.nil` and produces a `mid-layer.nil` layer may contain:
