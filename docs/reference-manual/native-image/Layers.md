@@ -54,7 +54,7 @@ It contains Native Image metadata, such as the analysis universe and available i
 The shared object file will be used at build time for symbol resolution, and at run time for application execution.
 The layer properties file contains metadata that uniquely identifies this layer: the options used to create the
 layer, all the input files and their checksum.
-Subsequent layer builds use the properties file to validate the layers they depend on: the jars that the build depends
+Subsequent layer builds use the properties file to validate the layers they depend on: the JAR files that the build depends
 on must exactly match those that were used to build the previous layers.
 
 ### Interaction with Native Image Bundles
