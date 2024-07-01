@@ -34,7 +34,7 @@ Thus, the application and its supporting shared layers form a chain:
 ```shell
 base-layer.so                    # initial layer (includes VM/JDK code)
 └── mid-layer.so                 # intermediate layer, depends on base-layer.so, adds extra functionality 
-         └── executable-image    # final application executable, depends on mid-layer-0.so and base-layer.so
+         └── executable-image    # final application executable, depends on mid-layer.so and base-layer.so
 ```
 
 This architecture enables sharing of layers between applications and the hierarchy of layers forms a tree structure.
