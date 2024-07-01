@@ -441,6 +441,7 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError: if the system runs out of memory.
      */
     @JniImpl
+    @TruffleBoundary
     public @Handle(Field.class) long GetFieldID(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject typePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         String type = NativeUtils.interopPointerToString(typePtr);
@@ -485,6 +486,7 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
+    @TruffleBoundary
     public @Handle(Field.class) long GetStaticFieldID(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject typePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         String type = NativeUtils.interopPointerToString(typePtr);
@@ -529,6 +531,7 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
+    @TruffleBoundary
     public @Handle(Method.class) long GetMethodID(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject signaturePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         String signature = NativeUtils.interopPointerToString(signaturePtr);
@@ -569,6 +572,7 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
+    @TruffleBoundary
     public @Handle(Method.class) long GetStaticMethodID(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject signaturePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         String signature = NativeUtils.interopPointerToString(signaturePtr);
