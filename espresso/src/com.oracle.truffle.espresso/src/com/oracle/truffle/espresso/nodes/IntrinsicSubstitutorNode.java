@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,16 @@ package com.oracle.truffle.espresso.nodes;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
+import com.oracle.truffle.espresso.vm.VM;
 
-final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl {
+public final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl {
     @Child private JavaSubstitution substitution;
 
     // Truffle does not want to report split on first call. Delay until the second.
@@ -88,5 +90,14 @@ final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl 
     @Override
     boolean isTrivial() {
         return substitution.isTrivial();
+    }
+
+    @Override
+    public int getBci(Frame frame) {
+        if (getMethodVersion().isMethodNative()) {
+            return VM.EspressoStackElement.NATIVE_BCI;
+        } else {
+            return 0;
+        }
     }
 }
