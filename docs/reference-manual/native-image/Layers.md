@@ -17,6 +17,7 @@ Moreover, it reduces the time to build an application since shared layers are on
 
 * [Layers Architecture](#layers-architecture)
 * [Creating Layered Executables](#creating-layered-executables)
+* [Packaging Layers](#packaging-layers)
 * [Example Usage](#example-usage)
 
 ## Layers Architecture
@@ -27,7 +28,7 @@ The supporting layers are called _shared layers_ and the application executable 
 _application layer_ or _executable layer_.
 The _initial_ or _base_ layer is a shared layer containing VM internals and core _java.base_ functionality.
 
-**At runtime** a shared layer is a shared object file on which other intermediate layers or executable application
+At run time a shared layer is a shared object file on which other intermediate layers or executable application
 layers can be dependent.
 Thus, the application and its supporting shared layers form a chain:
 
@@ -52,7 +53,38 @@ base-layer.so                    # initial layer (includes VM/JDK code)
 
 > Note: The current implementation is limited to only a base layer and an application layer.
 
-**At build time** a shared layer is stored in a layer archive that contains the following artifacts:
+## Creating Layered Executables
+
+To create layered executables `native-image` accepts two options: `--layer-create` and `--layer-use`.
+
+First, `--layer-create` builds an image layer from code available on the class or module path:
+
+```
+--layer-create[=layer.nil][,module[=<module-name>][,package=<package-name>]]
+                      it builds an image layer file (with the *.nil extension) containing a 'layer.so' shared object binary, 
+                      a 'layer.json' metadata file for the current layer, and a 'layer.properties' file containg layer input metadata
+                      like the options used to create the layer, the input files and their checksum.
+                      The metadata file allows building subsequent layers or final executables which depend on the *.so.
+                      If a layer-file is specified, the layer will be created with the given name.
+                      Otherwise, the layer-file name is derived from the image name.
+                      The option can be extended with ",module" and ",package" to specify which code should be included in the layer.
+```
+
+Second, `--layer-use` consumes an existing layer, and it can extend it or create a final executable:
+
+```
+--layer-use=some-layer.nil
+                      loads the given the layer and makes it available to the build process.
+                      If option --layer-create=some-other-layer.nil is specified then a new layer will be created which 
+                      has the current layer as a predecesor.
+                      If no other layer option is specified then a native executable that depends on the specified layer will be created.
+```
+
+See [Example Usage](#example-usage) section for more details.
+
+## Packaging Layers
+
+At build time a shared layer is stored in a layer archive that contains the following artifacts:
 
 ```shell
 [shared-layer.nil]                   # shared layer archive file
@@ -122,35 +154,6 @@ Similarly, a bundle of a build process that uses a `base-layer.nil` and produces
             ├── mid-layer.so
             └── mid-layer.properties
 ```
-
-## Creating Layered Executables
-
-To create layered executables `native-image` accepts two options: `--layer-create` and `--layer-use`.
-
-First, `--layer-create` builds an image layer from code available on the class or module path:
-
-```
---layer-create[=layer.nil][,module[=<module-name>][,package=<package-name>]]
-                      it builds an image layer file (with the *.nil extension) containing a 'layer.so' shared object binary, 
-                      a 'layer.json' metadata file for the current layer, and a 'layer.properties' file containg layer input metadata
-                      like the options used to create the layer, the input files and their checksum.
-                      The metadata file allows building subsequent layers or final executables which depend on the *.so.
-                      If a layer-file is specified, the layer will be created with the given name.
-                      Otherwise, the layer-file name is derived from the image name.
-                      The option can be extended with ",module" and ",package" to specify which code should be included in the layer.
-```
-
-Second, `--layer-use` consumes an existing layer, and it can extend it or create a final executable:
-
-```
---layer-use=some-layer.nil
-                      loads the given the layer and makes it available to the build process.
-                      If option --layer-create=some-other-layer.nil is specified then a new layer will be created which 
-                      has the current layer as a predecesor.
-                      If no other layer option is specified then a native executable that depends on the specified layer will be created.
-```
-
-See [Example Usage](#example-usage) section for more details.
 
 ### Invariants
 
