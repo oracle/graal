@@ -982,6 +982,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_util_regex_IntHashSet_array = StaticSymbols.putType("[Ljava/util/regex/IntHashSet;");
 
         public static final Symbol<Type> java_util_concurrent_locks_AbstractOwnableSynchronizer = StaticSymbols.putType("Ljava/util/concurrent/locks/AbstractOwnableSynchronizer;");
+        public static final Symbol<Type> java_util_concurrent_locks_ReentrantLock_Sync = StaticSymbols.putType("Ljava/util/concurrent/locks/ReentrantLock$Sync;");
+        public static final Symbol<Type> java_util_concurrent_locks_ReentrantReadWriteLock_Sync = StaticSymbols.putType("Ljava/util/concurrent/locks/ReentrantReadWriteLock$Sync;");
 
         // java math
         public static final Symbol<Type> java_math_BigInteger = StaticSymbols.putType("Ljava/math/BigInteger;");
