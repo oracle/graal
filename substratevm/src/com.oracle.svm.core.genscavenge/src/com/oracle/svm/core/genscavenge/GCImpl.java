@@ -89,7 +89,6 @@ import com.oracle.svm.core.stack.JavaFrame;
 import com.oracle.svm.core.stack.JavaFrames;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperationData;
@@ -204,9 +203,7 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean inVMInternalCode() {
-        return VMOperation.isInProgress() ||
-                        ReferenceHandlerThread.isReferenceHandlerThread() ||
-                        StackOverflowCheck.singleton().isYellowZoneAvailable();
+        return VMOperation.isInProgress() || ReferenceHandlerThread.isReferenceHandlerThread();
     }
 
     @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
