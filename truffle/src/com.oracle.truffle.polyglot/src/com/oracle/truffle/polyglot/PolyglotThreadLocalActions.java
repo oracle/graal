@@ -66,7 +66,6 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ThreadLocalAction;
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -80,7 +79,6 @@ final class PolyglotThreadLocalActions {
     static final ThreadLocalHandshake TL_HANDSHAKE = EngineAccessor.ACCESSOR.runtimeSupport().getThreadLocalHandshake();
     private final PolyglotContextImpl context;
     private final Map<AbstractTLHandshake, Void> activeEvents = new LinkedHashMap<>();
-    @CompilationFinal private TruffleLogger logger;
     private long idCounter;
     @CompilationFinal private boolean traceActions;
     private List<PolyglotStatisticsAction> statistics;  // final after context patching
@@ -137,12 +135,6 @@ final class PolyglotThreadLocalActions {
             setupIntervalTimer(interval);
         } else {
             intervalTimer = null;
-        }
-
-        if (statistics != null || traceActions || interval > 0) {
-            logger = this.context.engine.getEngineLogger();
-        } else {
-            logger = null;
         }
     }
 
@@ -236,7 +228,7 @@ final class PolyglotThreadLocalActions {
         }
         s.append(String.format("  ------------------------------------------------------------------------------------- %n"));
         formatStatisticLine(s, "  All threads", all);
-        logger.log(Level.INFO, s.toString());
+        context.engine.getEngineLogger().log(Level.INFO, s.toString());
         statistics.clear();
     }
 
@@ -265,9 +257,6 @@ final class PolyglotThreadLocalActions {
                 Objects.requireNonNull(threads[i]);
             }
         }
-        // We must do this now as it takes the engine lock, and the nesting order must always be
-        // engine lock first, then context lock
-        TruffleLogger engineLogger = context.engine.getEngineLogger();
         // lock to stop new threads
         synchronized (context) {
             // send enter/leave to slow-path
@@ -338,7 +327,7 @@ final class PolyglotThreadLocalActions {
                 int syncActionMaxWait = context.engine.getEngineOptionValues().get(PolyglotEngineOptions.SynchronousThreadLocalActionMaxWait);
                 boolean syncActionPrintStackTraces = context.engine.getEngineOptionValues().get(PolyglotEngineOptions.SynchronousThreadLocalActionPrintStackTraces);
                 future = TL_HANDSHAKE.runThreadLocal(activeThreads, handshake, AbstractTLHandshake::notifyDone, EngineAccessor.LANGUAGE.isSideEffectingTLAction(action), config.syncStartOfEvent,
-                                config.syncEndOfEvent, syncActionMaxWait, syncActionPrintStackTraces, engineLogger);
+                                config.syncEndOfEvent, syncActionMaxWait, syncActionPrintStackTraces, context.engine.getEngineLogger());
                 this.activeEvents.put(handshake, null);
 
             } else {
@@ -437,7 +426,7 @@ final class PolyglotThreadLocalActions {
 
     private void log(String action, AbstractTLHandshake handshake, String details) {
         if (traceActions) {
-            logger.log(Level.INFO,
+            context.engine.getEngineLogger().log(Level.INFO,
                             String.format("[tl] %-18s %8d  %-30s %-10s %-30s %s", action,
                                             handshake.debugId,
                                             "thread[" + Thread.currentThread().getName() + "]",
@@ -528,7 +517,7 @@ final class PolyglotThreadLocalActions {
 
         @Override
         protected void perform(Access access) {
-            logger.log(Level.INFO, String.format("Stack Trace Thread %s: %s",
+            context.engine.getEngineLogger().log(Level.INFO, String.format("Stack Trace Thread %s: %s",
                             Thread.currentThread().getName(),
                             PolyglotExceptionImpl.printStackToString(context.getHostContext(), access.getLocation())));
         }
@@ -751,7 +740,8 @@ final class PolyglotThreadLocalActions {
                 intervalStatistics.accept(duration);
 
                 if (stackTrace != null && !PolyglotLanguageContext.isContextCreation(stackTrace)) {
-                    logger.info("No TruffleSafepoint.poll() for " + Duration.ofNanos(duration).toMillis() + "ms on " + threadName + " (stacktrace " + missingPollMillis + "ms after the last poll)" +
+                    context.engine.getEngineLogger().info("No TruffleSafepoint.poll() for " + Duration.ofNanos(duration).toMillis() + "ms on " + threadName + " (stacktrace " + missingPollMillis +
+                                    "ms after the last poll)" +
                                     System.lineSeparator() + formatStackTrace(stackTrace));
                     stackTrace = null;
                 }
