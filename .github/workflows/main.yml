@@ -121,10 +121,11 @@ jobs:
               GATE_TAGS: "build,helloworld,native_unittests"
               PRIMARY: "substratevm"
               PIP_PACKAGES: "jsonschema==4.6.1"
-          - env:
-              JDK_VERSION: "latest"
-              GATE_TAGS: "build,debuginfotest"
-              PRIMARY: "substratevm"
+          # debuginfotest broken by JDK 24+4 [GR-55038]
+          # - env:
+          #     JDK_VERSION: "latest"
+          #     GATE_TAGS: "build,debuginfotest"
+          #     PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "latest"
               GATE_TAGS: "hellomodule"
