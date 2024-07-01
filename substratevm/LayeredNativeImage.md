@@ -230,6 +230,9 @@ native-image --bundle-apply=base-bundle.nib
 # or recreate the base layer with some extra options
 native-image --bundle-apply=base-bundle.nib --another-extra-option
 
+# you can also build a bundle which captures the creation of a layer, but not actually perform the image building using the dry-run bundle-create option
+native-image --layer-create=base-layer.nil,module=java.base,module=java.awesome.lib --module-path target/AwesomeLib-1.0-SNAPSHOT.jar --bundle-create=base-bundle.nib,dry-run
+
 ```
 
 When using bundles the layer file becomes either an input of the bundle in case of `--layer-use` or an output of the
