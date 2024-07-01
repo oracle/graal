@@ -414,9 +414,14 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
         private void enter(StaticObject monitor) {
             if (top >= capacity) {
-                monitors = Arrays.copyOf(monitors, capacity <<= 1);
+                grow();
             }
             monitors[top++] = monitor;
+        }
+
+        @TruffleBoundary
+        private void grow() {
+            monitors = Arrays.copyOf(monitors, capacity <<= 1);
         }
 
         private void exit(StaticObject monitor, EspressoRootNode node) {
