@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.ValueKind;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode.LLVMPrimitiveOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
@@ -53,7 +53,7 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
     @GenerateAOT.Exclude
     static void doValue(LLVMPointer ptr, LLVMInteropType.Value type, Object value,
                     @Cached(value = "type.kind", allowUncached = true) @SuppressWarnings("unused") LLVMInteropType.ValueKind cachedKind,
-                    @Cached(parameters = "cachedKind") LLVMOffsetStoreNode store,
+                    @Cached(parameters = "cachedKind") LLVMPrimitiveOffsetStoreNode store,
                     @Cached(value = "createForeignToLLVM(type)", uncached = "getSlowPath()") ForeignToLLVM toLLVM) {
         Object llvmValue = toLLVM.executeWithForeignToLLVMType(value, type.baseType, cachedKind.foreignToLLVMType);
         store.executeWithTargetGeneric(ptr, 0, llvmValue);

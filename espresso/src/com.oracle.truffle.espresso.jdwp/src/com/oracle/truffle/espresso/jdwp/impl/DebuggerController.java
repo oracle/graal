@@ -146,7 +146,8 @@ public final class DebuggerController implements ContextsListener {
 
     public void setCommandRequestId(Object thread, int commandRequestId, byte suspendPolicy, boolean isPopFrames, boolean isForceEarlyReturn, DebuggerCommand.Kind stepKind) {
         fine(() -> "Adding step command request in thread " + getThreadName(thread) + " with ID: " + commandRequestId);
-        commandRequestIds.put(thread, new SteppingInfo(commandRequestId, suspendPolicy, isPopFrames, isForceEarlyReturn, stepKind));
+        SteppingInfo steppingInfo = new SteppingInfo(commandRequestId, suspendPolicy, isPopFrames, isForceEarlyReturn, stepKind);
+        commandRequestIds.put(thread, steppingInfo);
     }
 
     /**
@@ -154,7 +155,7 @@ public final class DebuggerController implements ContextsListener {
      *
      * @param command the command that represents the breakpoint
      */
-    public void submitLineBreakpoint(DebuggerCommand command) {
+    void submitLineBreakpoint(DebuggerCommand command) {
         SourceLocation location = command.getSourceLocation();
         try {
             Breakpoint bp = Breakpoint.newBuilder(location.getSource()).lineIs(location.getLineNumber()).build();
@@ -175,31 +176,7 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
-    public void submitMethodEntryBreakpoint(DebuggerCommand debuggerCommand) {
-        // method entry breakpoints are limited per class, so we must
-        // install a first line breakpoint into each method in the class
-        KlassRef[] klasses = debuggerCommand.getRequestFilter().getKlassRefPatterns();
-        List<Breakpoint> breakpoints = new ArrayList<>();
-        for (KlassRef klass : klasses) {
-            for (MethodRef method : klass.getDeclaredMethodRefs()) {
-                int line = method.getFirstLine();
-                Breakpoint bp;
-                if (line != -1) {
-                    bp = Breakpoint.newBuilder(method.getSource()).lineIs(line).build();
-                } else {
-                    bp = Breakpoint.newBuilder(method.getSource().createUnavailableSection()).build();
-                }
-                breakpoints.add(bp);
-            }
-        }
-        BreakpointInfo breakpointInfo = debuggerCommand.getBreakpointInfo();
-        for (Breakpoint breakpoint : breakpoints) {
-            mapBreakpoint(breakpoint, breakpointInfo);
-            debuggerSession.install(breakpoint);
-        }
-    }
-
-    public void submitExceptionBreakpoint(DebuggerCommand command) {
+    void submitExceptionBreakpoint(DebuggerCommand command) {
         Breakpoint bp = Breakpoint.newExceptionBuilder(command.getBreakpointInfo().isCaught(), command.getBreakpointInfo().isUnCaught()).build();
         bp.setEnabled(true);
         int ignoreCount = command.getBreakpointInfo().getFilter().getIgnoreCount();
@@ -223,7 +200,7 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
-    public void stepOut(RequestFilter filter) {
+    void stepOut(RequestFilter filter) {
         Object thread = filter.getStepInfo().getGuestThread();
         fine(() -> "STEP_OUT for thread: " + getThreadName(thread));
 
@@ -258,7 +235,7 @@ public final class DebuggerController implements ContextsListener {
         if (susp != null && !(susp instanceof UnknownSuspendedInfo)) {
             susp.getEvent().prepareUnwindFrame(frameToPop.getDebugStackFrame());
             setCommandRequestId(guestThread, packetId, SuspendStrategy.EVENT_THREAD, true, false, DebuggerCommand.Kind.SPECIAL_STEP);
-            resume(guestThread, false);
+            resume(guestThread);
             return true;
         }
         return false;
@@ -278,7 +255,7 @@ public final class DebuggerController implements ContextsListener {
         return false;
     }
 
-    public boolean resume(Object thread, boolean sessionClosed) {
+    public boolean resume(Object thread) {
         SimpleLock lock = getSuspendLock(thread);
         synchronized (lock) {
             fine(() -> "Called resume thread: " + getThreadName(thread) + " with suspension count: " + threadSuspension.getSuspensionCount(thread));
@@ -294,16 +271,7 @@ public final class DebuggerController implements ContextsListener {
                 // only resume when suspension count reaches 0
                 SuspendedInfo suspendedInfo = getSuspendedInfo(thread);
                 SteppingInfo steppingInfo = commandRequestIds.get(thread);
-                if (steppingInfo == null) {
-                    if (!sessionClosed) {
-                        try {
-                            fine(() -> "calling underlying resume method for thread: " + getThreadName(thread));
-                            debuggerSession.resume(getContext().asHostThread(thread));
-                        } catch (Exception e) {
-                            throw new RuntimeException("Failed to resume thread: " + getThreadName(thread), e);
-                        }
-                    }
-                } else {
+                if (steppingInfo != null && !steppingInfo.isSubmitted()) {
                     // we're currently stepping, so make sure to
                     // commit the recorded step kind to Truffle
                     if (suspendedInfo != null && !suspendedInfo.isForceEarlyReturnInProgress()) {
@@ -318,12 +286,15 @@ public final class DebuggerController implements ContextsListener {
                                 // we shouldn't prepare the event here.
                                 case STEP_INTO:
                                     suspendedInfo.getEvent().prepareStepInto(STEP_CONFIG);
+                                    steppingInfo.submit();
                                     break;
                                 case STEP_OVER:
                                     suspendedInfo.getEvent().prepareStepOver(STEP_CONFIG);
+                                    steppingInfo.submit();
                                     break;
                                 case STEP_OUT:
                                     suspendedInfo.getEvent().prepareStepOut(STEP_CONFIG);
+                                    steppingInfo.submit();
                                     break;
                                 case SUBMIT_EXCEPTION_BREAKPOINT:
                                 case SUBMIT_LINE_BREAKPOINT:
@@ -368,7 +339,7 @@ public final class DebuggerController implements ContextsListener {
             SimpleLock suspendLock = getSuspendLock(thread);
             synchronized (suspendLock) {
                 while (!resumed) {
-                    resumed = resume(thread, true);
+                    resumed = resume(thread);
                 }
             }
         }
@@ -378,7 +349,7 @@ public final class DebuggerController implements ContextsListener {
         for (Object thread : getVisibleGuestThreads()) {
             SimpleLock suspendLock = getSuspendLock(thread);
             synchronized (suspendLock) {
-                resume(thread, false);
+                resume(thread);
             }
         }
     }
@@ -646,7 +617,7 @@ public final class DebuggerController implements ContextsListener {
                 // resume all threads during invocation of method to avoid potential deadlocks
                 for (Object activeThread : allThreads) {
                     if (activeThread != thread) {
-                        resume(activeThread, false);
+                        resume(activeThread);
                     }
                 }
                 // perform the job on this thread
@@ -791,144 +762,147 @@ public final class DebuggerController implements ContextsListener {
             SuspendedInfo suspendedInfo = new SuspendedInfo(context, event, callFrames, currentThread, callerRootNode);
             suspendedInfos.put(currentThread, suspendedInfo);
 
-            byte suspendPolicy = SuspendStrategy.EVENT_THREAD;
-
             // collect any events that need to be sent to the debugger once we're done here
             List<Callable<Void>> jobs = new ArrayList<>();
+            BreakpointHitResult result = new BreakpointHitResult(false, SuspendStrategy.EVENT_THREAD, false);
 
-            boolean hit = false;
-            boolean handledLineBreakpoint = false;
-            if (steppingInfo == null) {
-                HashSet<Breakpoint> handled = new HashSet<>(event.getBreakpoints().size());
-                for (Breakpoint bp : event.getBreakpoints()) {
-                    if (handled.contains(bp)) {
-                        continue;
-                    }
-                    BreakpointInfo info = breakpointInfos.get(bp);
-                    suspendPolicy = info.getSuspendPolicy();
-
-                    if (info.isLineBreakpoint()) {
-                        // only allow one line breakpoint to avoid confusing the debugger
-                        if (handledLineBreakpoint) {
-                            continue;
-                        }
-                        handledLineBreakpoint = true;
-                        hit = true;
-                        // check if breakpoint request limited to a specific thread
-                        Object thread = info.getThread();
-                        if (thread == null || thread == currentThread) {
-                            jobs.add(new Callable<>() {
-                                @Override
-                                public Void call() {
-                                    eventListener.breakpointHit(info, callFrames[0], currentThread);
-                                    return null;
-                                }
-                            });
-                        }
-                    } else if (info.isExceptionBreakpoint()) {
-                        // get the specific exception type if any
-                        Throwable exception = event.getException().getRawException(context.getLanguageClass());
-                        if (exception == null) {
-                            fine(() -> "Unable to retrieve raw exception for " + event.getException());
-                            // failed to get the raw exception, so don't suspend here.
-                            return;
-                        }
-                        Object guestException = getContext().getGuestException(exception);
-                        fine(() -> "checking exception breakpoint for exception: " + exception);
-                        // TODO(Gregersen) - rewrite this when instanceof implementation in Truffle
-                        // is
-                        // completed
-                        // See /browse/GR-10371
-                        // Currently, the Truffle Debug API doesn't filter on
-                        // type, so we end up here having to check also, the
-                        // ignore count set on the breakpoint will not work
-                        // properly due to this.
-                        // we need to do a real type check here, since subclasses
-                        // of the specified exception should also hit.
-                        KlassRef klass = info.getKlass(); // null means no filtering
-                        if (klass == null) {
-                            // always hit when broad exception filter is used
-                            hit = true;
-                        } else if (klass == null || getContext().isInstanceOf(guestException, klass)) {
-                            fine(() -> "Exception type matched the klass type: " + klass.getNameAsString());
-                            // check filters if we should not suspend
-                            Pattern[] positivePatterns = info.getFilter().getIncludePatterns();
-                            // verify include patterns
-                            if (positivePatterns == null || positivePatterns.length == 0 || matchLocation(positivePatterns, callFrames[0])) {
-                                // verify exclude patterns
-                                Pattern[] negativePatterns = info.getFilter().getExcludePatterns();
-                                if (negativePatterns == null || negativePatterns.length == 0 || !matchLocation(negativePatterns, callFrames[0])) {
-                                    hit = true;
-                                }
-                            }
-                        }
-                        if (hit) {
-                            fine(() -> "Breakpoint hit in thread: " + getThreadName(currentThread));
-
-                            jobs.add(new Callable<>() {
-                                @Override
-                                public Void call() {
-                                    eventListener.exceptionThrown(info, currentThread, guestException, callFrames);
-                                    return null;
-                                }
-                            });
-                        } else {
-                            // don't suspend here
-                            suspendedInfos.put(currentThread, null);
-                            return;
-                        }
-                    }
-                    handled.add(bp);
-                }
-
-                // check if suspended for a field breakpoint
-                FieldBreakpointEvent fieldEvent = fieldBreakpointExpected.remove(Thread.currentThread());
-                if (fieldEvent != null) {
-                    FieldBreakpointInfo info = fieldEvent.getInfo();
-                    if (info.isAccessBreakpoint()) {
-                        hit = true;
-                        jobs.add(new Callable<>() {
-                            @Override
-                            public Void call() {
-                                eventListener.fieldAccessBreakpointHit(fieldEvent, currentThread, callFrames[0]);
-                                return null;
-                            }
-                        });
-                    } else if (info.isModificationBreakpoint()) {
-                        hit = true;
-                        jobs.add(new Callable<>() {
-                            @Override
-                            public Void call() {
-                                eventListener.fieldModificationBreakpointHit(fieldEvent, currentThread, callFrames[0]);
-                                return null;
-                            }
-                        });
-                    }
-                }
-                // check if suspended for a method breakpoint
-                MethodBreakpointEvent methodEvent = methodBreakpointExpected.remove(Thread.currentThread());
-                if (methodEvent != null) {
-                    hit = true;
-                    jobs.add(new Callable<>() {
-                        @Override
-                        public Void call() {
-                            eventListener.methodBreakpointHit(methodEvent, currentThread, callFrames[0]);
-                            return null;
-                        }
-                    });
-                }
-            } else {
-                jobs.add(new Callable<>() {
-                    @Override
-                    public Void call() {
+            if (steppingInfo != null) {
+                if (event.isStep() || event.isUnwind()) {
+                    fine(() -> "step was completed");
+                    jobs.add(() -> {
                         eventListener.stepCompleted(steppingInfo, callFrames[0]);
                         return null;
+                    });
+                } else {
+                    fine(() -> "step not completed - check for breakpoints");
+                    continueStepping(event, steppingInfo, currentThread);
+                    commandRequestIds.put(currentThread, steppingInfo);
+
+                    result = checkForBreakpoints(event, jobs, currentThread, callFrames);
+                }
+            } else {
+                result = checkForBreakpoints(event, jobs, currentThread, callFrames);
+            }
+            if (result.skipSuspend) {
+                return;
+            }
+            // now, suspend the current thread until resumed by e.g. a debugger command
+            suspend(currentThread, result.suspendPolicy, jobs, result.breakpointHit || event.isStep() || event.isUnwind());
+        }
+
+        private BreakpointHitResult checkForBreakpoints(SuspendedEvent event, List<Callable<Void>> jobs, Object currentThread, CallFrame[] callFrames) {
+            boolean handledLineBreakpoint = false;
+            boolean hit = false;
+            byte suspendPolicy = SuspendStrategy.EVENT_THREAD;
+            HashSet<Breakpoint> handled = new HashSet<>(event.getBreakpoints().size());
+            for (Breakpoint bp : event.getBreakpoints()) {
+                if (handled.contains(bp)) {
+                    continue;
+                }
+                BreakpointInfo info = breakpointInfos.get(bp);
+                suspendPolicy = info.getSuspendPolicy();
+
+                if (info instanceof LineBreakpointInfo lineBreakpointInfo) {
+                    // only allow one line breakpoint to avoid confusing the debugger
+                    if (handledLineBreakpoint) {
+                        continue;
                     }
+
+                    if (!callFrames[0].getMethod().hasLine((int) lineBreakpointInfo.getLine())) {
+                        return new BreakpointHitResult(false, suspendPolicy, true);
+                    }
+
+                    handledLineBreakpoint = true;
+                    hit = true;
+                    // check if breakpoint request limited to a specific thread
+                    Object thread = info.getThread();
+                    if (thread == null || thread == currentThread) {
+                        jobs.add(() -> {
+                            eventListener.breakpointHit(info, callFrames[0], currentThread);
+                            return null;
+                        });
+                    }
+                } else if (info.isExceptionBreakpoint()) {
+                    // get the specific exception type if any
+                    Throwable exception = event.getException().getRawException(context.getLanguageClass());
+                    if (exception == null) {
+                        fine(() -> "Unable to retrieve raw exception for " + event.getException());
+                        // failed to get the raw exception, so don't suspend here.
+                        suspendedInfos.put(currentThread, null);
+                        return new BreakpointHitResult(false, suspendPolicy, true);
+                    }
+                    Object guestException = getContext().getGuestException(exception);
+                    fine(() -> "checking exception breakpoint for exception: " + exception);
+                    // TODO(Gregersen) - rewrite this when instanceof implementation in
+                    // Truffle is completed See /browse/GR-10371
+                    // Currently, the Truffle Debug API doesn't filter on
+                    // type, so we end up here having to check also, the
+                    // ignore count set on the breakpoint will not work
+                    // properly due to this.
+                    // we need to do a real type check here, since subclasses
+                    // of the specified exception should also hit.
+                    KlassRef klass = info.getKlass(); // null means no filtering
+                    if (klass == null) {
+                        // always hit when broad exception filter is used
+                        hit = true;
+                    } else if (getContext().isInstanceOf(guestException, klass)) {
+                        fine(() -> "Exception type matched the klass type: " + klass.getNameAsString());
+                        // check filters if we should not suspend
+                        Pattern[] positivePatterns = info.getFilter().getIncludePatterns();
+                        // verify include patterns
+                        if (positivePatterns == null || positivePatterns.length == 0 || matchLocation(positivePatterns, callFrames[0])) {
+                            // verify exclude patterns
+                            Pattern[] negativePatterns = info.getFilter().getExcludePatterns();
+                            if (negativePatterns == null || negativePatterns.length == 0 || !matchLocation(negativePatterns, callFrames[0])) {
+                                hit = true;
+                            }
+                        }
+                    }
+                    if (hit) {
+                        fine(() -> "Breakpoint hit in thread: " + getThreadName(currentThread));
+
+                        jobs.add(() -> {
+                            eventListener.exceptionThrown(info, currentThread, guestException, callFrames);
+                            return null;
+                        });
+                    } else {
+                        // don't suspend here
+                        suspendedInfos.put(currentThread, null);
+                        return new BreakpointHitResult(false, suspendPolicy, true);
+                    }
+                }
+                handled.add(bp);
+            }
+
+            // check if suspended for a field breakpoint
+            FieldBreakpointEvent fieldEvent = fieldBreakpointExpected.remove(Thread.currentThread());
+            if (fieldEvent != null) {
+                FieldBreakpointInfo info = fieldEvent.getInfo();
+                if (info.isAccessBreakpoint()) {
+                    hit = true;
+                    jobs.add(() -> {
+                        eventListener.fieldAccessBreakpointHit(fieldEvent, currentThread, callFrames[0]);
+                        return null;
+                    });
+                } else if (info.isModificationBreakpoint()) {
+                    hit = true;
+                    jobs.add(() -> {
+                        eventListener.fieldModificationBreakpointHit(fieldEvent, currentThread, callFrames[0]);
+                        return null;
+                    });
+                }
+            }
+            // check if suspended for a method breakpoint
+            MethodBreakpointEvent methodEvent = methodBreakpointExpected.remove(Thread.currentThread());
+            if (methodEvent != null) {
+                hit = true;
+                jobs.add(() -> {
+                    eventListener.methodBreakpointHit(methodEvent, currentThread, callFrames[0]);
+                    return null;
                 });
             }
 
-            // now, suspend the current thread until resumed by e.g. a debugger command
-            suspend(currentThread, suspendPolicy, jobs, hit || steppingInfo != null);
+            return new BreakpointHitResult(hit, suspendPolicy, false);
         }
 
         private boolean matchLocation(Pattern[] patterns, CallFrame callFrame) {
@@ -1042,10 +1016,22 @@ public final class DebuggerController implements ContextsListener {
                 list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, rawNode, root, frame, context, DebuggerController.this));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
-                    return list.toArray(new CallFrame[list.size()]);
+                    return list.toArray(new CallFrame[0]);
                 }
             }
-            return list.toArray(new CallFrame[list.size()]);
+            return list.toArray(new CallFrame[0]);
+        }
+
+        private static final class BreakpointHitResult {
+            private final boolean breakpointHit;
+            private final byte suspendPolicy;
+            private final boolean skipSuspend;
+
+            BreakpointHitResult(boolean breakpointHit, byte suspendPolicy, boolean skipSuspend) {
+                this.breakpointHit = breakpointHit;
+                this.suspendPolicy = suspendPolicy;
+                this.skipSuspend = skipSuspend;
+            }
         }
     }
 

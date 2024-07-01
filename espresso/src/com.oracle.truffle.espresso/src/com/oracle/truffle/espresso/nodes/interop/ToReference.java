@@ -454,6 +454,10 @@ public abstract class ToReference extends ToEspressoNode {
         public StaticObject doGeneric(Object value, Klass targetType,
                         @Bind("getMeta()") Meta meta,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
+                        @Cached ToReference.DynamicToReference converterToEspresso,
+                        @Cached InlinedBranchProfile noConverterProfile,
                         @Cached InlinedBranchProfile unknownProfile) throws UnsupportedTypeException {
             ToReference uncachedToReference = getUncachedToReference(targetType, meta);
             if (uncachedToReference != null) {
@@ -462,7 +466,12 @@ public abstract class ToReference extends ToEspressoNode {
             unknownProfile.enter(this);
             // hit the unknown type case, so inline generic handling for that here
             if (targetType instanceof ObjectKlass) {
+                StaticObject result = ToReference.tryConverterForUnknownTarget(value, interop, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, meta);
+                if (result != null) {
+                    return result;
+                }
                 try {
+                    noConverterProfile.enter(this);
                     checkHasAllFieldsOrThrow(value, (ObjectKlass) targetType, interop, getMeta());
                     return StaticObject.createForeign(getLanguage(), targetType, value, interop);
                 } catch (ClassCastException e) {
@@ -1237,45 +1246,78 @@ public abstract class ToReference extends ToEspressoNode {
         StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, "java.lang.Object");
         }
+    }
 
-        private StaticObject tryTypeConversion(Object value, InteropLibrary interop, LookupProxyKlassNode lookupProxyKlassNode, LookupTypeConverterNode lookupTypeConverterNode,
-                        LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
-                        ToReference.DynamicToReference converterToEspresso, BranchProfile errorProfile, Meta meta) throws UnsupportedTypeException {
-            try {
-                Object metaObject = getMetaObjectOrThrow(value, interop);
-                String metaName = getMetaName(metaObject, interop);
+    static StaticObject tryTypeConversion(Object value, InteropLibrary interop, LookupProxyKlassNode lookupProxyKlassNode, LookupTypeConverterNode lookupTypeConverterNode,
+                    LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
+                    ToReference.DynamicToReference converterToEspresso, BranchProfile errorProfile, Meta meta) throws UnsupportedTypeException {
+        try {
+            Object metaObject = getMetaObjectOrThrow(value, interop);
+            String metaName = getMetaName(metaObject, interop);
 
-                // check if there's a specific type mapping available
-                PolyglotTypeMappings.InternalTypeConverter internalConverter = lookupInternalTypeConverterNode.execute(metaName);
-                if (internalConverter != null) {
-                    return internalConverter.convertInternal(interop, value, meta, converterToEspresso);
-                } else {
-                    PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
-                    if (converter != null) {
-                        if (interop.isException(value)) {
-                            return (StaticObject) converter.convert(StaticObject.createForeignException(getContext(), value, interop));
-                        } else {
-                            return (StaticObject) converter.convert(StaticObject.createForeign(getLanguage(), meta.java_lang_Object, value, interop));
-                        }
-                    }
-
-                    // check if foreign exception
+            // check if there's a specific type mapping available
+            PolyglotTypeMappings.InternalTypeConverter internalConverter = lookupInternalTypeConverterNode.execute(metaName);
+            if (internalConverter != null) {
+                return internalConverter.convertInternal(interop, value, meta, converterToEspresso);
+            } else {
+                PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
+                if (converter != null) {
                     if (interop.isException(value)) {
-                        return StaticObject.createForeignException(getContext(), value, interop);
+                        return (StaticObject) converter.convert(StaticObject.createForeignException(converterToEspresso.getContext(), value, interop));
+                    } else {
+                        return (StaticObject) converter.convert(StaticObject.createForeign(converterToEspresso.getLanguage(), meta.java_lang_Object, value, interop));
                     }
-                    // see if a generated proxy can be used for interface mapped types
-                    WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, meta.java_lang_Object);
-                    if (proxyKlass != null) {
-                        return proxyKlass.createProxyInstance(value, getLanguage(), interop);
-                    }
-                    return StaticObject.createForeign(getLanguage(), meta.java_lang_Object, value, interop);
                 }
-            } catch (ClassCastException e) {
-                errorProfile.enter();
-                throw UnsupportedTypeException.create(new Object[]{value},
-                                EspressoError.format("Could not cast foreign object to %s: due to: %s", meta.java_lang_Object.getNameAsString(), e.getMessage()));
+
+                // check if foreign exception
+                if (interop.isException(value)) {
+                    return StaticObject.createForeignException(converterToEspresso.getContext(), value, interop);
+                }
+                // see if a generated proxy can be used for interface mapped types
+                WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, meta.java_lang_Object);
+                if (proxyKlass != null) {
+                    return proxyKlass.createProxyInstance(value, converterToEspresso.getLanguage(), interop);
+                }
+                return StaticObject.createForeign(converterToEspresso.getLanguage(), meta.java_lang_Object, value, interop);
             }
+        } catch (ClassCastException e) {
+            errorProfile.enter();
+            throw UnsupportedTypeException.create(new Object[]{value},
+                            EspressoError.format("Could not cast foreign object to %s: due to: %s", meta.java_lang_Object.getNameAsString(), e.getMessage()));
         }
+    }
+
+    static StaticObject tryConverterForUnknownTarget(Object value, InteropLibrary interop, LookupTypeConverterNode lookupTypeConverterNode,
+                    LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
+                    ToReference.DynamicToReference converterToEspresso, Meta meta) throws UnsupportedTypeException {
+        try {
+            Object metaObject = getMetaObjectOrThrow(value, interop);
+            String metaName = getMetaName(metaObject, interop);
+
+            // check if there's a specific type mapping available
+            PolyglotTypeMappings.InternalTypeConverter internalConverter = lookupInternalTypeConverterNode.execute(metaName);
+            if (internalConverter != null) {
+                return internalConverter.convertInternal(interop, value, meta, converterToEspresso);
+            } else {
+                PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
+                // check if foreign exception
+                boolean isException = interop.isException(value);
+                StaticObject foreignWrapper = isException ? StaticObject.createForeignException(converterToEspresso.getContext(), value, interop) : null;
+
+                if (converter != null) {
+                    if (foreignWrapper == null) {
+                        // not exception
+                        foreignWrapper = StaticObject.createForeign(converterToEspresso.getLanguage(), meta.java_lang_Object, value, interop);
+                    }
+                    return (StaticObject) converter.convert(foreignWrapper);
+                }
+                return foreignWrapper;
+
+            }
+        } catch (ClassCastException e) {
+            // fall through, since there was no converter available
+        }
+        return null;
     }
 
     @NodeInfo(shortName = "j.l.String target type")
@@ -2398,14 +2440,27 @@ public abstract class ToReference extends ToEspressoNode {
         StaticObject doForeignWrapper(Object value,
                         @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
+                        @Cached ToReference.DynamicToReference converterToEspresso,
+                        @Cached InlinedBranchProfile unknownProfile,
+                        @Cached InlinedBranchProfile noConverterProfile,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            ToReference uncachedToReference = getUncachedToReference(targetType, meta);
+            if (uncachedToReference != null) {
+                return uncachedToReference.execute(value);
+            }
+            unknownProfile.enter(this);
+            // hit the unknown type case, so inline generic handling for that here
+            StaticObject result = ToReference.tryConverterForUnknownTarget(value, interop, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, meta);
+            if (result != null) {
+                return result;
+            }
             try {
-                if (targetType.isInterface()) {
-                    throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
-                }
-                checkHasAllFieldsOrThrow(value, targetType, interop, meta);
+                noConverterProfile.enter(this);
+                checkHasAllFieldsOrThrow(value, targetType, interop, getMeta());
                 return StaticObject.createForeign(getLanguage(), targetType, value, interop);
-            } catch (ClassCastException ex) {
+            } catch (ClassCastException e) {
                 throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
             }
         }

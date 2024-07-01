@@ -624,7 +624,18 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return profiledPERoot(args);
     }
 
+    @SuppressWarnings("unused")
+    private static void ensureStackSpace(long stackSpace) {
+        /*
+         * Intentionally empty. It does nothing on HotSpot. On SVM it is substituted by a method
+         * that actually does a stack space check.
+         */
+    }
+
     private boolean interpreterCall() {
+        if (TruffleOptions.AOT) {
+            ensureStackSpace(engine.interpreterCallStackHeadRoom);
+        }
         boolean bypassedInstalledCode = false;
         if (isValid()) {
             // Native entry stubs were deoptimized => reinstall.

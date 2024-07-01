@@ -962,19 +962,19 @@ suite = {
         },
         "linux" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+            "cflags" : ["-g", "-Wall", "-Werror", "-D_GNU_SOURCE", "-fvisibility=hidden"],
             "ldlibs" : ["-ldl"],
           },
         },
         "linux-musl" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror"],
+            "cflags" : ["-g", "-Wall", "-Werror", "-fvisibility=hidden"],
             "ldlibs" : ["-ldl"],
           },
         },
         "<others>" : {
           "<others>" : {
-            "cflags" : ["-g", "-Wall", "-Werror"],
+            "cflags" : ["-g", "-Wall", "-Werror", "-fvisibility=hidden"],
             "ldlibs" : ["-ldl"],
           },
         },

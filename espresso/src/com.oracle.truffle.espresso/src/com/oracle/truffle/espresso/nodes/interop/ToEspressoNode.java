@@ -282,6 +282,9 @@ public abstract class ToEspressoNode extends EspressoNode {
         public Object doGeneric(Object value, Klass targetType,
                         @Bind("getMeta()") Meta meta,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
+                        @Cached ToReference.DynamicToReference converterToEspresso,
                         @Cached InlinedBranchProfile unknownProfile) throws UnsupportedTypeException {
             ToEspressoNode uncachedToEspresso = getUncachedToEspresso(targetType, meta);
             if (uncachedToEspresso != null) {
@@ -290,6 +293,10 @@ public abstract class ToEspressoNode extends EspressoNode {
             unknownProfile.enter(this);
             // hit the unknown type case, so inline generic handling for that here
             if (targetType instanceof ObjectKlass) {
+                StaticObject result = ToReference.tryConverterForUnknownTarget(value, interop, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, meta);
+                if (result != null) {
+                    return result;
+                }
                 try {
                     checkHasAllFieldsOrThrow(value, (ObjectKlass) targetType, interop, getMeta());
                     return StaticObject.createForeign(getLanguage(), targetType, value, interop);

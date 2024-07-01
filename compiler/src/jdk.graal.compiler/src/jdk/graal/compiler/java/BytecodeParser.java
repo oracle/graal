@@ -2984,7 +2984,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         monitorEnter.setStateAfter(createFrameState(bci, monitorEnter));
     }
 
-    protected void genMonitorExit(ValueNode x, ValueNode escapedValue, int bci, boolean needsNullCheck) {
+    protected void genMonitorExit(ValueNode x, ValueNode escapedValue, int bci, boolean inEpilogue, boolean needsNullCheck) {
         /*
          * This null check ensures Java spec compatibility, where a NullPointerException has
          * precedence over an IllegalMonitorStateException. In the presence of structured locking,
@@ -2997,7 +2997,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
          * IllegalMonitorStateException (or deopt) if the number of monitorexits exceeds the number
          * of monitorenters at any time during method execution.
          */
-        if (frameState.lockDepth(false) == 0) {
+        if (frameState.lockDepth(false) < minLockDepthAtMonitorExit(inEpilogue)) {
             handleUnstructuredLocking("too many monitorexits", false);
             return;
         }
@@ -3028,6 +3028,45 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         }
         MonitorExitNode monitorExit = append(new MonitorExitNode(lockedObject, monitorId, escapedValue));
         monitorExit.setStateAfter(createFrameState(bci, monitorExit));
+    }
+
+    /**
+     * Specifies the minimum number of objects on the lock stack for emitting a monitorexit. If the
+     * actual number of lock objects is smaller, unstructured locking is detected and corresponding
+     * actions are performed (see {@link #handleUnstructuredLocking}).
+     */
+    protected int minLockDepthAtMonitorExit(boolean inEpilogue) {
+        /**
+         * Synchronized methods: Enforce that the method synchronized object is not unlocked before
+         * the synchronized epilogue.
+         *
+         * The
+         * {@code javasoft.sqe.tests.vm.instr.monitorexit.monitorexit009.monitorexit00901m1.monitorexit00901m1}
+         * test implies that unlocking the method synchronized object can be structured locking:
+         *
+         * <pre>
+         * synchronized void foo() {
+         *   monitorexit this // valid unlock of method synchronize object
+         *   // do something
+         *   monitorenter this
+         *   return
+         * }
+         * </pre>
+         *
+         * Unstructured locking would be detected at returns / exception throws:
+         *
+         * <pre>
+         * synchronized void foo() {
+         *   monitorexit this // valid unlock of method synchronize object
+         *   // do something
+         *   return           // throws IllegalMonitorStateException
+         * }
+         * </pre>
+         *
+         * However, in the presence of deoptimization, returns or exception throws might not be
+         * parsed and unstructured locking could go unnoticed. This requires a pessimistic handling.
+         */
+        return frameState.getMethod().isSynchronized() && !inEpilogue ? 2 : 1;
     }
 
     @SuppressWarnings("unused")
@@ -3547,7 +3586,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                     // push the return value on the stack
                     frameState.push(currentReturnValueKind, currentReturnValue);
                 }
-                genMonitorExit(methodSynchronizedObject, currentReturnValue, bci, false);
+                genMonitorExit(methodSynchronizedObject, currentReturnValue, bci, true, false);
                 assert !frameState.rethrowException();
             }
         }
@@ -5747,7 +5786,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             case CHECKCAST      : genCheckCast(stream.readCPI()); break;
             case INSTANCEOF     : genInstanceOf(stream.readCPI()); break;
             case MONITORENTER   : genMonitorEnter(frameState.pop(JavaKind.Object), stream.nextBCI()); break;
-            case MONITOREXIT    : genMonitorExit(frameState.pop(JavaKind.Object), null, stream.nextBCI(), true); break;
+            case MONITOREXIT    : genMonitorExit(frameState.pop(JavaKind.Object), null, stream.nextBCI(), false, true); break;
             case MULTIANEWARRAY : genNewMultiArray(stream.readCPI()); break;
             case IFNULL         : genIfNull(Condition.EQ); break;
             case IFNONNULL      : genIfNull(Condition.NE); break;

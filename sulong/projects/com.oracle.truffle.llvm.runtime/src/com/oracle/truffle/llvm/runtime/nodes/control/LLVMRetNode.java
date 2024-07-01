@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -253,7 +253,7 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
         private Object returnStruct(VirtualFrame frame, Object retResult) {
             Object retStructAddress = argIdx1.executeGeneric(frame);
-            memMove.executeWithTarget(retStructAddress, retResult, getStructSize());
+            memMove.executeWithTarget(frame, retStructAddress, retResult, getStructSize());
             return retStructAddress;
         }
     }

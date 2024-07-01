@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,11 @@
  */
 package jdk.graal.compiler.core.common;
 
-import static jdk.graal.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Scans the fields in a class hierarchy.
@@ -50,9 +48,8 @@ public class FieldsScanner {
      */
     public static class DefaultCalcOffset implements CalcOffset {
 
-        private static final Unsafe UNSAFE = getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
-        @SuppressWarnings("deprecation"/* JDK-8277863 */)
         @Override
         public long getOffset(Field field) {
             return UNSAFE.objectFieldOffset(field);

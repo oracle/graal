@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -145,6 +145,14 @@ abstract class SteppingStrategy {
         return false;
     }
 
+    boolean isSingleStep() {
+        return false;
+    }
+
+    boolean isSingleStepCompleted() {
+        return false;
+    }
+
     @SuppressWarnings("unused")
     void add(SteppingStrategy nextStrategy) {
         throw new UnsupportedOperationException("Not composable.");
@@ -180,6 +188,10 @@ abstract class SteppingStrategy {
 
     static SteppingStrategy createComposed(SteppingStrategy strategy1, SteppingStrategy strategy2) {
         return new ComposedStrategy(strategy1, strategy2);
+    }
+
+    static SteppingStrategy createPreserveAfterHalt(SteppingStrategy strategy) {
+        return new PreserveAfterHalt(strategy);
     }
 
     private static final class Kill extends SteppingStrategy {
@@ -336,11 +348,19 @@ abstract class SteppingStrategy {
             if (yieldFrame == null && (stepConfig.matches(session, context, suspendAnchor) ||
                             SuspendAnchor.AFTER == suspendAnchor && stackCounter < 0)) {
                 stackCounter = 0;
-                if (--unfinishedStepCount <= 0) {
-                    return true;
-                }
+                return --unfinishedStepCount <= 0;
             }
             return false;
+        }
+
+        @Override
+        boolean isSingleStep() {
+            return true;
+        }
+
+        @Override
+        boolean isSingleStepCompleted() {
+            return unfinishedStepCount <= 0;
         }
 
         @Override
@@ -445,6 +465,16 @@ abstract class SteppingStrategy {
             }
             activeFrame = false; // waiting for next call exit
             return false;
+        }
+
+        @Override
+        boolean isSingleStep() {
+            return true;
+        }
+
+        @Override
+        boolean isSingleStepCompleted() {
+            return unfinishedStepCount <= 0;
         }
 
         @Override
@@ -573,9 +603,18 @@ abstract class SteppingStrategy {
                 stackCounter = 0;
                 exprCounter = context.hasTag(SourceElement.EXPRESSION.getTag()) && SuspendAnchor.BEFORE == suspendAnchor ? 0 : -1;
                 return --unfinishedStepCount <= 0;
-            } else {
-                return false;
             }
+            return false;
+        }
+
+        @Override
+        boolean isSingleStep() {
+            return true;
+        }
+
+        @Override
+        boolean isSingleStepCompleted() {
+            return unfinishedStepCount <= 0;
         }
 
         @Override
@@ -723,6 +762,11 @@ abstract class SteppingStrategy {
         }
 
         @Override
+        boolean isSingleStepCompleted() {
+            return current.isSingleStepCompleted();
+        }
+
+        @Override
         void consume() {
             assert current == last;
             last.consume();
@@ -762,16 +806,137 @@ abstract class SteppingStrategy {
         }
 
         @Override
+        boolean isSingleStep() {
+            // if the current or any of the next strategies is a single step, we should return true
+            for (SteppingStrategy s = current; s.next != null; s = s.next) {
+                if (s.isSingleStep()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
         public String toString() {
             StringBuilder all = new StringBuilder();
             for (SteppingStrategy s = first; s.next != null; s = s.next) {
                 if (all.length() > 0) {
                     all.append(", ");
                 }
-                all.append(s.toString());
+                all.append(s);
             }
 
             return "COMPOSED(" + all + ")";
+        }
+    }
+
+    /*
+     * This strategy is used when there's an ongoing stepping request while at some point a suspend
+     * request is sent. We want to be able to remember the stepping request which should still be
+     * completed afterward
+     */
+    static final class PreserveAfterHalt extends SteppingStrategy {
+        private final SteppingStrategy current;
+        private boolean halted = false;
+
+        private PreserveAfterHalt(SteppingStrategy strategy) {
+            current = strategy;
+        }
+
+        @Override
+        void notifyCallEntry() {
+            current.notifyCallEntry();
+        }
+
+        @Override
+        void notifyCallExit() {
+            current.notifyCallExit();
+        }
+
+        @Override
+        void notifyNodeEntry(EventContext context) {
+            current.notifyNodeEntry(context);
+        }
+
+        @Override
+        void notifyNodeExit(EventContext context) {
+            current.notifyNodeExit(context);
+        }
+
+        @Override
+        boolean isStopAfterCall() {
+            return current.isStopAfterCall();
+        }
+
+        @Override
+        void setYieldBreak(Frame frame, SourceSection section) {
+            current.setYieldBreak(frame, section);
+        }
+
+        @Override
+        void setYieldResume(EventContext context, Frame frame) {
+            current.setYieldResume(context, frame);
+        }
+
+        @Override
+        boolean isActive(EventContext context, SuspendAnchor suspendAnchor) {
+            boolean shouldHalt = !halted && suspendAnchor == SuspendAnchor.BEFORE;
+            return shouldHalt || current.isActive(context, suspendAnchor);
+        }
+
+        @Override
+        boolean step(DebuggerSession steppingSession, EventContext context, SuspendAnchor suspendAnchor) {
+            boolean hit = false;
+            if (!halted && suspendAnchor == SuspendAnchor.BEFORE) {
+                // we're hitting the suspend step
+                halted = true;
+                hit = true;
+            }
+            // we have to check if the current strategy is active, because step is only called
+            // when active, but we don't know if isActive returned true due to the always halt
+            // request.
+            if (current.isActive(context, suspendAnchor)) {
+                hit |= current.step(steppingSession, context, suspendAnchor);
+            }
+            return hit;
+        }
+
+        @Override
+        boolean isSingleStepCompleted() {
+            return current.isSingleStepCompleted();
+        }
+
+        @Override
+        void consume() {
+            // only consume the current strategy when it completed the step
+            if (current.isSingleStepCompleted()) {
+                current.consume();
+            }
+        }
+
+        @Override
+        boolean isConsumed() {
+            return halted && current.isConsumed();
+        }
+
+        @Override
+        boolean isDone() {
+            return current.isDone();
+        }
+
+        @Override
+        boolean isKill() {
+            return current.isKill();
+        }
+
+        @Override
+        public String toString() {
+            String all = current.toString();
+            return "PRESERVE_STEPPING(" + all + ")";
+        }
+
+        void haltNextExecution() {
+            halted = false;
         }
     }
 }

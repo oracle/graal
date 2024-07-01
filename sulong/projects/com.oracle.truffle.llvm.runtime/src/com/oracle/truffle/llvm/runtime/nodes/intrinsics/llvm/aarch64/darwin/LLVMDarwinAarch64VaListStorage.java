@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
-import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMove;
+import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMoveToNative;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode.LLVMDoubleOffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode.LLVMI16OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode.LLVMI32OffsetLoadNode;
@@ -62,6 +62,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMMaybeVaPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -255,13 +256,23 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
                     @Cached LLVMI32OffsetStoreNode i32RegSaveAreaStore,
                     @Cached LLVM80BitFloatOffsetStoreNode fp80bitRegSaveAreaStore,
                     @Cached LLVMPointerOffsetStoreNode pointerRegSaveAreaStore,
-                    @Cached NativeProfiledMemMove memMove,
+                    @Cached NativeProfiledMemMoveToNative memMove,
                     @Cached BranchProfile nativizedProfile) {
 
         if (isNativized()) {
             nativizedProfile.enter();
             return;
         }
+
+        if (!LLVMNativePointer.isInstance(vaListStackPtr)) {
+            /*
+             * We don't have native memory pre-reserved on the stack. Maybe we have no access to
+             * native memory? In this case, the toNative transition fails.
+             */
+            return;
+        }
+        LLVMNativePointer nativeStackPtr = LLVMNativePointer.cast(vaListStackPtr);
+
         nativized = true;
 
         /* Reconstruct the native memory according to darwin-aarch64 ABI. */
@@ -272,7 +283,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         for (int i = numberOfExplicitArguments; i < realArguments.length; i++) {
             final Object object = realArguments[i];
 
-            long size = storeArgument(vaListStackPtr, offset, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object, Integer.BYTES);
+            long size = storeArgument(nativeStackPtr, offset, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object, Integer.BYTES);
             assert size <= Long.BYTES;
             offset += Long.BYTES;
         }

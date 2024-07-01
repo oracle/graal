@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.util.Arrays;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -48,11 +50,8 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
 import jdk.graal.compiler.word.ObjectAccess;
-import org.graalvm.word.LocationIdentity;
-
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * This node can be used to add a counter to the code that will estimate the dynamic number of calls
@@ -126,9 +125,8 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
 
     static class SnippetCounterSnippets implements Snippets {
 
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
-        @SuppressWarnings("deprecation"/* JDK-8277863 */)
         @Fold
         static int countOffset() {
             try {

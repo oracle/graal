@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNodeGen.LLVM80BitFloatOffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode.LLVMPrimitiveOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -68,7 +69,7 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
     public abstract void executeWithTarget(LLVMPointer address, LLVM80BitFloat value);
 
     @GenerateUncached
-    public abstract static class LLVM80BitFloatOffsetStoreNode extends LLVMOffsetStoreNode {
+    public abstract static class LLVM80BitFloatOffsetStoreNode extends LLVMPrimitiveOffsetStoreNode {
 
         public static LLVM80BitFloatOffsetStoreNode create() {
             return LLVM80BitFloatOffsetStoreNodeGen.create(null, null, null);
