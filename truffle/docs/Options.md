@@ -50,6 +50,8 @@ They are useful to users and language and tool implementers.
 ```shell
 - `--engine.PreinitializeContexts` : Preinitialize language contexts for given languages.
 - `--engine.RelaxStaticObjectSafetyChecks` : On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts
+- `--engine.SynchronousThreadLocalActionMaxWait=[0, inf)` : How long to wait for other threads to reach a synchronous ThreadLocalAction before cancelling it, in seconds. 0 means no limit.
+- `--engine.SynchronousThreadLocalActionPrintStackTraces` : Print thread stacktraces when a synchronous ThreadLocalAction is waiting for more than SynchronousThreadLocalActionMaxWait seconds.
 - `--engine.TraceStackTraceInterval=[1, inf)` : Prints the stack trace for all threads for a time interval. By default 0, which disables the output.
 - `--engine.DebugCacheCompileUseLastTier=true|false` : If true uses the last tier instead of the first tier compiler. By default the last tier compiler is used (default: true).
 - `--engine.BackgroundCompilation=true|false` : Enable asynchronous truffle compilation in background threads (default: true)
@@ -114,7 +116,7 @@ These are internal options for debugging language implementations and tools.
 - `--engine.StaticObjectStorageStrategy=default|array-based|field-based` : Set the storage strategy used by the Static Object Model. Accepted values are: ['default', 'array-based', 'field-based']
 - `--engine.TraceCodeSharing` : Enables printing of code sharing related information to the logger. This option is intended to support debugging language implementations.
 - `--engine.TraceMissingSafepointPollInterval=[0, inf)` : Show Java stacktraces for missing polls longer than the supplied number of milliseconds. Implies SafepointALot.
-- `--engine.TraceThreadLocalActions` : Traces thread local events and when they are processed on the individual threads.Prints messages with the [engine] [tl] prefix. 
+- `--engine.TraceThreadLocalActions` : Traces thread local events and when they are processed on the individual threads. Prints messages with the [engine] [tl] prefix.
 - `--engine.TriggerUncaughtExceptionHandlerForCancel` : Propagates cancel execution exception into UncaughtExceptionHandler. For testing purposes only.
 - `--engine.UseConservativeContextReferences` : Enables conservative context references. This allows invalid sharing between contexts. For testing purposes only.
 - `--engine.UsePreInitializedContext=true|false` : Use pre-initialized context when it's available (default: true).

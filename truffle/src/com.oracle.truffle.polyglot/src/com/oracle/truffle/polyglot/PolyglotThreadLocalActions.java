@@ -45,7 +45,6 @@ import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -67,7 +66,6 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ThreadLocalAction;
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -81,7 +79,6 @@ final class PolyglotThreadLocalActions {
     static final ThreadLocalHandshake TL_HANDSHAKE = EngineAccessor.ACCESSOR.runtimeSupport().getThreadLocalHandshake();
     private final PolyglotContextImpl context;
     private final Map<AbstractTLHandshake, Void> activeEvents = new LinkedHashMap<>();
-    @CompilationFinal private TruffleLogger logger;
     private long idCounter;
     @CompilationFinal private boolean traceActions;
     private List<PolyglotStatisticsAction> statistics;  // final after context patching
@@ -138,12 +135,6 @@ final class PolyglotThreadLocalActions {
             setupIntervalTimer(interval);
         } else {
             intervalTimer = null;
-        }
-
-        if (statistics != null || traceActions || interval > 0) {
-            logger = this.context.engine.getEngineLogger();
-        } else {
-            logger = null;
         }
     }
 
@@ -237,7 +228,7 @@ final class PolyglotThreadLocalActions {
         }
         s.append(String.format("  ------------------------------------------------------------------------------------- %n"));
         formatStatisticLine(s, "  All threads", all);
-        logger.log(Level.INFO, s.toString());
+        context.engine.getEngineLogger().log(Level.INFO, s.toString());
         statistics.clear();
     }
 
@@ -275,27 +266,32 @@ final class PolyglotThreadLocalActions {
                 return COMPLETED_FUTURE;
             }
 
-            Set<Thread> filterThreads = null;
-            if (threads != null) {
-                filterThreads = new HashSet<>(Arrays.asList(threads));
-            }
-
             boolean recurring = EngineAccessor.LANGUAGE.isRecurringTLAction(action);
             assert existingFuture == null || recurring : "recurring invariant";
 
             boolean sync = EngineAccessor.LANGUAGE.isSynchronousTLAction(action);
             boolean sideEffect = EngineAccessor.LANGUAGE.isSideEffectingTLAction(action);
             List<Thread> activePolyglotThreads = new ArrayList<>();
-            for (PolyglotThreadInfo info : context.getSeenThreads().values()) {
-                Thread t = info.getThread();
-                if (info.isActive() && (filterThreads == null || filterThreads.contains(t))) {
-                    if (info.isCurrent() && sync && info.isSafepointActive()) {
-                        throw new IllegalStateException(
-                                        "Recursive synchronous thread local action detected. " +
-                                                        "They are disallowed as they may cause deadlocks. " +
-                                                        "Schedule an asynchronous thread local action instead.");
+
+            if (threads == null) {
+                for (PolyglotThreadInfo info : context.getSeenThreads().values()) {
+                    Thread t = info.getThread();
+                    if (info.isActive()) {
+                        checkRecursiveSynchronousAction(info, sync);
+                        activePolyglotThreads.add(t);
                     }
-                    activePolyglotThreads.add(t);
+                }
+            } else {
+                for (Thread t : threads) {
+                    PolyglotThreadInfo info = context.getThreadInfo(t);
+                    /*
+                     * We need to ignore unknown threads (info is null) because the language might
+                     * pass a thread which was disposed concurrently.
+                     */
+                    if (info != null && info.isActive()) {
+                        checkRecursiveSynchronousAction(info, sync);
+                        activePolyglotThreads.add(t);
+                    }
                 }
             }
 
@@ -328,8 +324,10 @@ final class PolyglotThreadLocalActions {
             }
             Future<Void> future;
             if (activeThreads.length > 0) {
-                future = TL_HANDSHAKE.runThreadLocal(activeThreads, handshake,
-                                AbstractTLHandshake::notifyDone, EngineAccessor.LANGUAGE.isSideEffectingTLAction(action), config.syncStartOfEvent, config.syncEndOfEvent);
+                int syncActionMaxWait = context.engine.getEngineOptionValues().get(PolyglotEngineOptions.SynchronousThreadLocalActionMaxWait);
+                boolean syncActionPrintStackTraces = context.engine.getEngineOptionValues().get(PolyglotEngineOptions.SynchronousThreadLocalActionPrintStackTraces);
+                future = TL_HANDSHAKE.runThreadLocal(activeThreads, handshake, AbstractTLHandshake::notifyDone, EngineAccessor.LANGUAGE.isSideEffectingTLAction(action), config.syncStartOfEvent,
+                                config.syncEndOfEvent, syncActionMaxWait, syncActionPrintStackTraces, context.engine.getEngineLogger());
                 this.activeEvents.put(handshake, null);
 
             } else {
@@ -349,6 +347,14 @@ final class PolyglotThreadLocalActions {
             }
             handshake.future = future;
             return future;
+        }
+    }
+
+    private static void checkRecursiveSynchronousAction(PolyglotThreadInfo info, boolean sync) {
+        if (info.isCurrent() && sync && info.isSafepointActive()) {
+            throw new IllegalStateException("Recursive synchronous thread local action detected. " +
+                            "They are disallowed as they may cause deadlocks. " +
+                            "Schedule an asynchronous thread local action instead.");
         }
     }
 
@@ -420,7 +426,7 @@ final class PolyglotThreadLocalActions {
 
     private void log(String action, AbstractTLHandshake handshake, String details) {
         if (traceActions) {
-            logger.log(Level.INFO,
+            context.engine.getEngineLogger().log(Level.INFO,
                             String.format("[tl] %-18s %8d  %-30s %-10s %-30s %s", action,
                                             handshake.debugId,
                                             "thread[" + Thread.currentThread().getName() + "]",
@@ -511,7 +517,7 @@ final class PolyglotThreadLocalActions {
 
         @Override
         protected void perform(Access access) {
-            logger.log(Level.INFO, String.format("Stack Trace Thread %s: %s",
+            context.engine.getEngineLogger().log(Level.INFO, String.format("Stack Trace Thread %s: %s",
                             Thread.currentThread().getName(),
                             PolyglotExceptionImpl.printStackToString(context.getHostContext(), access.getLocation())));
         }
@@ -658,6 +664,11 @@ final class PolyglotThreadLocalActions {
         }
 
         protected abstract void acceptImpl(PolyglotTLAccess access);
+
+        @Override
+        public String toString() {
+            return action.toString();
+        }
     }
 
     private static final class AsyncEvent extends AbstractTLHandshake {
@@ -729,7 +740,8 @@ final class PolyglotThreadLocalActions {
                 intervalStatistics.accept(duration);
 
                 if (stackTrace != null && !PolyglotLanguageContext.isContextCreation(stackTrace)) {
-                    logger.info("No TruffleSafepoint.poll() for " + Duration.ofNanos(duration).toMillis() + "ms on " + threadName + " (stacktrace " + missingPollMillis + "ms after the last poll)" +
+                    context.engine.getEngineLogger().info("No TruffleSafepoint.poll() for " + Duration.ofNanos(duration).toMillis() + "ms on " + threadName + " (stacktrace " + missingPollMillis +
+                                    "ms after the last poll)" +
                                     System.lineSeparator() + formatStackTrace(stackTrace));
                     stackTrace = null;
                 }
