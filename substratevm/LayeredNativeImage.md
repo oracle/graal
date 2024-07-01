@@ -1,8 +1,8 @@
 ---
 layout: docs
 toc_group: build-overview
-link_title: Native Image Layers
-permalink: /reference-manual/native-image/overview/Layers/
+link_title: Layered Native Image
+permalink: /reference-manual/native-image/overview/LayeredNativeImage/
 ---
 
 # Layered Native Image
