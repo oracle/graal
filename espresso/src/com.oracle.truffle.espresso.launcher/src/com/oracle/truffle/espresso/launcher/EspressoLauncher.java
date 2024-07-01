@@ -367,14 +367,12 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             if (classpath == null) {
                 // (3) the environment variable CLASSPATH
                 classpath = System.getenv("CLASSPATH");
-                if (classpath == null) {
-                    // (4) the current working directory only
-                    classpath = ".";
-                }
             }
         }
 
-        espressoOptions.put("java.Classpath", classpath);
+        if (classpath != null) {
+            espressoOptions.put("java.Classpath", classpath);
+        }
 
         if (!isRelaxStaticObjectSafetyChecksSet) {
             // Since Espresso has a verifier, the Static Object Model does not need to perform shape
