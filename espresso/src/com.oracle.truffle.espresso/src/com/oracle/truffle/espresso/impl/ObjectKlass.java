@@ -1200,6 +1200,7 @@ public final class ObjectKlass extends Klass {
             method = lookupPolysigMethod(methodName, signature, lookupMode);
         }
         if (method == null && getSuperKlass() != null) {
+            CompilerAsserts.partialEvaluationConstant(this);
             method = getSuperKlass().lookupMethod(methodName, signature, lookupMode);
         }
         return method;
