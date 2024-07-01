@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.posix.darwin;
+package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -34,18 +34,16 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.posix.PosixSubstrateSigprofHandler;
-import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.util.TimeUtils;
 
 /**
- * Darwin supports only global timer from POSIX (see {@link PosixSubstrateSigprofHandler}).
+ * Support for POSIX global timer (see {@link PosixSubstrateSigprofHandler}).
  */
-public final class DarwinSubstrateSigprofHandler extends PosixSubstrateSigprofHandler {
+public final class PosixSubstrateGlobalSigprofHandler extends PosixSubstrateSigprofHandler {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DarwinSubstrateSigprofHandler() {
+    public PosixSubstrateGlobalSigprofHandler() {
     }
 
     @Override
