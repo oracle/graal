@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.move;
 
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMCopyTargetLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
@@ -43,6 +45,10 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMNoOpNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.linux.LLVMLinuxAarch64VaListStorage;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactoryDelegate;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.VAListPointerWrapperFactoryDelegateNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -72,25 +78,25 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
         this.step = step;
     }
 
-    public abstract void executeWithTarget(LLVMPointer srcPtr, LLVMPointer destPtr, boolean forwardCopy);
+    public abstract void executeWithTarget(VirtualFrame frame, LLVMPointer srcPtr, LLVMPointer destPtr, boolean forwardCopy);
 
     @Specialization(guards = "forwardCopy")
-    void moveNormalDir(LLVMPointer srcPtr, LLVMPointer destPtr, @SuppressWarnings("unused") boolean forwardCopy) {
+    void moveNormalDir(VirtualFrame frame, LLVMPointer srcPtr, LLVMPointer destPtr, @SuppressWarnings("unused") boolean forwardCopy) {
         Object val = loadNode.executeWithTargetGeneric(srcPtr);
-        storeNode.executeWithTarget(destPtr, val);
+        storeNode.executeWithTarget(frame, destPtr, val);
         if (nextPrimitiveMoveNode != null) {
-            nextPrimitiveMoveNode.executeWithTarget(srcPtr.increment(step), destPtr.increment(step), forwardCopy);
+            nextPrimitiveMoveNode.executeWithTarget(frame, srcPtr.increment(step), destPtr.increment(step), forwardCopy);
         }
     }
 
     @Specialization(guards = "!forwardCopy")
-    void moveReverseDir(LLVMPointer src, LLVMPointer dest, @SuppressWarnings("unused") boolean forwardCopy) {
+    void moveReverseDir(VirtualFrame frame, LLVMPointer src, LLVMPointer dest, @SuppressWarnings("unused") boolean forwardCopy) {
         LLVMPointer srcPtr = src.increment(-step);
         Object val = loadNode.executeWithTargetGeneric(srcPtr);
         LLVMPointer destPtr = dest.increment(-step);
-        storeNode.executeWithTarget(destPtr, val);
+        storeNode.executeWithTarget(frame, destPtr, val);
         if (nextPrimitiveMoveNode != null) {
-            nextPrimitiveMoveNode.executeWithTarget(srcPtr, destPtr, forwardCopy);
+            nextPrimitiveMoveNode.executeWithTarget(frame, srcPtr, destPtr, forwardCopy);
         }
     }
 
@@ -173,9 +179,9 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
      * situations that cannot be handled by the chain and must be handled specifically. In
      * particular, there are two cases:
      * <ol>
-     * <li>the targets exporting {@link LLVMCopyTargetLibrary}: it concerns va_list objects that do
+     * <li>the targets is {@link LLVMLinuxAarch64VaListStorage}: it concerns va_list objects that do
      * not support sequential reads/writes, but can copy from one to another using the
-     * {@link LLVMCopyTargetLibrary}.</li>
+     * {@link LLVMVaListLibrary}.</li>
      * <li>foreign managed objects: the copying mechanism uses the fallback implementation of
      * {@link com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary} and
      * {@link com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary} that is
@@ -198,9 +204,9 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
             this.memMoveNode = memMoveNode;
         }
 
-        public abstract Object executeWithTarget(LLVMPointer sourcePtr, LLVMPointer destPtr);
+        public abstract Object executeWithTarget(VirtualFrame frame, LLVMPointer sourcePtr, LLVMPointer destPtr);
 
-        boolean doCustomCopy(LLVMPointer sourcePtr, LLVMPointer destPtr, LLVMCopyTargetLibrary copyTargetLib) {
+        boolean doCustomVaListCopy(LLVMPointer sourcePtr, LLVMPointer destPtr) {
             Object src;
             Object dest;
             src = getReceiver(sourcePtr);
@@ -211,18 +217,17 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
             if (dest == null) {
                 return false;
             }
-            return copyTargetLib.canCopyFrom(dest, src, length);
+            if (dest instanceof LLVMLinuxAarch64VaListStorage) {
+                return src instanceof LLVMLinuxAarch64VaListStorage || LLVMNativePointer.isInstance(src);
+            } else {
+                return false;
+            }
         }
 
         /**
-         * The receiver of {@link LLVMCopyTargetLibrary#canCopyFrom(Object, Object, long)}} invoked
-         * in the guard expressions needs to be an object exporting {@link LLVMCopyTargetLibrary},
-         * not {@link LLVMManagedPointer}, such as
-         * {@link com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.linux.LLVMLinuxAarch64VaListStorage}.
-         * <p>
-         * N.B. The {@code LLVMLinuxAarch64VaListStorage.canCopyFrom} method returns {@code true} if
-         * the source is another {@code LLVMLinuxAarch64VaListStorage} or a native pointer, as both
-         * are valid sources to copy from. The {@code copyFrom} implementation then uses
+         * N.B. The {@link #doCustomVaListCopy(LLVMPointer, LLVMPointer)} method returns
+         * {@code true} if the source is another {@code LLVMLinuxAarch64VaListStorage} or a native
+         * pointer, as both are valid sources to copy from. The copy implementation then uses
          * {@link com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary#copy(Object, Object, Frame)},
          * where the source argument becomes the receiver of
          * {@link com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary#copy}:
@@ -230,7 +235,7 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
          * and "native->object" ({@code LLVMLinuxAarch64VaListStorage.NativeVAListWrapper.copy}
          * message).
          */
-        private static Object getReceiver(LLVMPointer receiverPtr) {
+        static Object getReceiver(LLVMPointer receiverPtr) {
             Object recv;
             if (LLVMManagedPointer.isInstance(receiverPtr)) {
                 if (LLVMManagedPointer.cast(receiverPtr).getOffset() != 0) {
@@ -294,40 +299,49 @@ public abstract class LLVMPrimitiveMoveNode extends LLVMNode {
             return 1;
         }
 
-        @Specialization(guards = "doCustomCopy(sourcePtr, destPtr, copyTargetLib)")
-        Object customCopy(LLVMPointer sourcePtr, LLVMPointer destPtr,
-                        @CachedLibrary(limit = "3") LLVMCopyTargetLibrary copyTargetLib) {
-            copyTargetLib.copyFrom(getReceiver(destPtr), getReceiver(sourcePtr), length);
+        @Specialization(guards = "doCustomVaListCopy(sourcePtr, destPtr)", limit = "2")
+        Object customCopy(VirtualFrame frame, @SuppressWarnings("unused") LLVMPointer sourcePtr, LLVMPointer destPtr,
+                        @Cached @SuppressWarnings("unused") VAListPointerWrapperFactoryDelegate wrapperFactory,
+                        @Bind("wrapperFactory.execute(getReceiver(sourcePtr))") Object sourceWrapper,
+                        @CachedLibrary("sourceWrapper") LLVMVaListLibrary vaListLibrary) {
+            LLVMLinuxAarch64VaListStorage.checkMemmoveLength(destPtr, length);
+            vaListLibrary.copy(sourceWrapper, getReceiver(destPtr), frame);
+
             return null;
         }
 
-        @Specialization(guards = {"!doCustomCopy(sourcePtr, destPtr, copyTargetLib)", "useMemMoveIntrinsic(sourcePtr, destPtr, asForeignLib)"})
-        Object delegateToMemMove(LLVMPointer sourcePtr, LLVMPointer destPtr,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMCopyTargetLibrary copyTargetLib,
+        @Specialization(guards = "doCustomVaListCopy(sourcePtr, destPtr)", replaces = "customCopy")
+        Object customCopyUncached(VirtualFrame frame, LLVMPointer sourcePtr, LLVMPointer destPtr) {
+            LLVMLinuxAarch64VaListStorage.checkMemmoveLength(destPtr, length);
+            Object sourceWrapper = VAListPointerWrapperFactoryDelegateNodeGen.getUncached().execute(getReceiver(sourcePtr));
+            LLVMVaListLibrary.getFactory().getUncached(sourceWrapper).copy(sourceWrapper, getReceiver(destPtr), frame.materialize());
+
+            return null;
+        }
+
+        @Specialization(guards = {"!doCustomVaListCopy(sourcePtr, destPtr)", "useMemMoveIntrinsic(sourcePtr, destPtr, asForeignLib)"})
+        Object delegateToMemMove(VirtualFrame frame, LLVMPointer sourcePtr, LLVMPointer destPtr,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary asForeignLib) {
-            memMoveNode.executeWithTarget(destPtr, sourcePtr, length);
+            memMoveNode.executeWithTarget(frame, destPtr, sourcePtr, length);
             return null;
         }
 
-        @Specialization(guards = {"!doCustomCopy(sourcePtr, destPtr, copyTargetLib)", "!useMemMoveIntrinsic(sourcePtr, destPtr, asForeignLib)", "copyDirection(sourcePtr, destPtr) > 0"})
-        Object primitiveMoveInForwardDir(LLVMPointer sourcePtr, LLVMPointer destPtr,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMCopyTargetLibrary copyTargetLib,
+        @Specialization(guards = {"!doCustomVaListCopy(sourcePtr, destPtr)", "!useMemMoveIntrinsic(sourcePtr, destPtr, asForeignLib)", "copyDirection(sourcePtr, destPtr) > 0"})
+        Object primitiveMoveInForwardDir(VirtualFrame frame, LLVMPointer sourcePtr, LLVMPointer destPtr,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary asForeignLib) {
-            primitiveMoveNode.executeWithTarget(sourcePtr, destPtr, true);
+            primitiveMoveNode.executeWithTarget(frame, sourcePtr, destPtr, true);
             return null;
         }
 
-        @Specialization(guards = {"!doCustomCopy(sourcePtr, destPtr, copyTargetLib)", "!useMemMoveIntrinsic(sourcePtr, destPtr, asForeignLib)", "copyDirection(sourcePtr, destPtr) < 0"})
-        Object primitiveMoveInBackwardDir(LLVMPointer sourcePtr, LLVMPointer destPtr,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMCopyTargetLibrary copyTargetLib,
+        @Specialization(guards = {"!doCustomVaListCopy(sourcePtr, destPtr)", "!useMemMoveIntrinsic(sourcePtr, destPtr, asForeignLib)", "copyDirection(sourcePtr, destPtr) < 0"})
+        Object primitiveMoveInBackwardDir(VirtualFrame frame, LLVMPointer sourcePtr, LLVMPointer destPtr,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary asForeignLib) {
-            primitiveMoveNode.executeWithTarget(sourcePtr.increment(length), destPtr.increment(length), false);
+            primitiveMoveNode.executeWithTarget(frame, sourcePtr.increment(length), destPtr.increment(length), false);
             return null;
         }
 
-        @Specialization(guards = {"!doCustomCopy(sourcePtr, destPtr, copyTargetLib)", "!useMemMoveIntrinsic(sourcePtr, destPtr, asForeignLib)", "copyDirection(sourcePtr, destPtr) == 0"})
+        @Specialization(guards = {"!doCustomVaListCopy(sourcePtr, destPtr)", "!useMemMoveIntrinsic(sourcePtr, destPtr, asForeignLib)", "copyDirection(sourcePtr, destPtr) == 0"})
         Object noOp(@SuppressWarnings("unused") LLVMPointer sourcePtr, @SuppressWarnings("unused") LLVMPointer destPtr,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMCopyTargetLibrary copyTargetLib,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary asForeignLib) {
             return null;
         }

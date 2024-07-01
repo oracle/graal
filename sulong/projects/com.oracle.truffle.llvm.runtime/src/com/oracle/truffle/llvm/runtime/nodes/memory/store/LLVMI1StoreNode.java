@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNodeGen.LLVMI1OffsetStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMOffsetStoreNode.LLVMPrimitiveOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -48,7 +49,7 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNode {
     public abstract void executeWithTarget(LLVMPointer address, boolean value);
 
     @GenerateUncached
-    public abstract static class LLVMI1OffsetStoreNode extends LLVMOffsetStoreNode {
+    public abstract static class LLVMI1OffsetStoreNode extends LLVMPrimitiveOffsetStoreNode {
 
         public static LLVMI1OffsetStoreNode create() {
             return LLVMI1OffsetStoreNodeGen.create(null, null, null);

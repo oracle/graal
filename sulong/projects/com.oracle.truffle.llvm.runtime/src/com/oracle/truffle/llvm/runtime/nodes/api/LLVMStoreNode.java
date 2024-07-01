@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 @NodeChild(value = "value", type = LLVMExpressionNode.class)
@@ -37,5 +38,5 @@ public abstract class LLVMStoreNode extends LLVMStatementNode {
 
     public static final LLVMStoreNode[] NO_STORES = {};
 
-    public abstract void executeWithTarget(Object address, Object value);
+    public abstract void executeWithTarget(VirtualFrame frame, Object address, Object value);
 }
