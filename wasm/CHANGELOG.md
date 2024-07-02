@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes to the WebAssembly engine implemented in GraalVM (GraalWasm).
 
+## Version 24.0.0
+
+* Updated developer metadata of Maven artifacts.
+
 ## Version 23.1.0
 
 * Implemented the [extended const expressions](https://github.com/WebAssembly/extended-const) proposal. The feature can be enabled with the option `--wasm.ExtendedConstExpressions=true`.
