@@ -87,10 +87,11 @@ final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     @TruffleBoundary
-    public synchronized boolean grow(long extraPageSize) {
+    public synchronized long grow(long extraPageSize) {
+        long previousSize = size();
         if (extraPageSize == 0) {
             invokeGrowCallback();
-            return true;
+            return previousSize;
         } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE)
             // ensure computation of targetByteSize does not overflow.
@@ -98,9 +99,9 @@ final class ByteArrayWasmMemory extends WasmMemory {
             byteArrayBuffer.grow(targetByteSize);
             currentMinSize = size() + extraPageSize;
             invokeGrowCallback();
-            return true;
+            return previousSize;
         } else {
-            return false;
+            return -1;
         }
     }
 

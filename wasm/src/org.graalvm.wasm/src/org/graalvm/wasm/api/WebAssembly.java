@@ -727,11 +727,11 @@ public class WebAssembly extends Dictionary {
     }
 
     public static long memGrow(WasmMemory memory, int delta) {
-        final long pageSize = memory.size();
-        if (!memory.grow(delta)) {
+        final long previousSize = memory.grow(delta);
+        if (previousSize == -1) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Cannot grow memory above max limit");
         }
-        return pageSize;
+        return previousSize;
     }
 
     private static Object memSetGrowCallback(Object[] args) {

@@ -993,12 +993,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     offset += 4;
                     final WasmMemory memory = memory(instance, memoryIndex);
                     int extraSize = popInt(frame, stackPointer - 1);
-                    int pageSize = (int) memory.size();
-                    if (memory.grow(extraSize)) {
-                        pushInt(frame, stackPointer - 1, pageSize);
-                    } else {
-                        pushInt(frame, stackPointer - 1, -1);
-                    }
+                    int previousSize = (int) memory.grow(extraSize);
+                    pushInt(frame, stackPointer - 1, previousSize);
                     break;
                 }
                 case Bytecode.I32_CONST_I8: {
@@ -1681,12 +1677,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             offset += 4;
                             final WasmMemory memory = memory(instance, memoryIndex);
                             long extraSize = popLong(frame, stackPointer - 1);
-                            long pageSize = memory.size();
-                            if (memory.grow(extraSize)) {
-                                pushLong(frame, stackPointer - 1, pageSize);
-                            } else {
-                                pushLong(frame, stackPointer - 1, -1L);
-                            }
+                            long previousSize = memory.grow(extraSize);
+                            pushLong(frame, stackPointer - 1, previousSize);
                             break;
                         }
                         default:
