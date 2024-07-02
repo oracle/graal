@@ -48,7 +48,7 @@ public class EmbeddedResourcesInfo {
     }
 
     public void declareResourceAsRegistered(Module module, String resource, String source) {
-        if (!ResourcesFeature.Options.GenerateEmbeddedResourcesFile.getValue()) {
+        if (!ImageSingletons.lookup(ResourcesFeature.class).collectEmbeddedResourcesInfo()) {
             return;
         }
 

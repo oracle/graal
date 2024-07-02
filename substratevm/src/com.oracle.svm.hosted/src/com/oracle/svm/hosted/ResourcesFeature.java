@@ -22,7 +22,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
@@ -141,7 +140,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * @see NativeImageResourceFileAttributesView
  */
 @AutomaticallyRegisteredFeature
-public final class ResourcesFeature implements InternalFeature {
+public class ResourcesFeature implements InternalFeature {
 
     static final String MODULE_NAME_ALL_UNNAMED = "ALL-UNNAMED";
 
@@ -387,6 +386,10 @@ public final class ResourcesFeature implements InternalFeature {
 
     private static ResourcesRegistryImpl resourceRegistryImpl() {
         return (ResourcesRegistryImpl) ImageSingletons.lookup(ResourcesRegistry.class);
+    }
+
+    protected boolean collectEmbeddedResourcesInfo() {
+        return Options.GenerateEmbeddedResourcesFile.getValue();
     }
 
     @Override
