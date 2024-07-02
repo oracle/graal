@@ -109,7 +109,7 @@ public abstract class ExceptionHandler {
         String description;
         switch (getKind()) {
             case CUSTOM:
-                description = String.format("%04x ex", getHandlerIndex());
+                description = String.format("handler %04x", getHandlerIndex());
                 break;
             case EPILOG:
                 description = "epilog.exceptional";

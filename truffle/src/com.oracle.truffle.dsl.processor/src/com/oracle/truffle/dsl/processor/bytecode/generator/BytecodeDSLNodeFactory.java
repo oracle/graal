@@ -6724,18 +6724,34 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.returnDefault();
             b.end();
 
-            b.startFor().string("int i = 0; i <  operationSp; i++").end().startBlock();
-            b.startSwitch().string("operationStack[i].operation").end().startBlock();
-            OperationModel op = model.findOperation(OperationKind.TAG);
-            b.startCase().tree(createOperationConstant(op)).end();
-            b.startBlock();
-            emitCastOperationData(b, op, "i");
-            buildEmitInstruction(b, model.tagResumeInstruction, "operationData.nodeId");
-            b.statement("break");
-            b.end(); // case tag
+            b.lineComment("We need to emit resume events from bottom to top, but we can only walk the stack top to bottom.");
+            b.lineComment("We store the tag node ids in an array and then replay them from bottom to top.");
 
-            b.end(); // switch
-            b.end(); // for
+            b.declaration(arrayOf(type(int.class)), "tagNodeIds", "new int[8]");
+            b.declaration(type(int.class), "tagNodeIdsIndex", "0");
+
+            buildOperationStackWalk(b, () -> {
+                b.startSwitch().string("operationStack[i].operation").end().startBlock();
+                OperationModel op = model.findOperation(OperationKind.TAG);
+                b.startCase().tree(createOperationConstant(op)).end();
+                b.startBlock();
+                emitCastOperationData(b, op, "i");
+
+                b.startIf().string("tagNodeIdsIndex == tagNodeIds.length").end().startBlock();
+                b.startAssign("tagNodeIds");
+                b.startStaticCall(type(Arrays.class), "copyOf").string("tagNodeIds").string("tagNodeIdsIndex * 2").end();
+                b.end();
+                b.end();
+                b.statement("tagNodeIds[tagNodeIdsIndex++] = operationData.nodeId");
+                b.statement("break");
+                b.end(); // case tag
+
+                b.end(); // switch
+            });
+
+            b.startWhile().string("--tagNodeIdsIndex >= 0").end().startBlock();
+            buildEmitInstruction(b, model.tagResumeInstruction, "tagNodeIds[tagNodeIdsIndex]");
+            b.end();
 
             return ex;
         }

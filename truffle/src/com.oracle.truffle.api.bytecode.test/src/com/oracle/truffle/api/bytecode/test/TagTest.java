@@ -1449,6 +1449,79 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @Test
+    public void testFinallyTry() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            var l = b.createLabel();
+
+            b.beginTag(StatementTag.class);
+            b.beginFinallyTry(() -> {
+                b.beginTag(StatementTag.class);
+                b.emitBranch(l);
+                b.endTag(StatementTag.class);
+            });
+
+            b.beginTag(ExpressionTag.class);
+            b.beginReturn();
+            b.beginValueOrThrow();
+            b.emitLoadConstant(42L);
+            b.emitLoadArgument(0);
+            b.endValueOrThrow();
+            b.endReturn();
+            b.endTag(ExpressionTag.class);
+
+            b.endFinallyTry();
+            b.endTag(StatementTag.class);
+
+            b.emitLabel(l);
+            b.emitLoadConstant(123L);
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "load.constant",
+                        "load.argument",
+                        "c.ValueOrThrow",
+                        "pop", // inline finally handler
+                        "branch",
+                        "pop", // exception handler
+                        "branch",
+                        "load.constant",
+                        "return");
+
+        assertEquals(123L, node.getCallTarget().call(false));
+        assertEquals(123L, node.getCallTarget().call(true));
+
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class, StatementTag.class).build());
+
+        assertEquals(123L, node.getCallTarget().call(false));
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x0038, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x001d, null, ExpressionTag.class),
+                        // TODO: tag range needs to be closed when copying finally handler
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x001d, 42L, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x000d, 0x0017, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x000d, 0x0017, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0038, null, StatementTag.class));
+
+        events.clear();
+        assertEquals(123L, node.getCallTarget().call(true));
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x0038, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x001d, null, ExpressionTag.class),
+                        // TODO: missing ExpressionTag exception event. need to emit multiple ranges
+                        // when inlining finally handler.
+                        // new Event(EventKind.EXCEPTIONAL, 0x0002, 0x001d, null,
+                        // ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x002b, 0x0035, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x002b, 0x0035, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0038, null, StatementTag.class));
+    }
+
+    @Test
     public void testYield() {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));
@@ -1555,6 +1628,112 @@ public class TagTest extends AbstractInstructionTest {
                         new Event(EventKind.RESUME, enter2, leave2, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, enter2, leave2, 333, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, enter1, leave1, 333, RootBodyTag.class));
+    }
+
+    @Test
+    public void testFinallyTryYield() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+
+            b.beginTag(StatementTag.class);
+            b.beginFinallyTry(() -> {
+                b.beginTag(StatementTag.class);
+                b.beginYield();
+                b.emitLoadConstant(123L);
+                b.endYield();
+                b.endTag(StatementTag.class);
+            });
+
+            b.beginTag(ExpressionTag.class);
+            b.beginReturn();
+            b.beginValueOrThrow();
+            b.emitLoadConstant(42L);
+            b.emitLoadArgument(0);
+            b.endValueOrThrow();
+            b.endReturn();
+            b.endTag(ExpressionTag.class);
+
+            b.endFinallyTry();
+            b.endTag(StatementTag.class);
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "load.constant",
+                        "load.argument",
+                        "c.ValueOrThrow",
+                        "load.constant", // inline finally handler
+                        "yield",
+                        "pop",
+                        "return",
+                        "load.constant", // exception handler
+                        "yield",
+                        "pop",
+                        "throw");
+
+        ContinuationResult cont;
+        cont = (ContinuationResult) node.getCallTarget().call(false);
+        assertEquals(123L, cont.getResult());
+        assertEquals(42L, cont.continueWith(456L));
+
+        cont = (ContinuationResult) node.getCallTarget().call(true);
+        assertEquals(123L, cont.getResult());
+        try {
+            cont.continueWith(456L);
+            fail("exception expected");
+        } catch (TestException ex) {
+            // pass
+        }
+
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class,
+                        StatementTag.class).build());
+
+        cont = (ContinuationResult) node.getCallTarget().call(false);
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x004f, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x0024, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0024, 42L, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x000d, 0x001b, null, StatementTag.class),
+                        new Event(EventKind.YIELD, 0x000d, 0x001b, 123L, StatementTag.class),
+                        new Event(EventKind.YIELD, 0x0000, 0x004f, 123L, StatementTag.class));
+        assertEquals(123L, cont.getResult());
+        events.clear();
+        assertEquals(42L, cont.continueWith(456L));
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.RESUME, 0x0000, 0x004f, null, StatementTag.class),
+                        new Event(EventKind.RESUME, 0x000d, 0x001b, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x000d, 0x001b, 456L, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x004f, 42L, StatementTag.class));
+
+        events.clear();
+
+        cont = (ContinuationResult) node.getCallTarget().call(true);
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x004f, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x0024, null, ExpressionTag.class),
+                        // TODO: missing ExpressionTag exception event. need to emit multiple ranges
+                        // when inlining finally handler.
+                        new Event(EventKind.ENTER, 0x003b, 0x0049, null, StatementTag.class),
+                        new Event(EventKind.YIELD, 0x003b, 0x0049, 123L, StatementTag.class),
+                        new Event(EventKind.YIELD, 0x0000, 0x004f, 123L, StatementTag.class));
+        assertEquals(123L, cont.getResult());
+        events.clear();
+        try {
+            cont.continueWith(456L);
+            fail("exception expected");
+        } catch (TestException ex) {
+            // pass
+        }
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.RESUME, 0x0000, 0x004f, null, StatementTag.class),
+                        new Event(EventKind.RESUME, 0x003b, 0x0049, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x003b, 0x0049, 456L, StatementTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x004f, TestException.class, StatementTag.class));
     }
 
     private static final NodeLibrary NODE_LIBRARY = NodeLibrary.getUncached();
@@ -2074,6 +2253,17 @@ public class TagTest extends AbstractInstructionTest {
             @Specialization
             public static void doInt(@Bind("$node") Node node, @Bind("$bci") int bci) {
                 throw new TestException(node, bci);
+            }
+        }
+
+        @Operation
+        static final class ValueOrThrow {
+            @Specialization
+            public static Object doInt(Object value, boolean shouldThrow, @Bind("$node") Node node, @Bind("$bci") int bci) {
+                if (shouldThrow) {
+                    throw new TestException(node, bci);
+                }
+                return value;
             }
         }
     }
