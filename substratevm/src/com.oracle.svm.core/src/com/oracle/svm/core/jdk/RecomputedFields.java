@@ -311,7 +311,7 @@ class ForkJoinPoolCommonAccessor {
     }
 }
 
-@TargetClass(value = java.util.concurrent.ForkJoinPool.class, innerClass = "DefaultForkJoinWorkerThreadFactory", onlyWith = JDK23OrLater.class)
+@TargetClass(value = java.util.concurrent.ForkJoinPool.class, innerClass = "DefaultForkJoinWorkerThreadFactory", onlyWith = JDKLatest.class)
 @SuppressWarnings("removal")
 final class Target_java_util_concurrent_ForkJoinPool_DefaultForkJoinWorkerThreadFactory {
     @Alias @RecomputeFieldValue(kind = Reset) //

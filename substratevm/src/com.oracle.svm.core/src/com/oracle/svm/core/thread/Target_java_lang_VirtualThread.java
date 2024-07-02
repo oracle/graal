@@ -46,9 +46,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDK22OrEarlier;
-import com.oracle.svm.core.jdk.JDK22OrLater;
-import com.oracle.svm.core.jdk.JDK23OrLater;
+import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
@@ -70,13 +68,13 @@ public final class Target_java_lang_VirtualThread {
     @Alias static int PARKED;
     @Alias static int PINNED;
     @Alias static int YIELDING;
-    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int YIELDED;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int YIELDED;
     @Alias static int TERMINATED;
     @Alias static int SUSPENDED;
-    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PARKING;
-    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PARKED;
-    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PINNED;
-    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int UNPARKED;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_PARKING;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_PARKED;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_PINNED;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int UNPARKED;
     @Alias static Target_jdk_internal_vm_ContinuationScope VTHREAD_SCOPE;
 
     /**
@@ -214,14 +212,14 @@ public final class Target_java_lang_VirtualThread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK23OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     @SuppressWarnings("unused")
     private static void notifyJvmtiHideFrames(boolean hide) {
         // unimplemented (GR-45392)
     }
 
     @Substitute
-    @TargetElement(name = "notifyJvmtiHideFrames", onlyWith = JDK22OrEarlier.class)
+    @TargetElement(name = "notifyJvmtiHideFrames", onlyWith = JDK21OrEarlier.class)
     @SuppressWarnings({"static-method", "unused"})
     private void notifyJvmtiHideFramesJDK22(boolean hide) {
         // unimplemented (GR-45392)
@@ -229,7 +227,7 @@ public final class Target_java_lang_VirtualThread {
 
     @Substitute
     @SuppressWarnings({"static-method", "unused"})
-    @TargetElement(onlyWith = JDK23OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     private static void notifyJvmtiDisableSuspend(boolean enter) {
         // unimplemented (GR-51158)
     }

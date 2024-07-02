@@ -219,7 +219,7 @@ final class Target_java_lang_StringUTF16 {
 final class Target_java_lang_Throwable {
 
     @Alias //
-    @TargetElement(onlyWith = JDK22OrLater.class) //
+    @TargetElement(onlyWith = JDKLatest.class) //
     @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
     static boolean jfrTracing = false;
 

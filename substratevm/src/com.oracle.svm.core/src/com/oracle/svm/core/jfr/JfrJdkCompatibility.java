@@ -36,9 +36,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDK22OrEarlier;
-import com.oracle.svm.core.jdk.JDK22OrLater;
-import com.oracle.svm.core.jdk.JDK23OrLater;
+import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -135,13 +133,13 @@ final class Target_jdk_jfr_internal_Utils {
     public static native String formatTimespan(Duration dValue, String separation);
 }
 
-@TargetClass(className = "jdk.jfr.internal.JVMSupport", onlyWith = {JDK22OrLater.class, HasJfrSupport.class})
+@TargetClass(className = "jdk.jfr.internal.JVMSupport", onlyWith = {JDKLatest.class, HasJfrSupport.class})
 final class Target_jdk_jfr_internal_JVMSupport {
     @Alias
     public static native String makeFilename(Recording recording);
 }
 
-@TargetClass(className = "jdk.jfr.internal.util.ValueFormatter", onlyWith = {JDK22OrLater.class, HasJfrSupport.class})
+@TargetClass(className = "jdk.jfr.internal.util.ValueFormatter", onlyWith = {JDKLatest.class, HasJfrSupport.class})
 final class Target_jdk_jfr_internal_util_ValueFormatter {
     @Alias
     public static native String formatTimespan(Duration dValue, String separation);
@@ -150,10 +148,10 @@ final class Target_jdk_jfr_internal_util_ValueFormatter {
 @TargetClass(className = "jdk.jfr.internal.PlatformRecording")
 final class Target_jdk_jfr_internal_PlatformRecording {
     @Alias
-    @TargetElement(onlyWith = JDK23OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public native void setDumpDirectory(SecuritySupport.SafePath directory);
 
     @Alias
-    @TargetElement(onlyWith = JDK22OrEarlier.class)
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     public native void setDumpOnExitDirectory(SecuritySupport.SafePath directory);
 }

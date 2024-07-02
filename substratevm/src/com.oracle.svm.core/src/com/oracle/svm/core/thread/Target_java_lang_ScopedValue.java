@@ -32,7 +32,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDK23OrLater;
+import com.oracle.svm.core.jdk.JDKLatest;
 
 @TargetClass(className = "java.lang.ScopedValue")
 final class Target_java_lang_ScopedValue {
@@ -47,7 +47,7 @@ final class Target_java_lang_ScopedValue {
     }
 }
 
-@TargetClass(className = "java.lang.ScopedValue", innerClass = "CallableOp", onlyWith = JDK23OrLater.class)
+@TargetClass(className = "java.lang.ScopedValue", innerClass = "CallableOp", onlyWith = JDKLatest.class)
 final class Target_java_lang_ScopedValue_CallableOp {
 }
 
@@ -73,7 +73,7 @@ final class Target_java_lang_ScopedValue_Carrier {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK23OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     @Uninterruptible(reason = "Ensure no safepoint actions can disrupt reverting scoped value bindings.", calleeMustBe = false)
     private <R> R runWith(Target_java_lang_ScopedValue_Snapshot newSnapshot, Target_java_lang_ScopedValue_CallableOp op) throws Exception {
         Target_java_lang_Thread.setScopedValueBindings(newSnapshot);
@@ -105,7 +105,7 @@ final class Target_jdk_internal_vm_ScopedValueContainer {
     static native <V> V call(Callable<V> op) throws Exception;
 
     @Alias
-    @TargetElement(onlyWith = JDK23OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     static native <V> V call(Target_java_lang_ScopedValue_CallableOp op) throws Exception;
 
     @Alias

@@ -52,7 +52,7 @@ public final class Target_java_lang_Module {
     public native void ensureNativeAccess(Class<?> owner, String methodName);
 
     @Alias
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public native void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass);
 
     @Substitute
