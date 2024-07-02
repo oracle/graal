@@ -91,7 +91,7 @@ public class CompressedGlobTrie {
     private record SquashedParts(String squashedPart, int numberOfSquashedParts) {
     }
 
-    protected static final List<Character> ALWAYS_ESCAPE_CHARACTERS = List.of('?', '[', ']', '{', '}');
+    private static final List<Character> ALWAYS_ESCAPE_CHARACTERS = List.of('?', '[', ']', '{', '}');
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static class CompressedGlobTrieBuilder {
