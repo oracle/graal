@@ -62,9 +62,23 @@ public final class HostFrameRecord {
     public final Method.MethodVersion methodVersion;
     public HostFrameRecord next;
 
+    private boolean tainted = false;
+
     public int bci() {
         assert primitives.length > 0;
         return EspressoFrameDescriptor.narrow(primitives[0]);
+    }
+
+    public void taint() {
+        tainted = true;
+    }
+
+    public void untaint() {
+        tainted = false;
+    }
+
+    public boolean isTainted() {
+        return tainted;
     }
 
     public static HostFrameRecord recordFrame(VirtualFrame frame, Method.MethodVersion m, int bci, int top, HostFrameRecord next) {

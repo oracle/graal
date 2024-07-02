@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 
 /**
  * Exposes accessors to the Espresso frame e.g. operand stack, locals and current BCI.
@@ -496,5 +497,29 @@ public final class EspressoFrame {
         }
         // @formatter:on
         return Types.slotCount(type);
+    }
+
+    /**
+     * Mark this frame as being accessed outside its owner.
+     */
+    public static void taint(Frame frame) {
+        if (isTainted(frame)) {
+            return;
+        }
+        Object[] args = frame.getArguments();
+        if (args.length > 0 && args[0] instanceof HostFrameRecord hfr) {
+            hfr.taint();
+        }
+    }
+
+    /**
+     * Returns whether this frame might have been written to outside our control.
+     */
+    public static boolean isTainted(Frame frame) {
+        Object[] args = frame.getArguments();
+        if (args.length > 0 && args[0] instanceof HostFrameRecord hfr) {
+            return hfr.isTainted();
+        }
+        return false;
     }
 }
