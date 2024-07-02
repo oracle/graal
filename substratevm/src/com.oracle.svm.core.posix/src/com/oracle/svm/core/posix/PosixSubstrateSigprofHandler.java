@@ -55,6 +55,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.linux.LinuxSubstrateSigprofHandler;
+import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
@@ -141,7 +142,7 @@ class PosixSubstrateSigProfHandlerFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (JfrExecutionSamplerSupported.isSupported() && isSignalHandlerBasedExecutionSamplerEnabled()) {
+        if (JfrExecutionSamplerSupported.isSupported() && isSignalHandlerBasedExecutionSamplerEnabled() && useAsyncSampler()) {
             SubstrateSigprofHandler sampler = makeNewSigprofHandler();
             ImageSingletons.add(JfrExecutionSampler.class, sampler);
             ImageSingletons.add(SubstrateSigprofHandler.class, sampler);
@@ -149,6 +150,10 @@ class PosixSubstrateSigProfHandlerFeature implements InternalFeature {
             ThreadListenerSupport.get().register(sampler);
             IsolateListenerSupport.singleton().register(sampler);
         }
+    }
+
+    private static boolean useAsyncSampler() {
+        return !ImageSingletons.contains(ProfilingSampler.class) || ImageSingletons.lookup(ProfilingSampler.class).isAsyncSampler();
     }
 
     private static SubstrateSigprofHandler makeNewSigprofHandler() {
