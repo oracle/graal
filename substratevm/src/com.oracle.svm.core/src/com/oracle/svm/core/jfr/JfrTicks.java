@@ -26,6 +26,7 @@ package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.PlatformTimeUtils;
 
 /**
  * Utility class to manage ticks for event timestamps based on an initial start point when the
@@ -72,6 +73,6 @@ public final class JfrTicks {
     }
 
     public static long currentTimeNanos() {
-        return TimeUtils.millisToNanos(System.currentTimeMillis());
+        return PlatformTimeUtils.singleton().nanosNow();
     }
 }
