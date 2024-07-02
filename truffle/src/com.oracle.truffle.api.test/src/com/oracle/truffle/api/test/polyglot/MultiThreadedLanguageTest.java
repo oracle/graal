@@ -86,6 +86,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.test.polyglot.MultiThreadedLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.MultiThreadedLanguage.ThreadRequest;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+import static org.junit.Assert.assertFalse;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -135,6 +136,86 @@ public class MultiThreadedLanguageTest extends AbstractThreadedPolyglotTest {
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("Single threaded access requested by thread "));
         }
+
+        // allow again so we can close
+        MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
+            return true;
+        };
+        context.close();
+    }
+
+    @Test
+    public void testNoThreadAllowedWithSecurityException() {
+        Context context = Context.newBuilder(MultiThreadedLanguage.ID).onDeniedThreadAccess((t) -> {
+            throw new SecurityException(t.getMessage());
+        }).build();
+
+        MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
+            return false;
+        };
+
+        try {
+            context.initialize(MultiThreadedLanguage.ID);
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.getMessage().contains("SecurityException"));
+            assertTrue(e.isInternalError());
+        }
+
+        try {
+            eval(context, (env) -> null);
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.getMessage().contains("SecurityException"));
+            assertTrue(e.isInternalError());
+        }
+
+        try {
+            eval(context, (env) -> null);
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.getMessage().contains("SecurityException"));
+            assertTrue(e.isInternalError());
+        }
+
+        // allow again so we can close
+        MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
+            return true;
+        };
+        context.close();
+    }
+
+    @Test
+    public void testNoThreadAllowedRetry() {
+        boolean[] isThreadAccessAllowed = {false};
+        int[] state = {0};
+        Context context = Context.newBuilder(MultiThreadedLanguage.ID).onDeniedThreadAccess((t) -> {
+            switch (state[0]) {
+                case 0 -> {
+                    // retry
+                    assertFalse("Thread access wasn't allowed", isThreadAccessAllowed[0]);
+                    state[0] = 1;
+                    return;
+                }
+                case 1 -> {
+                    // allow & retry
+                    assertFalse("Thread access wasn't allowed", isThreadAccessAllowed[0]);
+                    isThreadAccessAllowed[0] = true;
+                    state[0] = 2;
+                    return;
+                }
+                default -> // just forbid with an exception
+                    throw t;
+            }
+        }).build();
+
+        MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
+            return isThreadAccessAllowed[0];
+        };
+
+        Value res = eval(context, (env) -> 42);
+        assertEquals("There were two queries - e.g. one retry", 2, state[0]);
+        assertEquals("Fourty two is reaturned", 42, res.asInt());
 
         // allow again so we can close
         MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
