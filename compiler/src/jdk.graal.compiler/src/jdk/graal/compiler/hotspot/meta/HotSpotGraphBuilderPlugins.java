@@ -1234,7 +1234,7 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerP256Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, "sun.security.util.math.intpoly.MontgomeryIntegerPolynomialP256", replacements);
-        r.registerConditional(config.intpolyMontgomeryMultP256 != 0L, new InvocationPlugin("mult", Receiver.class, long[].class, long[].class, long[].class) {
+        r.registerConditional(config.intpolyMontgomeryMultP256 != 0L, new InvocationPlugin("multImpl", Receiver.class, long[].class, long[].class, long[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode aIn, ValueNode bIn, ValueNode rOut) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
@@ -1246,8 +1246,7 @@ public class HotSpotGraphBuilderPlugins {
                     ValueNode bStart = helper.arrayStart(bNotNull, JavaKind.Long);
                     ValueNode rStart = helper.arrayStart(rNotNull, JavaKind.Long);
 
-                    ForeignCallNode call = new ForeignCallNode(INTPOLY_MONTGOMERYMULT_P256, aStart, bStart, rStart);
-                    b.addPush(JavaKind.Int, call);
+                    b.add(new ForeignCallNode(INTPOLY_MONTGOMERYMULT_P256, aStart, bStart, rStart));
                 }
                 return true;
             }
