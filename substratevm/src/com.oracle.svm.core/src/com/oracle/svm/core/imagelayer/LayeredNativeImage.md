@@ -27,6 +27,7 @@ The supporting layers are called _shared layers_ and the application executable 
 _application layer_ or _executable layer_.
 The _initial_ or _base_ layer is a shared layer containing VM internals and core _java.base_ functionality at a minimum.
 It can also contain modules specific to a certain framework that the application may be built upon.
+We refer to a subsequent layer built on top of an existing layer as an _extension layer_.
 
 At run time a shared layer is a shared object file on which other intermediate layers or executable application
 layers can be dependent.
