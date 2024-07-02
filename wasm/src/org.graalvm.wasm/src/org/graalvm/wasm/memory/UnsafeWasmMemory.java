@@ -135,26 +135,28 @@ public final class UnsafeWasmMemory extends WasmMemory {
 
     @Override
     @TruffleBoundary
-    public synchronized boolean grow(long extraPageSize) {
+    public synchronized long grow(long extraPageSize) {
+        final long previousSize = size();
         if (extraPageSize == 0) {
             invokeGrowCallback();
-            return true;
-        } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
+            return previousSize;
+        } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(previousSize + extraPageSize, maxAllowedSize) <= 0) {
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
             // computation of targetByteSize does not overflow.
-            final long targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
+            final long targetByteSize = multiplyExact(addExact(previousSize, extraPageSize), MEMORY_PAGE_SIZE);
             final long sourceByteSize = byteSize();
             ByteBuffer updatedBuffer = allocateBuffer(targetByteSize);
             final long updatedStartAddress = getBufferAddress(updatedBuffer);
+            final long updatedSize = previousSize + extraPageSize;
             unsafe.copyMemory(startAddress, updatedStartAddress, sourceByteSize);
             buffer = updatedBuffer;
             startAddress = updatedStartAddress;
-            size += extraPageSize;
-            currentMinSize = size;
+            currentMinSize = updatedSize;
+            size = updatedSize;
             invokeGrowCallback();
-            return true;
+            return previousSize;
         } else {
-            return false;
+            return -1;
         }
     }
 

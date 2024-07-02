@@ -109,27 +109,30 @@ class NativeWasmMemory extends WasmMemory {
         return size * MEMORY_PAGE_SIZE;
     }
 
+    @TruffleBoundary
     @Override
-    public synchronized boolean grow(long extraPageSize) {
+    public synchronized long grow(long extraPageSize) {
+        final long previousSize = size();
         if (extraPageSize == 0) {
             invokeGrowCallback();
-            return true;
-        } else if (Long.compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && Long.compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
+            return previousSize;
+        } else if (Long.compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && Long.compareUnsigned(previousSize + extraPageSize, maxAllowedSize) <= 0) {
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
             // computation of targetByteSize does not overflow.
-            final long targetByteSize = Math.multiplyExact(Math.addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
+            final long targetByteSize = Math.multiplyExact(Math.addExact(previousSize, extraPageSize), MEMORY_PAGE_SIZE);
+            final long updatedSize = previousSize + extraPageSize;
             try {
                 startAddress = unsafe.reallocateMemory(startAddress, targetByteSize);
                 unsafe.setMemory(startAddress + byteSize(), targetByteSize - byteSize(), (byte) 0);
             } catch (OutOfMemoryError error) {
                 throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
             }
-            size += extraPageSize;
-            currentMinSize = size;
+            currentMinSize = updatedSize;
+            size = updatedSize;
             invokeGrowCallback();
-            return true;
+            return previousSize;
         } else {
-            return false;
+            return -1;
         }
     }
 
