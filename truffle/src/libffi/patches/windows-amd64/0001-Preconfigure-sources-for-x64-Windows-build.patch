@@ -231,7 +231,7 @@ index d38b781..6284190 100644
  
  /* Define to the full name and version of this package. */
 -#undef PACKAGE_STRING
-+#define PACKAGE_STRING "libffi 3.4.4"
++#define PACKAGE_STRING "libffi 3.4.6"
  
  /* Define to the one symbol short name of this package. */
 -#undef PACKAGE_TARNAME
@@ -243,7 +243,7 @@ index d38b781..6284190 100644
  
  /* Define to the version of this package. */
 -#undef PACKAGE_VERSION
-+#define PACKAGE_VERSION "3.4.4"
++#define PACKAGE_VERSION "3.4.6"
  
  /* The size of `double', as computed by sizeof. */
 -#undef SIZEOF_DOUBLE
@@ -283,7 +283,7 @@ index d38b781..6284190 100644
  
  /* Version number of package */
 -#undef VERSION
-+#define VERSION "3.4.4"
++#define VERSION "3.4.6"
  
  /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
     significant byte first (like Motorola and SPARC, unlike Intel). */
@@ -312,7 +312,7 @@ index 227ac79..6318a33 100644
 @@ -1,5 +1,5 @@
  /* -----------------------------------------------------------------*-C-*-
 -   libffi @VERSION@
-+   libffi 3.4.4
++   libffi 3.4.6
       - Copyright (c) 2011, 2014, 2019, 2021, 2022 Anthony Green
       - Copyright (c) 1996-2003, 2007, 2008 Red Hat, Inc.
  
