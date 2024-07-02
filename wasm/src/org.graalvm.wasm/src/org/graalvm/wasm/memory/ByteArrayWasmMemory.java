@@ -76,7 +76,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
-    public synchronized long size() {
+    public long size() {
         return byteArrayBuffer.size();
     }
 

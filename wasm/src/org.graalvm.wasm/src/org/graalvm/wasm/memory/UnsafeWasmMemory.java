@@ -48,6 +48,8 @@ import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -71,6 +73,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
 
     private static final Unsafe unsafe;
     private static final long addressOffset;
+    private static final VarHandle SIZE_FIELD;
 
     private UnsafeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
         super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, shared);
@@ -124,8 +127,8 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @Override
-    public synchronized long size() {
-        return size;
+    public long size() {
+        return (long) SIZE_FIELD.getVolatile(this);
     }
 
     @Override
@@ -152,7 +155,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
             buffer = updatedBuffer;
             startAddress = updatedStartAddress;
             currentMinSize = updatedSize;
-            size = updatedSize;
+            SIZE_FIELD.setVolatile(this, updatedSize);
             invokeGrowCallback();
             return previousSize;
         } else {
@@ -1038,6 +1041,9 @@ public final class UnsafeWasmMemory extends WasmMemory {
 
     static {
         try {
+            var lookup = MethodHandles.lookup();
+            SIZE_FIELD = lookup.findVarHandle(UnsafeWasmMemory.class, "size", long.class);
+
             final Field f = Unsafe.class.getDeclaredField("theUnsafe");
             f.setAccessible(true);
             unsafe = (Unsafe) f.get(null);

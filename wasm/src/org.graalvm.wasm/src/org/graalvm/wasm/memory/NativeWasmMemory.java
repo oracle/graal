@@ -45,6 +45,8 @@ import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
@@ -58,25 +60,13 @@ import com.oracle.truffle.api.nodes.Node;
 
 import sun.misc.Unsafe;
 
-class NativeWasmMemory extends WasmMemory {
-    private static final Unsafe unsafe = initUnsafe();
+final class NativeWasmMemory extends WasmMemory {
 
     private long startAddress;
     private long size;
 
-    private static Unsafe initUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException se) {
-            try {
-                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafe.setAccessible(true);
-                return (Unsafe) theUnsafe.get(Unsafe.class);
-            } catch (Exception e) {
-                throw new RuntimeException("exception while trying to get Unsafe", e);
-            }
-        }
-    }
+    private static final Unsafe unsafe;
+    private static final VarHandle SIZE_FIELD;
 
     private NativeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
         super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, shared);
@@ -100,8 +90,8 @@ class NativeWasmMemory extends WasmMemory {
     }
 
     @Override
-    public synchronized long size() {
-        return size;
+    public long size() {
+        return (long) SIZE_FIELD.getVolatile(this);
     }
 
     @Override
@@ -128,7 +118,7 @@ class NativeWasmMemory extends WasmMemory {
                 throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
             }
             currentMinSize = updatedSize;
-            size = updatedSize;
+            SIZE_FIELD.setVolatile(this, updatedSize);
             invokeGrowCallback();
             return previousSize;
         } else {
@@ -1025,5 +1015,18 @@ class NativeWasmMemory extends WasmMemory {
     @Override
     public boolean isUnsafe() {
         return true;
+    }
+
+    static {
+        try {
+            var lookup = MethodHandles.lookup();
+            SIZE_FIELD = lookup.findVarHandle(NativeWasmMemory.class, "size", long.class);
+
+            final Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            unsafe = (Unsafe) f.get(null);
+        } catch (Exception e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
     }
 }
