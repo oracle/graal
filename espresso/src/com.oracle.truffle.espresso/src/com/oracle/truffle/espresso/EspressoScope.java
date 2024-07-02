@@ -194,6 +194,8 @@ public final class EspressoScope {
                 throw UnknownIdentifierException.create(member);
             }
 
+            EspressoFrame.taint(frame);
+
             // @formatter:off
             switch (slotInfo.getKind()) {
                 case Boolean: EspressoFrame.setLocalInt(frame, slotInfo.getSlot(), interop.asBoolean(value) ? 1 : 0);  break;
