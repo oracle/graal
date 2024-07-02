@@ -43,6 +43,7 @@ package com.oracle.truffle.api.bytecode.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,6 +64,7 @@ import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.AbstractBytecodeException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
@@ -1855,6 +1857,139 @@ public class TagTest extends AbstractInstructionTest {
                         new Event(EventKind.RETURN_VALUE, 0x1a, 0x1f, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x18, 0x21, null, StatementTag.class),
                         new Event(EventKind.RETURN_VALUE, enterRoot1, leaveRoot1, null, RootTag.class));
+    }
+
+    /**
+     * When reparsing with tags, an endTag instruction can make a previously-unreachable path
+     * reachable. The following reachability tests are regression tests that ensure the frame and
+     * constant pool layout do not change between parses.
+     */
+    @Test
+    public void testReachabilityFinallyTry() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            BytecodeLabel lbl = b.createLabel();
+
+            b.beginTag(ExpressionTag.class);
+            b.emitBranch(lbl);
+            b.endTag(ExpressionTag.class);
+
+            b.beginFinallyTry(() -> {
+                b.emitLoadConstant(123L);
+            });
+            b.emitLoadConstant(555L);
+            b.endFinallyTry();
+
+            b.emitLabel(lbl);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(42L, node.getCallTarget().call());
+        attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class,
+                        StatementTag.class).build());
+
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testReachabilityFinallyTryEarlyExit() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            BytecodeLabel lbl = b.createLabel();
+
+            b.beginTag(ExpressionTag.class);
+            b.emitBranch(lbl);
+            b.endTag(ExpressionTag.class);
+
+            b.beginFinallyTry(() -> {
+                b.emitLoadConstant(1L);
+            });
+            // early exit: when we emit the finally handler in-line, it should increase the max
+            // stack height, even though it's unreachable.
+            b.beginAdd();
+            b.emitLoadConstant(2L);
+            b.beginAdd();
+            b.emitLoadConstant(3L);
+            b.beginAdd();
+            b.emitLoadConstant(4L);
+            b.beginBlock();
+            b.beginReturn();
+            b.emitLoadConstant(5L);
+            b.endReturn();
+            b.emitLoadConstant(6L);
+            b.endBlock();
+            b.endAdd();
+            b.endAdd();
+            b.endAdd();
+            b.endFinallyTry();
+
+            b.emitLabel(lbl);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(42L, node.getCallTarget().call());
+        attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class,
+                        StatementTag.class).build());
+
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testReachabilityYield() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+
+            b.beginFinallyTry(() -> {
+                b.beginYield();
+                b.emitLoadConstant(123L);
+                b.endYield();
+            });
+
+            b.beginTag(ExpressionTag.class);
+            b.beginReturn();
+            b.beginBlock();
+            b.emitThrow();
+            b.emitLoadConstant(42L);
+            b.endBlock();
+            b.endReturn();
+            b.endTag(ExpressionTag.class);
+
+            b.endFinallyTry();
+
+            b.endRoot();
+        });
+
+        ContinuationResult cont;
+        cont = (ContinuationResult) node.getCallTarget().call();
+        assertEquals(123L, cont.getResult());
+        try {
+            cont.continueWith(456L);
+            fail("exception expected");
+        } catch (TestException ex) {
+            // pass
+        }
+
+        attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class,
+                        StatementTag.class).build());
+
+        cont = (ContinuationResult) node.getCallTarget().call();
+        assertEquals(123L, cont.getResult());
+        try {
+            cont.continueWith(456L);
+            fail("exception expected");
+        } catch (TestException ex) {
+            // pass
+        }
     }
 
     @SuppressWarnings("serial")

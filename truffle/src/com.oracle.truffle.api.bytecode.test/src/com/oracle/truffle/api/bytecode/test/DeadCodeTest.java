@@ -748,6 +748,9 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "load.argument",
                         "pop",
                         "branch",
+                        "load.argument",
+                        "pop",
+                        "throw",
                         "load.constant",
                         "return");
     }

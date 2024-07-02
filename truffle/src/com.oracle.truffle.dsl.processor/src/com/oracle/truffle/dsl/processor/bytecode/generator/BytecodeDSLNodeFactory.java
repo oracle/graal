@@ -1311,20 +1311,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startStatement().startCall("oldBytecode.invalidate");
             b.string("newBytecode");
             b.string("reason");
-            if (model.enableYield) {
-                b.string("continuationLocations");
-            }
             b.end(2);
             b.end();
 
             if (model.enableYield) {
                 // We need to patch the BytecodeNodes for continuations.
-                b.startElseIf().string("!continuationLocations.isEmpty()").end().startBlock();
-                b.startStatement().startCall("oldBytecode.updateContinuationsWithoutInvalidate");
+                b.startStatement().startCall("oldBytecode.updateContinuationRootNodes");
                 b.string("newBytecode");
+                b.string("reason");
                 b.string("continuationLocations");
+                b.string("bytecodes_ != null");
                 b.end(2);
-                b.end();
             }
         }
         b.startReturn().string("newBytecode").end();
@@ -1647,6 +1644,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private static boolean hasUnexpectedExecuteValue(InstructionModel instr) {
         return ElementUtils.needsCastTo(instr.getQuickeningRoot().signature.returnType, instr.signature.returnType);
+    }
+
+    private static Collection<List<InstructionModel>> groupInstructionsByLength(Collection<InstructionModel> models) {
+        return models.stream().sorted(Comparator.comparingInt((i) -> i.getInstructionLength())).collect(Collectors.groupingBy((m) -> m.getInstructionLength())).values();
     }
 
     class BuilderFactory {
@@ -4907,13 +4908,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("reparseReason != null").end().startBlock(); // {
             b.statement("result = builtNodes.get(operationData.index)");
 
-            if (model.enableYield) {
-                b.declaration(abstractBytecodeNode.asType(), "oldBytecodeNode", "result.bytecode");
-            }
-
             b.startIf().string("parseBytecodes").end().startBlock();
+            b.declaration(abstractBytecodeNode.asType(), "oldBytecodeNode", "result.bytecode");
             b.statement("assert result.numLocals == " + maxLocals());
             b.statement("assert result.nodes == this.nodes");
+            b.statement("assert constants_.length == oldBytecodeNode.constants.length");
             b.startAssert();
             b.string("result.getFrameDescriptor().getNumberOfSlots() == ");
             buildFrameSize(b);
@@ -5128,6 +5127,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          *
          * For FinallyTry, emits both regular and exceptional handlers; for FinallyTryCatch, just
          * emits the regular handler.
+         *
+         * NB: each call to doEmitFinallyHandler must happen regardless of reachability so that the
+         * frame and constant pool layouts are consistent across reparses.
          */
         private void emitFinallyHandlersAfterTry(CodeTreeBuilder b, OperationModel op, String finallyHandlerSp) {
             b.declaration(type(int.class), "handlerSp", "currentStackHeight + 1 /* reserve space for the exception */");
@@ -5139,21 +5141,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("exHandlerIndex = doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, " + UNINIT + " /* handler start */, handlerSp)");
             b.end();
 
-            b.startIf().string("operationData.tryReachable").end().startBlock();
-            b.startAssert().string("this.reachable").end();
             b.lineComment("emit handler for normal completion case");
             b.statement("doEmitFinallyHandler(operationData.finallyParser, ", finallyHandlerSp, ")");
-            // If the finally handler returns/branches, we're not reachable any more.
-            // The operationData does not observe this update because it's been popped.
-            b.statement("operationData.tryReachable = this.reachable");
+            b.lineComment("the operation was popped, so manually update reachability. try is reachable if neither it nor the finally handler exited early.");
+            b.statement("operationData.tryReachable = operationData.tryReachable && this.reachable");
+
             b.startIf().string("this.reachable").end().startBlock();
             b.statement("operationData.endBranchFixupBci = bci + 1");
             buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
             b.end();
-            b.end();
 
             b.startIf().string("operationData.operationReachable").end().startBlock();
-            b.lineComment("always emit the exception handler if the operation is reachable");
+            b.lineComment("update exception table; force handler code to be reachable");
             b.statement("this.reachable = true");
             b.declaration(type(int.class), "handlerBci", "bci");
 
@@ -5171,13 +5170,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("exHandlers[exHandlerIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = handlerBci");
             b.end();
 
+            b.end(); // if operationReachable
+
             if (op.kind != OperationKind.FINALLY_TRY_CATCH) {
                 b.lineComment("emit handler for exceptional case");
                 b.statement("currentStackHeight = handlerSp");
                 b.statement("doEmitFinallyHandler(operationData.finallyParser, " + finallyHandlerSp + ")");
                 buildEmitInstruction(b, model.throwInstruction);
             }
-            b.end();
         }
 
         /**
@@ -5252,11 +5252,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(" + operation.getOperationBeginArgumentName(0) + ")"};
                 case YIELD -> {
                     b.declaration(context.getType(int.class), "constantPoolIndex", "allocateContinuationConstant()");
-                    b.startIf().string("reachable").end().startBlock();
                     b.startStatement().startCall("continuationLocations.add");
                     b.startNew(continuationLocation.asType()).string("constantPoolIndex").string("bci + " + operation.instruction.getInstructionLength()).string("currentStackHeight").end();
                     b.end(2); // statement + call
-                    b.end(); // if block
                     b.end();
                     yield new String[]{"constantPoolIndex"};
                 }
@@ -6246,12 +6244,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssert().string("currentStackHeight >= 0").end();
             b.end();
 
-            b.startIf().string("!reachable").end().startBlock();
-            b.statement("return false");
-            b.end();
-
             b.startIf().string("stackEffect > 0").end().startBlock();
             b.statement("maxStackHeight = Math.max(maxStackHeight, currentStackHeight)");
+            b.end();
+
+            b.startIf().string("!reachable").end().startBlock();
+            b.statement("return false");
             b.end();
 
             b.declaration(type(int.class), "newSize", "bci + " + (argumentLength + 1));
@@ -6799,14 +6797,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startCase().tree(createOperationConstant(model.findOperation(finallyOpKind))).end();
                     b.startBlock();
                     emitCastOperationData(b, model.finallyTryOperation, "i");
-                    b.startIf().string("operationStack[i].childCount == 0 /* still in try */ && reachable").end().startBlock();
+                    b.startIf().string("operationStack[i].childCount == 0 /* still in try */").end().startBlock();
+                    b.startIf().string("reachable").end().startBlock();
                     b.startStatement().startCall("operationData.addExceptionTableEntry");
                     b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, ", UNINIT, " /* handler start */, ", UNINIT,
                                     " /* stack height */)");
                     b.end(2);
                     b.statement("handlerClosed = true");
+                    b.end(); // if reachable
                     b.statement("doEmitFinallyHandler(operationData.finallyParser, i)");
-                    b.end();
+                    b.end(); // if in try
                     b.statement("break");
                     b.end(); // case finally
                 }
@@ -6909,10 +6909,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "allocateContinuationConstant");
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startIf().string("!reachable").end().startBlock();
-            b.statement("return -1");
-            b.end();
-
+            /**
+             * NB: We need to allocate constant pool slots for continuations regardless of
+             * reachability in order to keep the constant pool consistent. In rare scenarios,
+             * reparsing can make a previously unreachable yield reachable (e.g., reparsing with
+             * tags)
+             */
             b.startReturn();
             b.string("constantPool.allocateSlot()");
             b.end();
@@ -7964,10 +7966,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return models.stream().collect(Collectors.groupingBy(InstructionModel::isInstrumentation));
         }
 
-        private Collection<List<InstructionModel>> groupInstructionsByLength(Collection<InstructionModel> models) {
-            return models.stream().sorted(Comparator.comparingInt((i) -> i.getInstructionLength())).collect(Collectors.groupingBy((m) -> m.getInstructionLength())).values();
-        }
-
         private Collection<List<InstructionModel>> groupInstructionsByImmediates(Collection<InstructionModel> models) {
             return models.stream().collect(Collectors.groupingBy((m) -> m.getImmediates())).values().stream().sorted(Comparator.comparingInt((i) -> i.get(0).getId())).toList();
         }
@@ -8618,7 +8616,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.isBytecodeUpdatable()) {
                 type.add(createInvalidate());
                 if (model.enableYield) {
-                    type.add(createUpdateContinuationsWithoutInvalidate());
+                    type.add(createUpdateContinuationRootNodes());
                 }
             }
 
@@ -9911,19 +9909,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return translate;
         }
 
-        private record InvalidateInstructionGroup(int instructionLength, boolean isYield) {
-            InvalidateInstructionGroup(InstructionModel instr) {
-                this(instr.getInstructionLength(), instr.kind == InstructionKind.YIELD);
-            }
-        }
-
         private CodeExecutableElement createInvalidate() {
             CodeExecutableElement invalidate = new CodeExecutableElement(Set.of(FINAL), type(void.class), "invalidate");
             invalidate.addParameter(new CodeVariableElement(type.asType(), "newNode"));
             invalidate.addParameter(new CodeVariableElement(type(CharSequence.class), "reason"));
-            if (model.enableYield) {
-                invalidate.addParameter(new CodeVariableElement(generic(ArrayList.class, continuationLocation.asType()), "continuationLocations"));
-            }
             CodeTreeBuilder b = invalidate.createBuilder();
 
             b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
@@ -9939,38 +9928,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startWhile().string("bci < bc.length").end().startBlock();
             b.declaration(type(short.class), "op", "bc[bci]");
             b.startSwitch().string("op").end().startBlock();
-            Map<InvalidateInstructionGroup, List<InstructionModel>> instructionsByLength = model.getInstructions().stream().collect(Collectors.groupingBy(InvalidateInstructionGroup::new));
 
-            for (var entry : instructionsByLength.entrySet()) {
-                InvalidateInstructionGroup group = entry.getKey();
-                int length = group.instructionLength;
-                List<InstructionModel> instructions = entry.getValue();
-                if (instructions.isEmpty()) {
-                    continue;
-                }
+            for (List<InstructionModel> instructions : groupInstructionsByLength(model.getInstructions())) {
                 for (InstructionModel instruction : instructions) {
                     b.startCase().tree(createInstructionConstant(instruction)).end();
                 }
                 b.startCaseBlock();
-                if (group.isYield) {
-                    b.startDeclaration(type(int.class), "constantPoolIndex");
-                    b.tree(readImmediate("bc", "bci", instructions.get(0).getImmediate(ImmediateKind.CONSTANT)));
-                    b.end();
-
-                    b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
-                    b.cast(continuationRootNodeImpl.asType());
-                    b.string("constants[constantPoolIndex]");
-                    b.end();
-
-                    b.declaration(continuationLocation.asType(), "continuationLocation", "continuationLocations.get(continuationIndex++)");
-                    b.startAssert().string("continuationLocation.constantPoolIndex == constantPoolIndex").end();
-                    b.startStatement().startCall("continuationRootNode", "updateBytecodeLocation");
-                    b.string("newNode.getBytecodeLocation(continuationLocation.bci)");
-                    b.string("this");
-                    b.string("newNode");
-                    b.string("reason");
-                    b.end(2);
-                }
+                int length = instructions.getFirst().getInstructionLength();
                 InstructionModel invalidateInstruction = model.getInvalidateInstruction(length);
                 emitInvalidateInstruction(b, "this", "bc", "bci", CodeTreeBuilder.singleString("op"), createInstructionConstant(invalidateInstruction));
                 b.statement("bci += " + length);
@@ -9987,56 +9951,37 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return invalidate;
         }
 
-        private CodeExecutableElement createUpdateContinuationsWithoutInvalidate() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(void.class), "updateContinuationsWithoutInvalidate");
+        private CodeExecutableElement createUpdateContinuationRootNodes() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(void.class), "updateContinuationRootNodes");
             ex.addParameter(new CodeVariableElement(type.asType(), "newNode"));
+            ex.addParameter(new CodeVariableElement(type(CharSequence.class), "reason"));
             ex.addParameter(new CodeVariableElement(generic(ArrayList.class, continuationLocation.asType()), "continuationLocations"));
+            ex.addParameter(new CodeVariableElement(type(boolean.class), "bytecodeReparsed"));
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
-            b.declaration(type(int.class), "bci", "0");
-            b.declaration(type(int.class), "continuationIndex", "0");
+            b.startFor().type(continuationLocation.asType()).string(" continuationLocation : continuationLocations").end().startBlock();
 
-            b.startWhile().string("bci < bc.length").end().startBlock();
-            b.declaration(type(short.class), "op", "bc[bci]");
-            b.startSwitch().string("op").end().startBlock();
-            Map<InvalidateInstructionGroup, List<InstructionModel>> instructionsByLength = model.getInstructions().stream().collect(Collectors.groupingBy(InvalidateInstructionGroup::new));
-
-            for (var entry : instructionsByLength.entrySet()) {
-                InvalidateInstructionGroup group = entry.getKey();
-                int length = group.instructionLength;
-                List<InstructionModel> instructions = entry.getValue();
-                if (instructions.isEmpty()) {
-                    continue;
-                }
-                for (InstructionModel instruction : instructions) {
-                    b.startCase().tree(createInstructionConstant(instruction)).end();
-                }
-                b.startCaseBlock();
-                if (group.isYield) {
-                    b.startDeclaration(type(int.class), "constantPoolIndex");
-                    b.tree(readImmediate("bc", "bci", instructions.get(0).getImmediate(ImmediateKind.CONSTANT)));
-                    b.end();
-
-                    b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
-                    b.cast(continuationRootNodeImpl.asType());
-                    b.string("constants[constantPoolIndex]");
-                    b.end();
-
-                    b.declaration(continuationLocation.asType(), "continuationLocation", "continuationLocations.get(continuationIndex++)");
-                    b.startAssert().string("continuationLocation.constantPoolIndex == constantPoolIndex").end();
-                    b.startStatement().startCall("continuationRootNode", "updateBytecodeLocationWithoutInvalidate");
-                    b.string("newNode.getBytecodeLocation(continuationLocation.bci)");
-                    b.end(2);
-                }
-                b.statement("bci += " + length);
-                b.statement("break");
-                b.end();
-            }
-
+            b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
+            b.cast(continuationRootNodeImpl.asType());
+            b.string("constants[continuationLocation.constantPoolIndex]");
             b.end();
-            b.end(); // switch
-            b.end(); // while
+
+            b.declaration(types.BytecodeLocation, "newLocation", "newNode.getBytecodeLocation(continuationLocation.bci)");
+
+            b.startIf().string("bytecodeReparsed").end().startBlock();
+            b.startStatement().startCall("continuationRootNode", "updateBytecodeLocation");
+            b.string("newLocation");
+            b.string("this");
+            b.string("newNode");
+            b.string("reason");
+            b.end(2);
+            b.end().startElseBlock();
+            b.startStatement().startCall("continuationRootNode", "updateBytecodeLocationWithoutInvalidate");
+            b.string("newLocation");
+            b.end(2);
+            b.end();
+
+            b.end(); // for
 
             return ex;
         }
