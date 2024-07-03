@@ -24,9 +24,13 @@
  */
 package com.oracle.svm.core.heap;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 /**
- * The smallest possible instance object, for filling in gaps in the heap. Note that these instances
- * may be larger than the object alignment.
+ * The smallest possible object, for filling in gaps in the heap. Note that these instances may be
+ * larger than the object alignment. Also note that we must not allocate any instances of that class
+ * at run-time (i.e., only the GC may use this class).
  */
 public final class FillerObject {
     /**
@@ -34,4 +38,8 @@ public final class FillerObject {
      * considered reachable and is available during image heap construction.
      */
     static final Class<FillerObject> CLASS_OBJECT = FillerObject.class;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public FillerObject() {
+    }
 }
