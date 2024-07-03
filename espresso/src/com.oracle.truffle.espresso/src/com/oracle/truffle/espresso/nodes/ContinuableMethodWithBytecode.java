@@ -28,7 +28,6 @@ import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -37,12 +36,12 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 
-public final class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNodeImpl {
-    @Child BytecodeNode bytecodeNode;
+public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNodeImpl {
+    @Child AbstractInstrumentableBytecodeNode bytecodeNode;
     private final int bci;
     private final EspressoFrameDescriptor fd;
 
-    public ContinuableMethodWithBytecode(BytecodeNode bytecodeNode, int bci, EspressoFrameDescriptor fd) {
+    public ContinuableMethodWithBytecode(AbstractInstrumentableBytecodeNode bytecodeNode, int bci, EspressoFrameDescriptor fd) {
         super(bytecodeNode.getMethodVersion());
         this.bci = bci;
         this.fd = fd;
@@ -55,27 +54,31 @@ public final class ContinuableMethodWithBytecode extends EspressoInstrumentableR
     }
 
     @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == StandardTags.RootTag.class) {
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    public int getBci(Frame frame) {
+    public final int getBci(Frame frame) {
         return EspressoFrame.getBCI(frame);
     }
 
-    public EspressoFrameDescriptor getFD() {
+    public final EspressoFrameDescriptor getFD() {
         return fd;
     }
 
-    public HostFrameRecord getFrameRecords(VirtualFrame frame) {
+    public final HostFrameRecord getFrameRecords(VirtualFrame frame) {
         assert frame.getArguments().length == 1 && frame.getArguments()[0] instanceof HostFrameRecord;
         HostFrameRecord records = (HostFrameRecord) frame.getArguments()[0];
         assert records.methodVersion == getMethodVersion();
         return records;
+    }
+
+    // Let instrumentation of delegate bytecode node do the job.
+
+    @Override
+    public boolean isInstrumentable() {
+        return false;
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        return false;
     }
 
     @GenerateInline(false)
@@ -93,7 +96,7 @@ public final class ContinuableMethodWithBytecode extends EspressoInstrumentableR
             return StaticObject.NULL;
         }
 
-        @Specialization(guards = {"sameCachedRecord(records, cachedMethod, cachedBci)"}, limit = "LIMIT")
+        @Specialization(guards = {"!isLastRecord(records)", "sameCachedRecord(records, cachedMethod, cachedBci)"}, limit = "LIMIT")
         Object doCached(HostFrameRecord records,
                         @Cached("records.methodVersion") Method.MethodVersion cachedMethod,
                         @Cached("records.bci()") int cachedBci,

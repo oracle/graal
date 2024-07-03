@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.vm.continuation;
 
+import com.oracle.truffle.api.instrumentation.GenerateWrapper.YieldException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
@@ -31,7 +32,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
  * gathered up into a linked list.
  */
 @SuppressWarnings("serial")
-public class UnwindContinuationException extends ControlFlowException {
+public class UnwindContinuationException extends ControlFlowException implements YieldException {
     private final transient StaticObject continuation;
 
     public transient HostFrameRecord head = null;
@@ -42,5 +43,10 @@ public class UnwindContinuationException extends ControlFlowException {
 
     public StaticObject getContinuation() {
         return continuation;
+    }
+
+    @Override
+    public Object getYieldValue() {
+        return null;
     }
 }

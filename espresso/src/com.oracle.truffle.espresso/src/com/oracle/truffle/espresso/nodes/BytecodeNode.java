@@ -290,6 +290,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper.YieldException;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
@@ -590,6 +591,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      * frame restoration and re-winding of further frames. Further executions of this node delegates
      * to a regular invoke node.
      */
+    @Override
     public Object resumeContinuation(VirtualFrame frame, int bci, int top) {
         CompilerAsserts.partialEvaluationConstant(bci);
         CompilerAsserts.partialEvaluationConstant(top);
@@ -641,7 +643,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     @SuppressWarnings("serial")
-    public static final class EspressoOSRReturnException extends ControlFlowException {
+    public static final class EspressoOSRReturnException extends ControlFlowException implements YieldException {
         private final Object result;
         private final Throwable throwable;
 
@@ -665,6 +667,11 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         @SuppressWarnings("unchecked")
         private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
             throw (T) ex;
+        }
+
+        @Override
+        public Object getYieldValue() {
+            return null;
         }
     }
 
@@ -747,8 +754,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         int curBCI = startBCI;
         int top = startTop;
 
-        if (instrument != null && !skipEntryInstrumentation) {
-            instrument.notifyEntry(frame, this);
+        if (instrument != null) {
+            if (resumeContinuation) {
+                instrument.notifyResume(frame, this, startStatementIndex);
+            } else if (!skipEntryInstrumentation) {
+                instrument.notifyEntry(frame, this);
+            }
         }
 
         // During OSR or continuation resume, the method is not executed from the beginning hence
@@ -1528,12 +1539,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                  */
                 // Get the frame from the stack into the VM heap.
                 copyFrameToUnwindRequest(frame, unwindContinuationExceptionRequest, curBCI, top);
-                // Truffle requires paired probes, so we need to notify the probe for the current
-                // statement if applicable.
                 if (instrument != null) {
-                    instrument.notifyExceptionAt(frame, unwindContinuationExceptionRequest, statementIndex);
+                    instrument.notifyYieldAt(frame, unwindContinuationExceptionRequest.getContinuation(), statementIndex);
                 }
-
                 // This branch must not be a loop exit. Let the next loop iteration throw this
                 top = startingStackOffset(getMethodVersion().getMaxLocals());
                 frame.setObjectStatic(top, unwindContinuationExceptionRequest);
@@ -3113,6 +3121,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             }
         }
 
+        public void notifyResume(@SuppressWarnings("unused") VirtualFrame frame, AbstractInstrumentableBytecodeNode instrumentableNode, int statementIndex) {
+            if (context.shouldReportVMEvents() && method.hasActiveHook()) {
+                if (context.reportOnMethodEntry(method, instrumentableNode.getScope(frame, true))) {
+                    resumeAt(frame, statementIndex);
+                }
+            }
+        }
+
         public void notifyReturn(VirtualFrame frame, int statementIndex, Object returnValue) {
             if (context.shouldReportVMEvents() && method.hasActiveHook()) {
                 if (context.reportOnMethodReturn(method, returnValue)) {
@@ -3128,6 +3144,15 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             }
             ProbeNode probeNode = wrapperNode.getProbeNode();
             probeNode.onReturnExceptionalOrUnwind(frame, t, false);
+        }
+
+        void notifyYieldAt(VirtualFrame frame, Object o, int statementIndex) {
+            WrapperNode wrapperNode = getWrapperAt(statementIndex);
+            if (wrapperNode == null) {
+                return;
+            }
+            ProbeNode probeNode = wrapperNode.getProbeNode();
+            probeNode.onYield(frame, o);
         }
 
         public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
@@ -3154,6 +3179,29 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             ProbeNode probeNode = wrapperNode.getProbeNode();
             try {
                 probeNode.onEnter(frame);
+            } catch (Throwable t) {
+                Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, false);
+                if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                    // TODO maybe support this by returning a new bci?
+                    CompilerDirectives.transferToInterpreter();
+                    throw new UnsupportedOperationException();
+                } else if (result != null) {
+                    // ignore result values;
+                    // we are instrumentation statements only.
+                    return;
+                }
+                throw t;
+            }
+        }
+
+        private void resumeAt(VirtualFrame frame, int index) {
+            WrapperNode wrapperNode = getWrapperAt(index);
+            if (wrapperNode == null) {
+                return;
+            }
+            ProbeNode probeNode = wrapperNode.getProbeNode();
+            try {
+                probeNode.onResume(frame);
             } catch (Throwable t) {
                 Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, false);
                 if (result == ProbeNode.UNWIND_ACTION_REENTER) {
