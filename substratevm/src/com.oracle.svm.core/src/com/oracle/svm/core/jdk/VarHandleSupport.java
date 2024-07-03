@@ -372,7 +372,7 @@ final class Target_java_lang_invoke_DirectMethodHandle_StaticAccessor {
     long staticOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.LazyInitializingVarHandle", onlyWith = JDK23OrLater.class)
+@TargetClass(className = "java.lang.invoke.LazyInitializingVarHandle", onlyWith = JDKLatest.class)
 final class Target_java_lang_invoke_LazyInitializingVarHandle {
     @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
     Class<?> refc;
