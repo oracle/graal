@@ -166,6 +166,61 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     @Test
+    public void testUnreachableFinallyTry2() {
+        // @formatter:off
+        // try {
+        //   try {
+        //     throw();
+        //   } finally {
+        //     return 42;
+        //     <dead>
+        //   }
+        // } finally {
+        //   arg0
+        // }
+        // <dead>
+        // @formatter:on
+        DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry(() -> b.emitLoadArgument(0));
+            b.beginFinallyTry(() -> {
+                b.beginBlock();
+                b.beginReturn();
+                b.emitLoadConstant(42);
+                b.endReturn();
+                emitUnreachableCode(b);
+                b.endBlock();
+            });
+            b.emitThrow();
+            b.endFinallyTry();
+            b.endFinallyTry();
+
+            emitUnreachableCode(b);
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "c.Throw",
+                        "pop",
+                        "load.constant",    // inner fallthrough handler
+                        "load.argument",    // inlined outer handler
+                        "pop",
+                        "return",
+                        "load.constant",    // inner exception handler
+                        "load.argument",    // inlined outer handler
+                        "pop",
+                        "return",
+                        // no outer fallthrough handler
+                        "load.argument",    // outer exception handler
+                        "pop",
+                        "throw");
+
+        assertEquals(42, node.getCallTarget().call(42));
+    }
+
+    @Test
     public void testUnreachableFinallyTryCatch1() {
         // @formatter:off
         // try {
