@@ -45,7 +45,6 @@ import static org.junit.Assert.assertTrue;
 
 import com.oracle.truffle.api.TruffleOptions;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assume;
 import org.junit.Ignore;
@@ -54,8 +53,6 @@ import org.junit.Test;
 import java.io.ByteArrayOutputStream;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class LoomTest extends AbstractPolyglotTest {
 
@@ -82,9 +79,8 @@ public class LoomTest extends AbstractPolyglotTest {
     @Test
     public void testManyVirtualThreads() throws Throwable {
         Assume.assumeTrue(canCreateVirtualThreads() && !TruffleOptions.AOT);
-        Assume.assumeTrue("This test is too slow on non-Linux in CI. On Linux it takes about 7s locally.", System.getProperty("os.name").contains("Linux"));
 
-        // Above 65535, which is the documented limit for Phaser, used by
+        // Above 65535, which is the documented limit for Phaser, which was used by
         // ThreadLocalHandshake.Handshake
         int n = 66000;
 
@@ -92,7 +88,6 @@ public class LoomTest extends AbstractPolyglotTest {
             Throwable[] error = new Throwable[1];
             Thread[] threads = new Thread[n];
             CountDownLatch waitStarted = new CountDownLatch(n);
-            AtomicBoolean leave = new AtomicBoolean(false);
 
             for (int i = 0; i < n; i++) {
                 threads[i] = Thread.startVirtualThread(() -> {
@@ -101,9 +96,6 @@ public class LoomTest extends AbstractPolyglotTest {
                         waitStarted.countDown();
                         while (true) {
                             ctx.safepoint();
-                            if (leave.get()) {
-                                break;
-                            }
                             Thread.yield();
                         }
                     } catch (Throwable t) {
@@ -118,18 +110,8 @@ public class LoomTest extends AbstractPolyglotTest {
             }
 
             waitStarted.await();
-            assertFails(() -> {
-                try {
-                    ctx.interrupt(Duration.ZERO);
-                } catch (TimeoutException e) {
-                    throw new Error(e);
-                }
-            }, PolyglotException.class, e -> {
-                assertEquals("java.lang.UnsupportedOperationException: Truffle does not currently support more than 65535 threads concurrently entered in the same context due to Phaser limitations",
-                                e.getMessage());
-            });
+            ctx.interrupt(Duration.ZERO);
 
-            leave.set(true);
             for (Thread thread : threads) {
                 thread.join();
             }

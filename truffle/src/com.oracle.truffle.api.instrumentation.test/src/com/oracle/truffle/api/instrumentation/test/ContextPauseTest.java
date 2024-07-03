@@ -45,12 +45,12 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.oracle.truffle.api.test.polyglot.AbstractThreadedPolyglotTest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
@@ -67,8 +67,12 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-public class ContextPauseTest {
+@SuppressWarnings("hiding")
+@RunWith(Parameterized.class)
+public class ContextPauseTest extends AbstractThreadedPolyglotTest {
 
     private static final String TEST_EXECUTION_STOPPED = "Test execution stopped!";
 
@@ -85,9 +89,15 @@ public class ContextPauseTest {
     }
 
     private static void testCommon(OnEnterAction onEnterAction, GuestAction guestAction, boolean waitForPause, AfterPauseAction afterPauseAction) throws ExecutionException, InterruptedException {
+        int processors = Runtime.getRuntime().availableProcessors();
         for (int nThreads = 1; nThreads <= 10; nThreads += 3) {
+            if (vthreads && nThreads > processors) {
+                // Can hang, see https://bugs.openjdk.org/browse/JDK-8334304
+                continue;
+            }
+
             for (int nPauses = 1; nPauses <= 3; nPauses++) {
-                ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
+                ExecutorService executorService = threadPool(nThreads, vthreads);
                 try (Context context = Context.create()) {
                     context.initialize(InstrumentationTestLanguage.ID);
                     TruffleInstrument.Env instrumentEnv = context.getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
