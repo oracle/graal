@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,11 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.hub.Hybrid;
-
 /**
- * A filler object with a variable size, for filling gaps in the heap. This is not a normal hybrid
- * object and instead behaves more like a primitive array. Note that this class must have an empty
- * reference map and that it may only be used by the GCs. Also note that we must not allocate any
- * instances of that class at run-time (i.e., only the GC may use this class).
+ * The smallest possible object. Very similar to {@link FillerObject}, except that instances of this
+ * class may be allocated at run-time.
  */
-@Hybrid(componentType = int.class)
-public final class FillerArray {
-    private FillerArray() {
+public final class SmallestPossibleObject {
+    public SmallestPossibleObject() {
     }
 }
