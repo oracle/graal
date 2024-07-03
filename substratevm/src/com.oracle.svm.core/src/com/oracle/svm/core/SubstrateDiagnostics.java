@@ -30,7 +30,6 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.R
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.oracle.svm.core.container.OperatingSystem;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -57,6 +56,7 @@ import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.container.Container;
+import com.oracle.svm.core.container.OperatingSystem;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -508,7 +508,11 @@ public class SubstrateDiagnostics {
 
     private static boolean isContainerized() {
         boolean allowInit = !SubstrateOptions.AsyncSignalSafeDiagnostics.getValue();
-        return Container.singleton().isContainerized(allowInit);
+        if (Container.singleton().isInitialized() || allowInit) {
+            return Container.singleton().isContainerized();
+        }
+        // uninitialized and initialization not allowed
+        return false;
     }
 
     public static class FatalErrorState {
@@ -860,7 +864,7 @@ public class SubstrateDiagnostics {
             Platform platform = ImageSingletons.lookup(Platform.class);
             log.string("Platform: ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
             log.string("Page size: ").unsigned(SubstrateOptions.getPageSize()).newline();
-            log.string("Containerized: ").bool(isContainerized()).newline();
+            log.string("Containerized: ").string(Container.singleton().isInitialized() ? String.valueOf(isContainerized()) : "unknown").newline();
             log.string("CPU features used for AOT compiled code: ").string(getBuildTimeCpuFeatures()).newline();
             log.indent(false);
         }

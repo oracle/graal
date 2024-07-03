@@ -74,22 +74,27 @@ public class Container {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean isContainerized() {
-        return isContainerized(true);
+    public boolean isInitialized() {
+        return STATE.get().readWord(0) != State.UNINITIALIZED;
     }
 
+    /**
+     * Determines whether the image runs containerized, potentially initializing container support
+     * if not yet initialized. If initialization is not desired, calls to this method must be
+     * guarded by {@link #isInitialized()}.
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean isContainerized(boolean allowInit) {
+    public boolean isContainerized() {
         if (!isSupported()) {
             return false;
         }
 
         UnsignedWord value = STATE.get().readWord(0);
-        if (allowInit && value == State.UNINITIALIZED) {
+        if (value == State.UNINITIALIZED) {
             value = initialize();
         }
 
-        assert value == State.CONTAINERIZED || value == State.NOT_CONTAINERIZED || !allowInit;
+        assert value == State.CONTAINERIZED || value == State.NOT_CONTAINERIZED;
         return value == State.CONTAINERIZED;
     }
 
@@ -126,7 +131,7 @@ public class Container {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getActiveProcessorCount() {
-        VMError.guarantee(isContainerized(false));
+        VMError.guarantee(isInitialized() && isContainerized());
 
         long currentMs = System.currentTimeMillis();
         if (currentMs > activeProcessorCountTimeoutMs) {
@@ -138,13 +143,13 @@ public class Container {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getCachedActiveProcessorCount() {
-        VMError.guarantee(isContainerized(false));
+        VMError.guarantee(isInitialized() && isContainerized());
         return cachedActiveProcessorCount;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord getPhysicalMemory() {
-        VMError.guarantee(isContainerized(false));
+        VMError.guarantee(isInitialized() && isContainerized());
 
         long currentMs = System.currentTimeMillis();
         if (currentMs > physicalMemoryTimeoutMs) {
@@ -156,13 +161,13 @@ public class Container {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord getCachedPhysicalMemory() {
-        VMError.guarantee(isContainerized(false));
+        VMError.guarantee(isInitialized() && isContainerized());
         return cachedPhysicalMemorySize;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getMemoryLimitInBytes() {
-        VMError.guarantee(isContainerized(false));
+        VMError.guarantee(isInitialized() && isContainerized());
 
         long currentMs = System.currentTimeMillis();
         if (currentMs > memoryLimitInBytesTimeoutMs) {
@@ -174,7 +179,7 @@ public class Container {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getCachedMemoryLimitInBytes() {
-        VMError.guarantee(isContainerized(false));
+        VMError.guarantee(isInitialized() && isContainerized());
         return cachedMemoryLimitInBytes;
     }
 
