@@ -1915,7 +1915,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(boolean.class), "tryReachable"),
                                         field(context.getType(boolean.class), "catchReachable"),
-                                        field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT));
+                                        field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT),
+                                        field(context.getType(int.class), "extraTableEntriesStart").withInitializer(UNINIT),
+                                        field(context.getType(int.class), "extraTableEntriesEnd").withInitializer(UNINIT));
                         break;
                     case FINALLY_TRY, FINALLY_TRY_CATCH:
                         name = "FinallyTryData";
@@ -1927,7 +1929,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(boolean.class), "tryReachable"),
                                         field(context.getType(boolean.class), "catchReachable"),
-                                        field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT));
+                                        field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT),
+                                        field(context.getType(int.class), "extraTableEntriesStart").withInitializer(UNINIT),
+                                        field(context.getType(int.class), "extraTableEntriesEnd").withInitializer(UNINIT));
                         break;
                     case FINALLY_HANDLER:
                         name = "FinallyHandlerData";
@@ -5158,7 +5162,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          * corresponding to the current handler.
          */
         private void emitPatchHandlerTable(CodeTreeBuilder b) {
-            b.startFor().string("int i = 0; i < handlerTableSize; i += EXCEPTION_HANDLER_LENGTH").end().startBlock();
+            b.startFor().string("int i = operationData.extraTableEntriesStart; i < operationData.extraTableEntriesEnd; i += EXCEPTION_HANDLER_LENGTH").end().startBlock();
 
             b.startIf().string("handlerTable[i + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_REGULAR").end().startBlock();
             b.statement("continue");
@@ -6788,8 +6792,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     emitCastOperationData(b, model.finallyTryOperation, "i");
                     b.startIf().string("operationStack[i].childCount == 0 /* still in try */").end().startBlock();
                     b.startIf().string("reachable").end().startBlock();
-                    b.statement("doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, -operationData.handlerId, ", UNINIT,
-                                    " /* stack height */)");
+                    emitExtraExceptionTableEntry(b);
                     b.statement("handlerClosed = true");
                     b.end(); // if reachable
                     b.statement("doEmitFinallyHandler(operationData.finallyParser, i)");
@@ -6801,17 +6804,25 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.TRY_CATCH))).end();
                 b.startBlock();
                 emitCastOperationData(b, model.tryCatchOperation, "i");
-                b.startIf().string("operationStack[i].childCount == 0 /* still in try */ && reachable");
-                b.end().startBlock();
-                b.statement("doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, -operationData.handlerId, ", UNINIT,
-                                " /* stack height */)");
+                b.startIf().string("operationStack[i].childCount == 0 /* still in try */ && reachable").end().startBlock();
+                emitExtraExceptionTableEntry(b);
                 b.statement("handlerClosed = true");
-                b.end();
+                b.end(); // if in try and reachable
                 b.statement("break");
                 b.end(); // case trycatch
 
                 b.end(); // switch
             });
+        }
+
+        private void emitExtraExceptionTableEntry(CodeTreeBuilder b) {
+            b.startDeclaration(type(int.class), "handlerTableIndex");
+            b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, -operationData.handlerId, ", UNINIT, " /* stack height */)");
+            b.end();
+            b.startIf().string("operationData.extraTableEntriesStart == ", UNINIT).end().startBlock();
+            b.statement("operationData.extraTableEntriesStart = handlerTableIndex");
+            b.end();
+            b.statement("operationData.extraTableEntriesEnd = handlerTableIndex + EXCEPTION_HANDLER_LENGTH");
         }
 
         /**
