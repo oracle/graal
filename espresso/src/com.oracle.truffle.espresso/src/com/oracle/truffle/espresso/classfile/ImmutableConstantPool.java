@@ -101,6 +101,8 @@ public final class ImmutableConstantPool extends ConstantPool {
         PoolConstant[] newEntries = Arrays.copyOf(constants, constants.length + 1);
         newEntries[newNamePos] = newNameConstant;
         newEntries[thisKlassIndex] = ClassConstant.create(newNamePos);
+        // This will get resolved in the ObjectKlass constructor
+        // See initSelfReferenceInPool
 
         int rawLengthIncrease = 2 /* u2 length */ + newName.length() /* symbol length */;
         return new ImmutableConstantPool(newEntries, majorVersion, minorVersion, totalPoolBytes + rawLengthIncrease);
