@@ -1679,6 +1679,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals"),
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLabels"),
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numNodes"),
+                            new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numHandlers"),
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numConditionalBranches"),
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc"),
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "bci"),
@@ -1686,8 +1687,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "maxStackHeight"),
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceInfo"),
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceInfoIndex"),
-                            new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "exHandlers"),
-                            new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "exHandlerCount"),
+                            new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "handlerTable"),
+                            new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "handlerTableSize"),
                             new CodeVariableElement(Set.of(PRIVATE), arrayOf(type(int.class)), "locals"),
                             new CodeVariableElement(Set.of(PRIVATE), unresolvedLabelsType, "unresolvedLabels"),
                             new CodeVariableElement(Set.of(PRIVATE), constantPool.asType(), "constantPool")));
@@ -1908,30 +1909,25 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case TRY_CATCH:
                         name = "TryCatchData";
                         fields = List.of(//
+                                        field(context.getType(int.class), "handlerId").asFinal(),
                                         field(context.getType(int.class), "tryStartBci"),
                                         field(bytecodeLocalImpl.asType(), "exceptionLocal").asFinal(),
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(boolean.class), "tryReachable"),
                                         field(context.getType(boolean.class), "catchReachable"),
-                                        field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT),
-                                        field(arrayOf(context.getType(int.class)), "exceptionTableEntries").withInitializer("null"),
-                                        field(context.getType(int.class), "exceptionTableEntryCount").withInitializer("0"));
-                        methods = List.of(createAddExceptionTableEntry());
+                                        field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT));
                         break;
                     case FINALLY_TRY, FINALLY_TRY_CATCH:
                         name = "FinallyTryData";
                         fields = List.of(//
+                                        field(context.getType(int.class), "handlerId").asFinal(),
                                         field(context.getDeclaredType(Runnable.class), "finallyParser").asFinal(),
                                         field(context.getType(int.class), "tryStartBci"),
                                         field(bytecodeLocalImpl.asType(), "exceptionLocal").asFinal(),
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(boolean.class), "tryReachable"),
                                         field(context.getType(boolean.class), "catchReachable"),
-                                        field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT),
-                                        field(arrayOf(context.getType(int.class)), "exceptionTableEntries").withInitializer("null"),
-                                        field(context.getType(int.class), "exceptionTableEntryCount").withInitializer("0"));
-
-                        methods = List.of(createAddExceptionTableEntry());
+                                        field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT));
                         break;
                     case FINALLY_HANDLER:
                         name = "FinallyHandlerData";
@@ -2061,31 +2057,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             private DataClassField field(TypeMirror type, String name) {
                 return new DataClassField(type, name);
-            }
-
-            private CodeExecutableElement createAddExceptionTableEntry() {
-                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), type(void.class), "addExceptionTableEntry");
-                ex.addParameter(new CodeVariableElement(type(int.class), "handlerIndex"));
-                CodeTreeBuilder b = ex.createBuilder();
-
-                // handlerIndex can be UNINIT if the range is empty; don't add it.
-                b.startIf().string("handlerIndex == " + UNINIT).end().startBlock();
-                b.returnStatement();
-                b.end();
-
-                b.startIf().string("exceptionTableEntries == null").end().startBlock();
-                b.statement("exceptionTableEntries = new int[4]");
-                b.end();
-
-                b.startElseIf().string("exceptionTableEntryCount == exceptionTableEntries.length").end().startBlock();
-                b.startAssign("exceptionTableEntries");
-                b.startStaticCall(type(Arrays.class), "copyOf").string("exceptionTableEntries").string("exceptionTableEntryCount * 2").end();
-                b.end();
-                b.end();
-
-                b.statement("exceptionTableEntries[exceptionTableEntryCount++] = handlerIndex");
-
-                return ex;
             }
         }
 
@@ -4106,6 +4077,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
             b.statement("numLabels = 0");
             b.statement("numNodes = 0");
+            b.statement("numHandlers = 0");
             b.statement("numConditionalBranches = 0");
             b.statement("constantPool = new ConstantPool()");
 
@@ -4113,8 +4085,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("bci = 0");
             b.statement("currentStackHeight = 0");
             b.statement("maxStackHeight = 0");
-            b.statement("exHandlers = new int[10]");
-            b.statement("exHandlerCount = 0");
+            b.statement("handlerTable = new int[10]");
+            b.statement("handlerTableSize = 0");
             b.statement("unresolvedLabels = new HashMap<>()");
             if (model.enableTracing) {
                 b.statement("basicBlockBoundary = new boolean[33]");
@@ -4263,16 +4235,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case IF_THEN_ELSE -> createOperationData(className, "this.reachable", "this.reachable");
                 case CONDITIONAL -> createOperationData(className, "this.reachable", "this.reachable");
                 case WHILE -> createOperationData(className, "bci", "this.reachable");
-                case TRY_CATCH -> createOperationData(className, "bci", "(BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0),
+                case TRY_CATCH -> createOperationData(className, "++numHandlers", "bci", "(BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0),
                                 "this.reachable", "this.reachable", "this.reachable");
-                case FINALLY_TRY -> createOperationData(className, operation.getOperationBeginArgumentName(0), "bci", "null", "this.reachable", "this.reachable", "false");
+                case FINALLY_TRY -> createOperationData(className, "++numHandlers", operation.getOperationBeginArgumentName(0), "bci", "null", "this.reachable", "this.reachable", "false");
                 case FINALLY_TRY_CATCH -> {
                     assert operation.operationBeginArguments[0].kind() == Encoding.LOCAL;
                     assert operation.operationBeginArguments[1].kind() == Encoding.FINALLY_PARSER;
                     String exceptionLocal = CodeTreeBuilder.createBuilder() //
                                     .cast(bytecodeLocalImpl.asType()).string(operation.getOperationBeginArgumentName(0)) //
                                     .toString();
-                    yield createOperationData(className, operation.getOperationBeginArgumentName(1), "bci", exceptionLocal, "this.reachable", "this.reachable", "this.reachable");
+                    yield createOperationData(className, "++numHandlers", operation.getOperationBeginArgumentName(1), "bci", exceptionLocal, "this.reachable", "this.reachable", "this.reachable");
                 }
 
                 case FINALLY_HANDLER -> createOperationData(className, "finallyOperationSp");
@@ -4871,7 +4843,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startAssign("bytecodes_").startStaticCall(type(Arrays.class), "copyOf").string("bc").string("bci").end().end();
             b.startAssign("constants_").string("constantPool.toArray()").end();
-            b.startAssign("handlers_").startStaticCall(type(Arrays.class), "copyOf").string("exHandlers").string("exHandlerCount").end().end();
+            b.startAssign("handlers_").startStaticCall(type(Arrays.class), "copyOf").string("handlerTable").string("handlerTableSize").end().end();
             b.startAssign("sources_").string("sources").end();
             b.startAssign("numNodes_").string("numNodes").end();
             b.startAssign("locals_").string("locals == null ? " + EMPTY_INT_ARRAY + " : ").startStaticCall(type(Arrays.class), "copyOf").string("locals").string(
@@ -5138,7 +5110,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startIf().string("operationData.operationReachable").end().startBlock();
             b.lineComment("register exception table entry");
-            b.statement("exHandlerIndex = doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, " + UNINIT + " /* handler start */, handlerSp)");
+            b.statement("exHandlerIndex = doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, -operationData.handlerId, handlerSp)");
             b.end();
 
             b.lineComment("emit handler for normal completion case");
@@ -5154,20 +5126,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("operationData.operationReachable").end().startBlock();
             b.lineComment("update exception table; force handler code to be reachable");
             b.statement("this.reachable = true");
-            b.declaration(type(int.class), "handlerBci", "bci");
 
-            /**
-             * The handler can guard more than one bci range if the try block has an early exit
-             * (return/branch), because the inlined finally handlers are not guarded. We need to
-             * update the handler bci for those exception table entries.
-             */
-            b.startFor().string("int i = 0; i < operationData.exceptionTableEntryCount; i++").end().startBlock();
-            b.declaration(type(int.class), "tableEntryIndex", "operationData.exceptionTableEntries[i]");
-            b.statement("exHandlers[tableEntryIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = handlerBci");
-            b.statement("exHandlers[tableEntryIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] = handlerSp");
-            b.end();
+            emitPatchHandlerTable(b);
+
             b.startIf().string("exHandlerIndex != ", UNINIT).end().startBlock();
-            b.statement("exHandlers[exHandlerIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = handlerBci");
+            b.statement("handlerTable[exHandlerIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = bci");
             b.end();
 
             b.end(); // if operationReachable
@@ -5187,6 +5150,25 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             // The regular handler branches over the exceptional handler. Patch its bci.
             b.startIf().string("operationData.endBranchFixupBci != ", UNINIT).end().startBlock();
             b.statement(writeBc("operationData.endBranchFixupBci", "(short) bci"));
+            b.end();
+        }
+
+        /**
+         * Produces code to walk the handler table and patch the handler bci + sp for any entries
+         * corresponding to the current handler.
+         */
+        private void emitPatchHandlerTable(CodeTreeBuilder b) {
+            b.startFor().string("int i = 0; i < handlerTableSize; i += EXCEPTION_HANDLER_LENGTH").end().startBlock();
+
+            b.startIf().string("handlerTable[i + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_REGULAR").end().startBlock();
+            b.statement("continue");
+            b.end();
+            b.startIf().string("handlerTable[i + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] != -operationData.handlerId").end().startBlock();
+            b.statement("continue");
+            b.end();
+
+            b.statement("handlerTable[i + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = bci");
+            b.statement("handlerTable[i + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] = handlerSp");
             b.end();
         }
 
@@ -6023,17 +6005,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end(); // if tryReachable
 
                         b.declaration(type(int.class), "handlerSp", "currentStackHeight + 1");
-                        /**
-                         * The handler can guard more than one bci range if the try block has an
-                         * early exit (return/branch), because we need to close the range before
-                         * emitting any outer finally handlers. We need to update the handler bci
-                         * for those exception table entries.
-                         */
-                        b.startFor().string("int i = 0; i < operationData.exceptionTableEntryCount; i++").end().startBlock();
-                        b.declaration(type(int.class), "tableEntryIndex", "operationData.exceptionTableEntries[i]");
-                        b.statement("exHandlers[tableEntryIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = bci");
-                        b.statement("exHandlers[tableEntryIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] = handlerSp");
-                        b.end();
+                        emitPatchHandlerTable(b);
+
                         b.statement("doCreateExceptionHandler(operationData.tryStartBci, tryEndBci, HANDLER_REGULAR, bci, handlerSp)");
 
                         b.end(); // if operationReachable
@@ -6514,17 +6487,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startReturn().string(UNINIT).end();
             b.end();
 
-            b.startIf().string("exHandlers.length <= exHandlerCount + EXCEPTION_HANDLER_LENGTH").end().startBlock();
-            b.statement("exHandlers = Arrays.copyOf(exHandlers, exHandlers.length * 2)");
+            b.startIf().string("handlerTable.length <= handlerTableSize + EXCEPTION_HANDLER_LENGTH").end().startBlock();
+            b.statement("handlerTable = Arrays.copyOf(handlerTable, handlerTable.length * 2)");
             b.end();
 
-            b.statement("int result = exHandlerCount");
-            b.statement("exHandlers[exHandlerCount + EXCEPTION_HANDLER_OFFSET_START_BCI] = startBci");
-            b.statement("exHandlers[exHandlerCount + EXCEPTION_HANDLER_OFFSET_END_BCI] = endBci");
-            b.statement("exHandlers[exHandlerCount + EXCEPTION_HANDLER_OFFSET_KIND] = handlerKind");
-            b.statement("exHandlers[exHandlerCount + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = handlerBci");
-            b.statement("exHandlers[exHandlerCount + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] = handlerSp");
-            b.statement("exHandlerCount += EXCEPTION_HANDLER_LENGTH");
+            b.statement("int result = handlerTableSize");
+            b.statement("handlerTable[handlerTableSize + EXCEPTION_HANDLER_OFFSET_START_BCI] = startBci");
+            b.statement("handlerTable[handlerTableSize + EXCEPTION_HANDLER_OFFSET_END_BCI] = endBci");
+            b.statement("handlerTable[handlerTableSize + EXCEPTION_HANDLER_OFFSET_KIND] = handlerKind");
+            b.statement("handlerTable[handlerTableSize + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = handlerBci");
+            b.statement("handlerTable[handlerTableSize + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] = handlerSp");
+            b.statement("handlerTableSize += EXCEPTION_HANDLER_LENGTH");
 
             b.statement("return result");
 
@@ -6815,10 +6788,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     emitCastOperationData(b, model.finallyTryOperation, "i");
                     b.startIf().string("operationStack[i].childCount == 0 /* still in try */").end().startBlock();
                     b.startIf().string("reachable").end().startBlock();
-                    b.startStatement().startCall("operationData.addExceptionTableEntry");
-                    b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, ", UNINIT, " /* handler start */, ", UNINIT,
+                    b.statement("doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, -operationData.handlerId, ", UNINIT,
                                     " /* stack height */)");
-                    b.end(2);
                     b.statement("handlerClosed = true");
                     b.end(); // if reachable
                     b.statement("doEmitFinallyHandler(operationData.finallyParser, i)");
@@ -6832,10 +6803,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 emitCastOperationData(b, model.tryCatchOperation, "i");
                 b.startIf().string("operationStack[i].childCount == 0 /* still in try */ && reachable");
                 b.end().startBlock();
-                b.startStatement().startCall("operationData.addExceptionTableEntry");
-                b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, ", UNINIT, " /* handler start */, ", UNINIT,
+                b.statement("doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, -operationData.handlerId, ", UNINIT,
                                 " /* stack height */)");
-                b.end(2);
                 b.statement("handlerClosed = true");
                 b.end();
                 b.statement("break");
@@ -11746,10 +11715,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = method.createBuilder();
 
             if (tier.isCached()) {
-                b.declaration(type(int.class), "handlerId", "Math.floorDiv(handler, EXCEPTION_HANDLER_LENGTH)");
+                b.declaration(type(int.class), "handlerEntryIndex", "Math.floorDiv(handler, EXCEPTION_HANDLER_LENGTH)");
             }
             if (tier.isCached()) {
-                b.startFor().string("int i = handler; i < localHandlers.length; i += EXCEPTION_HANDLER_LENGTH, handlerId++").end().startBlock();
+                b.startFor().string("int i = handler; i < localHandlers.length; i += EXCEPTION_HANDLER_LENGTH, handlerEntryIndex++").end().startBlock();
             } else {
                 b.startFor().string("int i = handler; i < localHandlers.length; i += EXCEPTION_HANDLER_LENGTH").end().startBlock();
             }
@@ -11757,9 +11726,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("localHandlers[i + EXCEPTION_HANDLER_OFFSET_END_BCI] <= bci").end().startBlock().statement("continue").end();
 
             if (tier.isCached()) {
-                b.startIf().string("!this.exceptionProfiles_[handlerId]").end().startBlock();
+                b.startIf().string("!this.exceptionProfiles_[handlerEntryIndex]").end().startBlock();
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                b.statement("this.exceptionProfiles_[handlerId] = true");
+                b.statement("this.exceptionProfiles_[handlerEntryIndex] = true");
                 b.end();
             }
 
