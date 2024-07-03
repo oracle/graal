@@ -420,11 +420,11 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             throw new AssertionError("Requesting dwarf register number for negative register index");
         }
         if (regIdx >= dwarfRegMap.length) {
-            throw new AssertionError(String.format("Register index %d exceeds map range %d", regIdx, dwarfRegMap.length));
+            throw new AssertionError("Register index " + regIdx + " exceeds map range " + dwarfRegMap.length);
         }
         int dwarfRegNum = dwarfRegMap[regIdx];
         if (dwarfRegNum < 0) {
-            throw new AssertionError(String.format("Register index %d does not map to valid dwarf register number", regIdx));
+            throw new AssertionError("Register index " + regIdx + " does not map to valid dwarf register number");
         }
         return dwarfRegNum;
     }
