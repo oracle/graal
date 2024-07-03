@@ -40,8 +40,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
-import com.oracle.svm.core.jdk.JDK22OrLater;
-import com.oracle.svm.core.jdk.JDK23OrLater;
+import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.util.PlatformTimeUtils;
 import com.oracle.svm.core.util.VMError;
@@ -68,7 +67,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    @TargetElement(onlyWith = JDK22OrLater.class) //
+    @TargetElement(onlyWith = JDKLatest.class) //
     private static volatile boolean nativeOK;
 
     /** See {@link JVM#registerNatives}. */
@@ -77,14 +76,14 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void markChunkFinal() {
         SubstrateJVM.get().markChunkFinal();
     }
 
     /** See {@link JVM#beginRecording}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void beginRecording() {
         SubstrateJVM.get().beginRecording();
     }
@@ -92,14 +91,14 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#isRecording}. */
     @Substitute
     @Uninterruptible(reason = "Needed for calling SubstrateJVM.isRecording().")
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static boolean isRecording() {
         return SubstrateJVM.get().isRecording();
     }
 
     /** See {@link JVM#endRecording}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void endRecording() {
         SubstrateJVM.get().endRecording();
     }
@@ -112,21 +111,21 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#emitEvent}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static boolean emitEvent(long eventTypeId, long timestamp, long when) {
         return false;
     }
 
     /** See {@link JVM#getAllEventClasses}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static List<Class<? extends jdk.internal.event.Event>> getAllEventClasses() {
         return JfrJavaEvents.getAllEventClasses();
     }
 
     /** See {@link JVM#getUnloadedEventClassCount}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static long getUnloadedEventClassCount() {
         return 0;
     }
@@ -144,7 +143,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#getPid}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static String getPid() {
         long id = ProcessProperties.getProcessID();
         return String.valueOf(id);
@@ -153,7 +152,7 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#getStackTraceId}. */
     @Substitute
     @Uninterruptible(reason = "Needed for SubstrateJVM.getStackTraceId().")
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static long getStackTraceId(int skipCount, long stackFilterId) {
         /*
          * The result is only valid until the epoch changes but this is fine because EventWriter
@@ -163,13 +162,13 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static long registerStackFilter(String[] classes, String[] methods) {
         throw VMError.unimplemented("JFR StackFilters are not yet supported.");
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void unregisterStackFilter(long stackFilterId) {
         throw VMError.unimplemented("JFR StackFilters are not yet supported.");
     }
@@ -179,7 +178,7 @@ public final class Target_jdk_jfr_internal_JVM {
      * for @Deprecated events.
      */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setMiscellaneous(long eventTypeId, long value) {
         Logger.log(LogTag.JFR_SETTING, LogLevel.WARN, "@Deprecated JFR events, and leak profiling are not yet supported.");
         /* Explicitly don't throw an exception (would result in an unspecific warning). */
@@ -187,21 +186,21 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#getThreadId}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static long getThreadId(Thread t) {
         return SubstrateJVM.getThreadId(t);
     }
 
     /** See {@link JVM#getTicksFrequency}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static long getTicksFrequency() {
         return JfrTicks.getTicksFrequency();
     }
 
     /** See {@code JVM#nanosNow}. */
     @Substitute
-    @TargetElement(onlyWith = JDK23OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static long nanosNow() {
         return PlatformTimeUtils.singleton().nanosNow();
     }
@@ -226,146 +225,146 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#retransformClasses}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static synchronized void retransformClasses(Class<?>[] classes) {
         // Not supported but this method is called during JFR startup, so we can't throw an error.
     }
 
     /** See {@link JVM#setEnabled}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setEnabled(long eventTypeId, boolean enabled) {
         SubstrateJVM.get().setEnabled(eventTypeId, enabled);
     }
 
     /** See {@link JVM#setFileNotification}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setFileNotification(long delta) {
         SubstrateJVM.get().setFileNotification(delta);
     }
 
     /** See {@link JVM#setGlobalBufferCount}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setGlobalBufferCount(long count) throws IllegalArgumentException, IllegalStateException {
         SubstrateJVM.get().setGlobalBufferCount(count);
     }
 
     /** See {@link JVM#setGlobalBufferSize}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setGlobalBufferSize(long size) throws IllegalArgumentException {
         SubstrateJVM.get().setGlobalBufferSize(size);
     }
 
     /** See {@link JVM#setMemorySize}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setMemorySize(long size) throws IllegalArgumentException {
         SubstrateJVM.get().setMemorySize(size);
     }
 
     /** See {@code JVM#setMethodSamplingPeriod}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setMethodSamplingPeriod(long type, long intervalMillis) {
         SubstrateJVM.get().setMethodSamplingInterval(type, intervalMillis);
     }
 
     /** See {@link JVM#setOutput}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setOutput(String file) {
         SubstrateJVM.get().setOutput(file);
     }
 
     /** See {@link JVM#setForceInstrumentation}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setForceInstrumentation(boolean force) {
     }
 
     /** See {@link JVM#setCompressedIntegers}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setCompressedIntegers(boolean compressed) throws IllegalStateException {
         SubstrateJVM.get().setCompressedIntegers(compressed);
     }
 
     /** See {@link JVM#setStackDepth}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setStackDepth(int depth) throws IllegalArgumentException, IllegalStateException {
         SubstrateJVM.get().setStackDepth(depth);
     }
 
     /** See {@link JVM#setStackTraceEnabled}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setStackTraceEnabled(long eventTypeId, boolean enabled) {
         SubstrateJVM.get().setStackTraceEnabled(eventTypeId, enabled);
     }
 
     /** See {@link JVM#setThreadBufferSize}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setThreadBufferSize(long size) throws IllegalArgumentException, IllegalStateException {
         SubstrateJVM.get().setThreadBufferSize(size);
     }
 
     /** See {@link JVM#setThreshold}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static boolean setThreshold(long eventTypeId, long ticks) {
         return SubstrateJVM.get().setThreshold(eventTypeId, ticks);
     }
 
     /** See {@link JVM#storeMetadataDescriptor}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void storeMetadataDescriptor(byte[] bytes) {
         SubstrateJVM.get().storeMetadataDescriptor(bytes);
     }
 
     /** See {@link JVM#getAllowedToDoEventRetransforms}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static boolean getAllowedToDoEventRetransforms() {
         return false;
     }
 
     /** See {@link JVM#createJFR}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     private static boolean createJFR(boolean simulateFailure) throws IllegalStateException {
         return SubstrateJVM.get().createJFR(simulateFailure);
     }
 
     /** See {@link JVM#destroyJFR}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     private static boolean destroyJFR() {
         return SubstrateJVM.get().destroyJFR();
     }
 
     /** See {@link JVM#isAvailable}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static boolean isAvailable() {
         return true;
     }
 
     /** See {@link JVM#getTimeConversionFactor}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static double getTimeConversionFactor() {
         return 1;
     }
 
     /** See {@link JVM#getTypeId(Class)}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static long getTypeId(Class<?> clazz) {
         return JfrTraceId.getTraceId(clazz);
     }
@@ -389,7 +388,7 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void flush() {
         SubstrateJVM.get().flush();
     }
@@ -401,28 +400,28 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#setRepositoryLocation}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setRepositoryLocation(String dirText) {
         SubstrateJVM.get().setRepositoryLocation(dirText);
     }
 
     /** See {@code JVM#setDumpPath(String)}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void setDumpPath(String dumpPathText) {
         SubstrateJVM.get().setDumpPath(dumpPathText);
     }
 
     /** See {@code JVM#getDumpPath()}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static String getDumpPath() {
         return SubstrateJVM.get().getDumpPath();
     }
 
     /** See {@link JVM#abort}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void abort(String errorMsg) {
         SubstrateJVM.get().abort(errorMsg);
     }
@@ -435,7 +434,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#uncaughtException}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void uncaughtException(Thread thread, Throwable t) {
         // Would be used to determine the emergency dump filename if an exception happens during
         // shutdown.
@@ -443,59 +442,59 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#setCutoff}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static boolean setCutoff(long eventTypeId, long cutoffTicks) {
         return SubstrateJVM.get().setCutoff(eventTypeId, cutoffTicks);
     }
 
     /** See {@link JVM#setThrottle}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
         return SubstrateJVM.get().setThrottle(eventTypeId, eventSampleSize, periodMs);
     }
 
     /** See {@link JVM#emitOldObjectSamples}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void emitOldObjectSamples(long cutoff, boolean emitAll, boolean skipBFS) {
         SubstrateJVM.get().emitOldObjectSamples(cutoff, emitAll, skipBFS);
     }
 
     /** See {@link JVM#shouldRotateDisk}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static boolean shouldRotateDisk() {
         return SubstrateJVM.get().shouldRotateDisk();
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void include(Thread thread) {
         JfrThreadLocal.setExcluded(thread, false);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static void exclude(Thread thread) {
         JfrThreadLocal.setExcluded(thread, true);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static boolean isExcluded(Thread thread) {
         return JfrThreadLocal.isThreadExcluded(thread);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class) //
+    @TargetElement(onlyWith = JDKLatest.class) //
     public static boolean isExcluded(Class<? extends jdk.internal.event.Event> eventClass) {
         // Temporarily always include.
         return false;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class) //
+    @TargetElement(onlyWith = JDKLatest.class) //
     public static boolean isInstrumented(Class<? extends jdk.internal.event.Event> eventClass) {
         // This should check for blessed commit methods in the event class [GR-41200]
         return true;
@@ -503,39 +502,39 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link SubstrateJVM#getChunkStartNanos}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static long getChunkStartNanos() {
         return SubstrateJVM.get().getChunkStartNanos();
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class) //
+    @TargetElement(onlyWith = JDKLatest.class) //
     public static boolean setConfiguration(Class<? extends jdk.internal.event.Event> eventClass, Target_jdk_jfr_internal_event_EventConfiguration configuration) {
         return SubstrateJVM.get().setConfiguration(eventClass, configuration);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class) //
+    @TargetElement(onlyWith = JDKLatest.class) //
     public static Object getConfiguration(Class<? extends jdk.internal.event.Event> eventClass) {
         return SubstrateJVM.get().getConfiguration(eventClass);
     }
 
     /** See {@link JVM#getTypeId(String)}. */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static long getTypeId(String name) {
         /* Not implemented at the moment. */
         return -1;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class) //
+    @TargetElement(onlyWith = JDKLatest.class) //
     public static boolean isContainerized() {
         return Containers.isContainerized();
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class) //
+    @TargetElement(onlyWith = JDKLatest.class) //
     public static long hostTotalMemory() {
         // This is intentionally using PhysicalMemorySupport since we are
         // interested in the host values (and not the containerized values).
@@ -543,7 +542,7 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK23OrLater.class) //
+    @TargetElement(onlyWith = JDKLatest.class) //
     public static long hostTotalSwapMemory() {
         /* Not implemented at the moment. */
         return -1;
