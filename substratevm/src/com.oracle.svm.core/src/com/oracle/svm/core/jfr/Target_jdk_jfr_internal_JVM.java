@@ -532,13 +532,15 @@ public final class Target_jdk_jfr_internal_JVM {
         return Container.singleton().isContainerized();
     }
 
+    /**
+     * Return the total memory available on the host.
+     *
+     * This is unconditionally using {@link OperatingSystem#getPhysicalMemorySize} since we are
+     * interested in the host values (and not the containerized values).
+     */
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class) //
     public static long hostTotalMemory() {
-        /*
-         * This is unconditionally using Machine#getPhysicalMemorySize since we are interested in
-         * the host values (and not the containerized values).
-         */
         return OperatingSystem.singleton().getPhysicalMemorySize().rawValue();
     }
 

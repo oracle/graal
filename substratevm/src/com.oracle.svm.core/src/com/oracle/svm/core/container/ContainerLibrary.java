@@ -88,16 +88,12 @@ class ContainerLibrary {
 @Platforms(Platform.HOSTED_ONLY.class)
 class ContainerLibraryDirectives implements CContext.Directives {
     /**
-     * True if the {@link ContainerLibrary} should be linked or not.
+     * True if {@link ContainerLibrary} should be linked.
      *
-     * Note that although this method returns {@code true} only if
-     * {@linkplain SubstrateOptions#useSerialGC() serial GC} or
-     * {@linkplain SubstrateOptions#useEpsilonGC() epsilon GC} is enabled, the {@link CFunction}s
-     * defined in {@link ContainerLibrary} are always registered and can be called even if this
-     * method returns {@code false}. Other GCs can provide alternative implementations themselves,
-     * or manually link against the native {@code
-     * svm_container} library, e.g., by calling
-     * {@code com.oracle.svm.hosted.c.NativeLibraries#addStaticJniLibrary}.
+     * Note that although this method returns {@code true} only for certain GCs, the
+     * {@link CFunction}s defined in {@link ContainerLibrary} are always registered and can be
+     * called even if this method returns {@code false}, as other GCs provide alternative
+     * implementations themselves.
      */
     @Override
     public boolean isInConfiguration() {
