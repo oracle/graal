@@ -6468,28 +6468,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startAssert().string("startBci <= endBci").end();
-            // Don't create empty handler ranges.
+
+            b.lineComment("Don't create empty handler ranges.");
             b.startIf().string("startBci == endBci").end().startBlock();
             b.startReturn().string(UNINIT).end();
             b.end();
-            /**
-             * Special case: if the range only has a single return/branch instruction, don't emit
-             * it. This case happens when a try-finally's try block ends in a return/branch
-             * instruction. We close the exception range, emit the finally handler, then reopen a
-             * new exception range that only guards the return/branch. This instruction will never
-             * throw, so the table entry is unnecessary.
-             */
-            b.startElseIf();
-            b.string("endBci - startBci == ", String.valueOf(model.returnInstruction.getInstructionLength()));
-            b.string(" && bc[startBci] == ").tree(createInstructionConstant(model.returnInstruction));
-            b.end().startBlock();
+
+            b.lineComment("If the previous entry is for the same handler and the ranges are contiguous, combine them.");
+            b.startIf().string("handlerTableSize > 0").end().startBlock();
+            b.declaration(type(int.class), "previousEntry", "handlerTableSize - EXCEPTION_HANDLER_LENGTH");
+            b.declaration(type(int.class), "previousEndBci", "handlerTable[previousEntry + EXCEPTION_HANDLER_OFFSET_END_BCI]");
+            b.declaration(type(int.class), "previousKind", "handlerTable[previousEntry + EXCEPTION_HANDLER_OFFSET_KIND]");
+            b.declaration(type(int.class), "previousHandlerBci", "handlerTable[previousEntry + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
+            b.startIf().string("previousEndBci == startBci && previousKind == handlerKind && previousHandlerBci == handlerBci").end().startBlock();
+            b.statement("handlerTable[previousEntry + EXCEPTION_HANDLER_OFFSET_END_BCI] = endBci");
             b.startReturn().string(UNINIT).end();
-            b.end().startElseIf();
-            b.string("endBci - startBci == ", String.valueOf(model.branchInstruction.getInstructionLength()));
-            b.string(" && bc[startBci] == ").tree(createInstructionConstant(model.branchInstruction));
-            b.end().startBlock();
-            b.startReturn().string(UNINIT).end();
-            b.end();
+            b.end(); // if same handler and contiguous
+            b.end(); // if table non-empty
 
             b.startIf().string("handlerTable.length <= handlerTableSize + EXCEPTION_HANDLER_LENGTH").end().startBlock();
             b.statement("handlerTable = Arrays.copyOf(handlerTable, handlerTable.length * 2)");
@@ -6819,10 +6814,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startDeclaration(type(int.class), "handlerTableIndex");
             b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, -operationData.handlerId, ", UNINIT, " /* stack height */)");
             b.end();
+            b.startIf().string("handlerTableIndex != ", UNINIT).end().startBlock();
             b.startIf().string("operationData.extraTableEntriesStart == ", UNINIT).end().startBlock();
             b.statement("operationData.extraTableEntriesStart = handlerTableIndex");
             b.end();
             b.statement("operationData.extraTableEntriesEnd = handlerTableIndex + EXCEPTION_HANDLER_LENGTH");
+            b.end();
         }
 
         /**

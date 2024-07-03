@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
@@ -1319,9 +1320,24 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                     );
     }
 
+    private static String[] collectInstructions(BytecodeNode bytecode, int startBci, int endBci) {
+        List<String> result = new ArrayList<>();
+        for (Instruction instruction : bytecode.getInstructions()) {
+            int bci = instruction.getBytecodeIndex();
+            if (startBci <= bci && bci < endBci) {
+                result.add(instruction.getName());
+            }
+        }
+        return result.toArray(new String[0]);
+    }
+
+    private static void assertGuards(ExceptionHandler handler, BytecodeNode bytecode, String... expectedInstructions) {
+        assertArrayEquals(expectedInstructions, collectInstructions(bytecode, handler.getStartIndex(), handler.getEndIndex()));
+    }
+
     @Test
-    public void testIntrospectionDataExceptionHandlers() {
-        BasicInterpreter node = parseNode("introspectionDataExceptionHandlers", b -> {
+    public void testIntrospectionDataExceptionHandlers1() {
+        BasicInterpreter node = parseNode("introspectionDataExceptionHandlers1", b -> {
             // @formatter:off
             b.beginRoot(LANGUAGE);
             b.beginBlock();
@@ -1372,11 +1388,16 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         // h1 and h3 are independent
         assertTrue(h1.getEndIndex() < h3.getStartIndex());
+
+        assertGuards(h2, bytecode, "c.VoidOperation");
+        assertGuards(h1, bytecode,
+                        "c.VoidOperation", "c.VoidOperation", "branch", "store.local", "c.VoidOperation");
+        assertGuards(h3, bytecode, "c.VoidOperation");
     }
 
     @Test
-    public void testIntrospectionDataFinallyEarlyExitExceptionHandlers() {
-        BasicInterpreter node = parseNode("introspectionDataFinallyEarlyExitExceptionHandlers", b -> {
+    public void testIntrospectionDataExceptionHandlers2() {
+        BasicInterpreter node = parseNode("testIntrospectionDataExceptionHandlers2", b -> {
             // @formatter:off
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
@@ -1419,17 +1440,19 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertEquals(h1.getHandlerIndex(), h3.getHandlerIndex());
         assertTrue(h1.getEndIndex() < h2.getStartIndex());
         assertTrue(h2.getEndIndex() < h3.getStartIndex());
+
+        assertGuards(h1, node.getBytecodeNode(),
+                        "c.VoidOperation", "load.argument", "branch.false", "load.constant");
+        assertGuards(h2, node.getBytecodeNode(),
+                        "return", "c.VoidOperation", "load.argument", "branch.false");
+        assertGuards(h3, node.getBytecodeNode(),
+                        "branch", "c.VoidOperation");
     }
 
     @Test
-    public void testIntrospectionDataEmptyHandlers() {
-        /**
-         * When the guarded ranges are split into multiple ranges, some may be empty. We should skip
-         * exception table entries for empty bytecode ranges.
-         */
-
+    public void testIntrospectionDataExceptionHandlers3() {
         // test case: early return
-        BasicInterpreter node = parseNode("introspectionDataEmptyHandlers", b -> {
+        BasicInterpreter node = parseNode("testIntrospectionDataExceptionHandlers3", b -> {
             // @formatter:off
             b.beginRoot(LANGUAGE);
                 b.beginBlock();
@@ -1449,11 +1472,14 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
             // @formatter:on
         });
-        // one range (everything up until the return)
-        assertEquals(1, node.getBytecodeNode().getExceptionHandlers().size());
+        List<ExceptionHandler> handlers = node.getBytecodeNode().getExceptionHandlers();
+        assertEquals(2, handlers.size());
+        assertGuards(handlers.get(0), node.getBytecodeNode(),
+                        "c.VoidOperation", "load.argument", "branch.false", "load.constant");
+        assertGuards(handlers.get(1), node.getBytecodeNode(), "return");
 
         // test case: branch out
-        node = parseNode("introspectionDataEmptyHandlers", b -> {
+        node = parseNode("testIntrospectionDataExceptionHandlers3", b -> {
             // @formatter:off
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
@@ -1473,11 +1499,14 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
             // @formatter:on
         });
-        // one range (everything up until the branch)
-        assertEquals(1, node.getBytecodeNode().getExceptionHandlers().size());
+        handlers = node.getBytecodeNode().getExceptionHandlers();
+        assertEquals(2, handlers.size());
+        assertGuards(handlers.get(0), node.getBytecodeNode(),
+                        "c.VoidOperation", "load.argument", "branch.false");
+        assertGuards(handlers.get(1), node.getBytecodeNode(), "branch");
 
         // test case: early return with branch, and instrumentation in the middle.
-        node = parseNode("introspectionDataEmptyHandlers", b -> {
+        node = parseNode("testIntrospectionDataExceptionHandlers3", b -> {
             // @formatter:off
             b.beginRoot(LANGUAGE);
             BytecodeLabel lbl = b.createLabel();
@@ -1500,16 +1529,20 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
             // @formatter:on
         });
-        // without instrumentation, one range (everything up until the return)
-        assertEquals(1, node.getBytecodeNode().getExceptionHandlers().size());
+        handlers = node.getBytecodeNode().getExceptionHandlers();
+        assertEquals(3, handlers.size());
+        assertGuards(handlers.get(0), node.getBytecodeNode(),
+                        "c.VoidOperation", "load.argument", "branch.false", "load.constant");
+        assertGuards(handlers.get(1), node.getBytecodeNode(), "return");
+        assertGuards(handlers.get(2), node.getBytecodeNode(), "branch");
 
-        // with instrumentation, two ranges (everything up until the return, and the instrumentation
-        // instruction)
         node.getRootNodes().update(createBytecodeConfigBuilder().addInstrumentation(BasicInterpreter.PrintHere.class).build());
-        List<ExceptionHandler> handlers = node.getBytecodeNode().getExceptionHandlers();
-        assertEquals(2, handlers.size());
-        assertEquals(handlers.get(0).getHandlerIndex(), handlers.get(1).getHandlerIndex());
-        assertTrue(handlers.get(0).getEndIndex() < handlers.get(1).getStartIndex());
+        handlers = node.getBytecodeNode().getExceptionHandlers();
+        assertEquals(3, handlers.size());
+        assertGuards(handlers.get(0), node.getBytecodeNode(),
+                        "c.VoidOperation", "load.argument", "branch.false", "load.constant");
+        assertGuards(handlers.get(1), node.getBytecodeNode(), "return", "c.PrintHere");
+        assertGuards(handlers.get(2), node.getBytecodeNode(), "branch");
     }
 
     @Test

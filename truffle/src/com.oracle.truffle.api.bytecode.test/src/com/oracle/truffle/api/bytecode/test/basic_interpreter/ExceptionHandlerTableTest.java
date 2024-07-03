@@ -44,9 +44,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -57,7 +60,6 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.ExceptionHandler.HandlerKind;
-import com.oracle.truffle.api.instrumentation.GenerateWrapper.Ignore;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 
 @RunWith(Parameterized.class)
@@ -84,12 +86,15 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
     private static final class HandlerRangeValidator {
         final BytecodeNode bytecodeNode;
         final List<ExceptionHandler> handlers;
+        final Set<ExceptionHandler> uncheckedHandlers;
         final Map<String, Integer> handlersByName;
         final Map<Integer, String> handlerToName;
 
         HandlerRangeValidator(BytecodeRootNode node) {
             this.bytecodeNode = node.getBytecodeNode();
-            this.handlers = bytecodeNode.getExceptionHandlers();
+            // copy the list elements so that hash comparisons work properly.
+            this.handlers = new ArrayList<>(bytecodeNode.getExceptionHandlers());
+            this.uncheckedHandlers = new HashSet<>(this.handlers);
             this.handlersByName = new HashMap<>();
             this.handlerToName = new HashMap<>();
         }
@@ -100,6 +105,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
                 for (int i = 0; i < trees.length; i++) {
                     assertHandlersRecursive(trees[i]);
                 }
+                assertTrue(String.format("Some handlers were not checked by the test spec: %s", uncheckedHandlers), uncheckedHandlers.isEmpty());
             } catch (AssertionError err) {
                 throw new AssertionError(err.getMessage() + "\n" + bytecodeNode.dump());
             }
@@ -107,6 +113,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
 
         private void assertHandlersRecursive(ExceptionRangeTree tree) {
             ExceptionHandler handler = getHandler(tree);
+            uncheckedHandlers.remove(handler);
             if (tree.name != null) {
                 if (handlersByName.containsKey(tree.name)) {
                     // Check that two handler ranges with the same name match
@@ -205,7 +212,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
         assertEquals(42L, root.getCallTarget().call());
-        assertHandlers(root, handler(1, "ex1", handler(0, "ex2")));
+        assertHandlers(root, handler(1, "ex1", handler(0, "ex2")), handler(3, "ex1", handler(2, "ex2")));
     }
 
     @Test
@@ -262,40 +269,10 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         });
         assertEquals(42L, root.getCallTarget().call(true));
         assertEquals(null, root.getCallTarget().call(false));
-        assertHandlers(root, handler(0, "ex1"), handler(1, "ex1"));
+        assertHandlers(root, handler(0, "ex1"));
 
         root.getRootNodes().update(createBytecodeConfigBuilder().addTag(ExpressionTag.class).build());
         assertHandlers(root, tag(2, handler(0, "ex1"), handler(1, "ex1")));
-    }
-
-    @Test
-    public void testTryCatchInTagWithEmptyRange() {
-        // This test is like the previous, but there is no code after the return. We should avoid emitting an empty range.
-
-        // expressionTag {
-        //   try {
-        //     if (arg0) return 42
-        //   } catch ex1 {
-        //     A
-        //   }
-        // }
-        BasicInterpreter root = parseNode("tryCatchNestedInCatchWithEmptyRange", b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.beginTag(ExpressionTag.class);
-            b.beginTryCatch(b.createLocal());
-                emitReturnIf(b, 0, 42);
-                emitNop(b, "A");
-            b.endTryCatch();
-            b.endTag(ExpressionTag.class);
-            b.endRoot();
-        });
-        assertEquals(42L, root.getCallTarget().call(true));
-        assertEquals(null, root.getCallTarget().call(false));
-        assertHandlers(root, handler(0));
-
-        root.getRootNodes().update(createBytecodeConfigBuilder().addTag(ExpressionTag.class).build());
-        assertHandlers(root, tag(1, handler(0)));
     }
 
     @Test
@@ -375,7 +352,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         assertHandlers(root, handler(0));
 
         root.getRootNodes().update(createBytecodeConfigBuilder().addTag(ExpressionTag.class).build());
-        assertHandlers(root, tag(2, handler(0), handler(1)));
+        assertHandlers(root, tag(1, handler(0)));
     }
 
     @Test
@@ -431,41 +408,6 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         assertEquals(42L, root.getCallTarget().call(true, false));
         assertEquals(null, root.getCallTarget().call(false, true));
         assertHandlers(root, handler(0, "ex1"), handler(1, "ex1"), handler(2, "ex1"));
-    }
-
-    @Test
-    public void testFinallyTryEarlyExitsInTryWithEmptyRange() {
-        // try {
-        //   A
-        //   if (arg0) return 42
-        //   B
-        //   if (arg1) goto lbl
-        // } finally ex1 {
-        //   C
-        // }
-        // lbl:
-        BasicInterpreter root = parseNode("finallyTry", b -> {
-            b.beginRoot(LANGUAGE);
-            b.beginBlock();
-            BytecodeLabel lbl = b.createLabel();
-
-            b.beginFinallyTry(() -> emitNop(b, "C"));
-                b.beginBlock();
-                    emitNop(b, "A");
-                    emitReturnIf(b, 0, 42);
-                    emitNop(b, "B");
-                    emitBranchIf(b, 1, lbl);
-                b.endBlock();
-            b.endFinallyTry();
-
-            b.emitLabel(lbl);
-            b.endBlock();
-            b.endRoot();
-        });
-        assertEquals(null, root.getCallTarget().call(false, false));
-        assertEquals(42L, root.getCallTarget().call(true, false));
-        assertEquals(null, root.getCallTarget().call(false, true));
-        assertHandlers(root, handler(0, "ex1"), handler(1, "ex1"));
     }
 
     @Test
