@@ -312,11 +312,19 @@ public final class EspressoFrame {
     // endregion Local accessors
 
     static void setBCI(Frame frame, int bci) {
-        frame.setIntStatic(BCI_SLOT, bci + 1);
+        frame.setIntStatic(BCI_SLOT, encodeBCI(bci));
     }
 
     static int getBCI(Frame frame) {
-        return frame.getIntStatic(BCI_SLOT) - 1;
+        return decodeBCI(frame.getIntStatic(BCI_SLOT));
+    }
+
+    public static int encodeBCI(int bci) {
+        return bci + 1;
+    }
+
+    public static int decodeBCI(int encodedBCI) {
+        return encodedBCI - 1;
     }
 
     public static int startingStackOffset(int maxLocals) {

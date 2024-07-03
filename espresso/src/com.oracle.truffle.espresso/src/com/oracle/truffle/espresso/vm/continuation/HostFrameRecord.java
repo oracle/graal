@@ -42,6 +42,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -66,7 +67,11 @@ public final class HostFrameRecord {
 
     public int bci() {
         assert primitives.length > 0;
-        return EspressoFrameDescriptor.narrow(primitives[0]);
+        return EspressoFrame.decodeBCI(EspressoFrameDescriptor.narrow(primitives[0]));
+    }
+
+    private void setBci(int bci) {
+        primitives[0] = EspressoFrameDescriptor.zeroExtend(EspressoFrame.encodeBCI(bci));
     }
 
     public void taint() {
@@ -96,6 +101,7 @@ public final class HostFrameRecord {
 
         HostFrameRecord hfr = new HostFrameRecord(fd, objects, primitives, bci, top, m, next);
         // Result is trusted, but it never hurts to assert that.
+        assert hfr.bci() == bci;
         assert top == fd.top() : "Mismatched tops: " + top + ", " + fd.top();
         assert hfr.verify(m.getMethod().getMeta(), true);
         return hfr;
@@ -108,7 +114,7 @@ public final class HostFrameRecord {
         this.top = top;
         this.methodVersion = methodVersion;
         this.next = next;
-        primitives[0] = EspressoFrameDescriptor.zeroExtend(bci);
+        setBci(bci);
     }
 
     @TruffleBoundary
