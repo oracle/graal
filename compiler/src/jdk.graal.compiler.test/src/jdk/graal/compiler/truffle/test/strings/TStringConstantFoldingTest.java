@@ -27,6 +27,8 @@ package jdk.graal.compiler.truffle.test.strings;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_16;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
 
+import java.lang.reflect.Field;
+
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -44,6 +46,7 @@ import jdk.graal.compiler.truffle.test.PartialEvaluationTest;
 
 public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
+    static final boolean COMPACT_STRINGS_ENABLED;
     static final String JAVA_STRING = "abcde\u2020";
     @CompilerDirectives.CompilationFinal(dimensions = 1) static final byte[] BYTES = {'a', 'b', 'c', 'd', 'e'};
     @CompilerDirectives.CompilationFinal(dimensions = 1) static final char[] CHARS = {'a', 'b', 'c', 'd', 'e', '\u2020'};
@@ -52,6 +55,15 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
     static final TruffleString aJS = TruffleString.fromConstant(JAVA_STRING, UTF_16);
     static final TruffleString aJSCompact = TruffleString.fromConstant("abcde", UTF_16);
     static final TruffleString bJS = TruffleString.fromConstant(JAVA_STRING, UTF_16);
+
+    static {
+        try {
+            Field compactStringsField = String.class.getDeclaredField("COMPACT_STRINGS");
+            COMPACT_STRINGS_ENABLED = UNSAFE.getBoolean(getStaticFieldBase(compactStringsField), getStaticFieldOffset(compactStringsField));
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException("failed to get COMPACT_STRINGS field offset", e);
+        }
+    }
 
     @Test
     public void testCodePointAtIndex() {
@@ -197,16 +209,18 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
                 return readNode.execute(constructorNode.execute(BYTES, UTF_8, false), 0, UTF_8) == BYTES[0];
             }
         });
-        assertConstant(new RootNode(null) {
+        if (COMPACT_STRINGS_ENABLED) {
+            assertConstant(new RootNode(null) {
 
-            @Child TruffleString.FromJavaStringNode constructorNode = TruffleString.FromJavaStringNode.create();
-            @Child TruffleString.ReadCharUTF16Node readNode = TruffleString.ReadCharUTF16Node.create();
+                @Child TruffleString.FromJavaStringNode constructorNode = TruffleString.FromJavaStringNode.create();
+                @Child TruffleString.ReadCharUTF16Node readNode = TruffleString.ReadCharUTF16Node.create();
 
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return readNode.execute(constructorNode.execute(JAVA_STRING, UTF_16), 0) == CHARS[0];
-            }
-        });
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return readNode.execute(constructorNode.execute(JAVA_STRING, UTF_16), 0) == CHARS[0];
+                }
+            });
+        }
         assertConstant(new RootNode(null) {
 
             @Child TruffleString.SubstringByteIndexNode constructorNode = TruffleString.SubstringByteIndexNode.create();
