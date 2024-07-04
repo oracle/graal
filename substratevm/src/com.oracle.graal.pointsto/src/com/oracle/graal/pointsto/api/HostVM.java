@@ -73,7 +73,7 @@ public abstract class HostVM {
     protected final ClassLoader classLoader;
     protected final List<BiConsumer<AnalysisMethod, StructuredGraph>> methodAfterParsingListeners;
     private final List<BiConsumer<DuringAnalysisAccess, Class<?>>> classReachabilityListeners;
-    private HostedProviders providers;
+    protected HostedProviders providers;
 
     protected HostVM(OptionValues options, ClassLoader classLoader) {
         this.options = options;
