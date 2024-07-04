@@ -40,37 +40,23 @@
  */
 package org.graalvm.wasm;
 
-import java.util.Objects;
+import org.graalvm.wasm.constants.ImportIdentifier;
 
-public final class ImportDescriptor {
-    public final String moduleName;
-    public final String memberName;
-    public final int identifier;
-    public final int index;
-    public final int importedSymbolIndex;
-
-    public ImportDescriptor(String moduleName, String memberName, int identifier, int index, int importedSymbolIndex) {
-        this.moduleName = moduleName;
-        this.memberName = memberName;
-        this.identifier = identifier;
-        this.index = index;
-        this.importedSymbolIndex = importedSymbolIndex;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(identifier, index, importedSymbolIndex, moduleName, memberName);
-    }
-
-    @Override
-    public boolean equals(Object object) {
-        return object instanceof ImportDescriptor that &&
-                        this.identifier == that.identifier &&
-                        this.index == that.index &&
-                        this.importedSymbolIndex == that.importedSymbolIndex &&
-                        this.moduleName.equals(that.moduleName) &&
-                        this.memberName.equals(that.memberName);
-    }
+/**
+ * Describes an imported symbol entry in the import section of a module.
+ *
+ * @param moduleName source module name
+ * @param memberName source member name
+ * @param identifier {@link ImportIdentifier}, either function, table, memory, or global
+ * @param targetIndex index of target function, table, memory, or global
+ * @param importedSymbolIndex index in imported symbols list {@link SymbolTable#importedSymbols()}
+ */
+public record ImportDescriptor(
+                String moduleName,
+                String memberName,
+                int identifier,
+                int targetIndex,
+                int importedSymbolIndex) {
 
     @Override
     public String toString() {
