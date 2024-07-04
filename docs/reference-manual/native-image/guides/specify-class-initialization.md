@@ -119,11 +119,14 @@ The parser creates records and adds them to a `List<Talk>` collection.
     - Bootiful Spring Boot 3 by Josh Long
     ./buildtime-parser  0.00s user 0.00s system 53% cpu 0.016 total
     ```
+
     Check the file size which should decrease to around 6.4M!
-    ```
+    ```bash
     du -sh buildtime-parser
     ```
+
     The file size change is because Native Image runs the static initializer at build time, parsing the text block, and persisting only the `Talk` records in the executable.
+    
     As a result, the majority of the scanning infrastructure does not become reachable when Native Image statically analyzes the application and is, therefore, not included in the executable.
 
 Another valuable criterion for profiling applications more accurately is the number of instructions, which can be obtained using the [Linux `perf` profiler](../PerfProfiling.md).
@@ -164,6 +167,7 @@ Talks loaded using scanner:
 
 This demonstrates how Native Image can shift work from runtime to build time: when the class is initialized at build time, the text block is parsed when the executable is being built and only the parsed objects are included.
 This not only makes the executable smaller in file size, but also faster to run: when the executable runs, the `Talk` records already exist and only need to be printed.
+<br>
 
 To ensure native executables built with Native Image are as compatible as possible with the HotSpot behavior, application classes that cannot be safely initialized at build time, are initialized at runtime.
 You as a user, or a framework that you use, must explicitly request build-time initialization for certain classes to benefit from smaller file sizes and faster times to run.
