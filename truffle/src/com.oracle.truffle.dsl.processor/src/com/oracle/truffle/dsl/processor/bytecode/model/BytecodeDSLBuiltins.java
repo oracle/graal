@@ -206,6 +206,12 @@ public class BytecodeDSLBuiltins {
                         .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index", "the index of the argument to load")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_ARGUMENT, "load.argument", m.signature(Object.class))//
                                         .addImmediate(ImmediateKind.INTEGER, "index"));
+        m.operation(OperationKind.LOAD_EXCEPTION, "LoadException", """
+                        LoadException reads the current exception from the frame.
+                        This operation is only permitted inside the catch operation of {@code TryCatch} and {@code FinallyTryCatch} operations.
+                        """) //
+                        .setInstruction(m.instruction(InstructionKind.LOAD_EXCEPTION, "load.exception", m.signature(Object.class))//
+                                        .addImmediate(ImmediateKind.STACK_POINTER, "exceptionSp"));
         m.loadLocalOperation = m.operation(OperationKind.LOAD_LOCAL, "LoadLocal",
                         """
                                         LoadLocal reads {@code local} from the current frame.

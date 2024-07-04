@@ -268,6 +268,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "pop",
                         "load.constant",
                         "return",
+                        "dup",
                         "store.local",
                         "load.constant",
                         "return");
@@ -374,8 +375,10 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "pop",
                         "load.constant",
                         "return",
+                        "dup",
                         "store.local",
                         "load.constant",
+                        "pop",
                         "pop",
                         "load.constant",
                         "return");
@@ -425,6 +428,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "load.constant",
                         "pop",
                         "branch",
+                        "dup",
                         "store.local",
                         "load.constant",
                         "return",
@@ -480,6 +484,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "pop",
                         "load.constant",
                         "return",
+                        "dup",
                         "store.local",
                         "load.constant",
                         "return");

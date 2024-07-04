@@ -409,7 +409,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             b.beginReturn();
             b.beginReadExceptionOperation();
-            b.emitLoadLocal(local);
+            b.emitLoadException();
             b.endReadExceptionOperation();
             b.endReturn();
 
@@ -422,6 +422,49 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         assertEquals(-42L, root.call(-43L));
         assertEquals(0L, root.call(1L));
+    }
+
+    @Test
+    public void testTryCatchLoadExceptionUnevenStack() {
+        // try {
+        //   throw arg0+1
+        // } catch ex {
+        //   1 + 2 + { return ex.value; 3 }
+        // }
+
+        RootCallTarget root = parse("tryCatch", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginTryCatch(b.createLocal());
+
+            b.beginThrowOperation();
+            b.beginAddOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(1L);
+            b.endAddOperation();
+            b.endThrowOperation();
+
+            b.beginAddOperation();
+            b.emitLoadConstant(1L);
+            b.beginAddOperation();
+            b.emitLoadConstant(2L);
+            b.beginBlock();
+            b.beginReturn();
+            b.beginReadExceptionOperation();
+            b.emitLoadException();
+            b.endReadExceptionOperation();
+            b.endReturn();
+            b.emitLoadConstant(3L);
+            b.endBlock();
+            b.endAddOperation();
+            b.endAddOperation();
+
+            b.endTryCatch();
+
+            b.endRoot();
+        });
+
+        assertEquals(-42L, root.call(-43L));
     }
 
     @Test
@@ -485,7 +528,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             b.beginReturn(); // begin outer catch
             b.beginReadExceptionOperation();
-            b.emitLoadLocal(ex1);
+            b.emitLoadException();
             b.endReadExceptionOperation();
             b.endReturn(); // end outer catch
 
@@ -548,6 +591,83 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertEquals(123L, root.call(-100L));
         assertEquals(42L, root.call(0L));
         assertEquals(42L, root.call(1L));
+    }
+
+    @Test
+    public void testBadLoadExceptionUsage1() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation.");
+
+        parse("badLoadExceptionUsage1", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.emitLoadException();
+            b.endReturn();
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testBadLoadExceptionUsage2() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation.");
+
+        parse("badLoadExceptionUsage2", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginTryCatch(b.createLocal());
+            b.beginReturn();
+            b.emitLoadException();
+            b.endReturn();
+            b.emitVoidOperation();
+            b.endTryCatch();
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testBadLoadExceptionUsage3() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation.");
+
+        parse("badLoadExceptionUsage3", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginFinallyTryCatch(b.createLocal(), () -> b.emitVoidOperation());
+            b.beginReturn();
+            b.emitLoadException();
+            b.endReturn();
+            b.emitVoidOperation();
+            b.endFinallyTryCatch();
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testBadLoadExceptionUsage4() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation.");
+
+        parse("badLoadExceptionUsage4", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginFinallyTryCatch(b.createLocal(), () -> b.emitLoadException());
+            b.emitVoidOperation();
+            b.emitVoidOperation();
+            b.endFinallyTryCatch();
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testBadLoadExceptionUsage5() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation.");
+
+        parse("badLoadExceptionUsage5", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginFinallyTry(() -> b.emitLoadException());
+            b.emitVoidOperation();
+            b.endFinallyTry();
+            b.endRoot();
+        });
     }
 
     @Test
@@ -1391,7 +1511,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         assertGuards(h2, bytecode, "c.VoidOperation");
         assertGuards(h1, bytecode,
-                        "c.VoidOperation", "c.VoidOperation", "branch", "store.local", "c.VoidOperation");
+                        "c.VoidOperation", "c.VoidOperation", "branch", "dup", "store.local", "c.VoidOperation", "pop");
         assertGuards(h3, bytecode, "c.VoidOperation");
     }
 
