@@ -166,15 +166,16 @@ public class WebAssembly extends Dictionary {
 
         for (ImportDescriptor descriptor : module.importedSymbols()) {
             final int listIndex = resolvedImports.size();
+            assert listIndex == descriptor.importedSymbolIndex();
+
             final Object member = getImportObjectMemberInParentContext(importObject, descriptor, context);
 
-            assert listIndex == descriptor.importedSymbolIndex;
-            resolvedImports.add(switch (descriptor.identifier) {
+            resolvedImports.add(switch (descriptor.identifier()) {
                 case ImportIdentifier.FUNCTION -> requireCallableInParentContext(member, descriptor, context);
                 case ImportIdentifier.TABLE -> requireWasmTable(member, descriptor);
                 case ImportIdentifier.MEMORY -> requireWasmMemory(member, descriptor);
                 case ImportIdentifier.GLOBAL -> requireWasmGlobal(member, descriptor);
-                default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier);
+                default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier());
             });
         }
 
@@ -195,8 +196,8 @@ public class WebAssembly extends Dictionary {
         TruffleContext parentContext = context.environment().getContext().getParent();
         Object prev = parentContext.enter(null);
         try {
-            final Object importedModuleObject = getMember(importObject, descriptor.moduleName);
-            member = getMember(importedModuleObject, descriptor.memberName);
+            final Object importedModuleObject = getMember(importObject, descriptor.moduleName());
+            member = getMember(importedModuleObject, descriptor.memberName());
         } finally {
             parentContext.leave(null, prev);
         }
@@ -384,7 +385,7 @@ public class WebAssembly extends Dictionary {
         final EconomicMap<ImportDescriptor, Integer> importedMemoryDescriptors = module.importedMemoryDescriptors();
         final ArrayList<ModuleImportDescriptor> list = new ArrayList<>();
         for (ImportDescriptor descriptor : module.importedSymbols()) {
-            switch (descriptor.identifier) {
+            switch (descriptor.identifier()) {
                 case ImportIdentifier.FUNCTION:
                     final WasmFunction f = module.importedFunction(descriptor);
                     list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), ImportExportKind.function.name(), WebAssembly.functionTypeToString(f)));
@@ -392,7 +393,7 @@ public class WebAssembly extends Dictionary {
                 case ImportIdentifier.TABLE:
                     final Integer tableIndex = importedTableDescriptors.get(descriptor);
                     if (tableIndex != null) {
-                        list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.table.name(), TableKind.toString(module.tableElementType(tableIndex))));
+                        list.add(new ModuleImportDescriptor(descriptor.moduleName(), descriptor.memberName(), ImportExportKind.table.name(), TableKind.toString(module.tableElementType(tableIndex))));
                     } else {
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Table import inconsistent.");
                     }
@@ -400,7 +401,7 @@ public class WebAssembly extends Dictionary {
                 case ImportIdentifier.MEMORY:
                     final Integer memoryIndex = importedMemoryDescriptors.get(descriptor);
                     if (memoryIndex != null) {
-                        list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.memory.name(), null));
+                        list.add(new ModuleImportDescriptor(descriptor.moduleName(), descriptor.memberName(), ImportExportKind.memory.name(), null));
                     } else {
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Memory import inconsistent.");
                     }
@@ -408,10 +409,10 @@ public class WebAssembly extends Dictionary {
                 case ImportIdentifier.GLOBAL:
                     final Integer index = importedGlobalDescriptors.get(descriptor);
                     String valueType = ValueType.fromByteValue(module.globalValueType(index)).toString();
-                    list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, ImportExportKind.global.name(), valueType));
+                    list.add(new ModuleImportDescriptor(descriptor.moduleName(), descriptor.memberName(), ImportExportKind.global.name(), valueType));
                     break;
                 default:
-                    throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier);
+                    throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier());
             }
         }
         return List.copyOf(list);
