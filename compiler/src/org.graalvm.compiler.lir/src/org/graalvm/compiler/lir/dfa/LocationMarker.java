@@ -30,8 +30,10 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
@@ -80,7 +82,12 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
         for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
             liveInMap.put(block, newLiveValueSet());
         }
+        CompilationAlarm compilationAlarm = CompilationAlarm.current();
         while (!worklist.isEmpty()) {
+            if (compilationAlarm.hasExpired()) {
+                int period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(lir.getOptions());
+                throw new PermanentBailoutException("Compilation exceeded %d seconds during CFG traversal", period);
+            }
             BasicBlock<?> block = worklist.poll();
             processBlock(block, worklist);
         }
