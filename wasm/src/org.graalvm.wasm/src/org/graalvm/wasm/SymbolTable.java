@@ -679,7 +679,7 @@ public abstract class SymbolTable {
 
     public void importSymbol(ImportDescriptor descriptor) {
         checkNotParsed();
-        assert importedSymbols.size() == descriptor.importedSymbolIndex;
+        assert importedSymbols.size() == descriptor.importedSymbolIndex();
         importedSymbols.add(descriptor);
     }
 
@@ -720,7 +720,7 @@ public abstract class SymbolTable {
         final ImportDescriptor descriptor = new ImportDescriptor(moduleName, functionName, ImportIdentifier.FUNCTION, numFunctions, numImportedSymbols());
         importSymbol(descriptor);
         WasmFunction function = allocateFunction(typeIndex, descriptor);
-        assert function.index() == descriptor.index;
+        assert function.index() == descriptor.targetIndex();
         importedFunctions.add(function);
         numImportedFunctions++;
         module().addLinkAction((context, instance, imports) -> {
@@ -738,7 +738,7 @@ public abstract class SymbolTable {
     }
 
     public WasmFunction importedFunction(ImportDescriptor descriptor) {
-        return functions[descriptor.index];
+        return functions[descriptor.targetIndex()];
     }
 
     private void ensureGlobalsCapacity(int index) {

@@ -96,7 +96,7 @@ public final class WasmFunction {
     @TruffleBoundary
     public String name() {
         if (importDescriptor != null) {
-            return importDescriptor.memberName;
+            return importDescriptor.memberName();
         }
         String exportedName = symbolTable.exportedFunctionName(index);
         if (exportedName != null) {
@@ -121,11 +121,11 @@ public final class WasmFunction {
     }
 
     public String importedModuleName() {
-        return isImported() ? importDescriptor.moduleName : null;
+        return isImported() ? importDescriptor.moduleName() : null;
     }
 
     public String importedFunctionName() {
-        return isImported() ? importDescriptor.memberName : null;
+        return isImported() ? importDescriptor.memberName() : null;
     }
 
     public int typeIndex() {
