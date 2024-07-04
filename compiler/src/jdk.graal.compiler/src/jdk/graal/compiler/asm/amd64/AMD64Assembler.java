@@ -98,7 +98,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -5508,37 +5507,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         if (isTargetMP()) {
             // We only have to handle StoreLoad
             if ((barriers & STORE_LOAD) != 0) {
-                // All usable chips support "locked" instructions which suffice
-                // as barriers, and are much faster than the alternative of
-                // using cpuid instruction. We use here a locked add [esp-C],0.
-                // This is conveniently otherwise a no-op except for blowing
-                // flags, and introducing a false dependency on target memory
-                // location. We can't do anything with flags, but we can avoid
-                // memory dependencies in the current method by locked-adding
-                // somewhere else on the stack. Doing [esp+C] will collide with
-                // something on stack in current method, hence we go for [esp-C].
-                // It is convenient since it is almost always in data cache, for
-                // any small C. We need to step back from SP to avoid data
-                // dependencies with other things on below SP (callee-saves, for
-                // example). Without a clear way to figure out the minimal safe
-                // distance from SP, it makes sense to step back the complete
-                // cache line, as this will also avoid possible second-order effects
-                // with locked ops against the cache line. Our choice of offset
-                // is bounded by x86 operand encoding, which should stay within
-                // [-128; +127] to have the 8-byte displacement encoding.
-                //
-                // Any change to this code may need to revisit other places in
-                // the code where this idiom is used, in particular the
-                // orderAccess code.
-                int offset = -Unsafe.getUnsafe().dataCacheLineFlushSize();
-                if (offset < -128) {
-                    offset = -128;
-                }
-
                 lock();
-                addl(new AMD64Address(AMD64.rsp, offset), 0); // Assert the lock# signal here
+                // Assert the lock# signal here
+                addl(new AMD64Address(AMD64.rsp, membarOffset()), 0);
             }
         }
+    }
+
+    protected int membarOffset() {
+        return 0;
     }
 
     @Override
