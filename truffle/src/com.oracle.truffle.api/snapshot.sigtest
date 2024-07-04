@@ -833,9 +833,10 @@ meth public com.oracle.truffle.api.TruffleThreadBuilder beforeEnter(java.lang.Ru
 meth public com.oracle.truffle.api.TruffleThreadBuilder context(com.oracle.truffle.api.TruffleContext)
 meth public com.oracle.truffle.api.TruffleThreadBuilder stackSize(long)
 meth public com.oracle.truffle.api.TruffleThreadBuilder threadGroup(java.lang.ThreadGroup)
+meth public com.oracle.truffle.api.TruffleThreadBuilder virtual(boolean)
 meth public java.lang.Thread build()
 supr java.lang.Object
-hfds afterLeave,beforeEnter,polyglotLanguageContext,runnable,stackSize,threadGroup,truffleContext
+hfds afterLeave,beforeEnter,polyglotLanguageContext,runnable,stackSize,threadGroup,truffleContext,virtual
 
 CLSS public abstract interface com.oracle.truffle.api.frame.Frame
 meth public abstract com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()

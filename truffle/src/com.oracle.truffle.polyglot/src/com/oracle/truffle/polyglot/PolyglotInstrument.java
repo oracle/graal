@@ -54,6 +54,7 @@ import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
+/** The data corresponding to a given {@link TruffleInstrument}. */
 class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
     Object api;

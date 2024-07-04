@@ -145,6 +145,14 @@ public final class ModulesSupport {
         }
     }
 
+    public static void addOpens(Module base, String p, Module target) {
+        if (target.isNamed()) {
+            ACCESSOR.addOpens(base, p, target);
+        } else {
+            ACCESSOR.addOpensToAllUnnamed(base, p);
+        }
+    }
+
     private static boolean loadModulesSupportLibrary() {
         String attachLibPath = System.getProperty("truffle.attach.library");
         try {

@@ -68,10 +68,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -85,6 +87,7 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.SandboxPolicy;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractPolyglotHostService;
@@ -108,6 +111,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
@@ -131,6 +135,7 @@ import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
 import com.oracle.truffle.polyglot.PolyglotLoggers.LoggerCache;
 import com.oracle.truffle.polyglot.SystemThread.InstrumentSystemThread;
 
+/** The implementation of {@link org.graalvm.polyglot.Engine}, stored in the receiver field. */
 final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
     /**
@@ -215,7 +220,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     final SpecializationStatistics specializationStatistics;
     Function<String, TruffleLogger> engineLoggerSupplier;   // effectively final
-    private volatile TruffleLogger engineLogger;
+    @CompilationFinal private TruffleLogger engineLogger;   // effectively final
 
     final WeakAssumedValue<PolyglotContextImpl> singleContextValue = new WeakAssumedValue<>("single context");
 
@@ -247,7 +252,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     PolyglotEngineImpl(PolyglotImpl impl, SandboxPolicy sandboxPolicy, String[] permittedLanguages,
                     DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
                     Map<String, Level> logLevels,
-                    EngineLoggerProvider engineLogger, Map<String, String> options,
+                    EngineLoggerProvider engineLoggerSupplier, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean boundEngine, boolean preInitialization,
                     MessageTransport messageInterceptor, LogHandler logHandler,
                     TruffleLanguage<Object> hostImpl, boolean hostLanguageOnly, AbstractPolyglotHostService polyglotHostService) {
@@ -292,7 +297,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                                 idToInstrument.get(id).cache.getClassName());
             }
         }
-        this.engineLoggerSupplier = engineLogger;
+        this.engineLoggerSupplier = engineLoggerSupplier;
+        this.engineLogger = initializeEngineLogger(engineLoggerSupplier, logLevels);
         this.engineOptionValues = engineOptions;
 
         Map<String, Object> publicLanguages = new LinkedHashMap<>();
@@ -338,7 +344,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             this.specializationStatistics = null;
         }
 
-        this.runtimeData = RUNTIME.createRuntimeData(this, engineOptions, engineLogger, sandboxPolicy);
+        this.runtimeData = RUNTIME.createRuntimeData(this, engineOptions, engineLoggerSupplier, sandboxPolicy);
         notifyCreated();
 
         if (!preInitialization) {
@@ -510,6 +516,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.probeAssertionsEnabled = prototype.probeAssertionsEnabled;
         this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(prototype.getHostLanguageSPI()), HOST_LANGUAGE_INDEX, null);
         this.engineLoggerSupplier = prototype.engineLoggerSupplier;
+        this.engineLogger = prototype.engineLogger;
 
         this.polyglotHostService = prototype.polyglotHostService;
         this.internalResourceRoots = prototype.internalResourceRoots;
@@ -608,20 +615,15 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     TruffleLogger getEngineLogger() {
-        TruffleLogger result = this.engineLogger;
-        if (result == null) {
-            synchronized (this.lock) {
-                result = this.engineLogger;
-                if (result == null) {
-                    result = this.engineLoggerSupplier.apply(OPTION_GROUP_ENGINE);
-                    Object logger = EngineAccessor.LANGUAGE.getLoggerCache(result);
-                    LoggerCache loggerCache = (LoggerCache) EngineAccessor.LANGUAGE.getLoggersSPI(logger);
-                    loggerCache.setOwner(this);
-                    EngineAccessor.LANGUAGE.configureLoggers(this, logLevels, logger);
-                    this.engineLogger = result;
-                }
-            }
-        }
+        return engineLogger;
+    }
+
+    private TruffleLogger initializeEngineLogger(Function<String, TruffleLogger> supplier, Map<String, Level> levels) {
+        TruffleLogger result = supplier.apply(OPTION_GROUP_ENGINE);
+        Object logger = EngineAccessor.LANGUAGE.getLoggerCache(result);
+        LoggerCache loggerCache = (LoggerCache) EngineAccessor.LANGUAGE.getLoggersSPI(logger);
+        loggerCache.setOwner(this);
+        EngineAccessor.LANGUAGE.configureLoggers(this, levels, logger);
         return result;
     }
 
@@ -689,7 +691,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
          */
         this.storeEngine = this.storeEngine || RUNTIME.isStoreEnabled(engineOptions);
         this.engineLoggerSupplier = logSupplier;
-        this.engineLogger = null;
+        this.engineLogger = initializeEngineLogger(logSupplier, newLogConfig.logLevels);
         /*
          * The engineLoggers must be created before calling PolyglotContextImpl#patch, otherwise the
          * engineLoggers is not in an array returned by the PolyglotContextImpl#getAllLoggers and
@@ -1534,6 +1536,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     }
                 } catch (ExecutionException | InterruptedException e) {
                     throw CompilerDirectives.shouldNotReachHere(e);
+                } catch (CancellationException e) {
+                    // Expected
                 }
                 if (timedOut) {
                     return false;
@@ -2105,7 +2109,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
          * thread. The slow path acquires context lock to ensure ordering for context operations
          * like close.
          */
-        prev = context.enterThreadChanged(enterReverted, pollSafepoint, false, false, false);
+        prev = context.enterThreadChanged(enterReverted, pollSafepoint, false, null, false);
         assert verifyContext(context);
         return prev;
     }
@@ -2348,6 +2352,40 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
         return languageHomes;
+    }
+
+    private final AtomicBoolean warnedVirtualThreadSupport = new AtomicBoolean(false);
+
+    @SuppressWarnings("try")
+    void validateVirtualThreadCreation() {
+        if (!warnedVirtualThreadSupport.get() && warnedVirtualThreadSupport.compareAndSet(false, true)) {
+            try (AbstractPolyglotImpl.ThreadScope scope = impl.getRootImpl().createThreadScope()) {
+                var options = getEngineOptionValues();
+                boolean warnVirtualThreadSupport = options.get(PolyglotEngineOptions.WarnVirtualThreadSupport);
+
+                if (warnVirtualThreadSupport && !(Truffle.getRuntime() instanceof DefaultTruffleRuntime)) {
+                    if (!TruffleOptions.AOT) {
+                        getEngineLogger().warning("""
+                                        Using polyglot contexts on Java virtual threads on HotSpot is experimental in this release,
+                                        because access to caller frames in write or materialize mode is not yet supported on virtual threads (some tools and languages depend on that).
+                                        To disable this warning use the '--engine.WarnVirtualThreadSupport=false' option or the '-Dpolyglot.engine.WarnVirtualThreadSupport=false' system property.
+                                        """);
+                    } else {
+                        getEngineLogger().warning(
+                                        """
+                                                        Using polyglot contexts on Java virtual threads on Native Image currently uses one platform thread per VirtualThread.
+                                                        This will prevent creating many virtual threads and have different performance characteristics.
+                                                        You can either suppress this warning with the '--engine.WarnVirtualThreadSupport=false' option or the '-Dpolyglot.engine.WarnVirtualThreadSupport=false' system property,
+                                                        or use the default runtime (no JIT compilation of polyglot code) by passing -Dtruffle.UseFallbackRuntime=true when building the native image.
+                                                        Full VirtualThread support for Native Image together with polyglot contexts will be added in a future release.
+                                                        VirtualThread is fully supported with polyglot contexts in JVM mode.
+                                                        """);
+                    }
+                }
+            }
+        }
+
+        impl.getRootImpl().validateVirtualThreadCreation(getEngineOptionValues());
     }
 
 }

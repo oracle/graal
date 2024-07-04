@@ -224,6 +224,10 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
         mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sl/*=ALL-UNNAMED'])
         mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=org.graalvm.sl'])
         mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.shadowed.jcodings/*=ALL-UNNAMED'])
+
+        # Disable VirtualThread warning
+        vmArgs = vmArgs + ['-Dpolyglot.engine.WarnVirtualThreadSupport=false']
+
         return (vmArgs, mainClass, mainClassArgs)
 
 

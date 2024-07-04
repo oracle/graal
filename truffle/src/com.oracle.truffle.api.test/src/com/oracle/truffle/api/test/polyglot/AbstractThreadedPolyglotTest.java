@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,58 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.test.polyglot;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.Node;
+import java.util.List;
 
-final class DefaultThreadLocalHandshake extends ThreadLocalHandshake {
+@RunWith(Parameterized.class)
+public abstract class AbstractThreadedPolyglotTest extends AbstractPolyglotTest {
 
-    static final DefaultThreadLocalHandshake SINGLETON = new DefaultThreadLocalHandshake();
-    private static final ThreadLocal<TruffleSafepointImpl> STATE = new ThreadLocal<>();
-
-    /*
-     * Number of active pending threads. Allows to check the active threads more efficiently.
-     */
-    private static final AtomicInteger PENDING_COUNT = new AtomicInteger();
-
-    private DefaultThreadLocalHandshake() {
+    public enum RunMode {
+        PLATFORM_THREADS,
+        VIRTUAL_THREADS
     }
 
-    @Override
-    public void ensureThreadInitialized() {
-        STATE.set(getThreadState(Thread.currentThread()));
+    @Parameters(name = "{0}")
+    public static List<RunMode> getModes() {
+        return List.of(RunMode.values());
     }
 
-    @Override
-    public void poll(Node enclosingNode) {
-        int count = PENDING_COUNT.get();
-        assert count >= 0 : "inconsistent pending state";
-        if (count > 0) {
-            SINGLETON.processHandshake(enclosingNode);
-        }
-    }
+    @Parameter public RunMode mode;
 
-    @Override
-    public TruffleSafepointImpl getCurrent() {
-        TruffleSafepointImpl state = STATE.get();
-        if (state == null) {
-            throw CompilerDirectives.shouldNotReachHere("Thread local handshake is not initialized for this thread. " +
-                            "Did you call getCurrent() outside while a polyglot context not entered?");
-        }
-        return state;
-    }
+    // static because some tests need it outside the test class such as
+    // PolyglotThreadNotificationsTest
+    protected static boolean vthreads;
 
-    @Override
-    protected void setFastPending(Thread t) {
-        PENDING_COUNT.incrementAndGet();
-    }
-
-    @Override
-    protected void clearFastPending() {
-        PENDING_COUNT.decrementAndGet();
+    @Before
+    public void beforeSetVThreads() {
+        vthreads = mode == RunMode.VIRTUAL_THREADS;
+        Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
     }
 
 }

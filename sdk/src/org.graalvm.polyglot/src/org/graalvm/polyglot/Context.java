@@ -887,8 +887,8 @@ public final class Context implements AutoCloseable {
 
     /**
      * Polls safepoints events and executes them for the current thread. This allows guest languages
-     * to run actions between long running host method calls. Polyglot embeddings that rely on
-     * cancellation should call this method whenev a potentially long running host operation is
+     * to run actions between long-running host method calls. Polyglot embeddings that rely on
+     * cancellation should call this method whenever a potentially long-running host operation is
      * executed. For example, iterating an unbounded array. Guest language code and operations
      * automatically poll safepoints regularly.
      *
