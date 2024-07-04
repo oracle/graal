@@ -1154,15 +1154,11 @@ class NativeImageVM(GraalVm):
         pgo_args += svm_experimental_options(['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled'])
         if self.adopted_jdk_pgo:
             # choose appropriate profiles
-            jdk_version = mx.get_jdk().javaCompliance
-            jdk_profiles = f"JDK{jdk_version}_PROFILES"
-            adopted_profiles_lib = mx.library(jdk_profiles, fatalIfMissing=False)
-            if adopted_profiles_lib:
-                adopted_profiles_dir = adopted_profiles_lib.get_path(True)
-                adopted_profile = os.path.join(adopted_profiles_dir, 'jdk_profile.iprof')
-            else:
-                mx.warn(f'SubstrateVM Enterprise with JDK{jdk_version} does not contain JDK profiles.')
-                adopted_profile = os.path.join(mx.suite('substratevm-enterprise').mxDir, 'empty.iprof')
+            jdk_version = mx_sdk_vm.get_jdk_version_for_profiles()
+            jdk_profiles = f'JDK{jdk_version}_PROFILES'
+            adopted_profiles_lib = mx.library(jdk_profiles, fatalIfMissing=True)
+            adopted_profiles_dir = adopted_profiles_lib.get_path(True)
+            adopted_profile = os.path.join(adopted_profiles_dir, 'jdk_profile.iprof')
             jdk_profiles_args = svm_experimental_options([f'-H:AdoptedPGOEnabled={adopted_profile}'])
         else:
             jdk_profiles_args = []
