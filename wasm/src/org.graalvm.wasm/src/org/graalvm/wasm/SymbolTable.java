@@ -59,7 +59,6 @@ import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryFactory;
 
@@ -738,15 +737,6 @@ public abstract class SymbolTable {
         return numImportedFunctions;
     }
 
-    public WasmFunction importedFunction(String name) {
-        for (WasmFunction f : importedFunctions) {
-            if (f.name().equals(name)) {
-                return f;
-            }
-        }
-        return null;
-    }
-
     public WasmFunction importedFunction(ImportDescriptor descriptor) {
         return functions[descriptor.index];
     }
@@ -804,16 +794,6 @@ public abstract class SymbolTable {
         }
         globalTypes[2 * index] = valueType;
         globalTypes[2 * index + 1] = flags;
-    }
-
-    void declareExternalGlobal(int index, WasmGlobal global) {
-        final byte valueType = global.getValueType().byteValue();
-        final byte mutability = global.isMutable() ? GlobalModifier.MUTABLE : GlobalModifier.CONSTANT;
-        allocateGlobal(index, valueType, mutability, false, false, null, null);
-        module().addLinkAction((context, instance, imports) -> {
-            final int address = context.globals().allocateExternalGlobal(global);
-            instance.setGlobalAddress(index, address);
-        });
     }
 
     void declareGlobal(int index, byte valueType, byte mutability, boolean initialized, byte[] initBytecode, Object initialValue) {
@@ -898,17 +878,6 @@ public abstract class SymbolTable {
         return exportedGlobals;
     }
 
-    @SuppressWarnings("unused")
-    private String nameOfExportedGlobal(int index) {
-        MapCursor<String, Integer> cursor = exportedGlobals.getEntries();
-        while (cursor.advance()) {
-            if (cursor.getValue() == index) {
-                return cursor.getKey();
-            }
-        }
-        return null;
-    }
-
     void exportGlobal(String name, int index) {
         checkNotParsed();
         exportSymbol(name);
@@ -917,12 +886,6 @@ public abstract class SymbolTable {
         module().addLinkAction((context, instance, imports) -> {
             context.linker().resolveGlobalExport(instance.module(), name, index);
         });
-    }
-
-    public void declareExportedExternalGlobal(String name, int index, WasmGlobal global) {
-        checkNotParsed();
-        declareExternalGlobal(index, global);
-        exportGlobal(name, index);
     }
 
     public void declareExportedGlobalWithValue(String name, int index, byte valueType, byte mutability, Object value) {
@@ -954,15 +917,6 @@ public abstract class SymbolTable {
                 wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize, elemType);
             }
             final int address = context.tables().register(wasmTable);
-            instance.setTableAddress(index, address);
-        });
-    }
-
-    public void allocateExternalTable(int index, WasmTable externalTable, boolean referenceTypes) {
-        checkNotParsed();
-        addTable(index, externalTable.declaredMinSize(), externalTable.declaredMaxSize(), externalTable.elemType(), referenceTypes);
-        module().addLinkAction((context, instance, imports) -> {
-            final int address = context.tables().registerExternal(externalTable);
             instance.setTableAddress(index, address);
         });
     }
@@ -1074,17 +1028,6 @@ public abstract class SymbolTable {
             }
             final int memoryAddress = context.memories().register(wasmMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryAddress);
-            instance.setMemory(index, allocatedMemory);
-        });
-    }
-
-    public void allocateExternalMemory(int index, WasmMemory externalMemory, boolean multiMemory) {
-        checkNotParsed();
-        addMemory(index, externalMemory.declaredMinSize(), externalMemory.declaredMaxSize(), externalMemory.maxAllowedSize(),
-                        externalMemory.hasIndexType64(), externalMemory.isShared(), multiMemory, externalMemory.isUnsafe());
-        module().addLinkAction((context, instance, imports) -> {
-            final int memoryIndex = context.memories().registerExternal(externalMemory);
-            final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);
             instance.setMemory(index, allocatedMemory);
         });
     }
