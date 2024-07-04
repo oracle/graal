@@ -141,7 +141,6 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         }
 
         // For SharedSecrets.getJavaLangAccess().currentCarrierThread()
-        Module javaBase = ModuleLayer.boot().findModule("java.base").orElseThrow();
         ModulesSupport.addExports(javaBase, "jdk.internal.access", runtimeModule);
 
         TruffleCompilationSupport compilationSupport;
