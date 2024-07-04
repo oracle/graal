@@ -22,7 +22,8 @@
   local jdt = task_spec(common.deps.jdt),
   local gate = sg.gate,
   local gdb(version) = task_spec(sg.gdb(version)),
-  local use_musl = sg.use_musl,
+  local use_musl_static = sg.use_musl_static,
+  local use_musl_dynamic = sg.use_musl_dynamic,
   local add_quickbuild = sg.add_quickbuild,
 
   local use_oraclejdk_latest = task_spec(run_spec.evaluate_late({
@@ -92,8 +93,11 @@
 
   local feature_map = {
     libc: {
-      musl: no_jobs {
-        "*"+: use_musl,
+      musl_static: no_jobs {
+        "*"+: use_musl_static,
+      },
+      musl_dynamic: no_jobs {
+        "*"+: use_musl_dynamic,
       },
     },
     optlevel: {
@@ -127,7 +131,7 @@
       "optlevel:quickbuild": {
         "windows:amd64:jdk-latest": gate + t("1:30:00"),
       },
-      "libc:musl": {
+      "libc:musl_static": {
         "linux:amd64:jdk-latest": gate + gdb("10.2") + t("55:00"),
       },
       "java-compiler:ecj": {

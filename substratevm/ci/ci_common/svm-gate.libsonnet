@@ -71,9 +71,16 @@
   weekly:: $.target("weekly"),
   ondemand:: $.target("ondemand"),
 
-  use_musl:: require_musl + task_spec({
-      mxgate_config+::["musl"],
+  use_musl_static:: require_musl + task_spec({
+      mxgate_config+::["musl-static"],
       mxgate_extra_args+: ["--extra-image-builder-arguments=--libc=musl --static"],
+  } +
+    # The galahad gates run with oracle JDK, which do not offer a musl build
+    galahad.exclude
+  ),
+  use_musl_dynamic:: require_musl + task_spec({
+      mxgate_config+::["musl-dynamic"],
+      mxgate_extra_args+: ["--extra-image-builder-arguments=--libc=musl -H:+UnlockExperimentalVMOptions -H:-StaticExecutable -H:-UnlockExperimentalVMOptions"],
   } +
     # The galahad gates run with oracle JDK, which do not offer a musl build
     galahad.exclude
