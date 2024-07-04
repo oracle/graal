@@ -181,7 +181,8 @@ public class WebAssembly extends Dictionary {
     }
 
     private static Object requireImportObject(Object importObject) {
-        if (importObject == null) {
+        InteropLibrary interop = InteropLibrary.getUncached(importObject);
+        if (interop.isNull(importObject) || !interop.hasMembers(importObject)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Module requires imports, but import object is undefined.");
         }
         return importObject;
