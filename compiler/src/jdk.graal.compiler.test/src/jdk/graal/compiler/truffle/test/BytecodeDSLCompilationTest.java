@@ -92,6 +92,41 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     }
 
     @Test
+    public void testMultipleReturns() {
+        // return 30 + (arg0 ? 12 : (return 123; 0))
+        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "multipleReturns", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitLoadConstant(30L);
+            b.beginConditional();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(12L);
+            b.beginBlock();
+            b.beginReturn();
+            b.emitLoadConstant(123L);
+            b.endReturn();
+            b.emitLoadConstant(0L);
+            b.endBlock();
+            b.endConditional();
+            b.endAddOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        assertEquals(42L, target.call(true));
+        assertEquals(123L, target.call(false));
+        target.compile(true);
+        assertCompiled(target);
+        assertEquals(42L, target.call(true));
+        assertEquals(123L, target.call(false));
+        assertCompiled(target);
+    }
+
+    @Test
     public void testInstrumentation() {
         BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addTwoConstantsInstrumented", b -> {
             b.beginRoot(LANGUAGE);

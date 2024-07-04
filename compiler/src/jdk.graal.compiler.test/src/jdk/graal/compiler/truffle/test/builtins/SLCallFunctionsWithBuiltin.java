@@ -32,6 +32,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
@@ -58,7 +59,7 @@ public abstract class SLCallFunctionsWithBuiltin extends SLGraalRuntimeBuiltin {
             }
         }
         if (!found) {
-            throw new SLAssertionError("No tests found to execute.", this);
+            throw SLException.create("No tests found to execute.", this);
         }
         return SLNull.SINGLETON;
     }

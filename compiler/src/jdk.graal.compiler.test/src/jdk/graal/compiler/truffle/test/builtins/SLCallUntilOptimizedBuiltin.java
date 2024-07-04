@@ -30,6 +30,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
 
@@ -75,9 +76,9 @@ public abstract class SLCallUntilOptimizedBuiltin extends SLGraalRuntimeBuiltin 
     }
 
     @TruffleBoundary
-    private void checkTarget(OptimizedCallTarget target) throws SLAssertionError {
+    private void checkTarget(OptimizedCallTarget target) {
         if (!target.isValid()) {
-            throw new SLAssertionError("Function " + target + " invalidated.", this);
+            throw SLException.create("Function " + target + " invalidated.", this);
         }
     }
 
