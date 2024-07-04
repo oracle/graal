@@ -1,8 +1,7 @@
 # Native cgroup support for SVM
 
 This contains `libsvm_container`, the native cgroup support for SVM (libsvm_container).
-The C code is ported from the OpenJDK and currently based on:
-https://github.com/openjdk/jdk/tree/9049402a1b9394095b04287eef1f2d46c4da60e9/src/hotspot
+The C code is ported from the OpenJDK and update regularly (see "Updating" below).
 
 ## Building
 
@@ -28,12 +27,25 @@ custom. They only provide the minimal required functionality and are specific to
 
 ## Updating
 
-While the code in here is completely independent and does not need to be in sync with the OpenJDK,
-it should be updated regularly to profit from upstream fixes and improvements. To do so, replace
-the files in [`src/hotspot`](./src/hotspot) with those from the OpenJDK. Then reapply all the
-changes (`#ifdef` guards) using the diff tool of your choice. Finally, adopt the files in
-[`src/svm`](./src/svm) to provide new functionality, if needed. Don't forget to update the import
-revision mention in this file.
+While the code in `libsvm_container` is completely independent and does not need to be in sync with
+the OpenJDK, it should be updated regularly to profit from upstream fixes and improvements. To keep
+track of this, `ContainerLibrary.java` contains `@BasedOnJDKFile` annotations for each imported file,
+which links to the source version in the JDK. With this information, all upstream changes can be
+detected. Note that strictly speaking, the referenced version in the annotation does not necessarily
+mean that the file was imported from that revision. Rather that all changes have been reviewed. If
+there are changes that are irrelevant for `libsvm_container`, we might keep the file as is and still
+bump the version. That said, we plan to do full reimports regularly, at least once every for every
+release.
+
+To help keeping the `@BasedOnJDKFile` annotations up to date, the
+`mx gate --tags check_libcontainer_annotations` command ensures that the actual files and
+annotations are in sync.
+
+To do a full reimport, replace the files in [`src/hotspot`](./src/hotspot) with those from the OpenJDK.
+The `mx reimport-libcontainer-files --jdk-repo path/to/jdk` can help with that. Then reapply all the
+changes (`#ifdef` guards) using the diff tool of your choice. Then, adopt the files in
+[`src/svm`](./src/svm) to provide new functionality, if needed. Finally, update the `@BasedOnJDKFile`
+annotations in `ContainerLibrary.java` to reflect the import revision.
 
 ## Local Testing
 
