@@ -1931,7 +1931,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                         field(context.getType(boolean.class), "catchReachable"),
                                         field(context.getType(int.class), "endBranchFixupBci").withInitializer(UNINIT),
                                         field(context.getType(int.class), "extraTableEntriesStart").withInitializer(UNINIT),
-                                        field(context.getType(int.class), "extraTableEntriesEnd").withInitializer(UNINIT));
+                                        field(context.getType(int.class), "extraTableEntriesEnd").withInitializer(UNINIT),
+                                        field(context.getType(int.class), "finallyHandlerSp").withInitializer(UNINIT).withDoc(
+                                                        """
+                                                                        The index of the finally handler operation on the operation stack.
+                                                                        This value is uninitialized unless a finally handler is being emitted, and allows us to
+                                                                        walk the operation stack from bottom to top.
+                                                                        """));
                         break;
                     case FINALLY_HANDLER:
                         name = "FinallyHandlerData";
@@ -5067,6 +5073,40 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             buildOperationStackWalk(b, "0", r);
         }
 
+        /**
+         * Like {@link #buildOperationStackWalk(CodeTreeBuilder, String, Runnable)}, but walks from
+         * the bottom of the operation stack. Uses the {@code finallyHandlerSp} field on
+         * {@code FinallyTryData} to skip "try" operations when a finally handler is being emitted
+         * in-line.
+         */
+        private void buildOperationStackWalkFromBottom(CodeTreeBuilder b, Runnable r) {
+            b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
+
+            b.startIf();
+            b.string("operationStack[i].operation == ").tree(createOperationConstant(model.finallyTryOperation));
+            b.string(" || operationStack[i].operation == ").tree(createOperationConstant(model.finallyTryCatchOperation));
+            b.end().startBlock();
+
+            assert getDataClassName(model.finallyTryOperation).equals(getDataClassName(model.finallyTryCatchOperation));
+            b.startDeclaration(type(int.class), "finallyHandlerSp");
+            b.startParantheses();
+            emitCastOperationDataUnchecked(b, model.finallyTryOperation, "i");
+            b.end();
+            b.string(".finallyHandlerSp");
+            b.end();
+
+            b.startIf().string("finallyHandlerSp != ", UNINIT).end().startBlock();
+            b.statement("i = finallyHandlerSp - 1");
+            b.statement("continue");
+            b.end(); // if finallyHandlerSp set
+
+            b.end(); // if finally try operation
+
+            r.run();
+
+            b.end(); // for
+        }
+
         private void emitCastOperationData(CodeTreeBuilder b, OperationModel operation, String sp) {
             emitCastOperationData(b, operation, sp, "operationData");
         }
@@ -5118,7 +5158,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             b.lineComment("emit handler for normal completion case");
-            b.statement("doEmitFinallyHandler(operationData.finallyParser, ", finallyHandlerSp, ")");
+            b.statement("doEmitFinallyHandler(operationData, ", finallyHandlerSp, ")");
             b.lineComment("the operation was popped, so manually update reachability. try is reachable if neither it nor the finally handler exited early.");
             b.statement("operationData.tryReachable = operationData.tryReachable && this.reachable");
 
@@ -5142,7 +5182,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (op.kind != OperationKind.FINALLY_TRY_CATCH) {
                 b.lineComment("emit handler for exceptional case");
                 b.statement("currentStackHeight = handlerSp");
-                b.statement("doEmitFinallyHandler(operationData.finallyParser, " + finallyHandlerSp + ")");
+                b.statement("doEmitFinallyHandler(operationData, " + finallyHandlerSp + ")");
                 buildEmitInstruction(b, model.throwInstruction);
             }
         }
@@ -6445,14 +6485,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createDoEmitFinallyHandler() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitFinallyHandler");
-            ex.addParameter(new CodeVariableElement(declaredType(Runnable.class), "finallyParser"));
+            ex.addParameter(new CodeVariableElement(dataClasses.get(model.finallyTryOperation).asType(), "finallyTryData"));
             ex.addParameter(new CodeVariableElement(type(int.class), "finallyOperationSp"));
 
             CodeTreeBuilder b = ex.createBuilder();
 
+            b.startAssert().string("finallyTryData.finallyHandlerSp == ", UNINIT).end();
+            b.startTryBlock();
+            b.statement("finallyTryData.finallyHandlerSp = operationSp");
             buildBegin(b, model.finallyHandlerOperation, "finallyOperationSp");
-            b.statement("finallyParser.run()");
+            b.statement("finallyTryData.finallyParser.run()");
             buildEnd(b, model.finallyHandlerOperation);
+            b.end().startFinallyBlock();
+            b.statement("finallyTryData.finallyHandlerSp = ", UNINIT);
+            b.end();
 
             return ex;
         }
@@ -6696,34 +6742,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.returnDefault();
             b.end();
 
-            b.lineComment("We need to emit resume events from bottom to top, but we can only walk the stack top to bottom.");
-            b.lineComment("We store the tag node ids in an array and then replay them from bottom to top.");
-
-            b.declaration(arrayOf(type(int.class)), "tagNodeIds", "new int[8]");
-            b.declaration(type(int.class), "tagNodeIdsIndex", "0");
-
-            buildOperationStackWalk(b, () -> {
+            buildOperationStackWalkFromBottom(b, () -> {
                 b.startSwitch().string("operationStack[i].operation").end().startBlock();
                 OperationModel op = model.findOperation(OperationKind.TAG);
                 b.startCase().tree(createOperationConstant(op)).end();
                 b.startBlock();
                 emitCastOperationData(b, op, "i");
-
-                b.startIf().string("tagNodeIdsIndex == tagNodeIds.length").end().startBlock();
-                b.startAssign("tagNodeIds");
-                b.startStaticCall(type(Arrays.class), "copyOf").string("tagNodeIds").string("tagNodeIdsIndex * 2").end();
-                b.end();
-                b.end();
-                b.statement("tagNodeIds[tagNodeIdsIndex++] = operationData.nodeId");
+                buildEmitInstruction(b, model.tagResumeInstruction, "operationData.nodeId");
                 b.statement("break");
                 b.end(); // case tag
 
                 b.end(); // switch
             });
-
-            b.startWhile().string("--tagNodeIdsIndex >= 0").end().startBlock();
-            buildEmitInstruction(b, model.tagResumeInstruction, "tagNodeIds[tagNodeIdsIndex]");
-            b.end();
 
             return ex;
         }
@@ -6790,7 +6820,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     emitExtraExceptionTableEntry(b);
                     b.statement("handlerClosed = true");
                     b.end(); // if reachable
-                    b.statement("doEmitFinallyHandler(operationData.finallyParser, i)");
+                    b.statement("doEmitFinallyHandler(operationData, i)");
                     b.end(); // if in try
                     b.statement("break");
                     b.end(); // case finally

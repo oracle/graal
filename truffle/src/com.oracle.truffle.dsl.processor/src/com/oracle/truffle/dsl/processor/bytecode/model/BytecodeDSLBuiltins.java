@@ -152,7 +152,7 @@ public class BytecodeDSLBuiltins {
                         .setOperationBeginArguments(new OperationArgument(parserType, Encoding.FINALLY_PARSER, "finallyParser",
                                         "a runnable that uses the builder to parse the finally operation (must be idempotent)") //
                         ).setDynamicOperands(voidableChild("try"));
-        m.operation(OperationKind.FINALLY_TRY_CATCH, "FinallyTryCatch",
+        m.finallyTryCatchOperation = m.operation(OperationKind.FINALLY_TRY_CATCH, "FinallyTryCatch",
                         """
                                         FinallyTryCatch implements a finally handler with different behaviour for thrown exceptions. It runs the given {@code finallyParser} to parse a {@code finally} operation.
                                         FinallyTryCatch executes {@code try} and then one of the handlers.
