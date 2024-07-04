@@ -20,7 +20,7 @@ There are several ways a resource can be registered for inclusion and be made ac
 
 A resource configuration file contains information about the resources that you need to include in a native executable, encoded with patterns matching actual resources on your file system.
 Such a configuration file has to be named _resource-config.json_ and placed in the _META-INF/native-image/_ directory so that `native-image` will automatically make use of it.
-You can either generate it using the [Tracing Agent](AutomaticMetadataCollection/#tracing-agent), and then manually refine it, or create it from scratch.
+You can either generate it using the [Tracing Agent](AutomaticMetadataCollection.md#tracing-agent), and then manually refine it, or create it from scratch.
 You can choose one of the formats to specify the required resources (or combine them if necessary):
 1. Globs (**recommended**)
 2. Regular expressions (Regex) (**discouraged**)
@@ -56,7 +56,7 @@ Alternatively, the configuration file's path can be passed to `native-image` usi
 ### Globs
 
 You can write a glob pattern to specify any required resources in the `globs` section of the configuration file.
-Also, if you use the [Tracing Agent](AutomaticMetadataCollection/#tracing-agent) to generate the required configuration, it prints all entries in this format.
+Also, if you use the [Tracing Agent](AutomaticMetadataCollection.md#tracing-agent) to generate the required configuration, it prints all entries in this format.
 
 Globs are the recommended way to provide resources for `native-image` because they:
 * Have custom handling in `native-image` that can speed up a resource registration process
