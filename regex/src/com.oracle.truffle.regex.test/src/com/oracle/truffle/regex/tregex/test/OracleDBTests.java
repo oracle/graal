@@ -1373,6 +1373,20 @@ public class OracleDBTests extends RegexTestBase {
         test("($)*\\s*", "m", "\n ", 0, true, 0, 0, 0, 0);
         test("$*\\s*", "m", "\n ", 0, true, 0, 0);
         test("(^|(|a))b\\z", "", "b", 0, true, 0, 1, 0, 0, -1, -1);
+        test("(a*()*)*", "", "aaa", 0, true, 0, 3, 3, 3, 3, 3);
+        test("(a*()+)+", "", "aaa", 0, true, 0, 3, 3, 3, 3, 3);
+        test("(a*()+?)+", "", "aaa", 0, true, 0, 3, 3, 3, 3, 3);
+        test("a((b|)+)+c", "", "abbbc", 0, true, 0, 5, 4, 4, 4, 4);
+        test("((a|)+)+(b)+c", "", "aaabc", 0, true, 0, 5, 3, 3, 3, 3, 3, 4);
+        test("(a*()+?b*?)+c", "", "aabaac", 0, true, 0, 6, 5, 5, 5, 5);
+        test("((\\w|)()+)+", "i", "empty", 0, true, 0, 5, 5, 5, 5, 5, 5, 5);
+        test("(a?()?){3,4}", "", "aa", 0, true, 0, 2, 2, 2, 2, 2);
+        test("(a?()+){3,4}", "", "aa", 0, true, 0, 2, 2, 2, 2, 2);
+        test("(a*()+?)+", "", "aaa", 0, true, 0, 3, 3, 3, 3, 3);
+        test("a(b\\1|)*?()+c", "", "abc", 0, false);
+        test("a(b\\1|)*?()+c", "", "abd", 0, false);
+        test("()(a*\\1+)*", "", "aaa", 0, true, 0, 3, 0, 0, 3, 3);
+        test("(a(\\2b|)?)+\\1c", "", "aaabaaac", 0, true, 0, 8, 5, 6, 6, 6);
         test("(a{1100,1100})\\1", "i", "a".repeat(2400), 0, true, 0, 2200, 0, 1100);
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */

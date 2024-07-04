@@ -1092,7 +1092,6 @@ public abstract class NFATraversalRegexASTVisitor {
                                 pushTransitionGuard(TransitionGuard.createExitZeroWidth(quantifier));
                             }
                         }
-                        pushRecursiveBackrefUpdates(group);
                     } else if (pathIsGroupEscape(element)) {
                         if (group.hasQuantifier()) {
                             Quantifier quantifier = group.getQuantifier();
@@ -1105,6 +1104,7 @@ public abstract class NFATraversalRegexASTVisitor {
                             }
                         }
                     }
+                    pushRecursiveBackrefUpdates(group);
                     if (needsUpdateCGStepByStep(group) && !captureGroupUpdates.get(getBoundaryIndexEnd(group))) {
                         pushTransitionGuard(TransitionGuard.createUpdateCG(getBoundaryIndexEnd(group)));
                     }
