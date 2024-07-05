@@ -191,27 +191,23 @@ public class WebAssembly extends Dictionary {
     }
 
     private static Object getImportObjectMemberInParentContext(Object importObject, ImportDescriptor descriptor, WasmContext context) {
-        final Object member;
         TruffleContext parentContext = context.environment().getContext().getParent();
         Object prev = parentContext.enter(null);
         try {
-            final Object importedModuleObject = getMember(importObject, descriptor.moduleName());
-            member = getMember(importedModuleObject, descriptor.memberName());
-        } finally {
-            parentContext.leave(null, prev);
-        }
-        return member;
-    }
-
-    private static Object getMember(Object object, String name) {
-        try {
-            final InteropLibrary lib = InteropLibrary.getUncached();
-            if (!lib.isMemberReadable(object, name)) {
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Object does not contain member " + name + ".");
+            final InteropLibrary importObjectInterop = InteropLibrary.getUncached(importObject);
+            if (!importObjectInterop.isMemberReadable(importObject, descriptor.moduleName())) {
+                throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Import object does not contain module \"%s\".", descriptor.moduleName());
             }
-            return lib.readMember(object, name);
+            final Object importedModuleObject = importObjectInterop.readMember(importObject, descriptor.moduleName());
+            final InteropLibrary moduleObjectInterop = InteropLibrary.getUncached(importedModuleObject);
+            if (!moduleObjectInterop.isMemberReadable(importedModuleObject, descriptor.memberName())) {
+                throw WasmJsApiException.format(WasmJsApiException.Kind.LinkError, "Import module object \"%s\" does not contain \"%s\".", descriptor.moduleName(), descriptor.memberName());
+            }
+            return moduleObjectInterop.readMember(importedModuleObject, descriptor.memberName());
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unexpected state.");
+        } finally {
+            parentContext.leave(null, prev);
         }
     }
 
