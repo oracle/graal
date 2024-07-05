@@ -165,7 +165,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
                 return null;
             }
         };
-        // the node needs to be adopted to be used as EncpasulatingNodeReference
+        // the node needs to be adopted to be used as EncapsulatingNodeReference
         root.insert(expectedNode);
 
         UncachedTestNode uncachedNode = new UncachedTestNode();
