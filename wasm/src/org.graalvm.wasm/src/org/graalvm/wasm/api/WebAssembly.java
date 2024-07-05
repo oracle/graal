@@ -48,6 +48,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.polyglot.io.ByteSequence;
@@ -144,7 +145,7 @@ public class WebAssembly extends Dictionary {
             final WasmContext instanceContext = WasmContext.get(null);
             instanceContext.inheritCallbacksFromParentContext(currentContext);
             WasmInstance instance = instantiateModule(module, instanceContext);
-            List<Object> imports = resolveModuleImports(module, instanceContext, importObject);
+            var imports = resolveModuleImports(module, instanceContext, importObject);
             instanceContext.linker().tryLink(instance, imports);
             return instance;
         } finally {
@@ -156,7 +157,7 @@ public class WebAssembly extends Dictionary {
         return context.readInstance(module);
     }
 
-    private static List<Object> resolveModuleImports(WasmModule module, WasmContext context, Object importObject) {
+    private static Function<ImportDescriptor, Object> resolveModuleImports(WasmModule module, WasmContext context, Object importObject) {
         CompilerAsserts.neverPartOfCompilation();
         List<Object> resolvedImports = new ArrayList<>(module.numImportedSymbols());
 
@@ -180,7 +181,7 @@ public class WebAssembly extends Dictionary {
         }
 
         assert resolvedImports.size() == module.numImportedSymbols();
-        return resolvedImports;
+        return importDesc -> resolvedImports.get(importDesc.importedSymbolIndex());
     }
 
     private static Object requireImportObject(Object importObject) {
