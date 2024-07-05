@@ -50,6 +50,8 @@ public final class ClassForNameSupport {
 
     /** The map used to collect registered classes. */
     private final EconomicMap<String, ConditionalRuntimeValue<Object>> knownClasses = ImageHeapMap.create();
+    /** The map used to collect unsafe allocated classes. */
+    private final EconomicMap<Class<?>, RuntimeConditionSet> unsafeInstantiatedClasses = ImageHeapMap.create();
 
     private static final Object NEGATIVE_QUERY = new Object();
 
@@ -138,6 +140,16 @@ public final class ClassForNameSupport {
         updateCondition(condition, className, NEGATIVE_QUERY);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerUnsafeAllocated(ConfigurationCondition condition, Class<?> clazz) {
+        if (!clazz.isArray()) {
+            var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeConditionSet.createHosted(condition));
+            if (conditionSet != null) {
+                conditionSet.addCondition(condition);
+            }
+        }
+    }
+
     private void updateCondition(ConfigurationCondition condition, String className, Object value) {
         synchronized (knownClasses) {
             var runtimeConditions = knownClasses.putIfAbsent(className, new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(condition), value));
@@ -212,5 +224,14 @@ public final class ClassForNameSupport {
         } else {
             return conditionalClass.getConditions();
         }
+    }
+
+    /**
+     * Checks whether {@code hub} can be instantiated with {@code Unsafe.allocateInstance}. Note
+     * that arrays can't be instantiated and this function will always return false for array types.
+     */
+    public boolean canUnsafeInstantiateAsInstance(DynamicHub hub) {
+        var conditionSet = unsafeInstantiatedClasses.get(DynamicHub.toClass(hub));
+        return conditionSet != null && conditionSet.satisfied();
     }
 }
