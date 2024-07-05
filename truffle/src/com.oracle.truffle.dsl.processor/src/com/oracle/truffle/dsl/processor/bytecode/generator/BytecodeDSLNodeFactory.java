@@ -114,7 +114,6 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
-import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument.Encoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
@@ -1912,7 +1911,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                         field(context.getType(int.class), "handlerId").asFinal(),
                                         field(context.getType(int.class), "stackHeight").asFinal(),
                                         field(context.getType(int.class), "tryStartBci"),
-                                        field(bytecodeLocalImpl.asType(), "exceptionLocal").asFinal(),
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(boolean.class), "tryReachable"),
                                         field(context.getType(boolean.class), "catchReachable"),
@@ -1927,7 +1925,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                         field(context.getType(int.class), "stackHeight").asFinal(),
                                         field(context.getDeclaredType(Runnable.class), "finallyParser").asFinal(),
                                         field(context.getType(int.class), "tryStartBci"),
-                                        field(bytecodeLocalImpl.asType(), "exceptionLocal").asFinal(),
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(boolean.class), "tryReachable"),
                                         field(context.getType(boolean.class), "catchReachable"),
@@ -4247,20 +4244,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case IF_THEN_ELSE -> createOperationData(className, "this.reachable", "this.reachable");
                 case CONDITIONAL -> createOperationData(className, "this.reachable", "this.reachable");
                 case WHILE -> createOperationData(className, "bci", "this.reachable");
-                case TRY_CATCH -> createOperationData(className, "++numHandlers", "currentStackHeight", "bci", "(BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0),
-                                "this.reachable", "this.reachable", "this.reachable");
-                case FINALLY_TRY -> createOperationData(className, "++numHandlers", "currentStackHeight", operation.getOperationBeginArgumentName(0), "bci", "null", "this.reachable", "this.reachable",
+                case TRY_CATCH -> createOperationData(className, "++numHandlers", "currentStackHeight", "bci", "this.reachable", "this.reachable", "this.reachable");
+                case FINALLY_TRY -> createOperationData(className, "++numHandlers", "currentStackHeight", operation.getOperationBeginArgumentName(0), "bci", "this.reachable", "this.reachable",
                                 "false");
-                case FINALLY_TRY_CATCH -> {
-                    assert operation.operationBeginArguments[0].kind() == Encoding.LOCAL;
-                    assert operation.operationBeginArguments[1].kind() == Encoding.FINALLY_PARSER;
-                    String exceptionLocal = CodeTreeBuilder.createBuilder() //
-                                    .cast(bytecodeLocalImpl.asType()).string(operation.getOperationBeginArgumentName(0)) //
-                                    .toString();
-                    yield createOperationData(className, "++numHandlers", "currentStackHeight", operation.getOperationBeginArgumentName(1), "bci", exceptionLocal, "this.reachable", "this.reachable",
-                                    "this.reachable");
-                }
-
+                case FINALLY_TRY_CATCH -> createOperationData(className, "++numHandlers", "currentStackHeight", operation.getOperationBeginArgumentName(0), "bci", "this.reachable", "this.reachable",
+                                "this.reachable");
                 case FINALLY_HANDLER -> createOperationData(className, "finallyOperationSp");
                 case CUSTOM, CUSTOM_INSTRUMENTATION -> {
                     if (operation.isTransparent) {
@@ -5799,18 +5787,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.lineComment("The exception dispatch logic pushes the exception onto the stack.");
                 b.statement("currentStackHeight = currentStackHeight + 1");
                 b.statement("maxStackHeight = Math.max(maxStackHeight, currentStackHeight)");
-
-                // TODO remove the local parameter and migrate all tests to use LoadException, then
-                // we can remove this code.
-                buildEmitInstruction(b, model.dupInstruction);
-                // Store exception into local.
-                String[] storeLocalArgs;
-                if (model.usesBoxingElimination()) {
-                    storeLocalArgs = createStoreLocalArgsWithBE("operationData.exceptionLocal", UNINIT);
-                } else {
-                    storeLocalArgs = createStoreLocalArgs("operationData.exceptionLocal.frameIndex");
-                }
-                buildEmitInstruction(b, model.storeLocalInstruction, storeLocalArgs);
 
                 b.end(); // if
 

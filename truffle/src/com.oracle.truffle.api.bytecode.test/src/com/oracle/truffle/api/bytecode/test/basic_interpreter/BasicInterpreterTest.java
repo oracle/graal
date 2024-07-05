@@ -389,8 +389,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         RootCallTarget root = parse("tryCatch", b -> {
             b.beginRoot(LANGUAGE);
 
-            BytecodeLocal local = b.createLocal();
-            b.beginTryCatch(local);
+            b.beginTryCatch();
 
             b.beginIfThen();
             b.beginLessThanOperation();
@@ -435,7 +434,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         RootCallTarget root = parse("tryCatch", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginTryCatch(b.createLocal());
+            b.beginTryCatch();
 
             b.beginThrowOperation();
             b.beginAddOperation();
@@ -483,12 +482,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         RootCallTarget root = parse("tryCatch", b -> {
             b.beginRoot(LANGUAGE);
 
-            BytecodeLocal ex1 = b.createLocal();
-            b.beginTryCatch(ex1);
+            b.beginTryCatch();
 
             b.beginBlock(); // begin outer try
-            BytecodeLocal ex2 = b.createLocal();
-            b.beginTryCatch(ex2);
+            b.beginTryCatch();
 
             b.beginIfThen(); // begin inner try
             b.beginLessThanOperation();
@@ -556,14 +553,13 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         RootCallTarget root = parse("tryCatch", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginTryCatch(b.createLocal());
+            b.beginTryCatch();
 
             b.beginThrowOperation(); // begin outer try
             b.emitLoadArgument(0);
             b.endThrowOperation(); // end outer try
 
-            BytecodeLocal ex2 = b.createLocal();
-            b.beginTryCatch(ex2); // begin outer catch
+            b.beginTryCatch(); // begin outer catch
 
             b.beginBlock(); // begin inner try
             b.beginIfThen();
@@ -614,7 +610,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         parse("badLoadExceptionUsage2", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginTryCatch(b.createLocal());
+            b.beginTryCatch();
             b.beginReturn();
             b.emitLoadException();
             b.endReturn();
@@ -631,7 +627,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         parse("badLoadExceptionUsage3", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTryCatch(b.createLocal(), () -> b.emitVoidOperation());
+            b.beginFinallyTryCatch(() -> b.emitVoidOperation());
             b.beginReturn();
             b.emitLoadException();
             b.endReturn();
@@ -648,7 +644,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         parse("badLoadExceptionUsage4", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTryCatch(b.createLocal(), () -> b.emitLoadException());
+            b.beginFinallyTryCatch(() -> b.emitLoadException());
             b.emitVoidOperation();
             b.emitVoidOperation();
             b.endFinallyTryCatch();
@@ -1461,13 +1457,11 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             // @formatter:off
             b.beginRoot(LANGUAGE);
             b.beginBlock();
-            BytecodeLocal exceptionLocal = b.createLocal();
 
-                b.beginTryCatch(exceptionLocal); // h1
+                b.beginTryCatch(); // h1
                     b.beginBlock();
                         b.emitVoidOperation();
-                        // shares the local, and it should be entirely within the range of the outer handler
-                        b.beginTryCatch(exceptionLocal); // h2
+                        b.beginTryCatch(); // h2
                             b.emitVoidOperation();
                             b.emitVoidOperation();
                         b.endTryCatch();
@@ -1476,7 +1470,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                     b.emitVoidOperation();
                 b.endTryCatch();
 
-                b.beginTryCatch(b.createLocal()); // h3
+                b.beginTryCatch(); // h3
                     b.emitVoidOperation();
                     b.emitVoidOperation();
                 b.endTryCatch();
@@ -1510,8 +1504,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertTrue(h1.getEndIndex() < h3.getStartIndex());
 
         assertGuards(h2, bytecode, "c.VoidOperation");
-        assertGuards(h1, bytecode,
-                        "c.VoidOperation", "c.VoidOperation", "branch", "dup", "store.local", "c.VoidOperation", "pop");
+        assertGuards(h1, bytecode, "c.VoidOperation", "c.VoidOperation", "branch", "c.VoidOperation", "pop");
         assertGuards(h3, bytecode, "c.VoidOperation");
     }
 

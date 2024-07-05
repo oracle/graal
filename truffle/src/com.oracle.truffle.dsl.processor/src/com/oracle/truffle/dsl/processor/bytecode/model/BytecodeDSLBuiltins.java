@@ -130,12 +130,13 @@ public class BytecodeDSLBuiltins {
                         .setDynamicOperands(child("condition"), voidableChild("body"));
         m.tryCatchOperation = m.operation(OperationKind.TRY_CATCH, "TryCatch",
                         """
-                                        TryCatch implements an exception handler. It executes {@code try}, and if a Truffle exception is thrown, it stores the exception in {@code exceptionLocal} and executes {@code catch}.
+                                        TryCatch implements an exception handler. It executes {@code try}, and if a Truffle exception is thrown, it executes {@code catch}.
+                                        The exception can be accessed within the {@code catch} operation using LoadException.
                                         Unlike a Java try-catch, this operation does not filter the exception based on type.
                                         This is a void operation; both {@code try} and {@code catch} can also be void.
                                         """) //
                         .setVoid(true) //
-                        .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind the caught exception to")) //
+
                         .setDynamicOperands(voidableChild("try"), voidableChild("catch"));
 
         TypeMirror parserType = context.getDeclaredType(Runnable.class);
@@ -157,15 +158,13 @@ public class BytecodeDSLBuiltins {
                                         FinallyTryCatch implements a finally handler with different behaviour for thrown exceptions. It runs the given {@code finallyParser} to parse a {@code finally} operation.
                                         FinallyTryCatch executes {@code try} and then one of the handlers.
                                         If {@code try} finishes normally, {@code finally} executes and control continues after the FinallyTryCatch operation.
-                                        If {@code try} finishes exceptionally, the Truffle exception is stored in {@code exceptionLocal} and {@code catch} executes. The exception is rethrown after {@code catch}.
+                                        If {@code try} finishes exceptionally, {@code catch} executes. The exception can be accessed using LoadException, and it is rethrown afterwards.
                                         If {@code try} finishes with a control flow operation, {@code finally} executes and then the control flow operation continues (i.e., a Branch will branch, a Return will return).
                                         This is a void operation; any of {@code finally}, {@code try}, or {@code catch} can be void.
                                         """) //
                         .setVoid(true) //
-                        .setOperationBeginArguments(
-                                        new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "exceptionLocal", "the local to bind a thrown exception to"), //
-                                        new OperationArgument(parserType, Encoding.FINALLY_PARSER, "finallyParser",
-                                                        "a runnable that uses the builder to parse the finally operation (must be idempotent)") //
+                        .setOperationBeginArguments(new OperationArgument(parserType, Encoding.FINALLY_PARSER, "finallyParser",
+                                        "a runnable that uses the builder to parse the finally operation (must be idempotent)") //
                         ).setDynamicOperands(voidableChild("try"), voidableChild("catch"));
         m.finallyHandlerOperation = m.operation(OperationKind.FINALLY_HANDLER, "FinallyHandler",
                         """
@@ -208,7 +207,7 @@ public class BytecodeDSLBuiltins {
                                         .addImmediate(ImmediateKind.INTEGER, "index"));
         m.operation(OperationKind.LOAD_EXCEPTION, "LoadException", """
                         LoadException reads the current exception from the frame.
-                        This operation is only permitted inside the catch operation of {@code TryCatch} and {@code FinallyTryCatch} operations.
+                        This operation is only permitted inside the {@code catch} operation of TryCatch and FinallyTryCatch operations.
                         """) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_EXCEPTION, "load.exception", m.signature(Object.class))//
                                         .addImmediate(ImmediateKind.STACK_POINTER, "exceptionSp"));

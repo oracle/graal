@@ -62,7 +62,6 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
-import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -274,8 +273,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
         PrologEpilogBytecodeNode root = parseNode(b -> {
             // @formatter:off
             b.beginRoot(null);
-            BytecodeLocal ex = b.createLocal();
-            b.beginTryCatch(ex);
+            b.beginTryCatch();
                 b.beginIfThenElse();
                     b.emitLoadArgument(0);
 

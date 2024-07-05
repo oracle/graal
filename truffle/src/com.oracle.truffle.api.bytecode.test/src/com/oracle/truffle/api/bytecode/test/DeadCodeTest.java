@@ -237,8 +237,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
-            var local = b.createLocal();
-            b.beginFinallyTryCatch(local, () -> {
+            b.beginFinallyTryCatch(() -> {
                 b.beginBlock(); // finally
                 b.beginReturn();
                 b.emitLoadConstant(42);
@@ -268,8 +267,6 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "pop",
                         "load.constant",
                         "return",
-                        "dup",
-                        "store.local",
                         "load.constant",
                         "return");
 
@@ -298,8 +295,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.emitLoadConstant(42);
             b.endReturn();
 
-            var local = b.createLocal();
-            b.beginFinallyTryCatch(local, () -> {
+            b.beginFinallyTryCatch(() -> {
                 b.beginBlock(); // finally
                 b.beginReturn();
                 b.emitLoadConstant(41);
@@ -347,8 +343,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
-            var local = b.createLocal();
-            b.beginFinallyTryCatch(local, () -> {
+            b.beginFinallyTryCatch(() -> {
                 b.beginBlock(); // finally
                 b.beginReturn();
                 b.emitLoadConstant(42);
@@ -375,8 +370,6 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "pop",
                         "load.constant",
                         "return",
-                        "dup",
-                        "store.local",
                         "load.constant",
                         "pop",
                         "pop",
@@ -402,8 +395,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
-            var local = b.createLocal();
-            b.beginFinallyTryCatch(local, () -> b.emitLoadConstant(41));
+            b.beginFinallyTryCatch(() -> b.emitLoadConstant(41));
             b.emitThrow(); // try
 
             b.beginBlock(); // catch
@@ -428,8 +420,6 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "load.constant",
                         "pop",
                         "branch",
-                        "dup",
-                        "store.local",
                         "load.constant",
                         "return",
                         "load.constant",
@@ -454,8 +444,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
 
-            var local = b.createLocal();
-            b.beginTryCatch(local);
+            b.beginTryCatch();
 
             b.beginBlock();
             b.emitThrow();
@@ -484,8 +473,6 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "pop",
                         "load.constant",
                         "return",
-                        "dup",
-                        "store.local",
                         "load.constant",
                         "return");
 
@@ -899,8 +886,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         b.endReturn();
         b.endFinallyTry();
 
-        var e = b.createLocal();
-        b.beginTryCatch(e);
+        b.beginTryCatch();
         b.emitLoadConstant(41);
         b.emitLoadConstant(41);
         b.endTryCatch();

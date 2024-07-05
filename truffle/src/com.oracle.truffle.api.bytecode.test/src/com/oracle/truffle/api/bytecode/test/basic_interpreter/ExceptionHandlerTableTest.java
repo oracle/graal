@@ -177,7 +177,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // }
         BasicInterpreter root = parseNode("tryCatch", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginTryCatch(b.createLocal());
+            b.beginTryCatch();
             emitReturn(b, 42);
             emitReturn(b, 123);
             b.endTryCatch();
@@ -201,8 +201,8 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         BasicInterpreter root = parseNode("tryCatchNestedInTry", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginTryCatch(b.createLocal());
-                b.beginTryCatch(b.createLocal());
+            b.beginTryCatch();
+                b.beginTryCatch();
                 emitReturn(b, 42);
                 emitReturn(b, 123);
                 b.endTryCatch();
@@ -229,10 +229,10 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         BasicInterpreter root = parseNode("tryCatchNestedInCatch", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginTryCatch(b.createLocal());
+            b.beginTryCatch();
                 emitReturn(b, 42);
 
-                b.beginTryCatch(b.createLocal());
+                b.beginTryCatch();
                 emitReturn(b, 123);
                 emitReturn(b, 100);
                 b.endTryCatch();
@@ -257,7 +257,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
 
             b.beginTag(ExpressionTag.class);
-            b.beginTryCatch(b.createLocal());
+            b.beginTryCatch();
                 b.beginBlock();
                     emitReturnIf(b, 0, 42);
                     emitNop(b, "A");
@@ -293,7 +293,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             BytecodeLabel lbl = b.createLabel();
 
             b.beginTag(ExpressionTag.class);
-            b.beginTryCatch(b.createLocal());
+            b.beginTryCatch();
                 b.beginBlock();
                     emitBranchIf(b, 0, lbl);
                     emitNop(b, "A");
@@ -334,7 +334,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
 
-            b.beginTryCatch(b.createLocal());
+            b.beginTryCatch();
                 b.beginBlock();
                     emitBranchIf(b, 0, lbl);
                     emitNop(b, "A");
