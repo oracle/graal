@@ -49,7 +49,7 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
     protected static final com.oracle.truffle.api.nodes.Node DUMMY_LOCATION = new com.oracle.truffle.api.nodes.Node() {
     };
 
-    private static final Class<?> T_STRING_OPS_CLASS;
+    protected static final Class<?> T_STRING_OPS_CLASS;
     private static final Constructor<?> T_STRING_NATIVE_POINTER_CONSTRUCTOR;
     private static final long byteBufferAddressOffset;
 

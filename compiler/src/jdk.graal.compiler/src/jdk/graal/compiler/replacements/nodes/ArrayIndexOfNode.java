@@ -308,7 +308,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
             final int arrayOffsetConstant = (int) (arrayBaseOffsetBytesConstant / stride.value);
 
             final int arrayLengthConstant = arrayLength.asJavaConstant().asInt();
-            ConstantReflectionUtil.boundsCheckTypePunned(arrayLengthConstant, stride, actualArrayLength, constantArrayKind);
+            ConstantReflectionUtil.boundsCheckTypePunnedGuarantee(arrayLengthConstant, stride, actualArrayLength, constantArrayKind);
 
             final int fromIndexConstant = fromIndex.asJavaConstant().asInt();
             final int[] valuesConstant = new int[searchValues.size()];
