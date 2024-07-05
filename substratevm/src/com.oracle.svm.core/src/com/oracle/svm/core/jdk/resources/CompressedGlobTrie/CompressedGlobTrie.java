@@ -91,8 +91,6 @@ public class CompressedGlobTrie {
     private record SquashedParts(String squashedPart, int numberOfSquashedParts) {
     }
 
-    private static final List<Character> ALWAYS_ESCAPE_CHARACTERS = List.of('?', '[', ']', '{', '}');
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public static class CompressedGlobTrieBuilder {
         /**
@@ -135,7 +133,7 @@ public class CompressedGlobTrie {
          */
         private static String unescapePossibleWildcards(String pattern) {
             String unescapedPattern = pattern;
-            for (char esc : ALWAYS_ESCAPE_CHARACTERS) {
+            for (char esc : GlobUtils.ALWAYS_ESCAPED_GLOB_WILDCARDS) {
                 unescapedPattern = unescapedPattern.replace("\\" + esc, String.valueOf(esc));
             }
 
@@ -404,7 +402,7 @@ public class CompressedGlobTrie {
         boolean escapeMode = false;
         for (int i = 0; i < pattern.length(); i++) {
             char current = pattern.charAt(i);
-            if (ALWAYS_ESCAPE_CHARACTERS.contains(current) && !escapeMode) {
+            if (GlobUtils.ALWAYS_ESCAPED_GLOB_WILDCARDS.contains(current) && !escapeMode) {
                 sb.append("Pattern contains unescaped character ").append(current).append(". ");
             }
 
