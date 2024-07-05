@@ -92,6 +92,7 @@ import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -359,7 +360,8 @@ public class SVMHost extends HostVM {
 
         if (optionAllowUnsafeAllocationOfAllInstantiatedTypes != null) {
             if (optionAllowUnsafeAllocationOfAllInstantiatedTypes) {
-                type.registerAsUnsafeAllocated("All types are registered as Unsafe allocated via option AllowUnsafeAllocationOfAllInstantiatedTypes");
+                type.registerAsUnsafeAllocated("All types are registered as Unsafe allocated via option -H:+AllowUnsafeAllocationOfAllInstantiatedTypes");
+                typeToHub.get(type).getCompanion().setUnsafeAllocate();
             } else {
                 /*
                  * No default registration for unsafe allocation, setting the explicit option has
@@ -368,6 +370,7 @@ public class SVMHost extends HostVM {
             }
         } else if (!missingRegistrationSupport.reportMissingRegistrationErrors(type.getJavaClass())) {
             type.registerAsUnsafeAllocated("Type is not listed as ThrowMissingRegistrationError and therefore registered as Unsafe allocated automatically for compatibility reasons");
+            typeToHub.get(type).getCompanion().setUnsafeAllocate();
         }
     }
 
