@@ -88,6 +88,7 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -1701,6 +1702,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         }
     }
 
+    @Ignore("GR-55104: transiently hangs")
     @Test
     public void testDeadlockDueToTooFewCarrierThreads() {
         Assume.assumeTrue(vthreads);
