@@ -719,8 +719,11 @@ public final class DFAGenerator implements JsonConvertible {
             }
             bfsSwapLists();
         }
-        assert literalFirstDFAState != null;
-        assert literalLastDFAState != null;
+
+        if (literalFirstDFAState == null || literalLastDFAState == null) {
+            // may happen when transitions to the literal have been pruned during DFA generation
+            return;
+        }
 
         if (literalStart > 0) {
             /*
