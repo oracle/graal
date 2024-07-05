@@ -48,6 +48,7 @@ import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.util.json.JsonPrinter;
@@ -214,7 +215,17 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     }
 
     private static String unquotePattern(String pattern) {
-        return pattern.replace("\\Q", "").replace("\\E", "");
+        String unquotedPattern = pattern.replace("\\Q", "").replace("\\E", "");
+
+        /*
+         * if certain glob wildcard was between \\Q and \\E it means we should treat it literally,
+         * so we must escape it
+         */
+        for (char wildcard : GlobUtils.ALWAYS_ESCAPED_GLOB_WILDCARDS) {
+            unquotedPattern = unquotedPattern.replace(String.valueOf(wildcard), "\\" + wildcard);
+        }
+
+        return unquotedPattern;
     }
 
     private static boolean isModuleIdentifierChar(int c) {
