@@ -3298,7 +3298,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.startStatement();
                         b.type(bytecodeNodeGen.asType()).string(" node = ").cast(bytecodeNodeGen.asType()).string("end" + operation.name + "()");
                         b.end();
-                        b.startAssert().string("context.").variable(deserializationElements.depth).string(" == buffer.readInt()").end();
+
+                        b.declaration(type(int.class), "serializedContextDepth", "buffer.readInt()");
+                        b.startIf().string("context.").variable(deserializationElements.depth).string(" != serializedContextDepth").end().startBlock();
+                        b.startThrow().startNew(context.getType(IllegalStateException.class));
+                        b.startGroup();
+                        b.doubleQuote("Invalid context depth. Expected ").string(" + context.").variable(deserializationElements.depth).string(" + ");
+                        b.doubleQuote(" but got ").string(" + serializedContextDepth");
+                        b.end(); // group
+                        b.end(2); // throw
+                        b.end(); // if
+
                         b.startStatement().startCall("context.builtNodes.set").string("buffer.readInt()").string("node").end().end();
                     } else {
                         b.startStatement().startCall("end" + operation.name);
