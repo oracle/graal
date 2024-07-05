@@ -41,10 +41,10 @@
 
 package org.graalvm.wasm;
 
-import java.util.List;
+import java.util.function.Function;
 
 @FunctionalInterface
 public interface LinkAction {
 
-    void accept(WasmContext context, WasmInstance instance, List<Object> imports);
+    void accept(WasmContext context, WasmInstance instance, Function<ImportDescriptor, Object> imports);
 }

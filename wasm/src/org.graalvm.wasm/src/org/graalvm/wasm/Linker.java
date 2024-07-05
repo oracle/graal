@@ -71,6 +71,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.graalvm.wasm.Linker.ResolutionDag.CallsiteSym;
 import org.graalvm.wasm.Linker.ResolutionDag.CodeEntrySym;
@@ -135,9 +136,9 @@ public class Linker {
     }
 
     /**
-     * @see #tryLink(WasmInstance)
+     * @see #tryLinkOutsidePartialEvaluation(WasmInstance, Function)
      */
-    public void tryLink(WasmInstance instance, List<Object> imports) {
+    public void tryLink(WasmInstance instance, Function<ImportDescriptor, Object> imports) {
         if (instance.isNonLinked() || instance.isLinkFailed()) {
             tryLinkOutsidePartialEvaluation(instance, imports);
         } else {
@@ -155,8 +156,18 @@ public class Linker {
         tryLink(entryPointInstance, null);
     }
 
+    /**
+     * Tries to link a module including its dependencies.
+     *
+     * @param entryPointInstance the module that should be linked
+     * @param imports an optional closure that takes an {@link ImportDescriptor} and tries to look
+     *            up and resolve the import from an external source (usually, the importObject
+     *            provided when the module is instantiated via the WebAssembly JS API). If null, or
+     *            the function returns null for a specific import descriptor, linking falls back to
+     *            the normal lookup from modules loaded in the context.
+     */
     @CompilerDirectives.TruffleBoundary
-    private void tryLinkOutsidePartialEvaluation(WasmInstance entryPointInstance, List<Object> imports) {
+    private void tryLinkOutsidePartialEvaluation(WasmInstance entryPointInstance, Function<ImportDescriptor, Object> imports) {
         if (entryPointInstance.isLinkFailed()) {
             // If the linking of this module failed already, then throw.
             throw linkFailedError(entryPointInstance);
@@ -179,7 +190,7 @@ public class Linker {
         }
     }
 
-    private static int runLinkActions(WasmContext context, Map<String, WasmInstance> instances, List<Object> imports, ArrayList<Throwable> failures) {
+    private static int runLinkActions(WasmContext context, Map<String, WasmInstance> instances, Function<ImportDescriptor, Object> imports, ArrayList<Throwable> failures) {
         int maxStartFunctionIndex = 0;
         for (WasmInstance instance : instances.values()) {
             maxStartFunctionIndex = Math.max(maxStartFunctionIndex, instance.startFunctionIndex());
@@ -285,7 +296,8 @@ public class Linker {
         }
     }
 
-    void resolveGlobalImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int globalIndex, byte valueType, byte mutability, List<Object> imports) {
+    void resolveGlobalImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int globalIndex, byte valueType, byte mutability,
+                    Function<ImportDescriptor, Object> imports) {
         final String importedGlobalName = importDescriptor.memberName();
         final String importedModuleName = importDescriptor.moduleName();
         final Runnable resolveAction = () -> {
@@ -358,9 +370,9 @@ public class Linker {
         resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    private static <T> T lookupImportObject(ImportDescriptor importDescriptor, List<Object> imports, Class<T> expectedType) {
-        if (imports != null && importDescriptor.importedSymbolIndex() < imports.size()) {
-            Object resolvedImport = imports.get(importDescriptor.importedSymbolIndex());
+    private static <T> T lookupImportObject(ImportDescriptor importDescriptor, Function<ImportDescriptor, Object> resolvedImports, Class<T> expectedType) {
+        if (resolvedImports != null) {
+            Object resolvedImport = resolvedImports.apply(importDescriptor);
             if (resolvedImport != null) {
                 return expectedType.cast(resolvedImport);
             }
@@ -379,7 +391,7 @@ public class Linker {
         }
     }
 
-    void resolveFunctionImport(WasmContext context, WasmInstance instance, WasmFunction function, List<Object> imports) {
+    void resolveFunctionImport(WasmContext context, WasmInstance instance, WasmFunction function, Function<ImportDescriptor, Object> imports) {
         final Runnable resolveAction = () -> {
             WasmModule module = instance.module();
             ImportDescriptor importDescriptor = function.importDescriptor();
@@ -456,7 +468,7 @@ public class Linker {
     }
 
     void resolveMemoryImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int memoryIndex, long declaredMinSize, long declaredMaxSize, boolean typeIndex64,
-                    boolean shared, List<Object> imports) {
+                    boolean shared, Function<ImportDescriptor, Object> imports) {
         final String importedModuleName = importDescriptor.moduleName();
         final String importedMemoryName = importDescriptor.memberName();
         // Special import of main module memory into WASI built-in module.
@@ -769,7 +781,7 @@ public class Linker {
     }
 
     void resolveTableImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int tableIndex, int declaredMinSize, int declaredMaxSize, byte elemType,
-                    List<Object> imports) {
+                    Function<ImportDescriptor, Object> imports) {
         final Runnable resolveAction = () -> {
             WasmTable externalTable = lookupImportObject(importDescriptor, imports, WasmTable.class);
             final int tableAddress;
