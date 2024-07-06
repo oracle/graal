@@ -27,19 +27,18 @@ package com.oracle.svm.core.jfr;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
-import com.oracle.svm.core.Containers;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
+import com.oracle.svm.core.container.Container;
+import com.oracle.svm.core.container.OperatingSystem;
 import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.util.PlatformTimeUtils;
@@ -530,15 +529,19 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class) //
     public static boolean isContainerized() {
-        return Containers.isContainerized();
+        return Container.singleton().isContainerized();
     }
 
+    /**
+     * Return the total memory available on the host.
+     *
+     * This is unconditionally using {@link OperatingSystem#getPhysicalMemorySize} since we are
+     * interested in the host values (and not the containerized values).
+     */
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class) //
     public static long hostTotalMemory() {
-        // This is intentionally using PhysicalMemorySupport since we are
-        // interested in the host values (and not the containerized values).
-        return ImageSingletons.lookup(PhysicalMemorySupport.class).size().rawValue();
+        return OperatingSystem.singleton().getPhysicalMemorySize().rawValue();
     }
 
     @Substitute

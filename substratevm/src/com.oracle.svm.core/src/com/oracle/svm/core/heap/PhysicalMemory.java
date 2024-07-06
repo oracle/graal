@@ -31,20 +31,16 @@ import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Containers;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.container.Container;
+import com.oracle.svm.core.container.OperatingSystem;
 import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyImageSingleton;
-import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 import com.sun.management.OperatingSystemMXBean;
@@ -62,17 +58,12 @@ public class PhysicalMemory {
 
     private static final long K = 1024;
 
-    private static final ReentrantLock LOCK = new ReentrantLock();
     private static final UnsignedWord UNSET_SENTINEL = UnsignedUtils.MAX_VALUE;
     private static UnsignedWord cachedSize = UNSET_SENTINEL;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInitialized() {
         return cachedSize != UNSET_SENTINEL;
-    }
-
-    public static boolean isInitializationInProgress() {
-        return LOCK.isHeldByCurrentThread();
     }
 
     @Uninterruptible(reason = "May only be called during early startup.")
@@ -89,30 +80,14 @@ public class PhysicalMemory {
      * a VMOperation or during early stages of a thread or isolate.
      */
     public static UnsignedWord size() {
-        if (isInitializationDisallowed()) {
-            /*
-             * Note that we want to have this safety check even when the cache is already
-             * initialized, so that we always detect wrong usages that could lead to problems.
-             */
-            throw VMError.shouldNotReachHere("Accessing the physical memory size may require allocation and synchronization");
-        }
-
         if (!isInitialized()) {
             long memoryLimit = SubstrateOptions.MaxRAM.getValue();
             if (memoryLimit > 0) {
                 cachedSize = WordFactory.unsigned(memoryLimit);
+            } else if (Container.singleton().isContainerized()) {
+                cachedSize = Container.singleton().getPhysicalMemory();
             } else {
-                LOCK.lock();
-                try {
-                    if (!isInitialized()) {
-                        memoryLimit = Containers.memoryLimitInBytes();
-                        cachedSize = memoryLimit > 0
-                                        ? WordFactory.unsigned(memoryLimit)
-                                        : ImageSingletons.lookup(PhysicalMemorySupport.class).size();
-                    }
-                } finally {
-                    LOCK.unlock();
-                }
+                cachedSize = OperatingSystem.singleton().getPhysicalMemorySize();
             }
         }
 
@@ -124,7 +99,7 @@ public class PhysicalMemory {
         // Windows, macOS, and containerized Linux use the OS bean.
         if (Platform.includedIn(Platform.WINDOWS.class) ||
                         Platform.includedIn(Platform.MACOS.class) ||
-                        (Containers.isContainerized() && Containers.memoryLimitInBytes() > 0)) {
+                        (Container.singleton().isContainerized() && Container.singleton().getMemoryLimitInBytes() > 0)) {
             OperatingSystemMXBean osBean = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
             return osBean.getTotalMemorySize() - osBean.getFreeMemorySize();
         }
@@ -194,9 +169,5 @@ public class PhysicalMemory {
     public static UnsignedWord getCachedSize() {
         VMError.guarantee(isInitialized(), "Cached physical memory size is not available");
         return cachedSize;
-    }
-
-    private static boolean isInitializationDisallowed() {
-        return Heap.getHeap().isAllocationDisallowed() || VMOperation.isInProgress() || !PlatformThreads.isCurrentAssigned() || StackOverflowCheck.singleton().isYellowZoneAvailable();
     }
 }
