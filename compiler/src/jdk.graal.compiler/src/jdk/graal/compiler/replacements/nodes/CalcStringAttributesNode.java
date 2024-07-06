@@ -182,7 +182,32 @@ public final class CalcStringAttributesNode extends PureFunctionStubIntrinsicNod
             final int offsetConstant = (int) (arrayBaseOffsetBytesConstant / stride.value);
 
             final int lengthConstant = length.asJavaConstant().asInt();
-            ConstantReflectionUtil.boundsCheckTypePunned(lengthConstant, stride, actualArrayLength, constantArrayKind);
+
+            if (!ConstantReflectionUtil.boundsCheckTypePunned(lengthConstant, stride, actualArrayLength, constantArrayKind)) {
+                /*
+                 * This may happen when this node is in a branch that won't be taken for the given
+                 * array, but is still visible in the current compilation unit, e.g. for compact
+                 * UTF-16 strings:
+                 *
+                 * // @formatter:off
+                 *
+                 * byte[] array = {'a', 'b', 'c'};
+                 * int stringLength = 3;
+                 * boolean isCompactString = true;
+                 *
+                 * if (isCompactString) {
+                 *     // byte length in latin1 is 3
+                 *     calcStringAttributesLatin1(array, stringLength);
+                 * } else {
+                 *     // byte length in utf16 is 6 -> out of bounds. this branch won't be taken,
+                 *     // but Graal may still try to constant-fold it
+                 *     calcStringAttributesUTF16(array, stringLength);
+                 * }
+                 *
+                 * // @formatter:on
+                 */
+                return this;
+            }
 
             if (ConstantReflectionUtil.shouldConstantFoldArrayOperation(tool, lengthConstant)) {
                 switch (encoding) {
