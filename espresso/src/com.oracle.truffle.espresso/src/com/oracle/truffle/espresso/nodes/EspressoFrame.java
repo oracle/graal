@@ -58,7 +58,8 @@ public final class EspressoFrame {
     private static final int VALUES_START = 1;
 
     public static FrameDescriptor createFrameDescriptor(int locals, int stack) {
-        int slotCount = locals + stack;
+        // at least one stack slot for the return / exception value
+        int slotCount = locals + Math.max(stack, 1);
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder(slotCount + VALUES_START);
         int bciSlot = builder.addSlot(FrameSlotKind.Static, null, null); // BCI
         assert bciSlot == BCI_SLOT;
