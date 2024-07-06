@@ -1,0 +1,48 @@
+# Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+#
+
+root = .
+builddir = build
+
+includes                  = -Isrc/hotspot -Isrc/hotspot/share -Isrc/svm -Isrc/svm/share -Isrc/java.base/share/native/include
+includes_linux            = $includes -Isrc/hotspot/os/linux -Isrc/hotspot/os/posix -Isrc/hotspot/os/posix/include -Isrc/java.base/unix/native/include
+defines_linux             = -DNATIVE_IMAGE -DLINUX -DINCLUDE_SUFFIX_COMPILER=_gcc -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS
+
+cflags_linux              = $defines_linux -std=c++14 $includes_linux -fno-rtti -fno-exceptions -fvisibility=hidden -fPIC
+cflags_linux_product      = $cflags_linux -O2 
+cflags_linux_fastdebug    = $cflags_linux -O2 -g -DASSERT -DPRINT_WARNINGS
+cflags_linux_debug        = $cflags_linux -O0 -g -DASSERT -DPRINT_WARNINGS
+
+cflags_linux_product_a    = $cflags_linux_product
+cflags_linux_fastdebug_a  = $cflags_linux_fastdebug
+cflags_linux_debug_a      = $cflags_linux_debug
+
+cflags_linux_product_so   = $cflags_linux_product
+cflags_linux_fastdebug_so = $cflags_linux_fastdebug
+cflags_linux_debug_so     = $cflags_linux_debug
+
+ldflags_linux             = -shared -Wl,-z,noexecstack
+ldflags_linux_product     = $ldflags_linux
+ldflags_linux_fastdebug   = $ldflags_linux -g
+ldflags_linux_debug       = $ldflags_linux -g
