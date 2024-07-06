@@ -47,7 +47,6 @@ import com.oracle.truffle.api.TruffleOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Assume;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -75,14 +74,12 @@ public class LoomTest extends AbstractPolyglotTest {
         }
     }
 
-    @Ignore("GR-54696 too slow and can hang")
     @Test
     public void testManyVirtualThreads() throws Throwable {
         Assume.assumeTrue(canCreateVirtualThreads() && !TruffleOptions.AOT);
 
-        // Above 65535, which is the documented limit for Phaser, which was used by
-        // ThreadLocalHandshake.Handshake
-        int n = 66000;
+        // We want a big number of virtual threads but also to execute this test in reasonable time
+        int n = 1000;
 
         try (Context ctx = Context.create()) {
             Throwable[] error = new Throwable[1];
@@ -91,25 +88,32 @@ public class LoomTest extends AbstractPolyglotTest {
 
             for (int i = 0; i < n; i++) {
                 threads[i] = Thread.startVirtualThread(() -> {
-                    ctx.enter();
                     try {
-                        waitStarted.countDown();
-                        while (true) {
-                            ctx.safepoint();
-                            Thread.yield();
+                        ctx.enter();
+                        try {
+                            // barrier for all threads being entered in the context
+                            waitStarted.countDown();
+                            await(waitStarted);
+                            while (true) {
+                                ctx.safepoint();
+                                Thread.yield();
+                            }
+                        } catch (Throwable t) {
+                            if (!"Execution got interrupted.".equals(t.getMessage())) {
+                                t.printStackTrace();
+                                error[0] = t;
+                            }
+                        } finally {
+                            ctx.leave();
                         }
                     } catch (Throwable t) {
-                        if (!t.getMessage().equals("Execution got interrupted.")) {
-                            t.printStackTrace();
-                            error[0] = t;
-                        }
-                    } finally {
-                        ctx.leave();
+                        t.printStackTrace();
+                        throw t;
                     }
                 });
             }
 
-            waitStarted.await();
+            await(waitStarted);
             ctx.interrupt(Duration.ZERO);
 
             for (Thread thread : threads) {
@@ -118,6 +122,21 @@ public class LoomTest extends AbstractPolyglotTest {
             if (error[0] != null) {
                 throw error[0];
             }
+        }
+    }
+
+    private static void await(CountDownLatch latch) {
+        boolean interrupted = false;
+        while (true) {
+            try {
+                latch.await();
+                break;
+            } catch (InterruptedException e) {
+                interrupted = true;
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
         }
     }
 
