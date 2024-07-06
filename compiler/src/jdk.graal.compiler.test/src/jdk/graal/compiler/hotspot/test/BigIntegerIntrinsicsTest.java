@@ -121,7 +121,9 @@ public final class BigIntegerIntrinsicsTest extends HotSpotGraalCompilerTest {
             BigInteger big2 = randomBig(i);
 
             // squareToLen is exercised via the call path modPow -> oddModPow -> montgomerySquare
-            expectedResults.put(Pair.create(big1, big2), big1.modPow(bigTwo, big2));
+            if (big2.signum() > 0) {
+                expectedResults.put(Pair.create(big1, big2), big1.modPow(bigTwo, big2));
+            }
         }
 
         InstalledCode intrinsic = getCode(getResolvedJavaMethod(BigInteger.class, "squareToLen"), null, true, true, GraalCompilerTest.getInitialOptions());
@@ -151,19 +153,21 @@ public final class BigIntegerIntrinsicsTest extends HotSpotGraalCompilerTest {
             BigInteger big1 = randomBig(i);
             BigInteger big2 = randomBig(i);
 
-            // Invoke BigInteger BigInteger.modPow(BigExp, BigInteger)
-            BigInteger res1 = (BigInteger) tin.invokeJava(big1, bigTwo, big2);
+            if (big2.signum() > 0) {
+                // Invoke BigInteger BigInteger.modPow(BigExp, BigInteger)
+                BigInteger res1 = (BigInteger) tin.invokeJava(big1, bigTwo, big2);
 
-            // Invoke BigInteger testMontgomeryAux(BigInteger, BigExp, BigInteger)
-            BigInteger res2 = (BigInteger) tin.invokeTest(big1, bigTwo, big2);
+                // Invoke BigInteger testMontgomeryAux(BigInteger, BigExp, BigInteger)
+                BigInteger res2 = (BigInteger) tin.invokeTest(big1, bigTwo, big2);
 
-            assertDeepEquals(res1, res2);
+                assertDeepEquals(res1, res2);
 
-            // Invoke BigInteger testMontgomeryAux(BigInteger, BigExp, BigInteger)
-            // through code handle.
-            BigInteger res3 = (BigInteger) tin.invokeCode(big1, bigTwo, big2);
+                // Invoke BigInteger testMontgomeryAux(BigInteger, BigExp, BigInteger)
+                // through code handle.
+                BigInteger res3 = (BigInteger) tin.invokeCode(big1, bigTwo, big2);
 
-            assertDeepEquals(res1, res3);
+                assertDeepEquals(res1, res3);
+            }
         }
     }
 
