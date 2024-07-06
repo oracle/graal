@@ -350,6 +350,14 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle = null;
         }
 
+        if (getJavaVersion().java9OrLater()) {
+            jdk_internal_util_ArraysSupport = knownKlass(Type.jdk_internal_util_ArraysSupport);
+            jdk_internal_util_ArraysSupport_vectorizedMismatch = jdk_internal_util_ArraysSupport.requireDeclaredMethod(Name.vectorizedMismatch, Signature._int_Object_long_Object_long_int_int);
+        } else {
+            jdk_internal_util_ArraysSupport = null;
+            jdk_internal_util_ArraysSupport_vectorizedMismatch = null;
+        }
+
         java_net_URL = knownKlass(Type.java_net_URL);
 
         java_lang_ClassLoader_getResourceAsStream = java_lang_ClassLoader.requireDeclaredMethod(Name.getResourceAsStream, Signature.InputStream_String);
@@ -1373,6 +1381,8 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl;
     public final Field jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle;
 
+    public final ObjectKlass jdk_internal_util_ArraysSupport;
+    public final Method jdk_internal_util_ArraysSupport_vectorizedMismatch;
     public final ObjectKlass java_net_URL;
 
     public final ObjectKlass sun_launcher_LauncherHelper;
@@ -2510,8 +2520,7 @@ public final class Meta extends ContextAccessImpl {
     }
 
     public static boolean isString(Object string) {
-        if (string instanceof StaticObject) {
-            StaticObject staticObject = (StaticObject) string;
+        if (string instanceof StaticObject staticObject) {
             return staticObject.isString();
         }
         return false;
@@ -2547,8 +2556,7 @@ public final class Meta extends ContextAccessImpl {
 
     public Object toHostBoxed(Object object) {
         assert object != null;
-        if (object instanceof StaticObject) {
-            StaticObject guestObject = (StaticObject) object;
+        if (object instanceof StaticObject guestObject) {
             if (StaticObject.isNull(guestObject)) {
                 return null;
             }
