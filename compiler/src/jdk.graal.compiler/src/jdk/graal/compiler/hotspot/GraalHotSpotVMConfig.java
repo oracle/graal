@@ -349,8 +349,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int lockMaskInPlace = getConstant("markWord::lock_mask_in_place", Integer.class);
     public final int ageMaskInPlace = getConstant("markWord::age_mask_in_place", Integer.class);
-    public final int unlockedMask = getConstant("markWord::unlocked_value", Integer.class);
-    public final int monitorMask = getConstant("markWord::monitor_value", Integer.class);
+    public final int unlockedValue = getConstant("markWord::unlocked_value", Integer.class);
+    public final int monitorValue = getConstant("markWord::monitor_value", Integer.class);
 
     // This field has no type in vmStructs.cpp
     public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, null);
@@ -358,8 +358,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*");
     public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*");
     public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, "JavaThread*");
-
-    public final long objectMonitorAnonymousOwner = getConstant("ObjectMonitor::ANONYMOUS_OWNER", Long.class, 1L, JDK >= 22);
 
     public final int markWordNoHashInPlace = getConstant("markWord::no_hash_in_place", Integer.class);
     public final int markWordNoLockInPlace = getConstant("markWord::no_lock_in_place", Integer.class);
@@ -430,7 +428,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int arrayKlassOffset = getFieldValue("java_lang_Class::_array_klass_offset", Integer.class, "int");
 
     public final int basicLockSize = getFieldValue("CompilerToVM::Data::sizeof_BasicLock", Integer.class, "int");
-    public final int basicLockDisplacedHeaderOffset = getFieldOffset("BasicLock::_displaced_header", Integer.class, markWord);
+    public final int basicLockMetadataOffset = JDK >= 24 ? getFieldOffset("BasicLock::_metadata", Integer.class, "uintptr_t") : getFieldOffset("BasicLock::_displaced_header", Integer.class, markWord);
+
+    public final boolean useObjectMonitorTable = getFlag("UseObjectMonitorTable", Boolean.class, false, JDK >= 24);
 
     // JDK-8253180 & JDK-8265932
     public final int threadPollingPageOffset = getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
@@ -649,6 +649,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int threadLockStackOffset = getFieldOffset("JavaThread::_lock_stack", Integer.class, "LockStack", -1, JDK >= 22);
     public final int lockStackTopOffset = getFieldOffset("LockStack::_top", Integer.class, "uint32_t", -1, JDK >= 22);
     public final int lockStackEndOffset = getConstant("LockStack::_end_offset", Integer.class, -1, JDK >= 22);
+    public final int threadOmCacheOffset = getFieldOffset("JavaThread::_om_cache", Integer.class, "OMCache", -1, JDK >= 24);
+    public final int omCacheOopToOopDifference = getConstant("OMCache::oop_to_oop_difference", Integer.class, -1, JDK >= 24);
+    public final int omCacheOopToMonitorDifference = getConstant("OMCache::oop_to_monitor_difference", Integer.class, -1, JDK >= 24);
 
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
     public final long throwKlassExternalNameExceptionAddress = getAddress("JVMCIRuntime::throw_klass_external_name_exception");
