@@ -188,7 +188,7 @@ public abstract class Continuation extends ContinuationSerializable {
 
     /**
      * Provides programmatic access to the stack information captured by this continuation, or
-     * {@code null} if there is no recorded frames.
+     * {@code null} if there are no recorded frames.
      * <p>
      * Returns an array of stack trace elements, each representing one stack frame. The zeroth
      * element of the array (assuming the array's length is non-zero) represents the top of the
@@ -196,16 +196,30 @@ public abstract class Continuation extends ContinuationSerializable {
      * which this continuation was suspended. The last element of the array (assuming the array's
      * length is non-zero) represents the bottom of the stack, which is the first method invocation
      * in the sequence.
+     * <p>
+     * This method may be called on a continuation in any state, but will only return a
+     * non-{@code null} value if the continuation is suspended.
      *
      * @return an array of stack trace elements representing the stack trace pertaining to this
      *         continuation, or {@code null} if there is no recorded frames.
+     *
+     * @throws IllegalMaterializedRecordException if the VM rejects the continuation. This can
+     *             happen, for example, if a continuation was obtained by deserializing a malformed
+     *             stream.
      */
     public abstract StackTraceElement[] getRecordedFrames();
 
     /**
      * Returns a string describing this continuation's state, along with description of its recorded
-     * frames, as described in {@link #getRecordedFrames()}.
+     * frames as described in {@link #getRecordedFrames()}, including locals/stack information.
+     * <p>
+     * This method is provided for debug purposes, and its output's format should not be relied
+     * upon. In particular, this describes VM-dependant data.
+     *
+     * @deprecated Format and implementation is subject to future changes. May be removed in favor
+     *             of a more stable API for frame record exploration.
      */
+    @Deprecated
     public abstract String toDebugString();
 
     // endregion debug
