@@ -56,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -100,7 +101,6 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Signature;
 import sun.reflect.annotation.ExceptionProxy;
 
 public class ReflectionDataBuilder extends ConditionalConfigurationRegistry implements RuntimeReflectionSupport, ReflectionHostedSupport {
@@ -121,9 +121,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
      */
     private final Map<Class<?>, Set<Class<?>>> innerClasses = new ConcurrentHashMap<>();
     private final Map<Class<?>, Integer> enabledQueriesFlags = new ConcurrentHashMap<>();
-    private final Map<AnalysisField, ConditionalRuntimeValue<Field>> registeredFields = new ConcurrentHashMap<>();
+    private final Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> registeredFields = new ConcurrentHashMap<>();
     private final Set<AnalysisField> hidingFields = ConcurrentHashMap.newKeySet();
-    private final Map<AnalysisMethod, ConditionalRuntimeValue<Executable>> registeredMethods = new ConcurrentHashMap<>();
+    private final Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> registeredMethods = new ConcurrentHashMap<>();
     private final Map<AnalysisMethod, Object> methodAccessors = new ConcurrentHashMap<>();
     private final Set<AnalysisMethod> hidingMethods = ConcurrentHashMap.newKeySet();
 
@@ -191,6 +191,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private void setQueryFlag(Class<?> clazz, int flag) {
         enabledQueriesFlags.compute(clazz, (key, oldValue) -> (oldValue == null) ? flag : (oldValue | flag));
+    }
+
+    private boolean isQueryFlagSet(Class<?> clazz, int flag) {
+        return (enabledQueriesFlags.getOrDefault(clazz, 0) & flag) != 0;
     }
 
     @Override
@@ -419,11 +423,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
+        AnalysisType declaringType = analysisMethod.getDeclaringClass();
+        var classMethods = registeredMethods.computeIfAbsent(declaringType, t -> new ConcurrentHashMap<>());
+        var shouldRegisterReachabilityHandler = classMethods.isEmpty();
+
         boolean registered = false;
-        ConditionalRuntimeValue<Executable> conditionalValue = registeredMethods.get(analysisMethod);
+        ConditionalRuntimeValue<Executable> conditionalValue = classMethods.get(analysisMethod);
         if (conditionalValue == null) {
             var newConditionalValue = new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectExecutable);
-            conditionalValue = registeredMethods.putIfAbsent(analysisMethod, newConditionalValue);
+            conditionalValue = classMethods.putIfAbsent(analysisMethod, newConditionalValue);
             if (conditionalValue == null) {
                 conditionalValue = newConditionalValue;
                 registered = true;
@@ -436,15 +444,26 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         if (registered) {
             registerTypesForMethod(analysisMethod, reflectExecutable);
-            AnalysisType declaringType = analysisMethod.getDeclaringClass();
             Class<?> declaringClass = declaringType.getJavaClass();
 
             /*
              * The image needs to know about subtypes shadowing methods registered for reflection to
              * ensure the correctness of run-time reflection queries.
              */
-            analysisAccess.registerSubtypeReachabilityHandler(
-                            (access, subType) -> universe.getBigbang().postTask(debug -> checkSubtypeForOverridingMethod(analysisMethod, metaAccess.lookupJavaType(subType))), declaringClass);
+            if (shouldRegisterReachabilityHandler) {
+                analysisAccess.registerSubtypeReachabilityHandler(
+                                (access, subType) -> universe.getBigbang()
+                                                .postTask(debug -> checkSubtypeForOverridingMethods(metaAccess.lookupJavaType(subType), registeredMethods.get(declaringType).keySet())),
+                                declaringClass);
+            } else {
+                /*
+                 * We need to perform the check for already reachable subtypes since the
+                 * reachability handler was already called for them.
+                 */
+                for (AnalysisType subtype : AnalysisUniverse.reachableSubtypes(declaringType)) {
+                    universe.getBigbang().postTask(debug -> checkSubtypeForOverridingMethods(subtype, Collections.singleton(analysisMethod)));
+                }
+            }
 
             if (declaringType.isAnnotation() && !analysisMethod.isConstructor()) {
                 processAnnotationMethod(queriedOnly, (Method) reflectExecutable);
@@ -552,28 +571,43 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         AnalysisField analysisField = metaAccess.lookupJavaField(reflectField);
+        AnalysisType declaringClass = analysisField.getDeclaringClass();
 
-        if (!registeredFields.containsKey(analysisField)) {
+        var classFields = registeredFields.computeIfAbsent(declaringClass, t -> new ConcurrentHashMap<>());
+        boolean exists = classFields.containsKey(analysisField);
+        boolean shouldRegisterReachabilityHandler = classFields.isEmpty();
+        var cndValue = classFields.computeIfAbsent(analysisField, f -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectField));
+        if (!queriedOnly) {
+            /* queryOnly methods are conditioned by the type itself */
+            cndValue.getConditions().addCondition(cnd);
+        }
+
+        if (!exists) {
             registerTypesForField(analysisField, reflectField, true);
-            AnalysisType declaringClass = analysisField.getDeclaringClass();
 
             /*
              * The image needs to know about subtypes shadowing fields registered for reflection to
              * ensure the correctness of run-time reflection queries.
              */
-            analysisAccess.registerSubtypeReachabilityHandler(
-                            (access, subType) -> universe.getBigbang().postTask(debug -> checkSubtypeForOverridingField(analysisField, metaAccess.lookupJavaType(subType))),
-                            declaringClass.getJavaClass());
+            if (shouldRegisterReachabilityHandler) {
+                analysisAccess.registerSubtypeReachabilityHandler(
+                                (access, subType) -> universe.getBigbang()
+                                                .postTask(debug -> checkSubtypeForOverridingFields(metaAccess.lookupJavaType(subType),
+                                                                registeredFields.get(declaringClass).keySet())),
+                                declaringClass.getJavaClass());
+            } else {
+                /*
+                 * We need to perform the check for already reachable subtypes since the
+                 * reachability handler was already called for them.
+                 */
+                for (AnalysisType subtype : AnalysisUniverse.reachableSubtypes(declaringClass)) {
+                    universe.getBigbang().postTask(debug -> checkSubtypeForOverridingFields(subtype, Collections.singleton(analysisField)));
+                }
+            }
 
             if (declaringClass.isAnnotation()) {
                 processAnnotationField(cnd, reflectField);
             }
-        }
-
-        var cndValue = registeredFields.computeIfAbsent(analysisField, f -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectField));
-        if (!queriedOnly) {
-            /* queryOnly methods are conditioned by the type itself */
-            cndValue.getConditions().addCondition(cnd);
         }
 
         /*
@@ -635,13 +669,21 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     /**
      * @see ReflectionHostedSupport#getHidingReflectionFields()
      */
-    private void checkSubtypeForOverridingField(AnalysisField field, AnalysisType subtype) {
+    private void checkSubtypeForOverridingFields(AnalysisType subtype, Collection<AnalysisField> superclassFields) {
+        if (isQueryFlagSet(subtype.getJavaClass(), ALL_DECLARED_FIELDS_FLAG)) {
+            /* All fields are already registered, no need for hiding fields */
+            return;
+        }
         try {
-            ResolvedJavaField[] subClassFields = field.isStatic() ? subtype.getStaticFields() : subtype.getInstanceFields(false);
+            Set<ResolvedJavaField> subClassFields = new HashSet<>();
+            subClassFields.addAll(Arrays.asList(subtype.getInstanceFields(false)));
+            subClassFields.addAll(Arrays.asList(subtype.getStaticFields()));
             for (ResolvedJavaField javaField : subClassFields) {
-                AnalysisField subclassField = (AnalysisField) javaField;
-                if (subclassField.getName().equals(field.getName())) {
-                    hidingFields.add(subclassField);
+                for (AnalysisField registeredField : superclassFields) {
+                    AnalysisField subclassField = (AnalysisField) javaField;
+                    if (subclassField.getName().equals(registeredField.getName())) {
+                        hidingFields.add(subclassField);
+                    }
                 }
             }
         } catch (UnsupportedFeatureException | LinkageError e) {
@@ -653,8 +695,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     /**
-     * Using {@link AnalysisType#findMethod(String, Signature)} here which uses
-     * {@link Class#getDeclaredMethods()} internally, instead of
+     * Filtering {@link Class#getDeclaredMethods()} here instead of directly calling
      * {@link AnalysisType#resolveConcreteMethod(ResolvedJavaMethod)} which gives different results
      * in at least two scenarios:
      * <p>
@@ -669,11 +710,19 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
      *
      * @see ReflectionHostedSupport#getHidingReflectionMethods()
      */
-    private void checkSubtypeForOverridingMethod(AnalysisMethod method, AnalysisType subtype) {
+    private void checkSubtypeForOverridingMethods(AnalysisType subtype, Collection<AnalysisMethod> superclassMethods) {
+        if (isQueryFlagSet(subtype.getJavaClass(), ALL_DECLARED_METHODS_FLAG)) {
+            /* All methods are already registered, no need for hiding methods */
+            return;
+        }
         try {
-            AnalysisMethod subClassMethod = subtype.findMethod(method.getName(), method.getSignature());
-            if (subClassMethod != null) {
-                hidingMethods.add(subClassMethod);
+            for (AnalysisMethod subClassMethod : subtype.getDeclaredMethods(false)) {
+                for (AnalysisMethod registeredMethod : superclassMethods) {
+                    if (registeredMethod.getName().equals(subClassMethod.getName()) &&
+                                    registeredMethod.getSignature().equals(subClassMethod.getSignature())) {
+                        hidingMethods.add(subClassMethod);
+                    }
+                }
             }
         } catch (UnsupportedFeatureException | LinkageError e) {
             /*
@@ -1040,7 +1089,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
         pendingRecordClasses.put(clazz, unregisteredAccessors);
 
-        unregisteredAccessors.removeIf(accessor -> registeredMethods.containsKey(metaAccess.lookupJavaMethod(accessor)));
+        AnalysisType analysisType = metaAccess.lookupJavaType(clazz);
+        unregisteredAccessors.removeIf(accessor -> registeredMethods.getOrDefault(analysisType, Collections.emptyMap()).containsKey(metaAccess.lookupJavaMethod(accessor)));
         if (unregisteredAccessors.isEmpty()) {
             registerRecordComponents(clazz);
         }
@@ -1091,13 +1141,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public Map<AnalysisField, ConditionalRuntimeValue<Field>> getReflectionFields() {
+    public Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> getReflectionFields() {
         assert sealed;
         return Collections.unmodifiableMap(registeredFields);
     }
 
     @Override
-    public Map<AnalysisMethod, ConditionalRuntimeValue<Executable>> getReflectionExecutables() {
+    public Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> getReflectionExecutables() {
         assert sealed;
         return Collections.unmodifiableMap(registeredMethods);
     }
