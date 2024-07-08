@@ -1531,7 +1531,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     InlinedBranchProfile errorProfile) {
         if (appendStride > stride) {
             inflateProfile.enter(node);
-            buf = TStringOps.arraycopyOfWithStride(node, buf, 0, length, stride, buf.length >> stride, appendStride);
+            if (Integer.compareUnsigned(length + appendLength, TStringConstants.MAX_ARRAY_SIZE >> appendStride) > 0) {
+                errorProfile.enter(node);
+                throw InternalErrors.outOfMemory();
+            }
+            byte[] newBuf = new byte[(int) Math.min(((long) buf.length) << (appendStride - stride), TStringConstants.MAX_ARRAY_SIZE)];
+            TStringOps.arraycopyWithStride(node, buf, 0, stride, 0, newBuf, 0, appendStride, 0, length);
+            buf = newBuf;
             stride = appendStride;
         }
         ensureCapacityWithStride(node, appendLength, bufferGrowProfile, errorProfile);
