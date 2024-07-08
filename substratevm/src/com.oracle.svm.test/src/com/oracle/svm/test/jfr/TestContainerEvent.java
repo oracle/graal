@@ -47,7 +47,7 @@ public class TestContainerEvent extends JfrRecordingTest {
     @Test
     public void test() throws Throwable {
         Assume.assumeTrue("Container support not enabled or available", Container.isSupported());
-        Assume.assumeTrue("Container detection currently not working GR-55178", false);
+        Assume.assumeTrue("Test assumes running containerized", Container.singleton().isContainerized());
 
         String[] events = new String[]{"jdk.ContainerConfiguration"};
         Recording recording = startRecording(events);
