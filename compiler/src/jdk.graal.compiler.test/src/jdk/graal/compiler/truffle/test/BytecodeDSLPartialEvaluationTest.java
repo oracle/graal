@@ -203,9 +203,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         BasicInterpreter root = parseNodeForPE(interpreterClass, "sum", b -> {
             b.beginRoot(LANGUAGE);
 
-            BytecodeLocal ex = b.createLocal();
-
-            b.beginTryCatch(ex);
+            b.beginTryCatch();
 
             b.beginThrowOperation();
             b.emitLoadConstant(1L);
@@ -215,7 +213,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
             b.beginAddOperation();
 
             b.beginReadExceptionOperation();
-            b.emitLoadLocal(ex);
+            b.emitLoadException();
             b.endReadExceptionOperation();
 
             b.emitLoadConstant(1L);
@@ -253,11 +251,9 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         BasicInterpreter root = parseNodeForPE(interpreterClass, "sum", b -> {
             b.beginRoot(LANGUAGE);
 
-            BytecodeLocal ex = b.createLocal();
+            b.beginTryCatch();
 
-            b.beginTryCatch(ex);
-
-            b.beginTryCatch(ex);
+            b.beginTryCatch();
 
             b.beginThrowOperation();
             b.emitLoadConstant(1L);
@@ -266,7 +262,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
             b.beginThrowOperation();
             b.beginAddOperation();
             b.beginReadExceptionOperation();
-            b.emitLoadLocal(ex);
+            b.emitLoadException();
             b.endReadExceptionOperation();
             b.emitLoadConstant(1L);
             b.endAddOperation();
@@ -278,7 +274,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
             b.beginAddOperation();
 
             b.beginReadExceptionOperation();
-            b.emitLoadLocal(ex);
+            b.emitLoadException();
             b.endReadExceptionOperation();
 
             b.emitLoadConstant(1L);

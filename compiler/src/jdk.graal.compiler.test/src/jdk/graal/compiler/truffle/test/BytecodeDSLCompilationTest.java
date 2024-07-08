@@ -27,6 +27,7 @@ package jdk.graal.compiler.truffle.test;
 import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.parseNode;
 import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.invokeNewConfigBuilder;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.util.List;
 
@@ -60,11 +61,15 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Override
     public void before() {
         super.before();
-        // TODO without eager loading, the first compilation on some tests fails because this type
-        // is not loaded
+        /**
+         * Note: we force load the EarlyReturnException class because compilation bails out when it
+         * hasn't been loaded (the {@code interceptControlFlowException} method references it
+         * directly).
+         */
         try {
             Class.forName(BasicInterpreter.EarlyReturnException.class.getName());
         } catch (ClassNotFoundException ex) {
+            fail("should not have failed to load EarlyReturnException class");
         }
     }
 
