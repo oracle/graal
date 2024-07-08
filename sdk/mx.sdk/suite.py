@@ -903,6 +903,15 @@ suite = {
       },
     },
 
+    "MAVEN_DOWNLOADER_VERSION": {
+      "type": "dir",
+      "platformDependent": False,
+      "layout": {
+        "META-INF/graalvm/org.graalvm.maven.downloader/version": "dependency:sdk:VERSION/version",
+      },
+      "description": "Maven downloader version.",
+      "maven": False,
+    },
     "MAVEN_DOWNLOADER": {
       "moduleInfo" : {
         "name" : "org.graalvm.maven.downloader",
@@ -913,6 +922,7 @@ suite = {
       "mainClass": "org.graalvm.maven.downloader.Main",
       "dependencies": [
         "org.graalvm.maven.downloader",
+        "MAVEN_DOWNLOADER_VERSION",
       ],
       "distDependencies": [
         "sdk:NATIVEIMAGE",
