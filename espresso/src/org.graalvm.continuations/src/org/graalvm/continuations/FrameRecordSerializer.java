@@ -246,7 +246,7 @@ final class FrameRecordSerializerV2 extends FrameRecordSerializer {
     private ContinuationImpl.FrameRecord readFrame()
                     throws IOException, NoSuchMethodException {
         assert in != null;
-        // May be null if
+        // May be null if class is derived from `this`
         String holder = readHolder();
         String methodName = readMethodName();
         Object possibleThis = null;

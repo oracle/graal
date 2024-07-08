@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -195,6 +196,7 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
     }
 
     @Substitution(hasReceiver = true)
+    @TruffleBoundary
     static @JavaType(StackTraceElement[].class) StaticObject getRecordedFrames0(StaticObject self, @Inject EspressoContext context, @Inject Meta meta) {
         HostFrameRecord hfr = (HostFrameRecord) meta.continuum.HIDDEN_CONTINUATION_FRAME_RECORD.getHiddenObject(self, true);
         if (hfr == null) {

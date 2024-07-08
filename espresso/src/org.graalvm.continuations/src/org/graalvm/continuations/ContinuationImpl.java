@@ -396,14 +396,70 @@ final class ContinuationImpl extends Continuation {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toDebugString() {
-        StackTraceElement[] frames = getRecordedFrames();
-        if (frames == null) {
-            return this + " with no recorded frames.";
+        StringBuilder sb = new StringBuilder().append("Continuation[").append(getState()).append("]");
+        StackTraceElement[] frames;
+        FrameRecord fr;
+        synchronized (this) {
+            State currentState = lock();
+            try {
+                frames = getRecordedFrames();
+                ensureMaterialized();
+                fr = stackFrameHead;
+                if (frames == null || fr == null) {
+                    sb.append(" with no recorded frames");
+                    return sb.toString();
+                }
+            } finally {
+                unlock(currentState);
+            }
         }
-        StringBuilder sb = new StringBuilder().append(this).append(" with recorded frames:\n");
-        for (StackTraceElement e : frames) {
-            sb.append(e).append('\n');
+
+        // Collect records in the usual order
+        int len = frames.length;
+        FrameRecord[] orderedRecords = new FrameRecord[len];
+        for (int i = 0; i < len; i++) {
+            orderedRecords[(len - 1) - i] = fr;
+            fr = fr.next;
+        }
+        if (fr != null) {
+            throw new IllegalMaterializedRecordException("Stack trace and recorded frames mismatch.");
+        }
+
+        sb.append(" with recorded frames:\n");
+        for (int i = 0; i < len; i++) {
+            StackTraceElement e = frames[i];
+            FrameRecord record = orderedRecords[i];
+            // Print the nice stack trace element.
+            sb.append("  ").append(e).append('\n');
+            // Additionally provide the bci.
+            sb.append("    Current bytecode index: ").append(record.bci);
+            sb.append('\n');
+            sb.append("    Pointers: [");
+            // We start at 1 because the first slot is always a primitive (the bytecode index).
+            for (int j = 1; j < record.pointers.length; j++) {
+                Object pointer = record.pointers[j];
+                if (pointer == null) {
+                    sb.append("null");
+                } else if (pointer == this) {
+                    sb.append("this continuation");   // Don't stack overflow.
+                } else {
+                    sb.append(pointer);
+                }
+                if (j < record.pointers.length - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append("]\n");
+            sb.append("    Primitives: ");
+            for (int j = 1; j < record.primitives.length; j++) {
+                sb.append(record.primitives[j]);
+                if (j < record.pointers.length - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append("\n");
         }
         return sb.toString();
     }
