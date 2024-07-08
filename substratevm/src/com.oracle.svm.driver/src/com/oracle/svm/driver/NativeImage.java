@@ -276,6 +276,7 @@ public class NativeImage {
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageBuilderModulePath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderClasspath = new LinkedHashSet<>();
+    private final LinkedHashSet<Path> imageProvidedJars = new LinkedHashSet<>();
     private final ArrayList<String> imageBuilderJavaArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageModulePath = new LinkedHashSet<>();
@@ -1136,7 +1137,7 @@ public class NativeImage {
          * only allow inlining when JIT compiling after n invocations. PROFILE_GWT is used to
          * profile "guard with test" method handles and speculate on a constant guard value, making
          * the other branch statically unreachable for JIT compilation.
-         * 
+         *
          * Both are used for example in the implementation of record hashCode/equals methods. We
          * disable this behavior in the image builder because for AOT compilation, profiling and
          * speculation are never useful. Instead, it prevents optimizing the method handles for AOT
@@ -1298,15 +1299,15 @@ public class NativeImage {
         LinkedHashSet<Path> finalImageModulePath = new LinkedHashSet<>(imageModulePath);
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageClasspath);
 
-        List<Path> imageProvidedJars;
+        LinkedHashSet<Path> finalImageProvidedJars = new LinkedHashSet<>(this.imageProvidedJars);
         if (config.modulePathBuild) {
-            imageProvidedJars = config.getImageProvidedModulePath();
-            finalImageModulePath.addAll(imageProvidedJars);
+            finalImageProvidedJars.addAll(config.getImageProvidedModulePath());
+            finalImageModulePath.addAll(finalImageProvidedJars);
         } else {
-            imageProvidedJars = config.getImageProvidedClasspath();
-            finalImageClasspath.addAll(imageProvidedJars);
+            finalImageProvidedJars.addAll(config.getImageProvidedClasspath());
+            finalImageClasspath.addAll(finalImageProvidedJars);
         }
-        imageProvidedJars.forEach(this::processClasspathNativeImageMetaInf);
+        finalImageProvidedJars.forEach(this::processClasspathNativeImageMetaInf);
 
         if (!config.buildFallbackImage()) {
             Optional<ArgumentEntry> fallbackThresholdEntry = getHostedOptionArgument(imageBuilderArgs, oHFallbackThreshold);
@@ -1953,6 +1954,10 @@ public class NativeImage {
 
     void addImageBuilderClasspath(Path classpath) {
         imageBuilderClasspath.add(canonicalize(classpath));
+    }
+
+    void addImageProvidedJars(Path path) {
+        imageProvidedJars.add(canonicalize(path));
     }
 
     void addImageBuilderJavaArgs(String... javaArgs) {
