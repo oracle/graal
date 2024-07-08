@@ -272,7 +272,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         assertHandlers(root, handler(0, "ex1"));
 
         root.getRootNodes().update(createBytecodeConfigBuilder().addTag(ExpressionTag.class).build());
-        assertHandlers(root, tag(2, handler(0, "ex1"), handler(1, "ex1")));
+        assertHandlers(root, tag(1, handler(0, "ex1")), tag(3, handler(2, "ex1")));
     }
 
     @Test
@@ -312,7 +312,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         assertHandlers(root, handler(0));
 
         root.getRootNodes().update(createBytecodeConfigBuilder().addTag(ExpressionTag.class).build());
-        assertHandlers(root, tag(2, handler(0, "ex1"), handler(1, "ex1")));
+        assertHandlers(root, tag(1, handler(0, "ex1")), tag(3, handler(2, "ex1")));
     }
 
     @Test

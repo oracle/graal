@@ -1758,13 +1758,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         class OperationDataClassesFactory {
 
             private Collection<CodeTypeElement> create() {
-                scopeDataType = new CodeTypeElement(Set.of(PRIVATE, STATIC, ABSTRACT), ElementKind.CLASS, null, "ScopeData");
-                scopeDataType.add(new CodeVariableElement(Set.of(), type(int.class), "frameOffset"));
-                scopeDataType.add(new CodeVariableElement(Set.of(), type(int[].class), "locals"));
-                scopeDataType.add(new CodeVariableElement(Set.of(), type(int.class), "localsCount"));
-                scopeDataType.add(new CodeVariableElement(Set.of(), type(boolean.class), "valid")).createInitBuilder().string("true");
                 List<CodeTypeElement> result = new ArrayList<>();
-                result.add(scopeDataType);
+
+                if (model.enableLocalScoping) {
+                    scopeDataType = new CodeTypeElement(Set.of(PRIVATE, STATIC, ABSTRACT), ElementKind.CLASS, null, "ScopeData");
+                    scopeDataType.add(new CodeVariableElement(Set.of(), type(int.class), "frameOffset"));
+                    scopeDataType.add(new CodeVariableElement(Set.of(), type(int[].class), "locals"));
+                    scopeDataType.add(new CodeVariableElement(Set.of(), type(int.class), "localsCount"));
+                    scopeDataType.add(new CodeVariableElement(Set.of(), type(boolean.class), "valid")).createInitBuilder().string("true");
+                    result.add(scopeDataType);
+                }
 
                 Map<String, CodeTypeElement> dataClassNames = new LinkedHashMap<>();
                 for (OperationModel operation : model.getOperations()) {
@@ -1826,6 +1829,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(int.class), "startStackHeight").asFinal(),
                                         field(tagNode.asType(), "node").asFinal(),
+                                        field(context.getType(int.class), "handlerStartBci").withInitializer("node.enterBci"),
                                         field(context.getType(boolean.class), "producedValue").withInitializer("false"),
                                         field(context.getType(int.class), "childBci").withInitializer(UNINIT),
                                         field(generic(type(List.class), tagNode.asType()), "children").withInitializer("null"));
@@ -4656,7 +4660,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                      */
                     b.statement("markReachable(true)");
                     buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
-                    b.statement("doCreateExceptionHandler(tagNode.enterBci, bci, HANDLER_TAG_EXCEPTIONAL, operationData.nodeId, operationData.startStackHeight)");
+                    b.statement("doCreateExceptionHandler(operationData.handlerStartBci, bci, HANDLER_TAG_EXCEPTIONAL, operationData.nodeId, operationData.startStackHeight)");
                     b.end().startElseBlock();
                     buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
                     b.end();
@@ -6829,6 +6833,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         assert operationKind == OperationKind.BRANCH;
                         buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
                     }
+                    b.statement("doCreateExceptionHandler(operationData.handlerStartBci, bci, HANDLER_TAG_EXCEPTIONAL, operationData.nodeId, operationData.startStackHeight)");
                     b.statement("break");
                     b.end(); // case tag
                 }
@@ -6894,6 +6899,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             buildOperationStackWalk(b, lowestOperationIndex, () -> {
                 b.startSwitch().string("operationStack[i].operation").end().startBlock();
+
+                if (model.enableTagInstrumentation) {
+                    b.startCase().tree(createOperationConstant(model.tagOperation)).end();
+                    b.startBlock();
+                    emitCastOperationData(b, model.tagOperation, "i");
+                    b.statement("operationData.handlerStartBci = bci");
+                    b.statement("break");
+                    b.end();
+                }
 
                 b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY))).end();
                 b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY_CATCH))).end();

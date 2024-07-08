@@ -1500,7 +1500,6 @@ public class TagTest extends AbstractInstructionTest {
                         events,
                         new Event(EventKind.ENTER, 0x0000, 0x0038, null, StatementTag.class),
                         new Event(EventKind.ENTER, 0x0002, 0x001d, null, ExpressionTag.class),
-                        // TODO: tag range needs to be closed when copying finally handler
                         new Event(EventKind.RETURN_VALUE, 0x0002, 0x001d, 42L, ExpressionTag.class),
                         new Event(EventKind.ENTER, 0x000d, 0x0017, null, StatementTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x000d, 0x0017, null, StatementTag.class),
@@ -1512,10 +1511,7 @@ public class TagTest extends AbstractInstructionTest {
                         events,
                         new Event(EventKind.ENTER, 0x0000, 0x0038, null, StatementTag.class),
                         new Event(EventKind.ENTER, 0x0002, 0x001d, null, ExpressionTag.class),
-                        // TODO: missing ExpressionTag exception event. need to emit multiple ranges
-                        // when inlining finally handler.
-                        // new Event(EventKind.EXCEPTIONAL, 0x0002, 0x001d, null,
-                        // ExpressionTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0002, 0x001d, TestException.class, ExpressionTag.class),
                         new Event(EventKind.ENTER, 0x002b, 0x0035, null, StatementTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x002b, 0x0035, null, StatementTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x0038, null, StatementTag.class));
@@ -1728,6 +1724,7 @@ public class TagTest extends AbstractInstructionTest {
                         events,
                         new Event(EventKind.RESUME, 0x0000, 0x003b, null, StatementTag.class),
                         new Event(EventKind.RESUME, 0x0002, 0x0024, null, ExpressionTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0002, 0x0024, TestException.class, ExpressionTag.class),
                         new Event(EventKind.ENTER, 0x0031, 0x0035, null, StatementTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0031, 0x0035, 123L, StatementTag.class),
                         new Event(EventKind.EXCEPTIONAL, 0x0000, 0x003b, TestException.class, StatementTag.class));
@@ -1818,8 +1815,7 @@ public class TagTest extends AbstractInstructionTest {
                         events,
                         new Event(EventKind.ENTER, 0x0000, 0x004f, null, StatementTag.class),
                         new Event(EventKind.ENTER, 0x0002, 0x0024, null, ExpressionTag.class),
-                        // TODO: missing ExpressionTag exception event. need to emit multiple ranges
-                        // when inlining finally handler.
+                        new Event(EventKind.EXCEPTIONAL, 0x0002, 0x0024, TestException.class, ExpressionTag.class),
                         new Event(EventKind.ENTER, 0x003b, 0x0049, null, StatementTag.class),
                         new Event(EventKind.YIELD, 0x003b, 0x0049, 123L, StatementTag.class),
                         new Event(EventKind.YIELD, 0x0000, 0x004f, 123L, StatementTag.class));
