@@ -34,6 +34,7 @@ import org.junit.Test;
 
 import org.graalvm.polyglot.Source;
 
+import com.oracle.truffle.api.instrumentation.GenerateWrapper.Ignore;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 
 public class TimeoutTest {
@@ -45,6 +46,7 @@ public class TimeoutTest {
 
     // @formatter:off   The default formatting makes unnecessarily big indents and illogical line breaks
     @Test
+    @Ignore //GR-55088 fails transiently
     public void testSuspensionTimeout() throws Exception {
         String code = "ROOT(STATEMENT)";
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, code, "TestFile").build();
