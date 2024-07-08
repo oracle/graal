@@ -51,5 +51,6 @@ public interface OracleDBErrorMessages {
     String INVALID_RANGE = "invalid range in regular expression";
     String INVALID_COLLATION_ELEMENT = "invalid collation class in regular expression";
     String INVALID_EQUIVALENCE_CLASS = "invalid equivalence class in regular expression";
+    String NESTED_QUANTIFIER = "nested quantifier in regular expression";
     String KNOWN_BUG = "known bug";
 }
