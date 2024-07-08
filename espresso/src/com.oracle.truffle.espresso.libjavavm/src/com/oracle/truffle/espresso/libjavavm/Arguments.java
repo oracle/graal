@@ -26,10 +26,11 @@ import static com.oracle.truffle.espresso.libjavavm.jniapi.JNIErrors.JNI_ERR;
 
 import java.io.File;
 import java.io.PrintStream;
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -78,7 +79,7 @@ public final class Arguments {
     private static final Map<String, String> MAPPED_XX_OPTIONS = Map.of(
                     "TieredCompilation", "engine.MultiTier");
 
-    public static int setupContext(Context.Builder builder, JNIJavaVMInitArgs args) {
+    public static int setupContext(Context.Builder builder, JNIJavaVMInitArgs args, BitSet ignoredArgs) {
         Pointer p = (Pointer) args.getOptions();
         int count = args.getNOptions();
         String classpath = null;
@@ -88,8 +89,7 @@ public final class Arguments {
         ArgumentsHandler handler = new ArgumentsHandler(builder, IGNORED_XX_OPTIONS, MAPPED_XX_OPTIONS, args);
         List<String> jvmArgs = new ArrayList<>();
 
-        boolean ignoreUnrecognized = false;
-        boolean autoAdjustHeapSize = true;
+        boolean ignoreUnrecognized = args.getIgnoreUnrecognized();
         List<String> xOptions = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
@@ -99,6 +99,10 @@ public final class Arguments {
                 if (str.isNonNull()) {
                     String optionString = CTypeConversion.toJavaString(option.getOptionString());
                     buildJvmArg(jvmArgs, optionString);
+                    if (ignoredArgs.get(i)) {
+                        // this argument participates in jvmArgs but should otherwise be ignored
+                        continue;
+                    }
                     if (optionString.startsWith("-Xbootclasspath:")) {
                         bootClasspathPrepend = null;
                         bootClasspathAppend = null;
@@ -128,7 +132,7 @@ public final class Arguments {
                         builder.option(AGENT_PATH + split[0], split[1]);
                     } else if (optionString.startsWith("-D")) {
                         String key = optionString.substring("-D".length());
-                        int splitAt = key.indexOf("=");
+                        int splitAt = key.indexOf('=');
                         String value = "";
                         if (splitAt >= 0) {
                             value = key.substring(splitAt + 1);
@@ -181,10 +185,6 @@ public final class Arguments {
                         builder.option(JAVA_PROPS + "jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
                     } else if (optionString.equals("--enable-preview")) {
                         builder.option("java.EnablePreview", "true");
-                    } else if (optionString.equals("-XX:-AutoAdjustHeapSize")) {
-                        autoAdjustHeapSize = false;
-                    } else if (optionString.equals("-XX:+AutoAdjustHeapSize")) {
-                        autoAdjustHeapSize = true;
                     } else if (isXOption(optionString)) {
                         xOptions.add(optionString);
                     } else if (optionString.equals("-XX:+IgnoreUnrecognizedVMOptions")) {
@@ -233,11 +233,7 @@ public final class Arguments {
         }
 
         for (String xOption : xOptions) {
-            var opt = xOption;
-            if (autoAdjustHeapSize) {
-                opt = maybeAdjustMaxHeapSize(xOption);
-            }
-            RuntimeOptions.set(opt.substring(2 /* drop the -X */), null);
+            RuntimeOptions.set(xOption.substring(2 /* drop the -X */), null);
         }
 
         if (bootClasspathPrepend != null) {
@@ -257,45 +253,6 @@ public final class Arguments {
 
         handler.argumentProcessingDone();
         return JNIErrors.JNI_OK();
-    }
-
-    private static String maybeAdjustMaxHeapSize(String optionString) {
-        // (Jun 2024) Espresso uses more memory than HotSpot does, so if the user has set a very
-        // small heap size that would work on HotSpot then we have to bump it up. 64mb is too small
-        // to run Gradle's wrapper program which is required to use Espresso with Gradle, so, we
-        // go to the next power of two beyond that. This number can be reduced in future when
-        // memory efficiency is better.
-        if (!optionString.startsWith("-Xmx")) {
-            return optionString;
-        }
-        long maxHeapSizeBytes = parseLong(optionString.substring(4));
-        final int floorMB = 128;
-        if (maxHeapSizeBytes < floorMB * 1024 * 1024) {
-            return "-Xmx" + floorMB + "m";
-        } else {
-            return optionString;
-        }
-    }
-
-    private static long parseLong(String v) {
-        String valueString = v.trim().toLowerCase(Locale.ROOT);
-        long scale = 1;
-        if (valueString.endsWith("k")) {
-            scale = 1024L;
-        } else if (valueString.endsWith("m")) {
-            scale = 1024L * 1024L;
-        } else if (valueString.endsWith("g")) {
-            scale = 1024L * 1024L * 1024L;
-        } else if (valueString.endsWith("t")) {
-            scale = 1024L * 1024L * 1024L * 1024L;
-        }
-
-        if (scale != 1) {
-            /* Remove trailing scale character. */
-            valueString = valueString.substring(0, valueString.length() - 1);
-        }
-
-        return Long.parseLong(valueString) * scale;
     }
 
     private static void buildJvmArg(List<String> jvmArgs, String optionString) {
@@ -321,16 +278,16 @@ public final class Arguments {
     }
 
     private static String appendPath(String paths, String toAppend) {
-        if (paths != null && paths.length() != 0) {
-            return toAppend != null && toAppend.length() != 0 ? paths + File.pathSeparator + toAppend : paths;
+        if (paths != null && !paths.isEmpty()) {
+            return toAppend != null && !toAppend.isEmpty() ? paths + File.pathSeparator + toAppend : paths;
         } else {
             return toAppend;
         }
     }
 
     private static String prependPath(String toPrepend, String paths) {
-        if (paths != null && paths.length() != 0) {
-            return toPrepend != null && toPrepend.length() != 0 ? toPrepend + File.pathSeparator + paths : paths;
+        if (paths != null && !paths.isEmpty()) {
+            return toPrepend != null && !toPrepend.isEmpty() ? toPrepend + File.pathSeparator + paths : paths;
         } else {
             return toPrepend;
         }
@@ -351,7 +308,7 @@ public final class Arguments {
     }
 
     public static class ArgumentException extends RuntimeException {
-        private static final long serialVersionUID = 5430103471994299046L;
+        @Serial private static final long serialVersionUID = 5430103471994299046L;
 
         private final boolean isExperimental;
 
