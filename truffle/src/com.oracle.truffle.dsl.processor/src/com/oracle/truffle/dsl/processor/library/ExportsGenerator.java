@@ -1203,6 +1203,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         if (isFinalExports) {
             uncachedClass.addAnnotationMirror(new CodeAnnotationMirror(types.DenyReplace));
         }
+        uncachedClass.getImplements().add(types.UncachedNode);
 
         CodeTreeBuilder builder;
         CodeExecutableElement constructor = uncachedClass.add(GeneratorUtils.createConstructorUsingFields(modifiers(PROTECTED), uncachedClass));

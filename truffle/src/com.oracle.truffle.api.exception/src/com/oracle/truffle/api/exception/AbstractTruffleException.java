@@ -43,11 +43,13 @@ package com.oracle.truffle.api.exception;
 import org.graalvm.polyglot.PolyglotException;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.UncachedNode;
 
 /**
  * A base class for an exception thrown during the execution of a guest language program.<br>
@@ -154,6 +156,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 @SuppressWarnings({"serial"})
 public abstract class AbstractTruffleException extends RuntimeException implements TruffleObject {
 
+    // TODO GR-55183 make this default in 25.0
+    private static final boolean STRICT_CHECKS = Boolean.getBoolean("truffle.StrictLocationChecks");
+
     /**
      * The constant for an unlimited stack trace element limit.
      *
@@ -169,6 +174,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     /**
      * Creates a new AbstractTruffleException.
      *
+     * @see #AbstractTruffleException(String, Throwable, int, Node)
      * @since 20.3
      */
     protected AbstractTruffleException() {
@@ -178,6 +184,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     /**
      * Creates a new AbstractTruffleException with given location.
      *
+     * @see #AbstractTruffleException(String, Throwable, int, Node)
      * @since 20.3
      */
     protected AbstractTruffleException(Node location) {
@@ -187,6 +194,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     /**
      * Creates a new AbstractTruffleException with given message.
      *
+     * @see #AbstractTruffleException(String, Throwable, int, Node)
      * @since 20.3
      */
     protected AbstractTruffleException(String message) {
@@ -196,6 +204,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     /**
      * Creates a new AbstractTruffleException with given message and location.
      *
+     * @see #AbstractTruffleException(String, Throwable, int, Node)
      * @since 20.3
      */
     protected AbstractTruffleException(String message, Node location) {
@@ -208,6 +217,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * trace of a newly created {@link AbstractTruffleException} are inherited from the given
      * {@link AbstractTruffleException}.
      *
+     * @see #AbstractTruffleException(String, Throwable, int, Node)
      * @since 20.3
      */
     @SuppressWarnings("this-escape")
@@ -234,14 +244,42 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      *            errors.
      * @param stackTraceElementLimit a stack trace limit. Use {@link #UNLIMITED_STACK_TRACE} for
      *            unlimited stack trace length.
+     * @param location the node relative to where this error occured. The given node must be
+     *            {@link Node#isAdoptable() adoptable} and not {@link Node#isUncached() uncached}
+     *            otherwise an {@link IllegalArgumentException} is thrown if assertions (-ea) are
+     *            enabled. To resolve uncached nodes use {@link UncachedNode#resolveLocation(Node)}.
+     *            The location may be <code>null</code>.
      *
      * @since 20.3
      */
     protected AbstractTruffleException(String message, Throwable cause, int stackTraceElementLimit, Node location) {
         super(message, cause);
+        assert validateLocation(location);
         this.stackTraceElementLimit = stackTraceElementLimit;
         this.cause = cause;
         this.location = location;
+    }
+
+    private static boolean validateLocation(Node location) {
+        if (!STRICT_CHECKS) {
+            return true;
+        }
+
+        if (location == null) {
+            return true;
+        }
+
+        if (location.isUncached()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalArgumentException("An uncached node of type '" + location.getClass().getName() + "' was provided as a location for a guest exception. " + //
+                            "Uncached nodes must not be used as locations for guest exceptions. For uncached code paths make sure the location is resolved using UncachedNode.resolveLocation(location) or manually using EncapsulatingNodeReference. ");
+        } else if (!location.isAdoptable()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalArgumentException("An unadoptable node type '" + location.getClass().getName() + "' was provided as a location for a guest exception. " + //
+                            "Unadoptable nodes must not be used as locations for guest exceptions. Unadoptable nodes are shared across multiple locations so do not identify a location uniquely. " +
+                            "Change the node type to be adopable or use a different node as location instead.");
+        }
+        return true;
     }
 
     /**

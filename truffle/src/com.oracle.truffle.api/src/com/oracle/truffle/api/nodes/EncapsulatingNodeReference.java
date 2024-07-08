@@ -76,25 +76,14 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * final class LanguageException extends AbstractTruffleException {
  *
  *     private LanguageException(Node locationNode) {
- *         super(locationNode);
+ *         super(UncachedNode.resolveLocation(locationNode));
  *     }
- *
- *     static LanguageException create(Node locationNode) {
- *         CompilerAsserts.partialEvaluationConstant(locationNode);
- *         if (locationNode == null || !locationNode.isAdoptable()) {
- *             return new LanguageException(EncapsulatingNodeReference.getCurrent().get());
- *         } else {
- *             return new LanguageException(locationNode);
- *         }
- *     }
- *
  *     // ...
  * }
  * </pre>
  *
- * Note that {@link Node#isAdoptable()} is a way to find out whether a node was used in an uncached
+ * Note that {@link Node#isUncached()} is a way to find out whether a node was used in an uncached
  * scenario or not.
- *
  *
  * @since 20.2
  */
@@ -131,6 +120,7 @@ public final class EncapsulatingNodeReference {
      * @since 20.2
      */
     public Node set(Node node) {
+        assert node == null || !node.isUncached() : "Node must not be an uncached node to be pushed as encapsulating node.";
         assert node == null || node.isAdoptable() : "Node must be adoptable to be pushed as encapsulating node.";
         assert node == null || node.getRootNode() != null : "Node must be adopted by a RootNode to be pushed as encapsulating node.";
         assert Thread.currentThread() == this.thread.get();

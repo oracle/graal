@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 24.2.0
+* GR-54875 Added `UncachedNode` to mark uncached cases of nodes. Added the `Node.isUncached()` method to find out whether a node is uncached. Language implementations are encouraged to make their uncached node classes implement the `UncachedNode` interface. Using a distinction between uncached and not adoptable nodes allows to create cached unadoptable nodes which do not trigger location resolution with `UncachedNode.resolveLocation(Node)`. Truffle DSL generated uncached nodes will implement the interface when they are rebuilt with the new Truffle version. The new method `Node.isUncached()` should be preferred over `Node.isAdoptable()` to find out whether a node is uncached.
+* GR-54875 It is no longer allowed to pass an uncached or not adoptable nodes as location to the `AbstactionTruffleException(Node)` and `CallTarget.call(Node, Object...)` methods. Please refer to the javadoc of the individual methods for further information on how to migrate. Language implementations are encouraged to set `-Dtruffle.StrictLocationChecks=true` to enable strict location verification when assertions (`-ea`) are enabled. The new verifications will become the default enabled in the next release (GR-55183).
+
 ## Version 24.1.0
 * GR-43839 Added optional parameter to TruffleString.ByteIndexOfCodePointSetNode to choose whether the node may calculate the input string's precise code range.
 * GR-51253 Extend allowed DynamicObject shape flags from 8 to 16 bits.

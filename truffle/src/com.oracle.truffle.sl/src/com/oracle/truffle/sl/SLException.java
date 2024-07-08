@@ -48,6 +48,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.UncachedNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.runtime.SLLanguageView;
 
@@ -63,7 +64,7 @@ public class SLException extends AbstractTruffleException {
 
     @TruffleBoundary
     public SLException(String message, Node location) {
-        super(message, location);
+        super(message, UncachedNode.resolveLocation(location));
     }
 
     /**

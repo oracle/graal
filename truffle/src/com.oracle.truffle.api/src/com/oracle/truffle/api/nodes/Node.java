@@ -232,6 +232,24 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
+     * Returns <code>true</code> if this node is an uncached node, else <code>false</code>.
+     * <p>
+     * Uncached nodes are nodes with execute methods which are not designed for partial evaluation.
+     * Uncached nodes do not collect profiling feedback, that is why they can be useful in runtime
+     * code without a location to store the profiling feedback. Also, uncached nodes can be used to
+     * implement an initial interpreter tier where no profiling feedback is collected.
+     * <p>
+     * Uncached nodes must not be used as location for exception and call locations directly. Ensure
+     * that the location is {@link UncachedNode#resolveLocation(Node) resolved} before use.
+     *
+     * @see UncachedNode
+     * @since 24.2
+     */
+    public final boolean isUncached() {
+        return this instanceof UncachedNode;
+    }
+
+    /**
      * Inserts new node children into an AST that was already {@link #adoptChildren() adopted} by a
      * {@link #getParent() parent}. The new children need to be assigned to its {@link Children
      * children} field after insert was called.

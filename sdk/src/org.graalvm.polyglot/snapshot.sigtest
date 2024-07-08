@@ -214,7 +214,7 @@ meth public void close()
 meth public void close(boolean)
 supr java.lang.Object
 hfds EMPTY,ENGINES,currentAPI,dispatch,initializationException,receiver,shutdownHookInitialized
-hcls APIAccessImpl,ClassPathIsolation,EngineShutDownHook,ImplHolder,PolyglotInvalid
+hcls APIAccessImpl,EngineShutDownHook,ImplHolder,PolyglotInvalid
 
 CLSS public final org.graalvm.polyglot.Engine$Builder
  outer org.graalvm.polyglot.Engine

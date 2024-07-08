@@ -1228,6 +1228,7 @@ meth public final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} replace({
 meth public final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0}[] insert({%%0}[])
 meth public final <%0 extends java.lang.Object> {%%0} atomic(java.util.concurrent.Callable<{%%0}>)
 meth public final boolean isSafelyReplaceableBy(com.oracle.truffle.api.nodes.Node)
+meth public final boolean isUncached()
 meth public final com.oracle.truffle.api.nodes.Node getParent()
 meth public final com.oracle.truffle.api.nodes.RootNode getRootNode()
 meth public final java.lang.Iterable<com.oracle.truffle.api.nodes.Node> getChildren()
@@ -1402,6 +1403,10 @@ supr java.lang.Exception
 hfds serialVersionUID
 
 CLSS public abstract interface com.oracle.truffle.api.nodes.UnadoptableNode
+
+CLSS public abstract interface com.oracle.truffle.api.nodes.UncachedNode
+intf com.oracle.truffle.api.nodes.UnadoptableNode
+meth public static com.oracle.truffle.api.nodes.Node resolveLocation(com.oracle.truffle.api.nodes.Node)
 
 CLSS public final com.oracle.truffle.api.nodes.UnexpectedResultException
 cons public init(java.lang.Object)

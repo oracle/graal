@@ -1172,6 +1172,7 @@ public class FlatNodeGenFactory {
             CodeTypeElement uncached = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, STATIC, FINAL), "Uncached", node.getTemplateType().asType());
             uncached.getEnclosedElements().addAll(createUncachedFields());
             uncached.addAnnotationMirror(new CodeAnnotationMirror(types.DenyReplace));
+            uncached.getImplements().add(types.UncachedNode);
 
             for (NodeFieldData field : node.getFields()) {
                 if (!field.isGenerated()) {
