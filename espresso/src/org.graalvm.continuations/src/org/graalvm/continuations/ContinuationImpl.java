@@ -794,7 +794,26 @@ final class ContinuationImpl extends Continuation {
 
     @Override
     public String toString() {
-        return "Continuation[" + getState() + "]";
+        String status;
+        switch (getState()) {
+            case NEW: // fallthrough
+            case SUSPENDED:
+                status = "Resumable";
+                break;
+            case RUNNING:
+                status = "Running";
+                break;
+            case COMPLETED: // fallthrough
+            case FAILED:
+                status = "Completed";
+                break;
+            case INCOMPLETE: // fallthrough
+            case LOCKED: // fallthrough
+            default:
+                status = "Unavailable";
+                break;
+        }
+        return "Continuation[" + status + "]";
     }
 
     // VM knows about this method and will check it is the last on the frame record.
