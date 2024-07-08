@@ -1318,7 +1318,7 @@ public class ElementUtils {
         return Character.toLowerCase(name.charAt(0)) + name.substring(1, name.length());
     }
 
-    private static ExecutableElement getDeclaredMethod(TypeElement element, String name, TypeMirror[] params) {
+    public static ExecutableElement getDeclaredMethod(TypeElement element, String name, TypeMirror[] params) {
         List<ExecutableElement> methods = ElementFilter.methodsIn(element.getEnclosedElements());
         method: for (ExecutableElement method : methods) {
             if (!method.getSimpleName().toString().equals(name)) {

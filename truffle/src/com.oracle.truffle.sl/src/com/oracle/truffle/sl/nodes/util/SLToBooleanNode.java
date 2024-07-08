@@ -69,18 +69,18 @@ public abstract class SLToBooleanNode extends SLExpressionNode {
 
     @Specialization(guards = "lib.isBoolean(value)", limit = "3")
     public static boolean doInterop(Object value,
-                    @Bind("this") Node node, @Bind("$bci") int bci,
+                    @Bind("this") Node node,
                     @CachedLibrary("value") InteropLibrary lib) {
         try {
             return lib.asBoolean(value);
         } catch (UnsupportedMessageException e) {
-            return doFallback(value, node, bci);
+            return doFallback(value, node);
         }
     }
 
     @Fallback
-    public static boolean doFallback(Object value, @Bind("this") Node node, @Bind("$bci") int bci) {
-        throw SLException.typeError(node, "toBoolean", bci, value);
+    public static boolean doFallback(Object value, @Bind("this") Node node) {
+        throw SLException.typeError(node, "toBoolean", value);
     }
 
 }

@@ -42,7 +42,6 @@ package com.oracle.truffle.api.bytecode;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Base exception class for bytecode DSL interpreters which provides additional bytecode DSL utility
@@ -131,11 +130,16 @@ public abstract class AbstractBytecodeException extends AbstractTruffleException
         } else {
             BytecodeNode bytecode = BytecodeNode.get(locationNode);
             if (bytecode == null) {
-                throw new IllegalArgumentException("A location node was provided that could not resolve a BytecodeNode using BytecodeNode.get(Node).");
-            }
-            if (bytecodeIndex < 0) {
+                if (bytecodeIndex >= 0) {
+                    throw new IllegalArgumentException("A location node was provided that could not resolve a BytecodeNode using BytecodeNode.get(Node).");
+                }
+                // a negative bytecode index with a node bytecode node location is valid
+                // this may be useful if you want to throw the same error from builtin root nodes
+                // without a bytecode node and bytecode index.
+                return true;
+            } else if (bytecodeIndex < 0) {
                 throw new IllegalArgumentException(
-                                "A non-null location node was provided but a negative bytecodeIndex was provided. " +
+                                "A non-null bytecode location was provided with a negative bytecodeIndex. " +
                                                 "Provide a null location node and a negative bytecodeIndex for no bytecode location or return a positive bytecodeIndex in addition to the non-null location node to resolve this.");
             }
             boolean valid = false;
@@ -149,7 +153,6 @@ public abstract class AbstractBytecodeException extends AbstractTruffleException
                 throw new IllegalArgumentException(
                                 "The provided bytecodeIndex does not point to a valid bytecodeIndex of the given bytecode node. A common cause for this is");
             }
-
         }
         return true;
     }
@@ -169,19 +172,5 @@ public abstract class AbstractBytecodeException extends AbstractTruffleException
         return BytecodeLocation.get(getLocation(), this.bytecodeIndex);
     }
 
-    /**
-     * Returns a source section associated with the exception or <code>null</code> if the exception
-     * does not have a location.
-     *
-     * @since 24.2
-     */
-    @Override
-    public final SourceSection getEncapsulatingSourceSection() {
-        Node location = getLocation();
-        int bci = this.bytecodeIndex;
-        if (location == null || bci < 0) {
-            return null;
-        }
-        return BytecodeLocation.get(location, bci).getSourceLocation();
-    }
+
 }

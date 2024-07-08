@@ -81,15 +81,14 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
 
     @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "LIBRARY_LIMIT")
     public static Object writeArray(Object receiver, Object index, Object value,
-                    @Bind("$root") Node node,
-                    @Bind("$bci") int bci,
+                    @Bind("this") Node node,
                     @CachedLibrary("receiver") InteropLibrary arrays,
                     @CachedLibrary("index") InteropLibrary numbers) {
         try {
             arrays.writeArrayElement(receiver, numbers.asLong(index), value);
         } catch (UnsupportedMessageException | UnsupportedTypeException | InvalidArrayIndexException e) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLException.undefinedProperty(node, bci, index);
+            throw SLException.undefinedProperty(node, index);
         }
         return value;
     }
@@ -106,14 +105,13 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
     @Specialization(guards = "!isSLObject(receiver)", limit = "LIBRARY_LIMIT")
     public static Object writeObject(Object receiver, Object name, Object value,
                     @Bind("this") Node node,
-                    @Bind("$bci") int bci,
                     @CachedLibrary("receiver") InteropLibrary objectLibrary,
                     @Cached SLToMemberNode asMember) {
         try {
             objectLibrary.writeMember(receiver, asMember.execute(node, name), value);
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
             // write was not successful. In SL we only have basic support for errors.
-            throw SLException.undefinedProperty(node, bci, name);
+            throw SLException.undefinedProperty(node, name);
         }
         return value;
     }

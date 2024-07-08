@@ -51,8 +51,7 @@ import com.oracle.truffle.sl.runtime.SLFunction;
 
 /**
  * The initial {@link RootNode} of {@link SLFunction functions} when they are created, i.e., when
- * they are still undefined. Executing it throws an
- * {@link SLException#undefinedFunction exception}.
+ * they are still undefined. Executing it throws an {@link SLException#undefinedFunction exception}.
  */
 public final class SLUndefinedFunctionRootNode extends SLRootNode {
 
@@ -67,7 +66,7 @@ public final class SLUndefinedFunctionRootNode extends SLRootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        throw SLException.undefinedFunction(null, -1, name);
+        throw SLException.undefinedFunction(null, name);
     }
 
     @Override

@@ -243,13 +243,12 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
                         Object function,
                         @Variadic Object[] arguments,
                         @CachedLibrary(limit = "3") InteropLibrary library,
-                        @Bind("$node") Node node,
-                        @Bind("$bci") int bci) {
+                        @Bind("$node") Node node) {
             try {
                 return library.execute(function, arguments);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 /* Execute was not successful. */
-                throw SLException.undefinedFunction(node, bci, function);
+                throw SLException.undefinedFunction(node, function);
             }
         }
     }

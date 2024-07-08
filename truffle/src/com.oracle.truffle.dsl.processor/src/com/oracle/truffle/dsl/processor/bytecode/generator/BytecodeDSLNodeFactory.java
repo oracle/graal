@@ -395,6 +395,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         bytecodeNodeGen.add(createCloneUninitializedSupported());
         bytecodeNodeGen.add(createCloneUninitialized());
 
+        bytecodeNodeGen.add(createFindBytecodeIndex());
+        bytecodeNodeGen.add(createIsCaptureFramesForTrace());
+
         // Define helpers for variadic accesses.
         bytecodeNodeGen.add(createReadVariadic());
         bytecodeNodeGen.add(createMergeVariadic());
@@ -462,6 +465,53 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         return bytecodeNodeGen;
+    }
+
+    private Element createIsCaptureFramesForTrace() {
+        ExecutableElement method = ElementUtils.getDeclaredMethod(ElementUtils.castTypeElement(types.RootNode), "isCaptureFramesForTrace", new TypeMirror[]{type(boolean.class)});
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(method);
+        ex.renameArguments("compiled");
+        CodeTreeBuilder b = ex.createBuilder();
+        if (model.storeBciInFrame) {
+            b.statement("return true");
+        } else {
+            b.statement("return !compiled");
+        }
+        return ex;
+    }
+
+    private Element createFindBytecodeIndex() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "findBytecodeIndex", 2);
+        ex.renameArguments("node", "frame");
+        CodeTreeBuilder b = ex.createBuilder();
+        if (model.storeBciInFrame) {
+            b.startIf().string("node == null").end().startBlock();
+            b.statement("return -1");
+            b.end();
+            b.startAssert();
+            b.startStaticCall(types.BytecodeNode, "get").string("node").end().instanceOf(abstractBytecodeNode.asType()).string(" : ").doubleQuote("invalid bytecode node passed");
+            b.end();
+            b.startReturn();
+            b.startCall("frame.getInt").string("BCI_IDX").end();
+            b.end();
+        } else {
+            b.declaration(abstractBytecodeNode.asType(), "bytecode", "null");
+            b.declaration(types.Node, "prev", "node");
+            b.declaration(types.Node, "current", "node");
+            b.startWhile().string("current != null").end().startBlock();
+            b.startIf().string("current ").instanceOf(abstractBytecodeNode.asType()).string(" b").end().startBlock();
+            b.statement("bytecode = b");
+            b.statement("break");
+            b.end();
+            b.statement("prev = current");
+            b.statement("current = prev.getParent()");
+            b.end();
+            b.startIf().string("bytecode == null").end().startBlock();
+            b.statement("return -1");
+            b.end();
+            b.statement("return bytecode.findBytecodeIndex(frame, prev)");
+        }
+        return ex;
     }
 
     private CodeExecutableElement createResolveInstrumentableCallNode() {
@@ -8657,6 +8707,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(createFindInstrumentableCallNode());
             }
 
+            type.add(createFindBytecodeIndex2());
             type.add(createReadValidBytecode());
 
             continueAt = type.add(new CodeExecutableElement(Set.of(ABSTRACT), type(int.class), "continueAt"));
@@ -9555,6 +9606,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.getModifiers().remove(Modifier.ABSTRACT);
             ex.getModifiers().add(Modifier.FINAL);
             ex.createBuilder().returnFalse();
+            return ex;
+        }
+
+        private CodeExecutableElement createFindBytecodeIndex2() {
+            // override to make method visible
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findBytecodeIndex", 2);
+            ex.getModifiers().add(ABSTRACT);
             return ex;
         }
 

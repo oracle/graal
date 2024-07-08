@@ -962,7 +962,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    @Ignore
     public void testLocalsNonlocalRead() {
         // TODO this test fails when boxing elimination is enabled
         // locals accessed non-locally must have boxing elimination disabled
@@ -970,7 +969,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         // this can be done automatically, or by
         // having `createLocal(boolean accessedFromClosure)` or similar
-        RootCallTarget root = parse("localsNonlocalRead", b -> {
+        BasicInterpreter node = parseNode("localsNonlocalRead", b -> {
             // x = 1
             // return (lambda: x)()
             b.beginRoot(LANGUAGE);
@@ -992,6 +991,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                 b.endLoadLocalMaterialized();
                 b.endReturn();
                 BasicInterpreter inner = b.endRoot();
+                System.out.println(inner.dump());
 
             b.beginCreateClosure();
             b.emitLoadConstant(inner);
@@ -1003,7 +1003,9 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        assertEquals(1L, root.call());
+        System.out.println(node.dump());
+
+        assertEquals(1L, node.getCallTarget().call());
     }
 
     @Test

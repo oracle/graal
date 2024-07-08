@@ -43,7 +43,6 @@ package com.oracle.truffle.sl;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.bytecode.AbstractBytecodeException;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -57,42 +56,22 @@ import com.oracle.truffle.sl.runtime.SLLanguageView;
  * conditions just abort execution. The exceptions defined in this class are used when we abort from
  * within the SL implementation.
  */
-public final class SLException {
+@SuppressWarnings("serial")
+public final class SLException extends AbstractTruffleException {
+
     private static final InteropLibrary UNCACHED_LIB = InteropLibrary.getFactory().getUncached();
+
+    SLException(String message, Node location) {
+        super(message, location);
+    }
 
     @TruffleBoundary
     public static AbstractTruffleException create(String message, Node location) {
-        return create(message, location, -1);
+        return new SLException(message, location);
     }
 
     @TruffleBoundary
-    public static AbstractTruffleException create(String message, Node location, int bci) {
-        if (bci < 0) {
-            return new SLASTException(message, location);
-        } else {
-            return new SLBytecodeException(message, location, bci);
-        }
-    }
-
-    private static final class SLASTException extends AbstractTruffleException {
-        private static final long serialVersionUID = -6799734410727348507L;
-
-        SLASTException(String message, Node location) {
-            super(message, location);
-        }
-    }
-
-    private static final class SLBytecodeException extends AbstractBytecodeException {
-
-        private static final long serialVersionUID = -7929801061264899171L;
-
-        SLBytecodeException(String message, Node location, int bci) {
-            super(message, location, bci);
-        }
-    }
-
-    @TruffleBoundary
-    public static AbstractTruffleException typeError(Node operation, int bci, Object... values) {
+    public static AbstractTruffleException typeError(Node operation, Object... values) {
         String operationName = null;
         if (operation != null) {
             NodeInfo nodeInfo = SLLanguage.lookupNodeInfo(operation.getClass());
@@ -101,7 +80,7 @@ public final class SLException {
             }
         }
 
-        return typeError(operation, operationName, bci, values);
+        return typeError(operation, operationName, values);
     }
 
     /**
@@ -110,11 +89,11 @@ public final class SLException {
      */
     @TruffleBoundary
     @SuppressWarnings("deprecation")
-    public static AbstractTruffleException typeError(Node location, String operationName, int bci, Object... values) {
+    public static AbstractTruffleException typeError(Node location, String operationName, Object... values) {
         StringBuilder result = new StringBuilder();
         result.append("Type error");
 
-        AbstractTruffleException ex = SLException.create("", location, bci);
+        AbstractTruffleException ex = SLException.create("", location);
         if (location != null) {
             SourceSection ss = ex.getEncapsulatingSourceSection();
             if (ss != null && ss.isAvailable()) {
@@ -165,17 +144,17 @@ public final class SLException {
                 }
             }
         }
-        return SLException.create(result.toString(), location, bci);
+        return SLException.create(result.toString(), location);
     }
 
     @TruffleBoundary
-    public static AbstractTruffleException undefinedFunction(Node location, int bci, Object name) {
-        throw create("Undefined function: " + name, location, bci);
+    public static AbstractTruffleException undefinedFunction(Node location, Object name) {
+        throw create("Undefined function: " + name, location);
     }
 
     @TruffleBoundary
-    public static AbstractTruffleException undefinedProperty(Node location, int bci, Object name) {
-        throw create("Undefined property: " + name, location, bci);
+    public static AbstractTruffleException undefinedProperty(Node location, Object name) {
+        throw create("Undefined property: " + name, location);
     }
 
 }

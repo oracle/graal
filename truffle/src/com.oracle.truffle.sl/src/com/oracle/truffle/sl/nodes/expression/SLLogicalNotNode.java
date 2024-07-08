@@ -65,8 +65,8 @@ public abstract class SLLogicalNotNode extends SLExpressionNode {
     }
 
     @Fallback
-    public static boolean typeError(Object value, @Bind("this") Node node, @Bind("$bci") int bci) {
-        throw SLException.typeError(node, "!", bci, value);
+    public static boolean typeError(Object value, @Bind("this") Node node) {
+        throw SLException.typeError(node, "!", value);
     }
 
 }

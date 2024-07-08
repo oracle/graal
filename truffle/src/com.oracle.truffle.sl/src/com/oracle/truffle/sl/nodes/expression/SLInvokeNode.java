@@ -97,7 +97,7 @@ public final class SLInvokeNode extends SLExpressionNode {
             return library.execute(function, argumentValues);
         } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
             /* Execute was not successful. */
-            throw SLException.undefinedFunction(this, -1, function);
+            throw SLException.undefinedFunction(this, function);
         }
     }
 

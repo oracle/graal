@@ -40,12 +40,17 @@
  */
 package com.oracle.truffle.api.exception;
 
+import java.util.List;
+
 import org.graalvm.polyglot.PolyglotException;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -273,10 +278,22 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * @since 24.2
      */
     public SourceSection getEncapsulatingSourceSection() {
-        if (location == null) {
+        Node l = getLocation();
+        if (l == null) {
             return null;
         }
-        return location.getEncapsulatingSourceSection();
+        List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(this);
+        if (!stackTrace.isEmpty()) {
+            Object guestObject = stackTrace.get(0).getGuestObject();
+            if (guestObject != null && InteropLibrary.getUncached().hasSourceLocation(guestObject)) {
+                try {
+                    return InteropLibrary.getUncached().getSourceLocation(guestObject);
+                } catch (UnsupportedMessageException e1) {
+                    throw CompilerDirectives.shouldNotReachHere(e1);
+                }
+            }
+        }
+        return l.getEncapsulatingSourceSection();
     }
 
     /**
