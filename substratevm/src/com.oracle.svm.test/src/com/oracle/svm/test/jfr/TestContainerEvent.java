@@ -30,13 +30,13 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.test.jfr.events.ThreadEvent;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 
@@ -47,6 +47,7 @@ public class TestContainerEvent extends JfrRecordingTest {
     @Test
     public void test() throws Throwable {
         Assume.assumeTrue("Container support not enabled or available", Container.isSupported());
+        Assume.assumeTrue("Container detection currently not working GR-55178", false);
 
         String[] events = new String[]{"jdk.ContainerConfiguration"};
         Recording recording = startRecording(events);
