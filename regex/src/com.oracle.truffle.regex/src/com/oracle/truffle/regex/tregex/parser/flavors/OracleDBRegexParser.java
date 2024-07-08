@@ -167,6 +167,9 @@ public final class OracleDBRegexParser implements RegexParser {
                     astBuilder.addBackReference((Token.BackReference) token, flags.isIgnoreCase());
                     break;
                 case quantifier:
+                    if (prevKind == Token.Kind.quantifier) {
+                        throw syntaxError(OracleDBErrorMessages.NESTED_QUANTIFIER);
+                    }
                     if (astBuilder.getCurTerm() == null || prevKind == Token.Kind.captureGroupBegin) {
                         // quantifiers without target are ignored
                         break;
