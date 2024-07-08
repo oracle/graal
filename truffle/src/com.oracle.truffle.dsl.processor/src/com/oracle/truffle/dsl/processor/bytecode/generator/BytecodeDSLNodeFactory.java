@@ -12593,7 +12593,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             method = new CodeExecutableElement(
-                            Set.of(PRIVATE, STATIC),
+                            Set.of(PRIVATE),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.Frame, "frame"),
                             new CodeVariableElement(type(short[].class), "bc"),
@@ -12666,14 +12666,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             method = new CodeExecutableElement(
-                            Set.of(PRIVATE, STATIC),
+                            Set.of(PRIVATE),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.Frame, "frame"),
                             new CodeVariableElement(type(short[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
-            boolean needsStackFrame = instr.kind == InstructionKind.LOAD_LOCAL_MATERIALIZED || model.enableYield;
+            boolean materialized = instr.kind == InstructionKind.LOAD_LOCAL_MATERIALIZED;
+            boolean needsStackFrame = materialized || model.enableYield;
             if (needsStackFrame) {
                 method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
             }
@@ -12683,11 +12684,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             CodeTreeBuilder b = method.createBuilder();
-
-            b.declaration(type(short.class), "newInstruction");
-            b.declaration(type(int.class), "slot", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_OFFSET)));
-
-            b.declaration(type(Object.class), "value");
 
             Map<TypeMirror, InstructionModel> typeToSpecialization = new HashMap<>();
             List<InstructionModel> specializations = instr.quickenedInstructions;
@@ -12700,17 +12696,34 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             String stackFrame = needsStackFrame ? "stackFrame" : "frame";
-
-            InstructionModel genericInstruction = typeToSpecialization.get(type(Object.class));
-
+            b.declaration(type(int.class), "slot", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_OFFSET)));
             if (model.enableLocalScoping) {
-                method.getModifiers().remove(Modifier.STATIC);
-                b.declaration(type(byte[].class), "localTags", "this.localTags_");
                 b.declaration(type(int.class), "localIndex", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_INDEX)));
-                b.declaration(types.FrameSlotKind, "kind", "FrameSlotKind.fromTag(localTags[localIndex])");
-            } else {
-                b.declaration(types.FrameSlotKind, "kind", "frame.getFrameDescriptor().getSlotKind(slot)");
             }
+
+            String bytecodeNode;
+            if (materialized) {
+                b.startDeclaration(abstractBytecodeNode.asType(), "bytecodeNode");
+                b.startCall("this.getRoot().getBytecodeRootNodeImpl");
+                b.tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_ROOT)));
+                b.end().string(".getBytecodeNodeImpl()");
+                b.end();
+                bytecodeNode = "bytecodeNode";
+            } else {
+                bytecodeNode = "this";
+            }
+            b.startDeclaration(types.FrameSlotKind, "kind");
+            b.startCall(bytecodeNode, "getCachedLocalKindInternal");
+            b.string("frame").string("slot");
+            if (model.enableLocalScoping) {
+                b.string("localIndex");
+            }
+            b.end(); // call
+            b.end(); // declaration
+
+            b.declaration(type(Object.class), "value");
+            b.declaration(type(short.class), "newInstruction");
+            InstructionModel genericInstruction = typeToSpecialization.get(type(Object.class));
 
             b.startTryBlock();
 
@@ -12762,7 +12775,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             emitQuickening(b, "$this", "bc", "bci", null, "newInstruction");
             b.startStatement();
             startSetFrame(b, type(Object.class)).string(stackFrame);
-            if (instr.kind == InstructionKind.LOAD_LOCAL_MATERIALIZED) {
+            if (materialized) {
                 b.string("sp - 1"); // overwrite the materialized frame
             } else {
                 b.string("sp");

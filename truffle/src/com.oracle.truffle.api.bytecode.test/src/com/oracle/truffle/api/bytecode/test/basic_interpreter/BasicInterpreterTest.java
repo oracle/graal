@@ -991,7 +991,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                 b.endLoadLocalMaterialized();
                 b.endReturn();
                 BasicInterpreter inner = b.endRoot();
-                System.out.println(inner.dump());
 
             b.beginCreateClosure();
             b.emitLoadConstant(inner);
@@ -1002,8 +1001,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             b.endRoot();
         });
-
-        System.out.println(node.dump());
 
         assertEquals(1L, node.getCallTarget().call());
     }
