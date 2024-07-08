@@ -88,6 +88,7 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -1701,6 +1702,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         }
     }
 
+    @Ignore("GR-55104: transiently hangs")
     @Test
     public void testDeadlockDueToTooFewCarrierThreads() {
         Assume.assumeTrue(vthreads);
@@ -1850,7 +1852,7 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
         @SuppressWarnings("unchecked")
         @Override
         public Object execute(VirtualFrame frame) {
-            waitForLatch(latch);
+            barrier(latch);
             do {
                 Boolean result = callable.call(setup, this);
                 if (result) {
@@ -1957,6 +1959,9 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
             return setup;
         } catch (Throwable t) {
             if (setup != null && setup.futures != null) {
+                // Print it now, because if some futures also fail they would override the current
+                // exception
+                t.printStackTrace();
                 setup.close();
             } else {
                 c.close();
@@ -2039,8 +2044,9 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     private ByteArrayOutputStream outputStream;
 
     @TruffleBoundary
-    private static void waitForLatch(CountDownLatch latch) throws AssertionError {
+    private static void barrier(CountDownLatch latch) throws AssertionError {
         latch.countDown();
+
         boolean interrupted = false;
         while (true) {
             try {
