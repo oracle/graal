@@ -84,8 +84,12 @@ public final class ConstantReflectionUtil {
      * @param arrayKind actual array kind, e.g. {@link JavaKind#Byte} for a {@code byte} array we
      *            want to read a {@code char} from.
      */
-    public static void boundsCheckTypePunned(int typePunnedLength, Stride typePunnedStride, int arrayLength, JavaKind arrayKind) {
-        GraalError.guarantee(typePunnedLength * typePunnedStride.value <= arrayLength * arrayKind.getByteCount(), Assertions.errorMessageContext(
+    public static boolean boundsCheckTypePunned(int typePunnedLength, Stride typePunnedStride, int arrayLength, JavaKind arrayKind) {
+        return typePunnedLength * typePunnedStride.value <= arrayLength * arrayKind.getByteCount();
+    }
+
+    public static void boundsCheckTypePunnedGuarantee(int typePunnedLength, Stride typePunnedStride, int arrayLength, JavaKind arrayKind) {
+        GraalError.guarantee(boundsCheckTypePunned(typePunnedLength, typePunnedStride, arrayLength, arrayKind), Assertions.errorMessageContext(
                         "typePunnedLength", typePunnedLength,
                         "typePunnedStride", typePunnedStride.value,
                         "arrayLength", arrayLength,

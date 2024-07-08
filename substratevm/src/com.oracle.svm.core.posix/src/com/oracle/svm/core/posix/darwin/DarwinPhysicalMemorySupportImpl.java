@@ -40,7 +40,7 @@ import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton(PhysicalMemorySupport.class)
-class PhysicalMemorySupportImpl implements PhysicalMemorySupport {
+class DarwinPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
     @Override
     public UnsignedWord size() {

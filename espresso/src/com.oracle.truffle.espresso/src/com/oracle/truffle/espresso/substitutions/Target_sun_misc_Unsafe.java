@@ -37,6 +37,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
@@ -1044,11 +1045,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, byte value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, byte value) {
             f.setByte(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
@@ -1066,12 +1082,27 @@ public final class Target_sun_misc_Unsafe {
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @JavaType(Object.class) StaticObject value, @Cached GetFieldFromIndexNode getField) {
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, StaticObject value,
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, StaticObject value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, StaticObject value) {
             f.setObject(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
@@ -1088,11 +1119,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, boolean value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, boolean value) {
             f.setBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
@@ -1109,11 +1155,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, char value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, char value) {
             f.setChar(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
@@ -1130,11 +1191,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, short value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, short value) {
             f.setShort(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
@@ -1151,11 +1227,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, int value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, int value) {
             f.setInt(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
@@ -1172,11 +1263,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, float value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, float value) {
             f.setFloat(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
@@ -1193,11 +1299,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, double value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, double value) {
             f.setDouble(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
@@ -1214,11 +1335,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, long value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, long value) {
             f.setLong(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
@@ -1241,11 +1377,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, int value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, int value) {
             f.setInt(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
@@ -1262,11 +1413,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, long value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, long value) {
             f.setLong(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
@@ -1286,11 +1452,26 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, StaticObject value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, StaticObject value) {
             f.setObject(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
@@ -1317,11 +1498,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected byte doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private byte doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private byte doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Byte) {
                 return f.getByte(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
@@ -1342,11 +1538,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected @JavaType(Object.class) StaticObject doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGetField(holder, f);
+            } else {
+                return doGetFieldSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private StaticObject doGetFieldSlow(StaticObject holder, Field f) {
+            return doGetField(holder, f);
+        }
+
+        private StaticObject doGetField(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Object) {
                 return f.getObject(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
@@ -1366,11 +1577,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private boolean doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private boolean doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Boolean) {
                 return f.getBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
@@ -1390,11 +1616,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected char doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private char doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private char doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Char) {
                 return f.getChar(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
@@ -1414,11 +1655,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected short doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private short doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private short doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Short) {
                 return f.getShort(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
@@ -1438,11 +1694,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected int doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private int doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private int doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Int) {
                 return f.getInt(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
@@ -1462,11 +1733,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected float doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private float doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private float doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Float) {
                 return f.getFloat(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
@@ -1486,11 +1772,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected double doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private double doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private double doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Double) {
                 return f.getDouble(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
@@ -1510,11 +1811,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected long doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private long doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private long doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Long) {
                 return f.getLong(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
@@ -1538,11 +1854,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected byte doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private byte doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private byte doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Byte) {
                 return f.getByte(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
@@ -1563,11 +1894,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected @JavaType(Object.class) StaticObject doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private StaticObject doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private StaticObject doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Object) {
                 return f.getObject(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
@@ -1587,11 +1933,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private boolean doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private boolean doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Boolean) {
                 return f.getBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
@@ -1611,11 +1972,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected char doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private char doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private char doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Char) {
                 return f.getChar(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
@@ -1635,11 +2011,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected short doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private short doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private short doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Short) {
                 return f.getShort(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
@@ -1659,11 +2050,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected int doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private int doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private int doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Int) {
                 return f.getInt(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
@@ -1683,11 +2089,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected float doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private float doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private float doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Float) {
                 return f.getFloat(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
@@ -1707,11 +2128,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected double doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private double doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private double doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Double) {
                 return f.getDouble(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
@@ -1731,11 +2167,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected long doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGet(holder, f);
+            } else {
+                return doGetSlow(holder, f);
+            }
+        }
+
+        @TruffleBoundary
+        private long doGetSlow(StaticObject holder, Field f) {
+            return doGet(holder, f);
+        }
+
+        private long doGet(StaticObject holder, Field f) {
             if (f.getKind() == JavaKind.Long) {
                 return f.getLong(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
@@ -1841,11 +2292,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, byte value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, byte value) {
             f.setByte(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
@@ -1864,11 +2330,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @JavaType(Object.class) StaticObject value, @Cached GetFieldFromIndexNode getField) {
+                        @JavaType(Object.class) StaticObject value, @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, StaticObject value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, StaticObject value) {
             f.setObject(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
@@ -1885,11 +2366,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, boolean value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, boolean value) {
             f.setBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
@@ -1906,11 +2402,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, char value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, char value) {
             f.setChar(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
@@ -1927,11 +2438,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, short value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, short value) {
             f.setShort(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
@@ -1948,11 +2474,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, int value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, int value) {
             f.setInt(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
@@ -1969,11 +2510,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, float value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, float value) {
             f.setFloat(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
@@ -1990,11 +2546,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, double value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, double value) {
             f.setDouble(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
@@ -2011,11 +2582,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                doPut(f, holder, value);
+            } else {
+                doPutSlow(f, holder, value);
+            }
+        }
+
+        @TruffleBoundary
+        private void doPutSlow(Field f, StaticObject holder, long value) {
+            doPut(f, holder, value);
+        }
+
+        private void doPut(Field f, StaticObject holder, long value) {
             f.setLong(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
@@ -2039,11 +2625,26 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         protected boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doCAS(f, holder, before, after);
+            } else {
+                return doCASSlow(f, holder, before, after);
+            }
+        }
+
+        @TruffleBoundary
+        private boolean doCASSlow(Field f, StaticObject holder, StaticObject before, StaticObject after) {
+            return doCAS(f, holder, before, after);
+        }
+
+        private boolean doCAS(Field f, StaticObject holder, StaticObject before, StaticObject after) {
             return f.compareAndSwapObject(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
         }
     }
@@ -2063,11 +2664,26 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         protected boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doCAS(f, holder, before, after);
+            } else {
+                return doCASSlow(f, holder, before, after);
+            }
+        }
+
+        @TruffleBoundary
+        private boolean doCASSlow(Field f, StaticObject holder, int before, int after) {
+            return doCAS(f, holder, before, after);
+        }
+
+        private boolean doCAS(Field f, StaticObject holder, int before, int after) {
             switch (f.getKind()) {
                 case Int:
                     return f.compareAndSwapInt(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
@@ -2095,11 +2711,26 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         protected boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doCAS(f, holder, before, after);
+            } else {
+                return doCASSlow(f, holder, before, after);
+            }
+        }
+
+        @TruffleBoundary
+        private boolean doCASSlow(Field f, StaticObject holder, long before, long after) {
+            return doCAS(f, holder, before, after);
+        }
+
+        private boolean doCAS(Field f, StaticObject holder, long before, long after) {
             switch (f.getKind()) {
                 case Long:
                     return f.compareAndSwapLong(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
@@ -2144,11 +2775,26 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         protected @JavaType(Object.class) StaticObject doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doCAE(f, holder, before, after);
+            } else {
+                return doCAESlow(f, holder, before, after);
+            }
+        }
+
+        @TruffleBoundary
+        private StaticObject doCAESlow(Field f, StaticObject holder, StaticObject before, StaticObject after) {
+            return doCAE(f, holder, before, after);
+        }
+
+        private StaticObject doCAE(Field f, StaticObject holder, StaticObject before, StaticObject after) {
             if (f.getKind() != JavaKind.Object) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
@@ -2173,11 +2819,26 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         protected int doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doCAE(f, holder, before, after);
+            } else {
+                return doCAESlow(f, holder, before, after);
+            }
+        }
+
+        @TruffleBoundary
+        private int doCAESlow(Field f, StaticObject holder, int before, int after) {
+            return doCAE(f, holder, before, after);
+        }
+
+        private int doCAE(Field f, StaticObject holder, int before, int after) {
             switch (f.getKind()) {
                 case Int:
                     return f.compareAndExchangeInt(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
@@ -2205,11 +2866,26 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         protected byte doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         byte before, byte after,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doCAE(f, holder, before, after);
+            } else {
+                return doCAESlow(f, holder, before, after);
+            }
+        }
+
+        @TruffleBoundary
+        private byte doCAESlow(Field f, StaticObject holder, byte before, byte after) {
+            return doCAE(f, holder, before, after);
+        }
+
+        private byte doCAE(Field f, StaticObject holder, byte before, byte after) {
             switch (f.getKind()) {
                 case Boolean:
                     return f.compareAndExchangeBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()), before != 0, after != 0) ? (byte) 1 : (byte) 0;
@@ -2237,11 +2913,26 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         protected short doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         short before, short after,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doCAE(f, holder, before, after);
+            } else {
+                return doCAESlow(f, holder, before, after);
+            }
+        }
+
+        @TruffleBoundary
+        private short doCAESlow(Field f, StaticObject holder, short before, short after) {
+            return doCAE(f, holder, before, after);
+        }
+
+        private short doCAE(Field f, StaticObject holder, short before, short after) {
             switch (f.getKind()) {
                 case Short:
                     return f.compareAndExchangeShort(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
@@ -2269,11 +2960,26 @@ public final class Target_sun_misc_Unsafe {
         @Specialization(guards = "!isNullOrArray(holder)")
         protected long doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after,
-                        @Cached GetFieldFromIndexNode getField) {
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doCAE(f, holder, before, after);
+            } else {
+                return doCAESlow(f, holder, before, after);
+            }
+        }
+
+        @TruffleBoundary
+        private long doCAESlow(Field f, StaticObject holder, long before, long after) {
+            return doCAE(f, holder, before, after);
+        }
+
+        private long doCAE(Field f, StaticObject holder, long before, long after) {
             switch (f.getKind()) {
                 case Long:
                     return f.compareAndExchangeLong(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
@@ -2305,11 +3011,26 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(guards = "!isNullOrArray(holder)")
         protected @JavaType(Unsafe.class) StaticObject doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
-                        @JavaType(Object.class) StaticObject value, @Cached GetFieldFromIndexNode getField) {
+                        @JavaType(Object.class) StaticObject value,
+                        @Cached GetFieldFromIndexNode getField,
+                        @Cached InlinedBranchProfile noField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
+                noField.enter(this);
                 throw throwNoField(getMeta(), holder, offset);
             }
+            if (CompilerDirectives.isPartialEvaluationConstant(f)) {
+                return doGetAndSet(f, holder, value);
+            } else {
+                return doGetAndSetSlow(f, holder, value);
+            }
+        }
+
+        private StaticObject doGetAndSetSlow(Field f, StaticObject holder, StaticObject value) {
+            return doGetAndSet(f, holder, value);
+        }
+
+        private StaticObject doGetAndSet(Field f, StaticObject holder, StaticObject value) {
             return f.getAndSetObject(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }

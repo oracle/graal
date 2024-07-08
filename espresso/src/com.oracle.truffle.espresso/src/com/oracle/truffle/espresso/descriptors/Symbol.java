@@ -464,6 +464,9 @@ public final class Symbol<T> extends ByteSequence {
         // sun.misc.NativeSignalHandler
         public static final Symbol<Name> handler = StaticSymbols.putName("handler");
 
+        // jdk.internal.util.ArraysSupport
+        public static final Symbol<Name> vectorizedMismatch = StaticSymbols.putName("vectorizedMismatch");
+
         // Attribute names
         public static final Symbol<Name> AnnotationDefault = StaticSymbols.putName("AnnotationDefault");
         public static final Symbol<Name> BootstrapMethods = StaticSymbols.putName("BootstrapMethods");
@@ -689,7 +692,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> jdk_internal_loader_NativeLibraries = StaticSymbols.putType("Ljdk/internal/loader/NativeLibraries;");
         public static final Symbol<Type> sun_misc_Launcher$ExtClassLoader = StaticSymbols.putType("Lsun/misc/Launcher$ExtClassLoader;");
         public static final Symbol<Type> jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl = StaticSymbols.putType("Ljdk/internal/loader/RawNativeLibraries$RawNativeLibraryImpl;");
-
+        public static final Symbol<Type> jdk_internal_util_ArraysSupport = StaticSymbols.putType("Ljdk/internal/util/ArraysSupport;");
         public static final Symbol<Type> java_io_InputStream = StaticSymbols.putType("Ljava/io/InputStream;");
         public static final Symbol<Type> java_io_PrintStream = StaticSymbols.putType("Ljava/io/PrintStream;");
         public static final Symbol<Type> java_nio_file_Path = StaticSymbols.putType("Ljava/nio/file/Path;");
@@ -1143,6 +1146,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Object_long_int_int_int_int = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int, Type._int);
         public static final Symbol<Signature> Object_long_int_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int,
                         Type.java_lang_Object_array);
+        public static final Symbol<Signature> _int_Object_long_Object_long_int_int = StaticSymbols.putSignature(Type._int, Type.java_lang_Object, Type._long, Type.java_lang_Object, Type._long,
+                        Type._int, Type._int);
         public static final Symbol<Signature> Object_long_int_ContinuationScope_Continuation_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int,
                         Type.jdk_internal_vm_ContinuationScope, Type.jdk_internal_vm_Continuation, Type._int, Type._int,
                         Type.java_lang_Object_array);

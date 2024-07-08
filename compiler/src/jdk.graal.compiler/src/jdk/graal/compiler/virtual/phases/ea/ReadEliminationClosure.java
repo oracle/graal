@@ -121,7 +121,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             deleted = true;
                         }
                         // will be a field location identity not killing array accesses
-                        killReadCacheByIdentity(state, identifier.identity);
+                        killReadCacheByIdentity(state, identifier.identity, node);
                         state.addCacheEntry(identifier, value);
                     } else if (node instanceof RawStoreNode) {
                         RawStoreNode write = (RawStoreNode) node;
@@ -134,15 +134,15 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             effects.deleteNode(write);
                             deleted = true;
                         }
-                        killReadCacheByIdentity(state, write.getKilledLocationIdentity());
+                        killReadCacheByIdentity(state, write.getKilledLocationIdentity(), node);
                         state.addCacheEntry(identifier, value);
                     }
                 } else {
-                    killReadCacheByIdentity(state, identity);
+                    killReadCacheByIdentity(state, identity, node);
                 }
             } else if (MemoryKill.isMultiMemoryKill(node)) {
                 for (LocationIdentity identity : ((MultiMemoryKill) node).getKilledLocationIdentities()) {
-                    killReadCacheByIdentity(state, identity);
+                    killReadCacheByIdentity(state, identity, node);
                 }
             } else {
                 throw GraalError.shouldNotReachHere("Unknown memory kill " + node); // ExcludeFromJacocoGeneratedReport
@@ -227,8 +227,8 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
         return null;
     }
 
-    private static void killReadCacheByIdentity(ReadEliminationBlockState state, LocationIdentity identity) {
-        state.killReadCache(identity, null, null);
+    private static void killReadCacheByIdentity(ReadEliminationBlockState state, LocationIdentity identity, Node kill) {
+        state.killReadCache(kill, identity, null, null);
     }
 
     @Override

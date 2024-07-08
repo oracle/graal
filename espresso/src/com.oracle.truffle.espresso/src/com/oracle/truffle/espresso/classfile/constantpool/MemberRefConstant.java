@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -170,6 +171,7 @@ public interface MemberRefConstant extends PoolConstant {
         }
 
         if (accessingKlass.getHostClass() != null) {
+            CompilerAsserts.partialEvaluationConstant(accessingKlass);
             return checkAccess(accessingKlass.getHostClass(), resolvedKlass, member);
         }
         return false;
