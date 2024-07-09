@@ -599,7 +599,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         // set up local state.
         InstrumentationSupport instrument = instrumentation;
-        int statementIndex = instrument == null ? 0 : instrument.hookBCIToNodeIndex.lookup(0, 0, bs.endBCI());
+        int statementIndex = instrument == null ? 0 : instrument.getStatementIndexAfterJump(0, 0, bs.endBCI());
         assert bs.opcode(bci) == QUICK && nodes[bs.readCPI2(bci)] instanceof InvokeContinuableNode;
 
         return executeBodyFromBCI(frame, bci, top, statementIndex, true, true);
