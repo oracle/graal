@@ -238,7 +238,6 @@ import static jdk.graal.compiler.core.common.GraalOptions.StressInvokeWithExcept
 import static jdk.graal.compiler.core.common.GraalOptions.StrictDeoptInsertionChecks;
 import static jdk.graal.compiler.core.common.GraalOptions.TraceInlining;
 import static jdk.graal.compiler.core.common.type.StampFactory.objectNonNull;
-import static jdk.graal.compiler.debug.GraalError.guarantee;
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlinePartialIntrinsicExitDuringParsing;
 import static jdk.graal.compiler.java.BytecodeParserOptions.TraceBytecodeParserLevel;
@@ -2313,10 +2312,10 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     /**
-     * Contains all the assertion checking logic around the application of an
-     * {@link InvocationPlugin}. This class is only loaded when assertions are enabled.
+     * Checks stack and nodes remain consistent before and after the application of an
+     * {@link InvocationPlugin}.
      */
-    class InvocationPluginAssertions {
+    class InvocationPluginChecks {
         final InvocationPlugin plugin;
         final ValueNode[] args;
         final ResolvedJavaMethod targetMethod;
@@ -2325,8 +2324,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         final int nodeCount;
         final Mark mark;
 
-        InvocationPluginAssertions(InvocationPlugin plugin, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
-            guarantee(Assertions.assertionsEnabled(), "%s should only be loaded and instantiated if assertions are enabled", getClass().getSimpleName());
+        InvocationPluginChecks(InvocationPlugin plugin, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
             this.plugin = plugin;
             this.targetMethod = targetMethod;
             this.args = args;
@@ -2340,17 +2338,31 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             return pluginErrorMessage(plugin, format, a);
         }
 
-        boolean check(boolean pluginResult) {
+        boolean checkStackConsistency(boolean pluginResult) {
             if (pluginResult) {
+                int expectedStackSize = beforeStackSize + resultType.getSlotCount();
+                JavaKind peekKind = frameState.peekKind();
+
                 /*
                  * If lastInstr is null, even if this method has a non-void return type, the method
                  * doesn't return a value, it probably throws an exception.
+                 *
+                 * We also generate various invocation plugins that return VM specific data
+                 * structure types, e.g., KlassPointer and Word. The former will be treated as
+                 * JavaKind.Illegal and the latter as JavaKind.Long. These plugins will break the
+                 * result type check, and can be filtered out with InvocationPlugin.isGraalOnly().
                  */
-                int expectedStackSize = beforeStackSize + resultType.getSlotCount();
-                assert lastInstr == null || plugin.isDecorator() || expectedStackSize == frameState.stackSize() : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d",
-                                expectedStackSize,
-                                frameState.stackSize());
+                if (lastInstr != null && !plugin.isDecorator() && (expectedStackSize != frameState.stackSize() ||
+                                (!plugin.isGraalOnly() && resultType != JavaKind.Void && resultType.getStackKind() != peekKind.getStackKind()))) {
+                    throw new GraalError(error("plugin manipulated the stack incorrectly: expected=%d, actual=%d, resultType=%s stackKind=%s",
+                                    expectedStackSize, frameState.stackSize(), resultType.getJavaName(), peekKind.getJavaName()));
+                }
+            }
+            return true;
+        }
 
+        boolean checkNodeConsistency(boolean pluginResult) {
+            if (pluginResult) {
                 NodeIterable<Node> newNodes = graph.getNewNodes(mark);
                 for (Node n : newNodes) {
                     if (n instanceof StateSplit) {
@@ -2473,7 +2485,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         InvocationPluginReceiver pluginReceiver = invocationPluginReceiver.init(targetMethod, args);
         assert invokeKind.isDirect() : "Cannot apply invocation plugin on an indirect call site.";
 
-        InvocationPluginAssertions assertions = Assertions.assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
+        InvocationPluginChecks checks = new InvocationPluginChecks(plugin, args, targetMethod, resultType);
         boolean needsReceiverNullCheck = !(plugin instanceof GeneratedInvocationPlugin) && !targetMethod.isStatic() && args[0].getStackKind() == JavaKind.Object;
         try (DebugCloseable context = openNodeContext(targetMethod); InvocationPluginScope pluginScope = new InvocationPluginScope(invokeKind, args, targetMethod, resultType, plugin)) {
             Mark mark = graph.getMark();
@@ -2485,10 +2497,14 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                                     targetMethod.format("%H.%n(%p)"),
                                     args[0]));
                 }
-                assert assertions.check(true);
+                // Check stack consistency even without assert, to prevent silent invalid
+                // intrinsification. This may happen when JDK changes the return type of
+                // an intrinsic candidate.
+                checks.checkStackConsistency(true);
+                assert checks.checkNodeConsistency(true);
                 return true;
             } else {
-                assert assertions.check(false);
+                assert checks.checkNodeConsistency(false);
             }
         }
         return false;

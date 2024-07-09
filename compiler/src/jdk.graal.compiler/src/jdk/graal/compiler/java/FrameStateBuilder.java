@@ -958,6 +958,17 @@ public final class FrameStateBuilder implements SideEffectsState {
         return x;
     }
 
+    public JavaKind peekKind() {
+        if (stackSize == 0) {
+            return JavaKind.Void;
+        }
+        ValueNode result = stack[stackSize - 1];
+        if (result == TWO_SLOT_MARKER) {
+            result = stack[stackSize - 2];
+        }
+        return result.getStackKind();
+    }
+
     /**
      * Pop the specified number of slots off of this stack and return them as an array of
      * instructions.
