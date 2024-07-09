@@ -26,6 +26,7 @@ package com.oracle.svm.core.stack;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -51,6 +52,14 @@ public class JavaFrames {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isEntryPoint(JavaFrame frame) {
         return CodeInfoQueryResult.isEntryPoint(frame.getEncodedFrameSize());
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isInterpreterLeaveStub(JavaFrame frame) {
+        if (!InterpreterSupport.isEnabled()) {
+            return false;
+        }
+        return InterpreterSupport.isInInterpreterLeaveStub(frame.getIP());
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

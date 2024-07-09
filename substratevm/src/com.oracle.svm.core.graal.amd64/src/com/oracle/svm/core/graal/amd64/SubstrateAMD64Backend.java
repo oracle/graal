@@ -1204,7 +1204,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
      * prolog and epilog</a> for Windows), so any changes must take all such requirements into
      * account.
      */
-    protected static class SubstrateAMD64FrameContext implements FrameContext {
+    public static class SubstrateAMD64FrameContext implements FrameContext {
 
         protected final SharedMethod method;
         protected final CallingConvention callingConvention;
@@ -1745,14 +1745,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         Deoptimizer.StubType stubType = method.getDeoptStubType();
         DataBuilder dataBuilder = new SubstrateDataBuilder();
         CallingConvention callingConvention = lirGenResult.getCallingConvention();
-        final FrameContext frameContext;
-        if (stubType == Deoptimizer.StubType.EntryStub) {
-            frameContext = new DeoptEntryStubContext(method, callingConvention);
-        } else if (stubType == Deoptimizer.StubType.ExitStub) {
-            frameContext = new DeoptExitStubContext(method, callingConvention);
-        } else {
-            frameContext = createFrameContext(method, callingConvention);
-        }
+        FrameContext frameContext = createFrameContext(method, stubType, callingConvention);
         DebugContext debug = lir.getDebug();
         Register uncompressedNullRegister = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister() : Register.None;
         CompilationResultBuilder tasm = factory.createBuilder(getProviders(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
@@ -1765,7 +1758,12 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         return new AMD64MacroAssembler(getTarget(), options, true);
     }
 
-    protected FrameContext createFrameContext(SharedMethod method, CallingConvention callingConvention) {
+    protected FrameContext createFrameContext(SharedMethod method, Deoptimizer.StubType stubType, CallingConvention callingConvention) {
+        if (stubType == Deoptimizer.StubType.EntryStub) {
+            return new DeoptEntryStubContext(method, callingConvention);
+        } else if (stubType == Deoptimizer.StubType.ExitStub) {
+            return new DeoptExitStubContext(method, callingConvention);
+        }
         return new SubstrateAMD64FrameContext(method, callingConvention);
     }
 
@@ -1835,7 +1833,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         result.recordMark(asm.position(), PROLOGUE_END);
         byte[] instructions = asm.close(true);
         result.setTargetCode(instructions, instructions.length);
-        result.setTotalFrameSize(getTarget().wordSize); // not really, but 0 not allowed
+        result.setTotalFrameSize(getTarget().stackAlignment); // not really, but 0 not allowed
         return result;
     }
 

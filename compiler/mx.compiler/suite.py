@@ -538,6 +538,7 @@ suite = {
                   org.graalvm.nativeimage.llvm,
                   com.oracle.svm.svm_enterprise,
                   com.oracle.svm_enterprise.ml_dataset,
+                  com.oracle.svm.enterprise.jdwp.resident,
                   org.graalvm.nativeimage.base,
                   org.graalvm.extraimage.builder,
                   org.graalvm.extraimage.librarysupport,

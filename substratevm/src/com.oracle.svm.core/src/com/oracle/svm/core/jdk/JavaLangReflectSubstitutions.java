@@ -398,7 +398,7 @@ final class Target_java_lang_reflect_Array {
         }
         for (int i = 0; i < dimensions.length; i++) {
             if (dimensions[i] < 0) {
-                throw new NegativeArraySizeException();
+                throw new NegativeArraySizeException(String.valueOf(dimensions[i]));
             }
         }
 

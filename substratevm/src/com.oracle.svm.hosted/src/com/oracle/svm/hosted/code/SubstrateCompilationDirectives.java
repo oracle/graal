@@ -214,6 +214,10 @@ public class SubstrateCompilationDirectives {
         deoptEntries.computeIfAbsent(deoptMethod, m -> new ConcurrentHashMap<>());
     }
 
+    public void registerFrameInformationRequired(AnalysisMethod method) {
+        frameInformationRequired.add(method);
+    }
+
     public boolean isFrameInformationRequired(ResolvedJavaMethod method) {
         return frameInformationRequired.contains(toAnalysisMethod(method));
     }

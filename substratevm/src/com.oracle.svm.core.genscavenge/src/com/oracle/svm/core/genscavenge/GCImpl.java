@@ -28,6 +28,8 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -842,20 +844,33 @@ public final class GCImpl implements GC {
             if (deoptFrame == null) {
                 Pointer sp = frame.getSP();
                 CodeInfo codeInfo = CodeInfoAccess.unsafeConvert(frame.getIPCodeInfo());
-                NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
-                long referenceMapIndex = frame.getReferenceMapIndex();
-                if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
-                    throw CodeInfoTable.fatalErrorNoReferenceMap(sp, frame.getIP(), codeInfo);
-                }
-                CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, null);
 
-                if (RuntimeCompilation.isEnabled() && visitRuntimeCodeInfo && !CodeInfoAccess.isAOTImageCode(codeInfo)) {
+                if (JavaFrames.isInterpreterLeaveStub(frame)) {
                     /*
-                     * Runtime-compiled code that is currently on the stack must be kept alive. So,
-                     * we mark the tether as strongly reachable. The RuntimeCodeCacheWalker will
-                     * handle all other object references later on.
+                     * Variable frame size is packed into the first stack slot used for argument
+                     * passing (re-use of deopt slot).
                      */
-                    RuntimeCodeInfoAccess.walkTether(codeInfo, visitor);
+                    long varStackSize = DeoptimizationSlotPacking.decodeVariableFrameSizeFromDeoptSlot(sp.readLong(0));
+                    Pointer actualSP = sp.add(WordFactory.unsigned(varStackSize));
+
+                    InterpreterSupport.walkInterpreterLeaveStubFrame(visitor, actualSP, sp);
+                } else {
+                    NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
+                    long referenceMapIndex = frame.getReferenceMapIndex();
+                    if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
+                        throw CodeInfoTable.fatalErrorNoReferenceMap(sp, frame.getIP(), codeInfo);
+                    }
+
+                    CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, null);
+
+                    if (RuntimeCompilation.isEnabled() && visitRuntimeCodeInfo && !CodeInfoAccess.isAOTImageCode(codeInfo)) {
+                        /*
+                         * Runtime-compiled code that is currently on the stack must be kept alive.
+                         * So, we mark the tether as strongly reachable. The RuntimeCodeCacheWalker
+                         * will handle all other object references later on.
+                         */
+                        RuntimeCodeInfoAccess.walkTether(codeInfo, visitor);
+                    }
                 }
             } else {
                 /*

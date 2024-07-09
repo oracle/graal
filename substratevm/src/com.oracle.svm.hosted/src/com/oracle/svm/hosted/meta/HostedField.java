@@ -74,6 +74,10 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
         this.location = LOC_UNMATERIALIZED_STATIC_CONSTANT;
     }
 
+    public boolean isUnmaterialized() {
+        return this.location == LOC_UNMATERIALIZED_STATIC_CONSTANT;
+    }
+
     public boolean hasLocation() {
         return location >= 0;
     }

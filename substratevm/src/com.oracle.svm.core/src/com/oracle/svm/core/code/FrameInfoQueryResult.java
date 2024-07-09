@@ -26,9 +26,6 @@ package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.lang.module.ModuleDescriptor;
-import java.util.Optional;
-
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.WordFactory;
 
@@ -43,7 +40,6 @@ import com.oracle.svm.core.meta.SharedMethod;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.FrameState;
-import jdk.internal.loader.BuiltinClassLoader;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.VirtualObject;
@@ -56,7 +52,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * During a stack walk, this class holds information about a virtual Java frame. It is usually
  * referenced by a physical Java frame, see {@link CodeInfoQueryResult}.
  */
-public class FrameInfoQueryResult {
+public class FrameInfoQueryResult extends FrameSourceInfo {
 
     public enum ValueType {
         /**
@@ -169,7 +165,6 @@ public class FrameInfoQueryResult {
     protected SharedMethod deoptMethod;
     protected CodeInfo deoptMethodImageCodeInfo;
     protected int deoptMethodOffset;
-    protected long encodedBci;
     protected boolean isDeoptEntry;
     protected int numLocals;
     protected int numStack;
@@ -177,27 +172,26 @@ public class FrameInfoQueryResult {
     protected ValueInfo[] valueInfos;
     protected ValueInfo[][] virtualObjects;
     protected int sourceMethodId;
-    protected int sourceLineNumber;
 
     /* These are used only for constructing/encoding the code and frame info, or as cache. */
     private ResolvedJavaMethod sourceMethod;
-    private Class<?> sourceClass;
-    private String sourceMethodName;
+
     private int sourceMethodModifiers;
     private String sourceMethodSignature;
 
-    @SuppressWarnings("this-escape")
     public FrameInfoQueryResult() {
-        init();
+        /* super constructor will call init() */
+        super();
     }
 
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void init() {
+        super.init();
         caller = null;
         deoptMethod = null;
         deoptMethodOffset = 0;
         deoptMethodImageCodeInfo = SubstrateUtil.HOSTED ? null : WordFactory.nullPointer();
-        encodedBci = -1;
         isDeoptEntry = false;
         numLocals = 0;
         numStack = 0;
@@ -205,11 +199,7 @@ public class FrameInfoQueryResult {
         valueInfos = null;
         virtualObjects = null;
         sourceMethodId = 0;
-        sourceLineNumber = -1;
-
         sourceMethod = null;
-        sourceClass = Encoders.INVALID_CLASS;
-        sourceMethodName = Encoders.INVALID_METHOD_NAME;
         sourceMethodSignature = Encoders.INVALID_METHOD_SIGNATURE;
         sourceMethodModifiers = Encoders.INVALID_METHOD_MODIFIERS;
     }
@@ -271,14 +261,6 @@ public class FrameInfoQueryResult {
      */
     public long getEncodedBci() {
         return encodedBci;
-    }
-
-    /**
-     * Returns the bytecode index.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getBci() {
-        return FrameInfoDecoder.decodeBci(encodedBci);
     }
 
     /**
@@ -344,25 +326,9 @@ public class FrameInfoQueryResult {
         return virtualObjects;
     }
 
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Class<?> getSourceClass() {
-        fillSourceFieldsIfMissing();
-        return sourceClass;
-    }
-
-    public String getSourceClassName() {
-        Class<?> clazz = getSourceClass();
-        return (clazz != null) ? clazz.getName() : "";
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public String getSourceMethodName() {
-        fillSourceFieldsIfMissing();
-        return sourceMethodName;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void fillSourceFieldsIfMissing() {
+    protected void fillSourceFieldsIfMissing() {
         if (sourceMethodId != 0 && sourceClass == Encoders.INVALID_CLASS) {
             CodeInfoDecoder.fillSourceFields(this);
         }
@@ -410,48 +376,6 @@ public class FrameInfoQueryResult {
     public String getSourceMethodSignature() {
         fillSourceFieldsIfMissing();
         return sourceMethodSignature;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public String getSourceFileName() {
-        Class<?> clazz = getSourceClass();
-        return (clazz != null) ? DynamicHub.fromClass(clazz).getSourceFileName() : null;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getSourceLineNumber() {
-        return sourceLineNumber;
-    }
-
-    /** Returns the name and source code location of the method. */
-    public StackTraceElement getSourceReference() {
-        fillSourceFieldsIfMissing();
-        return getSourceReference(sourceClass, sourceMethodName, sourceLineNumber);
-    }
-
-    public static StackTraceElement getSourceReference(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber) {
-        if (sourceClass == null) {
-            return new StackTraceElement("", sourceMethodName, null, sourceLineNumber);
-        }
-
-        ClassLoader classLoader = sourceClass.getClassLoader();
-        String classLoaderName = null;
-        if (classLoader != null && !(classLoader instanceof BuiltinClassLoader)) {
-            classLoaderName = classLoader.getName();
-        }
-        Module module = sourceClass.getModule();
-        String moduleName = module.getName();
-        String moduleVersion = Optional.ofNullable(module.getDescriptor())
-                        .flatMap(ModuleDescriptor::version)
-                        .map(ModuleDescriptor.Version::toString)
-                        .orElse(null);
-        String className = sourceClass.getName();
-        String sourceFileName = DynamicHub.fromClass(sourceClass).getSourceFileName();
-        return new StackTraceElement(classLoaderName, moduleName, moduleVersion, className, sourceMethodName, sourceFileName, sourceLineNumber);
-    }
-
-    public boolean isNativeMethod() {
-        return sourceLineNumber == -2;
     }
 
     public Log log(Log log) {
