@@ -60,7 +60,7 @@ import com.oracle.truffle.sl.runtime.SLBigInteger;
  * This class is similar to the extensively documented {@link SLAddNode}.
  */
 @NodeInfo(shortName = "*")
-@OperationProxy.Proxyable
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLMulNode extends SLBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class)

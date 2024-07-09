@@ -62,7 +62,7 @@ import com.oracle.truffle.sl.runtime.SLBigInteger;
  * the code simple.
  */
 @NodeInfo(shortName = "/")
-@OperationProxy.Proxyable
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLDivNode extends SLBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class)

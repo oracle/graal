@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,35 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.nodes.expression;
+package com.oracle.truffle.sl.test;
 
-import com.oracle.truffle.api.bytecode.OperationProxy;
-import com.oracle.truffle.api.dsl.Bind;
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.SLException;
-import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-/**
- * Example of a simple unary node that uses type specialization. See {@link SLAddNode} for
- * information on specializations.
- */
-@NodeChild("valueNode")
-@NodeInfo(shortName = "!")
-@OperationProxy.Proxyable(allowUncached = true)
-public abstract class SLLogicalNotNode extends SLExpressionNode {
+@RunWith(SLTestRunner.class)
+@SLTestSuite(value = {"tests"}, options = {"sl.UseBytecode", "true", "sl.ForceBytecodeTier", "UNCACHED"})
+public class SLTestSuiteBytecodeCached {
 
-    @Specialization
-    public static boolean doBoolean(boolean value) {
-        return !value;
+    public static void main(String[] args) throws Exception {
+        SLTestRunner.runInMain(SLTestSuiteBytecodeCached.class, args);
     }
 
-    @Fallback
-    public static boolean typeError(Object value, @Bind("this") Node node) {
-        throw SLException.typeError(node, "!", value);
+    /*
+     * Our "mx unittest" command looks for methods that are annotated with @Test. By just defining
+     * an empty method, this class gets included and the test suite is properly executed.
+     */
+    @Test
+    public void unittest() {
     }
-
 }

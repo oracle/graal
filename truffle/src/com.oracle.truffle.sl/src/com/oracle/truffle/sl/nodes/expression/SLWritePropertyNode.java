@@ -74,7 +74,7 @@ import com.oracle.truffle.sl.runtime.SLObject;
 @NodeChild("receiverNode")
 @NodeChild("nameNode")
 @NodeChild("valueNode")
-@OperationProxy.Proxyable
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLWritePropertyNode extends SLExpressionNode {
 
     public static final int LIBRARY_LIMIT = 3;

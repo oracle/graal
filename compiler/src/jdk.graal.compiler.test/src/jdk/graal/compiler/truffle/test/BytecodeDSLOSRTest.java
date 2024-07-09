@@ -35,16 +35,15 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.bytecode.AbstractBytecodeException;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
-import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.LocalSetter;
@@ -52,6 +51,7 @@ import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.runtime.BytecodeOSRMetadata;
@@ -302,7 +302,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
     @GenerateBytecode(languageClass = BytecodeDSLOSRTestLanguage.class)
     public abstract static class BytecodeDSLOSRTestRootNode extends DebugBytecodeRootNode {
 
-        static class InCompiledCodeException extends AbstractBytecodeException {
+        static class InCompiledCodeException extends AbstractTruffleException {
             private static final long serialVersionUID = 1L;
         }
 

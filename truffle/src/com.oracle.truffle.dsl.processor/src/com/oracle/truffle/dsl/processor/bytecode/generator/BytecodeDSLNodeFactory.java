@@ -409,6 +409,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         bytecodeNodeGen.add(createGetRootNodes());
         bytecodeNodeGen.add(createGetSourceSection());
+        CodeExecutableElement translateStackTraceElement = bytecodeNodeGen.addOptional(createTranslateStackTraceElement());
+        if (translateStackTraceElement != null) {
+            abstractBytecodeNode.add(createCreateStackTraceElement());
+        }
 
         CodeTypeElement cachedNode = bytecodeNodeGen.add(new AbstractCachedNode().create());
 
@@ -898,6 +902,40 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         b.end(2);
+
+        return ex;
+    }
+
+    private CodeExecutableElement createTranslateStackTraceElement() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) model.getTemplateType().asType(), "translateStackTraceElement");
+        if (ex == null) {
+            ex = GeneratorUtils.overrideImplement(types.RootNode, "translateStackTraceElement");
+        }
+        if (ex.getModifiers().contains(Modifier.FINAL)) {
+            // already overriden by the root node.
+            return null;
+        }
+        ex.renameArguments("stackTraceElement");
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startReturn();
+        b.startStaticCall(abstractBytecodeNode.asType(), "createStackTraceElement");
+        b.string("stackTraceElement");
+        b.end();
+        b.end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createCreateStackTraceElement() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(Object.class), "createStackTraceElement");
+        ex.addParameter(new CodeVariableElement(types.TruffleStackTraceElkement, "stackTraceElement"));
+        ex.renameArguments("stackTraceElement");
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startReturn();
+        b.startCall("createDefaultStackTraceElement");
+        b.string("stackTraceElement");
+        b.end();
+        b.end();
 
         return ex;
     }
@@ -8641,7 +8679,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = getProbe.createBuilder();
             b.declaration(types.ProbeNode, "localProbe", "this.probe");
             b.startIf().string("localProbe == null").end().startBlock();
-            b.statement("this.probe = localProbe = root.createProbe(null)");
+            b.statement("this.probe = localProbe = insert(root.createProbe(null))");
             b.end();
             b.statement("return localProbe");
 

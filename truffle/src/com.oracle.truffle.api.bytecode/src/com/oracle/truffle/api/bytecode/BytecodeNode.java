@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.Instruction.InstructionIterable;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -996,6 +997,10 @@ public abstract class BytecodeNode extends Node {
         return new BytecodeLocation(this, bci);
     }
 
+    protected static final Object createDefaultStackTraceElement(TruffleStackTraceElement e) {
+        return new DefaultBytecodeStackTraceElement(e);
+    }
+
     /**
      * Returns a new array containing the current value of each live local in the
      * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
@@ -1095,6 +1100,22 @@ public abstract class BytecodeNode extends Node {
             }
         }
         return null;
+    }
+
+    /**
+     * Gets the bytecode location for a given {@link TruffleStackTraceElement}, if it can be found
+     * using the stack trace location.
+     *
+     * @param node the node
+     * @return the corresponding bytecode location or null if no location can be found.
+     * @since 24.1
+     */
+    public static BytecodeNode get(TruffleStackTraceElement element) {
+        Node location = element.getLocation();
+        if (location == null) {
+            return null;
+        }
+        return get(location);
     }
 
 }

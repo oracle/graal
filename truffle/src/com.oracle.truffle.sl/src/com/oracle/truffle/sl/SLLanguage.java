@@ -51,6 +51,7 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
@@ -61,6 +62,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
+import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -234,7 +236,23 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Option(help = "Use the SL interpreter implemented using the Truffle Bytecode DSL", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> UseBytecode = new OptionKey<>(false);
 
+    @Option(help = "Forces the bytecode interpreter to only use the CACHED or UNCACHED tier. Useful for testing and reproducing bugs.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<BytecodeTier> ForceBytecodeTier = new OptionKey<>(null,
+                    new OptionType<>("bytecodeTier", (s) -> {
+                        switch (s) {
+                            case "CACHED":
+                                return BytecodeTier.CACHED;
+                            case "UNCACHED":
+                                return BytecodeTier.UNCACHED;
+                            case "":
+                                return null;
+                            default:
+                                throw new IllegalArgumentException("Unexpected value: " + s);
+                        }
+                    }));
+
     private boolean useBytecode;
+    private BytecodeTier forceBytecodeTier;
 
     public SLLanguage() {
         counter++;
@@ -244,6 +262,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected SLContext createContext(Env env) {
         useBytecode = UseBytecode.getValue(env.getOptions());
+        forceBytecodeTier = ForceBytecodeTier.getValue(env.getOptions());
         return new SLContext(this, env, new ArrayList<>(EXTERNAL_BUILTINS));
     }
 
@@ -260,6 +279,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     public boolean isUseBytecode() {
         return useBytecode;
+    }
+
+    public BytecodeTier getForceBytecodeTier() {
+        return forceBytecodeTier;
     }
 
     @Override

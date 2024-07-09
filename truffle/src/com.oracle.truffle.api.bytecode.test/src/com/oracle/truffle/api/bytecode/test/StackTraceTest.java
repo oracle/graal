@@ -232,13 +232,13 @@ public class StackTraceTest extends AbstractInstructionTest {
 
     @GenerateBytecodeTestVariants({
                     @Variant(suffix = "CachedDefault", configuration = //
-                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBciInFrame = false, enableUncachedInterpreter = false, boxingEliminationTypes = {int.class})),
+                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = false, enableUncachedInterpreter = false, boxingEliminationTypes = {int.class})),
                     @Variant(suffix = "UncachedDefault", configuration = //
-                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBciInFrame = false, enableUncachedInterpreter = true, boxingEliminationTypes = {int.class})),
+                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = false, enableUncachedInterpreter = true, boxingEliminationTypes = {int.class})),
                     @Variant(suffix = "CachedBciInFrame", configuration =//
-                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBciInFrame = true, enableUncachedInterpreter = false, boxingEliminationTypes = {int.class})),
+                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = true, enableUncachedInterpreter = false, boxingEliminationTypes = {int.class})),
                     @Variant(suffix = "UncachedBciInFrame", configuration =//
-                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBciInFrame = true, enableUncachedInterpreter = true, boxingEliminationTypes = {int.class}))
+                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = true, enableUncachedInterpreter = true, boxingEliminationTypes = {int.class}))
     })
     public abstract static class StackTraceTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 

@@ -63,7 +63,7 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
  */
 @NodeInfo(shortName = "func")
 @NodeChild("functionName")
-@OperationProxy.Proxyable
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLFunctionLiteralNode extends SLExpressionNode {
 
     @SuppressWarnings({"unused", "truffle-neverdefault"})

@@ -64,7 +64,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  */
 @TypeSystemReference(SLTypes.class)
 @NodeChild
-@OperationProxy.Proxyable
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLUnboxNode extends SLExpressionNode {
 
     public static final int LIMIT = 5;

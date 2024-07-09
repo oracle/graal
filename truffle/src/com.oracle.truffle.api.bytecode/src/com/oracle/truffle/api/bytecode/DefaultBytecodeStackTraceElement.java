@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,58 +38,72 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.nodes.expression;
-
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+package com.oracle.truffle.api.bytecode;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.bytecode.OperationProxy;
-import com.oracle.truffle.api.dsl.Bind;
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.SLException;
-import com.oracle.truffle.sl.nodes.SLBinaryNode;
-import com.oracle.truffle.sl.runtime.SLBigInteger;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.SourceSection;
 
-/**
- * This class is similar to the extensively documented {@link SLAddNode}. The only difference: the
- * specialized methods return {@code boolean} instead of the input types.
- */
-@NodeInfo(shortName = "<")
-@OperationProxy.Proxyable(allowUncached = true)
-public abstract class SLLessThanNode extends SLBinaryNode {
+@ExportLibrary(InteropLibrary.class)
+final class DefaultBytecodeStackTraceElement implements TruffleObject {
 
-    @Specialization
-    public static boolean doLong(long left, long right) {
-        return left < right;
+    private final TruffleStackTraceElement stackTrace;
+
+    DefaultBytecodeStackTraceElement(TruffleStackTraceElement stackTraceElement) {
+        this.stackTrace = stackTraceElement;
     }
 
-    @Specialization
+    @ExportMessage
     @TruffleBoundary
-    public static boolean doSLBigInteger(SLBigInteger left, SLBigInteger right) {
-        return left.compareTo(right) < 0;
+    @SuppressWarnings("static-method")
+    boolean hasExecutableName() {
+        return stackTrace.getTarget().getRootNode().getName() != null;
     }
 
-    @Specialization(replaces = "doSLBigInteger", guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
+    @ExportMessage
     @TruffleBoundary
-    public static boolean doInteropBigInteger(Object left, Object right,
-                    @CachedLibrary("left") InteropLibrary leftLibrary,
-                    @CachedLibrary("right") InteropLibrary rightLibrary) {
-        try {
-            return leftLibrary.asBigInteger(left).compareTo(rightLibrary.asBigInteger(right)) < 0;
-        } catch (UnsupportedMessageException e) {
-            throw shouldNotReachHere(e);
+    Object getExecutableName() {
+        return stackTrace.getTarget().getRootNode().getName();
+    }
+
+    @ExportMessage
+    boolean hasSourceLocation() {
+        return getSourceSectionImpl() != null;
+    }
+
+    @TruffleBoundary
+    private SourceSection getSourceSectionImpl() {
+        BytecodeLocation location = BytecodeLocation.get(stackTrace);
+        if (location == null) {
+            return null;
         }
+        return location.getSourceLocation();
     }
 
-    @Fallback
-    public static boolean typeError(Object left, Object right, @Bind("this") Node node) {
-        throw SLException.typeError(node, "<", left, right);
+    @ExportMessage
+    SourceSection getSourceLocation() throws UnsupportedMessageException {
+        SourceSection sc = getSourceSectionImpl();
+        if (sc == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return sc;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasDeclaringMetaObject() {
+        return false;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    Object getDeclaringMetaObject() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
 }

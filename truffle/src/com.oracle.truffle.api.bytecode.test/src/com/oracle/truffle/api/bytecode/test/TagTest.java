@@ -62,7 +62,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.AbstractBytecodeException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
@@ -2271,10 +2270,10 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @SuppressWarnings("serial")
-    static class TestException extends AbstractBytecodeException {
+    static class TestException extends AbstractTruffleException {
 
-        TestException(Node location, int bci) {
-            super(location, bci);
+        TestException(Node location) {
+            super(location);
         }
 
     }
@@ -2350,17 +2349,17 @@ public class TagTest extends AbstractInstructionTest {
         @Operation
         static final class Throw {
             @Specialization
-            public static void doInt(@Bind("$node") Node node, @Bind("$bci") int bci) {
-                throw new TestException(node, bci);
+            public static void doInt(@Bind("$node") Node node) {
+                throw new TestException(node);
             }
         }
 
         @Operation
         static final class ValueOrThrow {
             @Specialization
-            public static Object doInt(Object value, boolean shouldThrow, @Bind("$node") Node node, @Bind("$bci") int bci) {
+            public static Object doInt(Object value, boolean shouldThrow, @Bind("$node") Node node) {
                 if (shouldThrow) {
-                    throw new TestException(node, bci);
+                    throw new TestException(node);
                 }
                 return value;
             }
@@ -2415,8 +2414,8 @@ public class TagTest extends AbstractInstructionTest {
         @Operation
         static final class Throw {
             @Specialization
-            public static void doInt(@Bind("$node") Node node, @Bind("$bci") int bci) {
-                throw new TestException(node, bci);
+            public static void doInt(@Bind("$node") Node node) {
+                throw new TestException(node);
             }
         }
 

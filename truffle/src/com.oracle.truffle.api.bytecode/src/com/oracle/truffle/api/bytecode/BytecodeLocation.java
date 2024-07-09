@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
@@ -268,6 +269,21 @@ public final class BytecodeLocation {
             }
         }
         return null;
+    }
+
+    /**
+     * Creates a {@link BytecodeLocation} associated with a {@link TruffleStackTraceElement}.
+     *
+     * @return the {@link BytecodeLocation} or {@code null} if no bytecode interpreter can be found
+     *         in the stack trace element.
+     * @since 24.1
+     */
+    public static BytecodeLocation get(TruffleStackTraceElement element) {
+        Node location = element.getLocation();
+        if (location == null) {
+            return null;
+        }
+        return get(location, element.getBytecodeIndex());
     }
 
 }

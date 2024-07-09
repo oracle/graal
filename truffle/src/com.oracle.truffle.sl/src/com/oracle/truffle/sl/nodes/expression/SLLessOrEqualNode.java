@@ -60,7 +60,7 @@ import com.oracle.truffle.sl.runtime.SLBigInteger;
  * This class is similar to the {@link SLLessThanNode}.
  */
 @NodeInfo(shortName = "<=")
-@OperationProxy.Proxyable
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLLessOrEqualNode extends SLBinaryNode {
 
     @Specialization

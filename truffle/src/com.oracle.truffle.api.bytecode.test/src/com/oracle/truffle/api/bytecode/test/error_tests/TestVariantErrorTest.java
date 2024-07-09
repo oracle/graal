@@ -41,12 +41,11 @@
 package com.oracle.truffle.api.bytecode.test.error_tests;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
-import com.oracle.truffle.api.bytecode.OperationProxy;
-import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
-import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.Node;
@@ -118,8 +117,7 @@ public class TestVariantErrorTest {
 }
 
 @SuppressWarnings("truffle-inlining")
-@OperationProxy.Proxyable
-@GenerateUncached
+@OperationProxy.Proxyable(allowUncached = true)
 abstract class ConstantOperation extends Node {
     public abstract long execute();
 

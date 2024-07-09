@@ -56,7 +56,7 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
 
 @NodeChild
 @NodeInfo(shortName = "toBoolean")
-@OperationProxy.Proxyable
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLToBooleanNode extends SLExpressionNode {
 
     @Override

@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.bytecode;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
@@ -96,6 +97,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
                 languageClass = SLLanguage.class, //
                 decisionsFile = "decisions.json", //
                 boxingEliminationTypes = {long.class, boolean.class}, //
+                enableUncachedInterpreter = true,
                 /*
                  * Simple language needs to run code before the root tag to set local variables, so
                  * we disable implicit root and root-body tagging.
@@ -172,6 +174,11 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
     @Override
     public final Object[] getLocalValues(FrameInstance frame) {
         return BytecodeNode.getLocalValues(frame);
+    }
+
+    @Override
+    protected Object translateStackTraceElement(TruffleStackTraceElement element) {
+        return super.translateStackTraceElement(element);
     }
 
     // see also SLReadArgumentNode

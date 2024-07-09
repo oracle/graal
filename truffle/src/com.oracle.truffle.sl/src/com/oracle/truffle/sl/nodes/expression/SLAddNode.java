@@ -47,6 +47,7 @@ import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -73,7 +74,7 @@ import com.oracle.truffle.sl.runtime.SLBigInteger;
  * is generated that provides, e.g., {@link SLAddNodeGen#create node creation}.
  */
 @NodeInfo(shortName = "+")
-@OperationProxy.Proxyable
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLAddNode extends SLBinaryNode {
 
     /**

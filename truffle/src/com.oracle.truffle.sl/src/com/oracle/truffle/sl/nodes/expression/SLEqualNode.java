@@ -45,6 +45,7 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -66,7 +67,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * {@link SLLogicalNotNode negate} the {@code ==} operator.
  */
 @NodeInfo(shortName = "==")
-@OperationProxy.Proxyable
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLEqualNode extends SLBinaryNode {
 
     @Specialization

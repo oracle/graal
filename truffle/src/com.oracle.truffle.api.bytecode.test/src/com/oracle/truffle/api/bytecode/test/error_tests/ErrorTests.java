@@ -545,8 +545,8 @@ public class ErrorTests {
     }
 
     @GenerateBytecode(languageClass = ErrorLanguage.class, enableUncachedInterpreter = true)
-    @ExpectError({"Could not use com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NoUncachedOperationProxy as an operation proxy: the class must be annotated with @GenerateUncached when an uncached interpreter is requested."})
     @OperationProxy(UncachedOperationProxy.class)
+    @ExpectError("Could not use com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NoUncachedOperationProxy as an operation proxy: the class must be annotated with @OperationProxy.Proxyable(allowUncached=true) when an uncached interpreter is requested.")
     @OperationProxy(NoUncachedOperationProxy.class)
     public abstract static class OperationErrorUncachedTests extends RootNode implements BytecodeRootNode {
         protected OperationErrorUncachedTests(TruffleLanguage<?> language, FrameDescriptor builder) {
@@ -554,8 +554,7 @@ public class ErrorTests {
         }
     }
 
-    @OperationProxy.Proxyable
-    @GenerateUncached
+    @OperationProxy.Proxyable(allowUncached = true)
     public static final class UncachedOperationProxy {
         @Specialization
         static int add(int x, int y) {

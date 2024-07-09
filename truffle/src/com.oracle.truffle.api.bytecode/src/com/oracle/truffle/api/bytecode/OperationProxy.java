@@ -93,6 +93,9 @@ public @interface OperationProxy {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     @interface Proxyable {
+
+        boolean allowUncached() default false;
+
     }
 
     /**

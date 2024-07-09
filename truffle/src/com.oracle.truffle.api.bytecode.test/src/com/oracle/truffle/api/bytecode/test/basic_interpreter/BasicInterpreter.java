@@ -48,7 +48,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.AbstractBytecodeException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -71,6 +70,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -134,13 +134,13 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         return (BasicInterpreter) cloneUninitialized();
     }
 
-    protected static class TestException extends AbstractBytecodeException {
+    protected static class TestException extends AbstractTruffleException {
         private static final long serialVersionUID = -9143719084054578413L;
 
         public final long value;
 
-        TestException(String string, Node node, int bci, long value) {
-            super(string, node, bci);
+        TestException(String string, Node node, long value) {
+            super(string, node);
             this.value = value;
         }
     }
@@ -234,9 +234,8 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     static final class ThrowOperation {
         @Specialization
         public static Object perform(long value,
-                        @Bind("$bytecode") BytecodeNode bytecodeNode,
-                        @Bind("$bci") int bci) {
-            throw new TestException("fail", bytecodeNode, bci, value);
+                        @Bind("$node") Node node) {
+            throw new TestException("fail", node, value);
         }
     }
 

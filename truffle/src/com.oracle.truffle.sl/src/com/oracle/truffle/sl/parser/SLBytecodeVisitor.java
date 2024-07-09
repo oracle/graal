@@ -54,12 +54,14 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
@@ -142,6 +144,20 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             TruffleString name = node.getTSName();
             RootCallTarget callTarget = node.getCallTarget();
             functions.put(name, callTarget);
+
+            BytecodeTier tier = language.getForceBytecodeTier();
+            if (tier != null) {
+                switch (tier) {
+                    case CACHED:
+                        node.getBytecodeNode().setUncachedThreshold(0);
+                        break;
+                    case UNCACHED:
+                        node.getBytecodeNode().setUncachedThreshold(Integer.MAX_VALUE);
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere("Unexpected tier: " + tier);
+                }
+            }
 
             if (DO_LOG_NODE_CREATION) {
                 try {

@@ -108,7 +108,6 @@ import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
-import com.oracle.truffle.dsl.processor.parser.NodeParser;
 import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
 
 public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
@@ -497,11 +496,14 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             TypeElement te = (TypeElement) ((DeclaredType) proxiedType).asElement();
             AnnotationMirror proxyable = ElementUtils.findAnnotationMirror(te.getAnnotationMirrors(), types.OperationProxy_Proxyable);
             if (proxyable == null) {
-                model.addError(mir, mirrorValue, "Could not use %s as an operation proxy: the class must be annotated with @%s.%s.", te.getQualifiedName(), getSimpleName(types.OperationProxy),
+                model.addError(mir, mirrorValue, "Could not use %s as an operation proxy: the class must be annotated with @%s.%s.", te.getQualifiedName(),
+                                getSimpleName(types.OperationProxy),
                                 getSimpleName(types.OperationProxy_Proxyable));
-            } else if (model.enableUncachedInterpreter && !NodeParser.isGenerateUncached(te)) {
-                model.addError(mir, mirrorValue, "Could not use %s as an operation proxy: the class must be annotated with @%s when an uncached interpreter is requested.", te.getQualifiedName(),
-                                getSimpleName(types.GenerateUncached));
+            } else if (model.enableUncachedInterpreter && !ElementUtils.getAnnotationValue(Boolean.class, proxyable, "allowUncached", true)) {
+                model.addError(mir, mirrorValue, "Could not use %s as an operation proxy: the class must be annotated with @%s.%s(allowUncached=true) when an uncached interpreter is requested.",
+                                te.getQualifiedName(),
+                                getSimpleName(types.OperationProxy),
+                                getSimpleName(types.OperationProxy_Proxyable));
             }
 
             CustomOperationModel customOperation = CustomOperationParser.forCodeGeneration(model, types.OperationProxy_Proxyable).parseCustomOperation(te, mir);

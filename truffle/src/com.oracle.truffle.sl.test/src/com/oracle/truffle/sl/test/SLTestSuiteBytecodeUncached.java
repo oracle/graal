@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,64 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode;
+package com.oracle.truffle.sl.test;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-@ExportLibrary(InteropLibrary.class)
-final class BytecodeStackTraceElement implements TruffleObject {
+@RunWith(SLTestRunner.class)
+@SLTestSuite(value = {"tests"}, options = {"sl.UseBytecode", "true", "sl.ForceBytecodeTier", "CACHED"})
+public class SLTestSuiteBytecodeUncached {
 
-    private final SourceSection sourceSection;
-    private final RootNode rootNode;
-
-    BytecodeStackTraceElement(RootNode rootNode, SourceSection sourceSection) {
-        this.rootNode = rootNode;
-        this.sourceSection = sourceSection;
+    public static void main(String[] args) throws Exception {
+        SLTestRunner.runInMain(SLTestSuiteBytecodeUncached.class, args);
     }
 
-    @ExportMessage
-    @TruffleBoundary
-    @SuppressWarnings("static-method")
-    boolean hasExecutableName() {
-        return rootNode.getName() != null;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    Object getExecutableName() {
-        return rootNode.getName();
-    }
-
-    @ExportMessage
-    boolean hasSourceLocation() {
-        return sourceSection != null;
-    }
-
-    @ExportMessage
-    SourceSection getSourceLocation() throws UnsupportedMessageException {
-        if (sourceSection == null) {
-            throw UnsupportedMessageException.create();
-        } else {
-            return sourceSection;
-        }
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean hasDeclaringMetaObject() {
-        return false;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    Object getDeclaringMetaObject() throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+    /*
+     * Our "mx unittest" command looks for methods that are annotated with @Test. By just defining
+     * an empty method, this class gets included and the test suite is properly executed.
+     */
+    @Test
+    public void unittest() {
     }
 }
