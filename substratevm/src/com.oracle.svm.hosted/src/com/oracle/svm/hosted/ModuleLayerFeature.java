@@ -426,8 +426,8 @@ public final class ModuleLayerFeature implements InternalFeature {
             moduleLayerPairs.put(hostedModuleLayer, runtimeModuleLayer);
         }
 
-        moduleLayerPairs.remove(ModuleLayer.empty());
-        return new ArrayList<>(moduleLayerPairs.values());
+        List<ModuleLayer> runtimeModuleLayers = hostedModuleLayers.stream().map(moduleLayerPairs::get).filter(Objects::nonNull).toList();
+        return runtimeModuleLayers;
     }
 
     private ModuleLayer synthesizeRuntimeModuleLayer(List<ModuleLayer> parentLayers, AnalysisAccessBase accessImpl, ImageClassLoader cl, Set<String> reachableModules,
