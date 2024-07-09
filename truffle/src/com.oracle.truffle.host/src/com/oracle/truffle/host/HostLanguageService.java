@@ -50,7 +50,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageServic
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -82,7 +81,7 @@ public class HostLanguageService extends AbstractHostLanguageService {
         HostContext context = (HostContext) receiver;
         ClassLoader useCl = cl;
         if (useCl == null) {
-            useCl = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
+            useCl = Thread.currentThread().getContextClassLoader();
         }
         language.initializeHostAccess(hostAccess);
         context.initialize(internalContext, useCl, clFilter, hostCLAllowed, hostLookupAllowed, hostAccess != null ? api.getMutableTargetMappings(hostAccess) : new MutableTargetMapping[0]);
