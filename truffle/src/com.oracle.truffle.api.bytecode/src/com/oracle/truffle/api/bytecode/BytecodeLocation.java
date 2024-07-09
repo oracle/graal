@@ -60,7 +60,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * This avoids the eager allocation of the bytecode location. To create a bytecode location when it
  * is needed the {@link BytecodeLocation#get(Node, int)} method can be used.
  *
- * @since 24.1
+ * @since 24.2
  */
 public final class BytecodeLocation {
 
@@ -77,7 +77,7 @@ public final class BytecodeLocation {
      * purposes. The bytecode index is only meaningful when coupled with a particular
      * {@link #getBytecodeNode() bytecode node}.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public int getBytecodeIndex() {
         return bci;
@@ -87,14 +87,14 @@ public final class BytecodeLocation {
      * Returns the {@link BytecodeNode} associated with this location. The
      * {@link #getBytecodeIndex() bytecode index} is only valid for the returned node.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public BytecodeNode getBytecodeNode() {
         return bytecodes;
     }
 
     /**
-     * @since 24.1
+     * @since 24.2
      */
     @Override
     public int hashCode() {
@@ -102,7 +102,7 @@ public final class BytecodeLocation {
     }
 
     /**
-     * @since 24.1
+     * @since 24.2
      */
     @Override
     public boolean equals(Object obj) {
@@ -116,7 +116,7 @@ public final class BytecodeLocation {
     }
 
     /**
-     * @since 24.1
+     * @since 24.2
      */
     @Override
     public String toString() {
@@ -128,7 +128,7 @@ public final class BytecodeLocation {
      *
      * @return dump string
      * @see BytecodeNode#dump(BytecodeLocation)
-     * @since 24.1
+     * @since 24.2
      */
     public String dump() {
         return bytecodes.dump(this);
@@ -138,7 +138,7 @@ public final class BytecodeLocation {
      * Computes the most concrete source location of this bytecode location.
      *
      * @see BytecodeNode#findSourceLocation(int)
-     * @since 24.1
+     * @since 24.2
      */
     public SourceSection getSourceLocation() {
         return bytecodes.findSourceLocation(bci);
@@ -148,7 +148,7 @@ public final class BytecodeLocation {
      * Computes all source locations of this bytecode location.
      *
      * @see BytecodeNode#findSourceLocations(int)
-     * @since 24.1
+     * @since 24.2
      */
     public SourceSection[] getSourceLocations() {
         return bytecodes.findSourceLocations(bci);
@@ -157,7 +157,7 @@ public final class BytecodeLocation {
     /**
      * Computes the bytecode instruction at this location.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public Instruction getInstruction() {
         return bytecodes.findInstruction(bci);
@@ -166,7 +166,7 @@ public final class BytecodeLocation {
     /**
      * Returns all exception handlers that span over this bytecode location.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public List<ExceptionHandler> getExceptionHandlers() {
         var handlers = bytecodes.getExceptionHandlers();
@@ -188,7 +188,7 @@ public final class BytecodeLocation {
     /**
      * Returns all source informations available at this location.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public List<SourceInformation> getSourceInformation() {
         var sourceInfos = bytecodes.getSourceInformation();
@@ -216,7 +216,7 @@ public final class BytecodeLocation {
      *
      * @param frameInstance the frame instance
      * @return the corresponding bytecode location or null if no location can be found.
-     * @since 24.1
+     * @since 24.2
      */
     @TruffleBoundary
     public static BytecodeLocation get(FrameInstance frameInstance) {
@@ -257,7 +257,7 @@ public final class BytecodeLocation {
      * @param bci a bytecode index (can be bound using {@code @Bind("$bci")})
      * @return the {@link BytecodeLocation} or {@code null} if {@code location} is not adopted by a
      *         {@link BytecodeNode}.
-     * @since 24.1
+     * @since 24.2
      */
     @TruffleBoundary
     public static BytecodeLocation get(Node location, int bci) {

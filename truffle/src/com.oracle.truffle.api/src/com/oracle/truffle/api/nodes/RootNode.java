@@ -532,7 +532,7 @@ public abstract class RootNode extends ExecutableNode {
      * already prepared before. In other words, this method should stabilize and eventually not
      * perform any operation.
      *
-     * @since 24.1
+     * @since 24.2
      */
     protected void prepareForInstrumentation(@SuppressWarnings("unused") Set<Class<?>> tags) {
         // no default implementation

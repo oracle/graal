@@ -47,14 +47,14 @@ package com.oracle.truffle.api.bytecode;
  *
  * @see BytecodeNode#getExceptionHandlers()
  * @see BytecodeLocation#getExceptionHandlers()
- * @since 24.1
+ * @since 24.2
  */
 public abstract class ExceptionHandler {
 
     /**
      * Internal constructor for generated code. Do not use.
      *
-     * @since 24.1
+     * @since 24.2
      */
     protected ExceptionHandler(Object token) {
         BytecodeRootNodes.checkToken(token);
@@ -64,21 +64,21 @@ public abstract class ExceptionHandler {
      * Returns a kind that determine whether handler is a custom or a special exception handler.
      *
      * @see HandlerKind
-     * @since 24.1
+     * @since 24.2
      */
     public abstract HandlerKind getKind();
 
     /**
      * Returns the start bytecode index of this exception handler (inclusive).
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract int getStartBytecodeIndex();
 
     /**
      * Returns the end bytecode index of this exception handler (exclusive).
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract int getEndBytecodeIndex();
 
@@ -87,7 +87,7 @@ public abstract class ExceptionHandler {
      * kind {@link HandlerKind#CUSTOM}.
      *
      * @throws UnsupportedOperationException for handlers not of kind {@link HandlerKind#CUSTOM}
-     * @since 24.1
+     * @since 24.2
      */
     public int getHandlerBytecodeIndex() throws UnsupportedOperationException {
         throw new UnsupportedOperationException("getHandlerIndex() is not supported for handler kind: " + getKind());
@@ -98,7 +98,7 @@ public abstract class ExceptionHandler {
      * {@link HandlerKind#TAG}.
      *
      * @throws UnsupportedOperationException for handlers not of kind {@link HandlerKind#TAG}
-     * @since 24.1
+     * @since 24.2
      */
     public TagTree getTagTree() throws UnsupportedOperationException {
         throw new UnsupportedOperationException("getTagTree() is not supported for handler kind: " + getKind());

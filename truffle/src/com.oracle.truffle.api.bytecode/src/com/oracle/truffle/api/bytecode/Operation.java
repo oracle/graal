@@ -75,7 +75,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
  * "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">user
  * guide</a> for more details.
  *
- * @since 24.1
+ * @since 24.2
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
@@ -86,7 +86,7 @@ public @interface Operation {
      * <p>
      * This feature is not yet supported.
      *
-     * @since 24.1
+     * @since 24.2
      */
     // TODO GR-51945 implement Tags support
     Class<? extends Tag>[] tags() default {};
@@ -95,7 +95,7 @@ public @interface Operation {
      * Optional documentation for the operation. This documentation is included in the javadoc for
      * the generated interpreter.
      *
-     * @since 24.1
+     * @since 24.2
      */
     String javadoc() default "";
 

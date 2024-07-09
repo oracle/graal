@@ -57,7 +57,7 @@ import java.lang.annotation.Target;
  * that generate new builder methods (e.g. {@link GenerateBytecode#enableYield()}) must agree. These
  * properties are checked by the DSL.
  *
- * @since 24.1
+ * @since 24.2
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
@@ -65,14 +65,14 @@ public @interface GenerateBytecodeTestVariants {
     /**
      * The variants to generate.
      *
-     * @since 24.1
+     * @since 24.2
      */
     Variant[] value();
 
     /**
      * The annotation used to declare a variant.
      *
-     * @since 24.1
+     * @since 24.2
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
@@ -80,14 +80,14 @@ public @interface GenerateBytecodeTestVariants {
         /**
          * The class name suffix for this variant.
          *
-         * @since 24.1
+         * @since 24.2
          */
         String suffix();
 
         /**
          * The configuration for this variant.
          *
-         * @since 24.1
+         * @since 24.2
          */
         GenerateBytecode configuration();
     }

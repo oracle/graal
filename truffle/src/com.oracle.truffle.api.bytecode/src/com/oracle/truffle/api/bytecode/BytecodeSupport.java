@@ -46,7 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
  * Contains code to support Truffle operation interpreters. This code should not be used directly by
  * language implementations.
  *
- * @since 24.1
+ * @since 24.2
  */
 public final class BytecodeSupport {
     private static final int MAX_PROFILE_COUNT = 0x3fffffff;
@@ -58,7 +58,7 @@ public final class BytecodeSupport {
     /**
      * Allocates memory to track branch profiles.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public static int[] allocateBranchProfiles(int numProfiles) {
         // Representation: [t1, f1, t2, f2, ..., tn, fn]
@@ -68,7 +68,7 @@ public final class BytecodeSupport {
     /**
      * Increments a branch profile.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public static boolean profileBranch(int[] branchProfiles, int profileIndex, boolean condition) {
         int t = branchProfiles[profileIndex * 2];

@@ -102,7 +102,7 @@ import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Repeat;
  * Since the operand value itself is returned, this operation can be used to implement
  * null-coalescing operations (e.g., {@code someArray or []} in Python).
  *
- * @since 24.1
+ * @since 24.2
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.TYPE)
@@ -111,14 +111,14 @@ public @interface ShortCircuitOperation {
     /**
      * The name of this operation.
      *
-     * @since 24.1
+     * @since 24.2
      */
     String name();
 
     /**
      * Defines the behaviour of a {@link ShortCircuitOperation}.
      *
-     * @since 24.1
+     * @since 24.2
      */
     enum Operator {
         /** AND operator that produces the operand value. */
@@ -136,7 +136,7 @@ public @interface ShortCircuitOperation {
      * a boolean AND or OR. It also determines whether the operation produces the original operand
      * or the boolean that results from conversion.
      *
-     * @since 24.1
+     * @since 24.2
      */
     Operator operator();
 
@@ -153,7 +153,7 @@ public @interface ShortCircuitOperation {
      * <li>Only have specializations that take a single parameter.
      * </ul>
      *
-     * @since 24.1
+     * @since 24.2
      */
     Class<?> booleanConverter() default void.class;
 
@@ -161,14 +161,14 @@ public @interface ShortCircuitOperation {
      * Optional documentation for the short circuit operation. This documentation is included in the
      * javadoc for the generated interpreter.
      *
-     * @since 24.1
+     * @since 24.2
      */
     String javadoc() default "";
 
     /**
      * Repeat annotation for {@link ShortCircuitOperation}.
      *
-     * @since 24.1
+     * @since 24.2
      */
     @Retention(RetentionPolicy.SOURCE)
     @Target(ElementType.TYPE)
@@ -176,7 +176,7 @@ public @interface ShortCircuitOperation {
         /**
          * Repeat value for {@link ShortCircuitOperation}.
          *
-         * @since 24.1
+         * @since 24.2
          */
         ShortCircuitOperation[] value();
     }

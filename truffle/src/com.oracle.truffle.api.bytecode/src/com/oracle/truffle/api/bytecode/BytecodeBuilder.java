@@ -53,7 +53,7 @@ package com.oracle.truffle.api.bytecode;
  *      "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">Bytecode
  *      DSL user guide</a>
  *
- * @since 24.1
+ * @since 24.2
  */
 @SuppressWarnings("static-method")
 public abstract class BytecodeBuilder {
@@ -63,7 +63,7 @@ public abstract class BytecodeBuilder {
     /**
      * Default constructor for a {@link BytecodeBuilder}.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public BytecodeBuilder() {
     }

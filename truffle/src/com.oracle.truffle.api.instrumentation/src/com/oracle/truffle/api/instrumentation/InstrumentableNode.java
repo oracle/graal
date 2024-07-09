@@ -184,7 +184,7 @@ public interface InstrumentableNode extends NodeInterface {
      * constant} if the receiver is a PE constant.
      *
      * @see #createProbe(SourceSection)
-     * @since 24.1
+     * @since 24.2
      */
     default ProbeNode findProbe() {
         Node parent = ((Node) this).getParent();
@@ -449,7 +449,7 @@ public interface InstrumentableNode extends NodeInterface {
      * implement custom probe storage by implementing {@link #findProbe()}.
      *
      * @param sourceSection the eager materialized source section for this probe.
-     * @since 24.1
+     * @since 24.2
      */
     default ProbeNode createProbe(SourceSection sourceSection) {
         return new ProbeNode(this, sourceSection);

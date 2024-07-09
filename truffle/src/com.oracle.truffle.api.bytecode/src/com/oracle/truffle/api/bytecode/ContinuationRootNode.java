@@ -51,7 +51,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * If a bytecode interpreter {@link GenerateBytecode#enableYield supports continuations}, the DSL
  * will generate a concrete implementation of this interface.
  *
- * @since 24.1
+ * @since 24.2
  */
 public abstract class ContinuationRootNode extends RootNode {
 
@@ -62,14 +62,14 @@ public abstract class ContinuationRootNode extends RootNode {
     /**
      * Returns the original root node from which this continuation was created.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract BytecodeRootNode getSourceRootNode();
 
     /**
      * Returns the {@link BytecodeLocation} associated with this continuation.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract BytecodeLocation getLocation();
 

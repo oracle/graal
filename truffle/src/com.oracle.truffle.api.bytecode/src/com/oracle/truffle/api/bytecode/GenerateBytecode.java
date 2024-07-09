@@ -92,7 +92,7 @@ import com.oracle.truffle.api.nodes.Node;
  * For information about using the Bytecode DSL, please consult the <a href=
  * "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/BytecodeDSL.md">tutorial</a>.
  *
- * @since 24.1
+ * @since 24.2
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
@@ -100,7 +100,7 @@ public @interface GenerateBytecode {
     /**
      * The {@link TruffleLanguage} class associated with this node.
      *
-     * @since 24.1
+     * @since 24.2
      */
     Class<? extends TruffleLanguage<?>> languageClass();
 
@@ -115,7 +115,7 @@ public @interface GenerateBytecode {
      * (as determined by the {@link BytecodeNode#setUncachedThreshold uncached interpreter
      * threshold}).
      *
-     * @since 24.1
+     * @since 24.2
      */
     boolean enableUncachedInterpreter() default false;
 
@@ -145,7 +145,7 @@ public @interface GenerateBytecode {
      * @see <a href=
      *      "https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/SerializationTutorial.java">Serialization
      *      tutorial</a>
-     * @since 24.1
+     * @since 24.2
      */
     boolean enableSerialization() default false;
 
@@ -163,7 +163,7 @@ public @interface GenerateBytecode {
      *
      * @see #enableRootTagging() to enable implicit root and root body tagging (default enabled)
      * @see #enableRootBodyTagging() to enable implicit root body tagging (default enabled)
-     * @since 24.1
+     * @since 24.2
      */
     boolean enableTagInstrumentation() default false;
 
@@ -178,7 +178,7 @@ public @interface GenerateBytecode {
      * custom {@link RootTag root} tag using the builder methods for inlined methods. This ensures
      * that tools can still work correctly for inlined calls.
      *
-     * @since 24.1
+     * @since 24.2
      * @see #enableRootBodyTagging()
      */
     boolean enableRootTagging() default true;
@@ -188,7 +188,7 @@ public @interface GenerateBytecode {
      * enabled. Automatic root body tagging automatically tags each root with {@link RootBodyTag} if
      * the language {@link ProvidedTags provides} it.
      *
-     * @since 24.1
+     * @since 24.2
      * @see #enableRootTagging()
      */
     boolean enableRootBodyTagging() default true;
@@ -227,7 +227,7 @@ public @interface GenerateBytecode {
      * See the {@link NodeLibrary} javadoc for more details.
      *
      * @see TagTreeNode
-     * @since 24.1
+     * @since 24.2
      */
     Class<?> tagTreeNodeLibrary() default TagTreeNodeExports.class;
 
@@ -239,7 +239,7 @@ public @interface GenerateBytecode {
      * behavior may only happen due to a bug in the Bytecode DSL implementation and not language
      * implementation code.
      *
-     * @since 24.1
+     * @since 24.2
      */
     boolean allowUnsafe() default true;
 
@@ -251,7 +251,7 @@ public @interface GenerateBytecode {
      * later point in time, as well as an optional return value.
      *
      * @see com.oracle.truffle.api.bytecode.ContinuationResult
-     * @since 24.1
+     * @since 24.2
      */
     boolean enableYield() default false;
 
@@ -284,7 +284,7 @@ public @interface GenerateBytecode {
      * not use local variable scoping, but it can also be useful if the default local variable
      * scoping is not flexible enough and custom scoping rules are needed.
      *
-     * @since 24.1
+     * @since 24.2
      */
     boolean enableLocalScoping() default true;
 
@@ -299,7 +299,7 @@ public @interface GenerateBytecode {
      * {@link com.oracle.truffle.api.bytecode.ForceQuickening}. When an instruction re-specializes
      * itself, the interpreter attempts to automatically replace it with a quickened instruction.
      *
-     * @since 24.1
+     * @since 24.2
      */
     boolean enableQuickening() default true;
 
@@ -321,7 +321,7 @@ public @interface GenerateBytecode {
      * in the frame increases frame size and requires additional frame writes, so it can negatively
      * affect performance.
      *
-     * @since 24.1
+     * @since 24.2
      */
     boolean storeBciInFrame() default false;
 
@@ -332,7 +332,7 @@ public @interface GenerateBytecode {
      * This feature is not yet supported.
      *
      * @see #forceTracing()
-     * @since 24.1
+     * @since 24.2
      */
     String decisionsFile() default "";
 
@@ -342,7 +342,7 @@ public @interface GenerateBytecode {
      * <p>
      * This feature is not yet supported.
      *
-     * @since 24.1
+     * @since 24.2
      */
     String[] decisionOverrideFiles() default {};
 
@@ -356,7 +356,7 @@ public @interface GenerateBytecode {
      * <p>
      * This feature is not yet supported.
      *
-     * @since 24.1
+     * @since 24.2
      */
     boolean forceTracing() default false;
 
@@ -367,7 +367,7 @@ public @interface GenerateBytecode {
      * variants that load/store primitive values when possible. It will automatically use these
      * instructions in a best-effort manner (falling back on boxed representations when necessary).
      *
-     * @since 24.1
+     * @since 24.2
      */
     Class<?>[] boxingEliminationTypes() default {};
 
@@ -376,7 +376,7 @@ public @interface GenerateBytecode {
      * {@link Argument#getSpecializationInfo()}.
      *
      * @see com.oracle.truffle.api.bytecode.BytecodeIntrospection
-     * @since 24.1
+     * @since 24.2
      */
     boolean enableSpecializationIntrospection() default true;
 

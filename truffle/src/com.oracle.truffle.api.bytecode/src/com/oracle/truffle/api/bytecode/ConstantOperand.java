@@ -73,7 +73,7 @@ import com.oracle.truffle.api.bytecode.ConstantOperand.Repeat;
  * {@code begin} or {@code emit} method of the {@link BytecodeBuilder}. Constant operands to the
  * {@link Prolog} should be supplied to the {@code beginRoot} method.
  *
- * @since 24.1
+ * @since 24.2
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
@@ -83,7 +83,7 @@ public @interface ConstantOperand {
      * The type of the constant operand. All specializations must declare a parameter with this
      * exact type.
      *
-     * @since 24.1
+     * @since 24.2
      */
     Class<?> type();
 
@@ -91,7 +91,7 @@ public @interface ConstantOperand {
      * Optional name for the constant operand. When this field is not provided, the Bytecode DSL
      * will infer a name from the specializations' parameters.
      *
-     * @since 24.1
+     * @since 24.2
      */
     String name() default "";
 
@@ -99,7 +99,7 @@ public @interface ConstantOperand {
      * Optional documentation for the constant operand. This documentation is included in the
      * javadoc for the generated interpreter.
      *
-     * @since 24.1
+     * @since 24.2
      */
     String javadoc() default "";
 
@@ -115,7 +115,7 @@ public @interface ConstantOperand {
      * This flag is meaningless if the operation is not the {@link Prolog} and does not take dynamic
      * operands, since all constant operands will be supplied to a single {@code emit} method.
      *
-     * @since 24.1
+     * @since 24.2
      */
     boolean specifyAtEnd() default false;
 
@@ -126,14 +126,14 @@ public @interface ConstantOperand {
      * The Bytecode DSL currently only supports a value of 0; that is, array elements are *not*
      * compilation-final.
      *
-     * @since 24.1
+     * @since 24.2
      */
     int dimensions() default 0;
 
     /**
      * Repeat annotation for {@link ConstantOperand}.
      *
-     * @since 24.1
+     * @since 24.2
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
@@ -141,7 +141,7 @@ public @interface ConstantOperand {
         /**
          * Repeat value for {@link ConstantOperand}.
          *
-         * @since 24.1
+         * @since 24.2
          */
         ConstantOperand[] value();
     }

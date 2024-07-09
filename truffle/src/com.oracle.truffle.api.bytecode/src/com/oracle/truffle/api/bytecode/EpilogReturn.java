@@ -58,7 +58,7 @@ import java.lang.annotation.Target;
  * language-level exception handlers guarding the return, including the {@link EpilogExceptional
  * exceptional epilog}, if present.
  *
- * @since 24.1
+ * @since 24.2
  * @see EpilogExceptional
  * @see Prolog
  */

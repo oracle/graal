@@ -84,7 +84,7 @@ import com.oracle.truffle.api.dsl.Specialization;
  * }
  * </pre>
  *
- * @since 24.1
+ * @since 24.2
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
@@ -98,14 +98,14 @@ public @interface ForceQuickening {
      * By default, this value is empty, which signifies that a specialization should have its own
      * quickened instruction.
      *
-     * @since 24.1
+     * @since 24.2
      */
     String value() default "";
 
     /**
      * Repeat annotation for {@link ForceQuickening}.
      *
-     * @since 24.1
+     * @since 24.2
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD})
@@ -113,7 +113,7 @@ public @interface ForceQuickening {
         /**
          * Repeat value for {@link ForceQuickening}.
          *
-         * @since 24.1
+         * @since 24.2
          */
         ForceQuickening[] value();
     }

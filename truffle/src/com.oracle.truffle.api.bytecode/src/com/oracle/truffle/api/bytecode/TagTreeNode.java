@@ -58,7 +58,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * All implementations of this class are intended to be generated and are not supposed to be
  * implemented manually.
  *
- * @since 24.1
+ * @since 24.2
  */
 @ExportLibrary(DynamicDispatchLibrary.class)
 public abstract class TagTreeNode extends Node implements TagTree {
@@ -66,14 +66,14 @@ public abstract class TagTreeNode extends Node implements TagTree {
     /**
      * Allows to access the language instance associated with this node.
      *
-     * @since 24.1
+     * @since 24.2
      */
     protected abstract Class<? extends TruffleLanguage<?>> getLanguage();
 
     /**
      * Returns the currently used {@link NodeLibrary} exports for this tag library.
      *
-     * @since 24.1
+     * @since 24.2
      */
     @ExportMessage
     protected Class<?> dispatch() {

@@ -48,7 +48,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 /**
  * Operation parameter that allows an operation to update a contiguous range of locals.
  *
- * @since 24.1
+ * @since 24.2
  */
 public final class LocalSetterRange {
 
@@ -63,7 +63,7 @@ public final class LocalSetterRange {
     /**
      * Returns the length of the range.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public int getLength() {
         return length;
@@ -72,7 +72,7 @@ public final class LocalSetterRange {
     /**
      * Returns a string representation of a {@link LocalSetterRange}.
      *
-     * @since 24.1
+     * @since 24.2
      */
     @Override
     public String toString() {
@@ -92,7 +92,7 @@ public final class LocalSetterRange {
     /**
      * Stores an object into the local at the given offset into the range.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public void setObject(BytecodeNode bytecode, int bci, VirtualFrame frame, int offset, Object value) {
         CompilerAsserts.partialEvaluationConstant(this);
@@ -103,7 +103,7 @@ public final class LocalSetterRange {
     /**
      * Stores an int into the local at the given offset into the range.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public void setInt(BytecodeNode bytecode, int bci, VirtualFrame frame, int offset, int value) {
         CompilerAsserts.partialEvaluationConstant(this);
@@ -114,7 +114,7 @@ public final class LocalSetterRange {
     /**
      * Stores a long into the local at the given offset into the range.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public void setLong(BytecodeNode bytecode, int bci, VirtualFrame frame, int offset, long value) {
         CompilerAsserts.partialEvaluationConstant(this);
@@ -125,7 +125,7 @@ public final class LocalSetterRange {
     /**
      * Stores a double into the local at the given offset into the range.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public void setDouble(BytecodeNode bytecode, int bci, VirtualFrame frame, int offset, double value) {
         CompilerAsserts.partialEvaluationConstant(this);

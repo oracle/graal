@@ -48,13 +48,13 @@ package com.oracle.truffle.api.bytecode;
  * subsequently emit it using {@code emitLabel}. Labels are specified as parameters to branch
  * operations.
  *
- * @since 24.1
+ * @since 24.2
  */
 public abstract class BytecodeLabel {
     /**
      * Default constructor for a {@link BytecodeLabel}.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public BytecodeLabel(Object token) {
         BytecodeRootNodes.checkToken(token);

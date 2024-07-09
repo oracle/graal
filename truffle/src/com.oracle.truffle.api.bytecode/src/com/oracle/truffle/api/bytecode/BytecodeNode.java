@@ -70,7 +70,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * current bytecode node can be bound using <code>@Bind("$bytecode") BytecodeNode bytecode</code>
  * with {@link Operation operations}.
  *
- * @since 24.1
+ * @since 24.2
  */
 public abstract class BytecodeNode extends Node {
 
@@ -84,7 +84,7 @@ public abstract class BytecodeNode extends Node {
      * @param frame the current frame
      * @param location the current location
      * @return the bytecode location, or null if a location could not be found
-     * @since 24.1
+     * @since 24.2
      */
     public final BytecodeLocation getBytecodeLocation(Frame frame, Node location) {
         int bci = findBytecodeIndexImpl(frame, location);
@@ -100,7 +100,7 @@ public abstract class BytecodeNode extends Node {
      *
      * @param frameInstance the frame instance
      * @return the bytecode location, or null if a location could not be found
-     * @since 24.1
+     * @since 24.2
      */
     public final BytecodeLocation getBytecodeLocation(FrameInstance frameInstance) {
         int bci = findBytecodeIndex(frameInstance);
@@ -117,7 +117,7 @@ public abstract class BytecodeNode extends Node {
      *
      * @param bytecodeIndex the bytecode index
      * @return the bytecode location, or null if the bytecode index is invalid
-     * @since 24.1
+     * @since 24.2
      */
     public final BytecodeLocation getBytecodeLocation(int bytecodeIndex) {
         if (bytecodeIndex < 0) {
@@ -133,7 +133,7 @@ public abstract class BytecodeNode extends Node {
      * feature.
      *
      * @return the bytecode index stored in the frame
-     * @since 24.1
+     * @since 24.2
      */
     @SuppressWarnings("unused")
     public int getBytecodeIndex(Frame frame) {
@@ -210,7 +210,7 @@ public abstract class BytecodeNode extends Node {
      *
      * @param frameInstance the frame instance
      * @return the source location, or null if a location could not be found
-     * @since 24.1
+     * @since 24.2
      */
     // TODO add tests
     public final SourceSection getSourceLocation(FrameInstance frameInstance) {
@@ -253,7 +253,7 @@ public abstract class BytecodeNode extends Node {
      * allocates the underlying {@link SourceInformation} element when it is {@link List#get
      * accessed}.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract List<SourceInformation> getSourceInformation();
 
@@ -265,21 +265,21 @@ public abstract class BytecodeNode extends Node {
      * {@link #getSourceInformation()}, which allocates its elements on demand. Prefer to use
      * {@link #getSourceInformation()} unless you need to traverse the source tree.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract SourceInformationTree getSourceInformationTree();
 
     /**
      * TODO
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract List<ExceptionHandler> getExceptionHandlers();
 
     /**
      * TODO
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract TagTree getTagTree();
 
@@ -297,7 +297,7 @@ public abstract class BytecodeNode extends Node {
      * @param frame the frame to read locals from
      *
      * @return an array of local values
-     * @since 24.1
+     * @since 24.2
      */
     // runtime modification APIs (Frame needed)
     // bci needs to be a PE constant
@@ -322,7 +322,7 @@ public abstract class BytecodeNode extends Node {
      * @param localOffset the logical offset of the local (as obtained by
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @return an array of local values
-     * @since 24.1
+     * @since 24.2
      */
     // TODO update docs
     public abstract Object getLocalValue(int bytecodeIndex, Frame frame, int localOffset);
@@ -407,7 +407,7 @@ public abstract class BytecodeNode extends Node {
      * order.
      *
      * @return an array of local names
-     * @since 24.1
+     * @since 24.2
      */
     // TODO update docs
     @ExplodeLoop
@@ -434,7 +434,7 @@ public abstract class BytecodeNode extends Node {
      * order.
      *
      * @return an array of local names
-     * @since 24.1
+     * @since 24.2
      */
     // TODO update docs
     @ExplodeLoop
@@ -461,7 +461,7 @@ public abstract class BytecodeNode extends Node {
      * @param frame the frame to store the locals value into
      * @param value the value to store into the local
      *
-     * @since 24.1
+     * @since 24.2
      */
     // TODO update docs
     @ExplodeLoop
@@ -500,7 +500,7 @@ public abstract class BytecodeNode extends Node {
      * @param source the from to copy locals from
      * @param destination the frame to copy locals into
      * @param length the number of locals to copy
-     * @since 24.1
+     * @since 24.2
      */
     // TODO update docs
     @ExplodeLoop
@@ -532,7 +532,7 @@ public abstract class BytecodeNode extends Node {
      * @param localOffset the logical offset of the local (as obtained by
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @param value the value to store into the local
-     * @since 24.1
+     * @since 24.2
      */
     public abstract void setLocalValue(int bci, Frame frame, int localOffset, Object value);
 
@@ -578,14 +578,14 @@ public abstract class BytecodeNode extends Node {
      * {@link GenerateBytecode#enableUncachedInterpreter enabled} or the root node has already
      * switched to a specializing interpreter.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract void setUncachedThreshold(int threshold);
 
     /**
      * Returns the tier of this bytecode node.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract BytecodeTier getTier();
 
@@ -593,7 +593,7 @@ public abstract class BytecodeNode extends Node {
      * Dumps the bytecode with no highlighted location.
      *
      * @see #dump(BytecodeLocation)
-     * @since 24.1
+     * @since 24.2
      */
     public final String dump() {
         return dump(null);
@@ -603,7 +603,7 @@ public abstract class BytecodeNode extends Node {
      * Convert this bytecode node to a string representation for debugging purposes.
      *
      * @param highlightedLocation an optional location to highlight in the dump.
-     * @since 24.1
+     * @since 24.2
      */
     @TruffleBoundary
     public final String dump(BytecodeLocation highlighedLocation) {
@@ -753,7 +753,7 @@ public abstract class BytecodeNode extends Node {
      * returns <code>null</code> if no source section could be found. Calling this method also
      * {@link BytecodeRootNodes#ensureSources() ensures source sections} are materialized.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract SourceSection findSourceLocation(int bci);
 
@@ -765,7 +765,7 @@ public abstract class BytecodeNode extends Node {
      * source section, but there is no guarantee that this the case. Calling this method also
      * {@link BytecodeRootNodes#ensureSources() ensures source sections} are materialized.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract SourceSection[] findSourceLocations(int bci);
 
@@ -774,7 +774,7 @@ public abstract class BytecodeNode extends Node {
     /**
      * Finds the instruction associated with the given bytecode index.
      *
-     * @since 24.1
+     * @since 24.2
      */
     protected abstract Instruction findInstruction(int bci);
 
@@ -794,7 +794,7 @@ public abstract class BytecodeNode extends Node {
      * @param frameInstance the frame instance
      * @return a new array of local values, or null if the frame instance does not correspond to an
      *         {@link BytecodeRootNode}
-     * @since 24.1
+     * @since 24.2
      */
     public static Object[] getLocalValues(FrameInstance frameInstance) {
         BytecodeNode bytecode = get(frameInstance);
@@ -843,7 +843,7 @@ public abstract class BytecodeNode extends Node {
      *
      * @param frameInstance the frame instance
      * @return the corresponding bytecode node or null if no node can be found.
-     * @since 24.1
+     * @since 24.2
      */
     @TruffleBoundary
     public static BytecodeNode get(FrameInstance frameInstance) {
@@ -855,7 +855,7 @@ public abstract class BytecodeNode extends Node {
      *
      * @param node the node
      * @return the corresponding bytecode location or null if no location can be found.
-     * @since 24.1
+     * @since 24.2
      */
     @TruffleBoundary
     public static BytecodeNode get(Node node) {

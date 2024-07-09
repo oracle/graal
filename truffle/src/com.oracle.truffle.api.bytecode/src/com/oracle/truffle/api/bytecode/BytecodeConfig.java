@@ -50,7 +50,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
  * The configuration to use while generating bytecode. To reduce interpreter footprint, source
  * sections and instrumentation information can be lazily re-parsed when it is needed.
  *
- * @since 24.1
+ * @since 24.2
  */
 public final class BytecodeConfig {
 
@@ -59,20 +59,20 @@ public final class BytecodeConfig {
     /**
      * Retain no sources or instrumentation information.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public static final BytecodeConfig DEFAULT = new BytecodeConfig(null, 0L);
     /**
      * Retain source information.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public static final BytecodeConfig WITH_SOURCE = new BytecodeConfig(null, SOURCE_ENCODING);
 
     /**
      * Retain all information.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public static final BytecodeConfig COMPLETE = new BytecodeConfig(null, 0xFFFF_FFFF_FFFF_FFFFL);
 
@@ -91,7 +91,7 @@ public final class BytecodeConfig {
      * Note this method is not intended to be used directly. Use the generated method, for example
      * <code>MyBytecodeRootNode.newConfigBuilder()</code> instead.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public static Builder newBuilder(BytecodeConfigEncoder encoder) {
         return new Builder(encoder);
@@ -100,7 +100,7 @@ public final class BytecodeConfig {
     /**
      * Builder to generate a {@link BytecodeConfig} programmatically.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public static class Builder {
         private final BytecodeConfigEncoder encoder;
@@ -114,7 +114,7 @@ public final class BytecodeConfig {
         /**
          * Sets whether to include sources.
          *
-         * @since 24.1
+         * @since 24.2
          */
         public Builder addSource() {
             CompilerAsserts.neverPartOfCompilation();
@@ -125,7 +125,7 @@ public final class BytecodeConfig {
         /**
          * Sets a specific set of tags to be included.
          *
-         * @since 24.1
+         * @since 24.2
          */
         public Builder addTag(Class<? extends Tag> tag) {
             CompilerAsserts.neverPartOfCompilation();
@@ -139,7 +139,7 @@ public final class BytecodeConfig {
         /**
          * Sets a specific set of instrumentations to be added.
          *
-         * @since 24.1
+         * @since 24.2
          */
         public Builder addInstrumentation(Class<?> instrumentation) {
             CompilerAsserts.neverPartOfCompilation();
@@ -153,7 +153,7 @@ public final class BytecodeConfig {
         /**
          * Builds the config.
          *
-         * @since 24.1
+         * @since 24.2
          */
         @TruffleBoundary
         public BytecodeConfig build() {

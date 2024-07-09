@@ -78,7 +78,7 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
  * </ul>
  *
  * @see com.oracle.truffle.api.bytecode.GenerateBytecode#enableSerialization
- * @since 24.1
+ * @since 24.2
  */
 @FunctionalInterface
 public interface BytecodeSerializer {
@@ -87,7 +87,7 @@ public interface BytecodeSerializer {
      * Interface for a generated class that can serialize a {@link BytecodeRootNode} to a byte
      * buffer.
      *
-     * @since 24.1
+     * @since 24.2
      */
     interface SerializerContext {
         /**
@@ -96,7 +96,7 @@ public interface BytecodeSerializer {
          * The given node must be created by the current parse, otherwise the behaviour of this
          * method is undefined.
          *
-         * @since 24.1
+         * @since 24.2
          */
         void writeBytecodeNode(DataOutput buffer, BytecodeRootNode node) throws IOException;
     }
@@ -110,7 +110,7 @@ public interface BytecodeSerializer {
      * <p>
      * Must not be dependent on any side-effects of the language.
      *
-     * @since 24.1
+     * @since 24.2
      */
     void serialize(SerializerContext context, DataOutput buffer, Object object) throws IOException;
 }

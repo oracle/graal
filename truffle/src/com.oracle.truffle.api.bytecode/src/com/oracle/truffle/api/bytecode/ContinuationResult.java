@@ -77,7 +77,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * @see <a href=
  *      "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/Continuations.md">Continuations
  *      tutorial</a>
- * @since 24.1
+ * @since 24.2
  */
 public final class ContinuationResult {
 
@@ -91,7 +91,7 @@ public final class ContinuationResult {
      * The generated interpreter will use this constructor; continuations should not be created
      * directly in user code.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public ContinuationResult(ContinuationRootNode rootNode, MaterializedFrame frame, Object result) {
         this.rootNode = rootNode;
@@ -103,7 +103,7 @@ public final class ContinuationResult {
      * Resumes the continuation.
      *
      * @param value the value produced by the yield operation in the resumed execution.
-     * @since 24.1
+     * @since 24.2
      */
     public Object continueWith(Object value) {
         return getContinuationCallTarget().call(frame, value);
@@ -117,7 +117,7 @@ public final class ContinuationResult {
      * {@link #continueWith}.
      *
      * @see #getContinuationCallTarget()
-     * @since 24.1
+     * @since 24.2
      */
     public RootNode getContinuationRootNode() {
         return rootNode;
@@ -135,7 +135,7 @@ public final class ContinuationResult {
      * {@code Object} to resume execution with. The {@code Object} becomes the value produced by the
      * yield operation in the resumed execution.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public RootCallTarget getContinuationCallTarget() {
         return rootNode.getCallTarget();
@@ -144,7 +144,7 @@ public final class ContinuationResult {
     /**
      * Returns the state of the interpreter at the point that it was suspended.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public MaterializedFrame getFrame() {
         return frame;
@@ -153,7 +153,7 @@ public final class ContinuationResult {
     /**
      * Returns the value yielded by the yield operation.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public Object getResult() {
         return result;
@@ -166,7 +166,7 @@ public final class ContinuationResult {
      * {@link ContinuationRootNode#getSourceRootNode() source root node} if the source bytecode was
      * {@link BytecodeRootNodes#update updated} (explicitly or implicitly).
      *
-     * @since 24.1
+     * @since 24.2
      */
     public BytecodeLocation getBytecodeLocation() {
         return rootNode.getLocation();
@@ -175,7 +175,7 @@ public final class ContinuationResult {
     /**
      * Returns a string representation of a {@link ContinuationResult}.
      *
-     * @since 24.1
+     * @since 24.2
      */
     @Override
     public String toString() {

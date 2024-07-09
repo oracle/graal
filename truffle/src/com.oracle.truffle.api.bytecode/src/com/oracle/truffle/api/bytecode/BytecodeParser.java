@@ -72,14 +72,14 @@ package com.oracle.truffle.api.bytecode;
  * the fly (e.g., by reading it from disk) instead of storing it on the parser.
  *
  * @param <T> the builder class of the bytecode root node
- * @since 24.1
+ * @since 24.2
  */
 @FunctionalInterface
 public interface BytecodeParser<T extends BytecodeBuilder> {
     /**
      * The parse method. Should be idempotent and free of side-effects.
      *
-     * @since 24.1
+     * @since 24.2
      */
     void parse(T builder);
 }

@@ -47,7 +47,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * Operation parameter that allows an operation to update the value of a local. This class is
  * intended to be used in combination with the {@link ConstantOperand} annotation.
  *
- * @since 24.1
+ * @since 24.2
  */
 public final class LocalSetter {
 
@@ -60,7 +60,7 @@ public final class LocalSetter {
     /**
      * Returns a string representation of a {@link LocalSetter}.
      *
-     * @since 24.1
+     * @since 24.2
      */
     @Override
     public String toString() {
@@ -70,7 +70,7 @@ public final class LocalSetter {
     /**
      * Stores an object into the local.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public void setObject(BytecodeNode node, int bci, VirtualFrame frame, Object value) {
         node.setLocalValue(bci, frame, localOffset, value);
@@ -79,7 +79,7 @@ public final class LocalSetter {
     /**
      * Stores an int into the local.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public void setInt(BytecodeNode node, int bci, VirtualFrame frame, int value) {
         node.setLocalValueInt(bci, frame, localOffset, value);
@@ -88,7 +88,7 @@ public final class LocalSetter {
     /**
      * Stores a long into the local.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public void setLong(BytecodeNode node, int bci, VirtualFrame frame, long value) {
         node.setLocalValueLong(bci, frame, localOffset, value);
@@ -99,7 +99,7 @@ public final class LocalSetter {
      *
      * @see #setObject(BytecodeNode, int, VirtualFrame, Object) the set method for an example on how
      *      to use it.
-     * @since 24.1
+     * @since 24.2
      */
     public void setShort(BytecodeNode node, int bci, VirtualFrame frame, short value) {
         node.setLocalValueLong(bci, frame, localOffset, value);
@@ -110,7 +110,7 @@ public final class LocalSetter {
      *
      * @see #setObject(BytecodeNode, int, VirtualFrame, Object) the set method for an example on how
      *      to use it.
-     * @since 24.1
+     * @since 24.2
      */
     public void setBoolean(BytecodeNode node, int bci, VirtualFrame frame, boolean value) {
         node.setLocalValueBoolean(bci, frame, localOffset, value);
@@ -121,7 +121,7 @@ public final class LocalSetter {
      *
      * @see #setObject(BytecodeNode, int, VirtualFrame, Object) the set method for an example on how
      *      to use it.
-     * @since 24.1
+     * @since 24.2
      */
     public void setByte(BytecodeNode node, int bci, VirtualFrame frame, byte value) {
         node.setLocalValueByte(bci, frame, localOffset, value);
@@ -130,7 +130,7 @@ public final class LocalSetter {
     /**
      * Stores a double into the local.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public void setDouble(BytecodeNode node, int bci, VirtualFrame frame, double value) {
         node.setLocalValueDouble(bci, frame, localOffset, value);
@@ -153,7 +153,7 @@ public final class LocalSetter {
      *
      * This method is invoked by the generated code and should not be called directly.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public static LocalSetter constantOf(BytecodeLocal local) {
         int offset = local.getLocalOffset();

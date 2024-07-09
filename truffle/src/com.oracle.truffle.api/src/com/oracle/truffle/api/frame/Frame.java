@@ -99,7 +99,7 @@ public interface Frame {
      * @param slot the index of the slot
      * @return the value of the slot in this frame
      * @throws UnexpectedResultException if the current value is not of type object
-     * @since 24.1
+     * @since 24.2
      */
     @SuppressWarnings("unused")
     default Object expectObject(int slot) throws UnexpectedResultException {
@@ -143,7 +143,7 @@ public interface Frame {
      * @param slot the index of the slot
      * @return the value of the slot in this frame
      * @throws UnexpectedResultException if the current value is not of type byte
-     * @since 24.1
+     * @since 24.2
      */
     @SuppressWarnings("unused")
     default byte expectByte(int slot) throws UnexpectedResultException {
@@ -187,7 +187,7 @@ public interface Frame {
      * @param slot the index of the slot
      * @return the value of the slot in this frame
      * @throws UnexpectedResultException if the current value is not of type boolean
-     * @since 24.1
+     * @since 24.2
      */
     @SuppressWarnings("unused")
     default boolean expectBoolean(int slot) throws UnexpectedResultException {
@@ -231,7 +231,7 @@ public interface Frame {
      * @param slot the index of the slot
      * @return the value of the slot in this frame
      * @throws UnexpectedResultException if the current value is not of type int
-     * @since 24.1
+     * @since 24.2
      */
     @SuppressWarnings("unused")
     default int expectInt(int slot) throws UnexpectedResultException {
@@ -275,7 +275,7 @@ public interface Frame {
      * @param slot the index of the slot
      * @return the value of the slot in this frame
      * @throws UnexpectedResultException if the current value is not of type long
-     * @since 24.1
+     * @since 24.2
      */
     @SuppressWarnings("unused")
     default long expectLong(int slot) throws UnexpectedResultException {
@@ -319,7 +319,7 @@ public interface Frame {
      * @param slot the index of the slot
      * @return the value of the slot in this frame
      * @throws UnexpectedResultException if the current value is not of type float
-     * @since 24.1
+     * @since 24.2
      */
     @SuppressWarnings("unused")
     default float expectFloat(int slot) throws UnexpectedResultException {
@@ -363,7 +363,7 @@ public interface Frame {
      * @param slot the index of the slot
      * @return the value of the slot in this frame
      * @throws UnexpectedResultException if the current value is not of type double
-     * @since 24.1
+     * @since 24.2
      */
     @SuppressWarnings("unused")
     default double expectDouble(int slot) throws UnexpectedResultException {
@@ -929,7 +929,7 @@ public interface Frame {
      *
      * @param srcSlot the slot of the source local variable
      * @param destSlot the slot of the target local variable
-     * @since 24.1
+     * @since 24.2
      */
     default void copyObject(int srcSlot, int destSlot) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -941,7 +941,7 @@ public interface Frame {
      *
      * @param srcSlot the slot of the source local variable
      * @param destSlot the slot of the target local variable
-     * @since 24.1
+     * @since 24.2
      */
     default void copyPrimitive(int srcSlot, int destSlot) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -956,7 +956,7 @@ public interface Frame {
      * @param dst the destination frame
      * @param dstOffset the first slot to copy locals into
      * @param length the number of slots to copy
-     * @since 24.1
+     * @since 24.2
      */
     @SuppressWarnings("unused")
     default void copyTo(int srcOffset, Frame dst, int dstOffset, int length) {

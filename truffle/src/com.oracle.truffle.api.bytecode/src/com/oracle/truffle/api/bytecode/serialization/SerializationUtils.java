@@ -46,7 +46,7 @@ import java.nio.ByteBuffer;
 /**
  * Utility class with helpers for serialization code.
  *
- * @since 24.1
+ * @since 24.2
  */
 public final class SerializationUtils {
 
@@ -58,7 +58,7 @@ public final class SerializationUtils {
      * input for {@code deserialize}.
      *
      * @see com.oracle.truffle.api.bytecode.GenerateBytecode#enableSerialization
-     * @since 24.1
+     * @since 24.2
      */
     public static DataInput createDataInput(ByteBuffer buffer) {
         return new ByteBufferDataInput(buffer);

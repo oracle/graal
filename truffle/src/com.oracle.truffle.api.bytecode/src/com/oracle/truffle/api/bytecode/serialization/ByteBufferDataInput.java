@@ -51,7 +51,7 @@ import java.nio.ByteBuffer;
  * A {@link DataInput} backed by a {@link ByteBuffer}.
  *
  * @see SerializationUtils#createDataInput(ByteBuffer)
- * @since 24.1
+ * @since 24.2
  */
 final class ByteBufferDataInput implements DataInput {
 

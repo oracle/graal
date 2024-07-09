@@ -58,7 +58,7 @@ import java.lang.annotation.Target;
  * {@link BytecodeRootNode#interceptInternalException(Throwable, BytecodeNode, int)}), but not
  * language-level exception handlers.
  *
- * @since 24.1
+ * @since 24.2
  * @see EpilogReturn
  * @see Prolog
  */

@@ -68,7 +68,7 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
  * </pre>
  *
  * @see com.oracle.truffle.api.bytecode.GenerateBytecode#enableSerialization
- * @since 24.1
+ * @since 24.2
  */
 @FunctionalInterface
 public interface BytecodeDeserializer {
@@ -77,13 +77,13 @@ public interface BytecodeDeserializer {
      * Interface for a generated class that can deserialize a {@link BytecodeRootNode} from a byte
      * input.
      *
-     * @since 24.1
+     * @since 24.2
      */
     interface DeserializerContext {
         /**
          * Deserializes a {@link BytecodeRootNode} from the byte input.
          *
-         * @since 24.1
+         * @since 24.2
          */
         BytecodeRootNode readBytecodeNode(DataInput buffer) throws IOException;
     }
@@ -97,7 +97,7 @@ public interface BytecodeDeserializer {
      * <p>
      * Must be idempotent.
      *
-     * @since 24.1
+     * @since 24.2
      */
     Object deserialize(DeserializerContext context, DataInput buffer) throws IOException;
 }

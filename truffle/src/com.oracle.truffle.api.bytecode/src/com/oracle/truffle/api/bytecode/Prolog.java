@@ -56,7 +56,7 @@ import java.lang.annotation.Target;
  * {@link BytecodeRootNode#interceptInternalException(Throwable, BytecodeNode, int)}) as well as the
  * {@link EpilogExceptional exceptional epilog}, if present.
  *
- * @since 24.1
+ * @since 24.2
  * @see EpilogReturn
  * @see EpilogExceptional
  */

@@ -69,7 +69,7 @@ import java.lang.annotation.Target;
  * stable and cannot be enabled at runtime. Instrumentations can also not be used as boolean
  * converters for {@link ShortCircuitOperation short circuits}.
  *
- * @since 24.1
+ * @since 24.2
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
@@ -78,7 +78,7 @@ public @interface Instrumentation {
      * Optional documentation for the instrumentation. This documentation is included in the javadoc
      * for the generated interpreter.
      *
-     * @since 24.1
+     * @since 24.2
      */
     String javadoc() default "";
 }

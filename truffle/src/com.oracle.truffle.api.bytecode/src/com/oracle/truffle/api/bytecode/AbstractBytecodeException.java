@@ -50,7 +50,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * recommended, but not required for bytecode DSL interpreters to use this base class for their
  * guest exceptions.
  *
- * @since 24.1
+ * @since 24.2
  */
 public abstract class AbstractBytecodeException extends AbstractTruffleException {
 
@@ -62,7 +62,7 @@ public abstract class AbstractBytecodeException extends AbstractTruffleException
     /**
      * Creates an exception with no message or bytecode location.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public AbstractBytecodeException() {
         super();
@@ -72,7 +72,7 @@ public abstract class AbstractBytecodeException extends AbstractTruffleException
     /**
      * Creates an exception with no bytecode location.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public AbstractBytecodeException(String message) {
         super(message);
@@ -82,7 +82,7 @@ public abstract class AbstractBytecodeException extends AbstractTruffleException
     /**
      * Creates an exception from an existing exception.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public AbstractBytecodeException(AbstractBytecodeException prototype) {
         super(prototype);
@@ -92,7 +92,7 @@ public abstract class AbstractBytecodeException extends AbstractTruffleException
     /**
      * Creates an exception with the given location.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public AbstractBytecodeException(Node location, int bytecodeIndex) {
         super(location);
@@ -103,7 +103,7 @@ public abstract class AbstractBytecodeException extends AbstractTruffleException
     /**
      * Creates an exception with the given location and message.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public AbstractBytecodeException(String message, Node location, int bytecodeIndex) {
         super(message, location);
@@ -115,7 +115,7 @@ public abstract class AbstractBytecodeException extends AbstractTruffleException
      * Creates an exception with the given location and message. Limits the length of the captured
      * stack trace.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public AbstractBytecodeException(String message, Throwable cause, int stackTraceElementLimit, Node location, int bytecodeIndex) {
         super(message, cause, stackTraceElementLimit, location);
@@ -158,7 +158,7 @@ public abstract class AbstractBytecodeException extends AbstractTruffleException
      * Returns a bytecode location associated with the exception or <code>null</code> if the
      * exception does not have a location.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public final BytecodeLocation getBytecodeLocation() {
         Node location = getLocation();
@@ -173,7 +173,7 @@ public abstract class AbstractBytecodeException extends AbstractTruffleException
      * Returns a source section associated with the exception or <code>null</code> if the exception
      * does not have a location.
      *
-     * @since 24.1
+     * @since 24.2
      */
     @Override
     public final SourceSection getEncapsulatingSourceSection() {

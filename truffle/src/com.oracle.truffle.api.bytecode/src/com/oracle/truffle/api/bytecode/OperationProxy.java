@@ -57,7 +57,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
  * "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">user
  * guide</a> for more details.
  *
- * @since 24.1
+ * @since 24.2
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
@@ -66,14 +66,14 @@ public @interface OperationProxy {
     /**
      * The {@link com.oracle.truffle.api.nodes.Node} class to proxy.
      *
-     * @since 24.1
+     * @since 24.2
      */
     Class<?> value();
 
     /**
      * The name to use for the operation.
      *
-     * @since 24.1
+     * @since 24.2
      */
     String name() default "";
 
@@ -81,14 +81,14 @@ public @interface OperationProxy {
      * Optional documentation for the operation proxy. This documentation is included in the javadoc
      * for the generated interpreter.
      *
-     * @since 24.1
+     * @since 24.2
      */
     String javadoc() default "";
 
     /**
      * Designates a {@link com.oracle.truffle.api.nodes.Node} class as eligible for proxying.
      *
-     * @since 24.1
+     * @since 24.2
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
@@ -103,7 +103,7 @@ public @interface OperationProxy {
      * @see GenerateBytecode#enableTagInstrumentation()
      * @see OperationProxy#tags()
      *
-     * @since 24.1
+     * @since 24.2
      */
     // TODO GR-51945 implement Tags support
     Class<? extends Tag>[] tags() default {};
@@ -111,7 +111,7 @@ public @interface OperationProxy {
     /**
      * Repeat annotation for {@link OperationProxy}.
      *
-     * @since 24.1
+     * @since 24.2
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
@@ -119,7 +119,7 @@ public @interface OperationProxy {
         /**
          * Repeat value for {@link OperationProxy}.
          *
-         * @since 24.1
+         * @since 24.2
          */
         OperationProxy[] value();
     }

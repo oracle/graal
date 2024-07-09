@@ -501,7 +501,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * This method does not actually replace the nodes. Use {@link Node#replace(Node, CharSequence)}
      * to replace nodes.
      *
-     * @since 24.1
+     * @since 24.2
      */
     protected final void reportReplace(Node oldNode, Node newNode, CharSequence reason) {
         Node node = this;

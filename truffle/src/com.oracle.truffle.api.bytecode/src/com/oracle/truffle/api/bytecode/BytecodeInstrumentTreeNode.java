@@ -48,7 +48,7 @@ import com.oracle.truffle.api.nodes.Node;
 /**
  * Internal class for tags-based instrumentation, a not-yet-supported feature; do not use.
  *
- * @since 24.1
+ * @since 24.2
  */
 // TODO GR-51946 implement Tags support
 public class BytecodeInstrumentTreeNode extends Node implements InstrumentableNode {
@@ -80,35 +80,35 @@ public class BytecodeInstrumentTreeNode extends Node implements InstrumentableNo
     private final Class<? extends Tag> tag;
 
     /**
-     * @since 24.1
+     * @since 24.2
      */
     public BytecodeInstrumentTreeNode(Class<? extends Tag> tag) {
         this.tag = tag;
     }
 
     /**
-     * @since 24.1
+     * @since 24.2
      */
     public boolean isInstrumentable() {
         return true;
     }
 
     /**
-     * @since 24.1
+     * @since 24.2
      */
     public WrapperNode createWrapper(ProbeNode probe) {
         return new Wrapper(this, probe);
     }
 
     /**
-     * @since 24.1
+     * @since 24.2
      */
     public ProbeNode getTreeProbeNode() {
         return null;
     }
 
     /**
-     * @since 24.1
+     * @since 24.2
      */
     public boolean hasTag(Class<? extends Tag> other) {
         return tag == other;

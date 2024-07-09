@@ -42,6 +42,6 @@
 /**
  * This package comprises utilities and interfaces used to implement serialization.
  *
- * @since 24.1
+ * @since 24.2
  */
 package com.oracle.truffle.api.bytecode.serialization;

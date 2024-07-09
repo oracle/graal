@@ -44,12 +44,12 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 
 /**
- * @since 24.1
+ * @since 24.2
  */
 public abstract class LocalVariable {
 
     /**
-     * @since 24.1
+     * @since 24.2
      */
     public LocalVariable(Object token) {
         BytecodeRootNodes.checkToken(token);
@@ -69,7 +69,7 @@ public abstract class LocalVariable {
      * equal to zero. Note that the local offset can only be read if the current bytecode index is
      * between {@link #getStartIndex()} and {@link #getEndIndex()}(exclusive).
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract int getLocalOffset();
 
@@ -79,7 +79,7 @@ public abstract class LocalVariable {
      * Returns the type profile that was collected for this local. Returns <code>null</code> if no
      * profile was yet collected or the interpreter does not collect profiles.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract FrameSlotKind getTypeProfile();
 

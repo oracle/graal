@@ -52,14 +52,14 @@ package com.oracle.truffle.api.bytecode;
  * "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">user
  * guide</a> for more details.
  *
- * @since 24.1
+ * @since 24.2
  */
 public abstract class BytecodeLocal {
 
     /**
      * Default constructor for a {@link BytecodeLocal}.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public BytecodeLocal(Object token) {
         BytecodeRootNodes.checkToken(token);
