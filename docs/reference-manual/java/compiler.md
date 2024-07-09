@@ -9,21 +9,19 @@ redirect_from: /reference-manual/compiler/
 # Graal Compiler
 
 The Graal compiler is a dynamic compiler, written in Java, that transforms bytecode into machine code.
-The Graal just-in-time (JIT) compiler is integrated with the [Java HotSpot Virtual Machine](https://docs.oracle.com/en/java/javase/22/vm/java-virtual-machine-technology-overview.html) and [GraalVM](README.md).
-(The open source code of the Graal JIT compiler is available on [GitHub](https://github.com/oracle/graal/tree/master/compiler).)
-
+The Graal just-in-time (JIT) compiler is integrated with the Java HotSpot Virtual Machine and GraalVM.
+See [Java Virtual Machine Guide](https://docs.oracle.com/en/java/javase/23/vm/java-virtual-machine-technology-overview.html){:target="_blank"} and the section [GraalVM as a Virtual Machine](README.md) for more information.
+(The open source code of the Graal JIT compiler is available on [GitHub](https://github.com/oracle/graal/tree/master/compiler){:target="_blank"}.)
 
 ## Compiler Advantages
 
 The Graal JIT compiler provides optimized performance for applications running on a Java Virtual Machine (JVM) through unique approaches to code analysis and optimization.
 It includes multiple optimization algorithms (called “Phases”), such as aggressive inlining, polymorphic inlining, and others. 
 
-<!--
-    Add an anchor so that the JPG docs can link to a section on partial escape analysis.
--->
 <a id="partial-escape-analysis"></a>
-The Graal compiler can bring performance advantages for highly-abstracted programs. 
-For example, it includes a [partial-escape-analysis optimization](https://github.com/oracle/graal/blob/master/compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/core/phases/CEOptimization.java#L176){:target="_blank"} that can remove the costly allocations of certain objects. 
+The Graal compiler can bring performance advantages for highly-abstracted programs.
+For example, it includes a partial-escape-analysis optimization that can remove the costly allocations of certain objects.
+See the value [`PartialEscapeAnalysis`](https://github.com/oracle/graal/blob/master/compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/core/phases/CEOptimization.java#L176){:target="_blank"} in the `CEOptimization enum` in the GraalVM GitHub repository for more information.
 The optimization determines when a new object is accessible outside a compilation unit and only allocates it on paths that "escape" the compilation unit (for example, if the object is passed as a parameter, stored in a field, or returned from a method). 
 This approach can greatly improve the performance of an application by reducing the number of heap allocations. 
 Code that uses more modern Java features such as Streams or Lambdas will see greater improvements in performance as this type of code involves a significant number of such non- or partially-escaping objects.
@@ -32,7 +30,8 @@ For more information on performance tuning, refer to [Graal JIT Compiler Configu
 
 ## Graph Compilation
 
-To run guest programming languages (namely JavaScript, Python, and Ruby) in the same runtime as the host JVM-based language, the compiler works with a language-independent intermediate graph representation between the source language and the machine code to be generated. (For more information on language interoperability, see [Interoperability](README.md#interoperability).)
+To run guest programming languages (namely JavaScript, Python, and Ruby) in the same runtime as the host JVM-based language, the compiler works with a language-independent intermediate graph representation between the source language and the machine code to be generated.
+(For more information on language interoperability, see [Interoperability](README.md#interoperability).)
 
 The graph can represent similar statements of different languages in the same way, such as "if" statements or loops, which makes it possible to mix languages in the same application.
 The Graal compiler can then perform language-independent optimization and generate machine code on this graph.
