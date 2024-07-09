@@ -62,9 +62,9 @@ class ForkJoinPoolFeature implements InternalFeature, FeatureSingleton {
         return original;
     }
 
-    private static ImageHeapConstant replaceCommonPoolWithLayerConstant(CrossLayerConstantRegistry idTracking, Object original) {
+    private static ImageHeapConstant replaceCommonPoolWithLayerConstant(CrossLayerConstantRegistry registry, Object original) {
         if (original == ForkJoinPool.commonPool()) {
-            return idTracking.getConstant(KEY_NAME);
+            return registry.getConstant(KEY_NAME);
         }
         return null;
     }

@@ -144,6 +144,11 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
     }
 
     @Override
+    public void duringSetup(DuringSetupAccess access) {
+        LayeredImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
+    }
+
+    @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         loader = (SVMImageLayerLoader) config.getUniverse().getImageLayerLoader();
@@ -261,7 +266,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
      * Ensure all objects needed for {@link MultiLayeredImageSingleton}s and
      * {@link ApplicationLayerOnlyImageSingleton}s are installed in the heap.
      */
-    public void addInitialObjects(NativeImageHeap heap, HostedUniverse hUniverse) {
+    private void addInitialObjects(NativeImageHeap heap, HostedUniverse hUniverse) {
         String addReason = "Read via the layered image singleton support";
 
         /*
