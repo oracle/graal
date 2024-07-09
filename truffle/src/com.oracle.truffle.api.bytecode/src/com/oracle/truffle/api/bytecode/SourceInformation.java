@@ -54,7 +54,7 @@ public abstract class SourceInformation {
     /**
      * Internal constructor for generated code. Do not use.
      *
-     * @since 24.1
+     * @since 24.2
      */
     protected SourceInformation(Object token) {
         BytecodeRootNodes.checkToken(token);
@@ -63,22 +63,22 @@ public abstract class SourceInformation {
     /**
      * Returns the start bytecode index for this source information object (inclusive).
      *
-     * @since 24.1
+     * @since 24.2
      */
-    public abstract int getStartIndex();
+    public abstract int getStartBytecodeIndex();
 
     /**
      * Returns the end bytecode index for this source information object (exclusive).
      *
-     * @since 24.1
+     * @since 24.2
      */
-    public abstract int getEndIndex();
+    public abstract int getEndBytecodeIndex();
 
     /**
      * Returns the source section associated with this source information object. Never
      * <code>null</code>.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract SourceSection getSourceSection();
 
@@ -91,7 +91,7 @@ public abstract class SourceInformation {
         } else {
             sourceText = formatSourceSection(sourceSection, 60);
         }
-        return String.format("[%04x .. %04x] %s", getStartIndex(), getEndIndex(), sourceText);
+        return String.format("[%04x .. %04x] %s", getStartBytecodeIndex(), getEndBytecodeIndex(), sourceText);
     }
 
     static final String formatSourceSection(SourceSection section, int maxCharacters) {

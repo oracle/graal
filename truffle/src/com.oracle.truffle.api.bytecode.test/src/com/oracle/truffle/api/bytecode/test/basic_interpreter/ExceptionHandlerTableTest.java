@@ -126,15 +126,15 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
                     // Check that two handler ranges with the same name match
                     int existingIndex = handlersByName.get(tree.name);
                     assertEquals(String.format("Handler range at index %d with name %s has a different handler than another handler range with the same name.", tree.index, tree.name),
-                                    existingIndex, handler.getHandlerIndex());
+                                    existingIndex, handler.getHandlerBytecodeIndex());
                 } else {
-                    if (handlerToName.containsKey(handler.getHandlerIndex())) {
+                    if (handlerToName.containsKey(handler.getHandlerBytecodeIndex())) {
                         // Check that two handler ranges with the same handler have the same name
-                        String existingName = handlerToName.get(handler.getHandlerIndex());
+                        String existingName = handlerToName.get(handler.getHandlerBytecodeIndex());
                         fail(String.format("Handler range at index %d has the same handler as another handler range, but they have different names (%s and %s).", tree.index, tree.name, existingName));
                     }
-                    handlersByName.put(tree.name, handler.getHandlerIndex());
-                    handlerToName.put(handler.getHandlerIndex(), tree.name);
+                    handlersByName.put(tree.name, handler.getHandlerBytecodeIndex());
+                    handlerToName.put(handler.getHandlerBytecodeIndex(), tree.name);
                 }
             }
 
@@ -156,8 +156,8 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         private void assertContains(ExceptionRangeTree outerTree, ExceptionRangeTree innerTree) {
             ExceptionHandler outer = getHandler(outerTree);
             ExceptionHandler inner = getHandler(innerTree);
-            assertTrue(outer.getStartIndex() <= inner.getStartIndex());
-            assertTrue(inner.getEndIndex() <= outer.getEndIndex());
+            assertTrue(outer.getStartBytecodeIndex() <= inner.getStartBytecodeIndex());
+            assertTrue(inner.getEndBytecodeIndex() <= outer.getEndBytecodeIndex());
 
         }
 
@@ -165,7 +165,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
             for (int i = 0; i < trees.length - 1; i++) {
                 ExceptionHandler left = getHandler(trees[i]);
                 ExceptionHandler right = getHandler(trees[i + 1]);
-                assertTrue(left.getEndIndex() <= right.getStartIndex());
+                assertTrue(left.getEndBytecodeIndex() <= right.getStartBytecodeIndex());
             }
         }
     }

@@ -73,14 +73,14 @@ public abstract class ExceptionHandler {
      *
      * @since 24.1
      */
-    public abstract int getStartIndex();
+    public abstract int getStartBytecodeIndex();
 
     /**
      * Returns the end bytecode index of this exception handler (exclusive).
      *
      * @since 24.1
      */
-    public abstract int getEndIndex();
+    public abstract int getEndBytecodeIndex();
 
     /**
      * Returns the target bytecode index of this exception handler if this exception handler is of
@@ -89,7 +89,7 @@ public abstract class ExceptionHandler {
      * @throws UnsupportedOperationException for handlers not of kind {@link HandlerKind#CUSTOM}
      * @since 24.1
      */
-    public int getHandlerIndex() throws UnsupportedOperationException {
+    public int getHandlerBytecodeIndex() throws UnsupportedOperationException {
         throw new UnsupportedOperationException("getHandlerIndex() is not supported for handler kind: " + getKind());
     }
 
@@ -109,7 +109,7 @@ public abstract class ExceptionHandler {
         String description;
         switch (getKind()) {
             case CUSTOM:
-                description = String.format("handler %04x", getHandlerIndex());
+                description = String.format("handler %04x", getHandlerBytecodeIndex());
                 break;
             case EPILOG:
                 description = "epilog.exceptional";
@@ -120,7 +120,7 @@ public abstract class ExceptionHandler {
             default:
                 throw new AssertionError("Invalid handler kind");
         }
-        return String.format("[%04x .. %04x] %s", getStartIndex(), getEndIndex(), description);
+        return String.format("[%04x .. %04x] %s", getStartBytecodeIndex(), getEndBytecodeIndex(), description);
     }
 
     /**

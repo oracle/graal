@@ -115,7 +115,7 @@ final class SLBytecodeScopeExports {
             this.node = node;
             this.frame = frame;
             this.rootScope = node.hasTag(RootTag.class);
-            this.bci = nodeEnter ? node.getStartBci() : node.getEndBci();
+            this.bci = nodeEnter ? node.getEnterBytecodeIndex() : node.getReturnBytecodeIndex();
         }
 
         @ExportMessage

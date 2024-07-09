@@ -90,7 +90,7 @@ final class TagTreeNodeExports {
             this.bytecode = node.getBytecodeNode();
             this.node = node;
             this.frame = frame;
-            this.bci = nodeEnter ? node.getStartBci() : node.getEndBci();
+            this.bci = nodeEnter ? node.getEnterBytecodeIndex() : node.getReturnBytecodeIndex();
         }
 
         @ExportMessage

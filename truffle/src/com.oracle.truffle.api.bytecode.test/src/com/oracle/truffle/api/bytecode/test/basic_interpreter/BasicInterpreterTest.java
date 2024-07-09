@@ -1448,7 +1448,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     private static void assertGuards(ExceptionHandler handler, BytecodeNode bytecode, String... expectedInstructions) {
-        assertArrayEquals(expectedInstructions, collectInstructions(bytecode, handler.getStartIndex(), handler.getEndIndex()));
+        assertArrayEquals(expectedInstructions, collectInstructions(bytecode, handler.getStartBytecodeIndex(), handler.getEndBytecodeIndex()));
     }
 
     @Test
@@ -1490,18 +1490,18 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         ExceptionHandler h3 = handlers.get(2);
 
         // they all have unique handler bci's
-        assertNotEquals(h1.getHandlerIndex(), h2.getHandlerIndex());
-        assertNotEquals(h2.getHandlerIndex(), h3.getHandlerIndex());
-        assertNotEquals(h1.getHandlerIndex(), h3.getHandlerIndex());
+        assertNotEquals(h1.getHandlerBytecodeIndex(), h2.getHandlerBytecodeIndex());
+        assertNotEquals(h2.getHandlerBytecodeIndex(), h3.getHandlerBytecodeIndex());
+        assertNotEquals(h1.getHandlerBytecodeIndex(), h3.getHandlerBytecodeIndex());
 
         // h2's guarded range and handler are both contained within h1's guarded range
-        assertTrue(h1.getStartIndex() < h2.getStartIndex());
-        assertTrue(h2.getEndIndex() < h1.getEndIndex());
-        assertTrue(h1.getStartIndex() < h2.getHandlerIndex());
-        assertTrue(h2.getHandlerIndex() < h1.getEndIndex());
+        assertTrue(h1.getStartBytecodeIndex() < h2.getStartBytecodeIndex());
+        assertTrue(h2.getEndBytecodeIndex() < h1.getEndBytecodeIndex());
+        assertTrue(h1.getStartBytecodeIndex() < h2.getHandlerBytecodeIndex());
+        assertTrue(h2.getHandlerBytecodeIndex() < h1.getEndBytecodeIndex());
 
         // h1 and h3 are independent
-        assertTrue(h1.getEndIndex() < h3.getStartIndex());
+        assertTrue(h1.getEndBytecodeIndex() < h3.getStartBytecodeIndex());
 
         assertGuards(h2, bytecode, "c.VoidOperation");
         assertGuards(h1, bytecode, "c.VoidOperation", "c.VoidOperation", "branch", "c.VoidOperation", "pop");
@@ -1549,10 +1549,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         ExceptionHandler h2 = handlers.get(1);
         ExceptionHandler h3 = handlers.get(2);
 
-        assertEquals(h1.getHandlerIndex(), h2.getHandlerIndex());
-        assertEquals(h1.getHandlerIndex(), h3.getHandlerIndex());
-        assertTrue(h1.getEndIndex() < h2.getStartIndex());
-        assertTrue(h2.getEndIndex() < h3.getStartIndex());
+        assertEquals(h1.getHandlerBytecodeIndex(), h2.getHandlerBytecodeIndex());
+        assertEquals(h1.getHandlerBytecodeIndex(), h3.getHandlerBytecodeIndex());
+        assertTrue(h1.getEndBytecodeIndex() < h2.getStartBytecodeIndex());
+        assertTrue(h2.getEndBytecodeIndex() < h3.getStartBytecodeIndex());
 
         assertGuards(h1, node.getBytecodeNode(),
                         "c.VoidOperation", "load.argument", "branch.false", "load.constant");
@@ -1708,17 +1708,17 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
 
-        assertEquals(0, s1.getStartIndex());
-        assertEquals(instructions.get(1).getBytecodeIndex(), s1.getEndIndex());
+        assertEquals(0, s1.getStartBytecodeIndex());
+        assertEquals(instructions.get(1).getBytecodeIndex(), s1.getEndBytecodeIndex());
 
         assertEquals(2, instructions.get(1).getBytecodeIndex());
-        assertEquals(instructions.get(2).getBytecodeIndex(), s2.getEndIndex());
+        assertEquals(instructions.get(2).getBytecodeIndex(), s2.getEndBytecodeIndex());
 
-        assertEquals(0, s3.getStartIndex());
-        assertEquals(instructions.get(3).getBytecodeIndex(), s3.getEndIndex());
+        assertEquals(0, s3.getStartBytecodeIndex());
+        assertEquals(instructions.get(3).getBytecodeIndex(), s3.getEndBytecodeIndex());
 
-        assertEquals(0, s4.getStartIndex());
-        assertEquals(instructions.get(3).getBytecodeIndex() + 1, s4.getEndIndex());
+        assertEquals(0, s4.getStartBytecodeIndex());
+        assertEquals(instructions.get(3).getBytecodeIndex() + 1, s4.getEndBytecodeIndex());
     }
 
     @Test

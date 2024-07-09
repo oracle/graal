@@ -42,23 +42,79 @@ package com.oracle.truffle.api.bytecode;
 
 import java.util.List;
 
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.source.SourceSection;
 
+/**
+ * Logical tree representation of the {@code Tag} operations of a bytecode program.
+ *
+ * @since 24.2
+ * @see Tag
+ * @see BytecodeNode#getTagTree
+ */
 public interface TagTree {
-
+    /**
+     * Returns the child trees corresponding to {@code Tag} operations nested in this node.
+     *
+     * @since 24.2
+     */
     List<TagTree> getTreeChildren();
 
+    /**
+     * Returns the {@link Tag tags} associated with this node.
+     *
+     * @since 24.2
+     */
     List<Class<? extends Tag>> getTags();
 
+    /**
+     * Returns whether the given {@code tag} is associated with this node.
+     *
+     * @param tag the tag to search for
+     *
+     * @since 24.2
+     */
     boolean hasTag(Class<? extends Tag> tag);
 
-    int getStartBci();
+    /**
+     * Returns the bytecode index at which the interpreter enters the tag operation. The bytecode
+     * interpreter will invoke {@link ProbeNode#onEnter} at this point in the program.
+     *
+     * @since 24.2
+     */
+    int getEnterBytecodeIndex();
 
-    int getEndBci();
+    /**
+     * Returns the bytecode index at which the interpreter "returns" from the tag operation. The
+     * bytecode interpreter will invoke {@link ProbeNode#onReturnValue} with the child operation's
+     * result (if any) at this point in the program.
+     * <p>
+     * Note: the instruction at this index is not necessarily a return, but the value it produces is
+     * treated as a return value for the sake of instrumentation. There can also be multiple return
+     * points if the child operation has early exits.
+     *
+     * @since 24.2
+     */
+    int getReturnBytecodeIndex();
 
+    /**
+     * Gets the most concrete {@link SourceSection source location} associated with the tag
+     * operation.
+     *
+     * @since 24.2
+     * @see BytecodeNode#getSourceLocation(com.oracle.truffle.api.frame.Frame,
+     *      com.oracle.truffle.api.nodes.Node)
+     */
     SourceSection getSourceSection();
 
+    /**
+     * Gets all {@link SourceSection source locations} associated with the tag operation.
+     *
+     * @since 24.2
+     * @see BytecodeNode#getSourceLocations(com.oracle.truffle.api.frame.Frame,
+     *      com.oracle.truffle.api.nodes.Node)
+     */
     SourceSection[] getSourceSections();
 
 }

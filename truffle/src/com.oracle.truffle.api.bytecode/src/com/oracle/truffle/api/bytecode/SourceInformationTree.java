@@ -47,6 +47,7 @@ import java.util.List;
  * class models the source section for a bytecode range. Its children model the source sections of
  * subranges directly contained by this node's bytecode range.
  *
+ * @since 24.2
  * @see BytecodeNode#getSourceInformationTree()
  */
 public abstract class SourceInformationTree extends SourceInformation {
@@ -54,7 +55,7 @@ public abstract class SourceInformationTree extends SourceInformation {
     /**
      * Internal constructor for generated code. Do not use.
      *
-     * @since 24.1
+     * @since 24.2
      */
     protected SourceInformationTree(Object token) {
         super(token);
@@ -63,7 +64,7 @@ public abstract class SourceInformationTree extends SourceInformation {
     /**
      * Returns a list of child trees, ordered by bytecode range.
      *
-     * @since 24.1
+     * @since 24.2
      */
     public abstract List<SourceInformationTree> getChildren();
 

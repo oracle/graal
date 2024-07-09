@@ -634,7 +634,7 @@ public abstract class BytecodeNode extends Node {
 
         int exceptionCount = exceptions.size();
         String exceptionDump = formatList(exceptions,
-                        (e) -> highlightedBci >= e.getStartIndex() && highlightedBci < e.getEndIndex(),
+                        (e) -> highlightedBci >= e.getStartBytecodeIndex() && highlightedBci < e.getEndBytecodeIndex(),
                         ExceptionHandler::toString);
 
         int localsCount = locals.size();
@@ -644,10 +644,10 @@ public abstract class BytecodeNode extends Node {
 
         String sourceInfoCount = sourceInformation != null ? String.valueOf(sourceInformation.size()) : "-";
         String sourceDump = formatList(sourceInformation,
-                        (s) -> highlightedBci >= s.getStartIndex() && highlightedBci < s.getEndIndex(),
+                        (s) -> highlightedBci >= s.getStartBytecodeIndex() && highlightedBci < s.getEndBytecodeIndex(),
                         SourceInformation::toString);
 
-        String tagDump = formatTagTree(getTagTree(), (s) -> highlightedBci >= s.getStartBci() && highlightedBci <= s.getEndBci());
+        String tagDump = formatTagTree(getTagTree(), (s) -> highlightedBci >= s.getEnterBytecodeIndex() && highlightedBci <= s.getReturnBytecodeIndex());
         return String.format("""
                         %s(name=%s)[
                             instructions(%s) = %s
@@ -735,9 +735,9 @@ public abstract class BytecodeNode extends Node {
             line.append("        ");
         }
         line.append("[");
-        line.append(String.format("%04x", node.getStartBci()));
+        line.append(String.format("%04x", node.getEnterBytecodeIndex()));
         line.append(" .. ");
-        line.append(String.format("%04x", node.getEndBci()));
+        line.append(String.format("%04x", node.getReturnBytecodeIndex()));
         line.append("] ");
         for (int i = 0; i < indentation; i++) {
             line.append(" ");

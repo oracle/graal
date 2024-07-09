@@ -175,7 +175,7 @@ public final class BytecodeLocation {
         }
         List<ExceptionHandler> found = null;
         for (ExceptionHandler handler : handlers) {
-            if (bci >= handler.getStartIndex() && bci < handler.getEndIndex()) {
+            if (bci >= handler.getStartBytecodeIndex() && bci < handler.getEndBytecodeIndex()) {
                 if (found == null) {
                     found = new ArrayList<>();
                 }
@@ -197,7 +197,7 @@ public final class BytecodeLocation {
         }
         List<SourceInformation> found = null;
         for (SourceInformation info : sourceInfos) {
-            if (bci >= info.getStartIndex() && bci < info.getEndIndex()) {
+            if (bci >= info.getStartBytecodeIndex() && bci < info.getEndBytecodeIndex()) {
                 if (found == null) {
                     found = new ArrayList<>();
                 }

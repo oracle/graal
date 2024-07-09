@@ -211,7 +211,7 @@ public class TagTest extends AbstractInstructionTest {
 
                 @TruffleBoundary
                 private void emitEvent(EventKind kind, Object arg) {
-                    events.add(new Event(TagTestLanguage.REF.get(this).threadLocal.get().newEvent(), kind, tree.getStartBci(), tree.getEndBci(), arg,
+                    events.add(new Event(TagTestLanguage.REF.get(this).threadLocal.get().newEvent(), kind, tree.getEnterBytecodeIndex(), tree.getReturnBytecodeIndex(), arg,
                                     tree.getTags().toArray(Class[]::new)));
                 }
 

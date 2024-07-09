@@ -101,7 +101,7 @@ public abstract class TagTreeNode extends Node implements TagTree {
     }
 
     static String format(TagTreeNode b) {
-        return String.format("(%04x .. %04x %s)", b.getStartBci(), b.getEndBci(), b.getTagsString());
+        return String.format("(%04x .. %04x %s)", b.getEnterBytecodeIndex(), b.getReturnBytecodeIndex(), b.getTagsString());
     }
 
     final String getTagsString() {

@@ -318,7 +318,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         int numHandlerKinds = 0;
-        bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "HANDLER_REGULAR")).createInitBuilder().string(String.valueOf(numHandlerKinds++));
+        bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "HANDLER_CUSTOM")).createInitBuilder().string(String.valueOf(numHandlerKinds++));
 
         if (model.epilogExceptional != null) {
             bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "HANDLER_EPILOG_EXCEPTIONAL")).createInitBuilder().string(String.valueOf(numHandlerKinds++));
@@ -4623,7 +4623,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end();
 
                     b.statement("tagNode.children = children");
-                    b.statement("tagNode.leaveBci = (short)bci");
+                    b.statement("tagNode.returnBci = (short)bci");
 
                     b.startIf().string("operationData.producedValue").end().startBlock();
                     String[] args;
@@ -5160,7 +5160,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startIf().string("operationData.operationReachable").end().startBlock();
             b.lineComment("register exception table entry");
-            b.statement("exHandlerIndex = doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, -operationData.handlerId, handlerSp)");
+            b.statement("exHandlerIndex = doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_CUSTOM, -operationData.handlerId, handlerSp)");
             b.end();
 
             b.lineComment("emit handler for normal completion case");
@@ -5210,7 +5210,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private void emitPatchHandlerTable(CodeTreeBuilder b) {
             b.startFor().string("int i = operationData.extraTableEntriesStart; i < operationData.extraTableEntriesEnd; i += EXCEPTION_HANDLER_LENGTH").end().startBlock();
 
-            b.startIf().string("handlerTable[i + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_REGULAR").end().startBlock();
+            b.startIf().string("handlerTable[i + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_CUSTOM").end().startBlock();
             b.statement("continue");
             b.end();
             b.startIf().string("handlerTable[i + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] != -operationData.handlerId").end().startBlock();
@@ -6084,7 +6084,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.declaration(type(int.class), "handlerSp", "currentStackHeight + 1");
                         emitPatchHandlerTable(b);
 
-                        b.statement("doCreateExceptionHandler(operationData.tryStartBci, tryEndBci, HANDLER_REGULAR, bci, handlerSp)");
+                        b.statement("doCreateExceptionHandler(operationData.tryStartBci, tryEndBci, HANDLER_CUSTOM, bci, handlerSp)");
 
                         b.end(); // if operationReachable
                         b.end();
@@ -6881,7 +6881,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private void emitExtraExceptionTableEntry(CodeTreeBuilder b) {
             b.startDeclaration(type(int.class), "handlerTableIndex");
-            b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_REGULAR, -operationData.handlerId, ", UNINIT, " /* stack height */)");
+            b.string("doCreateExceptionHandler(operationData.tryStartBci, bci, HANDLER_CUSTOM, -operationData.handlerId, ", UNINIT, " /* stack height */)");
             b.end();
             b.startIf().string("handlerTableIndex != ", UNINIT).end().startBlock();
             b.startIf().string("operationData.extraTableEntriesStart == ", UNINIT).end().startBlock();
@@ -7362,9 +7362,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
             b.tree(tree);
             type.add(createGetKind());
-            type.add(createGetStartIndex());
-            type.add(createGetEndIndex());
-            type.add(createGetHandlerIndex());
+            type.add(createGetStartBytecodeIndex());
+            type.add(createGetEndBytecodeIndex());
+            type.add(createGetHandlerBytecodeIndex());
             type.add(createGetTagTree());
             return type;
         }
@@ -7400,22 +7400,22 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return model.enableTagInstrumentation || model.epilogExceptional != null;
         }
 
-        private CodeExecutableElement createGetStartIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getStartIndex");
+        private CodeExecutableElement createGetStartBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getStartBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return bytecode.handlers[baseIndex + EXCEPTION_HANDLER_OFFSET_START_BCI]");
             return ex;
         }
 
-        private CodeExecutableElement createGetEndIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getEndIndex");
+        private CodeExecutableElement createGetEndBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getEndBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return bytecode.handlers[baseIndex + EXCEPTION_HANDLER_OFFSET_END_BCI]");
             return ex;
         }
 
-        private CodeExecutableElement createGetHandlerIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getHandlerIndex");
+        private CodeExecutableElement createGetHandlerBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getHandlerBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
 
             if (hasSpecialHandlers()) {
@@ -7429,7 +7429,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startCase().string("EPILOG").end();
                 }
                 b.startCaseBlock();
-                b.statement("return super.getHandlerIndex()");
+                b.statement("return super.getHandlerBytecodeIndex()");
                 b.end();
                 b.caseDefault().startCaseBlock();
                 b.statement("return bytecode.handlers[baseIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
@@ -7517,15 +7517,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = constructor.createBuilder();
             b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
             b.tree(tree);
-            type.add(createGetStartIndex());
-            type.add(createGetEndIndex());
+            type.add(createGetStartBytecodeIndex());
+            type.add(createGetEndBytecodeIndex());
             type.add(createGetSourceSection());
 
             return type;
         }
 
-        private CodeExecutableElement createGetStartIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getStartIndex");
+        private CodeExecutableElement createGetStartBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getStartBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.declaration(type(int.class), "encodedBci", "bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_BCI]");
             b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
@@ -7533,8 +7533,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement createGetEndIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getEndIndex");
+        private CodeExecutableElement createGetEndBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getEndBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.declaration(type(int.class), "encodedBci", "bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_BCI]");
             b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
@@ -7611,8 +7611,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             // We prepend items during parsing. Use a linked list for constant time prepends.
             b.startAssign("this.children").startNew(generic(type(LinkedList.class), types.SourceInformationTree)).end(2);
 
-            type.add(createGetStartIndex());
-            type.add(createGetEndIndex());
+            type.add(createGetStartBytecodeIndex());
+            type.add(createGetEndBytecodeIndex());
             type.add(createGetSourceSection());
             type.add(createGetChildren());
             type.add(createContains());
@@ -7621,8 +7621,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return type;
         }
 
-        private CodeExecutableElement createGetStartIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getStartIndex");
+        private CodeExecutableElement createGetStartBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getStartBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.declaration(type(int.class), "encodedBci", "bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_BCI]");
             b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
@@ -7630,8 +7630,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement createGetEndIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getEndIndex");
+        private CodeExecutableElement createGetEndBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getEndBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.declaration(type(int.class), "encodedBci", "bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_BCI]");
             b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
@@ -7657,7 +7657,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(boolean.class), "contains");
             ex.addParameter(new CodeVariableElement(type.asType(), "other"));
             CodeTreeBuilder b = ex.createBuilder();
-            b.statement("return this.getStartIndex() <= other.getStartIndex() && other.getEndIndex() <= this.getEndIndex()");
+            b.statement("return this.getStartBytecodeIndex() <= other.getStartBytecodeIndex() && other.getEndBytecodeIndex() <= this.getEndBytecodeIndex()");
             return ex;
         }
 
@@ -8298,7 +8298,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             type.add(createConstructorUsingFields(Set.of(), type));
 
-            compFinal(type.add(new CodeVariableElement(Set.of(), type(short.class), "leaveBci")));
+            compFinal(type.add(new CodeVariableElement(Set.of(), type(short.class), "returnBci")));
             child(type.add(new CodeVariableElement(Set.of(), arrayOf(type.asType()), "children")));
 
             child(type.add(new CodeVariableElement(Set.of(PRIVATE, VOLATILE), types.ProbeNode, "probe")));
@@ -8321,8 +8321,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             // TagTree
             type.add(createGetTreeChildren());
             type.add(createGetTags());
-            type.add(createGetStartBci());
-            type.add(createGetEndBci());
+            type.add(createGetEnterBytecodeIndex());
+            type.add(createGetReturnBytecodeIndex());
 
         }
 
@@ -8344,8 +8344,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement createGetStartBci() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.TagTree, "getStartBci");
+        private CodeExecutableElement createGetEnterBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.TagTree, "getEnterBytecodeIndex");
             ex.getModifiers().remove(Modifier.ABSTRACT);
             ex.getModifiers().add(Modifier.FINAL);
             CodeTreeBuilder b = ex.createBuilder();
@@ -8353,12 +8353,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement createGetEndBci() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.TagTree, "getEndBci");
+        private CodeExecutableElement createGetReturnBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.TagTree, "getReturnBytecodeIndex");
             ex.getModifiers().remove(Modifier.ABSTRACT);
             ex.getModifiers().add(Modifier.FINAL);
             CodeTreeBuilder b = ex.createBuilder();
-            b.statement("return this.leaveBci");
+            b.statement("return this.returnBci");
             return ex;
         }
 
@@ -8452,14 +8452,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(abstractBytecodeNode.asType(), "bytecode", "findBytecodeNode()");
-            b.startReturn().string("bytecode.findSourceLocations(enterBci, leaveBci)").end();
+            b.startReturn().string("bytecode.findSourceLocations(enterBci, returnBci)").end();
             return ex;
         }
 
         private CodeExecutableElement createCreateSourceSection() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), types.SourceSection, "createSourceSection");
             CodeTreeBuilder b = ex.createBuilder();
-            b.startReturn().string("findBytecodeNode().findSourceLocation(enterBci, leaveBci)").end();
+            b.startReturn().string("findBytecodeNode().findSourceLocation(enterBci, returnBci)").end();
             return ex;
         }
 
@@ -9389,7 +9389,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             b.caseDefault().startCaseBlock();
-            b.startIf().string("handlerKind != HANDLER_REGULAR").end().startBlock();
+            b.startIf().string("handlerKind != HANDLER_CUSTOM").end().startBlock();
             b.tree(createValidationError("unexpected handler kind"));
             b.end();
 
@@ -11936,7 +11936,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration(type(int.class), "targetSp");
             b.declaration(type(int.class), "targetBci");
 
-            b.startSwitch().string("readValidBytecode(bc, node.leaveBci)").end().startBlock();
+            b.startSwitch().string("readValidBytecode(bc, node.returnBci)").end().startBlock();
             for (var entry : model.getInstructions().stream().filter((i) -> i.kind == InstructionKind.TAG_LEAVE).collect(Collectors.groupingBy((i) -> {
                 if (i.isReturnTypeQuickening()) {
                     return i.signature.returnType;
@@ -11954,7 +11954,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
                 TypeMirror targetType = entry.getKey();
                 b.startCaseBlock();
-                b.statement("targetBci = node.leaveBci + " + length);
+                b.statement("targetBci = node.returnBci + " + length);
                 b.statement("targetSp = handlerSp + 1 ");
 
                 CodeExecutableElement expectMethod = null;
@@ -11989,7 +11989,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             for (InstructionModel instruction : model.getInstructions().stream().filter((i) -> i.kind == InstructionKind.TAG_LEAVE_VOID).toList()) {
                 b.startCase().tree(createInstructionConstant(instruction)).end();
                 b.startCaseBlock();
-                b.statement("targetBci = node.leaveBci + " + instruction.getInstructionLength());
+                b.statement("targetBci = node.returnBci + " + instruction.getInstructionLength());
                 b.statement("targetSp = handlerSp ");
                 b.lineComment("discard return value");
                 b.statement("break");
@@ -12000,7 +12000,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // case default
             b.end(); // switch
 
-            b.startAssert().string("targetBci < bc.length : ").doubleQuote("leaveBci must be reachable").end();
+            b.startAssert().string("targetBci < bc.length : ").doubleQuote("returnBci must be reachable").end();
             b.statement("return ((targetSp) << 16) | targetBci");
             b.end();
 
