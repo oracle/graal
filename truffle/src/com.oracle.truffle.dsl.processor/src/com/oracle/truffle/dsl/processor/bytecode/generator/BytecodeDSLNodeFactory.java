@@ -4641,7 +4641,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                      */
                     b.statement("markReachable(true)");
                     buildEmitInstruction(b, model.tagLeaveValueInstruction, args);
-                    b.statement("doCreateExceptionHandler(tagNode.enterBci, bci, HANDLER_TAG_EXCEPTIONAL, operationData.nodeId, operationData.startStackHeight)");
+                    b.statement("doCreateExceptionHandler(operationData.handlerStartBci, bci, HANDLER_TAG_EXCEPTIONAL, operationData.nodeId, operationData.startStackHeight)");
                     b.end().startElseBlock();
                     buildEmitInstruction(b, model.tagLeaveValueInstruction, args);
                     b.end();
@@ -6826,6 +6826,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startCase().tree(createOperationConstant(model.tagOperation)).end();
                     b.startBlock();
                     emitCastOperationData(b, model.tagOperation, "i");
+                    b.startIf().string("reachable").end().startBlock();
                     if (operationKind == OperationKind.RETURN) {
                         buildEmitInstruction(b, model.tagLeaveValueInstruction, buildTagLeaveArguments(model.tagLeaveValueInstruction));
                         b.statement("childBci = bci - " + model.tagLeaveValueInstruction.getInstructionLength());
@@ -6834,6 +6835,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
                     }
                     b.statement("doCreateExceptionHandler(operationData.handlerStartBci, bci, HANDLER_TAG_EXCEPTIONAL, operationData.nodeId, operationData.startStackHeight)");
+                    b.statement("handlerClosed = true");
+                    b.end(); // reachable
                     b.statement("break");
                     b.end(); // case tag
                 }

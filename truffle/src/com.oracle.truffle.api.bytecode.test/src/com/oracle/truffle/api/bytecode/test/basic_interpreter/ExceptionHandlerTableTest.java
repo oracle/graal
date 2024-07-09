@@ -51,6 +51,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.polyglot.Context;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -60,7 +63,11 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.ExceptionHandler.HandlerKind;
+import com.oracle.truffle.api.bytecode.test.TagTest.TagTestInstrumentation;
+import com.oracle.truffle.api.bytecode.test.TagTest.TagTestLanguage;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 
 @RunWith(Parameterized.class)
 public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
@@ -161,6 +168,22 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
                 assertTrue(left.getEndIndex() <= right.getStartIndex());
             }
         }
+    }
+
+    Context context;
+    Instrumenter instrumenter;
+
+    @Before
+    public void setup() {
+        context = Context.create(TagTestLanguage.ID);
+        context.initialize(TagTestLanguage.ID);
+        context.enter();
+        instrumenter = context.getEngine().getInstruments().get(TagTestInstrumentation.ID).lookup(Instrumenter.class);
+    }
+
+    @After
+    public void tearDown() {
+        context.close();
     }
 
     private static void emitNop(BasicInterpreterBuilder b, Object marker) {
@@ -272,6 +295,8 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         assertHandlers(root, handler(0, "ex1"));
 
         root.getRootNodes().update(createBytecodeConfigBuilder().addTag(ExpressionTag.class).build());
+        assertEquals(42L, root.getCallTarget().call(true));
+        assertEquals(null, root.getCallTarget().call(false));
         assertHandlers(root, tag(1, handler(0, "ex1")), tag(3, handler(2, "ex1")));
     }
 
@@ -312,6 +337,8 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         assertHandlers(root, handler(0));
 
         root.getRootNodes().update(createBytecodeConfigBuilder().addTag(ExpressionTag.class).build());
+        assertEquals(null, root.getCallTarget().call(true));
+        assertEquals(null, root.getCallTarget().call(false));
         assertHandlers(root, tag(1, handler(0, "ex1")), tag(3, handler(2, "ex1")));
     }
 
@@ -352,6 +379,8 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         assertHandlers(root, handler(0));
 
         root.getRootNodes().update(createBytecodeConfigBuilder().addTag(ExpressionTag.class).build());
+        assertEquals(null, root.getCallTarget().call(true));
+        assertEquals(null, root.getCallTarget().call(false));
         assertHandlers(root, tag(1, handler(0)));
     }
 
@@ -572,5 +601,64 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
                         handler(3, "ex1")
                         );
     }
+
+    @Test
+    public void testContiguousTagRanges() {
+        // Contiguous ranges get merged into one.
+        // statementTag {
+        //   if (arg0) return 42
+        //   123
+        // }
+        BasicInterpreter root = parseNode("contiguousTagRanges", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginTag(StatementTag.class);
+            b.beginBlock();
+            emitReturnIf(b, 0, 42L);
+            b.emitLoadConstant(123L);
+            b.endBlock();
+            b.endTag(StatementTag.class);
+            b.endRoot();
+        });
+        assertEquals(42L, root.getCallTarget().call(true));
+        assertEquals(123L, root.getCallTarget().call(false));
+        assertHandlers(root);
+
+        root.getRootNodes().update(createBytecodeConfigBuilder().addTag(StatementTag.class).build());
+        assertEquals(42L, root.getCallTarget().call(true));
+        assertEquals(123L, root.getCallTarget().call(false));
+        assertHandlers(root, tag(0));
+    }
+
+
+    @Test
+    public void testContiguousTagsNotMerged() {
+        // Though their exception ranges are contiguous, the tag nodes differ, so they should not be merged.
+        // statementTag {
+        //   A
+        // }
+        // statementTag {
+        //   B
+        // }
+        BasicInterpreter root = parseNode("contiguousTagsNotMerged", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginTag(StatementTag.class);
+            emitNop(b, "A");
+            b.endTag(StatementTag.class);
+
+            b.beginTag(StatementTag.class);
+            emitNop(b, "B");
+            b.endTag(StatementTag.class);
+            b.endRoot();
+        });
+        assertEquals("B", root.getCallTarget().call());
+        assertHandlers(root);
+
+        root.getRootNodes().update(createBytecodeConfigBuilder().addTag(StatementTag.class).build());
+        assertEquals("B", root.getCallTarget().call());
+        assertHandlers(root, tag(0), tag(1));
+    }
+
     // @formatter:on
 }
