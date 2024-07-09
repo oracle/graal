@@ -199,7 +199,12 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         return shared;
     }
 
-    public abstract boolean grow(long extraPageSize);
+    /**
+     * Increases the size of the memory by the specified number of pages.
+     *
+     * @return The previous size of the memory if successful, otherwise {@code -1}.
+     */
+    public abstract long grow(long extraPageSize);
 
     /**
      * Shrinks this memory's size to its {@link #declaredMinSize()} initial size}, and sets all
@@ -858,7 +863,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
     /**
      * Copy data from memory into a byte[] array.
-     * 
+     *
      * @param node the node used for errors
      * @param dst the output buffer
      * @param srcOffset the offset in the memory

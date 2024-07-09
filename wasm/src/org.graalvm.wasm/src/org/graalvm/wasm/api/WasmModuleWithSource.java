@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,58 +38,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm.api;
 
-package org.graalvm.wasm.parser.ir;
+import org.graalvm.wasm.WasmModule;
 
-import java.util.List;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.source.Source;
 
 /**
- * Represents information about the code section of a wasm function.
+ * Represents a parsed and validated WebAssembly module, which has not yet been instantiated.
  */
-public final class CodeEntry {
-    private final int functionIndex;
-    private final int maxStackSize;
-    private final byte[] localTypes;
-    private final byte[] resultTypes;
-    private final List<CallNode> callNodes;
-    private final int bytecodeStartOffset;
-    private final int bytecodeEndOffset;
+@SuppressWarnings("static-method")
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "module")
+public final class WasmModuleWithSource implements TruffleObject {
+    final WasmModule module;
+    final Source source;
 
-    public CodeEntry(int functionIndex, int maxStackSize, byte[] localTypes, byte[] resultTypes, List<CallNode> callNodes, int startOffset, int endOffset) {
-        this.functionIndex = functionIndex;
-        this.maxStackSize = maxStackSize;
-        this.localTypes = localTypes;
-        this.resultTypes = resultTypes;
-        this.callNodes = callNodes;
-        this.bytecodeStartOffset = startOffset;
-        this.bytecodeEndOffset = endOffset;
+    public WasmModuleWithSource(WasmModule module, Source source) {
+        this.module = module;
+        this.source = source;
     }
 
-    public int maxStackSize() {
-        return maxStackSize;
+    public WasmModule module() {
+        return module;
     }
 
-    public int functionIndex() {
-        return functionIndex;
-    }
-
-    public byte[] localTypes() {
-        return localTypes;
-    }
-
-    public byte[] resultTypes() {
-        return resultTypes;
-    }
-
-    public List<CallNode> callNodes() {
-        return callNodes;
-    }
-
-    public int bytecodeStartOffset() {
-        return bytecodeStartOffset;
-    }
-
-    public int bytecodeEndOffset() {
-        return bytecodeEndOffset;
+    public Source source() {
+        return source;
     }
 }
