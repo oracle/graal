@@ -238,7 +238,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableSpecializationIntrospection = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSpecializationIntrospection");
         model.allowUnsafe = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "allowUnsafe");
         model.enableYield = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableYield");
-        model.storeBciInFrame = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "storeBciInFrame");
+        model.storeBciInFrame = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "storeBytecodeIndexInFrame");
         model.enableQuickening = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableQuickening");
         model.specializationDebugListener = types.BytecodeDebugListener == null ? false : ElementUtils.isAssignable(typeElement.asType(), types.BytecodeDebugListener);
         model.enableTagInstrumentation = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableTagInstrumentation");

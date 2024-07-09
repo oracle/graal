@@ -247,7 +247,7 @@ public class ReadBytecodeLocationTest {
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBciInFrame = true, enableYield = true)
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = true, enableYield = true)
 abstract class BytecodeNodeWithStoredBci extends RootNode implements BytecodeRootNode {
 
     protected BytecodeNodeWithStoredBci(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

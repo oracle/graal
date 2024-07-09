@@ -111,8 +111,8 @@ public abstract class BytecodeNode extends Node {
     }
 
     /**
-     * Gets the bytecode location associated with a bytecode index ({@code bci}). The result is only
-     * valid if {@code bci} was obtained from this bytecode node (using a bind variable or
+     * Gets the bytecode location associated with a bytecode index. The result is only valid if
+     * bytecode index was obtained from this bytecode node (using a bind variable or
      * {@link #getBytecodeIndex}).
      *
      * @param bytecodeIndex the bytecode index
@@ -128,8 +128,8 @@ public abstract class BytecodeNode extends Node {
 
     /**
      * Reads and returns the bytecode index from the {@code frame}. This method should only be
-     * called if the interpreter is configured to {@link GenerateBytecode#storeBciInFrame store the
-     * bytecode index (bci) in the frame}; be sure to read the documentation before using this
+     * called if the interpreter is configured to {@link GenerateBytecode#storeBytecodeIndexInFrame
+     * store the bytecode index in the frame}; be sure to read the documentation before using this
      * feature.
      *
      * @return the bytecode index stored in the frame
@@ -137,7 +137,7 @@ public abstract class BytecodeNode extends Node {
      */
     @SuppressWarnings("unused")
     public int getBytecodeIndex(Frame frame) {
-        throw new UnsupportedOperationException("Interpreter does not store the bci in the frame.");
+        throw new UnsupportedOperationException("Interpreter does not store the bytecode index in the frame.");
     }
 
     /**
@@ -149,8 +149,8 @@ public abstract class BytecodeNode extends Node {
      *
      * @param frame the current frame
      * @param location the current location
-     * @return a source section corresponding to the bci, or {@code null} if no source section is
-     *         available
+     * @return a source section corresponding to the location. Returns {@code null} if the location
+     *         is invalid or source sections are not available.
      */
     public final SourceSection getSourceLocation(Frame frame, Node location) {
         int bci = findBytecodeIndexImpl(frame, location);
@@ -168,8 +168,8 @@ public abstract class BytecodeNode extends Node {
      *
      * @param frame the current frame
      * @param location the current location
-     * @return an array of source sections corresponding to the bci, or {@code null} if no source
-     *         sections are available
+     * @return an array of source sections corresponding to the location. Returns {@code null} if
+     *         the location is invalid or source sections are not available.
      */
     public final SourceSection[] getSourceLocations(Frame frame, Node location) {
         int bci = findBytecodeIndexImpl(frame, location);
@@ -206,7 +206,7 @@ public abstract class BytecodeNode extends Node {
 
     /**
      * Gets the source location associated with a particular
-     * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}, obtained from a stack walk.
+     * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
      *
      * @param frameInstance the frame instance
      * @return the source location, or null if a location could not be found
@@ -221,6 +221,14 @@ public abstract class BytecodeNode extends Node {
         return findSourceLocation(bci);
     }
 
+    /**
+     * Gets all source locations associated with a particular
+     * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
+     *
+     * @param frameInstance the frame instance
+     * @return the source locations, or null if they could not be found
+     * @since 24.2
+     */
     public final SourceSection[] getSourceLocations(FrameInstance frameInstance) {
         int bci = findBytecodeIndex(frameInstance);
         if (bci == -1) {
@@ -229,14 +237,36 @@ public abstract class BytecodeNode extends Node {
         return findSourceLocations(bci);
     }
 
+    /**
+     * Returns the {@link BytecodeRootNode} to which this node belongs.
+     *
+     * @since 24.2
+     */
     public BytecodeRootNode getBytecodeRootNode() {
         return (BytecodeRootNode) getParent();
     }
 
+    /**
+     * Returns the current set of {@link Instruction instructions} as an {@link Iterable}.
+     * <p>
+     * Footprint note: the backing iterable implementation consumes a fixed amount of memory. It
+     * allocates the underlying instructions when it is iterated.
+     *
+     * @since 24.2
+     */
     public final Iterable<Instruction> getInstructions() {
         return new InstructionIterable(this);
     }
 
+    /**
+     * Returns the current set of {@link Instruction instructions} as a {@link List}.
+     * <p>
+     * Footprint note: this method eagerly materializes an entire list, unlike
+     * {@link #getInstructions()}, which allocates its elements on demand. Prefer to use
+     * {@link #getInstructions()} for simple iteration use cases.
+     *
+     * @since 24.2
+     */
     public final List<Instruction> getInstructionsAsList() {
         List<Instruction> instructions = new ArrayList<>();
         for (Instruction instruction : getInstructions()) {
@@ -250,7 +280,7 @@ public abstract class BytecodeNode extends Node {
      * available, returns {@code null}.
      * <p>
      * Footprint note: the backing list implementation consumes a fixed amount of memory. It
-     * allocates the underlying {@link SourceInformation} element when it is {@link List#get
+     * allocates the underlying {@link SourceInformation} elements when it is {@link List#get
      * accessed}.
      *
      * @since 24.2
@@ -258,7 +288,7 @@ public abstract class BytecodeNode extends Node {
     public abstract List<SourceInformation> getSourceInformation();
 
     /**
-     * Produces a {@link SourceInformationTree} for a bytecode node. If no source information is
+     * Produces a {@link SourceInformationTree} for this node. If no source information is
      * available, returns {@code null}.
      * <p>
      * Footprint note: this method eagerly materializes an entire tree, unlike
@@ -270,14 +300,15 @@ public abstract class BytecodeNode extends Node {
     public abstract SourceInformationTree getSourceInformationTree();
 
     /**
-     * TODO
+     * Returns all of the {@link ExceptionHandler exception handlers} associated with this node.
      *
      * @since 24.2
      */
     public abstract List<ExceptionHandler> getExceptionHandlers();
 
     /**
-     * TODO
+     * Returns the {@link TagTree} for this node. The tree only contains tag operations for the tags
+     * that were enabled during parsing; if no tags were enabled, returns {@code null}.
      *
      * @since 24.2
      */
@@ -294,16 +325,16 @@ public abstract class BytecodeNode extends Node {
      * The order of the locals corresponds to the order in which they were created using one of the
      * {@code createLocal()} overloads. It is up to the language to track the creation order.
      *
+     * @param bytecodeIndex the current bytecode index, used to determine liveness of locals. Must
+     *            be a partial evaluation constant.
      * @param frame the frame to read locals from
-     *
      * @return an array of local values
      * @since 24.2
+     * @see GenerateBytecode#enableLocalScoping
      */
-    // runtime modification APIs (Frame needed)
-    // bci needs to be a PE constant
-    // TODO update docs
     @ExplodeLoop
     public final Object[] getLocalValues(int bytecodeIndex, Frame frame) {
+        CompilerAsserts.partialEvaluationConstant(bytecodeIndex);
         int count = getLocalCount(bytecodeIndex);
         Object[] locals = new Object[count];
         for (int i = 0; i < count; i++) {
@@ -313,20 +344,29 @@ public abstract class BytecodeNode extends Node {
     }
 
     /**
-     * Returns the current value of the local at index {@code localIndex} in the frame. This method
-     * should be used for uncommon scenarios, like when a node needs to read a local directly from
-     * the frame. Prefer reading locals directly in the bytecode (via {@code LoadLocal} operations)
-     * when possible.
+     * Returns the current value of the local at offset {@code localOffset} in the frame. This
+     * method should be used for uncommon scenarios, like when a node needs to read a local directly
+     * from the frame. Prefer reading locals directly in the bytecode (via {@code LoadLocal}
+     * operations) when possible.
      *
+     * @param bytecodeIndex the current bytecode index, used to determine liveness of locals. Must
+     *            be a partial evaluation constant.
      * @param frame the frame to read locals from
      * @param localOffset the logical offset of the local (as obtained by
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
-     * @return an array of local values
+     * @return the current local value
      * @since 24.2
+     * @see GenerateBytecode#enableLocalScoping
      */
-    // TODO update docs
     public abstract Object getLocalValue(int bytecodeIndex, Frame frame, int localOffset);
 
+    /**
+     * Returns the current int value of the local at offset {@code localOffset} in the frame. Throws
+     * {@link UnexpectedResultException} if the value is not an int.
+     *
+     * @since 24.2
+     * @see #getLocalValue(int, Frame, int)
+     */
     public int getLocalValueInt(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
         Object value = getLocalValue(bytecodeIndex, frame, localOffset);
         if (value instanceof Integer i) {
@@ -337,6 +377,13 @@ public abstract class BytecodeNode extends Node {
         }
     }
 
+    /**
+     * Returns the current float value of the local at offset {@code localOffset} in the frame.
+     * Throws {@link UnexpectedResultException} if the value is not a float.
+     *
+     * @since 24.2
+     * @see #getLocalValue(int, Frame, int)
+     */
     public float getLocalValueFloat(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
         Object value = getLocalValue(bytecodeIndex, frame, localOffset);
         if (value instanceof Float i) {
@@ -347,6 +394,13 @@ public abstract class BytecodeNode extends Node {
         }
     }
 
+    /**
+     * Returns the current long value of the local at offset {@code localOffset} in the frame.
+     * Throws {@link UnexpectedResultException} if the value is not a long.
+     *
+     * @since 24.2
+     * @see #getLocalValue(int, Frame, int)
+     */
     public long getLocalValueLong(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
         Object value = getLocalValue(bytecodeIndex, frame, localOffset);
         if (value instanceof Long i) {
@@ -357,6 +411,13 @@ public abstract class BytecodeNode extends Node {
         }
     }
 
+    /**
+     * Returns the current double value of the local at offset {@code localOffset} in the frame.
+     * Throws {@link UnexpectedResultException} if the value is not a double.
+     *
+     * @since 24.2
+     * @see #getLocalValue(int, Frame, int)
+     */
     public double getLocalValueDouble(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
         Object value = getLocalValue(bytecodeIndex, frame, localOffset);
         if (value instanceof Double i) {
@@ -367,6 +428,13 @@ public abstract class BytecodeNode extends Node {
         }
     }
 
+    /**
+     * Returns the current short value of the local at offset {@code localOffset} in the frame.
+     * Throws {@link UnexpectedResultException} if the value is not a short.
+     *
+     * @since 24.2
+     * @see #getLocalValue(int, Frame, int)
+     */
     public short getLocalValueShort(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
         Object value = getLocalValue(bytecodeIndex, frame, localOffset);
         if (value instanceof Short i) {
@@ -377,6 +445,13 @@ public abstract class BytecodeNode extends Node {
         }
     }
 
+    /**
+     * Returns the current byte value of the local at offset {@code localOffset} in the frame.
+     * Throws {@link UnexpectedResultException} if the value is not a byte.
+     *
+     * @since 24.2
+     * @see #getLocalValue(int, Frame, int)
+     */
     public byte getLocalValueByte(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
         Object value = getLocalValue(bytecodeIndex, frame, localOffset);
         if (value instanceof Byte i) {
@@ -387,6 +462,13 @@ public abstract class BytecodeNode extends Node {
         }
     }
 
+    /**
+     * Returns the current boolean value of the local at offset {@code localOffset} in the frame.
+     * Throws {@link UnexpectedResultException} if the value is not a boolean.
+     *
+     * @since 24.2
+     * @see #getLocalValue(int, Frame, int)
+     */
     public boolean getLocalValueBoolean(int bytecodeIndex, Frame frame, int localOffset) throws UnexpectedResultException {
         Object value = getLocalValue(bytecodeIndex, frame, localOffset);
         if (value instanceof Boolean i) {
@@ -406,12 +488,15 @@ public abstract class BytecodeNode extends Node {
      * one of the {@code createLocal()} overloads. It is up to the language to track the creation
      * order.
      *
+     * @param bytecodeIndex the current bytecode index, used to determine liveness of locals. Must
+     *            be a partial evaluation constant.
      * @return an array of local names
      * @since 24.2
+     * @see GenerateBytecode#enableLocalScoping
      */
-    // TODO update docs
     @ExplodeLoop
     public final Object[] getLocalNames(int bytecodeIndex) {
+        CompilerAsserts.partialEvaluationConstant(bytecodeIndex);
         int count = getLocalCount(bytecodeIndex);
         Object[] locals = new Object[count];
         for (int i = 0; i < count; i++) {
@@ -420,8 +505,19 @@ public abstract class BytecodeNode extends Node {
         return locals;
     }
 
-    // TODO update docs
-    // returns PE constant
+    /**
+     * Returns the name of the local at the given {@code localOffset}, as provided during bytecode
+     * building. If a local is not allocated using a {@code createLocal} overload that takes a
+     * {@code name}, its name will be {@code null}.
+     *
+     * @param bytecodeIndex the current bytecode index, used to determine liveness of locals. Must
+     *            be a partial evaluation constant.
+     * @param localOffset the logical offset of the local (as obtained by
+     *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
+     * @return the local name as a partial evaluation constant
+     * @since 24.2
+     * @see GenerateBytecode#enableLocalScoping
+     */
     public abstract Object getLocalName(int bytecodeIndex, int localOffset);
 
     /**
@@ -433,12 +529,15 @@ public abstract class BytecodeNode extends Node {
      * one of the {@code createLocal()} overloads. It is up to the language to track the creation
      * order.
      *
+     * @param bytecodeIndex the current bytecode index, used to determine liveness of locals. Must
+     *            be a partial evaluation constant.
      * @return an array of local names
      * @since 24.2
+     * @see GenerateBytecode#enableLocalScoping
      */
-    // TODO update docs
     @ExplodeLoop
     public final Object[] getLocalInfos(int bytecodeIndex) {
+        CompilerAsserts.partialEvaluationConstant(bytecodeIndex);
         int count = getLocalCount(bytecodeIndex);
         Object[] locals = new Object[count];
         for (int i = 0; i < count; i++) {
@@ -447,25 +546,39 @@ public abstract class BytecodeNode extends Node {
         return locals;
     }
 
-    // TODO update docs
-    // returns PE constant
+    /**
+     * Returns the {@link FrameDescriptor#getSlotInfo info} of a local, as provided during bytecode
+     * building. If a local is not allocated using a {@code createLocal} overload that takes an
+     * {@code info}, its info will be {@code null}.
+     *
+     * @param bytecodeIndex the current bytecode index, used to determine liveness of locals. Must
+     *            be a partial evaluation constant.
+     * @param localOffset the logical offset of the local (as obtained by
+     *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
+     * @return the local info as a partial evaluation constant
+     * @since 24.2
+     * @see GenerateBytecode#enableLocalScoping
+     */
     public abstract Object getLocalInfo(int bytecodeIndex, int localOffset);
 
     /**
-     * Updates the current value of the local at index {@code localIndex} in the frame. This method
-     * should be used for uncommon scenarios, like setting a local in the prolog/epilog or from
-     * another root node. Prefer setting locals directly in the bytecode (via {@code StoreLocal}
-     * operations or {@link LocalSetter}) when possible.
+     * Updates the values of the live locals in the frame. This method should be used for uncommon
+     * scenarios, like setting locals in the prolog/epilog or from another root node. Prefer setting
+     * locals directly in the bytecode (via {@code StoreLocal} operations or {@link LocalSetter})
+     * when possible.
      * <p>
      *
-     * @param frame the frame to store the locals value into
-     * @param value the value to store into the local
+     * @param bytecodeIndex the current bytecode index, used to determine liveness of locals. Must
+     *            be a partial evaluation constant.
+     * @param frame the frame to store the local values into
+     * @param values the values to store into the frame
      *
      * @since 24.2
+     * @see GenerateBytecode#enableLocalScoping
      */
-    // TODO update docs
     @ExplodeLoop
     public final void setLocalValues(int bytecodeIndex, Frame frame, Object[] values) {
+        CompilerAsserts.partialEvaluationConstant(bytecodeIndex);
         int count = getLocalCount(bytecodeIndex);
         if (values.length != count) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -476,9 +589,19 @@ public abstract class BytecodeNode extends Node {
         }
     }
 
-    // TODO update docs
+    /**
+     * Copies the values of the live locals from the source frame to the destination frame.
+     *
+     * @param bytecodeIndex the current bytecode index, used to determine liveness of locals. Must
+     *            be a partial evaluation constant.
+     * @param source the frame to copy locals from
+     * @param destination the frame to copy locals into
+     * @since 24.2
+     * @see GenerateBytecode#enableLocalScoping
+     */
     @ExplodeLoop
     public final void copyLocalValues(int bytecodeIndex, Frame source, Frame destination) {
+        CompilerAsserts.partialEvaluationConstant(bytecodeIndex);
         int count = getLocalCount(bytecodeIndex);
         for (int i = 0; i < count; i++) {
             setLocalValue(bytecodeIndex, destination, i, getLocalValue(bytecodeIndex, source, i));
@@ -488,8 +611,8 @@ public abstract class BytecodeNode extends Node {
     /**
      * Copies the first {@code length} locals from the {@code source} frame to the
      * {@code destination} frame. The frames must have the same {@link Frame#getFrameDescriptor()
-     * layouts}. Compared to {@link #copyLocals(Frame, Frame)}, this method allows languages to
-     * selectively copy a subset of the frame's locals.
+     * layouts}. Compared to {@link #copyLocalValues(int, Frame, Frame)}, this method allows
+     * languages to selectively copy a subset of the frame's locals.
      * <p>
      * For example, suppose that in addition to regular locals, a root node uses temporary locals
      * for intermediate computations. Suppose also that the node needs to be able to compute the
@@ -497,12 +620,16 @@ public abstract class BytecodeNode extends Node {
      * copy the regular locals and not the temporary locals -- assuming all of the regular locals
      * were allocated (using {@code createLocal()}) before the temporary locals.
      *
-     * @param source the from to copy locals from
+     * @param bytecodeIndex the current bytecode index, used to determine liveness of locals. Must
+     *            be a partial evaluation constant.
+     * @param source the frame to copy locals from
      * @param destination the frame to copy locals into
-     * @param length the number of locals to copy
+     * @param localOffset the logical offset of the first local to be copied (as obtained by
+     *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
+     * @param localCount the number of locals to copy
      * @since 24.2
+     * @see GenerateBytecode#enableLocalScoping
      */
-    // TODO update docs
     @ExplodeLoop
     public final void copyLocalValues(int bytecodeIndex, Frame source, Frame destination, int localOffset, int localCount) {
         CompilerAsserts.partialEvaluationConstant(localCount);
@@ -521,52 +648,119 @@ public abstract class BytecodeNode extends Node {
     }
 
     /**
-     * Updates the current value of the local at index {@code localIndex} in the frame. This method
+     * Updates the current value of the local at index {@code localOffset} in the frame. This method
      * should be used for uncommon scenarios, like setting a local in the prolog/epilog or from
      * another root node. Prefer setting locals directly in the bytecode (via {@code StoreLocal}
      * operations when possible.
      * <p>
      * This method will be generated by the Bytecode DSL. Do not override.
      *
+     * @param bytecodeIndex the current bytecode index, used to determine liveness of locals. Must
+     *            be a partial evaluation constant.
      * @param frame the frame to store the locals value into
      * @param localOffset the logical offset of the local (as obtained by
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      * @param value the value to store into the local
      * @since 24.2
+     * @see GenerateBytecode#enableLocalScoping
      */
-    public abstract void setLocalValue(int bci, Frame frame, int localOffset, Object value);
+    public abstract void setLocalValue(int bytecodeIndex, Frame frame, int localOffset, Object value);
 
-    public void setLocalValueInt(int bci, Frame frame, int localOffset, int value) {
-        setLocalValue(bci, frame, localOffset, value);
+    /**
+     * Updates the current value of the local at offset {@code localOffset} in the frame to the
+     * given int value.
+     *
+     * @since 24.2
+     * @see #setLocalValue(int, Frame, int, Object)
+     */
+    public void setLocalValueInt(int bytecodeIndex, Frame frame, int localOffset, int value) {
+        setLocalValue(bytecodeIndex, frame, localOffset, value);
     }
 
-    public void setLocalValueLong(int bci, Frame frame, int localOffset, long value) {
-        setLocalValue(bci, frame, localOffset, value);
+    /**
+     * Updates the current value of the local at offset {@code localOffset} in the frame to the
+     * given long value.
+     *
+     * @since 24.2
+     * @see #setLocalValue(int, Frame, int, Object)
+     */
+    public void setLocalValueLong(int bytecodeIndex, Frame frame, int localOffset, long value) {
+        setLocalValue(bytecodeIndex, frame, localOffset, value);
     }
 
-    public void setLocalValueFloat(int bci, Frame frame, int localOffset, float value) {
-        setLocalValue(bci, frame, localOffset, value);
+    /**
+     * Updates the current value of the local at offset {@code localOffset} in the frame to the
+     * given float value.
+     *
+     * @since 24.2
+     * @see #setLocalValue(int, Frame, int, Object)
+     */
+    public void setLocalValueFloat(int bytecodeIndex, Frame frame, int localOffset, float value) {
+        setLocalValue(bytecodeIndex, frame, localOffset, value);
     }
 
-    public void setLocalValueDouble(int bci, Frame frame, int localOffset, double value) {
-        setLocalValue(bci, frame, localOffset, value);
+    /**
+     * Updates the current value of the local at offset {@code localOffset} in the frame to the
+     * given double value.
+     *
+     * @since 24.2
+     * @see #setLocalValue(int, Frame, int, Object)
+     */
+    public void setLocalValueDouble(int bytecodeIndex, Frame frame, int localOffset, double value) {
+        setLocalValue(bytecodeIndex, frame, localOffset, value);
     }
 
-    public void setLocalValueShort(int bci, Frame frame, int localOffset, short value) {
-        setLocalValue(bci, frame, localOffset, value);
+    /**
+     * Updates the current value of the local at offset {@code localOffset} in the frame to the
+     * given short value.
+     *
+     * @since 24.2
+     * @see #setLocalValue(int, Frame, int, Object)
+     */
+    public void setLocalValueShort(int bytecodeIndex, Frame frame, int localOffset, short value) {
+        setLocalValue(bytecodeIndex, frame, localOffset, value);
     }
 
-    public void setLocalValueByte(int bci, Frame frame, int localOffset, byte value) {
-        setLocalValue(bci, frame, localOffset, value);
+    /**
+     * Updates the current value of the local at offset {@code localOffset} in the frame to the
+     * given byte value.
+     *
+     * @since 24.2
+     * @see #setLocalValue(int, Frame, int, Object)
+     */
+    public void setLocalValueByte(int bytecodeIndex, Frame frame, int localOffset, byte value) {
+        setLocalValue(bytecodeIndex, frame, localOffset, value);
     }
 
-    public void setLocalValueBoolean(int bci, Frame frame, int localOffset, boolean value) {
-        setLocalValue(bci, frame, localOffset, value);
+    /**
+     * Updates the current value of the local at offset {@code localOffset} in the frame to the
+     * given boolean value.
+     *
+     * @since 24.2
+     * @see #setLocalValue(int, Frame, int, Object)
+     */
+    public void setLocalValueBoolean(int bytecodeIndex, Frame frame, int localOffset, boolean value) {
+        setLocalValue(bytecodeIndex, frame, localOffset, value);
     }
 
-    // returns PE constant
-    public abstract int getLocalCount(int bci);
+    /**
+     * Returns the number of live locals at the given {@code bytecodeIndex}.
+     *
+     * @param bytecodeIndex the current bytecode index, used to determine liveness of locals. Must
+     *            be a partial evaluation constant.
+     * @return the number of live locals
+     * @since 24.2
+     * @see GenerateBytecode#enableLocalScoping
+     */
+    public abstract int getLocalCount(int bytecodeIndex);
 
+    /**
+     * Returns a list of all of the {@link LocalVariable local variables} declared (regardless of
+     * liveness).
+     *
+     * @return a list of locals
+     * @since 24.2
+     */
     public abstract List<LocalVariable> getLocals();
 
     /**
@@ -753,30 +947,46 @@ public abstract class BytecodeNode extends Node {
      * returns <code>null</code> if no source section could be found. Calling this method also
      * {@link BytecodeRootNodes#ensureSources() ensures source sections} are materialized.
      *
+     * @param bytecodeIndex the bytecode index
      * @since 24.2
      */
-    public abstract SourceSection findSourceLocation(int bci);
-
-    public abstract SourceSection findSourceLocation(int beginBci, int endBci);
+    public abstract SourceSection findSourceLocation(int bytecodeIndex);
 
     /**
-     * Finds all source locations associated with the given bytecode index. The array returns more
-     * concrete source sections first. Typically later source sections are contained in the previous
+     * Finds the most concrete source location containing the given bytecode range. The method
+     * returns <code>null</code> if no source section could be found. Calling this method also
+     * {@link BytecodeRootNodes#ensureSources() ensures source sections} are materialized.
+     *
+     * @param beginBytecodeIndex the beginning of the bytecode range (inclusive)
+     * @param endBytecodeIndex the end of the bytecode range (exclusive)
+     * @since 24.2
+     */
+    public abstract SourceSection findSourceLocation(int beginBytecodeIndex, int endBytecodeIndex);
+
+    /**
+     * Finds all source locations associated with the given bytecode index. More concrete source
+     * sections appear earlier in the array. Typically, a given section will contain the previous
      * source section, but there is no guarantee that this the case. Calling this method also
      * {@link BytecodeRootNodes#ensureSources() ensures source sections} are materialized.
      *
+     * @param bytecodeIndex the bytecode index
      * @since 24.2
      */
-    public abstract SourceSection[] findSourceLocations(int bci);
-
-    public abstract SourceSection[] findSourceLocations(int beginBci, int endBci);
+    public abstract SourceSection[] findSourceLocations(int bytecodeIndex);
 
     /**
-     * Finds the instruction associated with the given bytecode index.
+     * Finds all source locations containing the given bytecode range. More concrete source sections
+     * appear earlier in the array. Typically, a given section will contain the previous source
+     * section, but there is no guarantee that this the case. Calling this method also
+     * {@link BytecodeRootNodes#ensureSources() ensures source sections} are materialized.
      *
+     * @param beginBytecodeIndex the beginning of the bytecode range (inclusive)
+     * @param endBytecodeIndex the end of the bytecode range (exclusive)
      * @since 24.2
      */
-    protected abstract Instruction findInstruction(int bci);
+    public abstract SourceSection[] findSourceLocations(int beginBytecodeIndex, int endBytecodeIndex);
+
+    protected abstract Instruction findInstruction(int bytecodeIndex);
 
     protected abstract int findBytecodeIndex(Frame frame, Node operationNode);
 
@@ -787,10 +997,10 @@ public abstract class BytecodeNode extends Node {
     }
 
     /**
-     * Returns a new array containing the current value of each local in the
+     * Returns a new array containing the current value of each live local in the
      * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
      *
-     * @see #getLocals(Frame)
+     * @see #getLocalValues(Frame)
      * @param frameInstance the frame instance
      * @return a new array of local values, or null if the frame instance does not correspond to an
      *         {@link BytecodeRootNode}
@@ -806,6 +1016,16 @@ public abstract class BytecodeNode extends Node {
         return bytecode.getLocalValues(bci, frame);
     }
 
+    /**
+     * Returns a new array containing the names of the live locals in the
+     * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
+     *
+     * @see #getLocalNames(int)
+     * @param frameInstance the frame instance
+     * @return a new array of names, or null if the frame instance does not correspond to an
+     *         {@link BytecodeRootNode}
+     * @since 24.2
+     */
     public static Object[] getLocalNames(FrameInstance frameInstance) {
         BytecodeNode bytecode = get(frameInstance);
         if (bytecode == null) {
@@ -815,6 +1035,15 @@ public abstract class BytecodeNode extends Node {
         return bytecode.getLocalNames(bci);
     }
 
+    /**
+     * Sets the current values of the live locals in the
+     * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
+     *
+     * @see #setLocalValues(int, Frame, Object[])
+     * @param frameInstance the frame instance
+     * @return whether the locals could be set with the information available in the frame instance
+     * @since 24.2
+     */
     public static boolean setLocalValues(FrameInstance frameInstance, Object[] values) {
         BytecodeNode bytecode = get(frameInstance);
         if (bytecode == null) {

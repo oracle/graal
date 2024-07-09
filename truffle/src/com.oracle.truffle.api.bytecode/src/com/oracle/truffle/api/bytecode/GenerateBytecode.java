@@ -257,9 +257,9 @@ public @interface GenerateBytecode {
 
     /**
      * Enables local variable scoping for this interpreter. By default local variable scoping is
-     * enabled (<code>true</code>). Depending on whether this flag is enabled the behavior of local
-     * variables change significantly, hence changing this flag is a breaking change for previously
-     * API and should be determined relatively early in the development of a language.
+     * enabled (<code>true</code>). Whether this flag is enabled significantly changes the behavior
+     * of local variables (breaking changes), so the value of this flag should be determined
+     * relatively early in the development of a language.
      * <p>
      * If local scoping is enabled then all local variables are scoped with the parent block. If no
      * block is currently on the operation stack then the local variable will be scoped with their
@@ -274,11 +274,11 @@ public @interface GenerateBytecode {
      * {@link LocalVariable#getEndIndex()}.
      * <p>
      * If local scoping is disabled all local variables get their unique absolute index in the frame
-     * independent of the current source location. This means that when reading the values
-     * {@link BytecodeNode#getLocalValues(int, Frame) current local values} the bytecode index
-     * parameter has no effect. With scoping disabled no additional meta-data needs to be emitted
-     * for the life-time of local variables, hence {@link BytecodeNode#getLocals()} returns local
-     * variables without life-time ranges.
+     * independent of the current source location. This means that when reading the current
+     * {@link BytecodeNode#getLocalValues(int, Frame) local values} the bytecode index parameter has
+     * no effect. With scoping disabled no additional meta-data needs to be emitted for the
+     * life-time of local variables, hence {@link BytecodeNode#getLocals()} returns local variables
+     * without life-time ranges.
      * <p>
      * Primarily local variable scoping is intended to be disabled if the implemented language does
      * not use local variable scoping, but it can also be useful if the default local variable
@@ -323,7 +323,7 @@ public @interface GenerateBytecode {
      *
      * @since 24.2
      */
-    boolean storeBciInFrame() default false;
+    boolean storeBytecodeIndexInFrame() default false;
 
     /**
      * Path to a file containing optimization decisions. This file is generated using tracing on a
