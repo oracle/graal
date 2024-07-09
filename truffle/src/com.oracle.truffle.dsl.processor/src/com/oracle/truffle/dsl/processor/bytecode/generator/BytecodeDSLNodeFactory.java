@@ -1927,7 +1927,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         name = "SourceSectionData";
                         fields = List.of(//
                                         field(context.getType(int.class), "sourceIndex").asFinal(),
-                                        field(context.getType(int.class), "beginBci").asFinal(),
+                                        field(context.getType(int.class), "startBci"),
                                         field(context.getType(int.class), "start").asFinal(),
                                         field(context.getType(int.class), "length").asFinal(),
                                         field(context.getType(boolean.class), "producedValue").withInitializer("false"),
@@ -4196,7 +4196,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("bci = 0");
             b.statement("currentStackHeight = 0");
             b.statement("maxStackHeight = 0");
-            b.statement("handlerTable = new int[10]");
+            b.statement("handlerTable = new int[2 * EXCEPTION_HANDLER_LENGTH]");
             b.statement("handlerTableSize = 0");
             b.statement("unresolvedLabels = new HashMap<>()");
             if (model.enableTracing) {
@@ -4206,7 +4206,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("continuationLocations = new ArrayList<>()");
             }
             b.startIf().string("parseSources").end().startBlock();
-            b.statement("sourceInfo = new int[16]");
+            b.statement("sourceInfo = new int[3 * SOURCE_INFO_LENGTH]");
             b.statement("sourceInfoIndex = 0");
             b.end();
 
@@ -4422,15 +4422,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     emitThrowIllegalStateException(b, "\"No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.\"");
                     b.end();
 
-                    b.declaration(type(int.class), "beginBci");
+                    b.declaration(type(int.class), "startBci");
                     b.startIf().string("rootOperationSp == -1").end().startBlock();
                     b.lineComment("not in a root yet");
-                    b.statement("beginBci = 0");
+                    b.statement("startBci = 0");
                     b.end().startElseBlock();
-                    b.statement("beginBci = bci");
+                    b.statement("startBci = bci");
                     b.end();
 
-                    yield createOperationData(className, "foundSourceIndex", "beginBci", operation.getOperationBeginArgumentName(0), operation.getOperationBeginArgumentName(1));
+                    yield createOperationData(className, "foundSourceIndex", "startBci", operation.getOperationBeginArgumentName(0), operation.getOperationBeginArgumentName(1));
                 }
                 default -> {
                     if (operation.isTransparent) {
@@ -4606,7 +4606,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case SOURCE_SECTION:
                     b.startStatement().startCall("doEmitSourceInfo");
                     b.string("operationData.sourceIndex");
-                    b.string("operationData.beginBci");
+                    b.string("operationData.startBci");
                     b.string("bci");
                     b.string("operationData.start");
                     b.string("operationData.length");
@@ -6557,7 +6557,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createDoEmitSourceInfo() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitSourceInfo");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "sourceIndex"));
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "beginBci"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "startBci"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "endBci"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "start"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "length"));
@@ -6570,13 +6570,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.returnStatement();
             b.end();
 
-            b.declaration(type(int.class), "encodedBcis", "(beginBci << 16) | endBci");
-            b.declaration(type(int.class), "index", "sourceInfoIndex ");
-            b.declaration(type(int.class), "prevIndex", "index - SOURCE_INFO_LENGTH ");
+            b.declaration(type(int.class), "index", "sourceInfoIndex");
+            b.declaration(type(int.class), "prevIndex", "index - SOURCE_INFO_LENGTH");
 
             b.startIf();
             b.string("prevIndex >= 0").newLine().startIndention();
-            b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_BCI]) == encodedBcis").newLine();
+            b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_START_BCI]) == startBci").newLine();
+            b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_END_BCI]) == endBci").newLine();
             b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_SOURCE]) == sourceIndex").newLine();
             b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_START]) == start").newLine();
             b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_LENGTH]) == length");
@@ -6590,18 +6590,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("sourceInfo = Arrays.copyOf(sourceInfo, sourceInfo.length * 2)");
             b.end();
 
-            b.statement("sourceInfo[index + SOURCE_INFO_OFFSET_BCI] = encodedBcis");
+            b.statement("sourceInfo[index + SOURCE_INFO_OFFSET_START_BCI] = startBci");
+            b.statement("sourceInfo[index + SOURCE_INFO_OFFSET_END_BCI] = endBci");
             b.statement("sourceInfo[index + SOURCE_INFO_OFFSET_SOURCE] = sourceIndex");
             b.statement("sourceInfo[index + SOURCE_INFO_OFFSET_START] = start");
             b.statement("sourceInfo[index + SOURCE_INFO_OFFSET_LENGTH] = length");
 
             b.statement("sourceInfoIndex = index + SOURCE_INFO_LENGTH");
 
-            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_BCI")).createInitBuilder().string("0");
-            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_SOURCE")).createInitBuilder().string("1");
-            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_START")).createInitBuilder().string("2");
-            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_LENGTH")).createInitBuilder().string("3");
-            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_LENGTH")).createInitBuilder().string("4");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_START_BCI")).createInitBuilder().string("0");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_END_BCI")).createInitBuilder().string("1");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_SOURCE")).createInitBuilder().string("2");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_START")).createInitBuilder().string("3");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_LENGTH")).createInitBuilder().string("4");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_LENGTH")).createInitBuilder().string("5");
 
             return ex;
         }
@@ -7615,18 +7617,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createGetStartBytecodeIndex() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getStartBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(type(int.class), "encodedBci", "bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_BCI]");
-            b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
-            b.statement("return beginBci");
+            b.startReturn().string("bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_START_BCI]").end();
             return ex;
         }
 
         private CodeExecutableElement createGetEndBytecodeIndex() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getEndBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(type(int.class), "encodedBci", "bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_BCI]");
-            b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
-            b.statement("return endBci");
+            b.startReturn().string("bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_END_BCI]").end();
             return ex;
         }
 
@@ -7712,18 +7710,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createGetStartBytecodeIndex() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getStartBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(type(int.class), "encodedBci", "bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_BCI]");
-            b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
-            b.statement("return beginBci");
+            b.startReturn().string("bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_START_BCI]").end();
             return ex;
         }
 
         private CodeExecutableElement createGetEndBytecodeIndex() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getEndBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(type(int.class), "encodedBci", "bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_BCI]");
-            b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
-            b.statement("return endBci");
+            b.startReturn().string("bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_END_BCI]").end();
             return ex;
         }
 
@@ -9498,11 +9492,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startIf().string("info != null").end().startBlock();
             b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
-            b.declaration(type(int.class), "encodedBci", "info[i + SOURCE_INFO_OFFSET_BCI]");
-            b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
-            b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
+            b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
+            b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
             b.declaration(type(int.class), "sourceIndex", "info[i + SOURCE_INFO_OFFSET_SOURCE]");
-            b.startIf().string("beginBci > endBci").end().startBlock();
+            b.startIf().string("startBci > endBci").end().startBlock();
             b.tree(createValidationError("source bci range is malformed"));
             b.end().startElseIf().string("sourceIndex < 0 || sourceIndex > localSources.size()").end().startBlock();
             b.tree(createValidationError("source index is out of bounds"));
@@ -10181,11 +10174,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
-            b.declaration(type(int.class), "encodedBci", "info[i + SOURCE_INFO_OFFSET_BCI]");
-            b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
-            b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
+            b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
+            b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
 
-            b.startIf().string("bci >= beginBci && bci < endBci").end().startBlock();
+            b.startIf().string("bci >= startBci && bci < endBci").end().startBlock();
             b.startReturn().string("createSourceSection(localSources, info, i)").end();
             b.end();
 
@@ -10198,7 +10190,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createFindSourceLocationBeginEnd() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocation", 2);
             ex.getModifiers().add(FINAL);
-            ex.renameArguments("searchBeginBci", "searchEndBci");
+            ex.renameArguments("searchStartBci", "searchEndBci");
 
             CodeTreeBuilder b = ex.createBuilder();
             b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
@@ -10210,11 +10202,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
-            b.declaration(type(int.class), "encodedBci", "info[i + SOURCE_INFO_OFFSET_BCI]");
-            b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
-            b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
+            b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
+            b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
 
-            b.startIf().string("searchBeginBci >= beginBci && searchEndBci <= endBci").end().startBlock();
+            b.startIf().string("searchStartBci >= startBci && searchEndBci <= endBci").end().startBlock();
             b.startReturn().string("createSourceSection(localSources, info, i)").end();
             b.end();
 
@@ -10240,7 +10231,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createFindSourceLocationsBeginEnd() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocations", 2);
             ex.getModifiers().add(FINAL);
-            ex.renameArguments("searchBeginBci", "searchEndBci");
+            ex.renameArguments("searchStartBci", "searchEndBci");
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
@@ -10255,11 +10246,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startDeclaration(arrayOf(types.SourceSection), "sections").startNewArray(arrayOf(types.SourceSection), CodeTreeBuilder.singleString("8")).end().end();
 
             b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
-            b.declaration(type(int.class), "encodedBci", "info[i + SOURCE_INFO_OFFSET_BCI]");
-            b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
-            b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
+            b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
+            b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
 
-            b.startIf().string("searchBeginBci >= beginBci && searchEndBci <= endBci").end().startBlock();
+            b.startIf().string("searchStartBci >= startBci && searchEndBci <= endBci").end().startBlock();
 
             b.startIf().string("sectionIndex == sections.length").end().startBlock();
             b.startAssign("sections").startStaticCall(type(Arrays.class), "copyOf");
