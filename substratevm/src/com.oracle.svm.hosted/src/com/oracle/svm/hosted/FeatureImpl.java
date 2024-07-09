@@ -658,6 +658,10 @@ public class FeatureImpl {
         public NativeImageCodeCache getCodeCache() {
             return codeCache;
         }
+
+        public NativeImageHeap getHeap() {
+            return heap;
+        }
     }
 
     public static class BeforeHeapLayoutAccessImpl extends CompilationAccessImpl implements Feature.BeforeHeapLayoutAccess {

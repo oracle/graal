@@ -30,7 +30,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 
@@ -40,7 +39,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
@@ -48,7 +46,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
@@ -61,15 +58,12 @@ import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.collections.RingBuffer;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.RelockObjectData;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.VirtualFrame;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -281,14 +275,18 @@ public final class Deoptimizer {
         /*
          * Replace the return address to the deoptimized method with a pointer to the deoptStub.
          */
-        FrameAccess.singleton().writeReturnAddress(targetThread, sourceSp, DeoptimizationSupport.getDeoptStubPointer());
+        FrameAccess.singleton().writeReturnAddress(deoptState.targetThread, deoptState.sourceSp, DeoptimizationSupport.getDeoptStubPointer());
 
+        /*
+         * GR-54888: leaveInterpreterStub uses the deoptSlot, thus an existing value should be saved
+         * and restored for the deoptee frame
+         */
         /*
          * Store a pointer to the deoptimizedFrame in the stack slot above the return address. From
          * this point on, the GC will ignore the original source frame content. Instead, it will
          * visit the DeoptimizedFrame object.
          */
-        ReferenceAccess.singleton().writeObjectAt(sourceSp, deoptimizedFrame, true);
+        ReferenceAccess.singleton().writeObjectAt(deoptState.sourceSp, deoptimizedFrame, true);
     }
 
     /**
@@ -495,16 +493,8 @@ public final class Deoptimizer {
     private final CodeInfoQueryResult sourceChunk;
 
     /**
-     * The current position when walking over the source stack frames.
+     * Objects that need to be re-locked.
      */
-    private final Pointer sourceSp;
-
-    /**
-     * All objects, which are materialized during deoptimization.
-     */
-    private Object[] materializedObjects;
-
-    /** The recursive locking depth of {@link #materializedObjects} that need to be re-locked. */
     private ArrayList<RelockObjectData> relockedObjects;
 
     /**
@@ -512,13 +502,16 @@ public final class Deoptimizer {
      */
     protected int targetContentSize;
 
-    private final IsolateThread targetThread;
+    private final DeoptState deoptState;
 
     public Deoptimizer(Pointer sourceSp, CodeInfoQueryResult sourceChunk, IsolateThread targetThread) {
         VMError.guarantee(sourceChunk != null, "Must not be null.");
-        this.sourceSp = sourceSp;
         this.sourceChunk = sourceChunk;
-        this.targetThread = targetThread;
+        this.deoptState = new DeoptState(sourceSp, targetThread);
+    }
+
+    public DeoptState getDeoptState() {
+        return deoptState;
     }
 
     /**
@@ -538,7 +531,21 @@ public final class Deoptimizer {
          * <p>
          * Custom epilogue: restore all of the architecture's return registers from the stack.
          */
-        ExitStub
+        ExitStub,
+
+        /**
+         * Custom prologue: save all ABI registers onto the stack.
+         * <p>
+         * Custom epilogue: fill in ABI return registers from stack location.
+         */
+        InterpreterEnterStub,
+
+        /**
+         * Custom prologue: store arguments to stack and allocate variable sized frame.
+         * <p>
+         * Custom epilogue: prepare stack layout and ABI registers for outgoing call.
+         */
+        InterpreterLeaveStub
     }
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -659,25 +666,6 @@ public final class Deoptimizer {
     }
 
     /**
-     * Reads the value of a local variable in the given frame. If the local variable is a virtual
-     * object, the object (and all other objects reachable from it) are materialized.
-     *
-     * @param idx the number of the local variable.
-     * @param sourceFrame the frame to access, which must be an inlined frame of the physical frame
-     *            that this deoptimizer has been created for.
-     */
-    public JavaConstant readLocalVariable(int idx, FrameInfoQueryResult sourceFrame) {
-        if (!(idx >= 0 && idx < sourceFrame.getNumLocals())) {
-            throw fatalDeoptimizationError(String.format("Invalid idx: %s", idx), sourceFrame);
-        }
-        if (idx < sourceFrame.getValueInfos().length) {
-            return readValue(sourceFrame.getValueInfos()[idx], sourceFrame);
-        } else {
-            return JavaConstant.forIllegal();
-        }
-    }
-
-    /**
      * Deoptimizes a source frame.
      *
      * @param pc A code address inside the source method (= the method to deoptimize)
@@ -717,7 +705,7 @@ public final class Deoptimizer {
     private DeoptimizedFrame deoptSourceFrameOperation(CodePointer pc, boolean ignoreNonDeoptimizable) {
         VMOperation.guaranteeInProgress("deoptSourceFrame");
 
-        DeoptimizedFrame existing = checkDeoptimized(targetThread, sourceSp);
+        DeoptimizedFrame existing = checkDeoptimized(deoptState.targetThread, deoptState.sourceSp);
         if (existing != null) {
             /* Already deoptimized, so nothing to do. */
             return existing;
@@ -791,9 +779,9 @@ public final class Deoptimizer {
         installDeoptimizedFrame(deoptimizedFrame);
 
         if (Options.TraceDeoptimization.getValue()) {
-            printDeoptimizedFrame(Log.log(), sourceSp, deoptimizedFrame, frameInfo, false);
+            printDeoptimizedFrame(Log.log(), deoptState.sourceSp, deoptimizedFrame, frameInfo, false);
         }
-        logDeoptSourceFrameOperation(sourceSp, deoptimizedFrame, frameInfo);
+        logDeoptSourceFrameOperation(deoptState.sourceSp, deoptimizedFrame, frameInfo);
 
         return deoptimizedFrame;
     }
@@ -882,7 +870,7 @@ public final class Deoptimizer {
                  */
             } else {
                 ValueInfo sourceValue = sourceFrame.getValueInfos()[idx];
-                JavaConstant con = readValue(sourceValue, sourceFrame);
+                JavaConstant con = deoptState.readValue(sourceValue, sourceFrame);
                 if (con.getJavaKind() == JavaKind.Illegal) {
                     throw Deoptimizer.fatalDeoptimizationError("Found illegal kind in source frame", sourceFrame);
                 }
@@ -983,7 +971,7 @@ public final class Deoptimizer {
 
     private void verifyConstant(FrameInfoQueryResult targetFrame, ValueInfo targetValue, JavaConstant source) {
         boolean equal;
-        JavaConstant target = readValue(targetValue, targetFrame);
+        JavaConstant target = deoptState.readValue(targetValue, targetFrame);
         if (source.getJavaKind() == JavaKind.Object && target.getJavaKind() == JavaKind.Object) {
             // Differences in compression are irrelevant, compare only object identities
             equal = (SubstrateObjectConstant.asObject(target) == SubstrateObjectConstant.asObject(source));
@@ -995,92 +983,6 @@ public final class Deoptimizer {
         }
     }
 
-    private JavaConstant readValue(ValueInfo valueInfo, FrameInfoQueryResult sourceFrame) {
-        switch (valueInfo.getType()) {
-            case Constant:
-            case DefaultConstant:
-                return valueInfo.getValue();
-            case StackSlot:
-            case Register:
-                return readConstant(sourceSp, WordFactory.signed(valueInfo.getData()), valueInfo.getKind(), valueInfo.isCompressedReference(), sourceFrame);
-            case ReservedRegister:
-                if (ReservedRegisters.singleton().getThreadRegister() != null && ReservedRegisters.singleton().getThreadRegister().number == valueInfo.getData()) {
-                    return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), targetThread.rawValue());
-                } else if (ReservedRegisters.singleton().getHeapBaseRegister() != null && ReservedRegisters.singleton().getHeapBaseRegister().number == valueInfo.getData()) {
-                    return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), CurrentIsolate.getIsolate().rawValue());
-                } else {
-                    throw fatalDeoptimizationError("Unexpected reserved register: " + valueInfo.getData(), sourceFrame);
-                }
-
-            case VirtualObject:
-                Object obj = materializeObject(TypeConversion.asS4(valueInfo.getData()), sourceFrame);
-                return SubstrateObjectConstant.forObject(obj, valueInfo.isCompressedReference());
-            case Illegal:
-                return JavaConstant.forIllegal();
-            default:
-                throw fatalDeoptimizationError("Unexpected type: " + valueInfo.getType(), sourceFrame);
-        }
-    }
-
-    /**
-     * Materializes a virtual object.
-     *
-     * @param virtualObjectId the id of the virtual object to materialize
-     * @return the materialized object
-     */
-    private Object materializeObject(int virtualObjectId, FrameInfoQueryResult sourceFrame) {
-        if (materializedObjects == null) {
-            materializedObjects = new Object[sourceFrame.getVirtualObjects().length];
-        }
-        if (materializedObjects.length != sourceFrame.getVirtualObjects().length) {
-            throw fatalDeoptimizationError(String.format("MaterializedObjects length (%s) does not match sourceFrame", materializedObjects.length), sourceFrame);
-        }
-
-        Object obj = materializedObjects[virtualObjectId];
-        if (obj != null) {
-            return obj;
-        }
-        DeoptimizationCounters.counters().virtualObjectsCount.inc();
-
-        ValueInfo[] encodings = sourceFrame.getVirtualObjects()[virtualObjectId];
-        DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(readValue(encodings[0], sourceFrame));
-        ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
-
-        int curIdx;
-        UnsignedWord curOffset;
-        int layoutEncoding = hub.getLayoutEncoding();
-        if (LayoutEncoding.isArray(layoutEncoding)) {
-            /* For arrays, the second encoded value is the array length. */
-            int length = readValue(encodings[1], sourceFrame).asInt();
-            obj = Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), length);
-            curOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
-            curIdx = 2;
-        } else {
-            if (!LayoutEncoding.isPureInstance(layoutEncoding)) {
-                throw fatalDeoptimizationError("Non-pure instance layout encoding: " + layoutEncoding, sourceFrame);
-            }
-            obj = KnownIntrinsics.unvalidatedAllocateInstance(DynamicHub.toClass(hub));
-            curOffset = WordFactory.unsigned(objectLayout.getFirstFieldOffset());
-            curIdx = 1;
-        }
-
-        materializedObjects[virtualObjectId] = obj;
-        if (testGCinDeoptimizer) {
-            Heap.getHeap().getGC().collect(GCCause.TestGCInDeoptimizer);
-        }
-
-        while (curIdx < encodings.length) {
-            ValueInfo value = encodings[curIdx];
-            JavaKind kind = value.getKind();
-            JavaConstant con = readValue(value, sourceFrame);
-            writeValueInMaterializedObj(obj, curOffset, con, sourceFrame);
-            curOffset = curOffset.add(objectLayout.sizeInBytes(kind));
-            curIdx++;
-        }
-
-        return obj;
-    }
-
     /**
      * Writes an instance field or an array element into a materialized object.
      *
@@ -1088,7 +990,7 @@ public final class Deoptimizer {
      * @param offsetInObj The offset of the instance field or array element
      * @param constant The value to write
      */
-    private static void writeValueInMaterializedObj(Object materializedObj, UnsignedWord offsetInObj, JavaConstant constant, FrameInfoQueryResult frameInfo) {
+    protected static void writeValueInMaterializedObj(Object materializedObj, UnsignedWord offsetInObj, JavaConstant constant, FrameInfoQueryResult frameInfo) {
         if (offsetInObj.equal(0)) {
             throw fatalDeoptimizationError("offsetInObj is 0. Materialized value would overwrite hub.", frameInfo);
         }
@@ -1122,33 +1024,6 @@ public final class Deoptimizer {
                 break;
             default:
                 throw fatalDeoptimizationError("Unexpected JavaKind " + constant.getJavaKind(), frameInfo);
-        }
-    }
-
-    private static JavaConstant readConstant(Pointer addr, SignedWord offset, JavaKind kind, boolean compressed, FrameInfoQueryResult frameInfo) {
-        switch (kind) {
-            case Boolean:
-                return JavaConstant.forBoolean(addr.readByte(offset) != 0);
-            case Byte:
-                return JavaConstant.forByte(addr.readByte(offset));
-            case Char:
-                return JavaConstant.forChar(addr.readChar(offset));
-            case Short:
-                return JavaConstant.forShort(addr.readShort(offset));
-            case Int:
-                return JavaConstant.forInt(addr.readInt(offset));
-            case Long:
-                return JavaConstant.forLong(addr.readLong(offset));
-            case Float:
-                return JavaConstant.forFloat(addr.readFloat(offset));
-            case Double:
-                return JavaConstant.forDouble(addr.readDouble(offset));
-            case Object:
-                Word p = ((Word) addr).add(offset);
-                Object obj = ReferenceAccess.singleton().readObjectAt(p, compressed);
-                return SubstrateObjectConstant.forObject(obj, compressed);
-            default:
-                throw fatalDeoptimizationError("Unexpected constant kind: " + kind, frameInfo);
         }
     }
 

@@ -26,6 +26,7 @@ package com.oracle.svm.core.stack;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -337,6 +338,20 @@ public final class JavaStackWalker {
                     return true;
                 }
             }
+        } else if (JavaFrames.isInterpreterLeaveStub(frame)) {
+            long totalFrameSize = JavaFrames.getTotalFrameSize(frame).rawValue();
+
+            /*
+             * Variable frame size is packed into the first stack slot used for argument passing
+             * (re-use of deopt slot).
+             */
+            long deoptSlot = sp.readLong((int) -totalFrameSize);
+            long varStackSize = DeoptimizationSlotPacking.decodeVariableFrameSizeFromDeoptSlot(deoptSlot);
+            Pointer actualSp = sp.add(WordFactory.unsigned(varStackSize));
+
+            CodePointer ip = readReturnAddress(thread, continuation, actualSp);
+            JavaFrames.setData(frame, actualSp, ip);
+            return true;
         } else {
             /* Caller is a Java frame. */
             if (endSP.isNull() || endSP.aboveThan(sp)) {

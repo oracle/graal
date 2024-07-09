@@ -98,7 +98,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
@@ -238,7 +237,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
 
         JavaKind[] kinds = new JavaKind[locations.length];
         for (int i = 0; i < parameterTypes.length; i++) {
-            JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
+            JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, parameterTypes[i], metaAccess, target);
             kinds[i] = kind;
 
             Register register = null;
@@ -288,7 +287,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
             }
         }
 
-        JavaKind returnKind = returnType == null ? JavaKind.Void : ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) returnType, metaAccess, target);
+        JavaKind returnKind = returnType == null ? JavaKind.Void : ObjectLayout.getCallSignatureKind(isEntryPoint, returnType, metaAccess, target);
         AllocatableValue returnLocation = returnKind == JavaKind.Void ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(valueKindFactory.getValueKind(returnKind.getStackKind()));
         return new SubstrateCallingConvention(type, kinds, currentStackOffset, returnLocation, locations);
     }

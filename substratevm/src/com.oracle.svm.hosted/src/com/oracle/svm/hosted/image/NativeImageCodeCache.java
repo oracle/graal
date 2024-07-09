@@ -49,6 +49,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.oracle.svm.core.meta.CompressedNullConstant;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -500,6 +501,12 @@ public abstract class NativeImageCodeCache {
 
         if (ImageSingletons.contains(CallStackFrameMethodInfo.class)) {
             ImageSingletons.lookup(CallStackFrameMethodInfo.class).initialize(encoders, hMetaAccess);
+        }
+
+        if (InterpreterSupport.isEnabled()) {
+            // Required to precisely obtain the associated interpreter method from a compiled stack
+            // frame.
+            InterpreterSupport.singleton().buildMethodIdMapping(encoders.getEncodedMethods());
         }
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {
