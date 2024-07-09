@@ -33,6 +33,9 @@ import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -48,12 +51,12 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -161,13 +164,13 @@ public class StackTraceUtils {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean shouldShowFrame(FrameInfoQueryResult frameInfo) {
-        return shouldShowFrame(frameInfo.getSourceClass(), frameInfo.getSourceMethodName());
+    public static boolean shouldShowFrame(FrameSourceInfo frameSourceInfo) {
+        return shouldShowFrame(frameSourceInfo.getSourceClass(), frameSourceInfo.getSourceMethodName());
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean shouldShowFrame(FrameInfoQueryResult frameInfo, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
-        return shouldShowFrame(frameInfo.getSourceClass(), frameInfo.getSourceMethodName(), showLambdaFrames, showReflectFrames, showHiddenFrames);
+    public static boolean shouldShowFrame(FrameSourceInfo frameSourceInfo, boolean showLambdaFrames, boolean showReflectFrames, boolean showHiddenFrames) {
+        return shouldShowFrame(frameSourceInfo.getSourceClass(), frameSourceInfo.getSourceMethodName(), showLambdaFrames, showReflectFrames, showHiddenFrames);
     }
 
     /*
@@ -334,7 +337,7 @@ public class StackTraceUtils {
  * @see BacktraceDecoder decodes the backtrace array
  *
  */
-final class BacktraceVisitor extends StackFrameVisitor {
+final class BacktraceVisitor extends JavaStackFrameVisitor {
 
     /**
      * Index into {@link #trace}.
@@ -386,15 +389,20 @@ final class BacktraceVisitor extends StackFrameVisitor {
     }
 
     @Override
-    protected boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
-        if (CodeInfoTable.isInAOTImageCode(ip)) {
+    public boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
+        if (!InterpreterSupport.isEnabled() && CodeInfoTable.isInAOTImageCode(ip)) {
             visitAOTFrame(ip);
         } else {
+            /*
+             * GR-46090: better detection of interpreter frames needed. Right now this forces
+             * exception handling to always go through the "encoded Java source reference" case as
+             * soon the interpreter is enabled.
+             */
             CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
             assert queryResult != null;
 
             for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
-                if (!visitFrameInfo(frameInfo)) {
+                if (!dispatchPossiblyInterpretedFrame(frameInfo, sp)) {
                     return false;
                 }
             }
@@ -406,7 +414,7 @@ final class BacktraceVisitor extends StackFrameVisitor {
     protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
         for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
             FrameInfoQueryResult frameInfo = frame.getFrameInfo();
-            if (!visitFrameInfo(frameInfo)) {
+            if (!dispatchPossiblyInterpretedFrame(frameInfo, originalSP)) {
                 return false;
             }
         }
@@ -424,24 +432,27 @@ final class BacktraceVisitor extends StackFrameVisitor {
         numFrames++;
     }
 
-    private boolean visitFrameInfo(FrameInfoQueryResult frameInfo) {
-        if (!StackTraceUtils.shouldShowFrame(frameInfo)) {
+    @Override
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo) {
+        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo)) {
             /* Always ignore the frame. It is an internal frame of the VM. */
             return true;
 
-        } else if (index == 0 && Throwable.class.isAssignableFrom(frameInfo.getSourceClass())) {
+        } else if (index == 0 && Throwable.class.isAssignableFrom(frameSourceInfo.getSourceClass())) {
             /*
              * We are still in the constructor invocation chain at the beginning of the stack trace,
              * which is also filtered by the Java HotSpot VM.
              */
             return true;
         }
-        int sourceLineNumber = frameInfo.getSourceLineNumber();
-        Class<?> sourceClass = frameInfo.getSourceClass();
-        String sourceMethodName = frameInfo.getSourceMethodName();
+        int sourceLineNumber = frameSourceInfo.getSourceLineNumber();
+        Class<?> sourceClass = frameSourceInfo.getSourceClass();
+        String sourceMethodName = frameSourceInfo.getSourceMethodName();
 
-        VMError.guarantee(Heap.getHeap().isInImageHeap(sourceClass), "Source class must be in the image heap");
-        VMError.guarantee(Heap.getHeap().isInImageHeap(sourceMethodName), "Source method name string must be in the image heap");
+        if (!(frameSourceInfo instanceof InterpreterFrameSourceInfo)) {
+            VMError.guarantee(Heap.getHeap().isInImageHeap(sourceClass), "Source class must be in the image heap");
+            VMError.guarantee(Heap.getHeap().isInImageHeap(sourceMethodName), "Source method name string must be in the image heap");
+        }
 
         ensureSize(index + entriesPerSourceReference());
         writeSourceReference(trace, index, sourceLineNumber, sourceClass, sourceMethodName);
@@ -622,7 +633,7 @@ final class StackTraceBuilder extends BacktraceDecoder {
 
     @Override
     protected void processSourceReference(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber) {
-        StackTraceElement sourceReference = FrameInfoQueryResult.getSourceReference(sourceClass, sourceMethodName, sourceLineNumber);
+        StackTraceElement sourceReference = FrameSourceInfo.getSourceReference(sourceClass, sourceMethodName, sourceLineNumber);
         trace.add(sourceReference);
     }
 }
@@ -639,12 +650,12 @@ class BuildStackTraceVisitor extends JavaStackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(FrameInfoQueryResult frameInfo) {
-        if (!StackTraceUtils.shouldShowFrame(frameInfo)) {
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo) {
+        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo)) {
             /* Always ignore the frame. It is an internal frame of the VM. */
             return true;
 
-        } else if (filterExceptions && trace.size() == 0 && Throwable.class.isAssignableFrom(frameInfo.getSourceClass())) {
+        } else if (filterExceptions && trace.size() == 0 && Throwable.class.isAssignableFrom(frameSourceInfo.getSourceClass())) {
             /*
              * We are still in the constructor invocation chain at the beginning of the stack trace,
              * which is also filtered by the Java HotSpot VM.
@@ -652,7 +663,7 @@ class BuildStackTraceVisitor extends JavaStackFrameVisitor {
             return true;
         }
 
-        StackTraceElement sourceReference = frameInfo.getSourceReference();
+        StackTraceElement sourceReference = frameSourceInfo.getSourceReference();
         trace.add(sourceReference);
         return trace.size() != limit;
     }
@@ -672,7 +683,7 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(FrameInfoQueryResult frameInfo) {
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo) {
         assert depth >= 0;
 
         if (ignoreFirst) {
@@ -688,7 +699,7 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
             ignoreFirst = false;
             return true;
 
-        } else if (!StackTraceUtils.shouldShowFrame(frameInfo, showLambdaFrames, false, false)) {
+        } else if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, showLambdaFrames, false, false)) {
             /*
              * Always ignore the frame. It is an internal frame of the VM or a frame related to
              * reflection.
@@ -702,7 +713,7 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
 
         } else {
             /* Found the caller frame, remember it and end the stack walk. */
-            result = frameInfo.getSourceClass();
+            result = frameSourceInfo.getSourceClass();
             return false;
         }
     }
@@ -718,11 +729,11 @@ class GetClassContextVisitor extends JavaStackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(FrameInfoQueryResult frameInfo) {
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo) {
         if (skip > 0) {
             skip--;
-        } else if (StackTraceUtils.shouldShowFrame(frameInfo, true, false, false)) {
-            trace.add(frameInfo.getSourceClass());
+        } else if (StackTraceUtils.shouldShowFrame(frameSourceInfo, true, false, false)) {
+            trace.add(frameSourceInfo.getSourceClass());
         }
         return true;
     }
@@ -735,13 +746,13 @@ class GetLatestUserDefinedClassLoaderVisitor extends JavaStackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(FrameInfoQueryResult frameInfo) {
-        if (!StackTraceUtils.shouldShowFrame(frameInfo, true, true, false)) {
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo) {
+        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, true, true, false)) {
             // Skip internal frames.
             return true;
         }
 
-        ClassLoader classLoader = frameInfo.getSourceClass().getClassLoader();
+        ClassLoader classLoader = frameSourceInfo.getSourceClass().getClassLoader();
         if (classLoader == null || isExtensionOrPlatformLoader(classLoader)) {
             // Skip bootstrap and platform/extension class loader.
             return true;
@@ -770,13 +781,13 @@ class StackAccessControlContextVisitor extends JavaStackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(FrameInfoQueryResult frameInfo) {
-        if (!StackTraceUtils.shouldShowFrame(frameInfo, true, false, false)) {
+    public boolean visitFrame(FrameSourceInfo frameSourceInfo) {
+        if (!StackTraceUtils.shouldShowFrame(frameSourceInfo, true, false, false)) {
             return true;
         }
 
-        Class<?> clazz = frameInfo.getSourceClass();
-        String method = frameInfo.getSourceMethodName();
+        Class<?> clazz = frameSourceInfo.getSourceClass();
+        String method = frameSourceInfo.getSourceMethodName();
 
         ProtectionDomain protectionDomain;
         if (PrivilegedStack.length() > 0 && clazz.equals(AccessController.class) && method.equals("doPrivileged")) {

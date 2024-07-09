@@ -47,6 +47,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -396,7 +397,7 @@ public class SVMHost extends HostVM {
          * bytecode-liveness. This greatly helps debugging. Note that when local variable numbers
          * are reused by javac, local variables can still be assigned to illegal values.
          */
-        return SubstrateOptions.optimizationLevel() == OptimizationLevel.O0;
+        return SubstrateOptions.optimizationLevel() == OptimizationLevel.O0 || InterpreterSupport.isEnabled();
     }
 
     @Override
