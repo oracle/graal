@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,15 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import java.util.List;
 
+import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.graph.iterators.NodePredicate;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.memory.MemoryPhiNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
@@ -136,8 +139,32 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
         return forwardEndAt(index);
     }
 
+    /**
+     * Returns the phi nodes {@linkplain #isPhiAtMerge anchored at this merge}. The returned node
+     * iterable does not contain duplicates. The iteration order is not specified.
+     */
     public NodeIterable<PhiNode> phis() {
-        return this.usages().filter(PhiNode.class).filter(this::isPhiAtMerge);
+        return this.usages().filter(PhiNode.class).filter(new NodePredicate() {
+            /*
+             * A guard phi can use a merge both as its merge point and as a guard input. Such a phi
+             * occurs in the usages twice. Eliminate duplicate guard phis using this set.
+             */
+            EconomicSet<GuardPhiNode> seenGuardPhis = null;
+
+            @Override
+            public boolean apply(Node n) {
+                if (isPhiAtMerge(n)) {
+                    if (n instanceof GuardPhiNode guardPhi) {
+                        if (seenGuardPhis == null) {
+                            seenGuardPhis = EconomicSet.create();
+                        }
+                        return seenGuardPhis.add(guardPhi);
+                    }
+                    return true;
+                }
+                return false;
+            }
+        });
     }
 
     public NodeIterable<ValuePhiNode> valuePhis() {
