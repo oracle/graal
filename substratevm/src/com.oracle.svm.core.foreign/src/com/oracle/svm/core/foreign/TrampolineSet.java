@@ -36,7 +36,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.VMError;
 
@@ -114,7 +113,7 @@ final class TrampolineSet {
         /* We request a specific alignment to guarantee correctness of getAllocationBase */
         Pointer page = memoryProvider.commit(WordFactory.nullPointer(), pageSize, VirtualMemoryProvider.Access.WRITE | VirtualMemoryProvider.Access.FUTURE_EXECUTE);
         if (page.isNull()) {
-            throw OutOfMemoryUtil.reportOutOfMemoryError(new OutOfMemoryError("Could not allocate memory for trampolines."));
+            throw new OutOfMemoryError("Could not allocate memory for trampolines.");
         }
         VMError.guarantee(page.unsignedRemainder(pageSize).equal(0), "Trampoline allocation must be aligned to allocationSize().");
 
