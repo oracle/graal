@@ -24,7 +24,9 @@
 #
 
 import os
+import pathlib
 import re
+import shutil
 import tempfile
 from glob import glob
 from contextlib import contextmanager
@@ -52,8 +54,6 @@ from mx_sdk_vm_impl import svm_experimental_options
 from mx_unittest import _run_tests, _VMLauncher
 
 import sys
-
-
 
 suite = mx.suite('substratevm')
 svmSuites = [suite]
@@ -206,6 +206,7 @@ GraalTags = Tags([
     'hellomodule',
     'condconfig',
     'truffle_unittests',
+    'check_libcontainer_annotations'
 ])
 
 def vm_native_image_path(config=None):
@@ -448,6 +449,10 @@ def svm_gate_body(args, tasks):
                 mx.abort('mx native-image --help does not seem to output the proper message. This can happen if you add extra arguments the mx native-image call without checking if an argument was --help or --help-extra.')
 
             mx.log('mx native-image --help output check detected no errors.')
+
+    with Task('Check ContainerLibrary annotations', tasks, tags=[GraalTags.check_libcontainer_annotations]) as t:
+        if t:
+            mx.command_function("check-libcontainer-annotations")([])
 
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
@@ -2213,3 +2218,77 @@ if is_musl_supported():
     def musl_helloworld(args, config=None):
         final_args = ['--static', '--libc=musl'] + args
         run_helloworld_command(final_args, config, 'muslhelloworld')
+
+
+def _get_libcontainer_files():
+    paths = []
+    libcontainer_project = mx.project("com.oracle.svm.native.libcontainer")
+    libcontainer_dir = libcontainer_project.dir
+    for src_dir in libcontainer_project.source_dirs():
+        for path, _, files in os.walk(src_dir):
+            for name in files:
+                abs_path = pathlib.PurePath(path, name)
+                rel_path = abs_path.relative_to(libcontainer_dir)
+                src_svm = pathlib.PurePath("src", "svm")
+                if src_svm in rel_path.parents:
+                    # replace "svm" with "hotspot"
+                    stripped_path = rel_path.relative_to(src_svm)
+                    if not stripped_path.as_posix().startswith("svm_container"):
+                        hotspot_path = pathlib.PurePath("src", "hotspot") / stripped_path
+                        paths.append(hotspot_path.as_posix())
+                else:
+                    paths.append(rel_path.as_posix())
+    return libcontainer_dir, paths
+
+
+@mx.command(suite, 'check-libcontainer-annotations')
+def check_libcontainer_annotations(args):
+    """Verifies that files from libcontainer that are copied from hotspot have a @BasedOnJDKFile annotation in ContainerLibrary."""
+
+    # collect paths to check
+
+    libcontainer_dir, paths = _get_libcontainer_files()
+
+    java_project = mx.project("com.oracle.svm.core")
+    container_library = pathlib.Path(java_project.dir, "src/com/oracle/svm/core/container/ContainerLibrary.java")
+    with open(container_library, "r") as fp:
+        annotation_lines = [x for x in fp.readlines() if "@BasedOnJDKFile" in x]
+
+    # check all files are in an annotation
+    for f in paths:
+        if not any((a for a in annotation_lines if f in a)):
+            mx.abort(f"file {f} not found in any annotation in {container_library}")
+
+    # check all annotations refer to a file
+    for a in annotation_lines:
+        if not any((f for f in paths if f in a)):
+            mx.abort(f"annotation {a} does not match any files in {libcontainer_dir}")
+
+
+reimport_libcontainer_files_cmd = "reimport-libcontainer-files"
+
+
+@mx.command(suite, reimport_libcontainer_files_cmd)
+def reimport_libcontainer_files(args):
+    parser = ArgumentParser(prog=f"mx {reimport_libcontainer_files_cmd}")
+    parser.add_argument("--jdk-repo", required=True, help="Path to the OpenJDK repo to import the files from.")
+    parsed_args = parser.parse_args(args)
+
+    libcontainer_dir, paths = _get_libcontainer_files()
+
+    libcontainer_path = pathlib.Path(libcontainer_dir)
+    jdk_path = pathlib.Path(parsed_args.jdk_repo)
+
+    missing = []
+
+    for path in paths:
+        jdk_file = jdk_path / path
+        svm_file = libcontainer_path / path
+        if jdk_file.is_file():
+            if mx.ask_yes_no(f"Should I update {path}"):
+                shutil.copyfile(jdk_file, svm_file)
+        else:
+            missing.append(jdk_file)
+            mx.warn(f"File not found: {jdk_file}")
+            if mx.ask_yes_no(f"Should I delete {path}"):
+                svm_file.unlink()

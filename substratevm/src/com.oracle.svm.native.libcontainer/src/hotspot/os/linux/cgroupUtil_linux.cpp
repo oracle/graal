@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,29 +24,27 @@
  * questions.
  */
 
-#ifndef SHARE_UTILITY_ATTRIBUTENORETURN_HPP
-#define SHARE_UTILITY_ATTRIBUTENORETURN_HPP
+#include "cgroupUtil_linux.hpp"
 
-// Provide a (temporary) macro for the [[noreturn]] attribute.
-//
-// Unfortunately, some older (though still in use) compilers have bugs when
-// using [[noreturn]].  For them we use an empty definition for the attribute.
-//
-// Note: This can't be placed in globalDefinitions_xxx.hpp because the
-// attribute is used in debug.hpp, which can't include globalDefinitions.hpp.
+int CgroupUtil::processor_count(CgroupCpuController* cpu_ctrl, int host_cpus) {
+  assert(host_cpus > 0, "physical host cpus must be positive");
+  int limit_count = host_cpus;
+  int quota  = cpu_ctrl->cpu_quota();
+  int period = cpu_ctrl->cpu_period();
+  int quota_count = 0;
+  int result = 0;
 
-// clang 12 (and possibly prior) crashes during build if we use [[noreturn]]
-// for assertion failure reporting functions.  The problem seems to be fixed
-// in clang 13.
-#ifdef __clang__
-#if __clang_major__ < 13
-#define ATTRIBUTE_NORETURN
-#endif
-#endif
+  if (quota > -1 && period > 0) {
+    quota_count = ceilf((float)quota / (float)period);
+    log_trace(os, container)("CPU Quota count based on quota/period: %d", quota_count);
+  }
 
-// All other platforms can use [[noreturn]].
-#ifndef ATTRIBUTE_NORETURN
-#define ATTRIBUTE_NORETURN [[noreturn]]
-#endif
+  // Use quotas
+  if (quota_count != 0) {
+    limit_count = quota_count;
+  }
 
-#endif // SHARE_UTILITY_ATTRIBUTENORETURN_HPP
+  result = MIN2(host_cpus, limit_count);
+  log_trace(os, container)("OSContainer::active_processor_count: %d", result);
+  return result;
+}
