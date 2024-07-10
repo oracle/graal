@@ -350,24 +350,68 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.endSource();
             b.endRoot();
         });
-
         long[] inputs = new long[]{0, -1, 1};
         for (int i = 0; i < inputs.length; i++) {
             SourceSection[] result = (SourceSection[]) node.getCallTarget().call(inputs[i]);
-            // TODO: source bci ranges need to be opened/closed when emitting finally handlers
-            // in-line.
-            if (inputs[i] == 1) {
-                assertSourceSections(result, source, 4, 7, 0, 4, 0, 11);
-            } else {
-                assertSourceSections(result, source, 4, 7, 0, 11);
-            }
+            assertSourceSections(result, source, 4, 7, 0, 11);
         }
+
+        // Even though the source section encloses the whole root body, because the source sections
+        // are split into multiple ranges, this result is null (see
+        // {#testSourceOfRootNodeWithFinallyTry}).
+        assertNull(node.getSourceSection());
+    }
+
+    @Test
+    public void testSourceOfRootNodeWithFinallyTry() {
+        // The reliable way to ensure a root node has a source section is to enclose the root
+        // operation in it.
+
+        /** @formatter:off
+         *  try:
+         *    if arg0 < 0: return
+         *    nop
+         *  finally:
+         *    nop
+         *  @formatter:on
+         */
+
+        Source source = Source.newBuilder("test", "try finally", "sourceOfRooutNodeWithFinallyTry").build();
+        BasicInterpreter node = parseNodeWithSource("source", b -> {
+            b.beginSource(source);
+            b.beginSourceSection(0, 11);
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry(() -> {
+                // finally
+                b.beginSourceSection(4, 7);
+                b.emitVoidOperation();
+                b.endSourceSection();
+            });
+            // try
+            b.beginSourceSection(0, 4);
+            b.beginBlock();
+            emitReturnIf(b, 0, 42L);
+            b.emitVoidOperation();
+            b.endBlock();
+            b.endSourceSection();
+
+            b.endFinallyTry();
+
+            b.endRoot();
+            b.endSourceSection();
+            b.endSource();
+        });
+        assertEquals(42L, node.getCallTarget().call(true));
+        assertEquals(null, node.getCallTarget().call(false));
+
+        assertSourceSection(node.getSourceSection(), source, 0, 11);
     }
 
     @Test
     public void testSourceRootNodeDeclaredInFinallyTry() {
-        // Same idea as above, but ensures root nodes declared in a finally handler inherit sources
-        // declared outside the root node.
+        // Ensures root nodes declared in a finally handler inherit sources declared outside the
+        // root node.
 
         /** @formatter:off
          *  try:

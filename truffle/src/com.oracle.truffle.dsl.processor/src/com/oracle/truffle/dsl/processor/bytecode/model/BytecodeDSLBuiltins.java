@@ -90,7 +90,8 @@ public class BytecodeDSLBuiltins {
                                         A root operation is typically the outermost one. That is, a {@link BytecodeParser} should invoke {@link #beginRoot} first before using other builder methods to generate bytecode.
                                         The parser should invoke {@link #endRoot} to finish generating the {@link %s}.
                                         <p>
-                                        This operation *can* be nested in Source and SourceSection operations in order to provide a source location for the entire root node.
+                                        A parser *can* nest this operation in Source and SourceSection operations in order to provide a {@link Node#getSourceSection source location} for the entire root node.
+                                        The result of {@link Node#getSourceSection} on the generated root is undefined if there is no enclosing SourceSection operation.
                                         <p>
                                         This method can also be called inside of another root operation. Bytecode generation for the outer root node suspends until generation for the inner root node finishes.
                                         The inner root node is not lexically nested in the first (you can invoke the inner root node independently), but the inner root *can* manipulate the outer root's locals using

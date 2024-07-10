@@ -6580,16 +6580,25 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startIf();
             b.string("prevIndex >= 0").newLine().startIndention();
-            b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_START_BCI]) == startBci").newLine();
-            b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_END_BCI]) == endBci").newLine();
             b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_SOURCE]) == sourceIndex").newLine();
             b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_START]) == start").newLine();
             b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_LENGTH]) == length");
-            b.end();
-            b.end().startBlock();
+            b.end(2).startBlock();
+
+            b.startIf().string("(sourceInfo[prevIndex + SOURCE_INFO_OFFSET_START_BCI]) == startBci").newLine().startIndention();
+            b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_END_BCI]) == endBci");
+            b.end(2).startBlock();
             b.lineComment("duplicate entry");
             b.statement("return");
             b.end();
+
+            b.startElseIf().string("(sourceInfo[prevIndex + SOURCE_INFO_OFFSET_END_BCI]) == startBci").end().startBlock();
+            b.lineComment("contiguous entry");
+            b.statement("sourceInfo[prevIndex + SOURCE_INFO_OFFSET_END_BCI] = endBci");
+            b.statement("return");
+            b.end();
+
+            b.end(); // if source, start, length match
 
             b.startIf().string("index >= sourceInfo.length").end().startBlock();
             b.statement("sourceInfo = Arrays.copyOf(sourceInfo, sourceInfo.length * 2)");
@@ -6799,27 +6808,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         /**
-         * Before emitting a branch, we may need to emit additional instructions to "resolve"
-         * pending operations. In particular, we emit finally handlers and tag leave instructions.
-         * If any instructions are emitted, we also need to close and reopen exception handlers.
+         * Before emitting a branch, we may need to emit instructions to "resolve" pending
+         * operations (like finally handlers). We may also need to close and reopen certain bytecode
+         * ranges, like exception handlers, which should not apply to those emitted instructions.
          */
         private CodeExecutableElement createBeforeEmitBranch() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeEmitBranch");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "declaringOperationSp"));
-            emitExitInstructionsBeforeEarlyExit(ex, OperationKind.BRANCH, "branch", "declaringOperationSp");
+            emitStackWalksBeforeEarlyExit(ex, OperationKind.BRANCH, "branch", "declaringOperationSp");
             return ex;
         }
 
         /**
-         * Before emitting a return, we may need to emit additional instructions to "resolve"
-         * pending operations. In particular, we emit finally handlers, tag leave, and epilog
-         * instructions. If any instructions are emitted, we also need to close and reopen exception
-         * handlers.
+         * Before emitting a return, we may need to emit instructions to "resolve" pending
+         * operations (like finally handlers). We may also need to close and reopen certain bytecode
+         * ranges, like exception handlers, which should not apply to those emitted instructions.
          */
         private CodeExecutableElement createBeforeEmitReturn() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeEmitReturn");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "parentBci"));
-            emitExitInstructionsBeforeEarlyExit(ex, OperationKind.RETURN, "return", "rootOperationSp");
+            emitStackWalksBeforeEarlyExit(ex, OperationKind.RETURN, "return", "rootOperationSp");
             return ex;
         }
 
@@ -6890,30 +6898,32 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         /**
          * Generates code to walk the operation stack and emit any "exit" instructions before a
-         * branch/return.
+         * branch/return. Also closes and reopens bytecode ranges that should not apply to those
+         * emitted instructions.
          */
-        private void emitExitInstructionsBeforeEarlyExit(CodeExecutableElement ex, OperationKind operationKind, String friendlyInstructionName, String lowestOperationIndex) {
-            addJavadoc(ex, "Walks the operation stack, emitting instructions for any operations that need to complete before the " + friendlyInstructionName + ".");
+        private void emitStackWalksBeforeEarlyExit(CodeExecutableElement ex, OperationKind operationKind, String friendlyInstructionName, String lowestOperationIndex) {
+            addJavadoc(ex, "Walks the operation stack, emitting instructions for any operations that need to complete before the " + friendlyInstructionName +
+                            " (and fixing up bytecode ranges to exclude these instructions).");
             CodeTreeBuilder b = ex.createBuilder();
 
-            emitExitInstructionsStackWalk(b, operationKind, lowestOperationIndex);
-            emitReopenHandlersStackWalk(b, lowestOperationIndex);
+            emitUnwindBeforeEarlyExit(b, operationKind, lowestOperationIndex);
+            emitRewindBeforeEarlyExit(b, lowestOperationIndex);
         }
 
         /**
          * Generates code to walk the operation stack and emit exit instructions. Also closes
          * exception ranges for exception handlers where necessary.
          */
-        private void emitExitInstructionsStackWalk(CodeTreeBuilder b, OperationKind operationKind, String lowestOperationIndex) {
+        private void emitUnwindBeforeEarlyExit(CodeTreeBuilder b, OperationKind operationKind, String lowestOperationIndex) {
             b.startJavadoc();
-            b.string("Emit \"exit\" instructions for any pending operations, closing exception ranges where necessary.").newLine();
+            b.string("Emit \"exit\" instructions for any pending operations, and close any bytecode ranges that should not apply to the emitted instructions.").newLine();
             b.end();
             if (operationKind == OperationKind.RETURN) {
                 // Remember the bytecode index for boxing elimination.
                 b.declaration(type(int.class), "childBci", "parentBci");
             }
 
-            b.declaration(type(boolean.class), "handlerClosed", "false");
+            b.declaration(type(boolean.class), "needsRewind", "false");
             buildOperationStackWalk(b, lowestOperationIndex, () -> {
                 b.startSwitch().string("operationStack[i].operation").end().startBlock();
 
@@ -6930,7 +6940,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
                     }
                     b.statement("doCreateExceptionHandler(operationData.handlerStartBci, bci, HANDLER_TAG_EXCEPTIONAL, operationData.nodeId, operationData.startStackHeight)");
-                    b.statement("handlerClosed = true");
+                    b.statement("needsRewind = true");
                     b.end(); // reachable
                     b.statement("break");
                     b.end(); // case tag
@@ -6952,7 +6962,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startIf().string("operationStack[i].childCount == 0 /* still in try */").end().startBlock();
                     b.startIf().string("reachable").end().startBlock();
                     emitExtraExceptionTableEntry(b);
-                    b.statement("handlerClosed = true");
+                    b.statement("needsRewind = true");
                     b.end(); // if reachable
                     b.statement("doEmitFinallyHandler(operationData, i)");
                     b.end(); // if in try
@@ -6965,10 +6975,24 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 emitCastOperationData(b, model.tryCatchOperation, "i");
                 b.startIf().string("operationStack[i].childCount == 0 /* still in try */ && reachable").end().startBlock();
                 emitExtraExceptionTableEntry(b);
-                b.statement("handlerClosed = true");
+                b.statement("needsRewind = true");
                 b.end(); // if in try and reachable
                 b.statement("break");
                 b.end(); // case trycatch
+
+                b.startCase().tree(createOperationConstant(model.sourceSectionOperation)).end();
+                b.startBlock();
+                emitCastOperationData(b, model.sourceSectionOperation, "i");
+                b.startStatement().startCall("doEmitSourceInfo");
+                b.string("operationData.sourceIndex");
+                b.string("operationData.startBci");
+                b.string("bci");
+                b.string("operationData.start");
+                b.string("operationData.length");
+                b.end(2);
+                b.statement("needsRewind = true");
+                b.statement("break");
+                b.end(); // case source section
 
                 b.end(); // switch
             });
@@ -6987,13 +7011,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         /**
-         * Generates code to reopen handler ranges after "exiting" the parent operations.
+         * Generates code to reopen bytecode ranges after "exiting" the parent operations.
          */
-        private void emitReopenHandlersStackWalk(CodeTreeBuilder b, String lowestOperationIndex) {
+        private void emitRewindBeforeEarlyExit(CodeTreeBuilder b, String lowestOperationIndex) {
             b.startJavadoc();
-            b.string("Now that all \"exit\" instructions have been emitted, reopen exception handlers.").newLine();
+            b.string("Now that all \"exit\" instructions have been emitted, reopen bytecode ranges.").newLine();
             b.end();
-            b.startIf().string("handlerClosed").end().startBlock();
+            b.startIf().string("needsRewind").end().startBlock();
 
             buildOperationStackWalk(b, lowestOperationIndex, () -> {
                 b.startSwitch().string("operationStack[i].operation").end().startBlock();
@@ -7025,6 +7049,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end(); // if
                 b.statement("break");
                 b.end(); // case trycatch
+
+                b.startCase().tree(createOperationConstant(model.sourceSectionOperation)).end();
+                b.startBlock();
+                emitCastOperationData(b, model.sourceSectionOperation, "i");
+                b.statement("operationData.startBci = bci");
+                b.statement("break");
+                b.end(); // case source section
 
                 b.end(); // switch
             });
