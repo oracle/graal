@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.GCRelatedMXBeans;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -47,8 +48,6 @@ import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.jdk.management.ManagementFeature;
-import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -306,7 +305,7 @@ final class CodeInfoTableCounters {
 class CodeInfoFeature implements InternalFeature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(CounterFeature.class, ManagementFeature.class);
+        return Arrays.asList(CounterFeature.class);
     }
 
     @Override
@@ -322,9 +321,9 @@ class CodeInfoFeature implements InternalFeature {
         List<MemoryManagerMXBean> memoryManagers = List.of(new CodeCacheManagerMXBean());
         List<MemoryPoolMXBean> memoryPools = CodeCachePoolMXBean.getMemoryPools();
 
-        ManagementSupport managementSupport = ManagementSupport.getSingleton();
-        managementSupport.addPlatformManagedObjectList(MemoryManagerMXBean.class, memoryManagers);
-        managementSupport.addPlatformManagedObjectList(MemoryPoolMXBean.class, memoryPools);
+        GCRelatedMXBeans gcRelatedMXBeans = GCRelatedMXBeans.getSingleton();
+        gcRelatedMXBeans.addPlatformMXBeanList(MemoryManagerMXBean.class, memoryManagers);
+        gcRelatedMXBeans.addPlatformMXBeanList(MemoryPoolMXBean.class, memoryPools);
     }
 
     @Override

@@ -31,6 +31,7 @@ import java.util.Map;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.GCRelatedMXBeans;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -55,8 +56,6 @@ import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.RuntimeSupportFeature;
-import com.oracle.svm.core.jdk.management.ManagementFeature;
-import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfManager;
@@ -74,7 +73,7 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(RuntimeSupportFeature.class, ManagementFeature.class, PerfDataFeature.class, AllocationFeature.class);
+        return Arrays.asList(RuntimeSupportFeature.class, PerfDataFeature.class, AllocationFeature.class);
     }
 
     @Override
@@ -83,8 +82,7 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(RememberedSet.class, rememberedSet);
         ImageSingletons.add(BarrierSetProvider.class, rememberedSet);
 
-        ManagementSupport managementSupport = ManagementSupport.getSingleton();
-        managementSupport.setGCRelatedMXBeans(new GenScavengeRelatedMXBeans());
+        ImageSingletons.add(GCRelatedMXBeans.class, new GenScavengeRelatedMXBeans());
     }
 
     @Override

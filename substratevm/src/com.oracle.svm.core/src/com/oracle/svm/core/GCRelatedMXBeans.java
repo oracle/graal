@@ -27,50 +27,32 @@ package com.oracle.svm.core;
 import java.lang.management.PlatformManagedObject;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.util.UserError;
 
-public class GCRelatedMXBeans {
+import jdk.graal.compiler.api.replacements.Fold;
 
-    private static final Set<Class<? extends PlatformManagedObject>> gcRelatedMXBeanClasses;
+public class GCRelatedMXBeans {
 
     private final Map<Class<?>, Object> platformManagedObjectsMap = new HashMap<>();
     private final Set<PlatformManagedObject> platformManagedObjectsSet = Collections.newSetFromMap(new IdentityHashMap<>());
-
-    static {
-        Set<Class<? extends PlatformManagedObject>> values = new HashSet<>();
-        addGCRelatedMXBeanClass(java.lang.management.MemoryMXBean.class, values);
-        addGCRelatedMXBeanClass(com.sun.management.GarbageCollectorMXBean.class, values);
-        addGCRelatedMXBeanClass(java.lang.management.MemoryPoolMXBean.class, values);
-        addGCRelatedMXBeanClass(java.lang.management.BufferPoolMXBean.class, values);
-
-        gcRelatedMXBeanClasses = Collections.unmodifiableSet(values);
-    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public GCRelatedMXBeans() {
     }
 
-    private static void addGCRelatedMXBeanClass(Class<? extends PlatformManagedObject> clazz, Set<Class<? extends PlatformManagedObject>> values) {
-        for (Class<?> superinterface : clazz.getInterfaces()) {
-            if (superinterface != PlatformManagedObject.class && PlatformManagedObject.class.isAssignableFrom(superinterface)) {
-                addGCRelatedMXBeanClass(superinterface.asSubclass(PlatformManagedObject.class), values);
-            }
-        }
-        values.add(clazz);
-    }
-
-    public static <T extends PlatformManagedObject> boolean isGCRelatedMXBean(Class<T> clazz) {
-        return gcRelatedMXBeanClasses.contains(clazz);
+    @Fold
+    public static GCRelatedMXBeans getSingleton() {
+        return ImageSingletons.lookup(GCRelatedMXBeans.class);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -89,7 +71,7 @@ public class GCRelatedMXBeans {
         ManagementSupport.doAddPlatformManagedObjectList(platformManagedObjectsMap, platformManagedObjectsSet, clazz, objects);
     }
 
-    public <T extends PlatformManagedObject> Object getPlatformMXBeanObject(Class<T> mxbeanInterface) {
+    public Object getPlatformMXBeanObject(Class<? extends PlatformManagedObject> mxbeanInterface) {
         return platformManagedObjectsMap.get(mxbeanInterface);
     }
 
@@ -101,8 +83,8 @@ public class GCRelatedMXBeans {
         return Collections.unmodifiableSet(platformManagedObjectsSet);
     }
 
-    public Set<Class<? extends PlatformManagedObject>> getUsedInterfaces() {
-        return gcRelatedMXBeanClasses;
+    public Set<Class<?>> getUsedInterfaces() {
+        return platformManagedObjectsMap.keySet();
     }
 
 }
