@@ -34,13 +34,19 @@ import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * This class provides replacement values for the {@link System#in}, {@link System#out}, and
@@ -57,6 +63,9 @@ public final class SystemInOutErrSupport implements InitialLayerOnlyImageSinglet
     private PrintStream out = newPrintStream(new FileOutputStream(FileDescriptor.out), System.getProperty("sun.stdout.encoding"));
     private PrintStream err = newPrintStream(new FileOutputStream(FileDescriptor.err), System.getProperty("sun.stderr.encoding"));
 
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    final AtomicBoolean isSealed = new AtomicBoolean(false);
+
     /* Create `PrintStream` in the same way as `System.newPrintStream`. */
     private static PrintStream newPrintStream(FileOutputStream fos, String enc) {
         if (enc != null) {
@@ -68,28 +77,57 @@ public final class SystemInOutErrSupport implements InitialLayerOnlyImageSinglet
         return new PrintStream(new BufferedOutputStream(fos, 128), true);
     }
 
+    public void seal() {
+        if (!isSealed.getPlain()) {
+            isSealed.set(true);
+        }
+    }
+
+    public void checkSealed() {
+        VMError.guarantee(!isSealed.get(), "SystemInOurErrorSupport is already sealed");
+    }
+
+    private static SystemInOutErrSupport singleton() {
+        return ImageSingletons.lookup(SystemInOutErrSupport.class);
+    }
+
+    @Fold
     public InputStream in() {
+        seal();
         return in;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void setIn(InputStream in) {
-        ImageSingletons.lookup(SystemInOutErrSupport.class).in = Objects.requireNonNull(in);
+        var support = singleton();
+        support.checkSealed();
+        support.in = Objects.requireNonNull(in);
     }
 
+    @Fold
     public PrintStream out() {
+        seal();
         return out;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void setOut(PrintStream out) {
-        ImageSingletons.lookup(SystemInOutErrSupport.class).out = Objects.requireNonNull(out);
+        var support = singleton();
+        support.checkSealed();
+        support.out = Objects.requireNonNull(out);
     }
 
+    @Fold
     public PrintStream err() {
+        seal();
         return err;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void setErr(PrintStream err) {
-        ImageSingletons.lookup(SystemInOutErrSupport.class).err = Objects.requireNonNull(err);
+        var support = singleton();
+        support.checkSealed();
+        support.err = Objects.requireNonNull(err);
     }
 
     @Override
