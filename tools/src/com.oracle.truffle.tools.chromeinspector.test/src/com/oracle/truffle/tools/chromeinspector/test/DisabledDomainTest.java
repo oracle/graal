@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.chromeinspector.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 /**
@@ -72,6 +73,9 @@ public class DisabledDomainTest {
         assertEquals("{\"result\":{},\"id\":23}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":24," + profilerMessage);
         assertEquals("{\"id\":24,\"error\":{\"code\":-32601,\"message\":\"Domain Profiler is disabled.\"}}", tester.getMessages(true).trim());
+        tester.sendMessage("{\"id\":30,\"method\":\"Runtime.enable\"}");
+        tester.sendMessage("{\"id\":31,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
+        assertTrue(tester.compareReceivedMessages("{\"result\":{},\"id\":30}\n{\"result\":{},\"id\":31}\n"));
         tester.finish();
     }
     // @formatter:on

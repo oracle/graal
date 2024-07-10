@@ -406,6 +406,7 @@ public final class InspectorTester {
                         }
                     }
                     if (source != null) {
+                        inspectorContext.waitForRunPermission();
                         Value value = context.eval(source);
                         valueFuture.complete(value);
                     }
