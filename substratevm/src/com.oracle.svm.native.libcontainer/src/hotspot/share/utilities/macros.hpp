@@ -636,4 +636,10 @@
 #define NOT_CDS_JAVA_HEAP_RETURN_(code) { return code; }
 #endif
 
+#ifdef ADDRESS_SANITIZER
+#define INCLUDE_ASAN 1
+#else
+#define INCLUDE_ASAN 0
+#endif
+
 #endif // SHARE_UTILITIES_MACROS_HPP

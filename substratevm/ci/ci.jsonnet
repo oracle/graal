@@ -117,7 +117,7 @@
 
   // START MAIN BUILD DEFINITION
   local task_dict = {
-    "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp") + eclipse + jdt + maven + mx_build_exploded + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
+    "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp,check_libcontainer_annotations") + eclipse + jdt + maven + mx_build_exploded + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
       // We could run the style gate on JDK 22 as well, and use old JDKs for running tools like StopBugs etc.,
       // but since we support JDK 21 anyways, there is not good reason to do so.
       "linux:amd64:jdk21": gate + t("30:00"),

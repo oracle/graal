@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -157,6 +157,19 @@ typedef void (*java_call_t)(JavaValue* value, const methodHandle& method, JavaCa
 class MallocTracker;
 #endif // !NATIVE_IMAGE
 
+// Preserve errno across a range of calls
+
+class ErrnoPreserver {
+  int _e;
+
+public:
+  ErrnoPreserver() { _e = errno; }
+
+  ~ErrnoPreserver() { errno = _e; }
+
+  int saved_errno() { return _e; }
+};
+
 class os: AllStatic {
   friend class VMStructs;
   friend class JVMCIVMStructs;
@@ -197,7 +210,7 @@ class os: AllStatic {
   static PageSizes          _page_sizes;
 
   // The default value for os::vm_min_address() unless the platform knows better. This value
-  // is chosen to give us reasonable protection against NULL pointer dereferences while being
+  // is chosen to give us reasonable protection against null pointer dereferences while being
   // low enough to leave most of the valuable low-4gb address space open.
   static constexpr size_t _vm_min_address_default = 16 * M;
 
@@ -223,12 +236,13 @@ class os: AllStatic {
   static char*  pd_map_memory(int fd, const char* file_name, size_t file_offset,
                            char *addr, size_t bytes, bool read_only = false,
                            bool allow_exec = false);
-  static char*  pd_remap_memory(int fd, const char* file_name, size_t file_offset,
-                             char *addr, size_t bytes, bool read_only,
-                             bool allow_exec);
   static bool   pd_unmap_memory(char *addr, size_t bytes);
   static void   pd_free_memory(char *addr, size_t bytes, size_t alignment_hint);
   static void   pd_realign_memory(char *addr, size_t bytes, size_t alignment_hint);
+
+  // Returns 0 if pretouch is done via platform dependent method, or otherwise
+  // returns page_size that should be used for the common method.
+  static size_t pd_pretouch_memory(void* first, void* last, size_t page_size);
 
   static char*  pd_reserve_memory_special(size_t size, size_t alignment, size_t page_size,
 
@@ -330,13 +344,18 @@ class os: AllStatic {
   // than "free" memory (`MemFree` in `/proc/meminfo`) because Linux can free memory
   // aggressively (e.g. clear caches) so that it becomes available.
   static julong available_memory();
+  static julong used_memory();
   static julong free_memory();
+
+  static jlong total_swap_space();
+  static jlong free_swap_space();
 #endif // !NATIVE_IMAGE
 
   static julong physical_memory();
 #ifndef NATIVE_IMAGE
   static bool has_allocatable_memory_limit(size_t* limit);
   static bool is_server_class_machine();
+  static size_t rss();
 
   // Returns the id of the processor on which the calling thread is currently executing.
   // The returned value is guaranteed to be between 0 and (os::processor_count() - 1).
@@ -450,7 +469,7 @@ class os: AllStatic {
 
   // Attempts to reserve the virtual memory at [addr, addr + bytes).
   // Does not overwrite existing mappings.
-  static char*  attempt_reserve_memory_at(char* addr, size_t bytes, bool executable = false);
+  static char*  attempt_reserve_memory_at(char* addr, size_t bytes, bool executable = false, MEMFLAGS flag = mtNone);
 
   // Given an address range [min, max), attempts to reserve memory within this area, with the given alignment.
   // If randomize is true, the location will be randomized.
@@ -502,19 +521,16 @@ class os: AllStatic {
   static int create_file_for_heap(const char* dir);
   // Map memory to the file referred by fd. This function is slightly different from map_memory()
   // and is added to be used for implementation of -XX:AllocateHeapAt
-  static char* map_memory_to_file(size_t size, int fd);
-  static char* map_memory_to_file_aligned(size_t size, size_t alignment, int fd);
+  static char* map_memory_to_file(size_t size, int fd, MEMFLAGS flag = mtNone);
+  static char* map_memory_to_file_aligned(size_t size, size_t alignment, int fd, MEMFLAGS flag = mtNone);
   static char* map_memory_to_file(char* base, size_t size, int fd);
-  static char* attempt_map_memory_to_file_at(char* base, size_t size, int fd);
+  static char* attempt_map_memory_to_file_at(char* base, size_t size, int fd, MEMFLAGS flag = mtNone);
   // Replace existing reserved memory with file mapping
   static char* replace_existing_mapping_with_file_mapping(char* base, size_t size, int fd);
 
   static char*  map_memory(int fd, const char* file_name, size_t file_offset,
                            char *addr, size_t bytes, bool read_only = false,
                            bool allow_exec = false, MEMFLAGS flags = mtNone);
-  static char*  remap_memory(int fd, const char* file_name, size_t file_offset,
-                             char *addr, size_t bytes, bool read_only,
-                             bool allow_exec);
   static bool   unmap_memory(char *addr, size_t bytes);
   static void   free_memory(char *addr, size_t bytes, size_t alignment_hint);
   static void   realign_memory(char *addr, size_t bytes, size_t alignment_hint);
@@ -604,7 +620,7 @@ class os: AllStatic {
   // multiple calls to naked_short_sleep. Only for use by non-JavaThreads.
   static void naked_sleep(jlong millis);
   // Never returns, use with CAUTION
-  ATTRIBUTE_NORETURN static void infinite_sleep();
+  [[noreturn]] static void infinite_sleep();
   static void naked_yield () ;
   static OSReturn set_priority(Thread* thread, ThreadPriority priority);
   static OSReturn get_priority(const Thread* const thread, ThreadPriority& priority);
@@ -628,26 +644,26 @@ class os: AllStatic {
   static int fork_and_exec(const char *cmd);
 
   // Call ::exit() on all platforms
-  ATTRIBUTE_NORETURN static void exit(int num);
+  [[noreturn]] static void exit(int num);
 
   // Call ::_exit() on all platforms. Similar semantics to die() except we never
   // want a core dump.
-  ATTRIBUTE_NORETURN static void _exit(int num);
+  [[noreturn]] static void _exit(int num);
 
   // Terminate the VM, but don't exit the process
   static void shutdown();
 
   // Terminate with an error.  Default is to generate a core file on platforms
   // that support such things.  This calls shutdown() and then aborts.
-  ATTRIBUTE_NORETURN static void abort(bool dump_core, void *siginfo, const void *context);
-  ATTRIBUTE_NORETURN static void abort(bool dump_core = true);
+  [[noreturn]] static void abort(bool dump_core, void *siginfo, const void *context);
+  [[noreturn]] static void abort(bool dump_core = true);
 
   // Die immediately, no exit hook, no abort hook, no cleanup.
   // Dump a core file, if possible, for debugging. os::abort() is the
   // preferred means to abort the VM on error. os::die() should only
   // be called if something has gone badly wrong. CreateCoredumpOnCrash
   // is intentionally not honored by this function.
-  ATTRIBUTE_NORETURN static void die();
+  [[noreturn]] static void die();
 
   // File i/o operations
   static int open(const char *path, int oflag, int mode);
@@ -772,8 +788,8 @@ class os: AllStatic {
                                    const char *syms[], size_t syms_len);
 #endif // !NATIVE_IMAGE
 
-  // Provide C99 compliant versions of these functions, since some versions
-  // of some platforms don't.
+  // Provide wrapper versions of these functions to guarantee NUL-termination
+  // in all cases.
   static int vsnprintf(char* buf, size_t len, const char* fmt, va_list args) ATTRIBUTE_PRINTF(3, 0);
 #ifndef NATIVE_IMAGE
   static int snprintf(char* buf, size_t len, const char* fmt, ...) ATTRIBUTE_PRINTF(3, 4);
@@ -860,10 +876,10 @@ class os: AllStatic {
   // return current frame. pc() and sp() are set to null on failure.
   static frame      current_frame();
 
-  static void print_hex_dump(outputStream* st, address start, address end, int unitsize,
-                             int bytes_per_line, address logical_start);
-  static void print_hex_dump(outputStream* st, address start, address end, int unitsize) {
-    print_hex_dump(st, start, end, unitsize, /*bytes_per_line=*/16, /*logical_start=*/start);
+  static void print_hex_dump(outputStream* st, const_address start, const_address end, int unitsize, bool print_ascii,
+                             int bytes_per_line, const_address logical_start);
+  static void print_hex_dump(outputStream* st, const_address start, const_address end, int unitsize, bool print_ascii = true) {
+    print_hex_dump(st, start, end, unitsize, print_ascii, /*bytes_per_line=*/16, /*logical_start=*/start);
   }
 
   // returns a string to describe the exception/signal;
