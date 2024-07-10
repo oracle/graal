@@ -52,8 +52,6 @@ import java.util.List;
 import java.util.Map;
 
 abstract class FrameRecordSerializer {
-    protected static final int THIS_POS = 1;
-
     final ObjectOutput out;
     final ObjectInput in;
     ClassLoader loader;
@@ -133,7 +131,7 @@ final class FrameRecordSerializerV2 extends FrameRecordSerializer {
     }
 
     @Override
-    public ContinuationImpl.FrameRecord readRecord() throws IOException, ClassNotFoundException {
+    public ContinuationImpl.FrameRecord readRecord() throws IOException {
         assert in != null;
         assert loader != null;
         try {
@@ -154,16 +152,7 @@ final class FrameRecordSerializerV2 extends FrameRecordSerializer {
         }
     }
 
-    private void writeFrame(ContinuationImpl.FrameRecord cursor) throws IOException {
-        assert out != null;
-        Method method = cursor.method;
-        out.writeObject(cursor.pointers);
-        out.writeObject(cursor.primitives);
-        writeMethodNameAndTypes(method, cursor.pointers.length > THIS_POS ? cursor.pointers[THIS_POS] : null);
-        out.writeInt(cursor.bci);
-    }
-
-    private void writeMethodNameAndTypes(Method method, Object receiver) throws IOException {
+    private void writeMethodHolder(Method method, Object receiver) throws IOException {
         assert out != null;
         if (receiver != null && method.getDeclaringClass() == receiver.getClass()) {
             /*
@@ -180,7 +169,21 @@ final class FrameRecordSerializerV2 extends FrameRecordSerializer {
             }
             writeString(method.getDeclaringClass().getName());
         }
+    }
+
+    private void writeFrame(ContinuationImpl.FrameRecord cursor) throws IOException {
+        assert out != null;
+        Method method = cursor.method;
+        writeMethodHolder(method, cursor.pointers.length > THIS_POS ? cursor.pointers[THIS_POS] : null);
         writeString(method.getName());
+        out.writeObject(cursor.pointers);
+        out.writeObject(cursor.primitives);
+        writeMethodTypes(method);
+        out.writeInt(cursor.bci);
+    }
+
+    private void writeMethodTypes(Method method) throws IOException {
+        assert out != null;
         writeClass(method.getReturnType());
         Class<?>[] paramTypes = method.getParameterTypes();
         out.writeByte(paramTypes.length);
@@ -241,26 +244,56 @@ final class FrameRecordSerializerV2 extends FrameRecordSerializer {
     }
 
     private ContinuationImpl.FrameRecord readFrame()
-                    throws IOException, ClassNotFoundException, NoSuchMethodException {
+                    throws IOException, NoSuchMethodException {
         assert in != null;
-        Object[] pointers = (Object[]) in.readObject();
-        long[] primitives = (long[]) in.readObject();
-        // Slot zero is always primitive (bci), so this is in slot 1.
-        Method method = readMethodNameAndTypes(loader, pointers.length > THIS_POS ? pointers[THIS_POS] : null);
-        int bci = in.readInt();
-        return new ContinuationImpl.FrameRecord(pointers, primitives, method, bci);
+        // May be null if class is derived from `this`
+        String holder = readHolder();
+        String methodName = readMethodName();
+        Object possibleThis = null;
+        try {
+            Object[] pointers = (Object[]) in.readObject();
+
+            // Try to obtain type information for possible error reporting.
+            // Slot zero is always primitive (bci), so this is in slot 1.
+            if (holder == null) {
+                possibleThis = pointers.length > THIS_POS ? pointers[THIS_POS] : null;
+                if (possibleThis == null) {
+                    throw new IOException("Missing this in serialized frame.");
+                }
+                holder = possibleThis.getClass().getName();
+            }
+
+            long[] primitives = (long[]) in.readObject();
+            Method method = readMethodNameAndTypes(loader, possibleThis, methodName, holder);
+            int bci = in.readInt();
+            return new ContinuationImpl.FrameRecord(pointers, primitives, method, bci);
+        } catch (IOException | ClassNotFoundException e) {
+            throw new IOException("Failed to deserialize frame for %s.%s().".formatted((holder == null ? "?" : holder), methodName), e);
+        }
     }
 
-    private Method readMethodNameAndTypes(ClassLoader classLoader, Object possibleThis)
+    private String readMethodName() throws IOException {
+        return readString();
+    }
+
+    private String readHolder() throws IOException {
+        assert in != null;
+        if (in.readBoolean()) {
+            return null;
+        } else {
+            return readString();
+        }
+    }
+
+    private Method readMethodNameAndTypes(ClassLoader classLoader, Object possibleThis, String name, String holder)
                     throws IOException, ClassNotFoundException, NoSuchMethodException {
         assert in != null;
         Class<?> declaringClass;
-        if (in.readBoolean()) {
+        if (possibleThis != null) {
             declaringClass = possibleThis.getClass();
         } else {
-            declaringClass = Class.forName(readString(), false, classLoader);
+            declaringClass = Class.forName(holder, false, classLoader);
         }
-        String name = readString();
         Class<?> returnType = readClass(classLoader);
 
         int numArgs = in.readUnsignedByte();

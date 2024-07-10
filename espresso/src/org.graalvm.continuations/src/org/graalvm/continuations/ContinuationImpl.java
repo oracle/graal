@@ -283,6 +283,7 @@ final class ContinuationImpl extends Continuation {
     }
 
     private State lock() {
+        assert Thread.holdsLock(this);
         State previousState = state;
         while (true) {
             if (previousState == State.RUNNING) {
@@ -297,6 +298,7 @@ final class ContinuationImpl extends Continuation {
     }
 
     private void unlock(State newState) {
+        assert Thread.holdsLock(this);
         boolean updated = updateState(State.LOCKED, newState);
         assert updated : state;
     }
@@ -382,6 +384,86 @@ final class ContinuationImpl extends Continuation {
         }
     }
 
+    @Override
+    public synchronized StackTraceElement[] getRecordedFrames() {
+        State currentState = lock();
+        try {
+            ensureDematerialized();
+            return getRecordedFrames0();
+        } finally {
+            unlock(currentState);
+        }
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public String toDebugString() {
+        StringBuilder sb = new StringBuilder().append("Continuation[").append(getState()).append("]");
+        StackTraceElement[] frames;
+        FrameRecord fr;
+        synchronized (this) {
+            State currentState = lock();
+            try {
+                frames = getRecordedFrames();
+                ensureMaterialized();
+                fr = stackFrameHead;
+                if (frames == null || fr == null) {
+                    sb.append(" with no recorded frames");
+                    return sb.toString();
+                }
+            } finally {
+                unlock(currentState);
+            }
+        }
+
+        // Collect records in the usual order
+        int len = frames.length;
+        FrameRecord[] orderedRecords = new FrameRecord[len];
+        for (int i = 0; i < len; i++) {
+            orderedRecords[(len - 1) - i] = fr;
+            fr = fr.next;
+        }
+        if (fr != null) {
+            throw new IllegalMaterializedRecordException("Stack trace and recorded frames mismatch.");
+        }
+
+        sb.append(" with recorded frames:\n");
+        for (int i = 0; i < len; i++) {
+            StackTraceElement e = frames[i];
+            FrameRecord record = orderedRecords[i];
+            // Print the nice stack trace element.
+            sb.append("  ").append(e).append('\n');
+            // Additionally provide the bci.
+            sb.append("    Current bytecode index: ").append(record.bci);
+            sb.append('\n');
+            sb.append("    Pointers: [");
+            // We start at 1 because the first slot is always a primitive (the bytecode index).
+            for (int j = 1; j < record.pointers.length; j++) {
+                Object pointer = record.pointers[j];
+                if (pointer == null) {
+                    sb.append("null");
+                } else if (pointer == this) {
+                    sb.append("this continuation");   // Don't stack overflow.
+                } else {
+                    sb.append(pointer);
+                }
+                if (j < record.pointers.length - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append("]\n");
+            sb.append("    Primitives: ");
+            for (int j = 1; j < record.primitives.length; j++) {
+                sb.append(record.primitives[j]);
+                if (j < record.pointers.length - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append("\n");
+        }
+        return sb.toString();
+    }
+
     /**
      * Called from {@link SuspendCapability#suspend()}. Suspends this continuation. If successful,
      * execution resumes back at {@link #resume()}.
@@ -390,16 +472,16 @@ final class ContinuationImpl extends Continuation {
         if (exclusiveOwner != Thread.currentThread()) {
             throw new IllegalContinuationStateException("Suspend capabilities can only be used inside a continuation.");
         }
-        if (!updateState(ContinuationImpl.State.RUNNING, ContinuationImpl.State.SUSPENDED)) {
+        if (!updateState(State.RUNNING, State.SUSPENDED)) {
             throw new IllegalContinuationStateException("Suspend capabilities can only be used inside a running continuation.");
         }
         try {
             suspend();
         } catch (IllegalContinuationStateException e) {
-            if (!updateState(ContinuationImpl.State.SUSPENDED, ContinuationImpl.State.RUNNING)) {
+            if (!updateState(State.SUSPENDED, State.RUNNING)) {
                 // force failed state and maybe assert
-                ContinuationImpl.State badState = forceState(ContinuationImpl.State.RUNNING);
-                if (ContinuationImpl.ASSERTIONS_ENABLED) {
+                State badState = forceState(State.RUNNING);
+                if (ASSERTIONS_ENABLED) {
                     AssertionError assertionError = new AssertionError(badState.toString());
                     assertionError.addSuppressed(e);
                     throw assertionError;
@@ -408,7 +490,7 @@ final class ContinuationImpl extends Continuation {
             throw e;
         }
         // set in #resume()
-        assert state == ContinuationImpl.State.RUNNING : state;
+        assert state == State.RUNNING : state;
     }
 
     // endregion API Implementation
@@ -514,7 +596,7 @@ final class ContinuationImpl extends Continuation {
     }
 
     @Override
-    void writeObjectExternal(ObjectOutput out) throws IOException {
+    synchronized void writeObjectExternal(ObjectOutput out) throws IOException {
         State currentState = lock();
         if (currentState == State.RUNNING) {
             throw new IllegalContinuationStateException("You cannot serialize a continuation whilst it's running, as this would have unclear semantics. Please suspend first.");
@@ -562,7 +644,7 @@ final class ContinuationImpl extends Continuation {
         return continuation;
     }
 
-    void readObjectExternalImpl(ObjectInput in, ClassLoader loader) throws IOException, ClassNotFoundException {
+    synchronized void readObjectExternalImpl(ObjectInput in, ClassLoader loader) throws IOException, ClassNotFoundException {
         State currentState = lock();
         if (currentState == State.RUNNING) {
             throw new IllegalContinuationStateException("You cannot serialize a continuation whilst it's running, as this would have unclear semantics. Please suspend first.");
@@ -664,17 +746,19 @@ final class ContinuationImpl extends Continuation {
             // frame already materialized.
             return;
         }
-        State current = lock();
-        if (current == State.RUNNING) {
-            return;
-        }
-        try {
-            if (stackFrameHead != null) {
+        synchronized (this) {
+            State current = lock();
+            if (current == State.RUNNING) {
                 return;
             }
-            materialize0();
-        } finally {
-            unlock(current);
+            try {
+                if (stackFrameHead != null) {
+                    return;
+                }
+                materialize0();
+            } finally {
+                unlock(current);
+            }
         }
     }
 
@@ -691,15 +775,16 @@ final class ContinuationImpl extends Continuation {
             // No frame to dematerialize
             return;
         }
-
-        State previousState = lock();
-        if (previousState == State.RUNNING) {
-            dematerialize0();
-        } else {
-            try {
+        synchronized (this) {
+            State previousState = lock();
+            if (previousState == State.RUNNING) {
                 dematerialize0();
-            } finally {
-                unlock(previousState);
+            } else {
+                try {
+                    dematerialize0();
+                } finally {
+                    unlock(previousState);
+                }
             }
         }
         if (stackFrameHead != null) {
@@ -709,47 +794,26 @@ final class ContinuationImpl extends Continuation {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Continuation in state ");
-        sb.append(getState());
-        sb.append("\n");
-        if (stackFrameHead != null) {
-            ContinuationImpl.FrameRecord cursor = stackFrameHead;
-            while (cursor != null) {
-                sb.append("Frame: ");
-                sb.append(cursor.method);
-                sb.append("\n");
-                sb.append("  Current bytecode index: ");
-                sb.append(cursor.bci);
-                sb.append("\n");
-                sb.append("  Pointers: [");
-                // We start at 1 because the first slot is always a primitive (the bytecode index).
-                for (int i = 1; i < cursor.pointers.length; i++) {
-                    Object pointer = cursor.pointers[i];
-                    if (pointer == null) {
-                        sb.append("null");
-                    } else if (pointer == this) {
-                        sb.append("this continuation");   // Don't stack overflow.
-                    } else {
-                        sb.append(pointer);
-                    }
-                    if (i < cursor.pointers.length - 1) {
-                        sb.append(", ");
-                    }
-                }
-                sb.append("]\n");
-                sb.append("  Primitives: ");
-                for (int i = 1; i < cursor.primitives.length; i++) {
-                    sb.append(cursor.primitives[i]);
-                    if (i < cursor.pointers.length - 1) {
-                        sb.append(" ");
-                    }
-                }
-                sb.append("\n");
-                cursor = cursor.next;
-            }
+        String status;
+        switch (getState()) {
+            case NEW: // fallthrough
+            case SUSPENDED:
+                status = "Resumable";
+                break;
+            case RUNNING:
+                status = "Running";
+                break;
+            case COMPLETED: // fallthrough
+            case FAILED:
+                status = "Completed";
+                break;
+            case INCOMPLETE: // fallthrough
+            case LOCKED: // fallthrough
+            default:
+                status = "Unavailable";
+                break;
         }
-        return sb.toString();
+        return "Continuation[" + status + "]";
     }
 
     // VM knows about this method and will check it is the last on the frame record.
@@ -766,6 +830,8 @@ final class ContinuationImpl extends Continuation {
     private native void materialize0();
 
     private native void dematerialize0();
+
+    private native StackTraceElement[] getRecordedFrames0();
     // endregion
 
     @SuppressWarnings("all")
