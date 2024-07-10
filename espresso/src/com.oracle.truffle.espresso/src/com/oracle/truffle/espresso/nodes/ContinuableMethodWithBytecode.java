@@ -37,7 +37,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 
-public class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNodeImpl {
+public final class ContinuableMethodWithBytecode extends EspressoInstrumentableRootNodeImpl {
     @Child BytecodeNode bytecodeNode;
     private final int bci;
     private final EspressoFrameDescriptor fd;
