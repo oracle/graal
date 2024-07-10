@@ -54,7 +54,7 @@ To see the available configurations, supply the value `help` to this option.
 ### Performance Tuning Options
 
 * `-Djdk.graal.Vectorization={ true | false }`: To disable the auto vectorization optimization (only available in Oracle GraalVM). (Default: `true`.)
-* `-Djdk.graal.OptDuplication={ true | false }`: To disable the [path duplication optimization](http://ssw.jku.at/General/Staff/Leopoldseder/DBDS_CGO18_Preprint.pdf) (only available in Oracle GraalVM). (Default: `true`.)
+* `-Djdk.graal.OptDuplication={ true | false }`: To disable the [path duplication optimization](http://ssw.jku.at/General/Staff/Leopoldseder/DBDS_CGO18_Preprint.pdf){:target="_blank"} (only available in Oracle GraalVM). (Default: `true`.)
 * `-Djdk.graal.TuneInlinerExploration=<value>`: To tune for better peak performance or faster warmup.
 It automatically adjusts values governing the effort spent during inlining. The value of the option is a float clamped between `-1` and `1` inclusive. Anything below `0` reduces inlining effort and anything above `0` increases inlining effort. In general, peak performance is improved with more inlining effort while less inlining effort improves warmup (albeit to a lower peak). Note that this option is only a heuristic and the optimal value can differ from application to application (only available in Oracle GraalVM).
 
