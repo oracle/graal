@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,6 +66,7 @@ import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.debug.BlackholeNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.extended.GetClassNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
@@ -98,9 +99,6 @@ import jdk.graal.compiler.nodes.java.ReachabilityFenceNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
-import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
-import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
-import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
 import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
@@ -172,21 +170,18 @@ public abstract class NodeLowerer {
 
     /**
      * Materialize the operation represented by the node without caring about inlining and reuse.
-     *
+     * <p>
      * The logic for handling inlining and reuse is located in the method
      * {@link #lowerValue(ValueNode)}.
-     *
+     * <p>
      * Lowering of the inputs of the node should call {@link #lowerValue(ValueNode)} instead of this
      * method.
+     * <p>
+     * Not all possible node types are handled here. Subclasses are supposed to override this method
+     * and handle any other node types they encounter.
      */
     protected void dispatch(Node node) {
-        if (node instanceof CommitAllocationNode) {
-            lower((CommitAllocationNode) node);
-        } else if (node instanceof VirtualObjectNode) {
-            lower((VirtualObjectNode) node);
-        } else if (node instanceof AllocatedObjectNode) {
-            lower((AllocatedObjectNode) node);
-        } else if (node instanceof NegateNode) {
+        if (node instanceof NegateNode) {
             lower((NegateNode) node);
         } else if (node instanceof UnwindNode) {
             lower((UnwindNode) node);
@@ -335,6 +330,8 @@ public abstract class NodeLowerer {
             lower((ClassIsAssignableFromNode) node);
         } else if (node instanceof DynamicNewInstanceNode n) {
             lower(n);
+        } else if (node instanceof FixedValueAnchorNode n) {
+            lowerValue(n.getOriginalNode());
         } else {
             if (!isIgnored(node)) {
                 handleUnknownNodeType(node);
@@ -492,12 +489,6 @@ public abstract class NodeLowerer {
     protected abstract void lower(UnwindNode node);
 
     protected abstract void lower(NegateNode node);
-
-    protected abstract void lower(VirtualObjectNode node);
-
-    protected abstract void lower(CommitAllocationNode node);
-
-    protected abstract void lower(AllocatedObjectNode node);
 
     protected abstract void lower(IdentityHashCodeNode node);
 
