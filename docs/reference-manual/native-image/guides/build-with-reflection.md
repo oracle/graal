@@ -11,7 +11,7 @@ redirect_from:
 
 To build a native executable for a Java application that uses Java reflection, dynamic proxy objects, JNI, or class path resources, you should either provide the `native-image` tool with JSON-formatted configuration files or precompute metadata in the code.
 
-You can create configuration file(s) by hand, but a more convenient approach is to generate the configuration using the Tracing agent (from now on, the agent). 
+You can create configuration file(s) by hand, but a more convenient approach is to generate the configuration using the Tracing Agent (from now on, the agent). 
 This guide demonstrates how to configure `native-image` with the agent. 
 The agent generates the configuration for you automatically when you run an application on a JVM.
 
@@ -142,12 +142,12 @@ The following steps demonstrate how to use the agent, and its output, to create 
 	    at java.lang.Class.forName(DynamicHub.java:1313)
 	    at ReflectionExample.main(ReflectionExample.java:25)
     ```
-    Neither the tracing agent nor the `native-image` tool can ensure that the configuration file is complete.
+    Neither the Tracing Agent nor the `native-image` tool can ensure that the configuration file is complete.
     The agent observes and records which program elements are accessed using reflection when you run the program. 
     In this case, the `native-image` tool has not been configured to include references to class `StringCapitalizer`.
 
 5. Update the configuration to include class `StringCapitalizer`.
-    You can manually edit the _reflect-config.json_ file or re-run the tracing agent to update the existing configuration file using the `config-merge-dir` option, as follows:
+    You can manually edit the _reflect-config.json_ file or re-run the Tracing Agent to update the existing configuration file using the `config-merge-dir` option, as follows:
     ```shell
     java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image ReflectionExample StringCapitalizer capitalize "hello"
     ```
