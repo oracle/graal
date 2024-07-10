@@ -232,6 +232,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         // Print a summary of the model in a docstring at the start.
         bytecodeNodeGen.createDocBuilder().startDoc().lines(model.pp()).end();
 
+        mergeSuppressWarnings(bytecodeNodeGen, "static-method");
+
         // Define constants for accessing the frame.
         bytecodeNodeGen.addAll(createFrameLayoutConstants());
 
@@ -428,7 +430,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, nodeConsts, plugs);
 
             CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, cachedDataClassName(instr));
-            mergeSuppressWarnings(el, "static-method");
             el.setSuperClass(cachedNode.asType());
             factory.create(el);
 
@@ -487,6 +488,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     private Element createFindBytecodeIndex() {
         CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "findBytecodeIndex", 2);
         ex.renameArguments("node", "frame");
+        mergeSuppressWarnings(ex, "hiding");
         CodeTreeBuilder b = ex.createBuilder();
         if (model.storeBciInFrame) {
             b.startIf().string("node == null").end().startBlock();
@@ -4406,7 +4408,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case SOURCE_SECTION -> {
                     b.declaration(type(int.class), "foundSourceIndex", "-1");
                     b.string("loop: ");
-                    buildOperationStackWalk(b, () -> {
+                    // NB: walk entire operation stack, not just until root operation.
+                    buildOperationStackWalk(b, "0", () -> {
                         b.startSwitch().string("operationStack[i].operation").end().startBlock();
 
                         b.startCase().tree(createOperationConstant(model.sourceOperation)).end();
@@ -4675,27 +4678,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     emitThrow(b, IllegalArgumentException.class, "\"The tags provided to endTag do not match the tags provided to the corresponding beginTag call.\"");
                     b.end();
 
-                    // If this tag operation is nested in another, add it to the outer tag tree
-                    b.declaration(type(int.class), "sp", "operationSp - 1");
-                    b.startWhile().string("sp >= 0").end().startBlock();
-                    b.startIf().string("operationStack[sp].data instanceof TagOperationData t").end().startBlock();
-                    b.startIf().string("t.children == null").end().startBlock();
-                    b.statement("t.children = new ArrayList<>(3)");
-                    b.end();
-                    b.statement("t.children.add(tagNode)");
-                    b.statement("break");
-                    b.end(); // if
-                    b.statement("sp--");
-                    b.end(); // while
+                    b.lineComment("If this tag operation is nested in another, add it to the outer tag tree. Otherwise, it becomes a tag root.");
+                    b.declaration(type(boolean.class), "outerTagFound", "false");
+                    buildOperationStackWalk(b, () -> {
+                        b.startIf().string("operationStack[i].data instanceof TagOperationData t").end().startBlock();
+                        b.startIf().string("t.children == null").end().startBlock();
+                        b.statement("t.children = new ArrayList<>(3)");
+                        b.end();
+                        b.statement("t.children.add(tagNode)");
+                        b.statement("outerTagFound = true");
+                        b.statement("break");
+                        b.end(); // if tag operation
+                    });
 
                     // Otherwise, this tag is the root of a tag tree.
-                    b.startIf().string("sp < 0").end().startBlock();
-                    b.lineComment("not found");
+                    b.startIf().string("!outerTagFound").end().startBlock();
                     b.startIf().string("tagRoots == null").end().startBlock();
                     b.statement("tagRoots = new ArrayList<>(3)");
                     b.end();
                     b.statement("tagRoots.add(tagNode)");
-                    b.end(); // while
+                    b.end(); // if !outerTagFound
 
                     b.declaration(arrayOf(tagNode.asType()), "children");
                     b.declaration(generic(type(List.class), tagNode.asType()), "operationChildren", "operationData.children");
@@ -5163,8 +5165,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // for
         }
 
+        /**
+         * Common case for a operation stack walks; walks until we hit the current root operation.
+         */
         private void buildOperationStackWalk(CodeTreeBuilder b, Runnable r) {
-            buildOperationStackWalk(b, "0", r);
+            buildOperationStackWalk(b, "rootOperationSp", r);
         }
 
         /**
@@ -5173,8 +5178,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          * {@code FinallyTryData} to skip "try" operations when a finally handler is being emitted
          * in-line.
          */
-        private void buildOperationStackWalkFromBottom(CodeTreeBuilder b, Runnable r) {
-            b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
+        private void buildOperationStackWalkFromBottom(CodeTreeBuilder b, String lowerLimit, Runnable r) {
+            b.startFor().string("int i = ", lowerLimit, "; i < operationSp; i++").end().startBlock();
 
             b.startIf();
             b.string("operationStack[i].operation == ").tree(createOperationConstant(model.finallyTryOperation));
@@ -5441,7 +5446,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
              * operation or an enclosing one.
              */
             b.startIf().string("declaringOperationSp == ", UNINIT).end().startBlock();
-            emitThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
+            emitThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation of the current root. Jumps into other operations are not permitted.\"");
             b.end();
 
             b.startIf().string("labelImpl.isDefined()").end().startBlock();
@@ -5517,7 +5522,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             });
 
             b.startIf().string("exceptionStackHeight == ", UNINIT).end().startBlock();
-            emitThrowIllegalStateException(b, "\"LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation.\"");
+            emitThrowIllegalStateException(b, "\"LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.\"");
             b.end();
 
             buildEmitInstruction(b, operation.instruction, "exceptionStackHeight");
@@ -6766,16 +6771,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("return");
             b.end();
 
-            buildOperationStackWalk(b, () -> {
+            /**
+             * Walk the entire operation stack (past any root operations) and find enclosing source
+             * sections. The entire root node's bytecode range is covered by the source section.
+             */
+            buildOperationStackWalk(b, "0", () -> {
                 b.startSwitch().string("operationStack[i].operation").end().startBlock();
 
                 b.startCase().tree(createOperationConstant(model.sourceSectionOperation)).end();
                 b.startCaseBlock();
                 emitCastOperationData(b, model.sourceSectionOperation, "i");
-                /**
-                 * Any source section on the stack encloses the root. The entire root node's
-                 * bytecode range should map to the source section.
-                 */
                 b.startStatement().startCall("doEmitSourceInfo");
                 b.string("operationData.sourceIndex");
                 b.string("0");
@@ -6814,7 +6819,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createBeforeEmitReturn() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeEmitReturn");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "parentBci"));
-            emitExitInstructionsBeforeEarlyExit(ex, OperationKind.RETURN, "return", "0");
+            emitExitInstructionsBeforeEarlyExit(ex, OperationKind.RETURN, "return", "rootOperationSp");
             return ex;
         }
 
@@ -6867,7 +6872,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.returnDefault();
             b.end();
 
-            buildOperationStackWalkFromBottom(b, () -> {
+            buildOperationStackWalkFromBottom(b, "rootOperationSp", () -> {
                 b.startSwitch().string("operationStack[i].operation").end().startBlock();
                 OperationModel op = model.findOperation(OperationKind.TAG);
                 b.startCase().tree(createOperationConstant(op)).end();
@@ -9671,7 +9676,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
                 b.end(); // switch
             } else {
-                mergeSuppressWarnings(method, "static-method");
                 b.lineComment("The bytecode is not updatable so the bytecode is always valid.");
                 b.startReturn().string(readBc("bci")).end();
             }
@@ -10838,7 +10842,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             CodeTreeBuilder b = ex.createBuilder();
             if (!tier.isCached()) {
-                mergeSuppressWarnings(ex, "static-method");
                 b.startReturn().string("-1").end();
                 return ex;
             }
@@ -11377,7 +11380,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.startStatement();
                             startSetFrame(b, returnType).string("frame").string("sp");
                             b.startGroup();
-                            b.cast(returnType);
+                            if (!ElementUtils.isObject(returnType)) {
+                                b.cast(returnType);
+                            }
                             b.string(readConst(readBc("bci + 1")));
                             b.end();
                             b.end();
@@ -11829,7 +11834,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             new CodeVariableElement(type(Throwable.class), "throwable"));
 
             method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
-            mergeSuppressWarnings(method, "static-method");
 
             CodeTreeBuilder b = method.createBuilder();
 

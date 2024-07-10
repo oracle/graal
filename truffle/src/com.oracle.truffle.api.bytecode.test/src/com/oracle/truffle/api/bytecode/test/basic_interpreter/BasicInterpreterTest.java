@@ -592,7 +592,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testBadLoadExceptionUsage1() {
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation.");
+        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.");
 
         parse("badLoadExceptionUsage1", b -> {
             b.beginRoot(LANGUAGE);
@@ -606,7 +606,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testBadLoadExceptionUsage2() {
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation.");
+        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.");
 
         parse("badLoadExceptionUsage2", b -> {
             b.beginRoot(LANGUAGE);
@@ -623,7 +623,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testBadLoadExceptionUsage3() {
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation.");
+        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.");
 
         parse("badLoadExceptionUsage3", b -> {
             b.beginRoot(LANGUAGE);
@@ -640,7 +640,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testBadLoadExceptionUsage4() {
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation.");
+        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.");
 
         parse("badLoadExceptionUsage4", b -> {
             b.beginRoot(LANGUAGE);
@@ -655,7 +655,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testBadLoadExceptionUsage5() {
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation.");
+        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.");
 
         parse("badLoadExceptionUsage5", b -> {
             b.beginRoot(LANGUAGE);
@@ -664,6 +664,29 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endFinallyTry();
             b.endRoot();
         });
+    }
+
+    @Test
+    public void testBadLoadExceptionUsage6() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.");
+
+        parse("testBadLoadExceptionUsage6", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginTryCatch();
+
+            b.emitVoidOperation();
+
+            b.beginBlock();
+            b.beginRoot(LANGUAGE);
+            b.emitLoadException();
+            b.endRoot();
+            b.endBlock();
+
+            b.endTryCatch();
+            b.endRoot();
+        });
+
     }
 
     @Test
@@ -1386,6 +1409,25 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         });
 
         assertNull(root.call(false));
+    }
+
+    @Test
+    public void testBranchIntoOuterRoot() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Branch must be targeting a label that is declared in an enclosing operation of the current root.");
+        parse("branchIntoOuterRoot", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+            BytecodeLabel lbl = b.createLabel();
+
+            b.beginRoot(LANGUAGE);
+            b.emitBranch(lbl);
+            b.endRoot();
+
+            b.emitLabel(lbl);
+            b.endBlock();
+            b.endRoot();
+        });
     }
 
     @Test

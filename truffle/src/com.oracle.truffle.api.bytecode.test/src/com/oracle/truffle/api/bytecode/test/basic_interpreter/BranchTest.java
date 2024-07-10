@@ -285,7 +285,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // { goto lbl; }
 
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.");
+        thrown.expectMessage("Branch must be targeting a label that is declared in an enclosing operation of the current root. Jumps into other operations are not permitted.");
         parse("branchIntoAnotherBlock", b -> {
             b.beginRoot(LANGUAGE);
 

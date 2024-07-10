@@ -112,19 +112,19 @@ public class TagTest extends AbstractInstructionTest {
 
     private static TagInstrumentationTestRootNode parseComplete(BytecodeParser<TagInstrumentationTestRootNodeGen.Builder> parser) {
         BytecodeRootNodes<TagInstrumentationTestRootNode> nodes = TagInstrumentationTestRootNodeGen.create(BytecodeConfig.COMPLETE, parser);
-        TagInstrumentationTestRootNode root = nodes.getNodes().get(nodes.getNodes().size() - 1);
+        TagInstrumentationTestRootNode root = nodes.getNode(0);
         return root;
     }
 
     private static TagInstrumentationTestRootNode parse(BytecodeParser<TagInstrumentationTestRootNodeGen.Builder> parser) {
         BytecodeRootNodes<TagInstrumentationTestRootNode> nodes = TagInstrumentationTestRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
-        TagInstrumentationTestRootNode root = nodes.getNodes().get(nodes.getNodes().size() - 1);
+        TagInstrumentationTestRootNode root = nodes.getNode(0);
         return root;
     }
 
     private static TagInstrumentationTestWithPrologAndEpilogRootNode parseProlog(BytecodeParser<TagInstrumentationTestWithPrologAndEpilogRootNodeGen.Builder> parser) {
         BytecodeRootNodes<TagInstrumentationTestWithPrologAndEpilogRootNode> nodes = TagInstrumentationTestWithPrologAndEpilogRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
-        TagInstrumentationTestWithPrologAndEpilogRootNode root = nodes.getNodes().get(nodes.getNodes().size() - 1);
+        TagInstrumentationTestWithPrologAndEpilogRootNode root = nodes.getNode(0);
         return root;
     }
 
@@ -1448,6 +1448,140 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @Test
+    public void testNestedRoot() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.emitNop(); // pad bytecode to differentiate inner bci's
+            b.beginTag(StatementTag.class);
+            b.beginReturn();
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(42L);
+            b.endTag(ExpressionTag.class);
+            b.endReturn();
+            b.endTag(StatementTag.class);
+            TagInstrumentationTestRootNode inner = b.endRoot();
+
+            b.beginTag(StatementTag.class);
+            b.beginReturn();
+            b.beginTag(ExpressionTag.class);
+            b.emitInvokeRoot(inner);
+            b.endTag(ExpressionTag.class);
+            b.endReturn();
+            b.endTag(StatementTag.class);
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "c.InvokeRoot",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
+
+        // First, just statements.
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build());
+
+        assertInstructions(node,
+                        "tag.enter",
+                        "c.InvokeRoot",
+                        "tag.leave",
+                        "return",
+                        "tag.leaveVoid",
+                        "load.constant",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x0009, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x000a, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x000a, 42L, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0009, 42L, StatementTag.class));
+
+        // Now, add expressions.
+        events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class, StatementTag.class).build());
+        assertInstructions(node,
+                        "tag.enter",
+                        "tag.enter",
+                        "c.InvokeRoot",
+                        "tag.leave",
+                        "tag.leave",
+                        "return",
+                        "tag.leaveVoid",
+                        "load.constant",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x000e, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x0007, null, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x000f, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0004, 0x0008, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0004, 0x0008, 42L, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x000f, 42L, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0007, 42L, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x000e, 42L, StatementTag.class));
+    }
+
+    @Test
+    public void testNestedRootDifferentTags() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginReturn();
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(42L);
+            b.endTag(ExpressionTag.class);
+            b.endReturn();
+            TagInstrumentationTestRootNode inner = b.endRoot();
+
+            b.beginTag(StatementTag.class);
+            b.beginReturn();
+            b.emitInvokeRoot(inner);
+            b.endReturn();
+            b.endTag(StatementTag.class);
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "c.InvokeRoot",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
+
+        // First, just expressions.
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).build());
+
+        assertInstructions(node,
+                        "c.InvokeRoot",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x0004, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0004, 42L, ExpressionTag.class));
+
+        // Now, add statements.
+        events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class, StatementTag.class).build());
+        assertInstructions(node,
+                        "tag.enter",
+                        "c.InvokeRoot",
+                        "tag.leave",
+                        "return",
+                        "tag.leaveVoid",
+                        "load.constant",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call());
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x0009, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0000, 0x0004, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0004, 42L, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0009, 42L, StatementTag.class));
+    }
+
+    @Test
     public void testFinallyTry() {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));
@@ -1832,6 +1966,74 @@ public class TagTest extends AbstractInstructionTest {
                         new Event(EventKind.RESUME, 0x003b, 0x0049, null, StatementTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x003b, 0x0049, 456L, StatementTag.class),
                         new Event(EventKind.EXCEPTIONAL, 0x0000, 0x004f, TestException.class, StatementTag.class));
+    }
+
+    @Test
+    public void testYieldWithNestedRoots() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginTag(StatementTag.class);
+
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginTag(ExpressionTag.class);
+            b.beginYield();
+            b.emitLoadConstant(42L);
+            b.endYield();
+            b.endTag(ExpressionTag.class);
+            TagInstrumentationTestRootNode inner = b.endRoot();
+
+            b.beginReturn();
+            b.beginResume(123L);
+            b.emitInvokeRoot(inner);
+            b.endResume();
+            b.endReturn();
+
+            b.endTag(StatementTag.class);
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "c.InvokeRoot",
+                        "c.Resume",
+                        "return");
+        assertEquals(123L, node.getCallTarget().call());
+
+        // First, just enable expression tags.
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).build());
+
+        assertInstructions(node,
+                        "c.InvokeRoot",
+                        "c.Resume",
+                        "return");
+        assertEquals(123L, node.getCallTarget().call());
+        assertEvents(node, events,
+                        new Event(EventKind.ENTER, 0x0000, 0x00a, null, ExpressionTag.class),
+                        new Event(EventKind.YIELD, 0x0000, 0x00a, 42L, ExpressionTag.class),
+                        new Event(EventKind.RESUME, 0x0000, 0x00a, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x00a, 123L, ExpressionTag.class));
+        events.clear();
+
+        // Now, enable statement tags too.
+        events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class, StatementTag.class).build());
+
+        assertInstructions(node,
+                        "tag.enter",
+                        "c.InvokeRoot",
+                        "c.Resume",
+                        "tag.leave",
+                        "return",
+                        "tag.leaveVoid",
+                        "load.constant",
+                        "return");
+        assertEquals(123L, node.getCallTarget().call());
+        assertEvents(node, events,
+                        new Event(EventKind.ENTER, 0x0000, 0x00c, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0000, 0x00a, null, ExpressionTag.class),
+                        new Event(EventKind.YIELD, 0x0000, 0x00a, 42L, ExpressionTag.class),
+                        new Event(EventKind.RESUME, 0x0000, 0x00a, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x00a, 123L, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x00c, 123L, StatementTag.class));
+
     }
 
     private static final NodeLibrary NODE_LIBRARY = NodeLibrary.getUncached();
@@ -2347,10 +2549,36 @@ public class TagTest extends AbstractInstructionTest {
         }
 
         @Operation
+        @ConstantOperand(name = "rootNode", type = TagInstrumentationTestRootNode.class)
+        static final class InvokeRootNode {
+            @Specialization
+            public static Object doRunnable(TagInstrumentationTestRootNode rootNode) {
+                return rootNode.getCallTarget().call();
+            }
+        }
+
+        @Operation
         static final class Throw {
             @Specialization
             public static void doInt(@Bind("$node") Node node) {
                 throw new TestException(node);
+            }
+        }
+
+        @Operation
+        @ConstantOperand(name = "resumeValue", type = Object.class)
+        static final class Resume {
+            @Specialization
+            public static Object doResume(Object resumeValue, ContinuationResult cont) {
+                return cont.continueWith(resumeValue);
+            }
+        }
+
+        @Operation
+        static final class Nop {
+            @Specialization
+            public static void doNop() {
+                // nop
             }
         }
 
