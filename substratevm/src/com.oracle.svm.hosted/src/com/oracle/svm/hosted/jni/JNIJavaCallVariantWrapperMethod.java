@@ -41,6 +41,7 @@ import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallVariantWrapperHolder;
+import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
 
@@ -56,7 +57,6 @@ import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
-import jdk.graal.compiler.nodes.IndirectCallTargetNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -166,7 +166,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         ValueNode formerPendingException = kit.invokeGetAndClearPendingException();
 
         StampPair returnStamp = StampFactory.forDeclaredType(kit.getAssumptions(), invokeSignature.getReturnType(), false);
-        CallTargetNode callTarget = new IndirectCallTargetNode(callAddress, args.toArray(ValueNode[]::new), returnStamp, invokeSignature.toParameterTypes(null),
+        CallTargetNode callTarget = new SubstrateIndirectCallTargetNode(callAddress, args.toArray(ValueNode[]::new), returnStamp, invokeSignature.toParameterTypes(null),
                         null, SubstrateCallingConventionKind.Java.toType(true), InvokeKind.Static);
 
         int invokeBci = kit.bci();
