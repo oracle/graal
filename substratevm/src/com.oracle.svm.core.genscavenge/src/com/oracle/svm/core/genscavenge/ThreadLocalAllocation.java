@@ -276,7 +276,7 @@ public final class ThreadLocalAllocation {
              * this object is allocated and survives.
              */
             GCImpl.getPolicy().ensureSizeParametersInitialized();
-            if (size.aboveOrEqual(GCImpl.getPolicy().getMaximumHeapSize())) {
+            if (size.aboveOrEqual(GCImpl.getPolicy().getMaximumHeapSize()) && !GCImpl.shouldIgnoreOutOfMemory()) {
                 OutOfMemoryError outOfMemoryError = new OutOfMemoryError("Array allocation too large.");
                 throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
             }

@@ -190,10 +190,15 @@ public final class GCImpl implements GC {
         enqueueCollectOperation(data);
 
         boolean outOfMemory = data.getOutOfMemory();
-        if (outOfMemory && SerialGCOptions.IgnoreMaxHeapSizeWhileInVMOperation.getValue() && inVMInternalCode()) {
+        if (outOfMemory && shouldIgnoreOutOfMemory()) {
             outOfMemory = false;
         }
         return outOfMemory;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean shouldIgnoreOutOfMemory() {
+        return SerialGCOptions.IgnoreMaxHeapSizeWhileInVMOperation.getValue() && inVMInternalCode();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
