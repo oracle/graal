@@ -31,7 +31,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-47365) Include dynamic proxy metadata in the reflection metadata with the syntax `"type": { "proxy": [<interface list>] }`. This allows members of proxy classes to be accessed reflectively. `proxy-config.json` is now deprecated but will still be honored.
 * (GR-18214) In-place compacting garbage collection for the Serial GC old generation with `-H:+CompactingOldGen`.
 * (GR-52844) Add `-Os`, a new optimization mode to configure the optimizer in a way to get the smallest code size.
-* (GR-49770) Add support for glob patterns in resource-config files in addition to regexp. The Tracing agent now prints entries in the glob format.
+* (GR-49770) Add support for glob patterns in resource-config files in addition to regexp. The Tracing Agent now prints entries in the glob format.
 * (GR-46386) Throw missing registration errors for JNI queries when the query was not included in the reachability metadata.
 * (GR-51479) Implement cgroup support in native code. See the [README](src/com.oracle.svm.native.libcontainer/README.md) and the [PR description](https://github.com/oracle/graal/pull/8989).
 
