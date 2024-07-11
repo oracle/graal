@@ -981,25 +981,20 @@ public abstract class PlatformThreads {
     }
 
     /**
-     * Sleeps for the given number of nanoseconds, wake-ups and interruptions.
+     * Sleeps for the given number of nanoseconds, dealing with early wake-ups and interruptions.
      */
     static void sleep(long nanos) throws InterruptedException {
         assert !isCurrentThreadVirtual();
-        sleep0(nanos);
-    }
-
-    /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
-    static void sleep0(long nanos) throws InterruptedException {
         if (nanos < 0) {
             throw new IllegalArgumentException("Timeout value is negative");
         }
-        sleep1(nanos);
+        sleep0(nanos);
         if (Thread.interrupted()) { // clears the interrupted flag as required of Thread.sleep()
             throw new InterruptedException();
         }
     }
 
-    private static void sleep1(long durationNanos) {
+    private static void sleep0(long durationNanos) {
         VMOperationControl.guaranteeOkayToBlock("[PlatformThreads.sleep(long): Should not sleep when it is not okay to block.]");
         Thread thread = currentThread.get();
         Parker sleepEvent = getCurrentThreadData().ensureSleepParker();
