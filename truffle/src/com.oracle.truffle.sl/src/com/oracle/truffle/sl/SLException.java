@@ -96,7 +96,7 @@ public final class SLException extends AbstractTruffleException {
         AbstractTruffleException ex = SLException.create("", location);
         if (location != null) {
             SourceSection ss = ex.getEncapsulatingSourceSection();
-            if (ss != null && ss.isAvailable()) {
+            if (ss != null && ss.isAvailable() && ss.getCharLength() > 0) {
                 result.append(" at ").append(ss.getSource().getName()).append(" line ").append(ss.getStartLine()).append(" col ").append(ss.getStartColumn());
             }
         }

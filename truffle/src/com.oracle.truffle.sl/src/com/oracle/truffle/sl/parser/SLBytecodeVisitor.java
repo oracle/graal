@@ -209,16 +209,13 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         int parameterCount = enterFunction(ctx).size();
         for (int i = 0; i < parameterCount; i++) {
             Token paramToken = ctx.IDENTIFIER(i + 1).getSymbol();
-
             TruffleString paramName = asTruffleString(paramToken, false);
             BytecodeLocal argLocal = b.createLocal(paramName, null);
             locals.add(argLocal);
 
             b.beginStoreLocal(argLocal);
             beginSourceSection(paramToken);
-            b.beginSLLoadArgument();
-            b.emitLoadConstant(i);
-            b.endSLLoadArgument();
+            b.emitSLLoadArgument(i);
             b.endSourceSection();
             b.endStoreLocal();
         }

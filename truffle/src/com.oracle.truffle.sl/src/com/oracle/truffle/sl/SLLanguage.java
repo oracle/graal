@@ -61,6 +61,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.debug.DebuggerTags;
@@ -70,10 +71,13 @@ import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
@@ -86,7 +90,11 @@ import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltin;
 import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLStackTraceBuiltin;
+import com.oracle.truffle.sl.bytecode.SLBytecodeRootNode;
+import com.oracle.truffle.sl.bytecode.SLBytecodeRootNodeGen;
 import com.oracle.truffle.sl.nodes.SLAstRootNode;
+import com.oracle.truffle.sl.nodes.SLBuiltinAstNode;
+import com.oracle.truffle.sl.nodes.SLBuiltinAstNodeGen;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -315,24 +323,17 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
          * methods in the builtin classes.
          */
         int argumentCount = factory.getExecutionSignature().size();
-        SLExpressionNode[] argumentNodes = new SLExpressionNode[argumentCount];
-        /*
-         * Builtin functions are like normal functions, i.e., the arguments are passed in as an
-         * Object[] array encapsulated in SLArguments. A SLReadArgumentNode extracts a parameter
-         * from this array.
-         */
-        for (int i = 0; i < argumentCount; i++) {
-            argumentNodes[i] = new SLReadArgumentNode(i);
-        }
-        /* Instantiate the builtin node. This node performs the actual functionality. */
-        SLBuiltinNode builtinBodyNode = factory.createNode((Object) argumentNodes);
-        builtinBodyNode.addRootTag();
-        /* The name of the builtin function is specified via an annotation on the node class. */
-        TruffleString name = SLStrings.fromJavaString(lookupNodeInfo(builtinBodyNode.getClass()).shortName());
-        builtinBodyNode.setUnavailableSourceSection();
+        TruffleString name = SLStrings.fromJavaString(lookupNodeInfo(factory.getNodeClass()).shortName());
 
-        /* Wrap the builtin in a RootNode. Truffle requires all AST to start with a RootNode. */
-        SLRootNode rootNode = new SLAstRootNode(this, new FrameDescriptor(), builtinBodyNode, BUILTIN_SOURCE.createUnavailableSection(), name);
+        /* Instantiate the builtin node. This node performs the actual functionality. */
+        SLBuiltinNode builtinNode = factory.createNode();
+
+        RootNode rootNode;
+        if (useBytecode) {
+            rootNode = createBytecodeBuiltin(name, argumentCount, builtinNode);
+        } else {
+            rootNode = createASTBuiltin(name, argumentCount, builtinNode);
+        }
 
         /*
          * Register the builtin function in the builtin registry. Call targets for builtins may be
@@ -344,6 +345,42 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             return oldTarget;
         }
         return newTarget;
+    }
+
+    private SLBytecodeRootNode createBytecodeBuiltin(TruffleString name, int argumentCount, SLBuiltinNode builtinNode) {
+        SLBytecodeRootNode node = SLBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, (b) -> {
+            b.beginSource(BUILTIN_SOURCE);
+            // TODO the dsl does not yet support unavailable source sections
+            b.beginSourceSection(0, 0);
+            b.beginRoot(this);
+            b.beginReturn();
+            b.beginTag(RootTag.class, RootBodyTag.class);
+            b.emitBuiltin(builtinNode, argumentCount);
+            b.endTag(RootTag.class, RootBodyTag.class);
+            b.endReturn();
+            b.endRoot().setTSName(name);
+            b.endSourceSection();
+            b.endSource();
+        }).getNodes().get(0);
+        /*
+         * The builtin node is directly allocated so we cannot use uncached mode for builtins. It is
+         * also possible generate uncached versions for all builtins, but in order to reduce
+         * footprint we don't do that here.
+         */
+        node.getBytecodeNode().setUncachedThreshold(0);
+        if (builtinNode.getParent() == null) {
+            node.getBytecodeNode().insert(builtinNode);
+        }
+        return node;
+    }
+
+    private RootNode createASTBuiltin(TruffleString name, int argumentCount, SLBuiltinNode builtinNode) {
+        SLBuiltinAstNode builtinBodyNode = SLBuiltinAstNodeGen.create(argumentCount, builtinNode);
+        builtinBodyNode.addRootTag();
+        /* The name of the builtin function is specified via an annotation on the node class. */
+        builtinBodyNode.setUnavailableSourceSection();
+        /* Wrap the builtin in a RootNode. Truffle requires all AST to start with a RootNode. */
+        return new SLAstRootNode(this, new FrameDescriptor(), builtinBodyNode, BUILTIN_SOURCE.createUnavailableSection(), name);
     }
 
     public static NodeInfo lookupNodeInfo(Class<?> clazz) {

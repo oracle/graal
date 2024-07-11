@@ -38,25 +38,59 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.builtins;
+package com.oracle.truffle.sl.nodes;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.sl.runtime.SLContext;
-import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.sl.SLException;
+import com.oracle.truffle.sl.builtins.SLBuiltinNode;
+import com.oracle.truffle.sl.runtime.SLNull;
 
-/**
- * Base class for all builtin functions. It contains the Truffle DSL annotation {@link NodeChild}
- * that defines the function arguments.<br>
- * The builtin functions are registered in {@link SLContext#installBuiltins}. Every builtin node
- * subclass is instantiated there, wrapped into a function, and added to the
- * {@link SLFunctionRegistry}. This ensures that builtin functions can be called like user-defined
- * functions; there is no special function lookup or call node for builtin functions.
- */
-@GenerateNodeFactory
-public abstract class SLBuiltinNode extends Node {
+public abstract class SLBuiltinAstNode extends SLExpressionNode {
 
-    public abstract Object execute(VirtualFrame frame, Object... arguments);
+    final int argumentCount;
+    @Child private SLBuiltinNode builtin;
+
+    SLBuiltinAstNode(int argumentCount, SLBuiltinNode builtinNode) {
+        this.argumentCount = argumentCount;
+        this.builtin = builtinNode;
+    }
+
+    @Override
+    public final Object executeGeneric(VirtualFrame frame) {
+        try {
+            return executeImpl(frame);
+        } catch (UnsupportedSpecializationException e) {
+            throw SLException.typeError(e.getNode(), e.getSuppliedValues());
+        }
+    }
+
+    public abstract Object executeImpl(VirtualFrame frame);
+
+    @Specialization(guards = "arguments.length == argumentCount")
+    @SuppressWarnings("unused")
+    final Object doInBounds(VirtualFrame frame,
+                    @Bind("frame.getArguments()") Object[] arguments) {
+        return builtin.execute(frame, arguments);
+    }
+
+    @Fallback
+    @ExplodeLoop
+    final Object doOutOfBounds(VirtualFrame frame) {
+        Object[] originalArguments = frame.getArguments();
+        Object[] arguments = new Object[argumentCount];
+        for (int i = 0; i < argumentCount; i++) {
+            if (i < originalArguments.length) {
+                arguments[i] = originalArguments[i];
+            } else {
+                arguments[i] = SLNull.SINGLETON;
+            }
+        }
+        return builtin.execute(frame, arguments);
+    }
+
 }

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.LocalVariable;
@@ -60,6 +61,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -69,11 +71,13 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
@@ -194,6 +198,7 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
     // see also SLReadArgumentNode
     @Operation
     @TypeSystemReference(SLTypes.class)
+    @ConstantOperand(type = int.class)
     public static final class SLLoadArgument {
 
         @Specialization(guards = "index < arguments.length")
@@ -205,9 +210,50 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
         }
 
         @Fallback
-        static Object doLoadOutOfBounds(@SuppressWarnings("unused") Object index) {
+        static Object doLoadOutOfBounds(@SuppressWarnings("unused") int index) {
             /* Use the default null value. */
             return SLNull.SINGLETON;
+        }
+
+    }
+
+    @Operation
+    @ConstantOperand(type = SLBuiltinNode.class)
+    @ConstantOperand(type = int.class)
+    public static final class Builtin {
+
+        @Specialization(guards = "arguments.length == argumentCount")
+        @SuppressWarnings("unused")
+        static Object doInBounds(VirtualFrame frame,
+                        SLBuiltinNode builtin,
+                        int argumentCount,
+                        @Bind("frame.getArguments()") Object[] arguments) {
+            return doInvoke(frame, builtin, arguments);
+        }
+
+        @Fallback
+        @ExplodeLoop
+        static Object doOutOfBounds(VirtualFrame frame,
+                        SLBuiltinNode builtin,
+                        int argumentCount) {
+            Object[] originalArguments = frame.getArguments();
+            Object[] arguments = new Object[argumentCount];
+            for (int i = 0; i < argumentCount; i++) {
+                if (i < originalArguments.length) {
+                    arguments[i] = originalArguments[i];
+                } else {
+                    arguments[i] = SLNull.SINGLETON;
+                }
+            }
+            return doInvoke(frame, builtin, arguments);
+        }
+
+        private static Object doInvoke(VirtualFrame frame, SLBuiltinNode builtin, Object[] arguments) {
+            try {
+                return builtin.execute(frame, arguments);
+            } catch (UnsupportedSpecializationException e) {
+                throw SLException.typeError(e.getNode(), e.getSuppliedValues());
+            }
         }
 
     }
