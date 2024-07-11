@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
+import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.ExpectedSourceTree.expectedSourceTree;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -56,6 +57,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.ExpectedSourceTree;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -79,6 +81,14 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         for (int i = 0; i < sections.length; i++) {
             assertSourceSection(sections[i], source, pairs[2 * i], pairs[2 * i + 1]);
         }
+    }
+
+    private static ExpectedSourceTree est(String contents, ExpectedSourceTree... children) {
+        return expectedSourceTree(contents, children);
+    }
+
+    private static void assertSourceInformationTree(BytecodeNode bytecode, ExpectedSourceTree expected) {
+        expected.assertTreeEquals(bytecode.getSourceInformationTree());
     }
 
     @Test
@@ -108,6 +118,8 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         List<Instruction> instructions = bytecode.getInstructionsAsList();
         assertInstructionSourceSection(instructions.get(0), source, 7, 1);
         assertInstructionSourceSection(instructions.get(1), source, 0, 8);
+
+        assertSourceInformationTree(bytecode, est("return 1", est("1")));
     }
 
     @Test
@@ -117,23 +129,22 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         for (int i = 0; i < numSourceSections; i++) {
             sb.append("x");
         }
-        Source source = Source.newBuilder("test", sb.toString(), "test.test").build();
+        String sourceString = sb.toString();
+        Source source = Source.newBuilder("test", sourceString, "test.test").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
-            b.beginRoot(LANGUAGE);
             b.beginSource(source);
             for (int i = 0; i < numSourceSections; i++) {
                 b.beginSourceSection(0, numSourceSections - i);
             }
-
+            b.beginRoot(LANGUAGE);
             b.beginReturn();
             b.emitGetSourcePositions();
             b.endReturn();
-
+            b.endRoot();
             for (int i = 0; i < numSourceSections; i++) {
                 b.endSourceSection();
             }
             b.endSource();
-            b.endRoot();
         });
 
         SourceSection[] result = (SourceSection[]) node.getCallTarget().call();
@@ -142,6 +153,12 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             // sections are emitted in order of closing
             assertSourceSection(result[i], source, 0, i + 1);
         }
+
+        ExpectedSourceTree expectedSourceTree = est(sourceString.substring(0, 1));
+        for (int i = 1; i < numSourceSections; i++) {
+            expectedSourceTree = est(sourceString.substring(0, i + 1), expectedSourceTree);
+        }
+        assertSourceInformationTree(node.getBytecodeNode(), expectedSourceTree);
     }
 
     @Test
@@ -171,6 +188,9 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         });
         // The most specific source section should be chosen.
         assertSourceSection(node.getSourceSection(), source, 2, 8);
+
+        assertSourceInformationTree(node.getBytecodeNode(),
+                        est("0123456789", est("123456789", est("23456789", est("3456789", est("456789"))))));
     }
 
     @Test
@@ -190,6 +210,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
         assertNull(location1.getSourceLocation());
         assertNull(location2.getSourceLocation());
+        assertNull(node.getBytecodeNode().getSourceInformationTree());
     }
 
     @Test
@@ -205,6 +226,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.endSource();
         });
         assertNull(node.getSourceSection());
+        assertNull(node.getBytecodeNode().getSourceInformationTree());
     }
 
     @Test
@@ -230,17 +252,17 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testSourceMultipleSources() {
-        Source source1 = Source.newBuilder("test", "This is just a piece of test source.", "test1.test").build();
-        Source source2 = Source.newBuilder("test", "This is another test source.", "test2.test").build();
+        Source source1 = Source.newBuilder("test", "abc", "test1.test").build();
+        Source source2 = Source.newBuilder("test", "01234567", "test2.test").build();
         BasicInterpreter root = parseNodeWithSource("sourceMultipleSources", b -> {
             b.beginSource(source1);
             b.beginSourceSection(0, source1.getLength());
 
             b.beginRoot(LANGUAGE);
 
-            b.emitVoidOperation(); // no source
+            b.emitVoidOperation(); // source1, 0, length
             b.beginBlock();
-            b.emitVoidOperation(); // no source
+            b.emitVoidOperation(); // source1, 0, length
 
             b.beginSourceSection(1, 2);
 
@@ -273,11 +295,11 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.endBlock();
             b.endSourceSection();
 
-            b.emitVoidOperation(); // no source
+            b.emitVoidOperation(); // source1, 0, length
 
             b.endBlock();
 
-            b.emitVoidOperation(); // no source
+            b.emitVoidOperation(); // source1, 0, length
 
             b.endRoot();
 
@@ -299,6 +321,9 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertInstructionSourceSection(instructions.get(8), source1, 1, 2);
         assertInstructionSourceSection(instructions.get(9), source1, 0, source1.getLength());
         assertInstructionSourceSection(instructions.get(10), source1, 0, source1.getLength());
+
+        assertSourceInformationTree(root.getBytecodeNode(),
+                        est("abc", est("bc", est("3456", est("5")))));
     }
 
     @Test
@@ -399,17 +424,12 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             SourceSection[] result = (SourceSection[]) node.getCallTarget().call(inputs[i]);
             assertSourceSections(result, source, 4, 7, 0, 11);
         }
-
-        // Even though the source section encloses the whole root body, because the source sections
-        // are split into multiple ranges, this result is null (see
-        // {#testSourceOfRootNodeWithFinallyTry}).
-        assertNull(node.getSourceSection());
     }
 
     @Test
-    public void testSourceOfRootNodeWithFinallyTry() {
-        // The reliable way to ensure a root node has a source section is to enclose the root
-        // operation in it.
+    public void testSourceOfRootWithFinallyTry() {
+        // The root node is nested in Source/SourceSection operations, so there is a source section
+        // for the root.
 
         /** @formatter:off
          *  try:
@@ -420,7 +440,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
          *  @formatter:on
          */
 
-        Source source = Source.newBuilder("test", "try finally", "sourceOfRooutNodeWithFinallyTry").build();
+        Source source = Source.newBuilder("test", "try finally", "sourceOfRootWithFinallyTry").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginSource(source);
             b.beginSourceSection(0, 11);
@@ -433,7 +453,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
                 b.endSourceSection();
             });
             // try
-            b.beginSourceSection(0, 4);
+            b.beginSourceSection(0, 3);
             b.beginBlock();
             emitReturnIf(b, 0, 42L);
             b.emitVoidOperation();
@@ -450,6 +470,92 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertEquals(null, node.getCallTarget().call(false));
 
         assertSourceSection(node.getSourceSection(), source, 0, 11);
+
+        // @formatter:off
+        assertSourceInformationTree(node.getBytecodeNode(),
+            est("try finally",
+                // try body before early return
+                est("try"),
+                // inlined finally
+                est("finally"),
+                // return and remainder of try
+                est("try"),
+                // fallthrough finally
+                est("finally"),
+                // exceptional finally
+                est("finally")
+            )
+        );
+        // @formatter:on
+    }
+
+    @Test
+    public void testSourceOfRootWithFinallyTryNotNestedInSource() {
+        // Unlike the previous test, a root node may not have a valid source section when it is not
+        // enclosed in Source/SourceSection operations because the full bytecode range is not always
+        // enclosed by a single source table entry (due to early exits).
+
+        /** @formatter:off
+         *  try:
+         *    if arg0 < 0: return
+         *    nop
+         *  finally:
+         *    nop
+         *  @formatter:on
+         */
+
+        Source source = Source.newBuilder("test", "try finally", "sourceOfRootWithFinallyTryNotNestedInSource").build();
+        BasicInterpreter node = parseNodeWithSource("source", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginSource(source);
+            b.beginSourceSection(0, 11);
+
+            b.beginFinallyTry(() -> {
+                // finally
+                b.beginSourceSection(4, 7);
+                b.emitVoidOperation();
+                b.endSourceSection();
+            });
+            // try
+            b.beginSourceSection(0, 3);
+            b.beginBlock();
+            emitReturnIf(b, 0, 42L);
+            b.emitVoidOperation();
+            b.endBlock();
+            b.endSourceSection();
+
+            b.endFinallyTry();
+
+            b.endSourceSection();
+            b.endSource();
+            b.endRoot();
+        });
+        assertEquals(42L, node.getCallTarget().call(true));
+        assertEquals(null, node.getCallTarget().call(false));
+
+        assertNull(node.getSourceSection());
+
+        // @formatter:off
+        assertSourceInformationTree(node.getBytecodeNode(),
+            est(null,
+                est("try finally",
+                    // try body before early return
+                    est("try"),
+                    // inlined finally
+                    est("finally")
+                ),
+                est("try finally",
+                    // return and remainder of try
+                    est("try"),
+                    // fallthrough finally
+                    est("finally"),
+                    // exceptional finally
+                    est("finally")
+                )
+                // fallthrough return
+            )
+        );
+        // @formatter:on
     }
 
     @Test

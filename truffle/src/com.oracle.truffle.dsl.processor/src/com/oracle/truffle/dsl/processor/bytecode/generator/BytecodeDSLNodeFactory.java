@@ -7721,6 +7721,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             ElementKind.CLASS, null, "SourceInformationTreeImpl");
             type.setSuperClass(types.SourceInformationTree);
 
+            type.add(new CodeVariableElement(Set.of(FINAL, STATIC), type(int.class), "UNAVAILABLE_ROOT")).createInitBuilder().string("-1");
             type.add(new CodeVariableElement(Set.of(FINAL), abstractBytecodeNode.asType(), "bytecode"));
             type.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "baseIndex"));
             type.add(new CodeVariableElement(Set.of(FINAL), generic(List.class, types.SourceInformationTree), "children"));
@@ -7746,6 +7747,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createGetStartBytecodeIndex() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getStartBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("baseIndex == UNAVAILABLE_ROOT").end().startBlock();
+            b.startReturn().string("0").end();
+            b.end();
             b.startReturn().string("bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_START_BCI]").end();
             return ex;
         }
@@ -7753,6 +7757,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createGetEndBytecodeIndex() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getEndBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("baseIndex == UNAVAILABLE_ROOT").end().startBlock();
+            b.startReturn().string("bytecode.bytecodes.length").end();
+            b.end();
             b.startReturn().string("bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_END_BCI]").end();
             return ex;
         }
@@ -7760,6 +7767,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createGetSourceSection() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getSourceSection");
             CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("baseIndex == UNAVAILABLE_ROOT").end().startBlock();
+            b.startReturn().string("null").end();
+            b.end();
             b.statement("return AbstractBytecodeNode.createSourceSection(bytecode.sources, bytecode.sourceInfo, baseIndex)");
             return ex;
         }
@@ -7775,6 +7785,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(boolean.class), "contains");
             ex.addParameter(new CodeVariableElement(type.asType(), "other"));
             CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("baseIndex == UNAVAILABLE_ROOT").end().startBlock();
+            b.startReturn().string("true").end();
+            b.end();
             b.statement("return this.getStartBytecodeIndex() <= other.getStartBytecodeIndex() && other.getEndBytecodeIndex() <= this.getEndBytecodeIndex()");
             return ex;
         }
@@ -7790,15 +7803,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
              */
             b.declaration(arrayOf(type(int.class)), "sourceInfo", "bytecode.sourceInfo");
 
-            // Create the root node.
-            b.declaration(type(int.class), "baseIndex", "sourceInfo.length - SOURCE_INFO_LENGTH");
-            b.startDeclaration(type.asType(), "root");
-            b.startNew(type.asType()).string("bytecode").string("baseIndex").end();
+            b.startIf().string("sourceInfo.length == 0").end().startBlock();
+            b.statement("return null");
             b.end();
 
+            b.lineComment("Create a synthetic root node that contains all other SourceInformationTrees.");
+            b.startDeclaration(type.asType(), "root");
+            b.startNew(type.asType()).string("bytecode").string("UNAVAILABLE_ROOT").end();
+            b.end();
+
+            b.declaration(type(int.class), "baseIndex", "sourceInfo.length");
             b.declaration(type.asType(), "current", "root");
             b.declaration(generic(ArrayDeque.class, type.asType()), "stack", "new ArrayDeque<>()");
-
             b.startDoBlock();
             // Create the next node.
             b.statement("baseIndex -= SOURCE_INFO_LENGTH");
@@ -7820,8 +7836,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.end().startDoWhile().string("baseIndex > 0").end();
 
-            b.startReturn();
-            b.string("root");
+            b.startIf().string("root.getChildren().size() == 1").end().startBlock();
+            b.lineComment("If there is an actual root source section, ignore the synthetic root we created.");
+            b.statement("return root.getChildren().getFirst()");
+            b.end().startElseBlock();
+            b.statement("return root");
             b.end();
             return withTruffleBoundary(ex);
         }

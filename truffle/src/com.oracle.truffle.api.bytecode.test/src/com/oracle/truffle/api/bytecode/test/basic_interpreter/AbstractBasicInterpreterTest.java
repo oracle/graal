@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
@@ -73,6 +74,7 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
+import com.oracle.truffle.api.bytecode.SourceInformationTree;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
@@ -386,6 +388,34 @@ public abstract class AbstractBasicInterpreterTest {
         throw new AssertionError("unreachable");
     }
 
+    /**
+     * Helper class for validating SourceInformationTrees.
+     */
+    record ExpectedSourceTree(String contents, ExpectedSourceTree... children) {
+        public void assertTreeEquals(SourceInformationTree actual) {
+            if (contents == null) {
+                assertNull(actual.getSourceSection());
+            } else {
+                assertEquals(contents, actual.getSourceSection().getCharacters().toString());
+            }
+            assertEquals(children.length, actual.getChildren().size());
+            for (int i = 0; i < children.length; i++) {
+                children[i].assertTreeEquals(actual.getChildren().get(i));
+            }
+        }
+
+        public static ExpectedSourceTree expectedSourceTree(String contents, ExpectedSourceTree... children) {
+            return new ExpectedSourceTree(contents, children);
+        }
+    }
+
+    public static List<Class<? extends BasicInterpreter>> allInterpreters() {
+        return List.of(BasicInterpreterBase.class, BasicInterpreterUnsafe.class, BasicInterpreterWithUncached.class, BasicInterpreterWithBE.class, BasicInterpreterWithOptimizations.class,
+                        BasicInterpreterWithGlobalScopes.class, BasicInterpreterProductionGlobalScopes.class, BasicInterpreterProductionLocalScopes.class);
+    }
+
+    /// Code gen helpers
+
     protected static void emitReturn(BasicInterpreterBuilder b, long value) {
         b.beginReturn();
         b.emitLoadConstant(value);
@@ -425,10 +455,4 @@ public abstract class AbstractBasicInterpreterTest {
         emitThrow(b, value);
         b.endIfThen();
     }
-
-    public static List<Class<? extends BasicInterpreter>> allInterpreters() {
-        return List.of(BasicInterpreterBase.class, BasicInterpreterUnsafe.class, BasicInterpreterWithUncached.class, BasicInterpreterWithBE.class, BasicInterpreterWithOptimizations.class,
-                        BasicInterpreterWithGlobalScopes.class, BasicInterpreterProductionGlobalScopes.class, BasicInterpreterProductionLocalScopes.class);
-    }
-
 }

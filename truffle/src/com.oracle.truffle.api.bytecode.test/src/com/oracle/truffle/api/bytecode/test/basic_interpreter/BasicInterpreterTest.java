@@ -47,6 +47,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
+import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.ExpectedSourceTree.expectedSourceTree;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -1805,33 +1806,20 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endSourceSection();
             b.endSource();
         });
-
         BytecodeNode bytecode = node.getBytecodeNode();
-        SourceInformationTree root = bytecode.getSourceInformationTree();
-
-        record ExpectedSourceTree(String contents, ExpectedSourceTree... children) {
-            public void assertTreeEquals(SourceInformationTree actual) {
-                assertEquals(contents, actual.getSourceSection().getCharacters().toString());
-                assertEquals(children.length, actual.getChildren().size());
-                for (int i = 0; i < children.length; i++) {
-                    children[i].assertTreeEquals(actual.getChildren().get(i));
-                }
-            }
-        }
 
         // @formatter:off
-        ExpectedSourceTree expected = new ExpectedSourceTree("return (a + b) + 2",
-            new ExpectedSourceTree("(a + b) + 2",
-                new ExpectedSourceTree("(a + b)",
-                    new ExpectedSourceTree("a"),
-                    new ExpectedSourceTree("b")
+        ExpectedSourceTree expected = expectedSourceTree("return (a + b) + 2",
+            expectedSourceTree("(a + b) + 2",
+                expectedSourceTree("(a + b)",
+                    expectedSourceTree("a"),
+                    expectedSourceTree("b")
                 ),
-                new ExpectedSourceTree("2")
+                expectedSourceTree("2")
             )
         );
         // @formatter:on
-
-        expected.assertTreeEquals(root);
+        expected.assertTreeEquals(bytecode.getSourceInformationTree());
     }
 
     @Test
