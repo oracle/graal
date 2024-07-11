@@ -207,12 +207,50 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     return ExitVM;
                 }
                 // Automatically exit on failure when assertions are enabled in libgraal
-                if (IS_IN_NATIVE_IMAGE && (cause instanceof AssertionError || cause instanceof GraalError) && Assertions.assertionsEnabled()) {
+                if (shouldExitVM(cause)) {
                     TTY.println("Treating CompilationFailureAction as ExitVM due to assertion failure in libgraal: " + cause);
                     return ExitVM;
                 }
             }
             return super.lookupAction(values, cause);
+        }
+
+        /**
+         * Determines if {@code throwable} should result in a VM exit.
+         */
+        private static boolean shouldExitVM(Throwable throwable) {
+            // If not in libgraal, don't exit
+            if (!IS_IN_NATIVE_IMAGE) {
+                return false;
+            }
+            // If assertions are not enabled, don't exit.
+            if (!Assertions.assertionsEnabled()) {
+                return false;
+            }
+            // A normal assertion error => exit.
+            if (throwable instanceof AssertionError) {
+                return true;
+            }
+            // A GraalError not caused by an OOME => exit.
+            if (throwable instanceof GraalError && isNotCausedByOOME(throwable)) {
+                return true;
+            }
+            return false;
+        }
+
+        /**
+         * Determines if {@code throwable} has a causality chain denoting an OutOfMemoryError. This
+         * can happen in GC stress tests and exiting the VM would cause the test to fail.
+         */
+        private static boolean isNotCausedByOOME(Throwable throwable) {
+            Throwable t = throwable;
+            while (t != null) {
+                if (t instanceof OutOfMemoryError) {
+                    return false;
+                }
+                t = t.getCause();
+            }
+            return true;
         }
 
         @SuppressWarnings("try")
