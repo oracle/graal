@@ -56,7 +56,7 @@ For the demo application, you will use the `jwebserver` tool, and package it as 
 
 There are two possible ways to extract the compressed SBOM contents into a human-readable format:
 - using [Syft](https://github.com/anchore/syft)
-- using the [Native Image Inspect tool](../InspectTool.md)
+- using the [Native Image Inspect Tool](../InspectTool.md)
 
 ### Syft
 
