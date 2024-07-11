@@ -61,7 +61,6 @@ import com.oracle.truffle.api.dsl.test.TestHelper.TestExecutionListener;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
 public class PolymorphicTest {
@@ -107,9 +106,6 @@ public class PolymorphicTest {
                                 Polymorphic1 polymorphic = ((Polymorphic1) node.getNode());
                                 assertParent(node.getNode(), polymorphic.getA());
                                 assertNoDuplicates(polymorphic, polymorphic.getA());
-                                if (index == 0) {
-                                    assertEquals(NodeCost.MONOMORPHIC, node.getNode().getCost());
-                                }
                             }
                         });
     }
@@ -151,9 +147,6 @@ public class PolymorphicTest {
                                 Polymorphic2 polymorphic = ((Polymorphic2) node.getNode());
                                 assertParent(node.getNode(), polymorphic.getA());
                                 assertNoDuplicates(polymorphic, polymorphic.getA());
-                                if (index == 0) {
-                                    assertEquals(NodeCost.MONOMORPHIC, node.getNode().getCost());
-                                }
                             }
                         });
     }

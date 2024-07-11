@@ -39,7 +39,9 @@ import com.oracle.svm.core.MissingRegistrationUtils;
 public final class MissingSerializationRegistrationUtils {
 
     public static void missingSerializationRegistration(Class<?> cl, String... msg) {
-        report(new MissingSerializationRegistrationError(errorMessage(msg), cl));
+        MissingSerializationRegistrationError exception = new MissingSerializationRegistrationError(errorMessage(msg), cl);
+        StackTraceElement responsibleClass = getResponsibleClass(exception);
+        MissingRegistrationUtils.report(exception, responsibleClass);
     }
 
     private static String errorMessage(String... type) {
@@ -53,11 +55,6 @@ public final class MissingSerializationRegistrationUtils {
                         See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#serialization for help
                         """.replaceAll("\n", System.lineSeparator())
                         .formatted(typeStr);
-    }
-
-    private static void report(MissingSerializationRegistrationError exception) {
-        StackTraceElement responsibleClass = getResponsibleClass(exception);
-        MissingRegistrationUtils.report(exception, responsibleClass);
     }
 
     /*

@@ -166,7 +166,6 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField OptimizedCallTarget_rootNode = findField(OptimizedCallTarget, "rootNode");
 
     public final ResolvedJavaType OptimizedDirectCallNode = lookupTypeCached("com.oracle.truffle.runtime.OptimizedDirectCallNode");
-    public final ResolvedJavaField OptimizedDirectCallNode_currentCallTarget = findField(OptimizedDirectCallNode, "currentCallTarget");
     public final ResolvedJavaField OptimizedDirectCallNode_inliningForced = findField(OptimizedDirectCallNode, "inliningForced");
     public final ResolvedJavaField OptimizedDirectCallNode_callCount = findField(OptimizedDirectCallNode, "callCount");
 

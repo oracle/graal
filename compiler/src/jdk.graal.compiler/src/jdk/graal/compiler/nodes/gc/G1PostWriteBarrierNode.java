@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.G1WriteBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.NodeView;
@@ -90,6 +91,7 @@ public class G1PostWriteBarrierNode extends ObjectWriteBarrierNode implements LI
             // If the value being stored is the same as the base then there is nothing to do.
             return;
         }
-        lirGen.getWriteBarrierSet().emitPostWriteBarrier(lirGen, base, lirGen.asAllocatable(generator.operand(value)), nonNull);
+        G1WriteBarrierSetLIRGeneratorTool g1BarrierSet = (G1WriteBarrierSetLIRGeneratorTool) generator.getLIRGeneratorTool().getWriteBarrierSet();
+        g1BarrierSet.emitPostWriteBarrier(lirGen, base, lirGen.asAllocatable(generator.operand(value)), nonNull);
     }
 }

@@ -56,7 +56,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public final class DefaultCallTarget implements RootCallTarget {
 
-    public static final String CALL_BOUNDARY_METHOD = "callDirectOrIndirect";
+    public static final String CALL_BOUNDARY_METHOD = "call";
     private final RootNode rootNode;
     private volatile boolean initialized;
     private volatile boolean loaded;
@@ -75,33 +75,33 @@ public final class DefaultCallTarget implements RootCallTarget {
         return rootNode;
     }
 
-    Object callDirectOrIndirect(final Node callNode, Object... args) {
-        if (!this.initialized) {
-            initialize();
-        }
-        final VirtualFrame frame = new FrameWithoutBoxing(rootNode.getFrameDescriptor(), args);
-        DefaultFrameInstance callerFrame = getRuntime().pushFrame(frame, this, callNode);
-        try {
-            Object toRet = rootNode.execute(frame);
-            TruffleSafepoint.poll(rootNode);
-            return toRet;
-        } catch (Throwable t) {
-            DefaultRuntimeAccessor.LANGUAGE.addStackFrameInfo(callNode, this, t, frame);
-            throw t;
-        } finally {
-            getRuntime().popFrame(callerFrame);
-        }
-    }
-
     @Override
     public Object call(Object... args) {
         // Use the encapsulating node as call site and clear it inside as we cross the call boundary
         EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
         Node parent = encapsulating.set(null);
         try {
-            return callDirectOrIndirect(parent, args);
+            return call(parent, args);
         } finally {
             encapsulating.set(parent);
+        }
+    }
+
+    public Object call(Node location, Object... args) {
+        if (!this.initialized) {
+            initialize();
+        }
+        final VirtualFrame frame = new FrameWithoutBoxing(rootNode.getFrameDescriptor(), args);
+        DefaultFrameInstance callerFrame = getRuntime().pushFrame(frame, this, location);
+        try {
+            Object toRet = rootNode.execute(frame);
+            TruffleSafepoint.poll(rootNode);
+            return toRet;
+        } catch (Throwable t) {
+            DefaultRuntimeAccessor.LANGUAGE.addStackFrameInfo(location, this, t, frame);
+            throw t;
+        } finally {
+            getRuntime().popFrame(callerFrame);
         }
     }
 

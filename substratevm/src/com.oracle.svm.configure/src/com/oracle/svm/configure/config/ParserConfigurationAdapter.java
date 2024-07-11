@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
 import com.oracle.svm.core.util.VMError;
 
@@ -43,10 +44,14 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public TypeResult<ConfigurationType> resolveType(UnresolvedConfigurationCondition condition, String typeName, boolean allowPrimitives, boolean includeAllElements) {
-        ConfigurationType type = configuration.get(condition, typeName);
-        ConfigurationType result = type != null ? type : new ConfigurationType(condition, typeName, includeAllElements);
-        return TypeResult.forType(typeName, result);
+    public TypeResult<ConfigurationType> resolveType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+        ConfigurationType type = configuration.get(condition, typeDescriptor);
+        /*
+         * The type is not immediately set with all elements included. These are added afterwards
+         * when parsing the correspondind fields to check for overriding values
+         */
+        ConfigurationType result = type != null ? type : new ConfigurationType(condition, typeDescriptor, false);
+        return TypeResult.forType(typeDescriptor.toString(), result);
     }
 
     @Override
@@ -133,15 +138,15 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public void registerPublicFields(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+    public void registerPublicFields(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
-        type.setAllPublicFields();
+        type.setAllPublicFields(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override
-    public void registerDeclaredFields(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+    public void registerDeclaredFields(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
-        type.setAllDeclaredFields();
+        type.setAllDeclaredFields(queriedOnly ? ConfigurationMemberAccessibility.QUERIED : ConfigurationMemberAccessibility.ACCESSED);
     }
 
     @Override

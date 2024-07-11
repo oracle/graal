@@ -51,6 +51,6 @@ final class PolyglotIterableAndFunction<T> extends PolyglotIterable<T> implement
 
     @Override
     public Object apply(Object t) {
-        return cache.apply.call(languageContext, guestObject, t);
+        return cache.apply.call(null, languageContext, guestObject, t);
     }
 }

@@ -21,12 +21,12 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.41.0",
+    "mxversion": "7.27.0",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "24.1.0",
+    "version" : "24.2.0",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {

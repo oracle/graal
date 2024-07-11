@@ -278,8 +278,16 @@ typedef union {
                 avx_ifma : 1,
                          : 8;
   } bits;
-} SefCpuid7Ecx1Eax;
+} SefCpuid7SubLeaf1Eax;
 
+typedef union {
+  uint32_t value;
+  struct {
+    uint32_t             : 21,
+                apx_f    : 1,
+                         : 10;
+  } bits;
+} SefCpuid7SubLeaf1Edx;
 
 typedef union {
   uint32_t value;
@@ -301,7 +309,9 @@ typedef union {
              opmask  : 1,
              zmm512  : 1,
              zmm32   : 1,
-                     : 24;
+                     : 11,
+             apx_f   : 1,
+                     : 12;
   } bits;
 } XemXcr0Eax;
 
@@ -331,12 +341,15 @@ typedef struct {
   uint32_t     dcp_cpuid4_edx; // unused currently
 
   // cpuid function 7 (structured extended features)
+  // eax = 7, ecx = 0
   SefCpuid7Eax sef_cpuid7_eax;
   SefCpuid7Ebx sef_cpuid7_ebx;
   SefCpuid7Ecx sef_cpuid7_ecx;
   SefCpuid7Edx sef_cpuid7_edx;
-  // ECX = 1 before calling cpuid()
-  SefCpuid7Ecx1Eax sef_cpuid7_ecx1_eax;
+  // cpuid function 7 (structured extended features enumeration sub-leaf 1)
+  // eax = 7, ecx = 1
+  SefCpuid7SubLeaf1Eax sefsl1_cpuid7_eax;
+  SefCpuid7SubLeaf1Edx sefsl1_cpuid7_edx;
 
   // cpuid function 0xB (processor topology)
   // ecx = 0
@@ -431,4 +444,3 @@ enum Extended_Family {
   CPU_MODEL_BROADWELL      = 0x3d,
   CPU_MODEL_SKYLAKE        = 0x55
 };
-

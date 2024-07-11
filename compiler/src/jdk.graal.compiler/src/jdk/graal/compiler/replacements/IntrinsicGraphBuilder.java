@@ -131,6 +131,8 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
         if (graphBuilderConfig != null && !method.isNative()) {
             graph.start().setStateAfter(createStateAfterStartOfReplacementGraph(method, graphBuilderConfig));
         }
+        // Record method dependency in the graph
+        graph.recordMethod(method);
 
         Signature sig = method.getSignature();
         int max = sig.getParameterCount(false);

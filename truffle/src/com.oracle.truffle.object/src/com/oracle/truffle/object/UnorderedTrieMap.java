@@ -41,6 +41,7 @@
 package com.oracle.truffle.object;
 
 import java.util.AbstractSet;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
@@ -115,7 +116,7 @@ final class UnorderedTrieMap<K, V> implements ImmutableMap<K, V> {
 
     Map.Entry<K, V> getEntry(K key) {
         var entry = root.find(key, hash(key));
-        assert entry == null || entry.getKey().equals(key);
+        assert entry == null || entry.getKey().equals(key) : Arrays.asList(entry, key);
         return entry;
     }
 
@@ -151,7 +152,7 @@ final class UnorderedTrieMap<K, V> implements ImmutableMap<K, V> {
                 // replacing an existing entry
                 newSize = size;
                 newEntry = newEntry(key, value, entryFactory);
-                assert !newEntry.equals(existing);
+                assert !newEntry.equals(existing) : Arrays.asList(newEntry, existing);
             }
         }
         newRoot = newRoot.put(key, hash, newEntry);
@@ -174,7 +175,6 @@ final class UnorderedTrieMap<K, V> implements ImmutableMap<K, V> {
             }
             var newRoot = root;
             newRoot = newRoot.remove(key, hash);
-            assert newRoot != null;
             return new UnorderedTrieMap<>(size - 1, newRoot);
         }
     }
@@ -191,7 +191,6 @@ final class UnorderedTrieMap<K, V> implements ImmutableMap<K, V> {
             }
             var newRoot = root;
             newRoot = newRoot.remove(key, hash);
-            assert newRoot != null;
             return new UnorderedTrieMap<>(size - 1, newRoot);
         }
     }
@@ -297,6 +296,8 @@ final class UnorderedTrieMap<K, V> implements ImmutableMap<K, V> {
     }
 
     private boolean verify() {
+        assert size >= 0;
+        assert root != null;
         if (VERIFY) {
             assert root.count() == size : root.count() + " != " + size;
             assert root.verify(0);

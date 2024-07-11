@@ -1205,7 +1205,8 @@ public class BciBlockMapping implements JavaMethodContext {
                 case LDC:
                 case LDC_W:
                 case LDC2_W:
-                case MONITORENTER: {
+                case MONITORENTER:
+                case MONITOREXIT: {
                     /*
                      * All bytecodes that can trigger lazy class initialization via a
                      * ClassInitializationPlugin (allocations, static field access) must be listed
@@ -1351,11 +1352,11 @@ public class BciBlockMapping implements JavaMethodContext {
                 case FCMPG:
                 case DCMPL:
                 case DCMPG:
-                case MONITOREXIT:
-                    // All stack manipulation, comparison, conversion and arithmetic operators
-                    // except for idiv and irem can't throw exceptions so the don't need to connect
-                    // exception edges. MONITOREXIT can't throw exceptions in the context of
-                    // compiled code because of the structured locking requirement in the parser.
+                    /*
+                     * All stack manipulation, comparison, conversion and arithmetic operators
+                     * except for idiv and irem can't throw exceptions so the don't need to connect
+                     * exception edges.
+                     */
                     break;
 
                 case WIDE:

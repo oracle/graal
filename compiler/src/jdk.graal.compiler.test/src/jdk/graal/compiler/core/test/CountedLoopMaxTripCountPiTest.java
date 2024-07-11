@@ -32,7 +32,7 @@ import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.options.OptionValues;
 
@@ -75,7 +75,7 @@ public class CountedLoopMaxTripCountPiTest extends GraalCompilerTest {
      */
     void checkGraph(StructuredGraph graph, LoopsData loops) {
         loops.detectCountedLoops();
-        for (LoopEx loop : loops.loops()) {
+        for (Loop loop : loops.loops()) {
             // max trip count can only be used if a loop does not overflow
             loop.counted().createOverFlowGuard();
             Assert.assertTrue("expect all loops to be counted", loop.isCounted());

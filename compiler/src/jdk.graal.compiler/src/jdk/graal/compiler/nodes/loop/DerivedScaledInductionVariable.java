@@ -34,19 +34,20 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IntegerConvertNode;
 import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 
 public class DerivedScaledInductionVariable extends DerivedInductionVariable {
 
     protected final ValueNode scale;
     protected final ValueNode value;
 
-    public DerivedScaledInductionVariable(LoopEx loop, InductionVariable base, ValueNode scale, ValueNode value) {
+    public DerivedScaledInductionVariable(Loop loop, InductionVariable base, ValueNode scale, ValueNode value) {
         super(loop, base);
         this.scale = scale;
         this.value = value;
     }
 
-    public DerivedScaledInductionVariable(LoopEx loop, InductionVariable base, NegateNode value) {
+    public DerivedScaledInductionVariable(Loop loop, InductionVariable base, NegateNode value) {
         super(loop, base);
         this.scale = ConstantNode.forIntegerStamp(value.stamp(NodeView.DEFAULT), -1, value.graph());
         this.value = value;
@@ -121,7 +122,7 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     private long constantInitSafe() throws ArithmeticException {
-        return Math.multiplyExact(base.constantInit(), scale.asJavaConstant().asLong());
+        return opSafe(base.constantInit(), scale.asJavaConstant().asLong());
     }
 
     @Override
@@ -130,7 +131,13 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     private long constantStrideSafe() throws ArithmeticException {
-        return Math.multiplyExact(base.constantStride(), scale.asJavaConstant().asLong());
+        return opSafe(base.constantStride(), scale.asJavaConstant().asLong());
+    }
+
+    private long opSafe(long a, long b) {
+        // we can use scale bits here because all operands (init, scale, stride and extremum) have
+        // by construction equal bit sizes
+        return LoopUtility.multiplyExact(IntegerStamp.getBits(scale.stamp(NodeView.DEFAULT)), a, b);
     }
 
     @Override
@@ -152,7 +159,7 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     private long constantExtremumSafe() throws ArithmeticException {
-        return Math.multiplyExact(base.constantExtremum(), scale.asJavaConstant().asLong());
+        return opSafe(base.constantExtremum(), scale.asJavaConstant().asLong());
     }
 
     @Override

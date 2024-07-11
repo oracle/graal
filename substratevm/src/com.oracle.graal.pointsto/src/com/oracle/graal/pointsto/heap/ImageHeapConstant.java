@@ -65,7 +65,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          * Stores the hosted object, already processed by the object transformers. It is null for
          * instances of partially evaluated classes.
          */
-        private JavaConstant hostedObject;
+        private final JavaConstant hostedObject;
         /**
          * The identity hash code for the heap object. This field is only used if
          * {@link #hostedObject} is null, i.e., for objects without a backing object in the heap of
@@ -96,19 +96,23 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          */
         private boolean isInBaseLayer;
 
-        ConstantData(AnalysisType type, JavaConstant hostedObject) {
+        ConstantData(AnalysisType type, JavaConstant hostedObject, int identityHashCode) {
             Objects.requireNonNull(type);
             this.type = type;
             this.hostedObject = CompressibleConstant.uncompress(hostedObject);
 
             if (hostedObject == null) {
-                /*
-                 * No backing object in the heap of the image builder VM. We want a "virtual"
-                 * identity hash code that has the same properties as the image builder VM, so we
-                 * use the identity hash code of a new and otherwise unused object in the image
-                 * builder VM.
-                 */
-                this.identityHashCode = System.identityHashCode(new Object());
+                if (identityHashCode == -1) {
+                    /*
+                     * No backing object in the heap of the image builder VM. We want a "virtual"
+                     * identity hash code that has the same properties as the image builder VM, so
+                     * we use the identity hash code of a new and otherwise unused object in the
+                     * image builder VM.
+                     */
+                    this.identityHashCode = System.identityHashCode(new Object());
+                } else {
+                    this.identityHashCode = identityHashCode;
+                }
             } else {
                 /* This value must never be used later on. */
                 this.identityHashCode = -1;
@@ -163,18 +167,19 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return isReachableHandle.get(constantData) != null;
     }
 
+    public boolean allowConstantFolding() {
+        /*
+         * An object whose type is initialized at run time does not have hosted field values. Only
+         * simulated objects can be used for constant folding.
+         */
+        return constantData.type.isInitialized() || constantData.hostedObject == null;
+    }
+
     public Object getReachableReason() {
         return constantData.isReachable;
     }
 
     public boolean hasIdentityHashCode() {
-        /*
-         * GR-52121: Until the hash code can be injected in HotSpot, the hash code is computed as if
-         * the hosted object is null.
-         */
-        if (constantData.isInBaseLayer) {
-            return constantData.identityHashCode > 0 && constantData.hostedObject == null;
-        }
         return constantData.identityHashCode > 0;
     }
 
@@ -192,10 +197,6 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return constantData.isInBaseLayer;
     }
 
-    public void setHostedObject(JavaConstant hostedObject) {
-        constantData.hostedObject = hostedObject;
-    }
-
     public JavaConstant getHostedObject() {
         AnalysisError.guarantee(!CompressibleConstant.isCompressed(constantData.hostedObject), "References to hosted objects should never be compressed.");
         return constantData.hostedObject;
@@ -203,6 +204,10 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     public boolean isBackedByHostedObject() {
         return constantData.hostedObject != null;
+    }
+
+    public static int getConstantID(ImageHeapConstant constant) {
+        return constant.getConstantData().id;
     }
 
     @Override

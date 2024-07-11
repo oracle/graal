@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 public abstract class TypeState {
 
@@ -142,6 +143,14 @@ public abstract class TypeState {
 
     public static TypeState forNull() {
         return NullTypeState.SINGLETON;
+    }
+
+    public static TypeState defaultValueForKind(JavaKind javaKind) {
+        if (javaKind.isPrimitive()) {
+            return TypeState.forPrimitiveConstant(0);
+        } else {
+            return TypeState.forNull();
+        }
     }
 
     public static TypeState forPrimitiveConstant(long value) {

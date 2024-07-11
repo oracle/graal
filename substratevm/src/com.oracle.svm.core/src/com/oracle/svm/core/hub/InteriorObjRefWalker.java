@@ -41,6 +41,7 @@ import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceInternals;
+import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.VMError;
@@ -64,12 +65,13 @@ public class InteriorObjRefWalker {
      * @return True if the walk was successful, or false otherwise.
      */
     @NeverInline("Non-performance critical version")
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
     public static boolean walkObject(final Object obj, final ObjectReferenceVisitor visitor) {
         return walkObjectInline(obj, visitor);
     }
 
     @AlwaysInline("Performance critical version")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
     public static boolean walkObjectInline(final Object obj, final ObjectReferenceVisitor visitor) {
         final DynamicHub objHub = ObjectHeader.readDynamicHubFromObject(obj);
         final Pointer objPointer = Word.objectToUntrackedPointer(obj);
@@ -143,12 +145,12 @@ public class InteriorObjRefWalker {
     }
 
     @AlwaysInline("Performance critical version")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
     private static boolean walkStoredContinuation(Object obj, ObjectReferenceVisitor visitor) {
         if (!ContinuationSupport.isSupported()) {
             throw VMError.shouldNotReachHere("Stored continuation objects cannot be in the heap if the continuation support is disabled.");
         }
-        return StoredContinuationAccess.walkReferences(obj, visitor);
+        return StoredContinuationAccess.walkReferences((StoredContinuation) obj, visitor);
     }
 
     @AlwaysInline("Performance critical version")
@@ -176,6 +178,7 @@ public class InteriorObjRefWalker {
         return true;
     }
 
+    @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
     private static boolean callVisitor(Object obj, ObjectReferenceVisitor visitor, boolean isCompressed, Pointer pos) {
         return visitor.visitObjectReferenceInline(pos, 0, isCompressed, obj);

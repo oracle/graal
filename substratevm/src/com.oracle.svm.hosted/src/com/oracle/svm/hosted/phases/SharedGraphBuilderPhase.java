@@ -63,6 +63,7 @@ import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
+import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
@@ -82,6 +83,7 @@ import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.java.BciBlockMapping;
+import jdk.graal.compiler.java.BciBlockMapping.BciBlock;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.FrameStateBuilder;
 import jdk.graal.compiler.java.GraphBuilderPhase;
@@ -98,16 +100,21 @@ import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.UnreachableBeginNode;
+import jdk.graal.compiler.nodes.UnreachableControlSinkNode;
+import jdk.graal.compiler.nodes.UnreachableNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -117,6 +124,7 @@ import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
@@ -643,6 +651,167 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             super.genReturn(returnVal, returnKind);
         }
 
+        @Override
+        protected int minLockDepthAtMonitorExit(boolean inEpilogue) {
+            /**
+             * The
+             * {@code javasoft.sqe.tests.vm.instr.monitorexit.monitorexit009.monitorexit00901m1.monitorexit00901m1}
+             * test implies that unlocking the method synchronized object can be structured locking:
+             *
+             * <pre>
+             * synchronized void foo() {
+             *   monitorexit this // valid unlock of method synchronize object
+             *   // do something
+             *   monitorenter this
+             *   return
+             * }
+             * </pre>
+             *
+             * To be JCK compliant, it is only required to always have at least one locked object
+             * before performing a monitorexit.
+             */
+            return 1;
+        }
+
+        @Override
+        protected void handleUnsupportedJsr(String msg) {
+            genThrowUnsupportedFeatureError(msg);
+        }
+
+        @Override
+        protected void handleUnstructuredLocking(String msg, boolean isDeadEnd) {
+            ValueNode methodSynchronizedObjectSnapshot = methodSynchronizedObject;
+            if (getDispatchBlock(bci()) == blockMap.getUnwindBlock()) {
+                // methodSynchronizeObject is unlocked in synchronizedEpilogue
+                genReleaseMonitors(false);
+
+                if (method.isSynchronized() && frameState.lockDepth(false) == 0) {
+                    /*
+                     * methodSynchronizedObject has been released unexpectedly but the parser is
+                     * already creating an IllegalMonitorStateException. Thus, set the
+                     * methodSynchronizedObject to null, to signal that the synchronizedEpilogue
+                     * need not be executed, as this would cause an exception loop due to the empty
+                     * lock stack
+                     */
+                    methodSynchronizedObject = null;
+                }
+            }
+
+            FrameStateBuilder stateBeforeExc = frameState.copy();
+            lastInstr = emitBytecodeExceptionCheck(graph.unique(LogicConstantNode.contradiction()), true, BytecodeExceptionKind.UNSTRUCTURED_LOCKING);
+            // lastInstr is the start of the never entered no-exception branch
+            if (isDeadEnd) {
+                append(new UnreachableControlSinkNode());
+                lastInstr = null;
+            } else {
+                append(new UnreachableNode());
+                frameState = stateBeforeExc;
+            }
+            methodSynchronizedObject = methodSynchronizedObjectSnapshot;
+        }
+
+        @Override
+        protected void handleMismatchAtMonitorexit() {
+            genReleaseMonitors(true);
+            genThrowUnsupportedFeatureError("Unexpected lock object at monitorexit. Native Image enforces structured locking (JVMS 2.11.10)");
+        }
+
+        @Override
+        protected FixedNode handleUnstructuredLockingForUnwindTarget(String msg, FrameStateBuilder state) {
+            FrameStateBuilder oldFs = frameState;
+            FixedWithNextNode oldLastInstr = lastInstr;
+            frameState = state;
+
+            BeginNode holder = graph.add(new BeginNode());
+            lastInstr = holder;
+            handleUnstructuredLocking(msg, true);
+
+            frameState = oldFs;
+            lastInstr = oldLastInstr;
+
+            FixedNode result = holder.next();
+            holder.setNext(null);
+            holder.safeDelete();
+
+            return result;
+        }
+
+        @Override
+        protected Target checkUnstructuredLocking(Target target, BciBlock targetBlock, FrameStateBuilder mergeState) {
+            if (mergeState.areLocksMergeableWith(target.getState())) {
+                return target;
+            }
+
+            /*
+             * If the current locks are not compatible with the target merge,
+             * the following code is created
+             *
+             * @formatter:off
+             *
+             * if(false)                // UnreachableBeginNode
+             *   goto originalTarget    // using adapted locks
+             * else
+             *   releaseMonitors()      // also methodSynchronizedObject
+             *   throw new UnsupportedFeatureError()
+             *
+             * @formatter:on
+             *
+             * Returns the newly created IfNode as updated target.
+             */
+            FixedWithNextNode originalLast = lastInstr;
+            FrameStateBuilder originalState = frameState;
+
+            IfNode ifNode = graph.add(new IfNode(LogicConstantNode.contradiction(graph), graph.add(new UnreachableBeginNode()), graph.add(new BeginNode()), BranchProbabilityNode.NEVER_TAKEN_PROFILE));
+
+            /*
+             * Create an UnsupportedFeatureException in the always entered (false) branch and
+             * unwind.
+             */
+            lastInstr = ifNode.falseSuccessor();
+            frameState = target.getState().copy();
+            genReleaseMonitors(true);
+            genThrowUnsupportedFeatureError("Incompatible lock states at merge. Native Image enforces structured locking (JVMS 2.11.10)");
+
+            /*
+             * Update the never entered (true) branch to have a matching lock stack with the
+             * subsequent merge. This branch will fold away during canonicalization. Add an
+             * UnreachableNode as assurance.
+             */
+            Target newTarget;
+            FrameStateBuilder newState = target.getState().copy();
+            newState.setLocks(mergeState);
+            if (target.getOriginalEntry() == null) {
+                newTarget = new Target(ifNode, newState, target.getEntry());
+            } else {
+                target.getOriginalEntry().replaceAtPredecessor(ifNode);
+                newTarget = new Target(target.getEntry(), newState, target.getOriginalEntry());
+            }
+            ifNode.trueSuccessor().setNext(newTarget.getOriginalEntry());
+
+            lastInstr = originalLast;
+            frameState = originalState;
+
+            return newTarget;
+        }
+
+        private void genReleaseMonitors(boolean includeMethodSynchronizeObject) {
+            final int monitorsToRelease = (method.isSynchronized() && !includeMethodSynchronizeObject) ? frameState.lockDepth(false) - 1 : frameState.lockDepth(false);
+            for (int i = 0; i < monitorsToRelease; i++) {
+                MonitorIdNode id = frameState.peekMonitorId();
+                ValueNode lock = frameState.popLock();
+                frameState.pushLock(lock, id);
+                genMonitorExit(lock, null, bci(), includeMethodSynchronizeObject, false);
+            }
+        }
+
+        private void genThrowUnsupportedFeatureError(String msg) {
+            ConstantNode messageNode = ConstantNode.forConstant(getConstantReflection().forString(msg), getMetaAccess(), getGraph());
+            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(SnippetRuntime.UNSUPPORTED_FEATURE, messageNode));
+            lastInstr.setNext(foreignCallNode);
+            foreignCallNode.setNext(graph.add(new LoweredDeadEndNode()));
+            lastInstr = null;
+        }
+
         private void checkWordType(ValueNode value, JavaType expectedType, String reason) {
             if (expectedType.getJavaKind() == JavaKind.Object && checkWordTypes()) {
                 boolean isWordTypeExpected = getWordTypes().isWord(expectedType);
@@ -705,7 +874,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         protected final boolean isMethodDeoptTarget() {
-            return MultiMethod.isDeoptTarget(method);
+            return SubstrateCompilationDirectives.isDeoptTarget(method);
         }
 
         @Override
@@ -1009,7 +1178,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         int argCpi = primitiveConstant.asInt();
                         Object argConstant = loadConstantDynamic(argCpi, opcode == Opcodes.INVOKEDYNAMIC ? Opcodes.LDC : opcode);
                         if (argConstant instanceof ValueNode valueNode) {
-                            currentNode = valueNode;
+                            ResolvedJavaMethod.Parameter[] parameters = bootstrapMethod.getParameters();
+                            if (valueNode.getStackKind().isPrimitive() && i + 3 <= parameters.length && !parameters[i + 3].getKind().isPrimitive()) {
+                                currentNode = append(BoxNode.create(valueNode, getMetaAccess().lookupJavaType(valueNode.getStackKind().toBoxedJavaClass()), valueNode.getStackKind()));
+                            } else {
+                                currentNode = valueNode;
+                            }
                         } else if (argConstant instanceof Throwable || argConstant instanceof UnresolvedJavaType) {
                             /* A nested constant dynamic threw. */
                             return argConstant;

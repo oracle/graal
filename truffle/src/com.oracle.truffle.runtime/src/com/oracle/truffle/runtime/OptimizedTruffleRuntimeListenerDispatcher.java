@@ -42,6 +42,7 @@ package com.oracle.truffle.runtime;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -84,8 +85,8 @@ final class OptimizedTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayLi
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanent, int tier) {
-        invokeListeners((l) -> l.onCompilationFailed(target, reason, bailout, permanent, tier));
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanent, int tier, Supplier<String> lazyStackTrace) {
+        invokeListeners((l) -> l.onCompilationFailed(target, reason, bailout, permanent, tier, lazyStackTrace));
     }
 
     @Override
@@ -170,9 +171,24 @@ final class OptimizedTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayLi
         onCompilationSuccess((OptimizedCallTarget) compilable, (AbstractCompilationTask) task, graph, result);
     }
 
+    /**
+     * On GraalVM, the {@link TruffleCompilerListener} interface is loaded from the JDK's jimage
+     * rather than from a Maven dependency. The {@code TruffleCompilerListener} loaded from the LTS
+     * GraalVM-23.1.3 JDK does not delegate the {@code onFailure} method to the newer version, so we
+     * need to handle the delegation here.
+     * <p>
+     * GR-54187: Remove in graalvm-25.1
+     * </p>
+     */
     @Override
+    @SuppressWarnings("deprecation")
     public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
-        onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout, tier);
+        onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout, tier, null);
+    }
+
+    @Override
+    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
+        onCompilationFailed((OptimizedCallTarget) compilable, reason, bailout, permanentBailout, tier, lazyStackTrace);
     }
 
     @Override

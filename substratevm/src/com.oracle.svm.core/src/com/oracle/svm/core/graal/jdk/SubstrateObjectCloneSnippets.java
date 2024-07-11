@@ -80,7 +80,6 @@ import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.ObjectClone;
 import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.graal.compiler.word.ObjectAccess;
-import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class SubstrateObjectCloneSnippets extends SubstrateTemplates implements Snippets {
@@ -92,7 +91,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static Object doClone(Object original) throws CloneNotSupportedException, InstantiationException {
+    private static Object doClone(Object original) throws CloneNotSupportedException {
         if (original == null) {
             throw new NullPointerException();
         } else if (!(original instanceof Cloneable)) {
@@ -122,7 +121,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
                 throw VMError.shouldNotReachHere("Hybrid classes do not support Object.clone().");
             }
         } else {
-            result = Unsafe.getUnsafe().allocateInstance(DynamicHub.toClass(hub));
+            result = KnownIntrinsics.unvalidatedAllocateInstance(DynamicHub.toClass(hub));
         }
 
         int firstFieldOffset = ConfigurationValues.getObjectLayout().getFirstFieldOffset();

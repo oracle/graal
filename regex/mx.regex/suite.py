@@ -39,11 +39,11 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.27.1",
+  "mxversion": "7.27.0",
 
   "name" : "regex",
 
-  "version" : "24.1.0",
+  "version" : "24.2.0",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",

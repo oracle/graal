@@ -108,17 +108,18 @@ public class CompilationInfo {
 
     @SuppressWarnings("try")
     public StructuredGraph createGraph(DebugContext debug, OptionValues options, CompilationIdentifier compilationId, boolean decode) {
+        var encodedGraph = getCompilationGraph().getEncodedGraph();
         var graph = new StructuredGraph.Builder(options, debug)
                         .method(method)
-                        .recordInlinedMethods(false)
-                        .trackNodeSourcePosition(getCompilationGraph().getEncodedGraph().trackNodeSourcePosition())
+                        .trackNodeSourcePosition(encodedGraph.trackNodeSourcePosition())
+                        .recordInlinedMethods(encodedGraph.isRecordingInlinedMethods())
                         .compilationId(compilationId)
                         .build();
 
         if (decode) {
             try (var s = debug.scope("CreateGraph", graph, method)) {
                 var decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, graph);
-                decoder.decode(getCompilationGraph().getEncodedGraph());
+                decoder.decode(encodedGraph);
             } catch (Throwable ex) {
                 throw debug.handle(ex);
             }

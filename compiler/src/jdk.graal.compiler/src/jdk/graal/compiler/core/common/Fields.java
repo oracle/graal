@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,23 +24,20 @@
  */
 package jdk.graal.compiler.core.common;
 
-import static jdk.graal.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import jdk.graal.compiler.debug.GraalError;
-
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Describes fields in a class, primarily for access via {@link Unsafe}.
  */
 public class Fields {
 
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final Fields EMPTY_FIELDS = new Fields(Collections.emptyList());
 
     /**
@@ -149,7 +146,7 @@ public class Fields {
                     assert false : "unhandled property type: " + type;
                 }
             } else {
-                Object obj = UNSAFE.getObject(from, offset);
+                Object obj = UNSAFE.getReference(from, offset);
                 if (obj != null && type.isArray()) {
                     if (type.getComponentType().isPrimitive()) {
                         obj = copyObjectAsArray(obj);
@@ -157,7 +154,7 @@ public class Fields {
                         obj = ((Object[]) obj).clone();
                     }
                 }
-                UNSAFE.putObject(to, offset, trans == null ? obj : trans.apply(index, obj));
+                UNSAFE.putReference(to, offset, trans == null ? obj : trans.apply(index, obj));
             }
         }
     }
@@ -218,7 +215,7 @@ public class Fields {
                 assert false : "unhandled property type: " + type;
             }
         } else {
-            value = UNSAFE.getObject(object, offset);
+            value = UNSAFE.getReference(object, offset);
         }
         return value;
     }
@@ -382,16 +379,16 @@ public class Fields {
 
     public Object getObject(Object object, int i) {
         assert !types[i].isPrimitive();
-        return UNSAFE.getObject(object, offsets[i]);
+        return UNSAFE.getReference(object, offsets[i]);
     }
 
     public void putObject(Object object, int i, Object value) {
         assert checkAssignableFrom(object, i, value);
-        UNSAFE.putObject(object, offsets[i], value);
+        UNSAFE.putReference(object, offsets[i], value);
     }
 
     public void putObjectChecked(Object object, int i, Object value) {
         checkAssignableFrom(object, i, value);
-        UNSAFE.putObject(object, offsets[i], value);
+        UNSAFE.putReference(object, offsets[i], value);
     }
 }

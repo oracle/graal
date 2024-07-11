@@ -28,7 +28,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hightiercodegen.reconstruction.StackifierData;
@@ -167,7 +167,7 @@ public class StackifierScopeComputation {
     }
 
     /**
-     * Compute all {@link Scope} for {@link IfNode} and {@link Loop}.
+     * Compute all {@link Scope} for {@link IfNode} and {@link CFGLoop}.
      */
     @SuppressWarnings("try")
     public void computeScopes(StackifierData stackifierData) {
@@ -193,7 +193,7 @@ public class StackifierScopeComputation {
         for (int i = 0; i < switchNode.blockSuccessorCount(); i++) {
             HIRBlock caseBlock = cfg.blockFor(switchNode.blockSuccessor(i));
             assert AbstractControlFlowGraph.dominates(switchBlock, caseBlock);
-            Loop<HIRBlock> loop = switchBlock.getLoop();
+            CFGLoop<HIRBlock> loop = switchBlock.getLoop();
             EconomicSet<HIRBlock> blocks = computeScopeBlocks(switchBlock, caseBlock, loop);
             if (blocks != null) {
                 Scope scope = new Scope(blocks, switchBlock);
@@ -216,7 +216,7 @@ public class StackifierScopeComputation {
      * Compute all loop scopes.
      */
     private void computeLoopScopes() {
-        for (Loop<HIRBlock> loop : cfg.getLoops()) {
+        for (CFGLoop<HIRBlock> loop : cfg.getLoops()) {
             EconomicSet<HIRBlock> loopBlocks = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
             loopBlocks.addAll(loop.getBlocks());
             Scope loopScope = new Scope(loopBlocks, loop.getHeader());
@@ -233,7 +233,7 @@ public class StackifierScopeComputation {
             HIRBlock ifBlock = cfg.blockFor(ifNode);
             Node trueSuccessor = ifNode.trueSuccessor();
             Node falseSuccessor = ifNode.falseSuccessor();
-            Loop<HIRBlock> loop = ifBlock.getLoop();
+            CFGLoop<HIRBlock> loop = ifBlock.getLoop();
             EconomicSet<HIRBlock> blocks;
             blocks = computeScopeBlocks(ifBlock, cfg.blockFor(trueSuccessor), loop);
             Scope thenScope = null;
@@ -266,7 +266,7 @@ public class StackifierScopeComputation {
      *
      * @param successor of {@code startBlock}
      */
-    private EconomicSet<HIRBlock> computeScopeBlocks(HIRBlock startBlock, HIRBlock successor, Loop<HIRBlock> loop) {
+    private EconomicSet<HIRBlock> computeScopeBlocks(HIRBlock startBlock, HIRBlock successor, CFGLoop<HIRBlock> loop) {
         if (AbstractControlFlowGraph.dominates(startBlock, successor)) {
             Scope loopScope;
             if (loop == null) {

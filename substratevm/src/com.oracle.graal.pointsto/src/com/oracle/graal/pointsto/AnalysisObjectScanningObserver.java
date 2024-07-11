@@ -138,7 +138,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         Object valueObj = analysis.getSnippetReflectionProvider().asObject(Object.class, value);
         AnalysisType type = bb.getMetaAccess().lookupJavaType(valueObj.getClass());
 
-        type.registerAsInHeap(reason);
+        type.registerAsInstantiated(reason);
     }
 
     private PointsToAnalysis getAnalysis() {

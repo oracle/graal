@@ -227,7 +227,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
             StructuredGraph result = new StructuredGraph.Builder(optionValues, debug)
                             .method(method)
                             .trackNodeSourcePosition(trackNodeSourcePosition)
-                            .recordInlinedMethods(false)
+                            .recordInlinedMethods(true)
                             .setIsSubstitution(true)
                             .build();
 

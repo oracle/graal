@@ -99,7 +99,7 @@ public abstract class InlineBeforeAnalysisPolicy {
 
     protected abstract AbstractPolicyScope createRootScope();
 
-    protected abstract AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod method);
+    protected abstract AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod caller, AnalysisMethod method);
 
     /** @see InlineBeforeAnalysisGraphDecoder#shouldOmitIntermediateMethodInStates */
     protected abstract boolean shouldOmitIntermediateMethodInState(AnalysisMethod method);
@@ -142,7 +142,7 @@ public abstract class InlineBeforeAnalysisPolicy {
         }
 
         @Override
-        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod method) {
+        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod caller, AnalysisMethod method) {
             throw AnalysisError.shouldNotReachHere("NO_INLINING policy should not try to inline");
         }
 

@@ -41,10 +41,11 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
-import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.graal.compiler.debug.Assertions;
@@ -59,8 +60,10 @@ public class OpenTypeWorldFeature implements InternalFeature {
 
     @Override
     public void beforeUniverseBuilding(BeforeUniverseBuildingAccess access) {
-        if (SVMImageLayerSupport.singleton().persistImageSingletons() && !LoadedLayeredImageSingletonInfo.singleton().handledDuringLoading(LayerTypeInfo.class)) {
+        if (ImageLayerBuildingSupport.buildingInitialLayer()) {
             ImageSingletons.add(LayerTypeInfo.class, new LayerTypeInfo());
+        } else {
+            assert !(ImageLayerBuildingSupport.buildingImageLayer() && !ImageSingletons.contains(LayerTypeInfo.class)) : "Layered image is missing layer type info";
         }
     }
 
@@ -74,7 +77,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
     }
 
     public static int loadTypeInfo(Collection<HostedType> types) {
-        if (ImageSingletons.contains(LayerTypeInfo.class) && SVMImageLayerSupport.singleton().loadAnalysis()) {
+        if (ImageSingletons.contains(LayerTypeInfo.class) && ImageLayerBuildingSupport.buildingExtensionLayer()) {
             /*
              * Load analysis must be enabled or otherwise the same Analysis Type id will not be
              * reassigned across layers.
@@ -169,8 +172,8 @@ public class OpenTypeWorldFeature implements InternalFeature {
         }
 
         @Override
-        public EnumSet<ImageBuilderFlags> getImageBuilderFlags() {
-            return EnumSet.of(ImageBuilderFlags.BUILDTIME_ACCESS);
+        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
         }
 
         @Override

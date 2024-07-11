@@ -654,13 +654,13 @@ abstract class DynamicObjectLibraryImpl {
         @TruffleBoundary
         @Override
         public boolean setPropertyFlags(DynamicObject object, Shape cachedShape, Object key, int propertyFlags) {
+            updateShapeImpl(object);
             ShapeImpl oldShape = (ShapeImpl) ACCESS.getShape(object);
             Property existingProperty = oldShape.getProperty(key);
             if (existingProperty == null) {
                 return false;
             }
             if (existingProperty.getFlags() != propertyFlags) {
-                updateShapeImpl(object);
                 Shape newShape = changePropertyFlags(oldShape, (PropertyImpl) existingProperty, propertyFlags);
                 if (newShape != oldShape) {
                     ACCESS.setShape(object, newShape);

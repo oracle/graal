@@ -72,15 +72,15 @@ import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
  * <p>
  * <h3>Simple Usage:</h3> The following example shows how a language with untyped execute methods,
  * but with blocks that return values would use the block node.
- * 
- * {@snippet file="com/oracle/truffle/api/nodes/BlockNode.java"
- * region="com.oracle.truffle.api.nodes.BlockNodeSnippets.LanguageBlockNode"}
+ *
+ * {@snippet file = "com/oracle/truffle/api/nodes/BlockNode.java" region =
+ * "com.oracle.truffle.api.nodes.BlockNodeSnippets.LanguageBlockNode"}
  *
  * <h3>Resumable Usage:</h3> The following example shows how the block node can be used to implement
  * resumable blocks, e.g. for generator implementations:
- * 
- * {@snippet file="com/oracle/truffle/api/nodes/BlockNode.java"
- * region="com.oracle.truffle.api.nodes.BlockNodeSnippets.ResumableBlockNode"}
+ *
+ * {@snippet file = "com/oracle/truffle/api/nodes/BlockNode.java" region =
+ * "com.oracle.truffle.api.nodes.BlockNodeSnippets.ResumableBlockNode"}
  *
  * @param <T> the type of the block element node
  * @since 19.3
@@ -244,18 +244,6 @@ public abstract class BlockNode<T extends Node> extends Node {
      */
     public final T[] getElements() {
         return elements;
-    }
-
-    /**
-     * Block nodes always have {@link NodeCost#NONE}.
-     *
-     * {@inheritDoc}
-     *
-     * @since 19.3
-     */
-    @Override
-    public final NodeCost getCost() {
-        return NodeCost.NONE;
     }
 
     /**

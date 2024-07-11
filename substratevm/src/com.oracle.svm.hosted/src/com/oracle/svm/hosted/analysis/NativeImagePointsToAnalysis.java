@@ -28,6 +28,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
@@ -119,8 +120,8 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     }
 
     @Override
-    public void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes) {
-        customTypeFieldHandler.injectFieldTypes(aField, customTypes);
+    public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
+        customTypeFieldHandler.injectFieldTypes(aField, customTypes, canBeNull);
     }
 
     @Override
@@ -140,9 +141,10 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                  * Using getInstanceFields and getStaticFields allows to include the fields from the
                  * substitution class.
                  */
-                Stream.concat(Arrays.stream(type.getInstanceFields(true)), Arrays.stream(type.getStaticFields()))
+                Stream.concat(Arrays.stream(getOrDefault(type, t -> t.getInstanceFields(true), new AnalysisField[0])),
+                                Arrays.stream(getOrDefault(type, AnalysisType::getStaticFields, new AnalysisField[0])))
                                 .map(OriginalFieldProvider::getJavaField)
-                                .filter(classInclusionPolicy::isFieldIncluded)
+                                .filter(field -> field != null && classInclusionPolicy.isFieldIncluded(field))
                                 .forEach(classInclusionPolicy::includeField);
             }
         });

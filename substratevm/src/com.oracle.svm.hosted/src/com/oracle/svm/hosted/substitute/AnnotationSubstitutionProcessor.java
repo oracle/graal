@@ -585,23 +585,35 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     private void handleDeletedClass(Class<?> originalClass, Delete deleteAnnotation) {
         if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+            ResolvedJavaType type = metaAccess.lookupJavaType(originalClass);
+
+            try {
+                type.link();
+            } catch (LinkageError ignored) {
+                /*
+                 * Ignore any linking errors. A type that cannot be linked doesn't need elements
+                 * replaced: it will simply fail at runtime with the same linkage error before
+                 * reaching those elements.
+                 */
+                return;
+            }
+
             /*
              * We register all methods and fields as deleted. That still allows usage of the type in
              * type checks.
              */
-            for (Executable m : originalClass.getDeclaredMethods()) {
-                ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
+            for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
                 registerAsDeleted(null, method, deleteAnnotation);
             }
-            for (Executable m : originalClass.getDeclaredConstructors()) {
-                ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-                registerAsDeleted(null, method, deleteAnnotation);
+            for (ResolvedJavaMethod constructor : type.getDeclaredConstructors()) {
+                registerAsDeleted(null, constructor, deleteAnnotation);
             }
-            for (Field f : originalClass.getDeclaredFields()) {
-                ResolvedJavaField field = metaAccess.lookupJavaField(f);
-                registerAsDeleted(null, field, deleteAnnotation);
+            for (ResolvedJavaField f : type.getInstanceFields(false)) {
+                registerAsDeleted(null, f, deleteAnnotation);
             }
-
+            for (ResolvedJavaField f : type.getStaticFields()) {
+                registerAsDeleted(null, f, deleteAnnotation);
+            }
         } else {
             deleteAnnotations.put(metaAccess.lookupJavaType(originalClass), deleteAnnotation);
         }

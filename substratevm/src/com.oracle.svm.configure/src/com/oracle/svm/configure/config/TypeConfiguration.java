@@ -38,19 +38,26 @@ import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonWriter;
+
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration, TypeConfiguration.Predicate> {
 
     private final ConcurrentMap<ConditionalElement<ConfigurationTypeDescriptor>, ConfigurationType> types = new ConcurrentHashMap<>();
 
-    public TypeConfiguration() {
+    private final String combinedFileKey;
+
+    public TypeConfiguration(String combinedFileKey) {
+        this.combinedFileKey = combinedFileKey;
     }
 
     public TypeConfiguration(TypeConfiguration other) {
         other.types.forEach((key, value) -> types.put(key, new ConfigurationType(value)));
+        this.combinedFileKey = other.combinedFileKey;
     }
 
     @Override
@@ -94,11 +101,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
         types.entrySet().removeIf(entry -> predicate.testIncludedType(entry.getKey(), entry.getValue()));
     }
 
-    public ConfigurationType get(UnresolvedConfigurationCondition condition, String qualifiedJavaName) {
-        return get(condition, new NamedConfigurationTypeDescriptor(qualifiedJavaName));
-    }
-
-    private ConfigurationType get(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
+    public ConfigurationType get(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
         return types.get(new ConditionalElement<>(condition, typeDescriptor));
     }
 
@@ -124,8 +127,8 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
         return getOrCreateType(condition, new NamedConfigurationTypeDescriptor(qualifiedForNameString));
     }
 
-    private ConfigurationType getOrCreateType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
-        return types.computeIfAbsent(new ConditionalElement<>(condition, typeDescriptor), p -> new ConfigurationType(p.condition(), p.element(), false));
+    public ConfigurationType getOrCreateType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
+        return types.computeIfAbsent(new ConditionalElement<>(condition, typeDescriptor), p -> new ConfigurationType(p.condition(), p.element(), true));
     }
 
     @Override
@@ -140,24 +143,29 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
         List<ConfigurationType> typesList = new ArrayList<>(this.types.values());
         typesList.sort(Comparator.comparing(ConfigurationType::getTypeDescriptor).thenComparing(ConfigurationType::getCondition));
 
-        writer.append('[');
+        writer.append('[').indent();
         String prefix = "";
         for (ConfigurationType type : typesList) {
             writer.append(prefix).newline();
             type.printJson(writer);
             prefix = ",";
         }
-        writer.newline().append(']');
+        writer.unindent().newline().append(']');
     }
 
     @Override
-    public ConfigurationParser createParser() {
-        return new ReflectionConfigurationParser<>(ConfigurationConditionResolver.identityResolver(), new ParserConfigurationAdapter(this), true, false);
+    public ConfigurationParser createParser(boolean strictMetadata) {
+        return ReflectionConfigurationParser.create(combinedFileKey, strictMetadata, ConfigurationConditionResolver.identityResolver(), new ParserConfigurationAdapter(this), true, false, false);
     }
 
     @Override
     public boolean isEmpty() {
         return types.isEmpty();
+    }
+
+    @Override
+    public boolean supportsCombinedFile() {
+        return true;
     }
 
     @Override

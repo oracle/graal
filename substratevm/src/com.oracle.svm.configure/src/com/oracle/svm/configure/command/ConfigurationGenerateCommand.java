@@ -47,7 +47,6 @@ import com.oracle.svm.configure.filters.HierarchyFilterNode;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.util.LogUtils;
 
 public class ConfigurationGenerateCommand extends ConfigurationCommand {
@@ -303,36 +302,7 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
         if (outputCollection.isEmpty()) {
             LogUtils.warning("No outputs specified, validating inputs only.");
         }
-        for (URI uri : outputCollection.getReflectConfigPaths()) {
-            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                configurationSet.getReflectionConfiguration().printJson(writer);
-            }
-        }
-        for (URI uri : outputCollection.getJniConfigPaths()) {
-            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                configurationSet.getJniConfiguration().printJson(writer);
-            }
-        }
-        for (URI uri : outputCollection.getProxyConfigPaths()) {
-            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                configurationSet.getProxyConfiguration().printJson(writer);
-            }
-        }
-        for (URI uri : outputCollection.getResourceConfigPaths()) {
-            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                configurationSet.getResourceConfiguration().printJson(writer);
-            }
-        }
-        for (URI uri : outputCollection.getSerializationConfigPaths()) {
-            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                configurationSet.getSerializationConfiguration().printJson(writer);
-            }
-        }
-        for (URI uri : outputCollection.getPredefinedClassesConfigPaths()) {
-            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
-                configurationSet.getPredefinedClassesConfiguration().printJson(writer);
-            }
-        }
+        ConfigurationSet.writeConfigurationToAllPaths(outputCollection::getPaths, configurationSet::getConfiguration);
     }
 
     private static void parseFilterFiles(ComplexFilter filter, List<URI> filterFiles) {

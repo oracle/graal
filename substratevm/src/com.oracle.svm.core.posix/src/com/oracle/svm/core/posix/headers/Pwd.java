@@ -49,6 +49,9 @@ public class Pwd {
 
         @CField
         CCharPointer pw_dir();
+
+        @CField
+        int pw_gid();
     }
 
     @CPointerTo(passwd.class)

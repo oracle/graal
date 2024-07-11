@@ -24,12 +24,15 @@
  */
 package com.oracle.svm.configure;
 
+import java.io.IOException;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.json.JsonPrintable;
+
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public abstract class ConfigurationBase<T extends ConfigurationBase<T, P>, P> implements JsonPrintable {
 
@@ -69,5 +72,11 @@ public abstract class ConfigurationBase<T extends ConfigurationBase<T, P>, P> im
         return copyAnd(copy -> copy.removeIf(predicate));
     }
 
-    public abstract ConfigurationParser createParser();
+    public abstract ConfigurationParser createParser(boolean strictMetadata);
+
+    public abstract boolean supportsCombinedFile();
+
+    public void printLegacyJson(JsonWriter writer) throws IOException {
+        printJson(writer);
+    }
 }

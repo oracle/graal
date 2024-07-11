@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -118,13 +118,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.addPush(JavaKind.Int, CountTrailingZerosNode.create(value));
-                return true;
-            }
-        });
-        r.register(new InvocationPlugin("bitCount", type) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Int, b.append(new AArch64BitCountNode(value).canonical(null)));
                 return true;
             }
         });
@@ -492,7 +485,9 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     ValueNode nonNullReceiver = receiver.get(true);
                     ValueNode bufStart = helper.arrayElementPointer(buf, JavaKind.Byte, ofs);
                     ValueNode state = helper.loadField(nonNullReceiver, stateField);
-                    ValueNode stateStart = helper.arrayStart(state, JavaKind.Byte);
+                    assert stateField.getType().isArray() : "SHA3.state expected to be an array, got: " + stateField.getType();
+                    JavaKind stateElementKind = stateField.getType().getComponentType().getJavaKind();
+                    ValueNode stateStart = helper.arrayStart(state, stateElementKind);
                     ValueNode blockSize = helper.loadField(nonNullReceiver, blockSizeField);
                     b.add(new MessageDigestNode.SHA3Node(bufStart, stateStart, blockSize));
                     return true;

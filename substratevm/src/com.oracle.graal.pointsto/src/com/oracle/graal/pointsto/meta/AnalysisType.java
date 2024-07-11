@@ -24,16 +24,14 @@
  */
 package com.oracle.graal.pointsto.meta;
 
+import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -46,7 +44,6 @@ import org.graalvm.word.WordBase;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -60,10 +57,8 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
-import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
@@ -78,9 +73,8 @@ import jdk.vm.ci.meta.Signature;
 
 public abstract class AnalysisType extends AnalysisElement implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
 
-    @SuppressWarnings("rawtypes")//
-    private static final AtomicReferenceFieldUpdater<AnalysisType, ConcurrentHashMap> UNSAFE_ACCESS_FIELDS_UPDATER = //
-                    AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, ConcurrentHashMap.class, "unsafeAccessedFields");
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> UNSAFE_ACCESS_FIELDS_UPDATER = //
+                    AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, Object.class, "unsafeAccessedFields");
 
     private static final AtomicReferenceFieldUpdater<AnalysisType, AnalysisObject> UNIQUE_CONSTANT_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, AnalysisObject.class, "uniqueConstant");
@@ -92,20 +86,17 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> subtypeReachableNotificationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "subtypeReachableNotifications");
 
-    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> overrideReachableNotificationsUpdater = AtomicReferenceFieldUpdater
-                    .newUpdater(AnalysisType.class, Object.class, "overrideReachableNotifications");
-
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> instantiatedNotificationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "typeInstantiatedNotifications");
 
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> objectReachableCallbacksUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "objectReachableCallbacks");
 
-    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isAllocatedUpdater = AtomicReferenceFieldUpdater
-                    .newUpdater(AnalysisType.class, Object.class, "isAllocated");
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isInstantiatedUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "isInstantiated");
 
-    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isInHeapUpdater = AtomicReferenceFieldUpdater
-                    .newUpdater(AnalysisType.class, Object.class, "isInHeap");
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isUnsafeAllocatedUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "isUnsafeAllocated");
 
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isReachableUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "isReachable");
@@ -113,26 +104,23 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicIntegerFieldUpdater<AnalysisType> isAnySubtypeInstantiatedUpdater = AtomicIntegerFieldUpdater
                     .newUpdater(AnalysisType.class, "isAnySubtypeInstantiated");
 
+    static final AtomicReferenceFieldUpdater<AnalysisType, Object> overrideableMethodsUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "overrideableMethods");
+
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
     private final String qualifiedName;
     private final String unqualifiedName;
 
-    @SuppressWarnings("unused") private volatile Object isInHeap;
-    @SuppressWarnings("unused") private volatile Object isAllocated;
+    @SuppressWarnings("unused") private volatile Object isInstantiated;
+    /** Can be allocated via Unsafe or JNI, i.e., without executing a constructor. */
+    @SuppressWarnings("unused") private volatile Object isUnsafeAllocated;
     @SuppressWarnings("unused") private volatile Object isReachable;
     @SuppressWarnings("unused") private volatile int isAnySubtypeInstantiated;
     private boolean reachabilityListenerNotified;
     private boolean unsafeFieldsRecomputed;
-    private boolean unsafeAccessedFieldsRegistered;
 
-    /**
-     * Unsafe accessed fields for this type.
-     *
-     * This field can be initialized during the multithreaded analysis phase in case of the computed
-     * value fields, thus we use the UNSAFE_ACCESS_FIELDS_UPDATER to initialize it.
-     */
-    private volatile ConcurrentHashMap<UnsafePartitionKind, Collection<AnalysisField>> unsafeAccessedFields;
+    @SuppressWarnings("unused") private volatile Object unsafeAccessedFields;
 
     /** Immediate subtypes and this type itself. */
     private final Set<AnalysisType> subTypes;
@@ -174,6 +162,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private final AnalysisType elementalType;
 
     private final AnalysisType[] interfaces;
+    private AnalysisMethod[] declaredMethods;
 
     /* isArray is an expensive operation so we eagerly compute it */
     private final boolean isArray;
@@ -182,12 +171,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private final int dimension;
 
     @SuppressWarnings("unused") private volatile Object interceptors;
-
-    public enum UsageKind {
-        InHeap,
-        Allocated,
-        Reachable;
-    }
 
     private final AnalysisFuture<Void> onTypeReachableTask;
     private final AnalysisFuture<Void> initializeMetaDataTask;
@@ -203,13 +186,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * reachable. Each handler is notified only once per subtype.
      */
     @SuppressWarnings("unused") private volatile Object subtypeReachableNotifications;
-
-    /**
-     * Contains reachability handlers that are notified when any of the method override becomes
-     * reachable *and* the declaring class of the override (or any subtype) is instantiated. Each
-     * handler is notified only once per method override.
-     */
-    @SuppressWarnings("unused") private volatile Object overrideReachableNotifications;
 
     /**
      * The reachability handler that were registered at the time the type was marked as reachable.
@@ -229,6 +205,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * Contains callbacks that are executed when an object of this type is marked as reachable.
      */
     @SuppressWarnings("unused") private volatile Object objectReachableCallbacks;
+
+    /**
+     * All methods of this type that can be overridden, i.e., that are not statically bound. Note
+     * that this set can contain methods that are not returned by {@link #getDeclaredMethods}: For
+     * classes that contain interfaces, the VM creates synthetic bridge methods that are not in the
+     * class file and therefore not in the list of declared methods.
+     */
+    @SuppressWarnings("unused") private volatile Object overrideableMethods;
 
     @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
@@ -295,10 +279,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
 
         /* Set id after accessing super types, so that all these types get a lower id number. */
-        if (wrapped instanceof BaseLayerType baseLayerType) {
-            this.id = baseLayerType.getId();
-            this.isInBaseLayer = true;
-        } else if (universe.hostVM().useBaseLayer()) {
+        if (universe.hostVM().useBaseLayer()) {
             int tid = universe.getImageLayerLoader().lookupHostedTypeInBaseLayer(this);
             if (tid != -1) {
                 /*
@@ -309,7 +290,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
                 this.isInBaseLayer = true;
             } else {
                 this.id = universe.computeNextTypeId();
-                this.isInBaseLayer = false;
+                /*
+                 * If both the BaseLayerType and the complete type are created at the same time,
+                 * there can be a race for the base layer id. It is possible that the complete type
+                 * gets the base layer id even though the BaseLayerType is created. In this case,
+                 * the AnalysisType should still be marked as isInBaseLayer.
+                 */
+                this.isInBaseLayer = wrapped instanceof BaseLayerType;
             }
         } else {
             this.id = universe.computeNextTypeId();
@@ -524,70 +511,30 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     /**
-     * @param reason the {@link BytecodePosition} where this type is marked as in-heap, or a
+     * @param reason the {@link BytecodePosition} where this type is marked as instantiated, or a
      *            {@link com.oracle.graal.pointsto.ObjectScanner.ScanReason}, or a {@link String}
      *            describing why this type was manually marked as in-heap
      */
-    public boolean registerAsInHeap(Object reason) {
-        assert isValidReason(reason) : "Registering a type as in-heap needs to provide a valid reason.";
+    public boolean registerAsInstantiated(Object reason) {
+        assert isValidReason(reason) : "Registering a type as instantiated needs to provide a valid reason.";
         registerAsReachable(reason);
-        if (AtomicUtils.atomicSet(this, reason, isInHeapUpdater)) {
-            onInstantiated(UsageKind.InHeap);
+        if (AtomicUtils.atomicSet(this, reason, isInstantiatedUpdater)) {
+            onInstantiated();
             return true;
         }
         return false;
     }
 
-    /**
-     * @param reason the {@link BytecodePosition} where this type is marked as allocated, or a
-     *            {@link com.oracle.graal.pointsto.ObjectScanner.ScanReason}, or a {@link String}
-     *            describing why this type was manually marked as allocated
-     */
-    public boolean registerAsAllocated(Object reason) {
-        assert isValidReason(reason) : "Registering a type as allocated needs to provide a valid reason.";
-        registerAsReachable(reason);
-        if (AtomicUtils.atomicSet(this, reason, isAllocatedUpdater)) {
-            onInstantiated(UsageKind.Allocated);
-            return true;
-        }
-        return false;
-    }
+    protected void onInstantiated() {
+        forAllSuperTypes(superType -> AtomicUtils.atomicMark(superType, isAnySubtypeInstantiatedUpdater));
 
-    protected void onInstantiated(UsageKind usage) {
-        universe.onTypeInstantiated(this, usage);
+        universe.onTypeInstantiated(this);
         notifyInstantiatedCallbacks();
-        processMethodOverrides();
     }
 
-    private void processMethodOverrides() {
-        /*
-         * Walk up the type hierarchy from this type keeping track of all processed types. For each
-         * superType iterate all the override notifications and resolve the methods in all the seen
-         * types, which are subtypes from the point of view of the superType itself. Thus, although
-         * only *this* type may be marked as instantiated, any *intermediate* types between this
-         * type and a super type that declares override notifications will be processed and any
-         * overrides, if reachable, will be passed to the callback. These intermediate types, i.e.,
-         * the seenSubtypes set, may not be instantiated but the overrides that they declare, if
-         * reachable, could be specially invoked, e.g., via super calls. Note that the baseMethod is
-         * not actually an override of itself, but the `registerMethodOverrideReachabilityHandler`
-         * API explicitly includes the base method too.
-         */
-        Set<AnalysisType> seenSubtypes = new HashSet<>();
-        forAllSuperTypes(superType -> {
-            AtomicUtils.atomicMark(superType, isAnySubtypeInstantiatedUpdater);
-            seenSubtypes.add(superType);
-            Map<AnalysisMethod, Set<MethodOverrideReachableNotification>> overrides = ConcurrentLightHashMap.getEntries(superType, overrideReachableNotificationsUpdater);
-            for (var entry : overrides.entrySet()) {
-                AnalysisMethod baseMethod = entry.getKey();
-                Set<MethodOverrideReachableNotification> overrideNotifications = entry.getValue();
-                for (AnalysisType subType : seenSubtypes) {
-                    AnalysisMethod override = baseMethod.resolveInType(subType);
-                    if (override != null && override.isReachable()) {
-                        overrideNotifications.forEach(n -> n.notifyCallback(universe, override));
-                    }
-                }
-            }
-        });
+    public boolean registerAsUnsafeAllocated(Object reason) {
+        registerAsInstantiated(reason);
+        return AtomicUtils.atomicSet(this, reason, isUnsafeAllocatedUpdater);
     }
 
     /**
@@ -640,7 +587,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
 
         universe.notifyReachableType();
-        universe.hostVM.checkForbidden(this, UsageKind.Reachable);
         if (isArray()) {
             /*
              * For array types, distinguishing between "used" and "instantiated" does not provide
@@ -648,24 +594,28 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
              * types as instantiated too allows more usages of Arrays.newInstance without the need
              * of explicit registration of types for reflection.
              */
-            registerAsAllocated("All array types are marked as instantiated eagerly.");
+            registerAsInstantiated("All array types are marked as instantiated eagerly.");
         }
+
+        universe.getBigbang().postTask(unused -> forAllSuperTypes(this::prepareMethodImplementations, false));
+
         ensureOnTypeReachableTaskDone();
+    }
+
+    /** Prepare information that {@link AnalysisMethod#collectMethodImplementations} needs. */
+    private void prepareMethodImplementations(AnalysisType superType) {
+        ConcurrentLightHashSet.forEach(superType, overrideableMethodsUpdater, (AnalysisMethod method) -> {
+            assert !method.canBeStaticallyBound() && !method.isConstructor() : method;
+
+            AnalysisMethod override = resolveConcreteMethod(method, null);
+            if (override != null && !override.equals(method)) {
+                ConcurrentLightHashSet.addElement(method, AnalysisMethod.allImplementationsUpdater, override);
+            }
+        });
     }
 
     public void registerSubtypeReachabilityNotification(SubtypeReachableNotification notification) {
         ConcurrentLightHashSet.addElement(this, subtypeReachableNotificationsUpdater, notification);
-    }
-
-    public void registerOverrideReachabilityNotification(AnalysisMethod declaredMethod, MethodOverrideReachableNotification notification) {
-        assert declaredMethod.getDeclaringClass() == this : declaredMethod;
-        Set<MethodOverrideReachableNotification> overrideNotifications = ConcurrentLightHashMap.computeIfAbsent(this,
-                        overrideReachableNotificationsUpdater, declaredMethod, m -> ConcurrentHashMap.newKeySet());
-        overrideNotifications.add(notification);
-    }
-
-    public Set<MethodOverrideReachableNotification> getOverrideReachabilityNotifications(AnalysisMethod method) {
-        return ConcurrentLightHashMap.getOrDefault(this, overrideReachableNotificationsUpdater, method, Collections.emptySet());
     }
 
     public <T> void registerObjectReachableCallback(ObjectReachableCallback<T> callback) {
@@ -803,67 +753,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * This is controlled by the isUnsafeAccessed flag in the AnalysField. Also, a field cannot be
      * part of more than one partitions.
      */
-    public void registerUnsafeAccessedField(AnalysisField field, UnsafePartitionKind partitionKind) {
-
-        unsafeAccessedFieldsRegistered = true;
-
-        if (unsafeAccessedFields == null) {
-            /* Lazily initialize the map, not all types have unsafe accessed fields. */
-            UNSAFE_ACCESS_FIELDS_UPDATER.compareAndSet(this, null, new ConcurrentHashMap<>());
-        }
-
-        Collection<AnalysisField> unsafePartition = unsafeAccessedFields.get(partitionKind);
-        if (unsafePartition == null) {
-            /*
-             * We use a thread safe collection to store an unsafe accessed fields partition. Since
-             * elements can be added to it concurrently using a non thread safe collection, such as
-             * an array list, can result in null being added to the list. Since we don't need index
-             * access ConcurrentLinkedQueue is a good match.
-             */
-            Collection<AnalysisField> newPartition = new ConcurrentLinkedQueue<>();
-            Collection<AnalysisField> oldPartition = unsafeAccessedFields.putIfAbsent(partitionKind, newPartition);
-            unsafePartition = oldPartition != null ? oldPartition : newPartition;
-        }
-
-        assert !unsafePartition.contains(field) : "Field " + field + " already registered as unsafe accessed with " + this;
-        unsafePartition.add(field);
+    public void registerUnsafeAccessedField(AnalysisField field) {
+        ConcurrentLightHashSet.addElement(this, UNSAFE_ACCESS_FIELDS_UPDATER, field);
     }
 
-    private boolean hasUnsafeAccessedFields() {
+    public Collection<AnalysisField> unsafeAccessedFields() {
         /*
-         * Walk up the inheritance chain, as soon as we encounter a class that has unsafe accessed
-         * fields we return true, otherwise we reach the top of the hierarchy and return false.
-         *
-         * Since unsafe accessed fields can be registered on the fly, i.e., during the analysis, we
-         * cannot cache this result. If we cached the result and the result was false, i.e., no
-         * unsafe accessed fields were registered yet, we would have to invalidate it when a field
-         * is registered as unsafe during the analysis and then walk down the type hierarchy and
-         * invalidate the cached value of all the sub-types.
-         */
-        return unsafeAccessedFieldsRegistered || (getSuperclass() != null && getSuperclass().hasUnsafeAccessedFields());
-    }
-
-    public List<AnalysisField> unsafeAccessedFields() {
-        return unsafeAccessedFields(DefaultUnsafePartition.get());
-    }
-
-    public List<AnalysisField> unsafeAccessedFields(UnsafePartitionKind partitionKind) {
-        if (!hasUnsafeAccessedFields()) {
-            /*
-             * Do a quick check if this type has unsafe accessed fields before constructing the data
-             * structures holding all the unsafe accessed fields: the ones of this type and the ones
-             * up its type hierarchy.
-             */
-            return Collections.emptyList();
-        }
-        return allUnsafeAccessedFields(partitionKind);
-    }
-
-    private List<AnalysisField> allUnsafeAccessedFields(UnsafePartitionKind partitionKind) {
-        /*
-         * Walk up the type hierarchy and build the unsafe partition containing all the unsafe
-         * fields of the current type and all its super types. The unsafePartition collection
-         * doesn't need to be thread safe since updates to it are only done on the current thread.
+         * Walk up the type hierarchy and collect all the unsafe fields of the current type and all
+         * its super types. We optimize for the most likely outcome: the returned list is empty.
          *
          * The resulting list could be cached but the caching mechanism is complicated by
          * registering unsafe accessed fields during the analysis. When a field is registered as
@@ -873,20 +770,37 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          * Caching would still be possible, but it would be unnecessary complicated and prone to
          * race conditions.
          */
-        List<AnalysisField> unsafePartition = new ArrayList<>();
-        unsafePartition.addAll(unsafeAccessedFields != null && unsafeAccessedFields.containsKey(partitionKind) ? unsafeAccessedFields.get(partitionKind) : Collections.emptyList());
-        if (getSuperclass() != null) {
-            List<AnalysisField> superFileds = getSuperclass().allUnsafeAccessedFields(partitionKind);
-            unsafePartition.addAll(superFileds);
+        Collection<AnalysisField> result = null;
+        for (AnalysisType cur = this; cur != null; cur = cur.getSuperclass()) {
+            Collection<AnalysisField> curFields = ConcurrentLightHashSet.getElements(cur, UNSAFE_ACCESS_FIELDS_UPDATER);
+            if (curFields.size() > 0) {
+                if (result == null) {
+                    /* First type with unsafe fields, no need for a copy yet. */
+                    result = curFields;
+                } else {
+                    if (!(result instanceof ArrayList)) {
+                        /* Second type with unsafe fields, we need our own list to accumulate. */
+                        result = new ArrayList<>(result);
+                    }
+                    result.addAll(curFields);
+                }
+            }
         }
-
-        return unsafePartition;
+        return result == null ? List.of() : result;
     }
 
     public boolean isInstantiated() {
-        boolean instantiated = isInHeap() || isAllocated();
+        boolean instantiated = AtomicUtils.isSet(this, isInstantiatedUpdater);
         assert !instantiated || isReachable() : this;
         return instantiated;
+    }
+
+    public Object getInstantiatedReason() {
+        return isInstantiated;
+    }
+
+    public boolean isUnsafeAllocated() {
+        return AtomicUtils.isSet(this, isUnsafeAllocatedUpdater);
     }
 
     /** Returns true if this type or any of its subtypes was marked as instantiated. */
@@ -1156,9 +1070,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
                  */
                 ResolvedJavaType originalCallerType = originalMethod.getDeclaringClass();
 
-                newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(originalMethod, originalCallerType));
-                if (newResolvedMethod == null) {
-                    newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
+                try {
+                    newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(originalMethod, originalCallerType));
+                    if (newResolvedMethod == null) {
+                        newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
+                    }
+
+                } catch (UnsupportedFeatureException e) {
+                    /* An unsupported overriding method is not reachable. */
+                    newResolvedMethod = null;
                 }
             }
 
@@ -1279,8 +1199,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public String toString() {
-        return "AnalysisType<" + unqualifiedName + " -> " + wrapped.toString() + ", allocated: " + (isAllocated != null) +
-                        ", inHeap: " + (isInHeap != null) + ", reachable: " + (isReachable != null) + ">";
+        return "AnalysisType<" + unqualifiedName + " -> " + wrapped.toString() + ", instantiated: " + (isInstantiated != null) + ", reachable: " + (isReachable != null) + ">";
     }
 
     @Override
@@ -1317,7 +1236,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public AnalysisMethod[] getDeclaredMethods(boolean forceLink) {
         GraalError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
-        return universe.lookup(wrapped.getDeclaredMethods(forceLink));
+        AnalysisMethod[] result = declaredMethods;
+        if (result == null) {
+            result = universe.lookup(wrapped.getDeclaredMethods(forceLink));
+            /* Ensure array element initializations are published before publishing the array. */
+            VarHandle.storeStoreFence();
+            declaredMethods = result;
+        }
+        return result;
     }
 
     @Override
@@ -1353,22 +1279,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          * will not be linked.
          */
         return wrapped.isLinked();
-    }
-
-    public boolean isInHeap() {
-        return AtomicUtils.isSet(this, isInHeapUpdater);
-    }
-
-    public Object getInHeapReason() {
-        return isInHeap;
-    }
-
-    public boolean isAllocated() {
-        return AtomicUtils.isSet(this, isAllocatedUpdater);
-    }
-
-    public Object getAllocatedReason() {
-        return isAllocated;
     }
 
     @Override

@@ -63,9 +63,9 @@ public class VMFeature implements InternalFeature {
     }
 
     protected static final String getSelectedGCName() {
-        if (SubstrateOptions.UseSerialGC.getValue()) {
+        if (SubstrateOptions.useSerialGC()) {
             return "serial gc";
-        } else if (SubstrateOptions.UseEpsilonGC.getValue()) {
+        } else if (SubstrateOptions.useEpsilonGC()) {
             return "epsilon gc";
         } else {
             return "unknown gc";

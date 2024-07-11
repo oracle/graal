@@ -66,19 +66,16 @@ public final class InspectorTester {
     }
 
     public static InspectorTester start(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization) throws InterruptedException {
-        return start(suspend, inspectInternal, inspectInitialization, Collections.emptyList());
+        return start(new Options(suspend, inspectInternal, inspectInitialization));
     }
 
-    public static InspectorTester start(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath) throws InterruptedException {
-        return start(suspend, inspectInternal, inspectInitialization, sourcePath, null);
-    }
-
-    public static InspectorTester start(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath, Consumer<Context> prolog)
+    public static InspectorTester start(Options options)
                     throws InterruptedException {
         RemoteObject.resetIDs();
         ExceptionDetails.resetIDs();
         InspectorExecutionContext.resetIDs();
-        InspectExecThread exec = new InspectExecThread(suspend, inspectInternal, inspectInitialization, sourcePath, prolog);
+        InspectExecThread exec = new InspectExecThread(options.isSuspend(), options.isInspectInternal(), options.isInspectInitialization(), options.getSourcePath(), options.getProlog(),
+                        options.getSuspensionTimeout());
         exec.start();
         exec.initialized.acquire();
         return new InspectorTester(exec);
@@ -263,6 +260,80 @@ public final class InspectorTester {
         return allMessages.toString();
     }
 
+    public static final class Options {
+
+        private boolean suspend;
+        private boolean inspectInternal;
+        private boolean inspectInitialization;
+        private List<URI> sourcePath = Collections.emptyList();
+        private Consumer<Context> prolog;
+        private Long suspensionTimeout;
+
+        public Options(boolean suspend) {
+            this.suspend = suspend;
+        }
+
+        public Options(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization) {
+            this.suspend = suspend;
+            this.inspectInternal = inspectInternal;
+            this.inspectInitialization = inspectInitialization;
+        }
+
+        public boolean isSuspend() {
+            return suspend;
+        }
+
+        public Options setSuspend(boolean suspend) {
+            this.suspend = suspend;
+            return this;
+        }
+
+        public boolean isInspectInternal() {
+            return inspectInternal;
+        }
+
+        public Options setInspectInternal(boolean inspectInternal) {
+            this.inspectInternal = inspectInternal;
+            return this;
+        }
+
+        public boolean isInspectInitialization() {
+            return inspectInitialization;
+        }
+
+        public Options setInspectInitialization(boolean inspectInitialization) {
+            this.inspectInitialization = inspectInitialization;
+            return this;
+        }
+
+        public List<URI> getSourcePath() {
+            return sourcePath;
+        }
+
+        public Options setSourcePath(List<URI> sourcePath) {
+            this.sourcePath = sourcePath;
+            return this;
+        }
+
+        public Consumer<Context> getProlog() {
+            return prolog;
+        }
+
+        public Options setProlog(Consumer<Context> prolog) {
+            this.prolog = prolog;
+            return this;
+        }
+
+        public Long getSuspensionTimeout() {
+            return suspensionTimeout;
+        }
+
+        public Options setSuspensionTimeout(Long suspensionTimeout) {
+            this.suspensionTimeout = suspensionTimeout;
+            return this;
+        }
+    }
+
     private static class InspectExecThread extends Thread implements MessageEndpoint {
 
         private final boolean suspend;
@@ -270,6 +341,7 @@ public final class InspectorTester {
         private final boolean inspectInitialization;
         private final List<URI> sourcePath;
         private final Consumer<Context> prolog;
+        private final Long suspensionTimeout;
         private InspectServerSession inspect;
         private ConnectionWatcher connectionWatcher;
         private long contextId;
@@ -284,13 +356,14 @@ public final class InspectorTester {
         final ProxyOutputStream err = new ProxyOutputStream(System.err);
         private final EnginesGCedTest.GCCheck gcCheck;
 
-        InspectExecThread(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath, Consumer<Context> prolog) {
+        InspectExecThread(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath, Consumer<Context> prolog, Long suspensionTimeout) {
             super("Inspector Executor");
             this.suspend = suspend;
             this.inspectInternal = inspectInternal;
             this.inspectInitialization = inspectInitialization;
             this.sourcePath = sourcePath;
             this.prolog = prolog;
+            this.suspensionTimeout = suspensionTimeout;
             this.gcCheck = new EnginesGCedTest.GCCheck();
         }
 
@@ -304,7 +377,7 @@ public final class InspectorTester {
             }
             Instrument testInstrument = engine.getInstruments().get(InspectorTestInstrument.ID);
             InspectSessionInfoProvider sessionInfoProvider = testInstrument.lookup(InspectSessionInfoProvider.class);
-            InspectSessionInfo sessionInfo = sessionInfoProvider.getSessionInfo(suspend, inspectInternal, inspectInitialization, sourcePath);
+            InspectSessionInfo sessionInfo = sessionInfoProvider.getSessionInfo(suspend, inspectInternal, inspectInitialization, sourcePath, suspensionTimeout);
             inspect = sessionInfo.getInspectServerSession();
             try {
                 connectionWatcher = sessionInfo.getConnectionWatcher();

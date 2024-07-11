@@ -272,7 +272,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     public DynamicHub validateNewInstanceClass(DynamicHub hub) {
         if (probability(EXTREMELY_FAST_PATH_PROBABILITY, hub != null)) {
             DynamicHub nonNullHub = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
-            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullHub.canInstantiateAsInstance())) {
+            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullHub.canUnsafeInstantiateAsInstance())) {
                 return nonNullHub;
             }
         }
@@ -317,7 +317,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             throw new NullPointerException("Allocation type is null.");
         } else if (!hub.isInstanceClass() || LayoutEncoding.isSpecial(hub.getLayoutEncoding())) {
             throw new InstantiationException("Can only allocate instance objects for concrete classes.");
-        } else if (!hub.isInstantiated()) {
+        } else if (!hub.canUnsafeInstantiateAsInstance()) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
                 MissingReflectionRegistrationUtils.forClass(hub.getTypeName());
             }
@@ -474,33 +474,27 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final Object callNewInstanceStub(Word objectHeader) {
+    protected final Object callNewInstanceStub(Word objectHeader, boolean withException) {
+        if (withException) {
+            return callSlowNewInstanceWithException(gcAllocationSupport().getNewInstanceStub(), objectHeader);
+        }
         return callSlowNewInstance(gcAllocationSupport().getNewInstanceStub(), objectHeader);
     }
 
     @Override
-    protected final Object callNewInstanceWithExceptionStub(Word objectHeader) {
-        return callSlowNewInstanceWithException(gcAllocationSupport().getNewInstanceStub(), objectHeader);
-    }
-
-    @Override
-    protected final Object callNewArrayStub(Word objectHeader, int length) {
+    protected final Object callNewArrayStub(Word objectHeader, int length, boolean withException) {
+        if (withException) {
+            return callSlowNewArrayWithException(gcAllocationSupport().getNewArrayStub(), objectHeader, length);
+        }
         return callSlowNewArray(gcAllocationSupport().getNewArrayStub(), objectHeader, length);
     }
 
     @Override
-    protected Object callNewArrayWithExceptionStub(Word hub, int length) {
-        return callSlowNewArrayWithException(gcAllocationSupport().getNewArrayStub(), hub, length);
-    }
-
-    @Override
-    protected final Object callNewMultiArrayStub(Word objectHeader, int rank, Word dims) {
+    protected final Object callNewMultiArrayStub(Word objectHeader, int rank, Word dims, boolean withException) {
+        if (withException) {
+            return callNewMultiArrayWithException(NEW_MULTI_ARRAY, objectHeader, rank, dims);
+        }
         return callNewMultiArray(NEW_MULTI_ARRAY, objectHeader, rank, dims);
-    }
-
-    @Override
-    protected Object callNewMultiArrayStubWithException(Word objectHeader, int rank, Word dims) {
-        return callNewMultiArrayWithException(NEW_MULTI_ARRAY, objectHeader, rank, dims);
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)

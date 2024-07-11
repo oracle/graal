@@ -28,7 +28,7 @@ import java.util.List;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -194,7 +194,7 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
         List<DeoptimizeNode> deopts = g.getNodes(DeoptimizeNode.TYPE).stream().filter(n -> n.getReason().equals(reason)).toList();
         assertTrue(deopts.size() == 1, String.format("Exactly one DeoptimizeNode with reason %s in graph expected!", reason));
 
-        Loop<HIRBlock> loop = cfg.getNodeToBlock().get(deopts.get(0)).getFirstPredecessor().getLoop();
+        CFGLoop<HIRBlock> loop = cfg.getNodeToBlock().get(deopts.get(0)).getFirstPredecessor().getLoop();
         return loop == null ? 0 : loop.getDepth();
     }
 

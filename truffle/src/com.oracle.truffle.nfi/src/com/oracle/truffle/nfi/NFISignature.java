@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -81,7 +82,7 @@ final class NFISignature implements TruffleObject {
     final Object nativeSignature;
 
     final NFIType retType;
-    final NFIType[] argTypes;
+    @CompilationFinal(dimensions = 1) final NFIType[] argTypes;
 
     final int nativeArgCount;
     final int managedArgCount;

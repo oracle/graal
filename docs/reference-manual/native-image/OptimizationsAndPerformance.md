@@ -18,6 +18,7 @@ The following table provides an overview of the different optimization levels an
 | Level | Optimizations | Use Cases |
 |:---:|:---:|---|
 | `-Ob` | Reduced | Quick build mode: Speeds up builds during development by avoiding time-consuming optimizations. This can also reduce file size sometimes. |
+| `-Os` | Reduced | Optimize for size: `-Os` enables all `-O2` optimizations except those that can increase code or image size significantly. Typically creates the smallest possible images at the cost of reduced performance. |
 | `-O0` | None | Typically used together with `-g` to improve the debugging experience. |
 | `-O1` | Basic | Trades performance for reduced file size and build time. Oracle GraalVM's `-O1` is somewhat comparable to `-O2` in GraalVM Community Edition. |
 | `-O2` | Advanced | **Default:** Aims for good performance at a reasonable file size. |

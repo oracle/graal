@@ -16,14 +16,16 @@ To collect JFR events when running a native executable, enable JFR support and J
 
 ## Enable JFR Support and Record Events at Runtime
 
-To build a native executable with the JFR events support, add the `--enable-monitoring=jfr` option when invoking the `native-image` tool, and then start JFR recording at runtime. 
+To build a native executable with JFR events support, add the `--enable-monitoring=jfr` option when invoking the `native-image` tool, and then start JFR recording at runtime. 
 
 Follow the steps below to practice building a native executable with JFR support and recording events at runtime.
 
-> Note: Make sure GraalVM is installed. The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal). For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
+### Prerequisite 
+Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 1. Save the following code to the file named _JFRDemo.java_.
-
     ```java
     import jdk.jfr.Event;
     import jdk.jfr.Description;
@@ -47,18 +49,18 @@ Follow the steps below to practice building a native executable with JFR support
     ```
 
     This demo application consists of a simple class and JDK library classes.
-    It creates an event, labelled with the `@Label` annotation from the `jdk.jfr.*` package.
+    It creates an event, annotated with `@Label` from the `jdk.jfr.*` package.
     If you run this application, it will not print anything and just run that event.
 
 2. Compile the Java file using the GraalVM JDK:
     ```shell 
-    $JAVA_HOME/bin/javac JFRDemo.java
+    javac JFRDemo.java
     ```
-    It creates two class files: `JFRDemo$HelloWorldEvent.class`	and `JFRDemo.class`.
+    It creates two class files: _JFRDemo$HelloWorldEvent.class_	and _JFRDemo.class_.
 
-3. Build a native executable with the VM inspection enabled:
+3. Build a native executable with VM inspection enabled:
     ```shell
-    $JAVA_HOME/bin/native-image --enable-monitoring=jfr JFRDemo
+    native-image --enable-monitoring=jfr JFRDemo
     ```
     The `--enable-monitoring=jfr` option enables features such as JFR that can be used to inspect the VM.
 
@@ -73,7 +75,7 @@ Follow the steps below to practice building a native executable with JFR support
 5. Start [VisualVM](https://visualvm.github.io/) to view the contents of the recording file in a user-friendly way.
 
 6. Go to **File**, then **Add JFR Snapshot**, browse _recording.jfr_, and open the selected file. 
-Confirm the display name and click **OK**. Once opened, there is a bunch of options you can check: Monitoring, Threads, Exceptions, etc., but you should be mostly interested in the events browsing. 
+Confirm the display name and click **OK**. Once opened, there are several options you can check (such as Monitoring, Threads, and Exceptions) but you are mostly interested in browsing events. 
 It will look something like this:
 
     ![JDK Flight Recorder](img/jfr.png)
@@ -81,7 +83,7 @@ It will look something like this:
     Alternatively, you can view the contents of the recording file in the console window by running this command:
 
     ```shell
-    $JAVA_HOME/bin/jfr print recording.jfr
+    jfr print recording.jfr
     ```
     It prints all the events recorded by Flight Recorder.
 

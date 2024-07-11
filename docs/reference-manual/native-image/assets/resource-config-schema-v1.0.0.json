@@ -122,4 +122,4 @@
   "type": "object",
   "title": "JSON schema for the resource-config that GraalVM Native Image uses",
   "description": "Native Image will iterate over all resources and match their relative paths against the Java Regex specified in <includes>. If the path matches the Regex, the resource is included. The <excludes> statement instructs Native Image to omit certain included resources that match the given <pattern>"
-  }
+}

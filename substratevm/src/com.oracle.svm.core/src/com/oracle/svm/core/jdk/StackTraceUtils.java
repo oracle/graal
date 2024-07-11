@@ -82,7 +82,7 @@ public class StackTraceUtils {
      * Captures at most {@link SubstrateOptions#maxJavaStackTraceDepth()} stack trace elements if
      * max depth > 0, or all if max depth <= 0.
      */
-    public static StackTraceElement[] getStackTrace(boolean filterExceptions, Pointer startSP, Pointer endSP) {
+    public static StackTraceElement[] getCurrentThreadStackTrace(boolean filterExceptions, Pointer startSP, Pointer endSP) {
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions, SubstrateOptions.maxJavaStackTraceDepth());
         visitCurrentThreadStackFrames(startSP, endSP, visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
@@ -108,7 +108,11 @@ public class StackTraceUtils {
         return JavaThreads.getStackTraceAtSafepoint(thread, readCallerStackPointer());
     }
 
-    public static StackTraceElement[] getThreadStackTraceAtSafepoint(IsolateThread isolateThread, Pointer endSP) {
+    public static StackTraceElement[] getStackTraceAtSafepoint(IsolateThread isolateThread) {
+        return getStackTraceAtSafepoint(isolateThread, WordFactory.nullPointer());
+    }
+
+    public static StackTraceElement[] getStackTraceAtSafepoint(IsolateThread isolateThread, Pointer endSP) {
         assert VMOperation.isInProgressAtSafepoint();
         if (isolateThread.isNull()) { // recently launched thread
             return NO_ELEMENTS;
@@ -118,10 +122,10 @@ public class StackTraceUtils {
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
-    public static StackTraceElement[] getThreadStackTraceAtSafepoint(Pointer startSP, Pointer endSP, CodePointer startIP) {
+    public static StackTraceElement[] getStackTraceAtSafepoint(IsolateThread isolateThread, Pointer startSP, Pointer endSP) {
         assert VMOperation.isInProgressAtSafepoint();
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.maxJavaStackTraceDepth());
-        JavaStackWalker.walkThreadAtSafepoint(startSP, endSP, startIP, visitor);
+        JavaStackWalker.walkThread(isolateThread, startSP, endSP, WordFactory.nullPointer(), visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
@@ -209,10 +213,8 @@ public class StackTraceUtils {
             }
         }
 
-        if (clazz == Target_jdk_internal_vm_Continuation.class) {
-            if (UninterruptibleUtils.String.startsWith(methodName, "enter") || UninterruptibleUtils.String.startsWith(methodName, "yield")) {
-                return false;
-            }
+        if (clazz == Target_jdk_internal_vm_Continuation.class && (UninterruptibleUtils.String.startsWith(methodName, "enter") || UninterruptibleUtils.String.startsWith(methodName, "yield"))) {
+            return false;
         }
 
         return true;
@@ -384,23 +386,29 @@ final class BacktraceVisitor extends StackFrameVisitor {
     }
 
     @Override
-    protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-        if (deoptimizedFrame != null) {
-            for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
-                FrameInfoQueryResult frameInfo = frame.getFrameInfo();
-                if (!visitFrameInfo(frameInfo)) {
-                    return false;
-                }
-            }
-        } else if (!CodeInfoTable.isInAOTImageCode(ip)) {
+    protected boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
+        if (CodeInfoTable.isInAOTImageCode(ip)) {
+            visitAOTFrame(ip);
+        } else {
             CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
+            assert queryResult != null;
+
             for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
                 if (!visitFrameInfo(frameInfo)) {
                     return false;
                 }
             }
-        } else {
-            visitAOTFrame(ip);
+        }
+        return numFrames != limit;
+    }
+
+    @Override
+    protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
+        for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
+            FrameInfoQueryResult frameInfo = frame.getFrameInfo();
+            if (!visitFrameInfo(frameInfo)) {
+                return false;
+            }
         }
         return numFrames != limit;
     }
@@ -710,7 +718,7 @@ class GetClassContextVisitor extends JavaStackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(final FrameInfoQueryResult frameInfo) {
+    public boolean visitFrame(FrameInfoQueryResult frameInfo) {
         if (skip > 0) {
             skip--;
         } else if (StackTraceUtils.shouldShowFrame(frameInfo, true, false, false)) {
@@ -762,7 +770,7 @@ class StackAccessControlContextVisitor extends JavaStackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(final FrameInfoQueryResult frameInfo) {
+    public boolean visitFrame(FrameInfoQueryResult frameInfo) {
         if (!StackTraceUtils.shouldShowFrame(frameInfo, true, false, false)) {
             return true;
         }

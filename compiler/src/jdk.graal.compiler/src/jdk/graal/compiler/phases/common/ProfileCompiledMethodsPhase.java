@@ -31,7 +31,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Optional;
 
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractEndNode;
@@ -104,7 +104,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
     protected void run(StructuredGraph graph) {
         SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.getDefaultStrategy(graph.getOptions()), true);
         ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
-        for (Loop<HIRBlock> loop : cfg.getLoops()) {
+        for (CFGLoop<HIRBlock> loop : cfg.getLoops()) {
             double loopProbability = cfg.blockFor(loop.getHeader().getBeginNode()).getRelativeFrequency();
             if (loopProbability > (1D / Integer.MAX_VALUE)) {
                 addSectionCounters(loop.getHeader().getBeginNode(), loop.getBlocks(), loop.getChildren(), graph.getLastSchedule(), cfg);
@@ -128,9 +128,9 @@ public class ProfileCompiledMethodsPhase extends Phase {
         }
     }
 
-    private static void addSectionCounters(FixedWithNextNode start, Collection<HIRBlock> sectionBlocks, Collection<Loop<HIRBlock>> childLoops, ScheduleResult schedule, ControlFlowGraph cfg) {
+    private static void addSectionCounters(FixedWithNextNode start, Collection<HIRBlock> sectionBlocks, Collection<CFGLoop<HIRBlock>> childLoops, ScheduleResult schedule, ControlFlowGraph cfg) {
         HashSet<HIRBlock> blocks = new HashSet<>(sectionBlocks);
-        for (Loop<HIRBlock> loop : childLoops) {
+        for (CFGLoop<HIRBlock> loop : childLoops) {
             blocks.removeAll(loop.getBlocks());
         }
         long increment = DynamicCounterNode.clampIncrement((long) (getSectionWeight(schedule, blocks) / cfg.blockFor(start).getRelativeFrequency()));

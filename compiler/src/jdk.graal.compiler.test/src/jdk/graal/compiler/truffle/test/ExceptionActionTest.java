@@ -26,6 +26,7 @@ package jdk.graal.compiler.truffle.test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -51,8 +52,6 @@ import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-
-import static com.oracle.truffle.api.test.SubprocessTestUtils.markForRemoval;
 
 public class ExceptionActionTest extends TestWithPolyglotOptions {
 
@@ -149,8 +148,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
         };
         executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
                         new String[]{"-Djdk.graal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
-                        "engine.CompilationFailureAction", "ExitVM",
-                        "compiler.PerformanceWarningsAreFatal", "all");
+                        "engine.CompilationFailureAction", "ExitVM");
     }
 
     @Test
@@ -165,6 +163,19 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
                         "engine.TraceCompilationDetails", "true");
     }
 
+    @Test
+    public void testPerformanceWarnings() throws Exception {
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertFalse(formatMessage("Unexpected bailout.", log, output), hasBailout(log));
+            Assert.assertTrue(formatMessage("Unexpected exit.", log, output), hasExit(log));
+            Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
+        };
+        executeInSubProcess(verifier, ExceptionActionTest::createVirtualCallNode,
+                        new String[]{},
+                        "engine.CompilationFailureAction", "ExitVM",
+                        "compiler.TreatPerformanceWarningsAsErrors", "all");
+    }
+
     private void executeInSubProcess(BiConsumer<String, String> verifier, String... contextOptions) throws IOException, InterruptedException {
         executeInSubProcess(verifier, ExceptionActionTest::createPermanentBailoutNode, new String[0], contextOptions);
     }
@@ -172,11 +183,13 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     private void executeInSubProcess(BiConsumer<String, String> verifier, Supplier<RootNode> rootNodeFactory, String[] appendVmOptions, String... contextOptions)
                     throws IOException, InterruptedException {
         Path log = SubprocessTestUtils.isSubprocess() ? null : File.createTempFile("compiler", ".log").toPath();
+        Path dumpDir = SubprocessTestUtils.isSubprocess() ? null : Files.createTempDirectory(String.format("%s-dumps", ExceptionActionTest.class.getSimpleName()));
         try {
             String[] useVMOptions = Arrays.copyOf(appendVmOptions, appendVmOptions.length + 2);
             useVMOptions[useVMOptions.length - 2] = String.format("-D%s=%s", LOG_FILE_PROPERTY, log);
-            // Prevent graal graph dumping for ExceptionAction#Diagnose
-            useVMOptions[useVMOptions.length - 1] = markForRemoval("-Djdk.graal.Dump");
+            // Setting an explicit DumpPath is more reliable than preventing dumps using
+            // "-Djdk.graal.Dump=~"
+            useVMOptions[useVMOptions.length - 1] = String.format("-Djdk.graal.DumpPath=%s", dumpDir);
             SubprocessTestUtils.newBuilder(ExceptionActionTest.class, () -> {
                 setupContext(contextOptions);
                 OptimizedCallTarget target = (OptimizedCallTarget) rootNodeFactory.get().getCallTarget();
@@ -201,7 +214,21 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             if (log != null) {
                 Files.deleteIfExists(log);
             }
+            if (dumpDir != null) {
+                delete(dumpDir);
+            }
         }
+    }
+
+    private static void delete(Path file) throws IOException {
+        if (Files.isDirectory(file)) {
+            try (DirectoryStream<Path> children = Files.newDirectoryStream(file)) {
+                for (Path child : children) {
+                    delete(child);
+                }
+            }
+        }
+        Files.deleteIfExists(file);
     }
 
     private static OptimizationFailedException isOptimizationFailed(Throwable t) {
@@ -266,6 +293,20 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
         return new RootTestNode(fd, "nonpermanent-bailout-test-node", new AbstractTestNode() {
             @Override
             public int execute(VirtualFrame frame) {
+                return 0;
+            }
+        });
+    }
+
+    private static RootNode createVirtualCallNode() {
+        FrameDescriptor fd = new FrameDescriptor();
+        return new RootTestNode(fd, "virtual-call-test-node", new AbstractTestNode() {
+            private volatile Runnable runnable = () -> {
+            };
+
+            @Override
+            public int execute(VirtualFrame frame) {
+                runnable.run();
                 return 0;
             }
         });

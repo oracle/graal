@@ -29,6 +29,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_JAVA_N
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.COMPONENT_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CONSTANTS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CONSTANTS_TO_RELINK_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CONSTANT_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.DATA_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ENCLOSING_TYPE_TAG;
@@ -41,6 +42,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_READ_T
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_WRITTEN_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_HEAP_SIZE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANCE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INTERFACES_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_ENUM_TAG;
@@ -63,9 +65,11 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TYPES_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.VALUE_TAG;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -83,9 +87,9 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.FileDumpingUtil;
 
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.util.json.JSONFormatter;
+import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
+import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -95,12 +99,10 @@ public class ImageLayerWriter {
     public static final String TYPE_SWITCH_SUBSTRING = "$$TypeSwitch";
     private final ImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private ImageHeap imageHeap;
-    /**
-     * Contains the same array as StringInternSupport#imageInternedStrings, which is sorted.
-     */
-    private String[] imageInternedStrings;
+    private IdentityHashMap<String, String> internedStringsIdentityMap;
 
     protected EconomicMap<String, Object> jsonMap = EconomicMap.create();
+    protected List<Integer> constantsToRelink;
     FileInfo fileInfo;
 
     private record FileInfo(Path layerSnapshotPath, String fileName, String suffix) {
@@ -112,10 +114,11 @@ public class ImageLayerWriter {
 
     public ImageLayerWriter(ImageLayerSnapshotUtil imageLayerSnapshotUtil) {
         this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
+        this.constantsToRelink = new ArrayList<>();
     }
 
-    public void setImageInternedStrings(String[] imageInternedStrings) {
-        this.imageInternedStrings = imageInternedStrings;
+    public void setInternedStringsIdentityMap(IdentityHashMap<String, String> map) {
+        this.internedStringsIdentityMap = map;
     }
 
     public void setImageHeap(ImageHeap heap) {
@@ -142,7 +145,17 @@ public class ImageLayerWriter {
     }
 
     public void dumpFile() {
-        FileDumpingUtil.dumpFile(fileInfo.layerSnapshotPath, fileInfo.fileName, fileInfo.suffix, writer -> JSONFormatter.printJSON(jsonMap, writer));
+        FileDumpingUtil.dumpFile(fileInfo.layerSnapshotPath, fileInfo.fileName, fileInfo.suffix, writer -> {
+            try (JsonWriter jw = new JsonWriter(writer)) {
+                jw.print(jsonMap);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public void persistImageHeapSize(long imageHeapSize) {
+        jsonMap.put(IMAGE_HEAP_SIZE_TAG, String.valueOf(imageHeapSize));
     }
 
     public void persistAnalysisInfo(Universe hostedUniverse, AnalysisUniverse analysisUniverse) {
@@ -161,8 +174,7 @@ public class ImageLayerWriter {
         EconomicMap<String, Object> typesMap = EconomicMap.create();
         for (AnalysisType type : analysisUniverse.getTypes().stream().filter(t -> t.isReachable() && !isTypeSwitch(t)).toList()) {
             checkTypeStability(type);
-            String typeIdentifier = imageLayerSnapshotUtil.getTypeIdentifier(type);
-            persistType(typesMap, type, typeIdentifier);
+            persistType(typesMap, type, analysisUniverse);
         }
         jsonMap.put(TYPES_TAG, typesMap);
 
@@ -185,6 +197,7 @@ public class ImageLayerWriter {
             }
         }
         jsonMap.put(CONSTANTS_TAG, constantsMap);
+        jsonMap.put(CONSTANTS_TO_RELINK_TAG, constantsToRelink);
     }
 
     /**
@@ -196,9 +209,21 @@ public class ImageLayerWriter {
 
     }
 
-    private static void persistType(EconomicMap<String, Object> typesMap, AnalysisType type, String typeIdentifier) {
+    private void persistType(EconomicMap<String, Object> typesMap, AnalysisType type, AnalysisUniverse analysisUniverse) {
+        String typeIdentifier = imageLayerSnapshotUtil.getTypeIdentifier(type);
         EconomicMap<String, Object> typeMap = EconomicMap.create();
+
+        persistType(type, analysisUniverse, typeMap);
+
+        if (typesMap.containsKey(typeIdentifier)) {
+            throw GraalError.shouldNotReachHere("The type identifier should be unique, but " + typeIdentifier + " got added twice.");
+        }
+        typesMap.put(typeIdentifier, typeMap);
+    }
+
+    protected void persistType(AnalysisType type, @SuppressWarnings("unused") AnalysisUniverse analysisUniverse, EconomicMap<String, Object> typeMap) {
         typeMap.put(ID_TAG, type.getId());
+
         List<Integer> fields = new ArrayList<>();
         for (ResolvedJavaField field : type.getInstanceFields(true)) {
             fields.add(((AnalysisField) field).getId());
@@ -222,10 +247,6 @@ public class ImageLayerWriter {
             typeMap.put(SUPER_CLASS_TAG, type.getSuperclass().getId());
         }
         typeMap.put(INTERFACES_TAG, Arrays.stream(type.getInterfaces()).map(AnalysisType::getId).toList());
-        if (typesMap.containsKey(typeIdentifier)) {
-            throw GraalError.shouldNotReachHere("The type identifier should be unique, but " + typeIdentifier + " got added twice.");
-        }
-        typesMap.put(typeIdentifier, typeMap);
     }
 
     /**
@@ -249,13 +270,8 @@ public class ImageLayerWriter {
 
     private void persistField(EconomicMap<String, EconomicMap<String, Object>> fieldsMap, AnalysisField field, Universe hostedUniverse) {
         EconomicMap<String, Object> fieldMap = EconomicMap.create();
-        fieldMap.put(ID_TAG, field.getId());
-        fieldMap.put(FIELD_ACCESSED_TAG, field.getAccessedReason() != null);
-        fieldMap.put(FIELD_READ_TAG, field.getReadReason() != null);
-        fieldMap.put(FIELD_WRITTEN_TAG, field.getWrittenReason() != null);
-        fieldMap.put(FIELD_FOLDED_TAG, field.getFoldedReason() != null);
 
-        persistFieldHook(fieldMap, field, hostedUniverse);
+        persistField(field, hostedUniverse, fieldMap);
 
         String tid = String.valueOf(field.getDeclaringClass().getId());
         if (fieldsMap.containsKey(tid)) {
@@ -267,12 +283,12 @@ public class ImageLayerWriter {
         }
     }
 
-    /**
-     * A hook used to persist more field information not accessible in pointsto.
-     */
-    @SuppressWarnings("unused")
-    protected void persistFieldHook(EconomicMap<String, Object> fieldMap, AnalysisField field, Universe hostedUniverse) {
-
+    protected void persistField(AnalysisField field, @SuppressWarnings("unused") Universe hostedUniverse, EconomicMap<String, Object> fieldMap) {
+        fieldMap.put(ID_TAG, field.getId());
+        fieldMap.put(FIELD_ACCESSED_TAG, field.getAccessedReason() != null);
+        fieldMap.put(FIELD_READ_TAG, field.getReadReason() != null);
+        fieldMap.put(FIELD_WRITTEN_TAG, field.getWrittenReason() != null);
+        fieldMap.put(FIELD_FOLDED_TAG, field.getFoldedReason() != null);
     }
 
     private void persistConstant(AnalysisUniverse analysisUniverse, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantsMap) {
@@ -285,9 +301,10 @@ public class ImageLayerWriter {
     protected void persistConstant(AnalysisUniverse analysisUniverse, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap, EconomicMap<String, Object> constantsMap) {
         constantsMap.put(Integer.toString(getConstantId(imageHeapConstant)), constantMap);
         constantMap.put(TID_TAG, imageHeapConstant.getType().getId());
-        if (imageHeapConstant.hasIdentityHashCode()) {
-            constantMap.put(IDENTITY_HASH_CODE_TAG, imageHeapConstant.getIdentityHashCode());
-        }
+
+        IdentityHashCodeProvider identityHashCodeProvider = (IdentityHashCodeProvider) analysisUniverse.getBigbang().getConstantReflectionProvider();
+        int identityHashCode = identityHashCodeProvider.identityHashCode(imageHeapConstant);
+        constantMap.put(IDENTITY_HASH_CODE_TAG, identityHashCode);
 
         switch (imageHeapConstant) {
             case ImageHeapInstance imageHeapInstance -> {
@@ -314,26 +331,25 @@ public class ImageLayerWriter {
         boolean simulated = hostedObject == null;
         constantMap.put(SIMULATED_TAG, simulated);
         if (!simulated) {
-            persistConstantRelinkingInfo(constantMap, bb, clazz, hostedObject);
+            persistConstantRelinkingInfo(constantMap, bb, clazz, hostedObject, imageHeapConstant.constantData.id);
         }
     }
 
-    @SuppressFBWarnings(value = "ES", justification = "Reference equality check needed to detect intern status")
-    public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, BigBang bb, Class<?> clazz, JavaConstant hostedObject) {
+    public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, BigBang bb, Class<?> clazz, JavaConstant hostedObject, int id) {
         if (clazz.equals(String.class)) {
             String value = bb.getSnippetReflectionProvider().asObject(String.class, hostedObject);
-            int stringIndex = Arrays.binarySearch(imageInternedStrings, value);
-            /*
-             * Arrays.binarySearch compares the strings by value. A comparison by reference is
-             * needed here as only interned strings are relinked.
-             */
-            if (stringIndex >= 0 && imageInternedStrings[stringIndex] == value) {
+            if (internedStringsIdentityMap.containsKey(value)) {
+                /*
+                 * Interned strings must be relinked.
+                 */
                 constantMap.put(VALUE_TAG, value);
+                constantsToRelink.add(id);
             }
         } else if (Enum.class.isAssignableFrom(clazz)) {
             Enum<?> value = bb.getSnippetReflectionProvider().asObject(Enum.class, hostedObject);
             constantMap.put(ENUM_CLASS_TAG, value.getDeclaringClass().getName());
             constantMap.put(ENUM_NAME_TAG, value.name());
+            constantsToRelink.add(id);
         }
     }
 

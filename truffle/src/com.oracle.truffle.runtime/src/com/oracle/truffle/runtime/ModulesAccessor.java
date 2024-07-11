@@ -79,6 +79,16 @@ abstract sealed class ModulesAccessor permits ModulesAccessor.DirectImpl, Module
      */
     abstract void addExportsToAllUnnamed(Module base, String p);
 
+    /**
+     * @see Modules#addOpens(Module, String, Module)
+     */
+    abstract void addOpens(Module base, String p, Module target);
+
+    /**
+     * @see Modules#addOpensToAllUnnamed(Module, String)
+     */
+    abstract void addOpensToAllUnnamed(Module base, String p);
+
     abstract Module getTargetModule();
 
     static ModulesAccessor create(Class<?> accessingClass) {
@@ -109,13 +119,23 @@ abstract sealed class ModulesAccessor permits ModulesAccessor.DirectImpl, Module
         }
 
         @Override
-        void addExports(Module base, String pn, Module target) {
-            Modules.addExports(base, pn, target);
+        void addExports(Module base, String p, Module target) {
+            Modules.addExports(base, p, target);
         }
 
         @Override
         void addExportsToAllUnnamed(Module base, String p) {
             Modules.addExportsToAllUnnamed(base, p);
+        }
+
+        @Override
+        void addOpens(Module base, String p, Module target) {
+            Modules.addOpens(base, p, target);
+        }
+
+        @Override
+        void addOpensToAllUnnamed(Module base, String p) {
+            Modules.addOpensToAllUnnamed(base, p);
         }
 
         @Override
@@ -132,6 +152,8 @@ abstract sealed class ModulesAccessor permits ModulesAccessor.DirectImpl, Module
 
         private final MethodHandle addExports;
         private final MethodHandle addExportsToAllUnnamed;
+        private final MethodHandle addOpens;
+        private final MethodHandle addOpensToAllUnnamed;
         private final Module targetModule;
 
         IsolatedImpl(Class<?> baseClass) throws ReflectiveOperationException {
@@ -173,6 +195,29 @@ abstract sealed class ModulesAccessor permits ModulesAccessor.DirectImpl, Module
             mv2.visitInsn(Opcodes.RETURN);
             mv2.visitMaxs(2, 2);
             mv2.visitEnd();
+
+            MethodVisitor mv3 = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, "addOpens",
+                            "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V", null, null);
+            mv3.visitCode();
+            mv3.visitVarInsn(Opcodes.ALOAD, 0); // Load first argument (Module base)
+            mv3.visitVarInsn(Opcodes.ALOAD, 1); // Load second argument (String p)
+            mv3.visitVarInsn(Opcodes.ALOAD, 2); // Load third argument (Module target)
+            mv3.visitMethodInsn(Opcodes.INVOKESTATIC, "jdk/internal/module/Modules", "addOpens",
+                            "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V", false);
+            mv3.visitInsn(Opcodes.RETURN);
+            mv3.visitMaxs(3, 3);
+            mv3.visitEnd();
+
+            MethodVisitor mv4 = cw.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, "addOpensToAllUnnamed",
+                            "(Ljava/lang/Module;Ljava/lang/String;)V", null, null);
+            mv4.visitCode();
+            mv4.visitVarInsn(Opcodes.ALOAD, 0); // Load first argument (Module target)
+            mv4.visitVarInsn(Opcodes.ALOAD, 1); // Load second argument (String p)
+            mv4.visitMethodInsn(Opcodes.INVOKESTATIC, "jdk/internal/module/Modules", "addOpensToAllUnnamed",
+                            "(Ljava/lang/Module;Ljava/lang/String;)V", false);
+            mv4.visitInsn(Opcodes.RETURN);
+            mv4.visitMaxs(2, 2);
+            mv4.visitEnd();
 
             cw.visitEnd();
 
@@ -238,6 +283,8 @@ abstract sealed class ModulesAccessor permits ModulesAccessor.DirectImpl, Module
             l.accessClass(generatedClass);
             this.addExports = l.findStatic(generatedClass, "addExports", MethodType.methodType(void.class, Module.class, String.class, Module.class));
             this.addExportsToAllUnnamed = l.findStatic(generatedClass, "addExportsToAllUnnamed", MethodType.methodType(void.class, Module.class, String.class));
+            this.addOpens = l.findStatic(generatedClass, "addOpens", MethodType.methodType(void.class, Module.class, String.class, Module.class));
+            this.addOpensToAllUnnamed = l.findStatic(generatedClass, "addOpensToAllUnnamed", MethodType.methodType(void.class, Module.class, String.class));
         }
 
         @Override
@@ -258,6 +305,24 @@ abstract sealed class ModulesAccessor permits ModulesAccessor.DirectImpl, Module
         public void addExportsToAllUnnamed(Module base, String p) {
             try {
                 addExportsToAllUnnamed.invokeExact(base, p);
+            } catch (Throwable e) {
+                throw new InternalError(e);
+            }
+        }
+
+        @Override
+        void addOpens(Module base, String p, Module target) {
+            try {
+                addOpens.invokeExact(base, p, target);
+            } catch (Throwable e) {
+                throw new InternalError(e);
+            }
+        }
+
+        @Override
+        void addOpensToAllUnnamed(Module base, String p) {
+            try {
+                addOpensToAllUnnamed.invokeExact(base, p);
             } catch (Throwable e) {
                 throw new InternalError(e);
             }

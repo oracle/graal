@@ -27,6 +27,7 @@ package com.oracle.svm.core.stack;
 import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
@@ -98,7 +99,17 @@ class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
+    public boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
+        return visitFrame(sp, ip, codeInfo, null);
+    }
+
+    @Override
+    protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
+        CodeInfo imageCodeInfo = CodeInfoTable.lookupImageCodeInfo(deoptStubIP);
+        return visitFrame(originalSP, deoptStubIP, imageCodeInfo, deoptimizedFrame);
+    }
+
+    private boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
         VirtualFrame virtualFrame = null;
         CodeInfoQueryResult info = null;
         FrameInfoQueryResult deoptInfo = null;
@@ -159,7 +170,6 @@ class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
         } while (virtualFrame != null || deoptInfo != null);
 
         return true;
-
     }
 
     private static boolean matchesDeoptAddress(CodePointer ip, ResolvedJavaMethod[] methods) {
@@ -180,7 +190,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
     private final Pointer sp;
     private final CodePointer ip;
     protected VirtualFrame virtualFrame;
-    private CodeInfoQueryResult codeInfo;
+    private final CodeInfoQueryResult codeInfo;
     private FrameInfoQueryResult frameInfo;
     private final int virtualFrameIndex;
 
@@ -283,7 +293,8 @@ class SubstrateInspectedFrame implements InspectedFrame {
     }
 
     private VirtualFrame lookupVirtualFrame() {
-        DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(sp);
+        IsolateThread thread = CurrentIsolate.getCurrentThread();
+        DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(thread, sp);
         if (deoptimizedFrame != null) {
             /*
              * Find the matching inlined frame, by skipping over the virtual frames that were
@@ -301,9 +312,10 @@ class SubstrateInspectedFrame implements InspectedFrame {
 
     @Override
     public void materializeVirtualObjects(boolean invalidateCode) {
+        IsolateThread thread = CurrentIsolate.getCurrentThread();
         if (virtualFrame == null) {
             DeoptimizedFrame deoptimizedFrame = getDeoptimizer().deoptSourceFrame(ip, false);
-            assert deoptimizedFrame == Deoptimizer.checkDeoptimized(sp);
+            assert deoptimizedFrame == Deoptimizer.checkDeoptimized(thread, sp);
         }
 
         if (invalidateCode) {
@@ -313,7 +325,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
              * a virtual object that was accessed via a local variable before would now have a
              * different value.
              */
-            Deoptimizer.invalidateMethodOfFrame(sp, null);
+            Deoptimizer.invalidateMethodOfFrame(thread, sp, null);
         }
 
         /* We must be deoptimized now. */

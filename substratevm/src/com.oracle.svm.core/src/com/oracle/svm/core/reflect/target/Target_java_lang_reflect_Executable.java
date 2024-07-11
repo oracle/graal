@@ -57,6 +57,11 @@ public final class Target_java_lang_reflect_Executable {
         if (rawParameters == null) {
             return null;
         }
+        /*
+         * Note that the rawParameters encoding can also encode a possible IllegalArgumentException.
+         * We want the decoder to throw this exception. Our caller Executable.parameterData catches
+         * it and converts it to a class format error.
+         */
         return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseReflectParameters(SubstrateUtil.cast(this, Executable.class), rawParameters);
     }
 

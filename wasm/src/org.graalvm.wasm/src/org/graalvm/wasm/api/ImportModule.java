@@ -86,8 +86,8 @@ public class ImportModule extends BuiltinModule {
             final WasmFunction function = info.getLeft();
             final Object executable = info.getRight();
             final SymbolTable.FunctionType type = function.type();
-            if (executable instanceof WasmFunctionInstance) {
-                defineExportedFunction(instance, functionName, type.paramTypes(), type.resultTypes(), (WasmFunctionInstance) executable);
+            if (executable instanceof WasmFunctionInstance functionInstance) {
+                defineExportedFunction(instance, functionName, functionInstance);
             } else {
                 var executableWrapper = new ExecuteInParentContextNode(context.language(), module, executable, function.resultCount());
                 WasmFunction exported = defineFunction(context, module, functionName, type.paramTypes(), type.resultTypes(), executableWrapper);

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -82,5 +83,10 @@ public final class JavaFlavor extends RegexFlavor {
         } else {
             return CaseFoldData.CaseFoldUnfoldAlgorithm.Ascii;
         }
+    }
+
+    @Override
+    public CaseFoldData.CaseFoldAlgorithm getCaseFoldAlgorithm(RegexAST ast) {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 }

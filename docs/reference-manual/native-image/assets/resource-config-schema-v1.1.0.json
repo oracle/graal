@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.1.0.json",
+  "default": {
+    "globs": [],
+    "resources": {},
+    "bundles": []
+  },
+  "properties": {
+    "globs": {
+      "default": [],
+      "items": {
+        "properties": {
+          "condition": {
+            "properties": {
+              "typeReachable": {
+                "type": "string",
+                "title": "Fully qualified class name of the class that must be reachable in order to register glob pattern"
+              }
+            },
+            "required": [
+              "typeReachable"
+            ],
+            "additionalProperties": false,
+            "type": "object"
+          },
+          "glob": {
+            "type": "string",
+            "title": "Resource matching glob"
+          },
+          "module": {
+            "type": "string",
+            "title": "Module of resource described with glob"
+          }
+        },
+        "required": ["glob"],
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "type": "array",
+      "title": "List of glob patterns that are used to match resources for registration"
+    },
+    "resources": {
+      "properties": {
+        "includes": {
+          "default": [],
+          "items": {
+            "properties": {
+              "condition": {
+                "properties": {
+                  "typeReachable": {
+                    "type": "string",
+                    "title": "Fully qualified class name of the class that must be reachable in order to register resource pattern"
+                  }
+                },
+                "required": [
+                  "typeReachable"
+                ],
+                "additionalProperties": false,
+                "type": "object"
+              },
+              "pattern": {
+                "type": "string",
+                "title": "Resource matching pattern"
+              }
+            },
+            "additionalProperties": false,
+            "type": "object"
+          },
+          "type": "array",
+          "title": "List of included resource patterns"
+        },
+        "excludes": {
+          "default": [],
+          "items": {
+            "properties": {
+              "condition": {
+                "properties": {
+                  "typeReachable": {
+                    "type": "string",
+                    "title": "Fully qualified class name of the class that must be reachable in order to exclude resource pattern"
+                  }
+                },
+                "required": [
+                  "typeReachable"
+                ],
+                "additionalProperties": false,
+                "type": "object"
+              },
+              "pattern": {
+                "type": "string",
+                "title": "Resource matching pattern"
+              }
+            },
+            "additionalProperties": false,
+            "type": "object"
+          },
+          "type": "array",
+          "title": "List of excluded resource patterns"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "title": "Set of included and excluded lists of patterns"
+    },
+    "bundles": {
+      "default": [],
+      "items": {
+        "properties": {
+          "condition": {
+            "properties": {
+              "typeReachable": {
+                "type": "string",
+                "title": "Fully qualified class name of the class that must be reachable in order to register resource bundle"
+              }
+            },
+            "required": [
+              "typeReachable"
+            ],
+            "additionalProperties": false,
+            "type": "object"
+          },
+          "name": {
+            "type": "string",
+            "title": "Fully qualified name of the resource bundle"
+          },
+          "locales": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "List of locales that should be registered for this resource bundle"
+          },
+          "classNames": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "List of fully qualified classnames of resource bundles that are directly included without performing the lookup by basename and locale."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "type": "array",
+      "title": "List of resource bundles that should be registered"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "title": "JSON schema for the resource-config that GraalVM Native Image uses",
+  "description": "Native Image will iterate over all resources and match their relative paths against the Java Regex specified in <includes>. If the path matches the Regex, the resource is included. The <excludes> statement instructs Native Image to omit certain included resources that match the given <pattern>"
+}

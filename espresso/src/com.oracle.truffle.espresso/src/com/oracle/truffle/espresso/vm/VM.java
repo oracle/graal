@@ -739,6 +739,7 @@ public final class VM extends NativeEnv {
         if (self.isArray()) {
             // Arrays are always cloneable.
             if (self.isForeignObject()) {
+                profiler.profile(4);
                 return cloneForeignArray(self, language, meta, InteropLibrary.getUncached(self.rawForeignObject(language)), ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached(), profiler,
                                 exceptionBranch);
             }
@@ -756,6 +757,7 @@ public final class VM extends NativeEnv {
         }
 
         if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_Reference)) {
+            profiler.profile(5);
             // HotSpot 8202260: The semantics of cloning a Reference object is not clearly defined.
             // In addition, it is questionable whether it should be supported due to its tight
             // interaction with garbage collector.
@@ -3732,13 +3734,13 @@ public final class VM extends NativeEnv {
     private static final long ONE_BILLION = 1_000_000_000;
     private static final long MAX_DIFF = 0x0100000000L;
 
-    @VmImpl(isJni = true)
-    @SuppressWarnings("unused")
-    @TruffleBoundary
     /**
      * Instant.now() uses System.currentTimeMillis() on a host Java 8. This might produce some loss
      * of precision.
      */
+    @VmImpl(isJni = true)
+    @SuppressWarnings("unused")
+    @TruffleBoundary
     public static long JVM_GetNanoTimeAdjustment(@JavaType(Class.class) StaticObject ignored, long offset) {
         // Instant.now() uses System.currentTimeMillis() on a host Java 8. This might produce some
         // loss of precision.

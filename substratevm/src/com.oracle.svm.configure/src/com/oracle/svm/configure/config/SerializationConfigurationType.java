@@ -31,8 +31,9 @@ import java.util.Objects;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
-import com.oracle.svm.core.util.json.JsonPrintable;
-import com.oracle.svm.core.util.json.JsonWriter;
+
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class SerializationConfigurationType implements JsonPrintable, Comparable<SerializationConfigurationType> {
     private final UnresolvedConfigurationCondition condition;
@@ -67,8 +68,7 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
         ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
-        /* GR-50385: Replace with "type" */
-        writer.quote(SerializationConfigurationParser.NAME_KEY).append(':').quote(qualifiedJavaName);
+        writer.quote(SerializationConfigurationParser.TYPE_KEY).append(':').quote(qualifiedJavaName);
         if (qualifiedCustomTargetConstructorJavaName != null) {
             writer.append(',').newline();
             writer.quote(SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY).append(':')

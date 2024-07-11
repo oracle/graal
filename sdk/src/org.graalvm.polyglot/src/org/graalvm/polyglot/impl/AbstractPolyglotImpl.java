@@ -48,7 +48,6 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
@@ -75,6 +74,7 @@ import java.util.function.Predicate;
 import java.util.logging.LogRecord;
 
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -94,14 +94,6 @@ import org.graalvm.polyglot.io.ProcessHandler;
 public abstract class AbstractPolyglotImpl {
 
     protected AbstractPolyglotImpl() {
-    }
-
-    Lookup getLookup() {
-        try {
-            return MethodHandles.privateLookupIn(AbstractPolyglotImpl.class, MethodHandles.lookup());
-        } catch (IllegalAccessException e) {
-            throw new AssertionError(e);
-        }
     }
 
     public abstract static class ManagementAccess {
@@ -151,7 +143,7 @@ public abstract class AbstractPolyglotImpl {
 
         protected APIAccess() {
             String name = getClass().getCanonicalName();
-            if (!name.equals("org.graalvm.polyglot.Engine.APIAccessImpl") && getClass() != ModuleToUnnamedAPIAccessGen.class) {
+            if (!name.equals("org.graalvm.polyglot.Engine.APIAccessImpl")) {
                 throw new AssertionError("Only one implementation of APIAccess allowed. " + getClass().getCanonicalName());
             }
         }
@@ -523,15 +515,15 @@ public abstract class AbstractPolyglotImpl {
     public void initialize() {
     }
 
-    public Object initializeModuleToUnnamedAccess(Lookup unnamedLookup, Object unnamedAccess, Object unnamedAPIAccess, Object unnamedIOAccess, Object unnamedManagementAccess) {
-        return getNext().initializeModuleToUnnamedAccess(unnamedLookup, unnamedAccess, unnamedAPIAccess, unnamedIOAccess, unnamedManagementAccess);
-    }
-
     public Object buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
                     boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService) {
         return getNext().buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler, hostLanguage,
                         hostLanguageOnly, registerInActiveEngines, polyglotHostService);
+    }
+
+    public void onEngineCreated(Object polyglotEngine) {
+        getNext().onEngineCreated(polyglotEngine);
     }
 
     public abstract int getPriority();
@@ -894,6 +886,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract StackTraceElement toHostFrame();
 
         public abstract Object getSourceLocation();
+
+        public abstract int getBytecodeIndex();
 
         public abstract String getRootName();
 
@@ -1455,6 +1449,9 @@ public abstract class AbstractPolyglotImpl {
 
     public Object newFileSystem(FileSystem fs) {
         return getNext().newFileSystem(fs);
+    }
+
+    public void validateVirtualThreadCreation(OptionValues engineOptions) {
     }
 
     /**

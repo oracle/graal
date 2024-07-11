@@ -26,6 +26,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -37,6 +38,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -47,6 +49,7 @@ import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.vm.FrameCookie;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 
 /**
  * The root of all executable bits in Espresso, includes everything that can be called a "method" in
@@ -136,6 +139,19 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     @Override
+    protected int findBytecodeIndex(Node node, Frame frame) {
+        if (frame == null) {
+            return -1;
+        }
+        return readBCI(frame);
+    }
+
+    @Override
+    protected boolean isCaptureFramesForTrace(boolean compiled) {
+        return true;
+    }
+
+    @Override
     protected Object translateStackTraceElement(TruffleStackTraceElement element) {
         Node location = element.getLocation();
         return new ForeignStackTraceElementObject(getMethod(), location != null ? location.getEncapsulatingSourceSection() : getEncapsulatingSourceSection());
@@ -143,7 +159,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     @Override
     public final String toString() {
-        return getQualifiedName();
+        return methodNode.toString();
     }
 
     @Override
@@ -206,10 +222,22 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     /**
      * Creates a root node that can execute a substitution e.g. an implementation of the method in
-     * host Java, instead of the original givenmethod.
+     * host Java, instead of the original given method.
      */
     public static EspressoRootNode createSubstitution(Method.MethodVersion methodVersion, JavaSubstitution.Factory factory) {
         return create(null, new IntrinsicSubstitutorNode(methodVersion, factory));
+    }
+
+    /**
+     * Creates a root note that can re-enter a Java method. Takes a single argument, a
+     * {@link HostFrameRecord}.
+     * <p>
+     * Used to implement continuations.
+     */
+    @TruffleBoundary
+    public static EspressoRootNode createContinuable(Method.MethodVersion methodVersion, int bci, EspressoFrameDescriptor fd) {
+        BytecodeNode bytecodeNode = new BytecodeNode(methodVersion);
+        return create(bytecodeNode.getFrameDescriptor(), new ContinuableMethodWithBytecode(bytecodeNode, bci, fd));
     }
 
     public final int readBCI(Frame frame) {
@@ -386,9 +414,14 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
         private void enter(StaticObject monitor) {
             if (top >= capacity) {
-                monitors = Arrays.copyOf(monitors, capacity <<= 1);
+                grow();
             }
             monitors[top++] = monitor;
+        }
+
+        @TruffleBoundary
+        private void grow() {
+            monitors = Arrays.copyOf(monitors, capacity <<= 1);
         }
 
         private void exit(StaticObject monitor, EspressoRootNode node) {

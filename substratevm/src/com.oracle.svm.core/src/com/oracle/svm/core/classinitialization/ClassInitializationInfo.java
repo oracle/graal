@@ -188,8 +188,8 @@ public final class ClassInitializationInfo {
     private boolean hasInitializer;
     private boolean buildTimeInitialized;
 
-    public boolean isTypeReached() {
-        assert typeReached != TypeReached.UNTRACKED : "We should never emit a check for untracked types as this was known at build time";
+    public boolean isTypeReached(DynamicHub caller) {
+        assert typeReached != TypeReached.UNTRACKED : "We should never emit a check for untracked types as this was known at build time: " + caller.getName();
         return typeReached == TypeReached.REACHED;
     }
 

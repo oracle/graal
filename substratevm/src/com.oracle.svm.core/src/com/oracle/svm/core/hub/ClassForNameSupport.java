@@ -26,9 +26,7 @@ package com.oracle.svm.core.hub;
 
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -37,6 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
+import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -65,54 +64,50 @@ public final class ClassForNameSupport {
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return; // must be defined at runtime before it can be looked up
         }
-        String name = clazz.getName();
-        ConditionalRuntimeValue<Object> exisingEntry = knownClasses.get(name);
-        Object currentValue = exisingEntry == null ? null : exisingEntry.getValueUnconditionally();
+        synchronized (knownClasses) {
+            String name = clazz.getName();
+            ConditionalRuntimeValue<Object> exisingEntry = knownClasses.get(name);
+            Object currentValue = exisingEntry == null ? null : exisingEntry.getValueUnconditionally();
 
-        if (currentValue == null || // never seen
-                        currentValue == NEGATIVE_QUERY ||
-                        currentValue == clazz) {
-            currentValue = clazz;
-            var cond = updateConditionalValue(exisingEntry, currentValue, condition);
-            knownClasses.put(name, cond);
-        } else if (currentValue instanceof Throwable) { // failed at linking time
-            var cond = updateConditionalValue(exisingEntry, currentValue, condition);
-            /*
-             * If the class has already been seen as throwing an error, we don't overwrite this
-             * error. Nevertheless, we have to update the set of conditionals to be correct.
-             */
-            knownClasses.put(name, cond);
-        } else {
-            throw VMError.shouldNotReachHere("""
-                            Invalid Class.forName value for %s: %s
-                            If the class is already registered as negative, it means that it exists but is not
-                            accessible through the builder class loader, and it was already registered by name (as
-                            negative query) before this point. In that case, we update the map to contain the actual
-                            class.
-                            """, name, currentValue);
+            if (currentValue == null || // never seen
+                            currentValue == NEGATIVE_QUERY ||
+                            currentValue == clazz) {
+                currentValue = clazz;
+                var cond = updateConditionalValue(exisingEntry, currentValue, condition);
+                knownClasses.put(name, cond);
+            } else if (currentValue instanceof Throwable) { // failed at linking time
+                var cond = updateConditionalValue(exisingEntry, currentValue, condition);
+                /*
+                 * If the class has already been seen as throwing an error, we don't overwrite this
+                 * error. Nevertheless, we have to update the set of conditionals to be correct.
+                 */
+                knownClasses.put(name, cond);
+            } else {
+                throw VMError.shouldNotReachHere("""
+                                Invalid Class.forName value for %s: %s
+                                If the class is already registered as negative, it means that it exists but is not
+                                accessible through the builder class loader, and it was already registered by name (as
+                                negative query) before this point. In that case, we update the map to contain the actual
+                                class.
+                                """, name, currentValue);
+            }
         }
     }
 
-    private static ConditionalRuntimeValue<Object> updateConditionalValue(ConditionalRuntimeValue<Object> existingConditionalValue, Object newValue,
+    public static ConditionalRuntimeValue<Object> updateConditionalValue(ConditionalRuntimeValue<Object> existingConditionalValue, Object newValue,
                     ConfigurationCondition additionalCondition) {
-        Set<Class<?>> resConditions = Set.of();
-        if (!additionalCondition.isAlwaysTrue()) {
-            Class<?> conditionClass = additionalCondition.getType();
-            if (existingConditionalValue != null) {
-                Set<Class<?>> conditions = existingConditionalValue.getConditions();
-                resConditions = Stream.concat(conditions.stream(), Stream.of(conditionClass))
-                                .collect(Collectors.toUnmodifiableSet());
-            } else {
-                resConditions = Set.of(conditionClass);
-            }
+        if (existingConditionalValue == null) {
+            return new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(additionalCondition), newValue);
+        } else {
+            existingConditionalValue.getConditions().addCondition(additionalCondition);
+            existingConditionalValue.updateValue(newValue);
+            return existingConditionalValue;
         }
-        return new ConditionalRuntimeValue<>(resConditions, newValue);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerExceptionForClass(ConfigurationCondition condition, String className, Throwable t) {
-        Set<Class<?>> typeSet = condition.isAlwaysTrue() ? Set.of() : Set.of(condition.getType());
-        knownClasses.put(className, new ConditionalRuntimeValue<>(typeSet, t));
+        updateCondition(condition, className, t);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -121,8 +116,16 @@ public final class ClassForNameSupport {
          * If the class is not accessible by the builder class loader, but was already registered
          * through registerClass(Class<?>), we don't overwrite the actual class or exception.
          */
-        Set<Class<?>> typeSet = condition.isAlwaysTrue() ? Set.of() : Set.of(condition.getType());
-        knownClasses.putIfAbsent(className, new ConditionalRuntimeValue<>(typeSet, NEGATIVE_QUERY));
+        updateCondition(condition, className, NEGATIVE_QUERY);
+    }
+
+    private void updateCondition(ConfigurationCondition condition, String className, Object value) {
+        synchronized (knownClasses) {
+            var runtimeConditions = knownClasses.putIfAbsent(className, new ConditionalRuntimeValue<>(RuntimeConditionSet.createHosted(condition), value));
+            if (runtimeConditions != null) {
+                runtimeConditions.getConditions().addCondition(condition);
+            }
+        }
     }
 
     public Class<?> forNameOrNull(String className, ClassLoader classLoader) {
@@ -142,7 +145,7 @@ public final class ClassForNameSupport {
             return null;
         }
         var conditional = knownClasses.get(className);
-        Object result = conditional == null ? null : conditional.getValue(cls -> DynamicHub.fromClass(cls).isReached());
+        Object result = conditional == null ? null : conditional.getValue();
         if (result == NEGATIVE_QUERY || className.endsWith("[]")) {
             /* Querying array classes with their "TypeName[]" name always throws */
             result = new ClassNotFoundException(className);
@@ -180,5 +183,15 @@ public final class ClassForNameSupport {
 
     public int count() {
         return knownClasses.size();
+    }
+
+    public RuntimeConditionSet getConditionFor(Class<?> jClass) {
+        Objects.requireNonNull(jClass);
+        ConditionalRuntimeValue<Object> conditionalClass = knownClasses.get(jClass.getName());
+        if (conditionalClass == null) {
+            return RuntimeConditionSet.unmodifiableEmptySet();
+        } else {
+            return conditionalClass.getConditions();
+        }
     }
 }

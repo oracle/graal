@@ -200,7 +200,18 @@ public abstract class Assembler<T extends Enum<T>> {
      */
     public byte[] close(boolean trimmedCopy) {
         checkAndClearLabelsWithPatches();
+        finalCodeSize = position();
         return codeBuffer.close(trimmedCopy);
+    }
+
+    private int finalCodeSize = -1;
+
+    /**
+     * Returns the final code size after code emission has been completed.
+     */
+    public int finalCodeSize() {
+        assert codeBuffer.data == null : "Buffer is expected to be closed";
+        return finalCodeSize;
     }
 
     public byte[] copy(int start, int end) {

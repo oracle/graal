@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,7 +102,8 @@ static TruffleObject getClosureObject(TruffleEnv *tenv, void *closure) {
 static bool exceptionCheck(TruffleEnv *tenv) {
     struct __TruffleEnvInternal *ienv = (struct __TruffleEnvInternal *) tenv;
     JNIEnv *env = ienv->jniEnv;
-    return (*env)->ExceptionCheck(env);
+    struct __TruffleContextInternal *context = ienv->context;
+    return (*env)->GetBooleanField(env, ienv->nfiState, context->NFIState_hasPendingException);
 }
 
 const struct __TruffleNativeAPI truffleNativeAPI = { getTruffleContext, newObjectRef,      releaseObjectRef, releaseAndReturn, isSameObject,
@@ -121,10 +122,17 @@ static TruffleEnv *lookupTruffleEnvOrError(int status, JNIEnv *env, struct __Tru
 
 static TruffleEnv *getTruffleEnv(TruffleContext *context) {
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
-    JavaVM *vm = ctx->javaVM;
-
+    struct __TruffleEnvInternal *cached = cachedTruffleEnv;
+    JavaVM *vm;
     JNIEnv *env;
-    int ret = (*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6);
+    int ret;
+
+    if (cached != NULL && cached->context == ctx) {
+        return (TruffleEnv *) cached;
+    }
+
+    vm = ctx->javaVM;
+    ret = (*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6);
     return lookupTruffleEnvOrError(ret, env, ctx);
 }
 

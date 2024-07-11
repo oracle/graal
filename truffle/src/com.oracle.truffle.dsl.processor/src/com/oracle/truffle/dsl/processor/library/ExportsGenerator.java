@@ -754,14 +754,14 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         cacheClass.addOptional(accepts);
 
         if (useSingleton(libraryExports, messages, true)) {
-            CodeExecutableElement isAdoptable = cacheClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable")));
-            builder = isAdoptable.createBuilder();
             if (libraryExports.needsDynamicDispatch()) {
+                CodeExecutableElement isAdoptable = cacheClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable")));
+                builder = isAdoptable.createBuilder();
                 builder.startReturn();
                 builder.startCall("dynamicDispatch_", "isAdoptable").end();
                 builder.end();
             } else {
-                builder.returnFalse();
+                cacheClass.getImplements().add(types.UnadoptableNode);
             }
         }
 
@@ -1281,15 +1281,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         }
 
         if (!isExtendsExports) {
-            CodeExecutableElement isAdoptable = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable")));
-            ElementUtils.setFinal(isAdoptable.getModifiers(), !isFinalExports);
-            isAdoptable.createBuilder().returnFalse();
-        }
-
-        if (!isExtendsExports) {
-            CodeExecutableElement getCost = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost")));
-            ElementUtils.setFinal(getCost.getModifiers(), !isFinalExports);
-            getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(types.NodeCost, "MEGAMORPHIC")).end();
+            uncachedClass.getImplements().add(types.UnadoptableNode);
         }
 
         boolean firstNode = true;

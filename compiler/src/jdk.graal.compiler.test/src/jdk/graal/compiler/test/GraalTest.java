@@ -34,10 +34,10 @@ import java.lang.reflect.Method;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -591,13 +591,32 @@ public class GraalTest {
         return createTimeout(milliseconds, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * Gets the value of {@link Instant#now()} as a string suitable for use as a file name.
+     */
+    public static String nowAsFileName() {
+        // Sanitize for Windows by replacing ':' with '_'
+        return String.valueOf(Instant.now()).replace(':', '_');
+    }
+
+    /**
+     * Gets the directory under which output should be generated.
+     */
+    public static Path getOutputDirectory() {
+        Path parent = Path.of("mxbuild");
+        if (!Files.isDirectory(parent)) {
+            parent = Path.of(".");
+        }
+        return parent.toAbsolutePath();
+    }
+
     public static class TemporaryDirectory implements AutoCloseable {
 
         public final Path path;
         private IOException closeException;
 
-        public TemporaryDirectory(Path dir, String prefix, FileAttribute<?>... attrs) throws IOException {
-            path = Files.createTempDirectory(dir == null ? Paths.get(".") : dir, prefix, attrs);
+        public TemporaryDirectory(String prefix, FileAttribute<?>... attrs) throws IOException {
+            path = Files.createTempDirectory(getOutputDirectory(), prefix, attrs);
         }
 
         @Override

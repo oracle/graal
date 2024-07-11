@@ -746,7 +746,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
      * sub-integer types are often just integer constants in the Graal IR, i.e., we cannot rely on
      * the JavaKind of the constant to match the type of the field or array.
      */
-    private static JavaConstant adaptForImageHeap(JavaConstant value, JavaKind storageKind) {
+    static JavaConstant adaptForImageHeap(JavaConstant value, JavaKind storageKind) {
         if (value.getJavaKind() != storageKind) {
             assert value instanceof PrimitiveConstant && value.getJavaKind().getStackKind() == storageKind.getStackKind() : "only sub-int values can have a mismatch of the JavaKind: " +
                             value.getJavaKind() + ", " + storageKind;

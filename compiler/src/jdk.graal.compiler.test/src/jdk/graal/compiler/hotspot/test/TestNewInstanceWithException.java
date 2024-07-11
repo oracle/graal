@@ -160,6 +160,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             for (int i = 0; i < limit; i++) {
                 T[] s = new T[Ts.length * 2];
                 Ts = s;
+                GraalDirectives.controlFlowAnchor();
             }
             return 1;
         } catch (OutOfMemoryError oome) {
@@ -241,6 +242,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 Node newHead = new Node();
                 newHead.next = head;
                 head = newHead;
+                GraalDirectives.controlFlowAnchor();
             }
             head = new Node();
             return 1;
@@ -304,6 +306,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 INode newHead = (INode) UNSAFE.allocateInstance(c);
                 newHead.setNext(ihead);
                 ihead = newHead;
+                GraalDirectives.controlFlowAnchor();
             }
             return 1;
         } catch (OutOfMemoryError oome) {
@@ -345,6 +348,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
                 INode newHead = (INode) UNSAFE.allocateInstance(foldInHighTier(IINode.class));
                 newHead.setNext(ihead);
                 ihead = newHead;
+                GraalDirectives.controlFlowAnchor();
             }
             return 1;
         } catch (OutOfMemoryError oome) {
@@ -399,6 +403,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             for (int i = 0; i < limit; i++) {
                 Object[] s = (Object[]) Array.newInstance(arrayClass, Os.length * 2);
                 Os = s;
+                GraalDirectives.controlFlowAnchor();
             }
             return 1;
         } catch (OutOfMemoryError oome) {
@@ -439,6 +444,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             for (int i = 0; i < limit; i++) {
                 Object[] s = (Object[]) Array.newInstance(foldInHighTier(IINode.class), Os.length * 2);
                 Os = s;
+                GraalDirectives.controlFlowAnchor();
             }
             return 1;
         } catch (OutOfMemoryError oome) {
@@ -492,6 +498,7 @@ public class TestNewInstanceWithException extends SubprocessTest {
             for (int i = 0; i < limit; i++) {
                 T[][] s = new T[TsMult.length * 8][TsMult.length * 8];
                 TsMult = s;
+                GraalDirectives.controlFlowAnchor();
             }
             return 1;
         } catch (OutOfMemoryError oome) {
@@ -563,81 +570,95 @@ public class TestNewInstanceWithException extends SubprocessTest {
         }
     }
 
-    @Test
-    public void testNewArrayWithException() throws IOException, InterruptedException {
-        runSubprocessTest(() -> {
-            try {
-                oomeAndCompile();
-            } catch (InvalidInstalledCodeException e) {
-                throw GraalError.shouldNotReachHere(e);
-            }
-        }, "-Xmx32m");
+    public static class TestNewInstanceWithException1 extends TestNewInstanceWithException {
+
+        @Test
+        public void testNewArrayWithException() throws IOException, InterruptedException {
+            runSubprocessTest(() -> {
+                try {
+                    oomeAndCompile();
+                } catch (InvalidInstalledCodeException e) {
+                    throw GraalError.shouldNotReachHere(e);
+                }
+            }, "-Xmx32m");
+        }
     }
 
-    @Test
-    public void testNewInstanceWithException() throws IOException, InterruptedException {
-        runSubprocessTest(() -> {
-            try {
-                oomeAndCompile2();
-            } catch (InvalidInstalledCodeException e) {
-                throw GraalError.shouldNotReachHere(e);
-            }
-        }, "-Xmx32m");
+    public static class TestNewInstanceWithException2 extends TestNewInstanceWithException {
+        @Test
+        public void testNewInstanceWithException() throws IOException, InterruptedException {
+            runSubprocessTest(() -> {
+                try {
+                    oomeAndCompile2();
+                } catch (InvalidInstalledCodeException e) {
+                    throw GraalError.shouldNotReachHere(e);
+                }
+            }, "-Xmx32m");
+        }
     }
 
-    @Test
-    public void testDynamicNewInstanceWithException() throws Throwable {
-        runSubprocessTest(() -> {
-            try {
-                oomeAndCompile3();
-            } catch (Throwable e) {
-                throw GraalError.shouldNotReachHere(e);
-            }
-        }, "-Xmx32m");
+    public static class TestNewInstanceWithException3 extends TestNewInstanceWithException {
+        @Test
+        public void testDynamicNewInstanceWithException() throws Throwable {
+            runSubprocessTest(() -> {
+                try {
+                    oomeAndCompile3();
+                } catch (Throwable e) {
+                    throw GraalError.shouldNotReachHere(e);
+                }
+            }, "-Xmx32m");
+        }
     }
 
-    @Test
-    public void testDynamicNewInstanceWithExceptionCanonToInstanceWithException() throws Throwable {
-        runSubprocessTest(() -> {
-            try {
-                oomeAndCompile4();
-            } catch (Throwable e) {
-                throw GraalError.shouldNotReachHere(e);
-            }
-        }, "-Xmx32m");
+    public static class TestNewInstanceWithException4 extends TestNewInstanceWithException {
+        @Test
+        public void testDynamicNewInstanceWithExceptionCanonToInstanceWithException() throws Throwable {
+            runSubprocessTest(() -> {
+                try {
+                    oomeAndCompile4();
+                } catch (Throwable e) {
+                    throw GraalError.shouldNotReachHere(e);
+                }
+            }, "-Xmx32m");
+        }
     }
 
-    @Test
-    public void testDynamicNewArrayWithException() throws Throwable {
-        runSubprocessTest(() -> {
-            try {
-                oomeAndCompile5();
-            } catch (Throwable e) {
-                throw GraalError.shouldNotReachHere(e);
-            }
-        }, "-Xmx32m");
+    public static class TestNewInstanceWithException5 extends TestNewInstanceWithException {
+        @Test
+        public void testDynamicNewArrayWithException() throws Throwable {
+            runSubprocessTest(() -> {
+                try {
+                    oomeAndCompile5();
+                } catch (Throwable e) {
+                    throw GraalError.shouldNotReachHere(e);
+                }
+            }, "-Xmx32m");
+        }
     }
 
-    @Test
-    public void testDynamicNewArrayWithExceptionCanonToArrayWithException() throws Throwable {
-        runSubprocessTest(() -> {
-            try {
-                oomeAndCompile6();
-            } catch (Throwable e) {
-                throw GraalError.shouldNotReachHere(e);
-            }
-        }, "-Xmx32m");
+    public static class TestNewInstanceWithException6 extends TestNewInstanceWithException {
+        @Test
+        public void testDynamicNewArrayWithExceptionCanonToArrayWithException() throws Throwable {
+            runSubprocessTest(() -> {
+                try {
+                    oomeAndCompile6();
+                } catch (Throwable e) {
+                    throw GraalError.shouldNotReachHere(e);
+                }
+            }, "-Xmx32m");
+        }
     }
 
-    @Test
-    public void testNewMultiArrayWithException() throws Throwable {
-        runSubprocessTest(() -> {
-            try {
-                oomeAndCompile7();
-            } catch (Throwable e) {
-                throw GraalError.shouldNotReachHere(e);
-            }
-        }, "-Xmx32m");
+    public static class TestNewInstanceWithException7 extends TestNewInstanceWithException {
+        @Test
+        public void testNewMultiArrayWithException() throws Throwable {
+            runSubprocessTest(() -> {
+                try {
+                    oomeAndCompile7();
+                } catch (Throwable e) {
+                    throw GraalError.shouldNotReachHere(e);
+                }
+            }, "-Xmx32m");
+        }
     }
-
 }

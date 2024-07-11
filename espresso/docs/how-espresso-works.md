@@ -247,3 +247,17 @@ via assumptions, based on classes loaded at runtime:
 These layers were designed to make metadata as shareable as possible via a strict separation between metadata and
 runtime data. The idea is to share up to the linked (structural) layer between contexts e.g. a second context doesn't
 need to reparse and recompute vtable, itables etc.
+
+### Debugging
+
+Java debuggers examine and control a JVM via a network protocol called JDWP. Espresso uses the
+Truffle debugging API to implement this protocol, which is in turn based on the Truffle
+instrumentation API. Instrumentation is a mechanism that can "wrap" nodes in the Truffle node tree
+with objects that delegate to the real node whilst invoking before/after code as well. In this way
+code that needs to generically monitor or control a program can be cleanly factored out of the
+language implementation.
+
+The core of the Espresso-specific code is in `DebuggerController`. High level debugging commands
+like "install breakpoint", "step over" etc. are converted into Truffle debug API calls. Truffle
+in turn calls back into Espresso via the `SuspendedCallbackImpl` to inform it when a thread has
+been suspended by the debugger, which allows Espresso to handle the event.

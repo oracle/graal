@@ -39,7 +39,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -50,12 +49,12 @@ public final class DynamicNewInstanceNode extends AbstractNewObjectNode implemen
 
     @Input ValueNode clazz;
 
-    public static void createAndPush(GraphBuilderContext b, ValueNode clazz) {
+    public static void createAndPush(GraphBuilderContext b, ValueNode clazz, boolean validateClass) {
         ResolvedJavaType constantType = tryConvertToNonDynamic(clazz, b);
         if (constantType != null) {
             b.addPush(JavaKind.Object, new NewInstanceNode(constantType, true));
         } else {
-            ValueNode clazzLegal = b.add(new ValidateNewInstanceClassNode(clazz));
+            ValueNode clazzLegal = validateClass ? b.add(new ValidateNewInstanceClassNode(clazz)) : clazz;
             b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true));
         }
     }

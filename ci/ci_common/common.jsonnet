@@ -14,11 +14,10 @@ common + common.frequencies + {
   #
   # To avoid skipping the deployment of some artifacts, only `gate` jobs and
   # post-merges that do not have the `deploy` target are considered.
-  add_excludes_guard(build):: build
-  + (
+  add_excludes_guard(build):: (
     if (std.length(std.find('gate', build.targets)) > 0 || std.length(std.find('deploy', build.targets)) == 0) then {
-      guard+: {
-        excludes+: ["*.md",
+      guard: {
+        excludes: ["*.md",
           "<graal>/*.md",
           "<graal>/ci/**.md",
           "<graal>/compiler/**.md",
@@ -45,7 +44,7 @@ common + common.frequencies + {
         ]
       }
     } else {}
-  ),
+  ) + build,
 
   # Add the specified components to the field `components`.
   with_components(builds, components)::
@@ -133,8 +132,4 @@ common + common.frequencies + {
   darwin_aarch64: common.darwin_aarch64 + graal_common_extras,
   windows_amd64: common.windows_amd64 + graal_common_extras,
   windows_server_2016_amd64: common.windows_server_2016_amd64 + graal_common_extras,
-
-
-  // See GR-31169 for description of the mach5 target
-  mach5_target:: {targets+: ["mach5"]},
 }

@@ -73,7 +73,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert;
 
 public class ValueScopingTest {
@@ -328,13 +327,11 @@ public class ValueScopingTest {
             assertFails(() -> o.value.hasArrayElements(), IllegalStateException.class, SCOPE_RELEASED);
             assertFails(() -> o.value.pin(), IllegalStateException.class, SCOPE_RELEASED);
 
-            if (TruffleTestAssumptions.isNoClassLoaderEncapsulation()) { // uses TruffleObject
-                // if a value is stored in guest we remove the scope
-                test.invokeMember("storeInGuest", proxy);
-                ValueAssert.assertValue(o.value);
-                // does not fail
-                o.value.pin();
-            }
+            // if a value is stored in guest we remove the scope
+            test.invokeMember("storeInGuest", proxy);
+            ValueAssert.assertValue(o.value);
+            // does not fail
+            o.value.pin();
 
             // host method execution fails
             try {

@@ -43,6 +43,7 @@ package org.graalvm.wasm.predefined;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
@@ -109,8 +110,9 @@ public abstract class BuiltinModule {
         return instance;
     }
 
-    protected void defineExportedFunction(WasmInstance instance, String name, byte[] paramType, byte[] retTypes, WasmFunctionInstance functionInstance) {
-        final int typeIdx = instance.symbolTable().allocateFunctionType(paramType, retTypes, instance.context().getContextOptions().supportMultiValue());
+    protected void defineExportedFunction(WasmInstance instance, String name, WasmFunctionInstance functionInstance) {
+        SymbolTable.FunctionType type = functionInstance.function().type();
+        final int typeIdx = instance.symbolTable().allocateFunctionType(type.paramTypes(), type.resultTypes(), instance.context().getContextOptions().supportMultiValue());
         final WasmFunction function = instance.symbolTable().declareExportedFunction(typeIdx, name);
         instance.setFunctionInstance(function.index(), functionInstance);
         instance.setTarget(function.index(), functionInstance.target());

@@ -31,7 +31,7 @@ import java.io.IOException;
 
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.core.util.json.JsonWriter;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 final class ConfigurationConditionPrintable {
     static void printConditionAttribute(UnresolvedConfigurationCondition condition, JsonWriter writer) throws IOException {

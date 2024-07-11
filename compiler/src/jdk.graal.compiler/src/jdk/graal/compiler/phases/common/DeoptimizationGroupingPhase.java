@@ -29,7 +29,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.nodes.AbstractDeoptimizeNode;
@@ -120,7 +120,7 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
 
     private static void exitLoops(AbstractDeoptimizeNode deopt, EndNode end, ControlFlowGraph cfg) {
         HIRBlock block = cfg.blockFor(deopt);
-        Loop<HIRBlock> loop = block.getLoop();
+        CFGLoop<HIRBlock> loop = block.getLoop();
         while (loop != null) {
             end.graph().addBeforeFixed(end, end.graph().add(new LoopExitNode((LoopBeginNode) loop.getHeader().getBeginNode())));
             loop = loop.getParent();

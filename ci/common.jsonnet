@@ -60,6 +60,8 @@ local common_json = import "../common.json";
   } + {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self), jdk_name:: "jdk-latest"}
     for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
+  } + {
+    'graalvm-ee-21': jdk_base + common_json.jdks["graalvm-ee-21"] + { jdk_version:: 21 },
   },
   # We do not want to expose galahad-jdk
   assert std.assertEqual([x for x in std.objectFields(common_json.jdks) if x != "galahad-jdk"], std.objectFields(jdks_data)),
@@ -147,7 +149,9 @@ local common_json = import "../common.json";
         # Keep in sync with com.oracle.svm.hosted.NativeImageOptions#DEFAULT_ERROR_FILE_NAME
         " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",
         # Keep in sync with jdk.graal.compiler.test.SubprocessUtil#makeArgfile
-        " @(?P<filename>.*SubprocessUtil.*\\.argfile)",
+        "@(?P<filename>.*SubprocessUtil-argfiles.*\\.argfile)",
+        # Keep in sync with com.oracle.truffle.api.test.SubprocessTestUtils#makeArgfile
+        "@(?P<filename>.*SubprocessTestUtils-argfiles.*\\.argfile)",
       ],
     },
 
@@ -220,7 +224,9 @@ local common_json = import "../common.json";
     truffleruby:: {
       packages+: (if self.os == "linux" && self.arch == "amd64" then {
         ruby: "==3.2.2", # Newer version, also used for benchmarking
-      } else {
+      } else if (self.os == "windows") then
+        error('truffleruby is not supported on windows')
+      else {
         ruby: "==3.0.2",
       }) + (if self.os == "linux" then {
         libyaml: "==0.2.5",
@@ -228,8 +234,20 @@ local common_json = import "../common.json";
     },
 
     graalnodejs:: {
+      local this = self,
       packages+: if self.os == "linux" then {
         cmake: "==3.22.2",
+      } else {},
+      environment+: if self.os == "windows" then {
+        local devkits_version = std.filterMap(
+          function(p) std.startsWith(p, 'devkit:VS'),  # filter function
+          function(p) std.substr(p, std.length('devkit:VS'), 4),  # map function
+          std.objectFields(this.packages)  # array
+        )[0],
+        DEVKIT_VERSION: devkits_version,  # TODO: dep of Graal.nodejs
+      } else {},
+      downloads+: if self.os == "windows" then {
+        NASM: {name: 'nasm', version: '2.14.02', platformspecific: true},
       } else {},
     },
 
@@ -329,7 +347,7 @@ local common_json = import "../common.json";
     },
     opt_post_merge: {
       targets+: ["opt-post-merge"],
-      tags+: []
+      tags+: {opt_post_merge +: []},
     },
     daily: {
       targets+: ["daily"],

@@ -73,8 +73,8 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
     static final String ANNOTATION_CLASS_NAME = "com.oracle.svm.core.util.BasedOnJDKFile";
     static final String ANNOTATION_LIST_CLASS_NAME = "com.oracle.svm.core.util.BasedOnJDKFile.List";
     static final Pattern FILE_PATTERN = Pattern
-                    .compile("^https://github.com/openjdk/jdk/blob/(?<committish>[^/]+)/(?<path>[-_.A-Za-z0-9][-_./A-Za-z0-9]*)(#L(?<lineStart>[0-9]+)-L(?<lineEnd>[0-9]+))?$");
-    static final String FILE_PATTERN_STR = "https://github.com/openjdk/jdk/blob/<tag|revision>/path/to/file.ext(#L[0-9]+-L[0-9]+)?";
+                    .compile("^https://github.com/openjdk/jdk/blob/(?<committish>[^/]+)/(?<path>[-_.A-Za-z0-9][-_./A-Za-z0-9]*)(#L(?<lineStart>[0-9]+)(-L(?<lineEnd>[0-9]+))?)?$");
+    static final String FILE_PATTERN_STR = "https://github.com/openjdk/jdk/blob/<tag|revision>/path/to/file.ext(#L[0-9]+(-L[0-9]+)?)?";
     public static final int FULL_FILE_LINE_MARKER = 0;
 
     private final Set<Element> processed = new HashSet<>();
@@ -181,10 +181,21 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
             env().getMessager().printMessage(ERROR, String.format("Invalid path: %s%nShould be %s", annotationValue, FILE_PATTERN_STR));
             return null;
         }
-        String lineStart = matcher.group("lineStart");
-        String lineEnd = matcher.group("lineEnd");
-        return new SourceInfo(matcher.group("committish"), matcher.group("path"), lineStart == null ? FULL_FILE_LINE_MARKER : Long.parseLong(lineStart),
-                        lineEnd == null ? FULL_FILE_LINE_MARKER : Long.parseLong(lineEnd));
+        String lineStartStr = matcher.group("lineStart");
+        String lineEndStr = matcher.group("lineEnd");
+        long lineStart = lineStartStr == null ? FULL_FILE_LINE_MARKER : Long.parseLong(lineStartStr);
+        final long lineEnd;
+        if (lineEndStr == null) {
+            if (lineStartStr != null) {
+                // no lineEnd but lineStart -> single line url
+                lineEnd = lineStart;
+            } else {
+                lineEnd = FULL_FILE_LINE_MARKER;
+            }
+        } else {
+            lineEnd = Long.parseLong(lineEndStr);
+        }
+        return new SourceInfo(matcher.group("committish"), matcher.group("path"), lineStart, lineEnd);
     }
 
     private SourceInfo getAnnotatedSourceInfo(Element annotatedElement) {

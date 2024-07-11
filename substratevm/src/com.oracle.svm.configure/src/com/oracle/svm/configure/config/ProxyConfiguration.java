@@ -38,7 +38,9 @@ import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ProxyConfigurationParser;
-import com.oracle.svm.core.util.json.JsonWriter;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class ProxyConfiguration extends ConfigurationBase<ProxyConfiguration, ProxyConfiguration.Predicate> {
     private final Set<ConditionalElement<List<String>>> interfaceLists = ConcurrentHashMap.newKeySet();
@@ -130,13 +132,19 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
     }
 
     @Override
-    public ConfigurationParser createParser() {
+    public ConfigurationParser createParser(boolean strictMetadata) {
+        VMError.guarantee(!strictMetadata, "Independent proxy configuration is not supported with strict metadata");
         return new ProxyConfigurationParser<>(ConfigurationConditionResolver.identityResolver(), true, (cond, interfaces) -> interfaceLists.add(new ConditionalElement<>(cond, interfaces)));
     }
 
     @Override
     public boolean isEmpty() {
         return interfaceLists.isEmpty();
+    }
+
+    @Override
+    public boolean supportsCombinedFile() {
+        return false;
     }
 
     private static <T extends Comparable<T>> int compareList(List<T> l1, List<T> l2) {

@@ -67,14 +67,16 @@ import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.StringInternSupport;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.HostedConfiguration;
-import com.oracle.svm.hosted.SVMImageLayerSupport;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
@@ -174,6 +176,10 @@ public final class NativeImageHeap implements ImageHeap {
         return objects.size();
     }
 
+    public int getLayerObjectCount() {
+        return (int) objects.values().stream().filter(o -> !o.constant.isInBaseLayer()).count();
+    }
+
     public ObjectInfo getObjectInfo(Object obj) {
         JavaConstant constant = hUniverse.getSnippetReflection().forObject(obj);
         VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
@@ -212,6 +218,10 @@ public final class NativeImageHeap implements ImageHeap {
         addObjectsPhase.allow();
         internStringsPhase.allow();
 
+        if (ImageSingletons.contains(LoadImageSingletonFeature.class)) {
+            ImageSingletons.lookup(LoadImageSingletonFeature.class).addInitialObjects(this, hUniverse);
+        }
+
         addStaticFields();
     }
 
@@ -235,11 +245,17 @@ public final class NativeImageHeap implements ImageHeap {
              * By now, all interned Strings have been added to our internal interning table.
              * Populate the VM configuration with this table, and ensure it is part of the heap.
              */
-            String[] imageInternedStrings = internedStrings.keySet().toArray(new String[0]);
-            Arrays.sort(imageInternedStrings);
-            ImageSingletons.lookup(StringInternSupport.class).setImageInternedStrings(imageInternedStrings);
-            if (SVMImageLayerSupport.singleton().persistAnalysis()) {
-                SVMImageLayerSupport.singleton().getWriter().setImageInternedStrings(imageInternedStrings);
+            String[] imageInternedStrings;
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                var internSupport = ImageSingletons.lookup(StringInternSupport.class);
+                imageInternedStrings = internSupport.layeredSetImageInternedStrings(internedStrings.keySet());
+                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().getWriter().setInternedStringsIdentityMap(internSupport.getInternedStringsIdentityMap());
+                }
+            } else {
+                imageInternedStrings = internedStrings.keySet().toArray(new String[0]);
+                Arrays.sort(imageInternedStrings);
+                ImageSingletons.lookup(StringInternSupport.class).setImageInternedStrings(imageInternedStrings);
             }
             /* Manually snapshot the interned strings array. */
             aUniverse.getHeapScanner().rescanObject(imageInternedStrings, OtherReason.LATE_SCAN);
@@ -398,7 +414,7 @@ public final class NativeImageHeap implements ImageHeap {
     public int countDynamicHubs() {
         int count = 0;
         for (ObjectInfo o : getObjects()) {
-            if (hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
+            if (!o.constant.isInBaseLayer() && hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
                 count++;
             }
         }

@@ -69,9 +69,11 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -109,6 +111,21 @@ public class WasmRootNode extends RootNode {
         if (!instance.isLinkCompleted()) {
             nonLinkedProfile.enter();
             context.linker().tryLink(instance);
+        }
+    }
+
+    @Override
+    protected int findBytecodeIndex(Node node, Frame frame) {
+        if (node == null) {
+            // uncached wasm calls without location may happen
+            return -1;
+        }
+        if (node instanceof WasmCallNode n) {
+            // cached wasm call with location may happen
+            return n.getBytecodeOffset();
+        } else {
+            // for wasm exceptions we might be able to get the stack trace
+            return -1;
         }
     }
 

@@ -26,6 +26,41 @@ package com.oracle.svm.core.layeredimagesingleton;
 
 import java.util.EnumSet;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+/**
+ * In additional to the traditional singleton model, i.e. a key-value map whose lookups are constant
+ * folded within generated code, we provide two additional options:
+ *
+ * <ul>
+ * <li>{@link ApplicationLayerOnlyImageSingleton}: Instead of having a per-layer singleton, all
+ * {@link ImageSingletons#lookup} calls refer to a single singleton which will be created in the
+ * application layer.</li>
+ *
+ * <li>{@link MultiLayeredImageSingleton}: {@link ImageSingletons#lookup} calls continue to refer to
+ * the appropriate per layer image singleton, but there is also an additional method
+ * {@link MultiLayeredImageSingleton#getAllLayers} which returns an array with the image singletons
+ * corresponding to this key in all layers they were created.</li>
+ * </ul>
+ *
+ * Note the unique behavior of {@link ApplicationLayerOnlyImageSingleton} and
+ * {@link MultiLayeredImageSingleton} apply only when building a layered image. During a traditional
+ * build these flags do not have an impact.
+ *
+ * Currently, when using these special singleton types there are additional restrictions:
+ *
+ * <ol>
+ * <li>The key class type must match the implementation type</li>
+ * <li>The same object cannot be mapped into multiple keys, i.e. there is a one-to-one mapping
+ * between Class<->singleton object</li>
+ * <li>{@link ImageSingletons#add} must be called before the analysis phase (i.e. these image
+ * singletons cannot be added at a later point)</li>
+ * <li>{@link ApplicationLayerOnlyImageSingleton}s can only be installed in the application
+ * layer</li>
+ * </ol>
+ */
 public interface LayeredImageSingleton {
 
     enum PersistFlags {
@@ -46,53 +81,14 @@ public interface LayeredImageSingleton {
         CREATE
     }
 
-    enum ImageBuilderFlags {
-        /**
-         * This singleton can be accessed from the runtime.
-         */
-        RUNTIME_ACCESS,
-        /**
-         * This singleton can be accessed from the buildtime.
-         */
-        BUILDTIME_ACCESS,
-        /**
-         * This singleton should not have been created. Throw error if it is created.
-         */
-        UNSUPPORTED,
-        /**
-         * This singleton should only be created in the initial layer.
-         */
-        INITIAL_LAYER_ONLY,
-        /**
-         * Allow the singleton to be constant-folded within the generated code.
-         */
-        ALLOW_CONSTANT_FOLDING,
-        /**
-         * Prevent the singleton to be constant-folded within the generated code.
-         */
-        PREVENT_CONSTANT_FOLDING
-    }
+    /*
+     * Returns how this singleton should be handled for the current build. The returned value must
+     * not change throughout execution (i.e., the returned results can be cached).
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags();
 
-    default boolean verifyImageBuilderFlags() {
-        EnumSet<ImageBuilderFlags> flags = getImageBuilderFlags();
-
-        if (flags.contains(ImageBuilderFlags.UNSUPPORTED)) {
-            assert flags.equals(EnumSet.of(ImageBuilderFlags.UNSUPPORTED)) : "Unsupported should be the only flag set " + flags;
-        }
-
-        if (flags.contains(ImageBuilderFlags.RUNTIME_ACCESS)) {
-            assert !flags.containsAll(EnumSet.of(ImageBuilderFlags.PREVENT_CONSTANT_FOLDING, ImageBuilderFlags.ALLOW_CONSTANT_FOLDING)) : String.format("Must set one of %s or %s. flags: %s",
-                            ImageBuilderFlags.PREVENT_CONSTANT_FOLDING, ImageBuilderFlags.ALLOW_CONSTANT_FOLDING, flags);
-            assert flags.contains(ImageBuilderFlags.PREVENT_CONSTANT_FOLDING) || flags.contains(ImageBuilderFlags.ALLOW_CONSTANT_FOLDING) : String.format("Must set one of %s or %s. flags: %s",
-                            ImageBuilderFlags.PREVENT_CONSTANT_FOLDING, ImageBuilderFlags.ALLOW_CONSTANT_FOLDING, flags);
-
-        }
-
-        return true;
-    }
-
-    EnumSet<ImageBuilderFlags> getImageBuilderFlags();
-
+    @Platforms(Platform.HOSTED_ONLY.class)
     PersistFlags preparePersist(ImageSingletonWriter writer);
 
 }

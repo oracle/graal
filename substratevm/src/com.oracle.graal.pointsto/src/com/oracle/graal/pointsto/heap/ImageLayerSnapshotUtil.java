@@ -58,8 +58,10 @@ public class ImageLayerSnapshotUtil {
     public static final String SUPER_CLASS_TAG = "super class";
     public static final String INTERFACES_TAG = "interfaces";
     public static final String CONSTANTS_TAG = "constants";
+    public static final String CONSTANTS_TO_RELINK_TAG = "constants to relink";
     public static final String TID_TAG = "tid";
     public static final String IDENTITY_HASH_CODE_TAG = "identityHashCode";
+    public static final String HUB_IDENTITY_HASH_CODE_TAG = "hub identityHashCode";
     public static final String ID_TAG = "id";
     public static final String CONSTANT_TYPE_TAG = "constant type";
     public static final String DATA_TAG = "data";
@@ -74,6 +76,7 @@ public class ImageLayerSnapshotUtil {
     public static final String NEXT_TYPE_ID_TAG = "next type id";
     public static final String NEXT_METHOD_ID_TAG = "next method id";
     public static final String NEXT_FIELD_ID_TAG = "next field id";
+    public static final String IMAGE_HEAP_SIZE_TAG = "image heap size";
     public static final String VALUE_TAG = "value";
     public static final String ENUM_CLASS_TAG = "enum class";
     public static final String ENUM_NAME_TAG = "enum name";

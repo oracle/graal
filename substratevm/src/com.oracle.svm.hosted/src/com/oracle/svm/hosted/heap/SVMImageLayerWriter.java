@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.heap;
 
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.HUB_IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LOCATION_TAG;
@@ -43,6 +44,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -52,10 +54,13 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
@@ -94,6 +99,16 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
         jsonMap.put(STATIC_PRIMITIVE_FIELDS_TAG, getConstantId(staticPrimitiveFields));
         jsonMap.put(STATIC_OBJECT_FIELDS_TAG, getConstantId(staticObjectFields));
+    }
+
+    @Override
+    protected void persistType(AnalysisType type, AnalysisUniverse analysisUniverse, EconomicMap<String, Object> typeMap) {
+        HostVM hostVM = analysisUniverse.hostVM();
+        SVMHost svmHost = (SVMHost) hostVM;
+        DynamicHub hub = svmHost.dynamicHub(type);
+        typeMap.put(HUB_IDENTITY_HASH_CODE_TAG, System.identityHashCode(hub));
+
+        super.persistType(type, analysisUniverse, typeMap);
     }
 
     @Override
@@ -139,13 +154,14 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     @Override
-    protected void persistFieldHook(EconomicMap<String, Object> fieldMap, AnalysisField field, Universe universe) {
+    protected void persistField(AnalysisField field, Universe universe, EconomicMap<String, Object> fieldMap) {
         HostedUniverse hostedUniverse = (HostedUniverse) universe;
         HostedField hostedField = hostedUniverse.lookup(field);
         int location = hostedField.getLocation();
         if (hostedField.isStatic() && location > 0) {
             fieldMap.put(LOCATION_TAG, location);
         }
+        super.persistField(field, universe, fieldMap);
     }
 
     @Override
@@ -158,7 +174,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     @Override
-    public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, BigBang bb, Class<?> clazz, JavaConstant hostedObject) {
+    public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, BigBang bb, Class<?> clazz, JavaConstant hostedObject, int id) {
         ResolvedJavaType type = bb.getConstantReflectionProvider().asJavaType(hostedObject);
         if (type instanceof AnalysisType analysisType) {
             /*
@@ -170,9 +186,10 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
              */
             if (!isTypeSwitch(analysisType)) {
                 constantMap.put(CLASS_ID_TAG, analysisType.getId());
+                constantsToRelink.add(id);
             }
         } else {
-            super.persistConstantRelinkingInfo(constantMap, bb, clazz, hostedObject);
+            super.persistConstantRelinkingInfo(constantMap, bb, clazz, hostedObject, id);
         }
     }
 
@@ -214,7 +231,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         Map<LayeredImageSingleton, SingletonPersistInfo> singletonInfoMap = new HashMap<>();
         int nextID = 1;
         for (var singletonInfo : layeredImageSingletons) {
-            LayeredImageSingleton singleton = (LayeredImageSingleton) singletonInfo.getValue();
+            LayeredImageSingleton singleton;
+            if (singletonInfo.getValue() instanceof RuntimeOnlyWrapper wrapper) {
+                singleton = wrapper.wrappedObject();
+            } else {
+                singleton = (LayeredImageSingleton) singletonInfo.getValue();
+            }
             String key = singletonInfo.getKey().getName();
             if (!singletonInfoMap.containsKey(singleton)) {
                 var writer = new ImageSingletonWriterImpl();
@@ -248,11 +270,31 @@ class ImageSingletonWriterImpl implements ImageSingletonWriter {
 
     @Override
     public void writeInt(String keyName, int value) {
-        keyValueStore.put(keyName, List.of("I", value));
+        var previous = keyValueStore.put(keyName, List.of("I", value));
+        assert previous == null : previous;
     }
 
     @Override
     public void writeIntList(String keyName, List<Integer> value) {
-        keyValueStore.put(keyName, List.of("I[]", value));
+        var previous = keyValueStore.put(keyName, List.of("I(", value));
+        assert previous == null : previous;
+    }
+
+    @Override
+    public void writeLong(String keyName, long value) {
+        var previous = keyValueStore.put(keyName, List.of("L", value));
+        assert previous == null : previous;
+    }
+
+    @Override
+    public void writeString(String keyName, String value) {
+        var previous = keyValueStore.put(keyName, List.of("S", value));
+        assert previous == null : previous;
+    }
+
+    @Override
+    public void writeStringList(String keyName, List<String> value) {
+        var previous = keyValueStore.put(keyName, List.of("S(", value));
+        assert previous == null : previous;
     }
 }

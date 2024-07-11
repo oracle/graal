@@ -29,7 +29,6 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.ReportPolymorphism.Megamorphic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -113,7 +112,6 @@ public abstract class ToEspressoNode extends EspressoNode {
 
     @NodeInfo(shortName = "Dynamic toEspresso node")
     @GenerateUncached
-    @ReportPolymorphism
     public abstract static class DynamicToEspresso extends EspressoNode {
         protected static final int LIMIT = 4;
 
@@ -282,6 +280,9 @@ public abstract class ToEspressoNode extends EspressoNode {
         public Object doGeneric(Object value, Klass targetType,
                         @Bind("getMeta()") Meta meta,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
+                        @Cached ToReference.DynamicToReference converterToEspresso,
                         @Cached InlinedBranchProfile unknownProfile) throws UnsupportedTypeException {
             ToEspressoNode uncachedToEspresso = getUncachedToEspresso(targetType, meta);
             if (uncachedToEspresso != null) {
@@ -290,6 +291,10 @@ public abstract class ToEspressoNode extends EspressoNode {
             unknownProfile.enter(this);
             // hit the unknown type case, so inline generic handling for that here
             if (targetType instanceof ObjectKlass) {
+                StaticObject result = ToReference.tryConverterForUnknownTarget(value, interop, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, meta);
+                if (result != null) {
+                    return result;
+                }
                 try {
                     checkHasAllFieldsOrThrow(value, (ObjectKlass) targetType, interop, getMeta());
                     return StaticObject.createForeign(getLanguage(), targetType, value, interop);

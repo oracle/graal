@@ -66,18 +66,19 @@ public final class ImageHeapWalker {
                         walkPartition(heapInfo.firstReadOnlyHugeObject, heapInfo.lastReadOnlyHugeObject, visitor, false);
     }
 
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
     static boolean walkPartition(Object firstObject, Object lastObject, ObjectVisitor visitor, boolean alignedChunks) {
         return walkPartitionInline(firstObject, lastObject, visitor, alignedChunks, false);
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
     static boolean walkPartitionInline(Object firstObject, Object lastObject, ObjectVisitor visitor, boolean alignedChunks) {
         return walkPartitionInline(firstObject, lastObject, visitor, alignedChunks, true);
     }
 
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).", callerMustBe = true)
     private static boolean walkPartitionInline(Object firstObject, Object lastObject, ObjectVisitor visitor, boolean alignedChunks, boolean inlineObjectVisit) {
         if (firstObject == null || lastObject == null) {
             assert firstObject == null && lastObject == null;
@@ -129,6 +130,7 @@ public final class ImageHeapWalker {
         return visitor.visitObject(currentObject);
     }
 
+    @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
     private static boolean visitObjectInline(ObjectVisitor visitor, Object currentObject) {
         return visitor.visitObjectInline(currentObject);
@@ -178,10 +180,9 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
     }
 
     @Override
-    @AlwaysInline("GC performance")
     public final boolean visitObjects(ImageHeapInfo region, ObjectVisitor visitor) {
         boolean alignedChunks = !consistsOfHugeObjects;
-        return ImageHeapWalker.walkPartitionInline(getFirstObject(region), getLastObject(region), visitor, alignedChunks);
+        return ImageHeapWalker.walkPartition(getFirstObject(region), getLastObject(region), visitor, alignedChunks);
     }
 
     protected abstract Object getFirstObject(ImageHeapInfo info);

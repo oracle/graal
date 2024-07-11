@@ -112,7 +112,7 @@ class PolyglotIterator<T> implements Iterator<T>, PolyglotWrapper {
     @Override
     public boolean hasNext() {
         if (lastHasNext == TriState.UNDEFINED) {
-            lastHasNext = TriState.valueOf((Boolean) cache.hasNext.call(languageContext, guestObject));
+            lastHasNext = TriState.valueOf((Boolean) cache.hasNext.call(null, languageContext, guestObject));
         }
         return lastHasNext == TriState.TRUE ? true : false;
     }
@@ -128,7 +128,7 @@ class PolyglotIterator<T> implements Iterator<T>, PolyglotWrapper {
             if (lastHasNext == TriState.TRUE) {
                 lastHasNext = TriState.UNDEFINED;
             }
-            return (T) cache.next.call(languageContext, guestObject, prevHasNext);
+            return (T) cache.next.call(null, languageContext, guestObject, prevHasNext);
         } catch (NoSuchElementException noSuchElementException) {
             lastHasNext = TriState.FALSE;
             throw noSuchElementException;

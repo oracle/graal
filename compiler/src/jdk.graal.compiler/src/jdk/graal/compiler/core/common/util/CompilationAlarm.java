@@ -26,9 +26,10 @@ package jdk.graal.compiler.core.common.util;
 
 import java.util.Arrays;
 
+import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.core.common.util.EventCounter.EventCounterMarker;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.TTY;
-import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
@@ -195,8 +196,8 @@ public final class CompilationAlarm implements AutoCloseable {
      * hang and throw a bailout.
      */
     private static void assertProgress(OptionValues opt, EventCounter counter) {
-        final EventCounter lastCounter = lastCounterForThread.get();
-        if (lastCounter != null && !lastCounter.equals(counter)) {
+        final EventCounterMarker lastMarker = lastMarkerForThread.get();
+        if (lastMarker != null && lastMarker != counter.getEventCounterMarker()) {
             resetProgressDetection();
             return;
         }
@@ -231,9 +232,9 @@ public final class CompilationAlarm implements AutoCloseable {
         if (lastStackTrace == null || lastStackTrace.length != currentStackTrace.length || !Arrays.equals(lastStackTrace, currentStackTrace)) {
             lastStackTraceForThread.set(currentStackTrace);
             lastUniqueStackTraceForThreadMS.set(System.currentTimeMillis());
-            lastCounterForThread.set(counter);
+            lastMarkerForThread.set(counter.getEventCounterMarker());
         } else {
-            assertProgressSlowPath(opt, lastStackTrace, lastCounter, currentStackTrace);
+            assertProgressSlowPath(opt, lastStackTrace, counter, currentStackTrace);
         }
     }
 
@@ -243,7 +244,7 @@ public final class CompilationAlarm implements AutoCloseable {
          * n seconds
          */
         lastUniqueStackTraceForThreadMS.set(System.currentTimeMillis());
-        lastCounterForThread.set(counter);
+        lastMarkerForThread.set(counter.getEventCounterMarker());
         noProgressStartPeriodMS.set((long) (Options.CompilationNoProgressStartTrackingProgressPeriod.getValue(opt) * 1000));
 
         if (LOG_PROGRESS_DETECTION) {
@@ -251,7 +252,7 @@ public final class CompilationAlarm implements AutoCloseable {
         }
     }
 
-    private static void assertProgressSlowPath(OptionValues opt, StackTraceElement[] lastStackTrace, EventCounter lastCounter, StackTraceElement[] currentStackTrace) {
+    private static void assertProgressSlowPath(OptionValues opt, StackTraceElement[] lastStackTrace, EventCounter counter, StackTraceElement[] currentStackTrace) {
         /*
          * We perform this check inside here since its cheaper to take the last stack trace (last
          * will be null for the first in the current compile) than actually checking the option
@@ -276,24 +277,31 @@ public final class CompilationAlarm implements AutoCloseable {
 
         if (LOG_PROGRESS_DETECTION) {
             TTY.printf("CompilationAlarm: Progress detection %s; no progress for %d ms; stuck? %s; stuck threshold %d ms%n",
-                            lastCounter, elapsed, stuck, stuckThreshold);
+                            counter, elapsed, stuck, stuckThreshold);
         }
 
         if (stuck) {
             throw new PermanentBailoutException("Observed identical stack traces for %d ms, indicating a stuck compilation, counter = %s, stack is:%n%s",
-                            elapsed, lastCounter, Util.toString(lastStackTrace));
+                            elapsed, counter, Util.toString(lastStackTrace));
         }
     }
 
     public static void resetProgressDetection() {
         lastStackTraceForThread.set(null);
         lastUniqueStackTraceForThreadMS.set(null);
-        lastCounterForThread.set(null);
+        lastMarkerForThread.set(null);
         noProgressStartPeriodMS.set(null);
     }
 
     private static final ThreadLocal<StackTraceElement[]> lastStackTraceForThread = new ThreadLocal<>();
     private static final ThreadLocal<Long> lastUniqueStackTraceForThreadMS = new ThreadLocal<>();
-    private static final ThreadLocal<EventCounter> lastCounterForThread = new ThreadLocal<>();
+    /**
+     * Note that all these thread locals are not necessarily reset for a while even if worker
+     * threads have moved on to do actual work (but just not compiling graphs). Especially in the
+     * native image generator, not all {@link #assertProgress} calls can be in a closeable scope
+     * that invokes {@link #resetProgressDetection}. It is therefore critical that they do not keep
+     * large data structures like actual Graal graphs or LIR alive.
+     */
+    private static final ThreadLocal<EventCounterMarker> lastMarkerForThread = new ThreadLocal<>();
     private static final ThreadLocal<Long> noProgressStartPeriodMS = new ThreadLocal<>();
 }

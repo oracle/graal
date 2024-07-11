@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import com.oracle.truffle.api.dsl.test.ExpectWarning;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
@@ -449,6 +450,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         testMegamorphicHelper(callTarget, args);
     }
 
+    @ExpectWarning("This node uses @ReportPolymorphism on the class and @ReportPolymorphism.Megamorphic on some specializations, the latter annotation has no effect. Remove one of the annotations to resolve this.")
     @NodeChild
     abstract static class PolymorphicAndMegamorpic extends SplittingTestNode {
 

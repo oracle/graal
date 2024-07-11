@@ -53,10 +53,10 @@ public final class JVMCIVersionCheck {
      * default/fallback entry.
      */
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
-                    "21", Map.of(DEFAULT_VENDOR_ENTRY, new Version(23, 1, 33)),
-                    "23", Map.of(
-                                    "Oracle Corporation", new Version("23+18", 1),
-                                    DEFAULT_VENDOR_ENTRY, new Version("23+18", 1)));
+                    "21", Map.of(DEFAULT_VENDOR_ENTRY, createLegacyVersion(23, 1, 33)),
+                    "24", Map.of(
+                                    "Oracle Corporation", createLabsJDKVersion("24+5", 1),
+                                    DEFAULT_VENDOR_ENTRY, createLabsJDKVersion("24+5", 1)));
     private static final int NA = 0;
     /**
      * Minimum Java release supported by Graal.
@@ -68,7 +68,7 @@ public final class JVMCIVersionCheck {
      * JVMCI build number.
      */
     public static Version createLabsJDKVersion(String jdkVersionString, int jvmciBuild) {
-        return new Version(jdkVersionString, jvmciBuild);
+        return new Version(jdkVersionString, NA, NA, jvmciBuild, false, false);
     }
 
     /**
@@ -77,7 +77,7 @@ public final class JVMCIVersionCheck {
      * custom LabsJDK build.
      */
     public static Version createOpenJDKVersion(String jdkVersionString) {
-        return new Version(jdkVersionString);
+        return new Version(jdkVersionString, NA, NA, NA, false, true);
     }
 
     /**
@@ -85,7 +85,7 @@ public final class JVMCIVersionCheck {
      * to {@code 21}. While this is not entirely correct, it works for our purposes.
      */
     public static Version createLegacyVersion(int jvmciMajor, int jvmciMinor, int jvmciBuild) {
-        return new Version(jvmciMajor, jvmciMinor, jvmciBuild);
+        return new Version("21", jvmciMajor, jvmciMinor, jvmciBuild, true, false);
     }
 
     public static final class Version {
@@ -139,18 +139,6 @@ public final class JVMCIVersionCheck {
                 sb.append("+").append(rv.build().get());
             }
             return sb.toString();
-        }
-
-        private Version(String jdkVersionString, int jvmciBuild) {
-            this(jdkVersionString, NA, NA, jvmciBuild, false, false);
-        }
-
-        private Version(String jdkVersionString) {
-            this(jdkVersionString, NA, NA, NA, false, true);
-        }
-
-        private Version(int jvmciMajor, int jvmciMinor, int jvmciBuild) {
-            this("21", jvmciMajor, jvmciMinor, jvmciBuild, true, false);
         }
 
         private Version(String jdkVersionString, int jvmciMajor, int jvmciMinor, int jvmciBuild, boolean legacy, boolean isOpenJDK) {
@@ -333,7 +321,8 @@ public final class JVMCIVersionCheck {
             }
             // A "labsjdk" or a known OpenJDK
             if (minVersion == null) {
-                failVersionCheck(exitOnFailure, "No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
+                // No minimum JVMCI version specified for JDK version
+                return;
             }
             Version v = Version.parse(vmVersion);
             if (v != null) {

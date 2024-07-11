@@ -49,7 +49,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.BionicLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -72,7 +72,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     public static class Options {
         @Option(help = "Pass the provided raw option that will be appended to the linker command to produce the final binary. The possible options are platform specific and passed through without any validation.", //
                         stability = OptionStability.STABLE)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> NativeLinkerOption = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> NativeLinkerOption = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
     }
 
     protected final List<String> additionalPreOptions = new ArrayList<>();
@@ -99,7 +99,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             Set<String> globalHiddenSymbols = CGlobalDataFeature.singleton().getGlobalHiddenSymbols();
             stream = stream.filter(symbol -> symbol.isGlobal() && !globalHiddenSymbols.contains(symbol.getName()));
         }
-        if (!(SubstrateOptions.useLLVMBackend() || SubstrateOptions.PreserveUndefinedSymbols.getValue())) {
+        if (!SubstrateOptions.useLLVMBackend()) {
             stream = stream.filter(ObjectFile.Symbol::isDefined);
         }
         return stream.map(this::getSymbolName).collect(Collectors.toList());

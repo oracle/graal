@@ -28,9 +28,10 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.svm.core.util.json.JsonPrintable;
-import com.oracle.svm.core.util.json.JsonWriter;
+import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
 
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.meta.MetaUtil;
 
 public class ConfigurationMethod implements JsonPrintable {

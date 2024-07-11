@@ -28,8 +28,8 @@ import mx_benchmark
 import mx_espresso
 
 from mx_benchmark import GuestVm, JavaVm
-from mx_java_benchmarks import ScalaDaCapoBenchmarkSuite
-from mx_java_benchmarks import _daCapoScalaConfig
+from mx_sdk_benchmark import ScalaDaCapoBenchmarkSuite
+from mx_sdk_benchmark import _daCapoScalaConfig
 
 
 _suite = mx.suite('espresso')

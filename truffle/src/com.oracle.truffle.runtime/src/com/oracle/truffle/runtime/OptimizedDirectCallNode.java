@@ -98,9 +98,9 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     }
 
     private RuntimeException handleException(Throwable t) {
-        Throwable profiledT = profileExceptionType(t);
-        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(this, null, profiledT, null);
-        throw OptimizedCallTarget.rethrow(profiledT);
+        Throwable profiled = profileExceptionType(t);
+        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(this, null, profiled, null);
+        throw OptimizedCallTarget.rethrow(profiled);
     }
 
     @SuppressWarnings("unchecked")
@@ -148,11 +148,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         return getCallTarget().getRootNode().isCloningAllowed();
     }
 
-    @Override
-    public OptimizedCallTarget getCallTarget() {
-        return (OptimizedCallTarget) this.callTarget;
-    }
-
     public int getCallCount() {
         return callCount;
     }
@@ -172,6 +167,11 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
             return currentCallTarget;
         }
         return null;
+    }
+
+    @Override
+    public OptimizedCallTarget getCallTarget() {
+        return (OptimizedCallTarget) super.getCallTarget();
     }
 
     /**
@@ -209,7 +209,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
             assert isCallTargetCloningAllowed();
             OptimizedCallTarget currentTarget = getCallTarget();
 
-            OptimizedCallTarget splitTarget = getCallTarget().cloneUninitialized();
+            OptimizedCallTarget splitTarget = currentTarget.cloneUninitialized();
             currentTarget.removeDirectCallNode(this);
             splitTarget.addDirectCallNode(this);
             assert splitTarget.getCallSiteForSplit() == this;

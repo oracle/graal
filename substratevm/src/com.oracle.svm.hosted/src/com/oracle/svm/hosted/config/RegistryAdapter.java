@@ -24,29 +24,38 @@
  */
 package com.oracle.svm.hosted.config;
 
+import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.core.configure.ProxyConfigurationTypeDescriptor;
 import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
+import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.util.ClassUtil;
-
-import jdk.vm.ci.meta.MetaUtil;
 
 public class RegistryAdapter implements ReflectionConfigurationParserDelegate<ConfigurationCondition, Class<?>> {
     private final ReflectionRegistry registry;
     private final ImageClassLoader classLoader;
 
-    public static RegistryAdapter create(ReflectionRegistry registry, ImageClassLoader classLoader) {
+    public static RegistryAdapter create(ReflectionRegistry registry, ProxyRegistry proxyRegistry, ImageClassLoader classLoader) {
         if (registry instanceof RuntimeReflectionSupport) {
-            return new ReflectionRegistryAdapter((RuntimeReflectionSupport) registry, classLoader);
+            return new ReflectionRegistryAdapter((RuntimeReflectionSupport) registry, proxyRegistry, classLoader);
         } else {
             return new RegistryAdapter(registry, classLoader);
         }
@@ -63,18 +72,63 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, String typeName, boolean allowPrimitives, boolean includeAllElements) {
-        String name = canonicalizeTypeName(typeName);
-        return classLoader.findClass(name, allowPrimitives);
+    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+        switch (typeDescriptor.getDescriptorType()) {
+            case NAMED -> {
+                NamedConfigurationTypeDescriptor namedDescriptor = (NamedConfigurationTypeDescriptor) typeDescriptor;
+                TypeResult<Class<?>> result = resolveNamedType(namedDescriptor, allowPrimitives);
+                if (!result.isPresent()) {
+                    if (throwMissingRegistrationErrors() && result.getException() instanceof ClassNotFoundException) {
+                        registry.registerClassLookup(condition, namedDescriptor.name());
+                    }
+                }
+                return result;
+            }
+            case PROXY -> {
+                return resolveProxyType((ProxyConfigurationTypeDescriptor) typeDescriptor);
+            }
+            default -> {
+                throw VMError.shouldNotReachHere("Unknown type descriptor kind: %s", typeDescriptor.getDescriptorType());
+            }
+        }
     }
 
-    public static String canonicalizeTypeName(String typeName) {
-        String name = typeName;
-        if (name.indexOf('[') != -1) {
-            /* accept "int[][]", "java.lang.String[]" */
-            name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
+    private TypeResult<Class<?>> resolveNamedType(NamedConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+        TypeResult<Class<?>> result = classLoader.findClass(typeDescriptor.name(), allowPrimitives);
+        if (!result.isPresent() && result.getException() instanceof NoClassDefFoundError) {
+            /*
+             * In certain cases when the class name is identical to an existing class name except
+             * for lettercase, `ClassLoader.findClass` throws a `NoClassDefFoundError` but
+             * `Class.forName` throws a `ClassNotFoundException`.
+             */
+            try {
+                Class.forName(typeDescriptor.name());
+            } catch (ClassNotFoundException notFoundException) {
+                result = TypeResult.forException(typeDescriptor.name(), notFoundException);
+            } catch (Throwable t) {
+                // ignore
+            }
         }
-        return name;
+        return result;
+    }
+
+    private TypeResult<Class<?>> resolveProxyType(ProxyConfigurationTypeDescriptor typeDescriptor) {
+        String typeName = typeDescriptor.toString();
+        List<TypeResult<Class<?>>> interfaceResults = Arrays.stream(typeDescriptor.interfaceNames()).map(name -> resolveNamedType(new NamedConfigurationTypeDescriptor(name), false)).toList();
+        List<Class<?>> interfaces = new ArrayList<>();
+        for (TypeResult<Class<?>> intf : interfaceResults) {
+            if (!intf.isPresent()) {
+                return TypeResult.forException(typeName, intf.getException());
+            }
+            interfaces.add(intf.get());
+        }
+        try {
+            DynamicProxyRegistry proxyRegistry = ImageSingletons.lookup(DynamicProxyRegistry.class);
+            Class<?> proxyClass = proxyRegistry.getProxyClassHosted(interfaces.toArray(Class<?>[]::new));
+            return TypeResult.forType(typeName, proxyClass);
+        } catch (Throwable t) {
+            return TypeResult.forException(typeName, t);
+        }
     }
 
     @Override
@@ -104,13 +158,17 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public void registerPublicFields(ConfigurationCondition condition, Class<?> type) {
-        registry.register(condition, false, type.getFields());
+    public void registerPublicFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        if (!queriedOnly) {
+            registry.register(condition, false, type.getFields());
+        }
     }
 
     @Override
-    public void registerDeclaredFields(ConfigurationCondition condition, Class<?> type) {
-        registry.register(condition, false, type.getDeclaredFields());
+    public void registerDeclaredFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        if (!queriedOnly) {
+            registry.register(condition, false, type.getDeclaredFields());
+        }
     }
 
     @Override
@@ -135,7 +193,15 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
 
     @Override
     public void registerField(ConfigurationCondition condition, Class<?> type, String fieldName, boolean allowWrite) throws NoSuchFieldException {
-        registry.register(condition, allowWrite, type.getDeclaredField(fieldName));
+        try {
+            registry.register(condition, allowWrite, type.getDeclaredField(fieldName));
+        } catch (NoSuchFieldException e) {
+            if (throwMissingRegistrationErrors()) {
+                registry.registerFieldLookup(condition, type, fieldName);
+            } else {
+                throw e;
+            }
+        }
     }
 
     @Override
@@ -171,32 +237,49 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
 
     @Override
     public void registerMethod(ConfigurationCondition condition, boolean queriedOnly, Class<?> type, String methodName, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
-        Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
-        Method method;
         try {
-            method = type.getDeclaredMethod(methodName, parameterTypesArray);
-        } catch (NoClassDefFoundError e) {
-            /*
-             * getDeclaredMethod() builds a set of all the declared methods, which can fail when a
-             * symbolic reference from another method to a type (via parameters, return value)
-             * cannot be resolved. getMethod() builds a different set of methods and can still
-             * succeed. This case must be handled for predefined classes when, during the run
-             * observed by the agent, a referenced class was not loaded and is not available now
-             * precisely because the application used getMethod() instead of getDeclaredMethod().
-             */
+            Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
+            Method method;
             try {
-                method = type.getMethod(methodName, parameterTypesArray);
-            } catch (Throwable ignored) {
+                method = type.getDeclaredMethod(methodName, parameterTypesArray);
+            } catch (NoClassDefFoundError e) {
+                /*
+                 * getDeclaredMethod() builds a set of all the declared methods, which can fail when
+                 * a symbolic reference from another method to a type (via parameters, return value)
+                 * cannot be resolved. getMethod() builds a different set of methods and can still
+                 * succeed. This case must be handled for predefined classes when, during the run
+                 * observed by the agent, a referenced class was not loaded and is not available now
+                 * precisely because the application used getMethod() instead of
+                 * getDeclaredMethod().
+                 */
+                try {
+                    method = type.getMethod(methodName, parameterTypesArray);
+                } catch (Throwable ignored) {
+                    throw e;
+                }
+            }
+            registerExecutable(condition, queriedOnly, method);
+        } catch (NoSuchMethodException e) {
+            if (throwMissingRegistrationErrors()) {
+                registry.registerMethodLookup(condition, type, methodName, getParameterTypes(methodParameterTypes));
+            } else {
                 throw e;
             }
         }
-        registerExecutable(condition, queriedOnly, method);
     }
 
     @Override
     public void registerConstructor(ConfigurationCondition condition, boolean queriedOnly, Class<?> type, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
         Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
-        registerExecutable(condition, queriedOnly, type.getDeclaredConstructor(parameterTypesArray));
+        try {
+            registerExecutable(condition, queriedOnly, type.getDeclaredConstructor(parameterTypesArray));
+        } catch (NoSuchMethodException e) {
+            if (throwMissingRegistrationErrors()) {
+                registry.registerConstructorLookup(condition, type, getParameterTypes(methodParameterTypes));
+            } else {
+                throw e;
+            }
+        }
     }
 
     static Class<?>[] getParameterTypes(List<Class<?>> methodParameterTypes) {

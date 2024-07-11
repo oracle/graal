@@ -49,7 +49,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.BinaryNodeTest.BinaryNode;
 import com.oracle.truffle.api.dsl.test.PolymorphicTest2Factory.Polymorphic1Factory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
-import com.oracle.truffle.api.nodes.NodeCost;
 
 public class PolymorphicTest2 {
 
@@ -60,7 +59,6 @@ public class PolymorphicTest2 {
         assertEquals(21, executeWith(node, false, false));
         assertEquals(42, executeWith(node, 21, 21));
         assertEquals("(boolean,int)", executeWith(node, false, 42));
-        assertEquals(NodeCost.POLYMORPHIC, node.getNode().getCost());
     }
 
     @SuppressWarnings("unused")

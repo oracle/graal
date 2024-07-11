@@ -350,6 +350,14 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle = null;
         }
 
+        if (getJavaVersion().java9OrLater()) {
+            jdk_internal_util_ArraysSupport = knownKlass(Type.jdk_internal_util_ArraysSupport);
+            jdk_internal_util_ArraysSupport_vectorizedMismatch = jdk_internal_util_ArraysSupport.requireDeclaredMethod(Name.vectorizedMismatch, Signature._int_Object_long_Object_long_int_int);
+        } else {
+            jdk_internal_util_ArraysSupport = null;
+            jdk_internal_util_ArraysSupport_vectorizedMismatch = null;
+        }
+
         java_net_URL = knownKlass(Type.java_net_URL);
 
         java_lang_ClassLoader_getResourceAsStream = java_lang_ClassLoader.requireDeclaredMethod(Name.getResourceAsStream, Signature.InputStream_String);
@@ -1046,6 +1054,10 @@ public final class Meta extends ContextAccessImpl {
             java_util_regex_IntHashSet = null;
         }
 
+        java_util_concurrent_locks_abstractOwnableSynchronizer = knownKlass(Type.java_util_concurrent_locks_AbstractOwnableSynchronizer);
+        java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread = java_util_concurrent_locks_abstractOwnableSynchronizer.requireDeclaredField(Name.exclusiveOwnerThread,
+                        Type.java_lang_Thread);
+
         java_math_BigInteger = knownKlass(Type.java_math_BigInteger);
         java_math_BigInteger_init = java_math_BigInteger.requireDeclaredMethod(Name._init_, Signature._void_byte_array);
         java_math_BigInteger_toByteArray = java_math_BigInteger.requireDeclaredMethod(Name.toByteArray, Signature._byte_array);
@@ -1211,7 +1223,7 @@ public final class Meta extends ContextAccessImpl {
         }
 
         // Load Espresso's Polyglot API.
-        boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
+        boolean polyglotSupport = getContext().getEspressoEnv().Polyglot;
         this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
 
         JImageExtensions jImageExtensions = getLanguage().getJImageExtensions();
@@ -1227,6 +1239,10 @@ public final class Meta extends ContextAccessImpl {
                 }
             }
         }
+
+        // Continuations
+        boolean continuumSupport = getContext().getEspressoEnv().Continuum;
+        this.continuum = continuumSupport ? new ContinuumSupport() : null;
     }
 
     private void extendModulePackages(ModuleTable.ModuleEntry moduleEntry, Set<String> extraPackages) {
@@ -1365,6 +1381,8 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl;
     public final Field jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle;
 
+    public final ObjectKlass jdk_internal_util_ArraysSupport;
+    public final Method jdk_internal_util_ArraysSupport_vectorizedMismatch;
     public final ObjectKlass java_net_URL;
 
     public final ObjectKlass sun_launcher_LauncherHelper;
@@ -1868,6 +1886,9 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_util_regex_Matcher_requireEnd;
     public final Method java_util_regex_Matcher_groupCount;
 
+    public final ObjectKlass java_util_concurrent_locks_abstractOwnableSynchronizer;
+    public final Field java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread;
+
     public final ObjectKlass java_math_BigInteger;
     public final Method java_math_BigInteger_init;
     public final Method java_math_BigInteger_toByteArray;
@@ -1915,6 +1936,48 @@ public final class Meta extends ContextAccessImpl {
     @CompilationFinal public Method java_beans_ThreadGroupContext_removeBeanInfo;
     @CompilationFinal public ObjectKlass java_beans_Introspector;
     @CompilationFinal public Method java_beans_Introspector_flushFromCaches;
+
+    public final class ContinuumSupport {
+        public final Method org_graalvm_continuations_ContinuationImpl_run;
+        public final Method org_graalvm_continuations_ContinuationImpl_suspend;
+        public final Field org_graalvm_continuations_ContinuationImpl_stackFrameHead;
+        public final Field HIDDEN_CONTINUATION_FRAME_RECORD;
+        public final ObjectKlass org_graalvm_continuations_ContinuationImpl_FrameRecord;
+        public final Field org_graalvm_continuations_ContinuationImpl_FrameRecord_pointers;
+        public final Field org_graalvm_continuations_ContinuationImpl_FrameRecord_primitives;
+        public final Field org_graalvm_continuations_ContinuationImpl_FrameRecord_method;
+        public final Field org_graalvm_continuations_ContinuationImpl_FrameRecord_next;
+        public final Field org_graalvm_continuations_ContinuationImpl_FrameRecord_bci;
+        public final ObjectKlass org_graalvm_continuations_IllegalMaterializedRecordException;
+        public final ObjectKlass org_graalvm_continuations_IllegalContinuationStateException;
+
+        private ContinuumSupport() {
+            ObjectKlass org_graalvm_continuations_ContinuationImpl = knownKlass(Type.org_graalvm_continuations_ContinuationImpl);
+            org_graalvm_continuations_ContinuationImpl_run = org_graalvm_continuations_ContinuationImpl.requireDeclaredMethod(Name.run, Signature._void);
+            org_graalvm_continuations_ContinuationImpl_suspend = org_graalvm_continuations_ContinuationImpl.requireDeclaredMethod(Name.suspend, Signature._void);
+            org_graalvm_continuations_ContinuationImpl_stackFrameHead = org_graalvm_continuations_ContinuationImpl.requireDeclaredField(Name.stackFrameHead,
+                            Type.org_graalvm_continuations_ContinuationImpl_FrameRecord);
+            HIDDEN_CONTINUATION_FRAME_RECORD = org_graalvm_continuations_ContinuationImpl.requireHiddenField(Name.HIDDEN_CONTINUATION_FRAME_RECORD);
+            org_graalvm_continuations_ContinuationImpl_FrameRecord = knownKlass(Type.org_graalvm_continuations_ContinuationImpl_FrameRecord);
+            org_graalvm_continuations_ContinuationImpl_FrameRecord_pointers = org_graalvm_continuations_ContinuationImpl_FrameRecord.requireDeclaredField(
+                            Name.pointers, Type.java_lang_Object_array);
+            org_graalvm_continuations_ContinuationImpl_FrameRecord_primitives = org_graalvm_continuations_ContinuationImpl_FrameRecord.requireDeclaredField(
+                            Name.primitives, Type._long_array);
+            org_graalvm_continuations_ContinuationImpl_FrameRecord_method = org_graalvm_continuations_ContinuationImpl_FrameRecord.requireDeclaredField(
+                            Name.method, Type.java_lang_reflect_Method);
+            org_graalvm_continuations_ContinuationImpl_FrameRecord_next = org_graalvm_continuations_ContinuationImpl_FrameRecord.requireDeclaredField(
+                            Name.next, Type.org_graalvm_continuations_ContinuationImpl_FrameRecord);
+            org_graalvm_continuations_ContinuationImpl_FrameRecord_bci = org_graalvm_continuations_ContinuationImpl_FrameRecord.requireDeclaredField(
+                            Name.bci, Type._int);
+            org_graalvm_continuations_IllegalMaterializedRecordException = knownKlass(
+                            Type.org_graalvm_continuations_IllegalMaterializedRecordException);
+            org_graalvm_continuations_IllegalContinuationStateException = knownKlass(
+                            Type.org_graalvm_continuations_IllegalContinuationStateException);
+        }
+    }
+
+    @CompilationFinal //
+    public ContinuumSupport continuum;
 
     public final class PolyglotSupport {
         public final ObjectKlass UnknownIdentifierException;
@@ -2457,8 +2520,7 @@ public final class Meta extends ContextAccessImpl {
     }
 
     public static boolean isString(Object string) {
-        if (string instanceof StaticObject) {
-            StaticObject staticObject = (StaticObject) string;
+        if (string instanceof StaticObject staticObject) {
             return staticObject.isString();
         }
         return false;
@@ -2494,8 +2556,7 @@ public final class Meta extends ContextAccessImpl {
 
     public Object toHostBoxed(Object object) {
         assert object != null;
-        if (object instanceof StaticObject) {
-            StaticObject guestObject = (StaticObject) object;
+        if (object instanceof StaticObject guestObject) {
             if (StaticObject.isNull(guestObject)) {
                 return null;
             }

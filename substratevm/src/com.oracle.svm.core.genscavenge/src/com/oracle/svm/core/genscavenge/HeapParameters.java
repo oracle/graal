@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -37,6 +35,9 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /** Constants and variables for the size and layout of the heap and behavior of the collector. */
 public final class HeapParameters {
@@ -87,6 +88,13 @@ public final class HeapParameters {
      * Memory configuration
      */
 
+    /**
+     * Sets the {@link SubstrateGCOptions#MaxHeapSize} option value.
+     *
+     * Note that the value is used during VM initialization and stored in various places in the JDK
+     * in direct or derived form. These usages will <strong>not be updated!</strong> Thus, changing
+     * the maximum heap size at runtime is not recommended.
+     */
     public static void setMaximumHeapSize(UnsignedWord value) {
         SubstrateGCOptions.MaxHeapSize.update(value.rawValue());
     }

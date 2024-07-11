@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 
 import java.math.BigInteger;
@@ -247,14 +248,14 @@ public class NumericNFITest extends NFITest {
     @Test
     public void testIncrement(@Inject(TestIncrementNode.class) CallTarget callTarget) {
         Object ret = callTarget.call(42);
-        Assert.assertThat("return", ret, is(number(43)));
+        assertThat("return", ret, is(number(43)));
     }
 
     @Test
     public void testIncrementBigInteger(@Inject(TestIncrementNode.class) CallTarget callTarget) {
         Assume.assumeTrue(type == NativeSimpleType.FP80);
         Object ret = callTarget.call(Long.MAX_VALUE);
-        Assert.assertThat("return", ret, is(bigNumber(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE))));
+        assertThat("return", ret, is(bigNumber(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE))));
     }
 
     private long fixSign(long nr) {
@@ -273,19 +274,19 @@ public class NumericNFITest extends NFITest {
     @Test
     public void testIncrementNeg(@Inject(TestIncrementNode.class) CallTarget callTarget) {
         Object ret = callTarget.call(fixSign(-5));
-        Assert.assertThat("return", ret, is(number(fixSign(-4))));
+        assertThat("return", ret, is(number(fixSign(-4))));
     }
 
     @Test
     public void testIncrementFromZero(@Inject(TestIncrementNode.class) CallTarget callTarget) {
         Object ret = callTarget.call(0);
-        Assert.assertThat("return", ret, is(number(1)));
+        assertThat("return", ret, is(number(1)));
     }
 
     @Test
     public void testIncrementToZero(@Inject(TestIncrementNode.class) CallTarget callTarget) {
         Object ret = callTarget.call(fixSign(-1));
-        Assert.assertThat("return", ret, is(number(0)));
+        assertThat("return", ret, is(number(0)));
     }
 
     /**
@@ -296,7 +297,7 @@ public class NumericNFITest extends NFITest {
     @Test
     public void testBoxed(@Inject(TestIncrementNode.class) CallTarget callTarget) {
         Object ret = callTarget.call(new BoxedPrimitive(42));
-        Assert.assertThat("return", ret, is(number(43)));
+        assertThat("return", ret, is(number(43)));
     }
 
     /**
@@ -311,25 +312,25 @@ public class NumericNFITest extends NFITest {
     }
 
     private final Object callback = new TestCallback(1, (args) -> {
-        Assert.assertThat("argument", args[0], is(number(42 + 1)));
+        assertThat("argument", args[0], is(number(42 + 1)));
         return unboxNumber(args[0]) + 5;
     });
 
     @Test
     public void testCallback(@Inject(TestCallbackNode.class) CallTarget callTarget) {
         Object ret = callTarget.call(callback, 42);
-        Assert.assertThat("return", ret, is(number((42 + 6) * 2)));
+        assertThat("return", ret, is(number((42 + 6) * 2)));
     }
 
     private final Object negCallback = new TestCallback(1, (args) -> {
-        Assert.assertThat("argument", args[0], is(number(fixSign(-42 + 1))));
+        assertThat("argument", args[0], is(number(fixSign(-42 + 1))));
         return unboxNumber(args[0]) + 5;
     });
 
     @Test
     public void testCallbackNeg(@Inject(TestCallbackNode.class) CallTarget callTarget) {
         Object ret = callTarget.call(negCallback, fixSign(-42));
-        Assert.assertThat("return", ret, is(number(fixSign((-42 + 6) * 2))));
+        assertThat("return", ret, is(number(fixSign((-42 + 6) * 2))));
     }
 
     /**
@@ -358,7 +359,7 @@ public class NumericNFITest extends NFITest {
     @Test
     public void testCallbackRet(@Inject(TestCallbackRetNode.class) CallTarget callTarget) {
         Object ret = callTarget.call();
-        Assert.assertThat("return", ret, is(number(43)));
+        assertThat("return", ret, is(number(43)));
     }
 
     private String getPingPongSignature() {
@@ -380,7 +381,7 @@ public class NumericNFITest extends NFITest {
     private final Object wrap = new TestCallback(1, (args) -> {
         Object fn = args[0];
         Object wrapped = new TestCallback(1, (innerArgs) -> {
-            Assert.assertThat("argument", innerArgs[0], is(number(6)));
+            assertThat("argument", innerArgs[0], is(number(6)));
             try {
                 return UNCACHED_INTEROP.execute(fn, unboxNumber(innerArgs[0]) * 3);
             } catch (InteropException ex) {
@@ -393,6 +394,6 @@ public class NumericNFITest extends NFITest {
     @Test
     public void testPingPong(@Inject(TestPingPongNode.class) CallTarget callTarget) {
         Object ret = callTarget.call(wrap, 5);
-        Assert.assertThat("return", ret, is(number(38)));
+        assertThat("return", ret, is(number(38)));
     }
 }

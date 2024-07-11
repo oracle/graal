@@ -102,6 +102,8 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
 
     @Override
     public Object execute(VirtualFrame frame) {
+        var tls = getContext().getLanguage().getThreadLocalState();
+        tls.blockContinuationSuspension();   // Can't unwind through native frames.
         final JniEnv env = getContext().getJNI();
         int nativeFrame = env.getHandles().pushFrame();
         NATIVE_METHOD_CALLS.inc();
@@ -113,6 +115,7 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         } finally {
+            tls.unblockContinuationSuspension();
             env.getHandles().popFramesIncluding(nativeFrame);
         }
     }

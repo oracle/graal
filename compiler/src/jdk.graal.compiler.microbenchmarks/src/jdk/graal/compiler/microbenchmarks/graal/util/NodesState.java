@@ -35,6 +35,7 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
+
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -84,7 +85,7 @@ public abstract class NodesState {
     public final Node[] valueNumberableLeafNodes;
     public final NodePair[] valueEqualsNodePairs;
 
-    public final class NodePair {
+    public static final class NodePair {
         public final Node n1;
         public final Node n2;
 

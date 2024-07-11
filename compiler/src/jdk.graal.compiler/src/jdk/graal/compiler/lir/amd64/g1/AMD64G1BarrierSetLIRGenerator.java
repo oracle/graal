@@ -28,8 +28,8 @@ import static jdk.graal.compiler.core.common.GraalOptions.VerifyAssemblyGCBarrie
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.lir.gen.G1WriteBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-import jdk.graal.compiler.lir.gen.WriteBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * Architecture specific G1 barrier set generator.
  */
-public class AMD64G1BarrierSetLIRGenerator implements WriteBarrierSetLIRGeneratorTool {
+public class AMD64G1BarrierSetLIRGenerator implements G1WriteBarrierSetLIRGeneratorTool {
     private final AMD64G1BarrierSetLIRTool barrierSetLIRTool;
 
     public AMD64G1BarrierSetLIRGenerator(AMD64G1BarrierSetLIRTool barrierSetLIRTool) {

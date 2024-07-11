@@ -155,13 +155,16 @@ public abstract class Node implements NodeInterface, Cloneable {
      * default value.
      *
      * @since 0.8 or earlier
+     * @deprecated in 24.1 without replacement
      */
-    public NodeCost getCost() {
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    public com.oracle.truffle.api.nodes.NodeCost getCost() {
         NodeInfo info = getClass().getAnnotation(NodeInfo.class);
         if (info != null) {
             return info.cost();
         }
-        return NodeCost.MONOMORPHIC;
+        return com.oracle.truffle.api.nodes.NodeCost.MONOMORPHIC;
     }
 
     /**
@@ -172,14 +175,14 @@ public abstract class Node implements NodeInterface, Cloneable {
      * be called on any thread and without a language context being active.
      * <p>
      * Simple example implementation using a simple implementation using a field:
-     * 
-     * {@snippet file="com/oracle/truffle/api/nodes/Node.java"
-     * region="com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode"}
+     *
+     * {@snippet file = "com/oracle/truffle/api/nodes/Node.java" region =
+     * "com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode"}
      * <p>
      * Recommended implementation computing the source section lazily from primitive fields:
-     * 
-     * {@snippet file="com/oracle/truffle/api/nodes/Node.java"
-     * region="com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode"}
+     *
+     * {@snippet file = "com/oracle/truffle/api/nodes/Node.java" region =
+     * "com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode"}
      *
      * @return the source code represented by this Node
      * @since 0.8 or earlier
@@ -216,13 +219,16 @@ public abstract class Node implements NodeInterface, Cloneable {
      * adoptable then then it is guaranteed that the {@link #getParent() parent} pointer remains
      * <code>null</code> at all times, even if the node is tried to be adopted by a parent.
      * <p>
+     * If the result of this method is statically known then it is recommended to make the node
+     * implement {@link UnadoptableNode} instead.
+     * <p>
      * Implementations of {@link #isAdoptable()} are required to fold to a constant result when
      * compiled with a constant receiver.
      *
      * @since 19.0
      */
     public boolean isAdoptable() {
-        return true;
+        return !(this instanceof UnadoptableNode);
     }
 
     /**

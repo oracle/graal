@@ -43,9 +43,6 @@ package com.oracle.truffle.api;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
-
 /**
  * Class containing general Truffle options.
  *
@@ -85,26 +82,16 @@ public final class TruffleOptions {
     public static final String TraceRewritesFilterClass;
 
     /**
-     * Filters rewrites which does not contain the {@link NodeCost} in its source {@link NodeInfo}.
-     * If no {@link NodeInfo} is defined the element is filtered if the filter value is set.
-     * <p>
-     * Can be set with
-     * {@code -Dtruffle.TraceRewritesFilterFromCost=NONE|MONOMORPHIC|POLYMORPHIC|MEGAMORPHIC}.
-     *
      * @since 0.8 or earlier
+     * @deprecated in 24.1 without replacement
      */
-    public static final NodeCost TraceRewritesFilterFromCost;
+    @SuppressWarnings("deprecation") @Deprecated public static final com.oracle.truffle.api.nodes.NodeCost TraceRewritesFilterFromCost;
 
     /**
-     * Filters rewrites which does not contain the {@link NodeCost} in its target {@link NodeInfo}.
-     * If no {@link NodeInfo} is defined the element is filtered if the filter value is set.
-     * <p>
-     * Can be set with
-     * {@code -Dtruffle.TraceRewritesFilterToKind=UNINITIALIZED|SPECIALIZED|POLYMORPHIC|GENERIC}.
-     *
      * @since 0.8 or earlier
+     * @deprecated in 24.1 without replacement
      */
-    public static final NodeCost TraceRewritesFilterToCost;
+    @SuppressWarnings("deprecation") @Deprecated public static final com.oracle.truffle.api.nodes.NodeCost TraceRewritesFilterToCost;
 
     /**
      * Forces ahead-of-time initialization.
@@ -113,12 +100,13 @@ public final class TruffleOptions {
      */
     public static final boolean AOT;
 
-    private static NodeCost parseNodeInfoKind(String kind) {
+    @SuppressWarnings("deprecation")
+    private static com.oracle.truffle.api.nodes.NodeCost parseNodeInfoKind(String kind) {
         if (kind == null) {
             return null;
         }
 
-        return NodeCost.valueOf(kind);
+        return com.oracle.truffle.api.nodes.NodeCost.valueOf(kind);
     }
 
     static {
@@ -127,8 +115,8 @@ public final class TruffleOptions {
             boolean traceRewrites;
             boolean detailedRewriteReasons;
             String traceRewritesFilterClass;
-            NodeCost traceRewritesFilterFromCost;
-            NodeCost traceRewritesFilterToCost;
+            @SuppressWarnings("deprecation") com.oracle.truffle.api.nodes.NodeCost traceRewritesFilterFromCost;
+            @SuppressWarnings("deprecation") com.oracle.truffle.api.nodes.NodeCost traceRewritesFilterToCost;
 
             @Override
             public Void run() {

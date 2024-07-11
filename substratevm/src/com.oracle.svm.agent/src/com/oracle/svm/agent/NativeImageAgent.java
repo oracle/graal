@@ -370,6 +370,10 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             }
         }
 
+        if (tracer != null) {
+            tracer.traceTrackReflectionMetadata(trackReflectionMetadata);
+        }
+
         try {
             BreakpointInterceptor.onLoad(jvmti, callbacks, tracer, this, interceptedStateSupplier,
                             experimentalClassLoaderSupport, experimentalClassDefineSupport, experimentalUnsafeAllocationSupport, trackReflectionMetadata);

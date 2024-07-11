@@ -409,6 +409,7 @@ CLSS public final org.graalvm.polyglot.PolyglotException$StackFrame
  outer org.graalvm.polyglot.PolyglotException
 meth public boolean isGuestFrame()
 meth public boolean isHostFrame()
+meth public int getBytecodeIndex()
 meth public java.lang.StackTraceElement toHostFrame()
 meth public java.lang.String getRootName()
 meth public java.lang.String toString()

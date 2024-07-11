@@ -15,9 +15,13 @@ There are different GraalVM Community Edition container images provided dependin
 These are: **native-image-community**, **jdk-community**, **truffleruby-community**, **nodejs-community**, and **graalpy-community**.
 The container images are multi-arch, for AMD64 and AArch64 processor architectures, with a choice of Oracle Linux versions 7, 8, or 9.
 
-GraalVM is installed in `/usr/lib64/graalvm/graalvm-java<$FeatureVersion>` where `<$FeatureVersion>` is `17`, `21`, `22`, etc.
-For instance, GraalVM for JDK 22 is installed in `/usr/lib64/graalvm/graalvm-java22`. 
+GraalVM is installed in _/usr/lib64/graalvm/graalvm-community-java&lt;$FeatureVersion&gt;_ where `<$FeatureVersion>` is `17`, `21`, `22`, etc.
+For instance, GraalVM for JDK 22 is installed in _/usr/lib64/graalvm/graalvm-community-java22_. 
 All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
+
+> Note: For GraalVM non-RPM based images (**graalvm-community**, **python-community**, **truffleruby-community**), installation location is under _/opt_ (_/opt/graalvm-community-java&lt;$FeatureVersion&gt;_, _/opt/truffleruby-&lt;$GRAALVM_VERSION&gt;_, and _/opt/graalpy-&lt;$GRAALVM_VERSION&gt;_ respectively).
+
+> Note: GraalVM Community Edition container images are based on Oracle Linux slim images, and the default package manager is `microdnf`.
 
 See a full list of GraalVM Community Edition container images [here](https://github.com/graalvm/container).
 
@@ -34,11 +38,11 @@ The following tags are listed from the most-specific tag (at the top) to the lea
 The most-specific tag is unique and always points to the same image, while the less-specific tags point to newer image variants over time.
 For example:
 ```
-21.0.0-ol9-20230919
-21.0.0-ol9
-21.0.0
-21-ol9
-21
+22.0.1-ol9-20240416
+22.0.1-ol9
+22.0.1
+22-ol9
+22
 ```
 
 ## Pulling Images

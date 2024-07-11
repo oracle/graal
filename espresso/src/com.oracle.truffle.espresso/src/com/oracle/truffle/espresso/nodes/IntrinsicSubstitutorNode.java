@@ -34,6 +34,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -67,7 +68,13 @@ public final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNo
 
     @Override
     Object execute(VirtualFrame frame) {
-        return substitution.invoke(frame.getArguments());
+        EspressoThreadLocalState tls = getContext().getLanguage().getThreadLocalState();
+        tls.blockContinuationSuspension();
+        try {
+            return substitution.invoke(frame.getArguments());
+        } finally {
+            tls.unblockContinuationSuspension();
+        }
     }
 
     @Override

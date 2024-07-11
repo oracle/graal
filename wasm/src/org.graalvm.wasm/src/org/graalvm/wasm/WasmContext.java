@@ -67,6 +67,19 @@ public final class WasmContext {
     private final FdManager filesManager;
     private final WasmContextOptions contextOptions;
 
+    /**
+     * Optional grow callback to notify the embedder.
+     */
+    private Object memGrowCallback;
+    /**
+     * JS callback to implement part of memory.atomic.notify.
+     */
+    private Object memNotifyCallback;
+    /**
+     * JS callback to implement part of memory.atomic.waitN.
+     */
+    private Object memWaitCallback;
+
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
         this.language = language;
@@ -221,5 +234,35 @@ public final class WasmContext {
 
     public static WasmContext get(Node node) {
         return REFERENCE.get(node);
+    }
+
+    public void setMemGrowCallback(Object callback) {
+        this.memGrowCallback = callback;
+    }
+
+    public Object getMemGrowCallback() {
+        return memGrowCallback;
+    }
+
+    public void setMemNotifyCallback(Object callback) {
+        this.memNotifyCallback = callback;
+    }
+
+    public Object getMemNotifyCallback() {
+        return memNotifyCallback;
+    }
+
+    public void setMemWaitCallback(Object callback) {
+        this.memWaitCallback = callback;
+    }
+
+    public Object getMemWaitCallback() {
+        return memWaitCallback;
+    }
+
+    public void inheritCallbacksFromParentContext(WasmContext parent) {
+        setMemGrowCallback(parent.getMemGrowCallback());
+        setMemNotifyCallback(parent.getMemNotifyCallback());
+        setMemWaitCallback(parent.getMemWaitCallback());
     }
 }

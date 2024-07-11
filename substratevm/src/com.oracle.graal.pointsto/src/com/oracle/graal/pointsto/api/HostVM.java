@@ -73,7 +73,7 @@ public abstract class HostVM {
     protected final ClassLoader classLoader;
     protected final List<BiConsumer<AnalysisMethod, StructuredGraph>> methodAfterParsingListeners;
     private final List<BiConsumer<DuringAnalysisAccess, Class<?>>> classReachabilityListeners;
-    private HostedProviders providers;
+    protected HostedProviders providers;
 
     protected HostVM(OptionValues options, ClassLoader classLoader) {
         this.options = options;
@@ -127,20 +127,20 @@ public abstract class HostVM {
     }
 
     /**
-     * Check if the type is allowed.
-     * 
-     * @param type the type to check
-     * @param kind usage kind
-     */
-    public void checkForbidden(AnalysisType type, AnalysisType.UsageKind kind) {
-    }
-
-    /**
      * Register newly created type.
      * 
      * @param newValue the type to register
      */
     public void registerType(AnalysisType newValue) {
+    }
+
+    /**
+     * Register newly created type with a given identityHashCode.
+     *
+     * @param newValue the type to register
+     * @param identityHashCode the hash code of the hub
+     */
+    public void registerType(AnalysisType newValue, int identityHashCode) {
     }
 
     /**
@@ -158,6 +158,15 @@ public abstract class HostVM {
      * @param newValue the type to initialize
      */
     public abstract void onTypeReachable(BigBang bb, AnalysisType newValue);
+
+    /**
+     * Run initialization tasks for a type when it is marked as instantiated.
+     *
+     * @param bb the static analysis
+     * @param type the type that is marked as instantiated
+     */
+    public void onTypeInstantiated(BigBang bb, AnalysisType type) {
+    }
 
     public boolean useBaseLayer() {
         return false;

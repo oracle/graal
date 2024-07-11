@@ -42,11 +42,11 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @GenerateUncached
-@ReportPolymorphism
 public abstract class InvokeEspressoNode extends EspressoNode {
     static final int LIMIT = 4;
 
@@ -60,6 +60,8 @@ public abstract class InvokeEspressoNode extends EspressoNode {
         }
         EspressoLanguage language = getLanguage();
         Meta meta = getMeta();
+        EspressoThreadLocalState tls = language.getThreadLocalState();
+        tls.blockContinuationSuspension();
         try {
             Object result = executeMethod(resolutionSeed, receiver, arguments, argsConverted);
             /*
@@ -72,6 +74,8 @@ public abstract class InvokeEspressoNode extends EspressoNode {
              * Invariant: Foreign exceptions are always unwrapped when going out of Espresso.
              */
             throw InteropUtils.unwrapExceptionBoundary(language, e, meta);
+        } finally {
+            tls.unblockContinuationSuspension();
         }
     }
 
@@ -159,10 +163,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
             return indirectCallNode.call(method.getCallTarget(), argumentsWithReceiver);
         }
 
-        return indirectCallNode.call(method.getMethod().getCallTargetForceInit(), /*
-                                                                                   * static => no
-                                                                                   * receiver
-                                                                                   */ convertedArguments);
+        return indirectCallNode.call(method.getMethod().getCallTargetForceInit(), /*- static => no receiver */ convertedArguments);
     }
 
     @TruffleBoundary

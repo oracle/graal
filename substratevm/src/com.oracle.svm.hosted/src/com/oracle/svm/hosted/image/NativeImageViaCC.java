@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,7 @@ import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -138,6 +139,11 @@ public abstract class NativeImageViaCC extends NativeImage {
 
             List<String> lines;
             try (InputStream inputStream = linkerProcess.getInputStream()) {
+                /*
+                 * The linker can be slow, record activity just before so that we have the full
+                 * watchdog interval available.
+                 */
+                DeadlockWatchdog.singleton().recordActivity();
                 lines = FileUtils.readAllLines(inputStream);
                 FileUtils.traceCommandOutput(lines);
             }
@@ -161,6 +167,12 @@ public abstract class NativeImageViaCC extends NativeImage {
 
             if (SubstrateOptions.useDebugInfoGeneration()) {
                 BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
+                Path svmDebugHelper = Path.of(System.getProperty("java.home"), "lib/svm/debug/gdb-debughelpers.py");
+                if (Files.exists(svmDebugHelper)) {
+                    Path svmDebugHelperCopy = imagePath.resolveSibling(svmDebugHelper.getFileName());
+                    Files.copy(svmDebugHelper, svmDebugHelperCopy, StandardCopyOption.REPLACE_EXISTING);
+                    BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, svmDebugHelperCopy);
+                }
                 if (Platform.includedIn(Platform.WINDOWS.class)) {
                     BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath.resolveSibling(imageName + ".pdb"));
                 } else if (!SubstrateOptions.StripDebugInfo.getValue()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.hotspot.replacements;
 
-import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.vm.ci.meta.DeoptimizationReason.OptimizedTypeCheckViolated;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadHubIntrinsic;
@@ -41,6 +39,8 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUE
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationReason.OptimizedTypeCheckViolated;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -74,7 +74,7 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.ExplodeLoopNode;
-
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -163,7 +163,7 @@ public class InstanceOfSnippets implements Snippets {
     }
 
     /**
-     * A test against a restricted secondary type type.
+     * A test against a restricted secondary type.
      */
     @Snippet(allowMissingProbabilities = true)
     public static Object instanceofSecondary(KlassPointer hub, Object object, @VarargsParameter KlassPointer[] hints, @VarargsParameter boolean[] hintIsPositive, Object trueValue, Object falseValue,
@@ -237,7 +237,7 @@ public class InstanceOfSnippets implements Snippets {
             if (probability(FAST_PATH_PROBABILITY, !otherHub.isNull())) {
                 GuardingNode guardNonNull = SnippetAnchorNode.anchor();
                 KlassPointer nonNullOtherHub = ClassGetHubNode.piCastNonNull(otherHub, guardNonNull);
-                if (TypeCheckSnippetUtils.checkUnknownSubType(thisHub, nonNullOtherHub, counters)) {
+                if (checkUnknownSubType(thisHub, nonNullOtherHub, counters)) {
                     return trueValue;
                 }
             }
@@ -266,9 +266,15 @@ public class InstanceOfSnippets implements Snippets {
             this.instanceofWithProfile = snippet(providers, InstanceOfSnippets.class, "instanceofWithProfile");
             this.instanceofExact = snippet(providers, InstanceOfSnippets.class, "instanceofExact");
             this.instanceofPrimary = snippet(providers, InstanceOfSnippets.class, "instanceofPrimary");
-            this.instanceofSecondary = snippet(providers, InstanceOfSnippets.class, "instanceofSecondary", SECONDARY_SUPER_CACHE_LOCATION);
-            this.instanceofDynamic = snippet(providers, InstanceOfSnippets.class, "instanceofDynamic", SECONDARY_SUPER_CACHE_LOCATION);
-            this.isAssignableFrom = snippet(providers, InstanceOfSnippets.class, "isAssignableFrom", SECONDARY_SUPER_CACHE_LOCATION);
+            if (JavaVersionUtil.JAVA_SPEC == 21) {
+                this.instanceofSecondary = snippet(providers, InstanceOfSnippets.class, "instanceofSecondary", SECONDARY_SUPER_CACHE_LOCATION);
+                this.instanceofDynamic = snippet(providers, InstanceOfSnippets.class, "instanceofDynamic", SECONDARY_SUPER_CACHE_LOCATION);
+                this.isAssignableFrom = snippet(providers, InstanceOfSnippets.class, "isAssignableFrom", SECONDARY_SUPER_CACHE_LOCATION);
+            } else {
+                this.instanceofSecondary = snippet(providers, InstanceOfSnippets.class, "instanceofSecondary");
+                this.instanceofDynamic = snippet(providers, InstanceOfSnippets.class, "instanceofDynamic");
+                this.isAssignableFrom = snippet(providers, InstanceOfSnippets.class, "isAssignableFrom");
+            }
 
             this.counters = new Counters(factory);
         }

@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.libjavavm.arghelper;
 
 import static com.oracle.truffle.espresso.libjavavm.Arguments.abort;
+import static com.oracle.truffle.espresso.libjavavm.Arguments.warn;
 
 import java.util.Map.Entry;
 import java.util.SortedMap;
@@ -45,6 +46,7 @@ class Native {
     private final ArgumentsHandler handler;
 
     private String argPrefix;
+    private boolean legacyGraalOptionDeprecationWarned = false;
 
     void init(boolean fromXXHandling) {
         argPrefix = fromXXHandling ? "-" : "--vm.";
@@ -54,7 +56,15 @@ class Native {
         if (arg.startsWith("Djdk.graal.")) {
             setGraalStyleRuntimeOption(arg.substring("Djdk.graal.".length()));
         } else if (arg.startsWith("Dgraal.")) {
-            setGraalStyleRuntimeOption(arg.substring("Dgraal.".length()));
+            String baseName = arg.substring("Dgraal.".length());
+            if (!legacyGraalOptionDeprecationWarned) {
+                warn("""
+                                WARNING: The 'graal.' property prefix for the Graal option %s
+                                WARNING: (and all other Graal options) is deprecated and will be ignored
+                                WARNING: in a future release. Please use 'jdk.graal.%s' instead.""".formatted(baseName, baseName));
+                legacyGraalOptionDeprecationWarned = true;
+            }
+            setGraalStyleRuntimeOption(baseName);
         } else if (arg.startsWith("D")) {
             setSystemProperty(arg.substring("D".length()));
         } else if (arg.startsWith("XX:")) {

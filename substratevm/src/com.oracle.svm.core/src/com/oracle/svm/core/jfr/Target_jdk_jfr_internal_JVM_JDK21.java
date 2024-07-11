@@ -26,14 +26,16 @@ package com.oracle.svm.core.jfr;
 
 import java.util.List;
 
+import com.oracle.svm.core.heap.PhysicalMemory;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ProcessProperties;
 
-import com.oracle.svm.core.Containers;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 
@@ -356,12 +358,13 @@ final class Target_jdk_jfr_internal_JVM_JDK21 {
 
     @Substitute
     public boolean isContainerized() {
-        return Containers.isContainerized();
+        return Container.singleton().isContainerized();
     }
 
     @Substitute
     public long hostTotalMemory() {
-        /* Not implemented at the moment. */
-        return 0;
+        // This is intentionally using PhysicalMemorySupport since we are
+        // interested in the host values (and not the containerized values).
+        return ImageSingletons.lookup(PhysicalMemory.PhysicalMemorySupport.class).size().rawValue();
     }
 }

@@ -34,6 +34,8 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+
 @AutomaticallyRegisteredFeature
 public class JDKInitializationFeature implements InternalFeature {
     private static final String JDK_CLASS_REASON = "Core JDK classes are initialized at build time";
@@ -207,6 +209,10 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtRunTime("jdk.internal.foreign.SystemLookup$WindowsFallbackSymbols", "Does not work on non-Windows modular images");
 
         rci.initializeAtRunTime("jdk.internal.logger.LoggerFinderLoader", "Contains a static field with a FilePermission value");
+
+        if (JavaVersionUtil.JAVA_SPEC >= 23) {
+            rci.initializeAtRunTime("jdk.internal.markdown.MarkdownTransformer", "Contains a static field with a DocTreeScanner which is initialized at run time");
+        }
 
         /*
          * The local class Holder in FallbackLinker#getInstance fails the build time initialization

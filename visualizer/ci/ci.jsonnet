@@ -8,7 +8,7 @@
     run: [
       ["cd", "./visualizer"],
       ["mx", "pylint" ],
-      ["mx", "verify-graal-graphio" ],
+      # temporarily disabled until GR-52034 is closed ["mx", "verify-graal-graphio" ],
       ["mx", "build" ],
       ["mx", "clean" ],
       ["mx", "build-release" ],

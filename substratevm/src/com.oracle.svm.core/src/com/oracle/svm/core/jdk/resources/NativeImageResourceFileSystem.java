@@ -84,6 +84,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
+import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import org.graalvm.collections.MapCursor;
 
 import com.oracle.svm.core.MissingRegistrationUtils;
@@ -575,7 +576,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
         IndexNode indexNode = inodes.get(IndexNode.keyOf(path));
         if (indexNode == null && MissingRegistrationUtils.throwMissingRegistrationErrors()) {
             // Try to access the resource to see if the metadata is present
-            Resources.singleton().get(getString(path), true);
+            Resources.singleton().getAtRuntime(getString(path), true);
         }
         return indexNode;
     }
@@ -656,11 +657,11 @@ public class NativeImageResourceFileSystem extends FileSystem {
     }
 
     private void readAllEntries() {
-        MapCursor<Resources.ModuleResourceKey, ResourceStorageEntryBase> entries = Resources.singleton().getResourceStorage().getEntries();
+        MapCursor<Resources.ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> entries = Resources.singleton().getResourceStorage().getEntries();
         while (entries.advance()) {
             byte[] name = getBytes(entries.getKey().resource());
-            ResourceStorageEntryBase entry = entries.getValue();
-            if (entry.hasData()) {
+            ResourceStorageEntryBase entry = entries.getValue().getValue();
+            if (entry != null && entry.hasData()) {
                 IndexNode newIndexNode = new IndexNode(name, entry.isDirectory(), true);
                 inodes.put(newIndexNode, newIndexNode);
             }

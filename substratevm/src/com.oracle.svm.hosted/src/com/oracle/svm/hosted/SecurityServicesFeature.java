@@ -97,7 +97,7 @@ import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -125,11 +125,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         public static final HostedOptionKey<Boolean> TraceSecurityServices = new HostedOptionKey<>(false);
 
         @Option(help = "Comma-separated list of additional security service types (fully qualified class names) for automatic registration. Note that these must be JCA compliant.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AdditionalSecurityServiceTypes = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AdditionalSecurityServiceTypes = new HostedOptionKey<>(
+                        AccumulatingLocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Comma-separated list of additional security provider fully qualified class names to mark as used." +
                         "Note that this option is only necessary if you use custom engine classes not available in JCA that are not JCA compliant.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AdditionalSecurityProviders = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AdditionalSecurityProviders = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
     }
 
     /*

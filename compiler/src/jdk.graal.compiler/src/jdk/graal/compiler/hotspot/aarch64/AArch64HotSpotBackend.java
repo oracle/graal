@@ -26,6 +26,8 @@ package jdk.graal.compiler.hotspot.aarch64;
 
 import static java.lang.reflect.Modifier.isStatic;
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
+import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.ShiftType.LSL;
+import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.ShiftType.LSR;
 import static jdk.graal.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.aarch64.AArch64.r10;
@@ -75,7 +77,7 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CompilationRequest;
@@ -89,7 +91,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.Unsafe;
 
 /**
  * HotSpot AArch64 specific backend.
@@ -158,7 +159,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                 break;
             }
         }
-        Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+        Unsafe unsafe = Unsafe.getUnsafe();
         int instruction = unsafe.getIntVolatile(targetCode, unsafe.arrayBaseOffset(byte[].class) + verifiedEntryOffset);
         AArch64MacroAssembler masm = new AArch64MacroAssembler(getTarget());
         masm.nop();
@@ -276,19 +277,46 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                 final Label continuation = new Label();
                 final Label entryPoint = new Label();
 
-                // The following code sequence must be emitted in exactly this fashion as HotSpot
-                // will check that the barrier is the expected code sequence.
+                /*
+                 * The following code sequence must be emitted in exactly this fashion as HotSpot
+                 * will check that the barrier is the expected code sequence.
+                 */
                 crb.recordMark(HotSpotMarkId.ENTRY_BARRIER_PATCH);
                 DataSection.Data data = crb.dataBuilder.createMutableData(4, 4);
                 masm.ldr(32, scratch1, (AArch64Address) crb.recordDataSectionReference(data));
 
-                if (config.nmethodEntryBarrierConcurrentPatch) {
-                    masm.dmb(AArch64Assembler.BarrierKind.LOAD_ANY);
-                }
+                if (config.BarrierSetAssembler_nmethod_patching_type == config.NMethodPatchingType_conc_instruction_and_data_patch) {
+                    // If we patch code we need both a code patching and a loadload
+                    // fence. It's not super cheap, so we use a global epoch mechanism
+                    // to hide them in a slow path.
+                    // The high level idea of the global epoch mechanism is to detect
+                    // when any thread has performed the required fencing, after the
+                    // last nmethod was disarmed. This implies that the required
+                    // fencing has been performed for all preceding nmethod disarms
+                    // as well. Therefore, we do not need any further fencing.
+                    masm.mov(scratch2, config.BarrierSetAssembler_patching_epoch_addr);
+                    // Embed an artificial data dependency to order the guard load
+                    // before the epoch load.
+                    masm.orr(64, scratch2, scratch2, scratch1, LSR, 32);
+                    // Read the global epoch value.
+                    masm.ldr(32, scratch2, AArch64Address.createBaseRegisterOnlyAddress(32, scratch2));
+                    // Combine the guard value (low order) with the epoch value (high order).
+                    masm.orr(64, scratch1, scratch1, scratch2, LSL, 32);
+                    // Compare the global values with the thread-local values.
+                    AArch64Address threadDisarmedAndEpochAddr = masm.makeAddress(64, thread, config.threadDisarmedOffset, scratch2);
+                    masm.ldr(64, scratch2, threadDisarmedAndEpochAddr);
+                    masm.cmp(64, scratch1, scratch2);
 
-                AArch64Address threadDisarmedAddr = masm.makeAddress(32, thread, config.threadDisarmedOffset, scratch2);
-                masm.ldr(32, scratch2, threadDisarmedAddr);
-                masm.cmp(32, scratch1, scratch2);
+                } else {
+
+                    if (config.BarrierSetAssembler_nmethod_patching_type == config.NMethodPatchingType_conc_data_patch) {
+                        masm.dmb(AArch64Assembler.BarrierKind.LOAD_ANY);
+                    }
+
+                    AArch64Address threadDisarmedAddr = masm.makeAddress(32, thread, config.threadDisarmedOffset, scratch2);
+                    masm.ldr(32, scratch2, threadDisarmedAddr);
+                    masm.cmp(32, scratch1, scratch2);
+                }
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, entryPoint);
                 crb.getLIR().addSlowPath(null, () -> {
                     masm.bind(entryPoint);
@@ -358,8 +386,8 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         } catch (BranchTargetOutOfBoundsException e) {
             // A branch estimation was wrong, now retry with conservative label ranges, this
             // should always work
-            crb.setConservativeLabelRanges();
             crb.resetForEmittingCode();
+            crb.setConservativeLabelRanges();
             emitCodeHelper(crb, installedCodeOwner, entryPointDecorator);
         }
     }

@@ -80,7 +80,8 @@ class UnsafeUtil {
             throw new NullPointerException();
         }
         int offset = field.root == null ? field.offset : field.root.offset;
-        if (offset <= 0) {
+        boolean conditionsSatisfied = SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).conditions.satisfied();
+        if (offset <= 0 || !conditionsSatisfied) {
             throw MissingReflectionRegistrationUtils.errorForQueriedOnlyField(SubstrateUtil.cast(field, Field.class));
         }
         return offset;

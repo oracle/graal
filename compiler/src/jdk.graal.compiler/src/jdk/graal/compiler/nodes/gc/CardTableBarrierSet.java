@@ -65,7 +65,7 @@ public class CardTableBarrierSet implements BarrierSet {
 
     @Override
     public BarrierType writeBarrierType(RawStoreNode store) {
-        return store.needsBarrier() ? guessReadWriteBarrier(store.object(), store.value()) : BarrierType.NONE;
+        return store.needsBarrier() ? readWriteBarrier(store.object(), store.value()) : BarrierType.NONE;
     }
 
     @Override
@@ -84,7 +84,7 @@ public class CardTableBarrierSet implements BarrierSet {
     }
 
     @Override
-    public BarrierType guessReadWriteBarrier(ValueNode object, ValueNode value) {
+    public BarrierType readWriteBarrier(ValueNode object, ValueNode value) {
         if (value.getStackKind() == JavaKind.Object && object.getStackKind() == JavaKind.Object) {
             ResolvedJavaType type = StampTool.typeOrNull(object);
             if (type != null && type.isArray()) {

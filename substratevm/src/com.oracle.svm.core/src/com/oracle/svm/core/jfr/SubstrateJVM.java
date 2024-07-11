@@ -26,7 +26,6 @@ package com.oracle.svm.core.jfr;
 
 import java.util.List;
 
-import com.oracle.svm.core.sampler.SamplerStatistics;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -45,6 +44,8 @@ import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.throttling.JfrEventThrottling;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
+import com.oracle.svm.core.sampler.SamplerBuffersAccess;
+import com.oracle.svm.core.sampler.SamplerStatistics;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
@@ -234,8 +235,15 @@ public class SubstrateJVM {
         options.validateAndAdjustMemoryOptions();
 
         JfrTicks.initialize();
-        threadLocal.initialize(options.threadBufferSize.getValue());
-        globalMemory.initialize(options.globalBufferSize.getValue(), options.globalBufferCount.getValue());
+
+        long threadLocalBufferSize = options.threadBufferSize.getValue();
+        assert threadLocalBufferSize > 0;
+        threadLocal.initialize(WordFactory.unsigned(threadLocalBufferSize));
+
+        long globalBufferSize = options.globalBufferSize.getValue();
+        assert globalBufferSize > 0;
+        globalMemory.initialize(WordFactory.unsigned(globalBufferSize), options.globalBufferCount.getValue());
+
         unlockedChunkWriter.initialize(options.maxChunkSize.getValue());
         stackTraceRepo.setStackTraceDepth(NumUtil.safeToInt(options.stackDepth.getValue()));
 
@@ -349,8 +357,7 @@ public class SubstrateJVM {
             return;
         }
 
-        JfrEndRecordingOperation vmOp = new JfrEndRecordingOperation();
-        vmOp.enqueue();
+        recorderThread.endRecording();
     }
 
     /**
@@ -748,7 +755,7 @@ public class SubstrateJVM {
         }
     }
 
-    private static class JfrEndRecordingOperation extends JavaVMOperation {
+    static class JfrEndRecordingOperation extends JavaVMOperation {
         JfrEndRecordingOperation() {
             super(VMOperationInfos.get(JfrEndRecordingOperation.class, "JFR end recording", SystemEffect.SAFEPOINT));
         }
@@ -760,6 +767,10 @@ public class SubstrateJVM {
          */
         @Override
         protected void operate() {
+            if (!SubstrateJVM.get().recording) {
+                return;
+            }
+
             SubstrateJVM.get().recording = false;
             JfrExecutionSampler.singleton().update();
 
@@ -771,6 +782,9 @@ public class SubstrateJVM {
             for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                 JfrThreadLocal.stopRecording(isolateThread, false);
             }
+
+            /* Process any remaining full buffers (if there are any). */
+            SamplerBuffersAccess.processFullBuffers(false);
 
             /*
              * If JFR recording is restarted later on, then it needs to start with a clean state.

@@ -31,6 +31,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Parses JSON values from a string. This class is mostly a reimplementation of
+ * {@code jdk.graal.compiler.util.json.JsonParser}. That class can't be used directly as we can't
+ * rely on {@code jdk.graal.compiler} being available when executing a bundle on a vanilla JDK.
+ */
 public class BundleJSONParser {
 
     private final String source;

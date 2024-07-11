@@ -714,7 +714,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
-        BarrierType barrierType = barrierSet.guessReadWriteBarrier(cas.object(), newValue);
+        BarrierType barrierType = barrierSet.readWriteBarrier(cas.object(), newValue);
         LogicCompareAndSwapNode atomicNode = graph.add(
                         new LogicCompareAndSwapNode(address, expectedValue, newValue, cas.getKilledLocationIdentity(), barrierType, cas.getMemoryOrder()));
         atomicNode.setStateAfter(cas.stateAfter());
@@ -729,7 +729,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
-        BarrierType barrierType = barrierSet.guessReadWriteBarrier(cas.object(), newValue);
+        BarrierType barrierType = barrierSet.readWriteBarrier(cas.object(), newValue);
         ValueCompareAndSwapNode atomicNode = graph.add(
                         new ValueCompareAndSwapNode(address, expectedValue, newValue, cas.getKilledLocationIdentity(), barrierType, cas.getMemoryOrder()));
         ValueNode coercedNode = implicitLoadConvert(graph, valueKind, atomicNode, true);
@@ -745,7 +745,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, n.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(n.object(), n.offset()));
-        BarrierType barrierType = barrierSet.guessReadWriteBarrier(n.object(), newValue);
+        BarrierType barrierType = barrierSet.readWriteBarrier(n.object(), newValue);
         LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(address, n.getKilledLocationIdentity(), newValue, barrierType));
         memoryRead.setStateAfter(n.stateAfter());
 
@@ -909,12 +909,27 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected void lowerCommitAllocationNode(CommitAllocationNode commit, LoweringTool tool) {
         StructuredGraph graph = commit.graph();
         if (graph.getGuardsStage() == GraphState.GuardsStage.FIXED_DEOPTS) {
-            List<AbstractNewObjectNode> recursiveLowerings = new ArrayList<>();
 
+            // Record starting position for each object
+            int[] valuePositions = new int[commit.getVirtualObjects().size()];
+            for (int objIndex = 0, valuePos = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                valuePositions[objIndex] = valuePos;
+                valuePos += commit.getVirtualObjects().get(objIndex).entryCount();
+            }
+
+            /*
+             * Try to emit the allocations in an order where objects are allocated before they are
+             * needed by other allocations. In the worst case there might be cycles which can't be
+             * broken and those stores might need to be performed as if we aren't writing to
+             * INIT_MEMORY. This ensures that GC barrier assumptions aren't violated.
+             */
+            int[] emissionOrder = new int[commit.getVirtualObjects().size()];
+            computeAllocationEmissionOrder(commit, emissionOrder);
+
+            List<AbstractNewObjectNode> recursiveLowerings = new ArrayList<>();
             ValueNode[] allocations = new ValueNode[commit.getVirtualObjects().size()];
             BitSet omittedValues = new BitSet();
-            int valuePos = 0;
-            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+            for (int objIndex : emissionOrder) {
                 VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
                 try (DebugCloseable nsp = graph.withNodeSourcePosition(virtual)) {
                     int entryCount = virtual.entryCount();
@@ -931,6 +946,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     recursiveLowerings.add(newObject);
                     graph.addBeforeFixed(commit, newObject);
                     allocations[objIndex] = newObject;
+                    int valuePos = valuePositions[objIndex];
                     for (int i = 0; i < entryCount; i++) {
                         ValueNode value = commit.getValues().get(valuePos);
                         if (value instanceof VirtualObjectNode) {
@@ -973,13 +989,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     }
                 }
             }
-            valuePos = 0;
-
             for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
                 VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
                 try (DebugCloseable nsp = graph.withNodeSourcePosition(virtual)) {
                     int entryCount = virtual.entryCount();
                     ValueNode newObject = allocations[objIndex];
+                    int valuePos = valuePositions[objIndex];
                     for (int i = 0; i < entryCount; i++) {
                         if (omittedValues.get(valuePos)) {
                             ValueNode value = commit.getValues().get(valuePos);
@@ -1004,6 +1019,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                     barrierType = barrierSet.arrayWriteBarrierType(entryKind);
                                 }
                                 if (address != null) {
+                                    barrierType = barrierSet.postAllocationInitBarrier(barrierType);
                                     WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType, MemoryOrderMode.PLAIN);
                                     graph.addBeforeFixed(commit, graph.add(write));
                                 }
@@ -1022,6 +1038,53 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
 
+    }
+
+    private static void computeAllocationEmissionOrder(CommitAllocationNode commit, int[] order) {
+        int size = commit.getVirtualObjects().size();
+        boolean[] complete = new boolean[size];
+        int cur = 0;
+        /*
+         * Visit each allocation checking whether all values for the allocation are available. If
+         * they are then append the allocation to the order. Repeat this until there is no change in
+         * the state. Any remaining values must be a cycle.
+         */
+        boolean progress = true;
+        while (progress) {
+            progress = false;
+            int valuePos = 0;
+            for (int objIndex = 0; objIndex < size; objIndex++) {
+                if (complete[objIndex]) {
+                    continue;
+                }
+                VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
+                int entryCount = virtual.entryCount();
+
+                boolean allValuesAvailable = true;
+                for (int i = 0; i < entryCount; i++) {
+                    ValueNode value = commit.getValues().get(valuePos);
+                    if (value instanceof VirtualObjectNode) {
+                        if (!complete[commit.getVirtualObjects().indexOf(value)]) {
+                            allValuesAvailable = false;
+                            break;
+                        }
+                    }
+                    valuePos++;
+                }
+                if (allValuesAvailable) {
+                    progress = true;
+                    complete[objIndex] = true;
+                    order[cur++] = objIndex;
+                }
+            }
+        }
+
+        // Any remaining values are part of a cycle so just emit them in the declare order.
+        for (int i = 0; i < size; i++) {
+            if (!complete[i]) {
+                order[cur++] = i;
+            }
+        }
     }
 
     public void finishAllocatedObjects(LoweringTool tool, FixedWithNextNode insertAfter, CommitAllocationNode commit, ValueNode[] allocations) {

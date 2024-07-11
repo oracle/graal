@@ -26,12 +26,13 @@ package jdk.graal.compiler.graph.test;
 
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import jdk.graal.compiler.graph.test.matchers.NodeIterableContains;
-import jdk.graal.compiler.graph.test.matchers.NodeIterableIsEmpty;
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.graph.GraalGraphError;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
@@ -39,10 +40,10 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.graph.NodeSuccessorList;
 import jdk.graal.compiler.graph.Position;
+import jdk.graal.compiler.graph.test.matchers.NodeIterableContains;
+import jdk.graal.compiler.graph.test.matchers.NodeIterableIsEmpty;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class NodeUsagesTests extends GraphTest {
 

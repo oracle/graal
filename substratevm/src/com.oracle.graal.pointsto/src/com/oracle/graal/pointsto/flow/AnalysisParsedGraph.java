@@ -125,7 +125,7 @@ public final class AnalysisParsedGraph {
 
             graph = new StructuredGraph.Builder(options, debug)
                             .method(method)
-                            .recordInlinedMethods(false)
+                            .recordInlinedMethods(bb.getHostVM().recordInlinedMethods(method))
                             .build();
             try (DebugContext.Scope s = debug.scope("ClosedWorldAnalysis", graph, method)) {
 

@@ -95,13 +95,6 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             }
             throw e;
         }
-        HotSpotJVMCIRuntime hsRuntime = (HotSpotJVMCIRuntime) JVMCI.getRuntime();
-        HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(hsRuntime.getConfigStore());
-        boolean useCompiler = config.getFlag("UseCompiler", Boolean.class);
-        if (!useCompiler) {
-            // compilation disabled in host VM -> fallback to default runtime
-            return new DefaultTruffleRuntime("JVMCI compilation was disabled on this JVM. Pass -XX:+EnableJVMCI as a virtual machine argument to the java executable to resolve this.");
-        }
         /*
          * Module integrity rules ignore qualified exports from a parent module layer to a child
          * module layer by default. This is why we do need to explicitly export the truffle.compiler
@@ -118,6 +111,24 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         } else {
             layer = ModuleLayer.boot();
         }
+        Module javaBase = layer.findModule("java.base").orElseThrow();
+        Module compilerModule = layer.findModule("jdk.graal.compiler").or(() -> layer.findModule("jdk.internal.vm.compiler")).orElse(null);
+        /*
+         * The Graal compiler uses jdk.internal.misc.Unsafe. On non-Graal JDKs, it is necessary to
+         * export `jdk.internal.misc` to the compiler. On Graal JDK, this export is already included
+         * during the GraalVM build process by jlink. The export must be added before initializing
+         * the JVMCI runtime by calling JVMCI.getRuntime().
+         */
+        if (compilerModule != null) {
+            ModulesSupport.addExports(javaBase, "jdk.internal.misc", compilerModule);
+        }
+        HotSpotJVMCIRuntime hsRuntime = (HotSpotJVMCIRuntime) JVMCI.getRuntime();
+        HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(hsRuntime.getConfigStore());
+        boolean useCompiler = config.getFlag("UseCompiler", Boolean.class);
+        if (!useCompiler) {
+            // compilation disabled in host VM -> fallback to default runtime
+            return new DefaultTruffleRuntime("JVMCI compilation was disabled on this JVM. Pass -XX:+EnableJVMCI as a virtual machine argument to the java executable to resolve this.");
+        }
         /*
          * If the compiler module is installed as part of the JDK we need to explicitly export it.
          */
@@ -128,6 +139,9 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                 ModulesSupport.addExports(truffleCompilerModule, pack, runtimeModule);
             }
         }
+
+        // For SharedSecrets.getJavaLangAccess().currentCarrierThread()
+        ModulesSupport.addExports(javaBase, "jdk.internal.access", runtimeModule);
 
         TruffleCompilationSupport compilationSupport;
         if (LibGraal.isAvailable()) {
@@ -162,7 +176,6 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         } else {
             // try jar graal
             try {
-                Module compilerModule = layer.findModule("jdk.graal.compiler").or(() -> layer.findModule("jdk.internal.vm.compiler")).orElse(null);
                 if (compilerModule == null) {
                     // jargraal compiler module not found -> fallback to default runtime
                     return new DefaultTruffleRuntime(
@@ -187,6 +200,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             }
         }
         HotSpotTruffleRuntime rt = new HotSpotTruffleRuntime(compilationSupport);
+        HotSpotVirtualThreadHooks.ensureLoaded();
         compilationSupport.registerRuntime(rt);
         return rt;
     }

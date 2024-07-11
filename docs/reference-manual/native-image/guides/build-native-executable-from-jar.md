@@ -7,29 +7,32 @@ permalink: /reference-manual/native-image/guides/build-native-executable-from-ja
 
 # Build a Native Executable from a JAR File
 
-You can build a native executable from a class file, from a JAR file, or from a module. This guide demonstrates how to build a native executable from a JAR file. 
+You can build a native executable from a class file, from a JAR file, or from a module.
+This guide demonstrates how to build a native executable from a JAR file. 
 
 To build a native executable from a JAR file in the current working directory, use the following command:
 ```shell
 native-image [options] -jar jarfile [executable name]
 ```
-1. Make sure you have installed a GraalVM JDK.
+
+## Run a Demo
+
+### Prerequisite
+Make sure you have installed a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-2. Prepare the application.
+1. Prepare the application.
 
     - Create a new Java project named "App", for example in your favorite IDE or from your terminal, with the following structure:
-
         ```shell
         | src
         |   --com/
         |      -- example
         |          -- App.java
         ```
-
+        
     - Add the following Java code to the _src/com/example/App.java_ file:
-
         ```java
         package com.example;
 
@@ -48,34 +51,30 @@ For other installation options, visit the [Downloads section](https://www.graalv
             }
         }
         ```
-
         This is a small Java application that reverses a String using recursion.
 
-3. Compile the application:
+2. Compile the application:
     ```shell
     javac -d build src/com/example/App.java
     ```
+    This produces the file _App.class_ in the _build/com/example/_ directory.
 
-    This produces the file _App.class_ in the _build/com/example_ directory.
-
-4. Create a runnable JAR file:
+3. Create a runnable JAR file:
     ```shell
     jar --create --file App.jar --main-class com.example.App -C build .
     ```
-
     It will generate a runnable JAR file, named _App.jar_, in the project root directory: 
     To view its contents, run the command `jar tf App.jar`.
 
-5. Create a native executable:
+4. Create a native executable:
     ```shell
     native-image -jar App.jar
     ```
-
     It will produce a native executable in the project root directory.
-    The default name of the image will be the name of the JAR file (`App` in this case).
-    It can be customized by either providing a custom name as a last argument (for example, `native-image -jar App.jar imagename`), or by using `-o imagename` before or after `-jar jarfile`, for example: `native-image -jar App.jar -o imagename`.
+    The default name of the executable will be the name of the JAR file ("App" in this case).
+    It can be customized by either providing a custom name as a last argument (for example, `native-image -jar App.jar executable_name`), or by using `-o executable_name` before or after `-jar jarfile`, for example: `native-image -jar App.jar -o executable_name`.
 
-6. Run the native executable:
+5. Run the native executable:
     ```shell
     ./App
     ```

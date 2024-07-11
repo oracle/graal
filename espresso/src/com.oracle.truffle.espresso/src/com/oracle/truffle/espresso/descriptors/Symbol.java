@@ -138,7 +138,6 @@ public final class Symbol<T> extends ByteSequence {
      * {@link #_init_}, {@link #_clinit_} and hidden field names.
      */
     public static final class Name extends ModifiedUTF8 {
-
         public static void ensureInitialized() {
             /* nop */
         }
@@ -465,6 +464,9 @@ public final class Symbol<T> extends ByteSequence {
         // sun.misc.NativeSignalHandler
         public static final Symbol<Name> handler = StaticSymbols.putName("handler");
 
+        // jdk.internal.util.ArraysSupport
+        public static final Symbol<Name> vectorizedMismatch = StaticSymbols.putName("vectorizedMismatch");
+
         // Attribute names
         public static final Symbol<Name> AnnotationDefault = StaticSymbols.putName("AnnotationDefault");
         public static final Symbol<Name> BootstrapMethods = StaticSymbols.putName("BootstrapMethods");
@@ -626,12 +628,22 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> ofSystem = StaticSymbols.putName("ofSystem");
         public static final Symbol<Name> defineModule = StaticSymbols.putName("defineModule");
 
+        // Continuations
+        public static final Symbol<Name> suspend = StaticSymbols.putName("suspend");
+        public static final Symbol<Name> stackFrameHead = StaticSymbols.putName("stackFrameHead");
+        public static final Symbol<Name> HIDDEN_CONTINUATION_FRAME_RECORD = StaticSymbols.putName("0HIDDEN_CONTINUATION_FRAME_RECORD");
+        public static final Symbol<Name> pointers = StaticSymbols.putName("pointers");
+        public static final Symbol<Name> primitives = StaticSymbols.putName("primitives");
+        public static final Symbol<Name> method = StaticSymbols.putName("method");
+
         // Panama
         public static final Symbol<Name> segmentMaskOrSize = StaticSymbols.putName("segmentMaskOrSize");
         public static final Symbol<Name> indexOrOffset = StaticSymbols.putName("indexOrOffset");
         public static final Symbol<Name> downcallStubAddress = StaticSymbols.putName("downcallStubAddress");
         public static final Symbol<Name> argRegs = StaticSymbols.putName("argRegs");
         public static final Symbol<Name> retRegs = StaticSymbols.putName("retRegs");
+
+        public static final Symbol<Name> exclusiveOwnerThread = StaticSymbols.putName("exclusiveOwnerThread");
     }
 
     /**
@@ -680,7 +692,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> jdk_internal_loader_NativeLibraries = StaticSymbols.putType("Ljdk/internal/loader/NativeLibraries;");
         public static final Symbol<Type> sun_misc_Launcher$ExtClassLoader = StaticSymbols.putType("Lsun/misc/Launcher$ExtClassLoader;");
         public static final Symbol<Type> jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl = StaticSymbols.putType("Ljdk/internal/loader/RawNativeLibraries$RawNativeLibraryImpl;");
-
+        public static final Symbol<Type> jdk_internal_util_ArraysSupport = StaticSymbols.putType("Ljdk/internal/util/ArraysSupport;");
         public static final Symbol<Type> java_io_InputStream = StaticSymbols.putType("Ljava/io/InputStream;");
         public static final Symbol<Type> java_io_PrintStream = StaticSymbols.putType("Ljava/io/PrintStream;");
         public static final Symbol<Type> java_nio_file_Path = StaticSymbols.putType("Ljava/nio/file/Path;");
@@ -969,6 +981,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_util_regex_IntHashSet = StaticSymbols.putType("Ljava/util/regex/IntHashSet;");
         public static final Symbol<Type> java_util_regex_IntHashSet_array = StaticSymbols.putType("[Ljava/util/regex/IntHashSet;");
 
+        public static final Symbol<Type> java_util_concurrent_locks_AbstractOwnableSynchronizer = StaticSymbols.putType("Ljava/util/concurrent/locks/AbstractOwnableSynchronizer;");
+
         // java math
         public static final Symbol<Type> java_math_BigInteger = StaticSymbols.putType("Ljava/math/BigInteger;");
         public static final Symbol<Type> java_math_BigDecimal = StaticSymbols.putType("Ljava/math/BigDecimal;");
@@ -1005,6 +1019,16 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_impl_EspressoForeignNumber = StaticSymbols.putType(
                         "Lcom/oracle/truffle/espresso/polyglot/impl/EspressoForeignNumber;");
+
+        // Continuations
+        public static final Symbol<Type> org_graalvm_continuations_ContinuationImpl = StaticSymbols.putType(
+                        "Lorg/graalvm/continuations/ContinuationImpl;");
+        public static final Symbol<Type> org_graalvm_continuations_ContinuationImpl_FrameRecord = StaticSymbols.putType(
+                        "Lorg/graalvm/continuations/ContinuationImpl$FrameRecord;");
+        public static final Symbol<Type> org_graalvm_continuations_IllegalMaterializedRecordException = StaticSymbols.putType(
+                        "Lorg/graalvm/continuations/IllegalMaterializedRecordException;");
+        public static final Symbol<Type> org_graalvm_continuations_IllegalContinuationStateException = StaticSymbols.putType(
+                        "Lorg/graalvm/continuations/IllegalContinuationStateException;");
 
         // Panama
         public static final Symbol<Type> jdk_internal_foreign_abi_VMStorage = StaticSymbols.putType("Ljdk/internal/foreign/abi/VMStorage;");
@@ -1122,6 +1146,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Object_long_int_int_int_int = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int, Type._int);
         public static final Symbol<Signature> Object_long_int_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int,
                         Type.java_lang_Object_array);
+        public static final Symbol<Signature> _int_Object_long_Object_long_int_int = StaticSymbols.putSignature(Type._int, Type.java_lang_Object, Type._long, Type.java_lang_Object, Type._long,
+                        Type._int, Type._int);
         public static final Symbol<Signature> Object_long_int_ContinuationScope_Continuation_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int,
                         Type.jdk_internal_vm_ContinuationScope, Type.jdk_internal_vm_Continuation, Type._int, Type._int,
                         Type.java_lang_Object_array);
@@ -1306,5 +1332,16 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Module_ClassLoader_ModuleDescriptor_URI = StaticSymbols.putSignature(Type.java_lang_Module, Type.java_lang_ClassLoader,
                         Type.java_lang_module_ModuleDescriptor, Type.java_net_URI);
         public static final Symbol<Signature> ModuleDescriptor_String_String = StaticSymbols.putSignature(Type.java_lang_module_ModuleDescriptor, Type.java_lang_String, Type.java_lang_String);
+
+        // Continuations
+        public static final Symbol<Signature> _void_FrameRecord_Object_array_long_array_Method_int_int_Object = StaticSymbols.putSignature(
+                        Type._void,
+                        Type.java_lang_Object_array,
+                        Type._long_array,
+                        Type.java_lang_reflect_Method,
+                        Type._int,
+                        Type._int,
+                        Type.java_lang_Object);
+
     }
 }

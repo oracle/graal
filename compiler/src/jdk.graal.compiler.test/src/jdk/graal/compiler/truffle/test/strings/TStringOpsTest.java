@@ -32,12 +32,12 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import org.junit.Assert;
+
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
-import org.junit.Assert;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.InstalledCode;
@@ -49,7 +49,7 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
     protected static final com.oracle.truffle.api.nodes.Node DUMMY_LOCATION = new com.oracle.truffle.api.nodes.Node() {
     };
 
-    private static final Class<?> T_STRING_OPS_CLASS;
+    protected static final Class<?> T_STRING_OPS_CLASS;
     private static final Constructor<?> T_STRING_NATIVE_POINTER_CONSTRUCTOR;
     private static final long byteBufferAddressOffset;
 

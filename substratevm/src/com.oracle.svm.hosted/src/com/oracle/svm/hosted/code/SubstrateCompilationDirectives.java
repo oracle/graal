@@ -60,6 +60,24 @@ public class SubstrateCompilationDirectives {
         }
     };
 
+    public static boolean isDeoptTarget(ResolvedJavaMethod method) {
+        if (method instanceof MultiMethod multiMethod) {
+            return multiMethod.getMultiMethodKey() == DEOPT_TARGET_METHOD;
+        }
+        return false;
+    }
+
+    public static final MultiMethod.MultiMethodKey DEOPT_TARGET_METHOD = new MultiMethod.MultiMethodKey() {
+        @Override
+        public String toString() {
+            /*
+             * This string shows up in many method and symbol names in the generated image, so it
+             * must be short in order to not increase the image size.
+             */
+            return "D";
+        }
+    };
+
     /**
      * Stores the value kinds present at a deoptimization point's (deoptimization source)
      * FrameState. This information is used to validate the deoptimization point's target
@@ -151,7 +169,7 @@ public class SubstrateCompilationDirectives {
     private final Set<AnalysisMethod> frameInformationRequired = ConcurrentHashMap.newKeySet();
 
     /**
-     * Contains a map for each {@link MultiMethod#DEOPT_TARGET_METHOD} of all encoded BCIs where a
+     * Contains a map for each {@link #DEOPT_TARGET_METHOD} of all encoded BCIs where a
      * deoptimization entrypoint must be present. Whenever this map is present for a method, then
      * the deopt target method must be emitted in the machine code. Note even if the map for a
      * method has no entries, the method still must be emitted in machine code, as this indicates
@@ -291,7 +309,7 @@ public class SubstrateCompilationDirectives {
         // all methods which are registered for deopt testing cannot be cleared
         Map<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> newDeoptEntries = new ConcurrentHashMap<>();
         for (var deoptForTestingMethod : deoptForTestingMethods) {
-            var key = deoptForTestingMethod.getMultiMethod(MultiMethod.DEOPT_TARGET_METHOD);
+            var key = deoptForTestingMethod.getMultiMethod(DEOPT_TARGET_METHOD);
             var value = deoptEntries.get(key);
             assert key != null && value != null : "Unexpected null value " + key + ", " + value;
             newDeoptEntries.put(key, value);
@@ -300,7 +318,7 @@ public class SubstrateCompilationDirectives {
         // all methods which require frame information must have a deoptimization entry
         frameInformationRequired.forEach(m -> {
             assert m.isOriginalMethod();
-            var deoptMethod = m.getMultiMethod(MultiMethod.DEOPT_TARGET_METHOD);
+            var deoptMethod = m.getMultiMethod(DEOPT_TARGET_METHOD);
             assert deoptMethod != null;
             deoptEntries.computeIfAbsent(deoptMethod, n -> new ConcurrentHashMap<>());
         });

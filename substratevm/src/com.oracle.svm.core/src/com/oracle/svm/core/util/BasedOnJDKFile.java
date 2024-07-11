@@ -53,11 +53,17 @@ public @interface BasedOnJDKFile {
      *     https://github.com/openjdk/jdk/blob/(tag or revision)/(path/to/the/source/file)(#L(line_start)-L(line_end))?
      * </pre>
      *
-     * To specify a line range, a suffix of the form {@code #L[0-9]+-L[0-9]+} might be added. Full
-     * example:
+     * To specify a line range, a suffix of the form {@code #L[0-9]+-L[0-9]+} might be added.
+     * Example:
      *
      * <pre>
      *     &#64;BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/cpu/x86/vm_version_x86.hpp#L40-L304")
+     * </pre>
+     *
+     * Single lines can use the {@code #L[0-9]} suffix. Example:
+     *
+     * <pre>
+     *     &#64;BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/cpu/x86/vm_version_x86.hpp#L40")
      * </pre>
      */
     String value();

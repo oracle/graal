@@ -25,8 +25,6 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_0;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.GETFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.GETSTATIC;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.MONITORENTER;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.MONITOREXIT;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
@@ -59,12 +57,16 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
+import com.oracle.truffle.espresso.analysis.frame.FrameAnalysis;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -100,6 +102,7 @@ import com.oracle.truffle.espresso.nodes.interop.AbstractLookupNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -456,25 +459,32 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      */
     @TruffleBoundary
     public Object invokeWithConversions(Object self, Object... args) {
-        getContext().getJNI().clearPendingException();
-        assert args.length == Signatures.parameterCount(getParsedSignature());
-        // assert !isStatic() || ((StaticObject) self).isStatic();
+        EspressoThreadLocalState tls = getLanguage().getThreadLocalState();
+        // Impossible to call from guest code, so what is above is illegal for continuations.
+        tls.blockContinuationSuspension();
+        try {
+            getContext().getJNI().clearPendingException();
+            assert args.length == Signatures.parameterCount(getParsedSignature());
+            // assert !isStatic() || ((StaticObject) self).isStatic();
 
-        final Object[] filteredArgs;
-        if (isStatic()) {
-            getDeclaringKlass().safeInitialize();
-            filteredArgs = new Object[args.length];
-            for (int i = 0; i < filteredArgs.length; ++i) {
-                filteredArgs[i] = getMeta().toGuestBoxed(args[i]);
+            final Object[] filteredArgs;
+            if (isStatic()) {
+                getDeclaringKlass().safeInitialize();
+                filteredArgs = new Object[args.length];
+                for (int i = 0; i < filteredArgs.length; ++i) {
+                    filteredArgs[i] = getMeta().toGuestBoxed(args[i]);
+                }
+            } else {
+                filteredArgs = new Object[args.length + 1];
+                filteredArgs[0] = getMeta().toGuestBoxed(self);
+                for (int i = 1; i < filteredArgs.length; ++i) {
+                    filteredArgs[i] = getMeta().toGuestBoxed(args[i - 1]);
+                }
             }
-        } else {
-            filteredArgs = new Object[args.length + 1];
-            filteredArgs[0] = getMeta().toGuestBoxed(self);
-            for (int i = 1; i < filteredArgs.length; ++i) {
-                filteredArgs[i] = getMeta().toGuestBoxed(args[i - 1]);
-            }
+            return getMeta().toHostBoxed(getCallTarget().call(filteredArgs));
+        } finally {
+            tls.unblockContinuationSuspension();
         }
-        return getMeta().toHostBoxed(getCallTarget().call(filteredArgs));
     }
 
     /**
@@ -485,17 +495,24 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      */
     @TruffleBoundary
     public Object invokeDirect(Object self, Object... args) {
-        getContext().getJNI().clearPendingException();
-        if (isStatic()) {
-            assert args.length == Signatures.parameterCount(getParsedSignature());
-            getDeclaringKlass().safeInitialize();
-            return getCallTarget().call(args);
-        } else {
-            assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature()) + (isStatic() ? 0 : 1);
-            Object[] fullArgs = new Object[args.length + 1];
-            System.arraycopy(args, 0, fullArgs, 1, args.length);
-            fullArgs[0] = self;
-            return getCallTarget().call(fullArgs);
+        EspressoThreadLocalState tls = getLanguage().getThreadLocalState();
+        // Impossible to call from guest code, so what is above is illegal for continuations.
+        tls.blockContinuationSuspension();
+        try {
+            getContext().getJNI().clearPendingException();
+            if (isStatic()) {
+                assert args.length == Signatures.parameterCount(getParsedSignature());
+                getDeclaringKlass().safeInitialize();
+                return getCallTarget().call(args);
+            } else {
+                assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature()) + (isStatic() ? 0 : 1);
+                Object[] fullArgs = new Object[args.length + 1];
+                System.arraycopy(args, 0, fullArgs, 1, args.length);
+                fullArgs[0] = self;
+                return getCallTarget().call(fullArgs);
+            }
+        } finally {
+            tls.unblockContinuationSuspension();
         }
     }
 
@@ -774,7 +791,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         ExceptionHandler[] handlers = getExceptionHandlers();
         ExceptionHandler resolved = null;
         for (ExceptionHandler toCheck : handlers) {
-            if (bci >= toCheck.getStartBCI() && bci < toCheck.getEndBCI()) {
+            if (toCheck.covers(bci)) {
                 Klass catchType = null;
                 if (!toCheck.isCatchAll()) {
                     catchType = getRuntimeConstantPool().resolvedKlassAt(getDeclaringKlass(), toCheck.catchTypeCPI());
@@ -1137,6 +1154,55 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return instance;
     }
 
+    private static final class Continuum {
+        private record ContinuumData(int bci, CallTarget continuable, EspressoFrameDescriptor frameDescriptor) {
+        }
+
+        private static final ContinuumData[] EMPTY_DATA = new ContinuumData[0];
+
+        @CompilationFinal(dimensions = 1) //
+        private volatile ContinuumData[] continuumData = EMPTY_DATA;
+
+        @ExplodeLoop
+        private ContinuumData getData(MethodVersion mv, int bci) {
+            ContinuumData[] localData = continuumData;
+            for (ContinuumData data : localData) {
+                if (data.bci() == bci) {
+                    return data;
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                localData = continuumData;
+                for (ContinuumData data : localData) {
+                    if (data.bci() == bci) {
+                        return data;
+                    }
+                }
+                int prevSize = continuumData.length;
+                localData = Arrays.copyOf(continuumData, prevSize + 1);
+                EspressoFrameDescriptor fd = FrameAnalysis.apply(mv, bci);
+                CallTarget ct = EspressoRootNode.createContinuable(mv, bci, fd).getCallTarget();
+                ContinuumData data = new ContinuumData(bci, ct, fd);
+                localData[prevSize] = data;
+                this.continuumData = localData;
+                return data;
+            }
+        }
+
+        public EspressoFrameDescriptor getFrameDescriptor(MethodVersion mv, int bci) {
+            return getData(mv, bci).frameDescriptor();
+        }
+
+        public CallTarget getContinuableCallTarget(MethodVersion mv, int bci) {
+            return getData(mv, bci).continuable();
+        }
+    }
+
+    /**
+     * Each time a method is changed via class redefinition it gets a new version, and therefore a
+     * new MethodVersion object.
+     */
     public final class MethodVersion implements MethodRef, ModifiersProvider {
         private final ObjectKlass.KlassVersion klassVersion;
         private final RuntimeConstantPool pool;
@@ -1146,15 +1212,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @CompilationFinal private CallTarget callTarget;
         @CompilationFinal private CallTarget callTargetNoSubstitutions;
+        @CompilationFinal private Continuum continuum;
 
         @CompilationFinal private int vtableIndex = -1;
         @CompilationFinal private int itableIndex = -1;
-
-        // Whether we need to use an additional frame slot for monitor unlock on kill.
-        @CompilationFinal private byte usesMonitors = -1;
-
-        @CompilationFinal(dimensions = 1) //
-        private volatile byte[] code = null;
 
         @CompilationFinal private int refKind;
 
@@ -1163,6 +1224,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         // Multiple maximally-specific interface methods. Fail on call.
         @CompilationFinal private boolean poisonPill;
+
+        @CompilationFinal private LivenessAnalysis livenessAnalysis;
 
         private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, LinkedMethod linkedMethod, boolean poisonPill,
                         CodeAttribute codeAttribute) {
@@ -1228,19 +1291,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         public LinkedMethod getLinkedMethod() {
             return linkedMethod;
-        }
-
-        public byte[] getCode() {
-            if (code == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                synchronized (this) {
-                    if (code == null) {
-                        byte[] originalCode = getCodeAttribute().getOriginalCode();
-                        code = Arrays.copyOf(originalCode, originalCode.length);
-                    }
-                }
-            }
-            return code;
         }
 
         @Idempotent
@@ -1324,6 +1374,38 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 resolveCallTarget();
             }
             return callTarget;
+        }
+
+        @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
+                        justification = "Publication uses a release fence, assuming data dependency ordering on the reader side.")
+        private Continuum getContinuum() {
+            if (continuum == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                synchronized (this) {
+                    if (continuum == null) {
+                        Continuum c = new Continuum();
+                        VarHandle.releaseFence();
+                        continuum = c;
+                    }
+                }
+            }
+            return continuum;
+        }
+
+        /**
+         * Obtains a {@link com.oracle.truffle.espresso.meta.Meta.ContinuumSupport continuation}
+         * call target that can be used for rewinding a continuation.
+         */
+        public CallTarget getContinuableCallTarget(int bci) {
+            return getContinuum().getContinuableCallTarget(this, bci);
+        }
+
+        /**
+         * Obtains a {@link EspressoFrameDescriptor} describing the shape of the Espresso execution
+         * frame at this BCI.
+         */
+        public EspressoFrameDescriptor getFrameDescriptor(int bci) {
+            return getContinuum().getFrameDescriptor(this, bci);
         }
 
         @TruffleBoundary
@@ -1417,7 +1499,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public int getCodeSize() {
-            return getCode() != null ? getCode().length : 0;
+            return getOriginalCode() != null ? getOriginalCode().length : 0;
         }
 
         public LineNumberTableAttribute getLineNumberTableAttribute() {
@@ -1581,7 +1663,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @Override
         public long getLastBCI() {
             int bci = 0;
-            BytecodeStream bs = new BytecodeStream(getCode());
+            BytecodeStream bs = new BytecodeStream(getOriginalCode());
             int end = bs.endBCI();
 
             while (bci < end) {
@@ -1601,27 +1683,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public boolean usesMonitors() {
-            if (usesMonitors != -1) {
-                return usesMonitors != 0;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (isSynchronized()) {
-                    return (usesMonitors = 1) != 0;
-                }
-                if (codeAttribute != null) {
-                    BytecodeStream bs = new BytecodeStream(codeAttribute.getOriginalCode());
-                    int bci = 0;
-                    while (bci < bs.endBCI()) {
-                        int opcode = bs.currentBC(bci);
-                        if (opcode == MONITORENTER || opcode == MONITOREXIT) {
-                            return (usesMonitors = 1) != 0;
-                        }
-                        bci = bs.nextBCI(bci);
-                    }
-                    return (usesMonitors = 0) != 0;
-                }
-                return false;
-            }
+            // Whether we need to use an additional frame slot for monitor unlock on kill.
+            return isSynchronized() || codeAttribute != null && codeAttribute.usesMonitors();
+        }
+
+        public boolean hasJsr() {
+            return codeAttribute != null && codeAttribute.hasJsr();
         }
 
         public int getRefKind() {
@@ -1650,6 +1717,22 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 }
                 checkedExceptions = tmpchecked;
             }
+        }
+
+        @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
+                        justification = "fields of LivenessAnalysis are final.")
+        public LivenessAnalysis getLivenessAnalysis() {
+            CompilerAsserts.neverPartOfCompilation();
+            LivenessAnalysis result = this.livenessAnalysis;
+            if (result == null) {
+                synchronized (this) {
+                    result = this.livenessAnalysis;
+                    if (result == null) {
+                        this.livenessAnalysis = result = LivenessAnalysis.analyze(this);
+                    }
+                }
+            }
+            return result;
         }
 
         public ObjectKlass.KlassVersion getKlassVersion() {

@@ -560,6 +560,9 @@ def base_jdk():
 def base_jdk_version():
     return base_jdk().javaCompliance.value
 
+def get_jdk_version_for_profiles():
+    jdk_version = mx.get_jdk().javaCompliance.value
+    return '_LATEST' if jdk_version > 21 else jdk_version
 
 def _probe_jvmci_info(jdk, attribute_name):
     if not hasattr(jdk, '.enables_jvmci_by_default'):
@@ -830,6 +833,8 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
                 if default_to_jvmci == 'lib':
                     vm_options.append('-XX:+UseJVMCINativeLibrary')
                 vm_options.extend(['-XX:-UnlockExperimentalVMOptions'])
+                if 'jdk.graal.compiler' in non_synthetic_modules:
+                    vm_options.extend(['--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'])
             else:
                 # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
                 # This avoids unexpected issues with using the out-of-date Graal compiler in

@@ -45,19 +45,19 @@ public class JfrGlobalMemory {
     private static final int PROMOTION_RETRY_COUNT = 100;
 
     private final JfrBufferList buffers;
-    private long bufferSize;
+    private UnsignedWord bufferSize;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrGlobalMemory() {
         this.buffers = new JfrBufferList();
     }
 
-    public void initialize(long globalBufferSize, long globalBufferCount) {
+    public void initialize(UnsignedWord globalBufferSize, long globalBufferCount) {
         this.bufferSize = globalBufferSize;
 
         /* Allocate all buffers eagerly. */
         for (int i = 0; i < globalBufferCount; i++) {
-            JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(bufferSize), JfrBufferType.GLOBAL_MEMORY);
+            JfrBuffer buffer = JfrBufferAccess.allocate(bufferSize, JfrBufferType.GLOBAL_MEMORY);
             if (buffer.isNull()) {
                 throw new OutOfMemoryError("Could not allocate JFR buffer.");
             }
@@ -152,7 +152,7 @@ public class JfrGlobalMemory {
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private JfrBufferNode tryAcquirePromotionBuffer(UnsignedWord size) {
-        assert size.belowOrEqual(WordFactory.unsigned(bufferSize));
+        assert size.belowOrEqual(bufferSize);
         for (int retry = 0; retry < PROMOTION_RETRY_COUNT; retry++) {
             JfrBufferNode node = buffers.getHead();
             while (node.isNonNull()) {

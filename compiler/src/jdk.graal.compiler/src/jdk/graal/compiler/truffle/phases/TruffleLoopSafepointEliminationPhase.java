@@ -31,7 +31,7 @@ import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 
@@ -53,7 +53,7 @@ public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEli
     }
 
     @Override
-    protected void onSafepointDisabledLoopBegin(LoopEx loop) {
+    protected void onSafepointDisabledLoopBegin(Loop loop) {
         for (Node node : loop.whole().nodes()) {
             if (node instanceof CommitAllocationNode || node instanceof AbstractNewObjectNode) {
                 // we can disable truffle safepoints if there are no allocations

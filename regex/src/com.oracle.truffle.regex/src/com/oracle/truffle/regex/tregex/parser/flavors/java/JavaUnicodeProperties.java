@@ -55,7 +55,8 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 
 final class JavaUnicodeProperties {
 
-    private static final JavaUnicodeProperties[] CACHE = new JavaUnicodeProperties[(RegexOptions.JAVA_JDK_VERSION_MAX - RegexOptions.JAVA_JDK_VERSION_MIN) + 1];
+    private static final int N_UNICODE_VERSIONS = 2;
+    private static final JavaUnicodeProperties[] CACHE = new JavaUnicodeProperties[N_UNICODE_VERSIONS];
 
     // 0x000A, LINE FEED (LF), <LF>
     // 0x000D, CARRIAGE RETURN (CR), <CR>
@@ -234,27 +235,34 @@ final class JavaUnicodeProperties {
 
     static JavaUnicodeProperties create(RegexOptions options) {
         int jdkVersion = options.getJavaJDKVersion();
-        int cacheIndex = jdkVersion - RegexOptions.JAVA_JDK_VERSION_MIN;
+        UnicodePropertyData unicodePropertyData = getUnicodePropertyData(jdkVersion);
+        int cacheIndex = unicodeVersionToCacheIndex(unicodePropertyData);
+        assert cacheIndex < CACHE.length;
         JavaUnicodeProperties cached = CACHE[cacheIndex];
         if (cached != null) {
             return cached;
         }
-        UnicodeProperties unicode = new UnicodeProperties(getUnicodePropertyData(jdkVersion), UnicodeProperties.CASE_INSENSITIVE | UnicodeProperties.BLOCKS | UnicodeProperties.OTHER_PROPERTIES);
+        UnicodeProperties unicode = new UnicodeProperties(unicodePropertyData, UnicodeProperties.CASE_INSENSITIVE | UnicodeProperties.BLOCKS | UnicodeProperties.OTHER_PROPERTIES);
         JavaUnicodeProperties ret = new JavaUnicodeProperties(unicode);
         CACHE[cacheIndex] = ret;
         return ret;
     }
 
-    private static UnicodePropertyData getUnicodePropertyData(int jdkVersion) {
-        switch (jdkVersion) {
-            case 21:
-                return UnicodePropertyDataVersion.UNICODE_15_0_0;
-            case 22:
-            case 23:
-                return UnicodePropertyDataVersion.UNICODE_15_1_0;
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
+    private static int unicodeVersionToCacheIndex(UnicodePropertyData propertyDataVersion) {
+        if (propertyDataVersion == UnicodePropertyDataVersion.UNICODE_15_0_0) {
+            return 0;
+        } else if (propertyDataVersion == UnicodePropertyDataVersion.UNICODE_15_1_0) {
+            return 1;
+        } else {
+            throw CompilerDirectives.shouldNotReachHere();
         }
+    }
+
+    private static UnicodePropertyData getUnicodePropertyData(int jdkVersion) {
+        if (jdkVersion == 21) {
+            return UnicodePropertyDataVersion.UNICODE_15_0_0;
+        }
+        return UnicodePropertyDataVersion.UNICODE_15_1_0;
     }
 
     private CodePointSet unionOfProperties(String... properties) {

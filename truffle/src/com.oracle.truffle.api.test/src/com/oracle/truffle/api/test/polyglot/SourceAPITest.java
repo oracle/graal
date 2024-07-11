@@ -223,9 +223,7 @@ public class SourceAPITest {
 
         assertEquals(BinarySourcesLanguage.MIME, source.getMimeType());
         assertEquals(BinarySourcesLanguage.ID, source.getLanguage());
-        if (TruffleTestAssumptions.isNoClassLoaderEncapsulation()) {
-            assertSame(sequence, source.getBytes());
-        }
+        assertSame(sequence, source.getBytes());
         assertEquals("Unnamed", source.getName());
         assertNull(source.getURL());
         assertEquals("truffle:9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a/Unnamed", source.getURI().toString());
@@ -1015,7 +1013,6 @@ public class SourceAPITest {
     @Test
     @SuppressWarnings("rawtypes")
     public void testNoContentSource() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         AbstractPolyglotImpl polyglot = (AbstractPolyglotImpl) ReflectionUtils.invokeStatic(Engine.class, "getImpl");
         com.oracle.truffle.api.source.Source truffleSource = com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "x", "name").content(
                         com.oracle.truffle.api.source.Source.CONTENT_NONE).build();

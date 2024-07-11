@@ -31,7 +31,7 @@ import java.util.PriorityQueue;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.CodeEmissionOrder;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.options.OptionValues;
 
 /**
@@ -116,14 +116,14 @@ public class DefaultCodeEmissionOrder<T extends BasicBlock<T>> implements CodeEm
             }
 
             if (block.isLoopEnd()) {
-                Loop<T> blockLoop = block.getLoop();
+                CFGLoop<T> blockLoop = block.getLoop();
 
                 for (int i = 0; i < block.getSuccessorCount(); i++) {
                     T succ = block.getSuccessorAt(i);
                     if (order.isScheduled(succ)) {
                         continue;
                     }
-                    Loop<T> loop = succ.getLoop();
+                    CFGLoop<T> loop = succ.getLoop();
                     if (loop == blockLoop && succ == loop.getHeader() && skipLoopHeader(succ)) {
                         // This is the only loop end of a skipped loop header.
                         // Add the header immediately afterwards.

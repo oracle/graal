@@ -25,7 +25,6 @@
 package jdk.graal.compiler.truffle.test;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
@@ -68,11 +67,7 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
         // Run in subprocess to disable assertions in FrameWithoutBoxing.
         // Assertion checking requires additional checks in the frame descriptor for handling of
         // static slots.
-        SubprocessTestUtils.executeInSubprocessWithAssertionsDisabled(FrameHostReadsTest.class, () -> {
-            compileAndCheck();
-        },
-                        true,
-                        List.of(FrameWithoutBoxing.class));
+        SubprocessTestUtils.newBuilder(FrameHostReadsTest.class, this::compileAndCheck).disableAssertions(FrameWithoutBoxing.class).run();
     }
 
     private void compileAndCheck() {

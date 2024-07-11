@@ -35,7 +35,7 @@ public abstract class DerivedInductionVariable extends InductionVariable {
 
     protected final InductionVariable base;
 
-    public DerivedInductionVariable(LoopEx loop, InductionVariable base) {
+    public DerivedInductionVariable(Loop loop, InductionVariable base) {
         super(loop);
         this.base = base;
     }

@@ -68,6 +68,8 @@ import jdk.vm.ci.meta.Value;
  * This intrinsic calculates the code range and codepoint length of strings in various encodings.
  * The code range of a string is a flag that coarsely describes upper and lower bounds of all
  * codepoints contained in a string, or indicates whether a string was encoded correctly.
+ *
+ * @see CalcStringAttributesEncoding
  */
 @Opcode("AMD64_CALC_STRING_ATTRIBUTES")
 public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
@@ -76,10 +78,6 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     private static final Register REG_ARRAY = rsi;
     private static final Register REG_OFFSET = rcx;
     private static final Register REG_LENGTH = rdx;
-
-    // NOTE:
-    // The following fields must be kept in sync with com.oracle.truffle.api.strings.TSCodeRange,
-    // TStringOpsCalcStringAttributesReturnValuesInSyncTest verifies this.
 
     private final CalcStringAttributesEncoding encoding;
 
@@ -528,52 +526,11 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     };
 
     /**
-     * Copyright (c) 2008-2010 Bjoern Hoehrmann <bjoern@hoehrmann.de>
-     *
-     * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-     * and associated documentation files (the "Software"), to deal in the Software without
-     * restriction, including without limitation the rights to use, copy, modify, merge, publish,
-     * distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
-     * Software is furnished to do so, subject to the following conditions:
-     *
-     * The above copyright notice and this permission notice shall be included in all copies or
-     * substantial portions of the Software.
-     *
-     * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-     * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-     * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-     * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-     * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-     *
-     * See http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
-     */
-    private static final byte[] UTF_8_STATE_MACHINE = {
-                    // The first part of the table maps bytes to character classes
-                    // to reduce the size of the transition table and create bitmasks.
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-                    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-                    8, 8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                    10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 11, 6, 6, 6, 5, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-
-                    // The second part is a transition table that maps a combination
-                    // of a state of the automaton and a character class to a state.
-                    0, 12, 24, 36, 60, 96, 84, 12, 12, 12, 48, 72, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-                    12, 0, 12, 12, 12, 12, 12, 0, 12, 0, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12, 12,
-                    12, 12, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 12, 12, 24, 12, 12,
-                    12, 12, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12, 12, 36, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12,
-                    12, 36, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-    };
-
-    /**
      * Based on the paper <a href="https://arxiv.org/abs/2010.03090">Validating UTF-8 In Less Than
      * One Instruction Per Byte</a> by John Keiser and Daniel Lemire, and the author's
      * implementation in <a href=
      * "https://github.com/simdjson/simdjson/blob/d996ffc49423cee75922c30432323288c34f3c04/src/generic/stage1/utf8_lookup4_algorithm.h">
-     * the simdjson library</a>.
+     * the simdjson library</a>. Follow-up changes made sure this is compatible with simdjson 3.6.4.
      *
      * @see <a href="https://github.com/simdjson/simdjson">https://github.com/simdjson/simdjson</a>
      * @see <a href="https://lemire.me/blog/2020/10/20/ridiculously-fast-unicode-utf-8-validation/">
@@ -857,7 +814,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             // without the actual codepoint computation.
             Register state = asRegister(temp[1]);
             Register type = asRegister(temp[2]);
-            asm.leaq(len, getMaskOnce(crb, UTF_8_STATE_MACHINE));
+            asm.leaq(len, getMaskOnce(crb, LIRGeneratorTool.CalcStringAttributesEncoding.UTF_8_STATE_MACHINE));
             asm.xorq(state, state);
             asm.align(preferredLoopAlignment(crb));
             asm.bind(labelScalarMultiByteLoop);

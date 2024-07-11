@@ -77,23 +77,15 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.test.examples.TargetMappings;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
 /**
  * Tests class for {@link Context#asValue(Object)}.
  */
 public class ValueHostConversionTest extends AbstractPolyglotTest {
-
-    @BeforeClass
-    public static void beforeClass() {
-        // TruffleObject
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
-    }
 
     @Before
     public void setUp() {

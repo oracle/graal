@@ -26,7 +26,6 @@ package jdk.graal.compiler.truffle.test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.polyglot.Context;
@@ -67,7 +66,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
     private static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
 
-    @Rule public TestRule timeout = SubprocessTestUtils.disableForParentProcess(GraalTest.createTimeout(30, TimeUnit.SECONDS));
+    @Rule public TestRule timeout = SubprocessTestUtils.disableForParentProcess(GraalTest.createTimeout(60, TimeUnit.SECONDS));
 
     private int osrThreshold;
 
@@ -473,11 +472,11 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     @WithSubprocess
     public void testFrameTransferWithStaticAccessesWithAssertionsDisabled() throws Throwable {
         // Execute in a subprocess to disable assertion checking for frames.
-        SubprocessTestUtils.executeInSubprocessWithAssertionsDisabled(BytecodeOSRNodeTest.class,
+        SubprocessTestUtils.newBuilder(BytecodeOSRNodeTest.class,
                         () -> {
                             Assert.assertFalse(FrameAssertionsChecker.areFrameAssertionsEnabled());
                             frameTransferWithStaticAccesses();
-                        }, true, List.of(FrameWithoutBoxing.class));
+                        }).disableAssertions(FrameWithoutBoxing.class).run();
     }
 
     public static void frameTransferWithStaticAccesses() {
@@ -548,11 +547,11 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     @WithSubprocess
     public void testFrameTransferWithUninitializedStaticSlotsWithoutAssertions() throws Throwable {
         // Execute in a subprocess to disable assertion checking for frames.
-        SubprocessTestUtils.executeInSubprocessWithAssertionsDisabled(BytecodeOSRNodeTest.class,
+        SubprocessTestUtils.newBuilder(BytecodeOSRNodeTest.class,
                         () -> {
                             Assert.assertFalse(FrameAssertionsChecker.areFrameAssertionsEnabled());
                             frameTransferWithUninitializedStaticSlots();
-                        }, true, List.of(FrameWithoutBoxing.class));
+                        }).disableAssertions(FrameWithoutBoxing.class).run();
     }
 
     public static void frameTransferWithUninitializedStaticSlots() {

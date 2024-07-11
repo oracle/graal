@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -33,6 +34,7 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.PointerUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -50,17 +52,14 @@ import jdk.graal.compiler.word.Word;
  * Most allocation within a AlignedHeapChunk is via fast-path allocation snippets, but a slow-path
  * allocation method is available.
  * <p>
- * Objects in a AlignedHeapChunk have to be promoted by copying from their current HeapChunk to a
- * destination HeapChunk.
- * <p>
- * An AlignedHeapChunk is laid out:
+ * An AlignedHeapChunk is laid out as follows:
  *
  * <pre>
- * +===============+-------+--------+----------------------+
- * | AlignedHeader | Card  | First  | Object ...           |
- * | Fields        | Table | Object |                      |
- * |               |       | Table  |                      |
- * +===============+-------+--------+----------------------+
+ * +===============+-------+--------+-----------------+-----------------+
+ * | AlignedHeader | Card  | First  | Initial Object  | Object ...      |
+ * | Fields        | Table | Object | Move Info (only |                 |
+ * |               |       | Table  | Compacting GC)  |                 |
+ * +===============+-------+--------+-----------------+-----------------+
  * </pre>
  *
  * The size of both the CardTable and the FirstObjectTable depends on the used {@link RememberedSet}
@@ -78,15 +77,22 @@ public final class AlignedHeapChunk {
      */
     @RawStructure
     public interface AlignedHeader extends HeapChunk.Header<AlignedHeader> {
+        @RawField
+        boolean getShouldSweepInsteadOfCompact();
+
+        @RawField
+        void setShouldSweepInsteadOfCompact(boolean value);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initialize(AlignedHeader chunk, UnsignedWord chunkSize) {
+        assert chunkSize.equal(HeapParameters.getAlignedHeapChunkSize()) : "expecting all aligned chunks to be the same size";
         HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), chunkSize);
+        chunk.setShouldSweepInsteadOfCompact(false);
     }
 
     public static void reset(AlignedHeader chunk) {
-        HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getEndOffset(chunk));
+        initialize(chunk, HeapChunk.getEndOffset(chunk));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -96,6 +102,10 @@ public final class AlignedHeapChunk {
 
     public static Pointer getObjectsEnd(AlignedHeader that) {
         return HeapChunk.getEndPointer(that);
+    }
+
+    public static boolean isEmpty(AlignedHeader that) {
+        return HeapChunk.getTopOffset(that).equal(getObjectsStartOffset());
     }
 
     /** Allocate uninitialized memory within this AlignedHeapChunk. */
@@ -145,5 +155,21 @@ public final class AlignedHeapChunk {
     @Fold
     public static UnsignedWord getObjectsStartOffset() {
         return RememberedSet.get().getHeaderSizeOfAlignedChunk();
+    }
+
+    @Fold
+    public static UnsignedWord getUsableSizeForObjects() {
+        return HeapParameters.getAlignedHeapChunkSize().subtract(getObjectsStartOffset());
+    }
+
+    public interface Visitor {
+        /**
+         * Visit an {@link AlignedHeapChunk}.
+         *
+         * @param chunk The {@link AlignedHeapChunk} to be visited.
+         * @return {@code true} if visiting should continue, {@code false} if visiting should stop.
+         */
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting the heap.")
+        boolean visitChunk(AlignedHeapChunk.AlignedHeader chunk);
     }
 }

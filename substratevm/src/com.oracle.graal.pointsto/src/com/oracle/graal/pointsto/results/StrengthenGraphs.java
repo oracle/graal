@@ -145,6 +145,26 @@ public abstract class StrengthenGraphs {
         public static final OptionKey<Boolean> StrengthenGraphWithConstants = new OptionKey<>(true);
     }
 
+    /**
+     * The hashCode implementation of {@link JavaMethodProfile} is bad because it does not take the
+     * actual methods into account, only the number of methods in the profile. This wrapper class
+     * provides a proper hashCode.
+     */
+    record CachedJavaMethodProfile(JavaMethodProfile profile, int hash) {
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof CachedJavaMethodProfile other) {
+                return profile.equals(other.profile);
+            }
+            return false;
+        }
+    }
+
     protected final BigBang bb;
     /**
      * The universe used to convert analysis metadata to hosted metadata, or {@code null} if no
@@ -153,7 +173,7 @@ public abstract class StrengthenGraphs {
     protected final Universe converter;
 
     private final Map<JavaTypeProfile, JavaTypeProfile> cachedTypeProfiles = new ConcurrentHashMap<>();
-    private final Map<JavaMethodProfile, JavaMethodProfile> cachedMethodProfiles = new ConcurrentHashMap<>();
+    private final Map<CachedJavaMethodProfile, CachedJavaMethodProfile> cachedMethodProfiles = new ConcurrentHashMap<>();
 
     /* Cached option values to avoid repeated option lookup. */
     private final int analysisSizeCutoff;
@@ -172,10 +192,28 @@ public abstract class StrengthenGraphs {
         if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(bb.getOptions())) {
             beforeCounters = new StrengthenGraphsCounters(ImageBuildStatistics.CheckCountLocation.BEFORE_STRENGTHEN_GRAPHS);
             afterCounters = new StrengthenGraphsCounters(ImageBuildStatistics.CheckCountLocation.AFTER_STRENGTHEN_GRAPHS);
+            reportNeverNullInstanceFields(bb);
         } else {
             beforeCounters = null;
             afterCounters = null;
         }
+    }
+
+    private static void reportNeverNullInstanceFields(BigBang bb) {
+        int neverNull = 0;
+        int canBeNull = 0;
+        for (var field : bb.getUniverse().getFields()) {
+            if (!field.isStatic() && field.isReachable() && field.getType().getStorageKind() == JavaKind.Object) {
+                if (field.getSinkFlow().getState().canBeNull()) {
+                    canBeNull++;
+                } else {
+                    neverNull++;
+                }
+            }
+        }
+        ImageBuildStatistics imageBuildStats = ImageBuildStatistics.counters();
+        imageBuildStats.insert("instancefield_neverNull").addAndGet(neverNull);
+        imageBuildStats.insert("instancefield_canBeNull").addAndGet(canBeNull);
     }
 
     @SuppressWarnings("try")
@@ -361,23 +399,33 @@ public abstract class StrengthenGraphs {
                 Object newStampOrConstant = strengthenStampFromTypeFlow(node, parameterFlows[node.index()], anchorPoint, tool);
                 updateStampUsingPiNode(node, newStampOrConstant, anchorPoint, tool);
 
-            } else if (n instanceof LoadFieldNode || n instanceof LoadIndexedNode) {
-                FixedWithNextNode node = (FixedWithNextNode) n;
-                Object newStampOrConstant = strengthenStampFromTypeFlow(node, getNodeFlow(node), node, tool);
+            } else if (n instanceof LoadFieldNode node) {
                 /*
-                 * Even though the memory load will be a floating node later, we can update the
-                 * stamp directly because the type information maintained by the static analysis
-                 * about memory is not flow-sensitive and not context-sensitive. If we ever revive a
-                 * context-sensitive analysis, we will need to change this. But for now, we are
-                 * fine.
+                 * First step: it is beneficial to strengthen the stamp of the LoadFieldNode because
+                 * then there is no artificial anchor after which the more precise type is
+                 * available. However, the memory load will be a floating node later, so we can only
+                 * update the stamp directly to the stamp that is correct for the whole method and
+                 * all inlined methods.
                  */
-                if (newStampOrConstant instanceof JavaConstant) {
-                    ConstantNode replacement = ConstantNode.forConstant((JavaConstant) newStampOrConstant, bb.getMetaAccess(), graph);
+                Object fieldNewStampOrConstant = strengthenStampFromTypeFlow(node, ((AnalysisField) node.field()).getSinkFlow(), node, tool);
+                if (fieldNewStampOrConstant instanceof JavaConstant) {
+                    ConstantNode replacement = ConstantNode.forConstant((JavaConstant) fieldNewStampOrConstant, bb.getMetaAccess(), graph);
                     graph.replaceFixedWithFloating(node, replacement);
                     tool.addToWorkList(replacement);
                 } else {
-                    updateStampInPlace(node, (Stamp) newStampOrConstant, tool);
+                    updateStampInPlace(node, (Stamp) fieldNewStampOrConstant, tool);
+
+                    /*
+                     * Second step: strengthen using context-sensitive analysis results, which
+                     * requires an anchored PiNode.
+                     */
+                    Object nodeNewStampOrConstant = strengthenStampFromTypeFlow(node, getNodeFlow(node), node, tool);
+                    updateStampUsingPiNode(node, nodeNewStampOrConstant, node, tool);
                 }
+
+            } else if (n instanceof LoadIndexedNode node) {
+                Object newStampOrConstant = strengthenStampFromTypeFlow(node, getNodeFlow(node), node, tool);
+                updateStampUsingPiNode(node, newStampOrConstant, node, tool);
 
             } else if (n instanceof Invoke) {
                 Invoke invoke = (Invoke) n;
@@ -982,19 +1030,21 @@ public abstract class StrengthenGraphs {
         }
         var created = createMethodProfile(callees);
         var existing = cachedMethodProfiles.putIfAbsent(created, created);
-        return existing != null ? existing : created;
+        return existing != null ? existing.profile : created.profile;
     }
 
-    private JavaMethodProfile createMethodProfile(Collection<AnalysisMethod> callees) {
+    private CachedJavaMethodProfile createMethodProfile(Collection<AnalysisMethod> callees) {
         JavaMethodProfile.ProfiledMethod[] pitems = new JavaMethodProfile.ProfiledMethod[callees.size()];
+        int hashCode = 0;
         double probability = 1d / pitems.length;
 
         int idx = 0;
         for (AnalysisMethod aMethod : callees) {
             ResolvedJavaMethod convertedMethod = converter == null ? aMethod : converter.lookup(aMethod);
             pitems[idx++] = new JavaMethodProfile.ProfiledMethod(convertedMethod, probability);
+            hashCode = hashCode * 31 + convertedMethod.hashCode();
         }
-        return new JavaMethodProfile(0, pitems);
+        return new CachedJavaMethodProfile(new JavaMethodProfile(0, pitems), hashCode);
     }
 }
 

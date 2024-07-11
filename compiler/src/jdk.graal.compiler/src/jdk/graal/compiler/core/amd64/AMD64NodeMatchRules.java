@@ -69,6 +69,7 @@ import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.amd64.AMD64BinaryConsumer;
+import jdk.graal.compiler.lir.amd64.AMD64ControlFlow;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64UnaryConsumer;
@@ -373,6 +374,21 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         }
     }
 
+    @MatchRule("(If (IntegerTest value Constant=a))")
+    public ComplexMatchResult testBitAndBranch(IfNode root, ValueNode value, ConstantNode a) {
+        long constant = a.asJavaConstant().asLong();
+        if (Long.bitCount(constant) == 1) {
+            return builder -> {
+                LabelRef trueDestination = getLIRBlock(root.trueSuccessor());
+                LabelRef falseDestination = getLIRBlock(root.falseSuccessor());
+                gen.append(new AMD64ControlFlow.BitTestAndBranchOp(trueDestination, falseDestination, gen.asAllocatable(operand(value)),
+                                root.getTrueSuccessorProbability(), Long.numberOfTrailingZeros(constant)));
+                return null;
+            };
+        }
+        return null;
+    }
+
     @MatchRule("(If (IntegerTest Read=access value))")
     @MatchRule("(If (IntegerTest FloatingRead=access value))")
     public ComplexMatchResult integerTestBranchMemory(IfNode root, LIRLowerableAccess access, ValueNode value) {
@@ -412,7 +428,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 Value expectedValue = operand(cas.getExpectedValue());
                 Value newValue = operand(cas.getNewValue());
                 AMD64AddressValue address = (AMD64AddressValue) operand(cas.getAddress());
-                getLIRGeneratorTool().emitCompareAndSwapBranch(kind, address, expectedValue, newValue, Condition.EQ, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
+                getLIRGeneratorTool().emitCompareAndSwapBranch(false, kind, address, expectedValue, newValue, Condition.EQ, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
                 return null;
             };
         }
@@ -445,7 +461,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 Value newValue = operand(cas.getNewValue());
                 AMD64AddressValue address = (AMD64AddressValue) operand(cas.getAddress());
                 Condition condition = successIsTrue ? Condition.EQ : Condition.NE;
-                getLIRGeneratorTool().emitCompareAndSwapBranch(kind, address, expectedValue, newValue, condition, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
+                getLIRGeneratorTool().emitCompareAndSwapBranch(true, kind, address, expectedValue, newValue, condition, trueLabel, falseLabel, trueLabelProbability, cas.getBarrierType());
                 return null;
             };
         }

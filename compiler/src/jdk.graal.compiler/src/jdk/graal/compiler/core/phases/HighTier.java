@@ -87,7 +87,10 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         LoopPolicies loopPolicies = createLoopPolicies(options);
-        appendPhase(new LoopFullUnrollPhase(canonicalizer, loopPolicies));
+
+        if (GraalOptions.FullUnroll.getValue(options)) {
+            appendPhase(new LoopFullUnrollPhase(canonicalizer, loopPolicies));
+        }
 
         if (GraalOptions.LoopPeeling.getValue(options)) {
             appendPhase(new LoopPeelingPhase(loopPolicies, canonicalizer));

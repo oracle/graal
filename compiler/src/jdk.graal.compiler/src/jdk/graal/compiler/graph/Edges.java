@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,9 +33,7 @@ import java.util.Iterator;
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.FieldsScanner;
 import jdk.graal.compiler.graph.NodeClass.EdgeInfo;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
-
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Describes {@link Node} fields representing the set of inputs for the node or the set of the
@@ -43,7 +41,7 @@ import sun.misc.Unsafe;
  */
 public abstract class Edges extends Fields {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /**
      * Constants denoting whether a set of edges are inputs or successors.
@@ -69,12 +67,12 @@ public abstract class Edges extends Fields {
     }
 
     public static Node getNodeUnsafe(Node node, long offset) {
-        return (Node) UNSAFE.getObject(node, offset);
+        return (Node) UNSAFE.getReference(node, offset);
     }
 
     @SuppressWarnings("unchecked")
     public static NodeList<Node> getNodeListUnsafe(Node node, long offset) {
-        return (NodeList<Node>) UNSAFE.getObject(node, offset);
+        return (NodeList<Node>) UNSAFE.getReference(node, offset);
     }
 
     public void putNodeUnsafeChecked(Node node, long offset, Node value, int index) {
@@ -83,11 +81,11 @@ public abstract class Edges extends Fields {
     }
 
     public static void putNodeUnsafe(Node node, long offset, Node value) {
-        UNSAFE.putObject(node, offset, value);
+        UNSAFE.putReference(node, offset, value);
     }
 
     public static void putNodeListUnsafe(Node node, long offset, NodeList<?> value) {
-        UNSAFE.putObject(node, offset, value);
+        UNSAFE.putReference(node, offset, value);
     }
 
     /**

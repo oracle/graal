@@ -34,7 +34,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -76,11 +75,11 @@ public class AMD64MathCopySignOp extends AMD64LIRInstruction {
         if (kind == AMD64Kind.SINGLE) {
             masm.movl(scratchGPReg, 0x7FFFFFFF);
             masm.movdl(scratchXMMReg, scratchGPReg);
-            VexRVMIOp.VPTERNLOGD.emit(masm, AVXSize.XMM, resultReg, signReg, scratchXMMReg, 0xE4);
+            VexRVMIOp.EVPTERNLOGD.emit(masm, AVXSize.XMM, resultReg, signReg, scratchXMMReg, 0xE4);
         } else if (kind == AMD64Kind.DOUBLE) {
             masm.movq(scratchGPReg, 0x7FFFFFFFFFFFFFFFL);
             masm.movdq(scratchXMMReg, scratchGPReg);
-            VexRVMIOp.VPTERNLOGQ.emit(masm, AVXSize.XMM, resultReg, signReg, scratchXMMReg, 0xE4);
+            VexRVMIOp.EVPTERNLOGQ.emit(masm, AVXSize.XMM, resultReg, signReg, scratchXMMReg, 0xE4);
         } else {
             throw GraalError.shouldNotReachHere("unsupported kind for Math.copySign"); // ExcludeFromJacocoGeneratedReport
         }

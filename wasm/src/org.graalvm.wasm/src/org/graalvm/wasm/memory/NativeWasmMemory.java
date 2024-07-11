@@ -244,9 +244,9 @@ class NativeWasmMemory extends WasmMemory {
 
     @Override
     public Vector128 load_i128(Node node, long address) {
-        validateAddress(node, address, 16);
-        byte[] bytes = new byte[16];
-        unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, 16);
+        validateAddress(node, address, Vector128.BYTES);
+        byte[] bytes = new byte[Vector128.BYTES];
+        unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, Vector128.BYTES);
         return new Vector128(bytes);
     }
 
@@ -899,29 +899,29 @@ class NativeWasmMemory extends WasmMemory {
         if (!this.isShared()) {
             return 0;
         }
-        return invokeNotifyCallback(address, count);
+        return invokeNotifyCallback(node, address, count);
     }
 
     @Override
     @TruffleBoundary
     public int atomic_wait32(Node node, long address, int expected, long timeout) {
-        validateAtomicAddress(node, address, 4);
+        validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
-        return invokeWaitCallback(address, expected, timeout, false);
+        return invokeWaitCallback(node, address, expected, timeout, false);
     }
 
     @Override
     @TruffleBoundary
     public int atomic_wait64(Node node, long address, long expected, long timeout) {
-        validateAtomicAddress(node, address, 8);
+        validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
-        return invokeWaitCallback(address, expected, timeout, true);
+        return invokeWaitCallback(node, address, expected, timeout, true);
     }
 
     @Override

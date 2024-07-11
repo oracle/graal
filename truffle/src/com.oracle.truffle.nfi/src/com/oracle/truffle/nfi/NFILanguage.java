@@ -42,14 +42,17 @@ package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.NativeSource.Content;
 import com.oracle.truffle.nfi.NativeSource.ParsedLibrary;
 import com.oracle.truffle.nfi.NativeSource.ParsedSignature;
+import com.oracle.truffle.nfi.backend.spi.NFIState;
 
 @TruffleLanguage.Registration(id = "nfi", name = "TruffleNFI", version = "0.1", characterMimeTypes = NFILanguage.MIME_TYPE, internal = true, contextPolicy = ContextPolicy.SHARED)
 public class NFILanguage extends TruffleLanguage<NFIContext> {
@@ -57,6 +60,28 @@ public class NFILanguage extends TruffleLanguage<NFIContext> {
     public static final String MIME_TYPE = "application/x-native";
 
     private final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("NFI single context");
+
+    final ContextThreadLocal<NFIState> nfiState = locals.createContextThreadLocal((ctx, thread) -> new NFIState());
+
+    protected void setPendingException(Throwable pendingException) {
+        TruffleStackTrace.fillIn(pendingException);
+        NFIState state = nfiState.get();
+        state.setPendingException(pendingException);
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    private static <T extends Throwable> T silenceException(Class<T> type, Throwable t) throws T {
+        throw (T) t;
+    }
+
+    protected void rethrowPendingException() {
+        NFIState state = nfiState.get();
+        Throwable t = state.getPendingException();
+        state.clearPendingException();
+        if (t != null) {
+            throw silenceException(RuntimeException.class, t);
+        }
+    }
 
     @Override
     protected NFIContext createContext(Env env) {

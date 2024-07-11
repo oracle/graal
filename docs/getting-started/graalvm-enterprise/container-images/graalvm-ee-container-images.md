@@ -37,11 +37,11 @@ The following tags are listed from the most-specific tag (at the top) to the lea
 The most-specific tag is unique and always points to the same container image, while the less-specific tags point to newer container image variants over time.
 
 ```
-17.0.8-ol9-20230904
-17.0.8-ol9
-17.0.8
-17-ol9
-17
+22.0.1-ol9-20240504
+22.0.1-ol9
+22.0.1
+22-ol9
+22
 ```
 
 ## Pulling Images

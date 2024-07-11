@@ -418,9 +418,6 @@ final class PolyglotContextConfig {
                     return true;
                 }
             } else {
-                if (from == to) {
-                    return true;
-                }
                 Set<String> configuredAccess = from.engine.getAPIAccess().getEvalAccess(polyglotAccess, from.getId());
                 if (configuredAccess != null && configuredAccess.contains(to.getId())) {
                     return true;

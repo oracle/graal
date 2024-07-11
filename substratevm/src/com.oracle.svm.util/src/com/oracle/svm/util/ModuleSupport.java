@@ -141,4 +141,9 @@ public final class ModuleSupport {
         }
         access.giveAccess(namedAccessingModule, declaringModule, packageName);
     }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void accessModule(Access access, Module accessingModule, Module declaringModule, String packageName) {
+        access.giveAccess(accessingModule, declaringModule, packageName);
+    }
 }

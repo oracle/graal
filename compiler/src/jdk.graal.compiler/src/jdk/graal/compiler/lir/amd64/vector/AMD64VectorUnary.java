@@ -24,11 +24,14 @@
  */
 package jdk.graal.compiler.lir.amd64.vector;
 
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPD;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.EvexRMIOp;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexMROp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRROp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp;
@@ -79,15 +82,39 @@ public class AMD64VectorUnary {
         }
     }
 
-    public static final class AVXRegisterOnlyUnaryOp extends AMD64VectorInstruction {
-        public static final LIRInstructionClass<AVXRegisterOnlyUnaryOp> TYPE = LIRInstructionClass.create(AVXRegisterOnlyUnaryOp.class);
+    public static final class AVXUnaryMROp extends AMD64VectorInstruction {
+        public static final LIRInstructionClass<AVXUnaryMROp> TYPE = LIRInstructionClass.create(AVXUnaryMROp.class);
+
+        @Opcode private final VexMROp opcode;
+        @Def({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue result;
+        @Use({OperandFlag.REG}) protected AllocatableValue input;
+
+        public AVXUnaryMROp(VexMROp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
+            super(TYPE, size);
+            this.opcode = opcode;
+            this.result = result;
+            this.input = input;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            if (isRegister(result)) {
+                opcode.emit(masm, size, asRegister(result), asRegister(input));
+            } else {
+                opcode.emit(masm, size, (AMD64Address) crb.asAddress(result), asRegister(input));
+            }
+        }
+    }
+
+    public static final class AVXUnaryRROp extends AMD64VectorInstruction {
+        public static final LIRInstructionClass<AVXUnaryRROp> TYPE = LIRInstructionClass.create(AVXUnaryRROp.class);
 
         @Opcode private final VexRROp opcode;
 
         @Def({OperandFlag.REG}) protected AllocatableValue result;
         @Use({OperandFlag.REG}) protected AllocatableValue input;
 
-        public AVXRegisterOnlyUnaryOp(VexRROp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
+        public AVXUnaryRROp(VexRROp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
             super(TYPE, size);
             this.opcode = opcode;
             this.result = result;
@@ -108,11 +135,14 @@ public class AMD64VectorUnary {
         @Def({OperandFlag.REG}) protected AllocatableValue result;
         @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue input;
 
-        public AVXUnaryRVMOp(VexRVMOp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
+        private final AMD64SIMDInstructionEncoding encoding;
+
+        public AVXUnaryRVMOp(VexRVMOp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE, size);
             this.opcode = opcode;
             this.result = result;
             this.input = input;
+            this.encoding = encoding;
         }
 
         @Override
@@ -120,7 +150,7 @@ public class AMD64VectorUnary {
             if (isRegister(input)) {
                 opcode.emit(masm, size, asRegister(result), asRegister(input), asRegister(input));
             } else {
-                VexRVMOp.VXORPD.emit(masm, size, asRegister(result), asRegister(result), asRegister(result));
+                VXORPD.encoding(encoding).emit(masm, size, asRegister(result), asRegister(result), asRegister(result));
                 opcode.emit(masm, size, asRegister(result), asRegister(result), (AMD64Address) crb.asAddress(input));
             }
         }
@@ -230,11 +260,14 @@ public class AMD64VectorUnary {
         @Def({OperandFlag.REG}) protected AllocatableValue result;
         @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue input;
 
-        public AVXConvertOp(VexRVMConvertOp opcode, AllocatableValue result, AllocatableValue input) {
+        private final AMD64SIMDInstructionEncoding encoding;
+
+        public AVXConvertOp(VexRVMConvertOp opcode, AllocatableValue result, AllocatableValue input, AMD64SIMDInstructionEncoding encoding) {
             super(TYPE);
             this.opcode = opcode;
             this.result = result;
             this.input = input;
+            this.encoding = encoding;
         }
 
         @Override
@@ -246,11 +279,11 @@ public class AMD64VectorUnary {
                     opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(input), asRegister(input));
                 } else {
                     // clear result register to avoid unnecessary dependency
-                    VexRVMOp.VXORPD.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
+                    VXORPD.encoding(encoding).emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
                     opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(input));
                 }
             } else {
-                VexRVMOp.VXORPD.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
+                VXORPD.encoding(encoding).emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
                 opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), (AMD64Address) crb.asAddress(input));
             }
         }
@@ -292,10 +325,10 @@ public class AMD64VectorUnary {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             switch (size) {
                 case SS:
-                    EvexRMIOp.VFPCLASSSS.emit(masm, AVXKind.AVXSize.XMM, asRegister(maskTemp), asRegister(input), imm8);
+                    EvexRMIOp.EVFPCLASSSS.emit(masm, AVXKind.AVXSize.XMM, asRegister(maskTemp), asRegister(input), imm8);
                     break;
                 case SD:
-                    EvexRMIOp.VFPCLASSSD.emit(masm, AVXKind.AVXSize.XMM, asRegister(maskTemp), asRegister(input), imm8);
+                    EvexRMIOp.EVFPCLASSSD.emit(masm, AVXKind.AVXSize.XMM, asRegister(maskTemp), asRegister(input), imm8);
                     break;
                 default:
                     throw GraalError.shouldNotReachHere("unsupported operand size " + size);

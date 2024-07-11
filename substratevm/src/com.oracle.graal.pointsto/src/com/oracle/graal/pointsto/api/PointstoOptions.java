@@ -149,6 +149,9 @@ public class PointstoOptions {
     @Option(help = "Run conditional elimination before static analysis.", type = Expert)//
     public static final OptionKey<Boolean> ConditionalEliminationBeforeAnalysis = new OptionKey<>(true);
 
+    @Option(help = "Track in the static analysis whether an instance field is never null.")//
+    public static final OptionKey<Boolean> TrackNeverNullInstanceFields = new OptionKey<>(true);
+
     /**
      * Controls the static analysis context sensitivity. Available values:
      * <p/>

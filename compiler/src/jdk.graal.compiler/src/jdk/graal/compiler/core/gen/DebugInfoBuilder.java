@@ -268,9 +268,6 @@ public class DebugInfoBuilder {
 
             assert state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI || state.locksSize() == 0 : Assertions.errorMessageContext("node", node, "state", state);
 
-            assert !(state.getMethod().isSynchronized() && state.bci != BytecodeFrame.BEFORE_BCI && state.bci != BytecodeFrame.AFTER_BCI && state.bci != BytecodeFrame.AFTER_EXCEPTION_BCI) ||
-                            !state.isValidForDeoptimization() ||
-                            state.locksSize() > 0 : Assertions.errorMessageContext("state", state, "node", node, "bci", state.bci);
             assert state.verify();
 
             int numLocals = state.localsSize();

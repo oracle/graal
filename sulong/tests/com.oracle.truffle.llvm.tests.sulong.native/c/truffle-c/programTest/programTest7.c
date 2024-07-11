@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -61,7 +61,7 @@ int gcd(int u, int v) {
             int t = v;
             v = u;
             u = t;
-        }          // Swap u and v.
+        } // Swap u and v.
         v = v - u; // Here v >= u.
         if (v == 0)
             break;

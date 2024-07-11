@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
+import static jdk.graal.compiler.core.common.GraalOptions.AssemblyGCBarriers;
 import static jdk.graal.compiler.core.common.GraalOptions.FullUnroll;
 import static jdk.graal.compiler.core.common.GraalOptions.LoopPeeling;
 import static jdk.graal.compiler.core.common.GraalOptions.OptReadElimination;
@@ -39,6 +40,7 @@ import java.util.ListIterator;
 import java.util.Objects;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -111,6 +113,11 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
         public int hashCode() {
             return Objects.hash(a, b);
         }
+    }
+
+    @Before
+    public void checkAssemblyBarriers() {
+        Assume.assumeFalse("doesn't work with assembly barriers ", AssemblyGCBarriers.getValue(getInitialOptions()));
     }
 
     private int expectedBarriers;
@@ -357,7 +364,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
     @Before
     public void before() {
-        assumeTrue("ZGC has no write barriers", !(config.gc == HotSpotGC.Z));
+        assumeTrue("ZGC has no write barriers", !(config.gc == HotSpotGC.X));
         expectedBarriers = -1;
     }
 

@@ -54,4 +54,7 @@ public abstract class EspressoInstrumentableRootNode extends EspressoInstrumenta
     public WrapperNode createWrapper(ProbeNode probeNode) {
         return new EspressoInstrumentableRootNodeWrapper(this, probeNode);
     }
+
+    @Override
+    public abstract String toString();
 }

@@ -64,16 +64,20 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
     public Object call(CallTarget target, Object... arguments) {
         try {
             OptimizedCallTarget optimizedTarget = ((OptimizedCallTarget) target);
-            return optimizedTarget.callIndirect(this, arguments);
+            if (CompilerDirectives.isPartialEvaluationConstant(optimizedTarget)) {
+                return optimizedTarget.callDirect(this, arguments);
+            } else {
+                return optimizedTarget.callIndirect(this, arguments);
+            }
         } catch (Throwable t) {
             throw handleException(t);
         }
     }
 
     private RuntimeException handleException(Throwable t) {
-        Throwable profiledT = profileExceptionType(t);
-        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(this, null, profiledT, null);
-        throw OptimizedCallTarget.rethrow(profiledT);
+        Throwable profiled = profileExceptionType(t);
+        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(this, null, profiled, null);
+        throw OptimizedCallTarget.rethrow(profiled);
     }
 
     @SuppressWarnings("unchecked")

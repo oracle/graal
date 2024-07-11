@@ -24,14 +24,8 @@
  */
 package jdk.graal.compiler.core.test;
 
-import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Field;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Comparator;
-import java.util.stream.Stream;
 
 import org.junit.Assume;
 import org.junit.Test;
@@ -51,8 +45,8 @@ public class GraalDebugHandlersFactoryTest extends GraalCompilerTest {
             Assume.assumeFalse("If InaccessibleObjectException is thrown, skip the test, we are on JDK9", ex.getClass().getSimpleName().equals("InaccessibleObjectException"));
         }
         int maxFileNameLength = maxFileNameLengthField.getInt(null);
-        Path tmpDir = Files.createTempDirectory(Paths.get("."), "createUniqueTest");
-        try {
+        try (TemporaryDirectory temp = new TemporaryDirectory("createUniqueTest")) {
+            Path tmpDir = temp.path;
             for (boolean createDirectory : new boolean[]{true, false}) {
                 for (String ext : new String[]{"", ".bgv", ".graph-strings"}) {
                     for (int i = 0; i < maxFileNameLength + 5; i++) {
@@ -66,14 +60,6 @@ public class GraalDebugHandlersFactoryTest extends GraalCompilerTest {
                     }
                 }
             }
-        } finally {
-            deleteTree(tmpDir);
-        }
-    }
-
-    private static void deleteTree(Path root) throws IOException {
-        try (Stream<Path> elems = Files.walk(root)) {
-            elems.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
         }
     }
 }

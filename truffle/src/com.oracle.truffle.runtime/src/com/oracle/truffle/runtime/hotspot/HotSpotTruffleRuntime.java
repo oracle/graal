@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.runtime.hotspot;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -50,11 +47,11 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -71,6 +68,8 @@ import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.TruffleCallBoundary;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalTruffleCompilationSupport;
 
+import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.SharedSecrets;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.common.JVMCIError;
@@ -102,6 +101,15 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
     static final int JAVA_SPEC = Runtime.version().feature();
 
     static final sun.misc.Unsafe UNSAFE = getUnsafe();
+    private static final JavaLangAccess JAVA_LANG_ACCESS = SharedSecrets.getJavaLangAccess();
+    private static final long THREAD_EETOP_OFFSET;
+    static {
+        try {
+            THREAD_EETOP_OFFSET = HotSpotTruffleRuntime.getObjectFieldOffset(Thread.class.getDeclaredField("eetop"));
+        } catch (Exception e) {
+            throw new InternalError(e);
+        }
+    }
 
     private static Unsafe getUnsafe() {
         try {
@@ -140,6 +148,7 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         }
     }
 
+    private int pendingTransferToInterpreterOffset = -1;
     private boolean traceTransferToInterpreter;
     private Boolean profilingEnabled;
 
@@ -162,9 +171,6 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
 
     private final HotSpotVMConfigAccess vmConfigAccess;
     private final int jvmciReservedLongOffset0;
-    private final int jvmciReservedReference0Offset;
-    private final MethodHandle setJVMCIReservedReference0;
-    private final MethodHandle getJVMCIReservedReference0;
 
     public HotSpotTruffleRuntime(TruffleCompilationSupport compilationSupport) {
         super(compilationSupport, Arrays.asList(HotSpotOptimizedCallTarget.class, InstalledCode.class, HotSpotThreadLocalHandshake.class, HotSpotTruffleRuntime.class));
@@ -176,37 +182,27 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         try {
             longOffset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "jlong", -1);
         } catch (NoSuchMethodError error) {
-            // jvmci is too old to have this overload of getFieldOffset
-            longOffset = -1;
+            throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0", error);
         } catch (JVMCIError error) {
             try {
                 // the type of the jvmci reserved field might still be old.
                 longOffset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1);
             } catch (NoSuchMethodError e) {
-                longOffset = -1;
+                e.initCause(error);
+                throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0", e);
             }
+        }
+        if (longOffset == -1) {
+            throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved0");
         }
         this.jvmciReservedLongOffset0 = longOffset;
-        this.jvmciReservedReference0Offset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved_oop0", Integer.class, "oop", -1);
 
-        MethodHandle setReservedReference0 = null;
-        MethodHandle getReservedReference0 = null;
-        if (jvmciReservedReference0Offset != -1) {
-            installReservedOopMethods(null);
-
-            try {
-                setReservedReference0 = MethodHandles.lookup().findVirtual(HotSpotJVMCIRuntime.class,
-                                "setThreadLocalObject", MethodType.methodType(void.class, int.class, Object.class));
-                getReservedReference0 = MethodHandles.lookup().findVirtual(HotSpotJVMCIRuntime.class,
-                                "getThreadLocalObject", MethodType.methodType(Object.class, int.class));
-            } catch (NoSuchMethodException | IllegalAccessException e) {
-                /*
-                 * This is expected. Older JVMCI versions do not have setThreadLocalObject.
-                 */
-            }
+        int jvmciReservedReference0Offset = vmConfigAccess.getFieldOffset("JavaThread::_jvmci_reserved_oop0", Integer.class, "oop", -1);
+        if (jvmciReservedReference0Offset == -1) {
+            throw CompilerDirectives.shouldNotReachHere("This JDK does not have JavaThread::_jvmci_reserved_oop0");
         }
-        this.setJVMCIReservedReference0 = setReservedReference0;
-        this.getJVMCIReservedReference0 = getReservedReference0;
+
+        installReservedOopMethods(null);
     }
 
     public int getJVMCIReservedLongOffset0() {
@@ -285,17 +281,6 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         }
     }
 
-    @Override
-    public boolean isLatestJVMCI() {
-        if (getJVMCIReservedReference0 == null) {
-            return false;
-        }
-        if (getJVMCIReservedLongOffset0() == -1) {
-            return false;
-        }
-        return true;
-    }
-
     /*
      * Used reflectively in CompilerInitializationTest.
      */
@@ -324,10 +309,13 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
                 compiler.initialize(initCallTarget, true);
                 this.initializeCallTarget = initCallTarget;
 
-                installCallBoundaryMethods(compiler);
-                if (jvmciReservedReference0Offset != -1) {
-                    installReservedOopMethods(compiler);
+                pendingTransferToInterpreterOffset = compiler.pendingTransferToInterpreterOffset(callTarget);
+                if (pendingTransferToInterpreterOffset == -1) {
+                    throw CompilerDirectives.shouldNotReachHere("Invalid offset for JavaThread::_pending_transfer_to_interpreter");
                 }
+
+                installCallBoundaryMethods(compiler);
+                installReservedOopMethods(compiler);
 
                 truffleCompiler = compiler;
                 traceTransferToInterpreter = engine.traceTransferToInterpreter;
@@ -451,36 +439,13 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         installCallBoundaryMethods((HotSpotTruffleCompiler) truffleCompiler);
     }
 
-    public MethodHandle getSetThreadLocalObject() {
-        return setJVMCIReservedReference0;
-    }
-
-    public MethodHandle getGetThreadLocalObject() {
-        return getJVMCIReservedReference0;
-    }
-
-    public boolean bypassedReservedOop(boolean waitForInit) {
-        if (jvmciReservedReference0Offset == -1) {
-            throw CompilerDirectives.shouldNotReachHere("bypassedReservedOop without field available. default fast thread locals should be used instead.");
-        }
-
+    public boolean bypassedReservedOop() {
         CompilationTask task = initializationTask;
         if (task != null) {
-            while (waitForInit) {
-                try {
-                    task.awaitCompletion();
-                    break;
-                } catch (ExecutionException e) {
-                    throw new AssertionError("Initialization failed.", e);
-                } catch (InterruptedException e) {
-                    continue;
-                }
-            }
             /*
-             * We were currently initializing. No need to reinstall the code stubs. Just try using
-             * them again has a very likely-hood of succeeding or if we do not wait for
-             * inititialization then the caller can use oop accessor methods
-             * (setJVMCIReservedReference0, getJVMCIReservedReference0) instead.
+             * We were currently initializing. No need to reinstall the code stubs. The caller can
+             * use oop accessor methods (setJVMCIReservedReference0, getJVMCIReservedReference0)
+             * instead.
              */
             return true;
         }
@@ -571,7 +536,23 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
     private void traceTransferToInterpreter() {
         TruffleCompiler compiler = truffleCompiler;
         assert compiler != null;
-        TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, (HotSpotTruffleCompiler) compiler);
+        assert pendingTransferToInterpreterOffset != -1;
+
+        long threadStruct = UNSAFE.getLong(JAVA_LANG_ACCESS.currentCarrierThread(), THREAD_EETOP_OFFSET);
+        long pendingTransferToInterpreterAddress = threadStruct + pendingTransferToInterpreterOffset;
+        boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
+        if (deoptimized) {
+            logTransferToInterpreter(pendingTransferToInterpreterAddress);
+        }
+    }
+
+    private void logTransferToInterpreter(long pendingTransferToInterpreterAddress) {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) iterateFrames(FrameInstance::getCallTarget);
+        if (callTarget == null) {
+            return;
+        }
+        StackTraceHelper.logHostAndGuestStacktrace("transferToInterpreter", callTarget);
+        UNSAFE.putByte(pendingTransferToInterpreterAddress, (byte) 0);
     }
 
     @Override
@@ -659,15 +640,10 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
 
     @Override
     public long getStackOverflowLimit() {
-        try {
-            int stackOverflowLimitOffset = vmConfigAccess.getFieldOffset(JAVA_SPEC >= 16 ? "JavaThread::_stack_overflow_state._stack_overflow_limit" : "JavaThread::_stack_overflow_limit",
-                            Integer.class, "address");
-            long threadEETopOffset = getObjectFieldOffset(Thread.class.getDeclaredField("eetop"));
-            long eetop = UNSAFE.getLong(Thread.currentThread(), threadEETopOffset);
-            return UNSAFE.getLong(eetop + stackOverflowLimitOffset);
-        } catch (NoSuchFieldException e) {
-            throw new RuntimeException(e);
-        }
+        int stackOverflowLimitOffset = vmConfigAccess.getFieldOffset(JAVA_SPEC >= 16 ? "JavaThread::_stack_overflow_state._stack_overflow_limit" : "JavaThread::_stack_overflow_limit",
+                        Integer.class, "address");
+        long eetop = UNSAFE.getLong(JAVA_LANG_ACCESS.currentCarrierThread(), THREAD_EETOP_OFFSET);
+        return UNSAFE.getLong(eetop + stackOverflowLimitOffset);
     }
 
     @SuppressWarnings("deprecation" /* JDK-8277863 */)
@@ -686,38 +662,7 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
 
     @Override
     protected AbstractFastThreadLocal getFastThreadLocalImpl() {
-        if (jvmciReservedReference0Offset != -1) {
-            return HotSpotFastThreadLocal.SINGLETON;
-        } else {
-            // fallback to default thread local
-            return null;
-        }
-    }
-
-    private static class TraceTransferToInterpreterHelper {
-        private static final long THREAD_EETOP_OFFSET;
-
-        static {
-            try {
-                THREAD_EETOP_OFFSET = getObjectFieldOffset(Thread.class.getDeclaredField("eetop"));
-            } catch (Exception e) {
-                throw new InternalError(e);
-            }
-        }
-
-        static void traceTransferToInterpreter(HotSpotTruffleRuntime runtime, HotSpotTruffleCompiler compiler) {
-            OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.iterateFrames((f) -> f.getCallTarget());
-            if (callTarget == null) {
-                return;
-            }
-            long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-            long pendingTransferToInterpreterAddress = thread + compiler.pendingTransferToInterpreterOffset(callTarget);
-            boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
-            if (deoptimized) {
-                StackTraceHelper.logHostAndGuestStacktrace("transferToInterpreter", callTarget);
-                UNSAFE.putByte(pendingTransferToInterpreterAddress, (byte) 0);
-            }
-        }
+        return HotSpotFastThreadLocal.SINGLETON;
     }
 
     public static HotSpotTruffleRuntime getRuntime() {

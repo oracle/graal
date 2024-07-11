@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.thread;
 
-import java.util.List;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
@@ -36,22 +34,22 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 import com.oracle.svm.core.graal.thread.AddressOfVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
-import com.oracle.svm.core.heap.SubstrateReferenceMap;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
+import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.nodes.ReadReservedRegister;
 
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -69,14 +67,21 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
-public class VMThreadFeature implements InternalFeature {
+public class VMThreadFeature implements InternalFeature, VMThreadLocalOffsetProvider, FeatureSingleton {
 
-    private final VMThreadLocalCollector threadLocalCollector = new VMThreadLocalCollector();
-    private final VMThreadLocalSupport threadLocalSupport = new VMThreadLocalSupport();
+    private VMThreadLocalCollector threadLocalCollector;
 
     @Override
     public void duringSetup(DuringSetupAccess config) {
-        ImageSingletons.add(VMThreadLocalSupport.class, threadLocalSupport);
+
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            var collector = ImageLayerBuildingSupport.buildingImageLayer() ? new LayeredVMThreadLocalCollector() : new VMThreadLocalCollector();
+            ImageSingletons.add(VMThreadLocalCollector.class, collector);
+            ImageSingletons.add(VMThreadLocalSupport.class, new VMThreadLocalSupport());
+        }
+
+        threadLocalCollector = ImageSingletons.lookup(VMThreadLocalCollector.class);
+        threadLocalCollector.installThreadLocalMap();
         /*
          * While technically threadLocalCollector does not replace an object, it does collect
          * information needed by the invocation plugin used to create VMThreadLocalAccess nodes (and
@@ -219,36 +224,33 @@ public class VMThreadFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess config) {
-        List<VMThreadLocalInfo> sortedThreadLocalInfos = threadLocalCollector.sortThreadLocals();
-        SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
-        int nextOffset = 0;
-        for (VMThreadLocalInfo info : sortedThreadLocalInfos) {
-            int alignment = Math.min(8, info.sizeInBytes);
-            nextOffset = NumUtil.roundUp(nextOffset, alignment);
+        ImageSingletons.add(VMThreadLocalOffsetProvider.class, this);
+        int nextOffset = threadLocalCollector.sortAndAssignOffsets();
 
-            if (info.isObject) {
-                referenceMap.markReferenceAtOffset(nextOffset, true);
-            }
-            info.offset = nextOffset;
-            nextOffset += info.sizeInBytes;
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            /*
+             * This information is installed always in the first image. In subsequent images we only
+             * need to relay to thread local accesses the previously assigned offsets
+             */
 
-            if (info.offset > info.maxOffset) {
-                VMError.shouldNotReachHere("Too many thread local variables with maximum offset " + info.maxOffset + " defined");
-            }
+            var referenceMap = threadLocalCollector.getReferenceMap();
+            InstanceReferenceMapEncoder encoder = new InstanceReferenceMapEncoder();
+            encoder.add(referenceMap);
+            NonmovableArray<Byte> referenceMapEncoding = encoder.encodeAll();
+
+            var threadLocalSupport = ImageSingletons.lookup(VMThreadLocalSupport.class);
+
+            threadLocalSupport.vmThreadReferenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
+            threadLocalSupport.vmThreadReferenceMapIndex = encoder.lookupEncoding(referenceMap);
+            threadLocalSupport.vmThreadSize = nextOffset;
+
+            /* Remember the final sorted list. */
+            VMThreadLocalInfos.setInfos(threadLocalCollector.getSortedThreadLocalInfos());
         }
-
-        InstanceReferenceMapEncoder encoder = new InstanceReferenceMapEncoder();
-        encoder.add(referenceMap);
-        NonmovableArray<Byte> referenceMapEncoding = encoder.encodeAll();
-        threadLocalSupport.vmThreadReferenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
-        threadLocalSupport.vmThreadReferenceMapIndex = encoder.lookupEncoding(referenceMap);
-        threadLocalSupport.vmThreadSize = nextOffset;
-
-        /* Remember the final sorted list. */
-        VMThreadLocalInfos.setInfos(sortedThreadLocalInfos);
     }
 
+    @Override
     public int offsetOf(FastThreadLocal threadLocal) {
-        return threadLocalCollector.getInfo(threadLocal).offset;
+        return threadLocalCollector.getOffset(threadLocal);
     }
 }

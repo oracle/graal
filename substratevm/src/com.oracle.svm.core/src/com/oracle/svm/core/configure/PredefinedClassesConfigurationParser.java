@@ -33,7 +33,8 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.util.json.JSONParserException;
+
+import jdk.graal.compiler.util.json.JsonParserException;
 
 public class PredefinedClassesConfigurationParser extends ConfigurationParser {
     public static InputStream openClassdataStream(URI baseUri, String providedHash) throws IOException {
@@ -105,7 +106,7 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
 
         String type = asString(data.get("type"), "type");
         if (!type.equals("agent-extracted")) {
-            throw new JSONParserException("Attribute 'type' must have value 'agent-extracted'");
+            throw new JsonParserException("Attribute 'type' must have value 'agent-extracted'");
         }
 
         for (Object clazz : asList(data.get("classes"), "Attribute 'classes' must be an array of predefined class descriptor objects")) {

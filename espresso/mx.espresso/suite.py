@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,9 @@
 #
 
 suite = {
-    "mxversion": "6.44.0",
+    "mxversion": "7.27.1",
     "name": "espresso",
-    "version" : "24.1.0",
+    "version" : "24.2.0",
     "release" : False,
     "groupId" : "org.graalvm.espresso",
     "url" : "https://www.graalvm.org/reference-manual/java-on-truffle/",
@@ -75,7 +75,7 @@ suite = {
                 "subdir": True,
             },
             {
-                "name" : "java-benchmarks",
+                "name" : "sdk",
                 "subdir": True,
             },
         ],
@@ -106,6 +106,16 @@ suite = {
             "license": "UPL",
         },
 
+        "org.graalvm.continuations": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+            ],
+            "javaCompliance" : "21+",
+            "checkstyle": "com.oracle.truffle.espresso.polyglot",
+            "license": "UPL",
+        },
+
         "com.oracle.truffle.espresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -130,17 +140,6 @@ suite = {
         },
 
         "com.oracle.truffle.espresso.resources.libs": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "truffle:TRUFFLE_API",
-            ],
-            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
-            "javaCompliance": "17+",
-            "checkstyle": "com.oracle.truffle.espresso",
-        },
-
-        "com.oracle.truffle.espresso.resources.runtime": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -289,6 +288,8 @@ suite = {
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
+                            # newer LLVM versions default to --no-undefined-version
+                            "-Wl,--undefined-version",
                         ],
                         "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
@@ -299,6 +300,8 @@ suite = {
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
+                            # newer LLVM versions default to --no-undefined-version
+                            "-Wl,--undefined-version",
                         ],
                         "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
@@ -315,7 +318,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "java-benchmarks:DACAPO_SCALA",
+                "sdk:DACAPO_SCALA",
             ],
             "javaCompliance": "8+",
             "checkstyle": "com.oracle.truffle.espresso",
@@ -385,25 +388,6 @@ suite = {
             },
             "useModulePath": True,
             "noMavenJavadoc": True,
-        },
-
-        "JAVA_COMMUNITY": {
-            "type": "pom",
-            "runtimeDependencies": [
-                "ESPRESSO",
-                "ESPRESSO_LIBS_RESOURCES",
-                "ESPRESSO_RUNTIME_RESOURCES",
-                "truffle:TRUFFLE_NFI_LIBFFI",
-                "truffle:TRUFFLE_RUNTIME",
-                # sulong is not strictly required but it'll work out of the box in more cases if it's there
-                "sulong:SULONG_NFI",
-                "sulong:SULONG_NATIVE",
-            ],
-            "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
-            "maven": {
-                "artifactId": "java-community",
-                "tag": ["default", "public"],
-            },
         },
 
         "ESPRESSO_LAUNCHER": {
@@ -488,6 +472,7 @@ suite = {
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                                 "dependency:espresso:ESPRESSO_POLYGLOT",
                                 "dependency:espresso:HOTSWAP",
+                                "dependency:espresso:CONTINUATIONS",
                             ],
                         },
                     },
@@ -501,6 +486,7 @@ suite = {
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                                 "dependency:espresso:ESPRESSO_POLYGLOT",
                                 "dependency:espresso:HOTSWAP",
+                                "dependency:espresso:CONTINUATIONS",
                             ],
                         },
                     },
@@ -514,33 +500,13 @@ suite = {
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                                 "dependency:espresso:ESPRESSO_POLYGLOT",
                                 "dependency:espresso:HOTSWAP",
+                                "dependency:espresso:CONTINUATIONS",
                             ],
                         },
                     },
                 },
             },
             "maven": False,
-        },
-
-        "ESPRESSO_RUNTIME_RESOURCES": {
-            "platformDependent": True,
-            "moduleInfo": {
-                "name": "org.graalvm.espresso.resources.runtime",
-            },
-            "distDependencies": [
-                "truffle:TRUFFLE_API",
-            ],
-            "dependencies": [
-                "com.oracle.truffle.espresso.resources.runtime",
-                "ESPRESSO_RUNTIME_DIR",
-            ],
-            "compress": True,
-            "useModulePath": True,
-            "description": "Runtime environment used by the Java on Truffle (aka Espresso) implementation",
-            "maven" : {
-                "artifactId": "espresso-runtime-resources",
-                "tag": ["default", "public"],
-            },
         },
 
         "ESPRESSO_SUPPORT": {
@@ -560,6 +526,7 @@ suite = {
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                                 "dependency:espresso:ESPRESSO_POLYGLOT/*",
                                 "dependency:espresso:HOTSWAP/*",
+                                "dependency:espresso:CONTINUATIONS/*",
                             ],
                         },
                     },
@@ -575,6 +542,7 @@ suite = {
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                                 "dependency:espresso:ESPRESSO_POLYGLOT/*",
                                 "dependency:espresso:HOTSWAP/*",
+                                "dependency:espresso:CONTINUATIONS/*",
                             ],
                         },
                     },
@@ -590,6 +558,7 @@ suite = {
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                                 "dependency:espresso:ESPRESSO_POLYGLOT/*",
                                 "dependency:espresso:HOTSWAP/*",
+                                "dependency:espresso:CONTINUATIONS/*",
                             ],
                         },
                     },
@@ -649,11 +618,30 @@ suite = {
             },
         },
 
+        "CONTINUATIONS": {
+            "subDir": "src",
+            "dependencies": [
+                "org.graalvm.continuations"
+            ],
+            "description": "Espresso Continuations API",
+            "license": "UPL",
+            "javadocType": "api",
+            "moduleInfo" : {
+                "name" : "org.graalvm.continuations",
+                "exports" : [
+                    "org.graalvm.continuations",
+                ]
+            },
+            "maven": {
+                "tag": ["default", "public"],
+            },
+        },
+
         "DACAPO_SCALA_WARMUP": {
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso.dacapo",
-                "java-benchmarks:DACAPO_SCALA",
+                "sdk:DACAPO_SCALA",
             ],
             "testDistribution": True,
             "manifestEntries" : {

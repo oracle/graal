@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.c;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -85,14 +86,14 @@ public abstract class LLVMMemIntrinsic extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object op(Object dst, Object src, int len) {
-            memmove.executeWithTarget(dst, src, len);
+        protected Object op(VirtualFrame frame, Object dst, Object src, int len) {
+            memmove.executeWithTarget(frame, dst, src, len);
             return dst;
         }
 
         @Specialization
-        protected Object op(Object dst, Object src, long len) {
-            memmove.executeWithTarget(dst, src, len);
+        protected Object op(VirtualFrame frame, Object dst, Object src, long len) {
+            memmove.executeWithTarget(frame, dst, src, len);
             return dst;
         }
     }

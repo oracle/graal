@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,30 +88,30 @@ final class SimpleTypeCachedState {
     static {
         TypeCachedState[] c = new TypeCachedState[NativeSimpleType.values().length];
 
-        nopCachedState = new TypeCachedState(1, NopConvertFactory.getInstance(), NopConvertFactory.getInstance());
-        injectedCachedState = new TypeCachedState(0, InjectedFactory.getInstance(), NothingFactory.getInstance());
+        nopCachedState = new TypeCachedState(1, NopConvertFactory.getInstance(), NopConvertFactory.getInstance(), NFIPointer.nullPtr());
+        injectedCachedState = new TypeCachedState(0, InjectedFactory.getInstance(), NothingFactory.getInstance(), NFIPointer.nullPtr());
 
-        c[NativeSimpleType.VOID.ordinal()] = new TypeCachedState(1, NothingFactory.getInstance(), NopConvertFactory.getInstance());
+        c[NativeSimpleType.VOID.ordinal()] = new TypeCachedState(1, NothingFactory.getInstance(), NopConvertFactory.getInstance(), NFIPointer.nullPtr());
 
-        c[NativeSimpleType.SINT8.ordinal()] = new TypeCachedState(1, ToInt8Factory.getInstance(), NopConvertFactory.getInstance());
-        c[NativeSimpleType.SINT16.ordinal()] = new TypeCachedState(1, ToInt16Factory.getInstance(), NopConvertFactory.getInstance());
-        c[NativeSimpleType.SINT32.ordinal()] = new TypeCachedState(1, ToInt32Factory.getInstance(), NopConvertFactory.getInstance());
-        c[NativeSimpleType.SINT64.ordinal()] = new TypeCachedState(1, ToInt64Factory.getInstance(), NopConvertFactory.getInstance());
+        c[NativeSimpleType.SINT8.ordinal()] = new TypeCachedState(1, ToInt8Factory.getInstance(), NopConvertFactory.getInstance(), (byte) 0);
+        c[NativeSimpleType.SINT16.ordinal()] = new TypeCachedState(1, ToInt16Factory.getInstance(), NopConvertFactory.getInstance(), (short) 0);
+        c[NativeSimpleType.SINT32.ordinal()] = new TypeCachedState(1, ToInt32Factory.getInstance(), NopConvertFactory.getInstance(), 0);
+        c[NativeSimpleType.SINT64.ordinal()] = new TypeCachedState(1, ToInt64Factory.getInstance(), NopConvertFactory.getInstance(), 0L);
 
-        c[NativeSimpleType.UINT8.ordinal()] = new TypeCachedState(1, ToInt8Factory.getInstance(), FromUInt8Factory.getInstance());
-        c[NativeSimpleType.UINT16.ordinal()] = new TypeCachedState(1, ToInt16Factory.getInstance(), FromUInt16Factory.getInstance());
-        c[NativeSimpleType.UINT32.ordinal()] = new TypeCachedState(1, ToInt32Factory.getInstance(), FromUInt32Factory.getInstance());
+        c[NativeSimpleType.UINT8.ordinal()] = new TypeCachedState(1, ToInt8Factory.getInstance(), FromUInt8Factory.getInstance(), (byte) 0);
+        c[NativeSimpleType.UINT16.ordinal()] = new TypeCachedState(1, ToInt16Factory.getInstance(), FromUInt16Factory.getInstance(), (short) 0);
+        c[NativeSimpleType.UINT32.ordinal()] = new TypeCachedState(1, ToInt32Factory.getInstance(), FromUInt32Factory.getInstance(), 0);
 
         // TODO: need interop unsigned long type
         c[NativeSimpleType.UINT64.ordinal()] = c[NativeSimpleType.SINT64.ordinal()];
 
-        c[NativeSimpleType.FLOAT.ordinal()] = new TypeCachedState(1, ToFloatFactory.getInstance(), NopConvertFactory.getInstance());
-        c[NativeSimpleType.DOUBLE.ordinal()] = new TypeCachedState(1, ToDoubleFactory.getInstance(), NopConvertFactory.getInstance());
-        c[NativeSimpleType.FP80.ordinal()] = new TypeCachedState(1, ToFP80Factory.getInstance(), FromFP80Factory.getInstance());
-        c[NativeSimpleType.FP128.ordinal()] = new TypeCachedState(1, ToFP128Factory.getInstance(), FromFP128Factory.getInstance());
-        c[NativeSimpleType.POINTER.ordinal()] = new TypeCachedState(1, NopConvertFactory.getInstance(), PointerFromNativeFactory.getInstance());
-        c[NativeSimpleType.NULLABLE.ordinal()] = new TypeCachedState(1, NullableToNativeFactory.getInstance(), PointerFromNativeFactory.getInstance());
-        c[NativeSimpleType.STRING.ordinal()] = new TypeCachedState(1, NopConvertFactory.getInstance(), PointerFromNativeFactory.getInstance());
+        c[NativeSimpleType.FLOAT.ordinal()] = new TypeCachedState(1, ToFloatFactory.getInstance(), NopConvertFactory.getInstance(), 0.0f);
+        c[NativeSimpleType.DOUBLE.ordinal()] = new TypeCachedState(1, ToDoubleFactory.getInstance(), NopConvertFactory.getInstance(), 0.0);
+        c[NativeSimpleType.FP80.ordinal()] = new TypeCachedState(1, ToFP80Factory.getInstance(), FromFP80Factory.getInstance(), LongDoubleUtil.interopToFP80(0));
+        c[NativeSimpleType.FP128.ordinal()] = new TypeCachedState(1, ToFP128Factory.getInstance(), FromFP128Factory.getInstance(), LongDoubleUtil.interopToFP128(0));
+        c[NativeSimpleType.POINTER.ordinal()] = new TypeCachedState(1, NopConvertFactory.getInstance(), PointerFromNativeFactory.getInstance(), NFIPointer.nullPtr());
+        c[NativeSimpleType.NULLABLE.ordinal()] = new TypeCachedState(1, NullableToNativeFactory.getInstance(), PointerFromNativeFactory.getInstance(), NFIPointer.nullPtr());
+        c[NativeSimpleType.STRING.ordinal()] = new TypeCachedState(1, NopConvertFactory.getInstance(), PointerFromNativeFactory.getInstance(), NFIPointer.nullPtr());
         c[NativeSimpleType.OBJECT.ordinal()] = nopCachedState;
 
         simpleCachedState = c;

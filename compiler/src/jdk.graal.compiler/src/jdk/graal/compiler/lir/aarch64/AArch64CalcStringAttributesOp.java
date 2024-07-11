@@ -485,54 +485,13 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
     };
 
     /**
-     * Copyright (c) 2008-2010 Bjoern Hoehrmann <bjoern@hoehrmann.de>
-     *
-     * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-     * and associated documentation files (the "Software"), to deal in the Software without
-     * restriction, including without limitation the rights to use, copy, modify, merge, publish,
-     * distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
-     * Software is furnished to do so, subject to the following conditions:
-     *
-     * The above copyright notice and this permission notice shall be included in all copies or
-     * substantial portions of the Software.
-     *
-     * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-     * BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-     * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-     * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-     * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-     *
-     * See http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
-     */
-    private static final byte[] UTF_8_STATE_MACHINE = {
-                    // The first part of the table maps bytes to character classes
-                    // to reduce the size of the transition table and create bitmasks.
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-                    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-                    8, 8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                    10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 11, 6, 6, 6, 5, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-
-                    // The second part is a transition table that maps a combination
-                    // of a state of the automaton and a character class to a state.
-                    0, 12, 24, 36, 60, 96, 84, 12, 12, 12, 48, 72, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-                    12, 0, 12, 12, 12, 12, 12, 0, 12, 0, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 24, 12, 12,
-                    12, 12, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 24, 12, 12, 12, 12, 12, 12, 12, 24, 12, 12,
-                    12, 12, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12, 12, 36, 12, 12, 12, 12, 12, 36, 12, 36, 12, 12,
-                    12, 36, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
-    };
-
-    /**
      * Implements the operation described in {@link CalcStringAttributesEncoding#UTF_8}.
      * <p>
      * Based on the paper <a href="https://arxiv.org/abs/2010.03090">Validating UTF-8 In Less Than
      * One Instruction Per Byte</a> by John Keiser and Daniel Lemire, and the author's
      * implementation in <a href=
      * "https://github.com/simdjson/simdjson/blob/d996ffc49423cee75922c30432323288c34f3c04/src/generic/stage1/utf8_lookup4_algorithm.h">
-     * the simdjson library</a>.
+     * the simdjson library</a>. Follow-up changes made sure this is compatible with simdjson 3.6.4.
      *
      * @see <a href="https://github.com/simdjson/simdjson">https://github.com/simdjson/simdjson</a>
      * @see <a href="https://lemire.me/blog/2020/10/20/ridiculously-fast-unicode-utf-8-validation/">
@@ -953,7 +912,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
             Label scalarMultibyteFoundContinue = new Label();
             asm.bind(scalarMultiByteFound);
-            loadDataSectionAddress(crb, asm, tmp2, writeToDataSection(crb, UTF_8_STATE_MACHINE));
+            loadDataSectionAddress(crb, asm, tmp2, writeToDataSection(crb, CalcStringAttributesEncoding.UTF_8_STATE_MACHINE));
             asm.mov(64, state, zr);
             asm.neg(64, ret, ret);
             asm.jmp(scalarMultibyteFoundContinue);

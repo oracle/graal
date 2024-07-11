@@ -26,6 +26,7 @@ package jdk.graal.compiler.core.common.util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -69,6 +70,14 @@ public class FrequencyEncoder<T> {
      */
     public static <T> FrequencyEncoder<T> createEqualityEncoder() {
         return new FrequencyEncoder<>(EconomicMap.create(Equivalence.DEFAULT));
+    }
+
+    /*
+     * Creates an encoder that uses {@link Object#equals(Object)} object equality and calls the
+     * provided verifier before adding an element.
+     */
+    public static <T> FrequencyEncoder<T> createVerifyingEqualityEncoder(Consumer<T> verifier) {
+        return new VerifyingFrequencyEncoder<>(EconomicMap.create(Equivalence.DEFAULT), verifier);
     }
 
     protected FrequencyEncoder(EconomicMap<T, Entry<T>> map) {
@@ -158,5 +167,20 @@ public class FrequencyEncoder<T> {
         }
         encoded = true;
         return allObjects;
+    }
+
+    static class VerifyingFrequencyEncoder<T> extends FrequencyEncoder<T> {
+        private final Consumer<T> verifier;
+
+        VerifyingFrequencyEncoder(EconomicMap<T, Entry<T>> map, Consumer<T> verifier) {
+            super(map);
+            this.verifier = verifier;
+        }
+
+        @Override
+        public boolean addObject(T object) {
+            verifier.accept(object);
+            return super.addObject(object);
+        }
     }
 }

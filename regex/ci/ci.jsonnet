@@ -1,7 +1,8 @@
 {
   local utils = (import '../../ci/ci_common/common-utils.libsonnet'),
   local common = import '../../ci/ci_common/common.jsonnet',
-
+  local galahad = import "../../ci/ci_common/galahad-common.libsonnet",
+  
   local regex_common = {
     setup+: [
       ["cd", "./regex"],
@@ -15,8 +16,8 @@
     targets: ["gate"],
   },
 
-  local regex_gate_lite = regex_common + {
-    name: 'gate-regex-mac-lite-' + self.jdk_name,
+  local regex_gate_lite = regex_common + galahad.exclude {
+    name: 'weekly-regex-mac-lite-' + self.jdk_name,
     run: [
       ["mx", "build"],
       ["mx", "unittest", "--verbose", "com.oracle.truffle.regex"],

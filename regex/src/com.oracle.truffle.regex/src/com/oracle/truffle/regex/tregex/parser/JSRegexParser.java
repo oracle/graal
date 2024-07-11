@@ -219,7 +219,7 @@ public final class JSRegexParser implements RegexParser {
                     curCharClass.clear();
                     break;
                 case charClassAtom:
-                    curCharClass.addSet(((Token.CharacterClassAtom) token).getContents());
+                    curCharClass.addSet(((Token.CharacterClassAtom) token).getContents().getCodePointSet());
                     break;
                 case charClassEnd:
                     boolean wasSingleChar = !lexer.isCurCharClassInverted() && curCharClass.matchesSingleChar();

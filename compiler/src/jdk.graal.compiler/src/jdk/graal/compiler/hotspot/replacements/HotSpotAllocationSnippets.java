@@ -25,17 +25,12 @@
 package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.core.common.GraalOptions.MinimalBulkZeroingSize;
-import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_OPTIONVALUES;
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_ARRAY;
+import static jdk.graal.compiler.hotspot.HotSpotBackend.DYNAMIC_NEW_INSTANCE_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_ARRAY_OR_NULL;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_INSTANCE;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_INSTANCE_OR_NULL;
-import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY_OR_NULL;
-import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
-import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_INIT_STATE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_INIT_THREAD_LOCATION;
@@ -89,7 +84,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import jdk.graal.compiler.hotspot.nodes.KlassBeingInitializedCheckNode;
@@ -135,12 +129,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class HotSpotAllocationSnippets extends AllocationSnippets {
-    /** New dynamic array stub that throws an {@link OutOfMemoryError} on allocation failure. */
-    public static final HotSpotForeignCallDescriptor DYNAMIC_NEW_INSTANCE = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, NO_LOCATIONS, "dynamic_new_instance", Object.class,
-                    Class.class);
-    /** New dynamic array stub that returns null on allocation failure. */
-    public static final HotSpotForeignCallDescriptor DYNAMIC_NEW_INSTANCE_OR_NULL = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, NO_LOCATIONS, "dynamic_new_instance_or_null",
-                    Object.class, Class.class);
 
     private final GraalHotSpotVMConfig config;
     private final Register threadRegister;
@@ -211,11 +199,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                 DeoptimizeNode.deopt(None, RuntimeConstraint);
             }
         }
-        if (withException) {
-            return PiNode.piCastToSnippetReplaceeStamp(dynamicNewInstanceWithExceptionStub(type));
-        } else {
-            return PiNode.piCastToSnippetReplaceeStamp(dynamicNewInstanceStub(type));
-        }
+        return PiNode.piCastToSnippetReplaceeStamp(dynamicNewInstanceStub(type, withException));
     }
 
     @Snippet
@@ -350,62 +334,35 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    protected final Object callNewInstanceStub(Word hub) {
+    protected final Object callNewInstanceStub(Word hub, boolean withException) {
         KlassPointer klassPtr = KlassPointer.fromWord(hub);
-        if (useNullAllocationStubs(INJECTED_VMCONFIG)) {
+        if (!withException) {
             return nonNullOrDeopt(newInstanceOrNull(NEW_INSTANCE_OR_NULL, klassPtr));
         } else {
-            return newInstance(NEW_INSTANCE, klassPtr);
+            return nonNullOrDeopt(newInstanceWithException(NEW_INSTANCE_OR_NULL, klassPtr));
         }
     }
 
-    @Override
-    protected Object callNewInstanceWithExceptionStub(Word hub) {
-        KlassPointer klassPtr = KlassPointer.fromWord(hub);
-        return newInstanceWithException(NEW_INSTANCE, klassPtr);
-    }
-
-    @NodeIntrinsic(value = ForeignCallNode.class, injectedStampIsNonNull = true)
-    private static native Object newInstance(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub);
-
-    @NodeIntrinsic(value = ForeignCallWithExceptionNode.class, injectedStampIsNonNull = true)
+    @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
     private static native Object newInstanceWithException(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub);
 
-    @NodeIntrinsic(value = ForeignCallNode.class, injectedStampIsNonNull = false)
+    @NodeIntrinsic(value = ForeignCallNode.class)
     private static native Object newInstanceOrNull(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub);
 
-    /**
-     * When allocating on the slow path, determines whether to use a version of the runtime call
-     * that returns {@code null} on a failed allocation instead of raising an OutOfMemoryError.
-     */
-    @Fold
-    static boolean useNullAllocationStubs(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.areNullAllocationStubsAvailable();
-    }
-
     @Override
-    protected final Object callNewArrayStub(Word hub, int length) {
+    protected final Object callNewArrayStub(Word hub, int length, boolean withException) {
         KlassPointer klassPtr = KlassPointer.fromWord(hub);
-        if (useNullAllocationStubs(INJECTED_VMCONFIG)) {
+        if (!withException) {
             return nonNullOrDeopt(newArrayOrNull(NEW_ARRAY_OR_NULL, klassPtr, length));
         } else {
-            return newArray(NEW_ARRAY, klassPtr, length);
+            return nonNullOrDeopt(newArrayWithException(NEW_ARRAY_OR_NULL, klassPtr, length));
         }
     }
 
-    @Override
-    protected Object callNewArrayWithExceptionStub(Word hub, int length) {
-        KlassPointer klassPtr = KlassPointer.fromWord(hub);
-        return newArrayWithException(NEW_ARRAY, klassPtr, length);
-    }
-
-    @NodeIntrinsic(value = ForeignCallNode.class, injectedStampIsNonNull = true)
-    private static native Object newArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub, int length);
-
-    @NodeIntrinsic(value = ForeignCallWithExceptionNode.class, injectedStampIsNonNull = true)
+    @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
     private static native Object newArrayWithException(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub, int length);
 
-    @NodeIntrinsic(value = ForeignCallNode.class, injectedStampIsNonNull = false)
+    @NodeIntrinsic(value = ForeignCallNode.class)
     private static native Object newArrayOrNull(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub, int length);
 
     /**
@@ -418,50 +375,34 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         return obj;
     }
 
-    public static Object dynamicNewInstanceStub(Class<?> elementType) {
-        if (useNullAllocationStubs(INJECTED_VMCONFIG)) {
+    public static Object dynamicNewInstanceStub(Class<?> elementType, boolean withException) {
+        if (!withException) {
             return nonNullOrDeopt(dynamicNewInstanceOrNull(DYNAMIC_NEW_INSTANCE_OR_NULL, elementType));
         } else {
-            return dynamicNewInstance(DYNAMIC_NEW_INSTANCE, elementType);
+            return nonNullOrDeopt(dynamicNewInstanceWithException(DYNAMIC_NEW_INSTANCE_OR_NULL, elementType));
         }
     }
 
-    public static Object dynamicNewInstanceWithExceptionStub(Class<?> elementType) {
-        return dynamicNewInstanceWithException(DYNAMIC_NEW_INSTANCE, elementType);
-    }
-
-    @NodeIntrinsic(value = ForeignCallNode.class, injectedStampIsNonNull = true)
-    public static native Object dynamicNewInstance(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType);
-
-    @NodeIntrinsic(value = ForeignCallWithExceptionNode.class, injectedStampIsNonNull = true)
+    @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
     public static native Object dynamicNewInstanceWithException(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType);
 
-    @NodeIntrinsic(value = ForeignCallNode.class, injectedStampIsNonNull = false)
+    @NodeIntrinsic(value = ForeignCallNode.class)
     public static native Object dynamicNewInstanceOrNull(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType);
 
     @Override
-    protected final Object callNewMultiArrayStub(Word hub, int rank, Word dims) {
+    protected final Object callNewMultiArrayStub(Word hub, int rank, Word dims, boolean withException) {
         KlassPointer klassPointer = KlassPointer.fromWord(hub);
-        if (useNullAllocationStubs(INJECTED_VMCONFIG)) {
+        if (!withException) {
             return nonNullOrDeopt(newMultiArrayOrNull(NEW_MULTI_ARRAY_OR_NULL, klassPointer, rank, dims));
         } else {
-            return newMultiArray(NEW_MULTI_ARRAY, klassPointer, rank, dims);
+            return nonNullOrDeopt(newMultiArrayWithException(NEW_MULTI_ARRAY_OR_NULL, klassPointer, rank, dims));
         }
     }
 
-    @Override
-    protected Object callNewMultiArrayStubWithException(Word hub, int rank, Word dims) {
-        KlassPointer klassPointer = KlassPointer.fromWord(hub);
-        return newMultiArrayWithException(NEW_MULTI_ARRAY, klassPointer, rank, dims);
-    }
-
-    @NodeIntrinsic(value = ForeignCallNode.class, injectedStampIsNonNull = true)
-    private static native Object newMultiArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub, int rank, Word dims);
-
-    @NodeIntrinsic(value = ForeignCallWithExceptionNode.class, injectedStampIsNonNull = true)
+    @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
     private static native Object newMultiArrayWithException(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub, int rank, Word dims);
 
-    @NodeIntrinsic(value = ForeignCallNode.class, injectedStampIsNonNull = false)
+    @NodeIntrinsic(value = ForeignCallNode.class)
     private static native Object newMultiArrayOrNull(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub, int rank, Word dims);
 
     @Fold

@@ -49,7 +49,7 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements B
         if (interfaces != null) {
             registerConditionalConfiguration(condition, (cnd) -> {
                 /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
-                dynamicProxySupport.addProxyClass(interfaces);
+                dynamicProxySupport.addProxyClass(cnd, interfaces);
             });
         }
     }
@@ -57,7 +57,7 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements B
     public Class<?> createProxyClassForSerialization(List<String> proxies) {
         Class<?>[] interfaces = checkIfInterfacesAreValid(proxies);
         if (interfaces != null) {
-            return dynamicProxySupport.createProxyClassForSerialization(interfaces);
+            return dynamicProxySupport.getProxyClassHosted(interfaces);
         }
 
         return null;

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.shadowed.com.ibm.icu.lang.UCharacter;
 
 import com.oracle.truffle.regex.RegexLanguage;
@@ -87,5 +88,10 @@ public final class PythonFlavor extends RegexFlavor {
             assert ast.getOptions().getEncoding() == Encodings.LATIN_1;
             return (a, b, altMode) -> CaseFoldData.CaseFoldUnfoldAlgorithm.Ascii.getEqualsPredicate().test(a, b);
         }
+    }
+
+    @Override
+    public CaseFoldData.CaseFoldAlgorithm getCaseFoldAlgorithm(RegexAST ast) {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 }

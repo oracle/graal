@@ -35,7 +35,7 @@ import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -60,7 +60,7 @@ public class VerifyEndlessLoops extends VerifyPhase<CoreProviders> {
         SchedulePhase.runWithoutContextOptimizations(graph);
         ScheduleResult sched = graph.getLastSchedule();
         LoopsData ld = context.getLoopsDataProvider().getLoopsData(sched.getCFG());
-        for (LoopEx lex : ld.loops()) {
+        for (Loop lex : ld.loops()) {
             for (LoopEndNode len : lex.loopBegin().loopEnds()) {
                 boolean progress = false;
                 for (PhiNode phi : lex.loopBegin().phis()) {

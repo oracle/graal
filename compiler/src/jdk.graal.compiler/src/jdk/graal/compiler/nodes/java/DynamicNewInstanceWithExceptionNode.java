@@ -48,12 +48,12 @@ public class DynamicNewInstanceWithExceptionNode extends AllocateWithExceptionNo
     public static final NodeClass<DynamicNewInstanceWithExceptionNode> TYPE = NodeClass.create(DynamicNewInstanceWithExceptionNode.class);
     protected boolean fillContents;
 
-    public static void createAndPush(GraphBuilderContext b, ValueNode clazz) {
+    public static void createAndPush(GraphBuilderContext b, ValueNode clazz, boolean validateClass) {
         ResolvedJavaType constantType = tryConvertToNonDynamic(clazz, b);
         if (constantType != null) {
             b.addPush(JavaKind.Object, new NewInstanceWithExceptionNode(constantType, true));
         } else {
-            ValueNode clazzLegal = b.add(new ValidateNewInstanceClassNode(clazz));
+            ValueNode clazzLegal = validateClass ? b.add(new ValidateNewInstanceClassNode(clazz)) : clazz;
             b.addPush(JavaKind.Object, new DynamicNewInstanceWithExceptionNode(clazzLegal, true));
         }
     }

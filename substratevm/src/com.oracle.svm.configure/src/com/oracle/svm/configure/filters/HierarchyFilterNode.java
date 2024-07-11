@@ -36,7 +36,7 @@ import java.util.StringTokenizer;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.core.util.json.JsonWriter;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 /** Represents a rule that includes or excludes a set of Java classes. */
 public final class HierarchyFilterNode implements ConfigurationFilter {

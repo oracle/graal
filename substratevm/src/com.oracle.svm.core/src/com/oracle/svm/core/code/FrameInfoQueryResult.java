@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.module.ModuleDescriptor;
 import java.util.Optional;
 
@@ -50,6 +52,10 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * During a stack walk, this class holds information about a virtual Java frame. It is usually
+ * referenced by a physical Java frame, see {@link CodeInfoQueryResult}.
+ */
 public class FrameInfoQueryResult {
 
     public enum ValueType {
@@ -177,6 +183,8 @@ public class FrameInfoQueryResult {
     private ResolvedJavaMethod sourceMethod;
     private Class<?> sourceClass;
     private String sourceMethodName;
+    private int sourceMethodModifiers;
+    private String sourceMethodSignature;
 
     @SuppressWarnings("this-escape")
     public FrameInfoQueryResult() {
@@ -202,6 +210,8 @@ public class FrameInfoQueryResult {
         sourceMethod = null;
         sourceClass = Encoders.INVALID_CLASS;
         sourceMethodName = Encoders.INVALID_METHOD_NAME;
+        sourceMethodSignature = Encoders.INVALID_METHOD_SIGNATURE;
+        sourceMethodModifiers = Encoders.INVALID_METHOD_MODIFIERS;
     }
 
     /**
@@ -336,7 +346,7 @@ public class FrameInfoQueryResult {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Class<?> getSourceClass() {
-        fillInSourceClassAndMethodNameIfMissing();
+        fillSourceFieldsIfMissing();
         return sourceClass;
     }
 
@@ -347,29 +357,26 @@ public class FrameInfoQueryResult {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getSourceMethodName() {
-        fillInSourceClassAndMethodNameIfMissing();
+        fillSourceFieldsIfMissing();
         return sourceMethodName;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void fillInSourceClassAndMethodNameIfMissing() {
-        assert (sourceClass == Encoders.INVALID_CLASS) == isSourceMethodNameMissing();
+    private void fillSourceFieldsIfMissing() {
         if (sourceMethodId != 0 && sourceClass == Encoders.INVALID_CLASS) {
-            CodeInfoDecoder.fillInSourceClassAndMethodName(this);
+            CodeInfoDecoder.fillSourceFields(this);
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "Identity comparison against sentinel string value")
-    private boolean isSourceMethodNameMissing() {
-        return sourceMethodName == Encoders.INVALID_METHOD_NAME;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void setSourceClassAndMethodName(Class<?> clazz, String methodName) {
-        assert sourceClass == Encoders.INVALID_CLASS && isSourceMethodNameMissing();
+    void setSourceFields(Class<?> clazz, String methodName, String signature, int modifiers) {
+        assert sourceClass == Encoders.INVALID_CLASS && sourceMethodName == Encoders.INVALID_METHOD_NAME && sourceMethodSignature == Encoders.INVALID_METHOD_SIGNATURE &&
+                        sourceMethodModifiers == Encoders.INVALID_METHOD_MODIFIERS;
         this.sourceClass = clazz;
         this.sourceMethodName = methodName;
+        this.sourceMethodSignature = signature;
+        this.sourceMethodModifiers = modifiers;
     }
 
     ResolvedJavaMethod getSourceMethod() {
@@ -393,6 +400,18 @@ public class FrameInfoQueryResult {
         return sourceMethodId;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public int getSourceMethodModifiers() {
+        fillSourceFieldsIfMissing();
+        return sourceMethodModifiers;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public String getSourceMethodSignature() {
+        fillSourceFieldsIfMissing();
+        return sourceMethodSignature;
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getSourceFileName() {
         Class<?> clazz = getSourceClass();
@@ -406,7 +425,7 @@ public class FrameInfoQueryResult {
 
     /** Returns the name and source code location of the method. */
     public StackTraceElement getSourceReference() {
-        fillInSourceClassAndMethodNameIfMissing();
+        fillSourceFieldsIfMissing();
         return getSourceReference(sourceClass, sourceMethodName, sourceLineNumber);
     }
 
@@ -436,7 +455,7 @@ public class FrameInfoQueryResult {
     }
 
     public Log log(Log log) {
-        fillInSourceClassAndMethodNameIfMissing();
+        fillSourceFieldsIfMissing();
         String className = (sourceClass != null) ? sourceClass.getName() : "";
         String methodName = (sourceMethodName != null) ? sourceMethodName : "";
         log.string(className);

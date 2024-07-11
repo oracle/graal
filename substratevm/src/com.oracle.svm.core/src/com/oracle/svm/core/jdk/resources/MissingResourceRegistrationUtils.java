@@ -61,7 +61,7 @@ public final class MissingResourceRegistrationUtils {
                         ERROR_EMPHASIS_INDENT + resourcePath +
                         System.lineSeparator() +
                         System.lineSeparator() +
-                        " without it being registered as reachable. Add it to the resource metadata to solve this problem. " +
+                        "without it being registered as reachable. Add it to the resource metadata to solve this problem. " +
                         "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#resources-and-resource-bundles for help";
     }
 

@@ -53,6 +53,7 @@ import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
+import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_MethodAccessor;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.reflect.FieldAccessor;
@@ -265,8 +266,12 @@ final class Util_java_lang_invoke_MethodHandle {
         return getMethodAccessor(method);
     }
 
+    @SuppressWarnings("DataFlowIssue")
     private static SubstrateMethodAccessor getMethodAccessor(Method method) {
-        return SubstrateUtil.cast(SubstrateUtil.cast(method, Target_java_lang_reflect_Method.class).acquireMethodAccessor(), SubstrateMethodAccessor.class);
+        Target_java_lang_reflect_Method internalMethod = SubstrateUtil.cast(method, Target_java_lang_reflect_Method.class);
+        Target_jdk_internal_reflect_MethodAccessor methodAccessor = internalMethod.methodAccessor;
+        var result = methodAccessor == null ? internalMethod.acquireMethodAccessor() : methodAccessor;
+        return SubstrateUtil.cast(result, SubstrateMethodAccessor.class);
     }
 
     private static SubstrateConstructorAccessor asConstructor(Target_java_lang_invoke_MemberName memberName) {

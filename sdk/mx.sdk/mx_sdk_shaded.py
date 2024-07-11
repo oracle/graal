@@ -97,8 +97,8 @@ class ShadedLibraryProject(mx.JavaProject):
         srcDirs = args.pop('sourceDirs', ['src']) # + [source_gen_dir()], added below
         d = os.path.join(suite.dir, subDir, name)
         shadedLibraries = args.pop('shadedDependencies', [])
-        self.shadedDeps = list(set(mx.dependency(d) for d in shadedLibraries))
-        assert all(dep.isLibrary() for dep in self.shadedDeps), f"shadedDependencies must all be libraries: {self.shadedDeps}"
+        self.shadedDeps = shadedLibraries
+        self.buildDependencies = shadedLibraries
         super().__init__(suite, name, subDir=subDir, srcDirs=srcDirs, deps=deps, # javaCompliance
                         workingSets=workingSets, d=d, theLicense=theLicense, **args)
 
@@ -109,6 +109,13 @@ class ShadedLibraryProject(mx.JavaProject):
 
         self.checkstyleProj = args.get('checkstyle', name)
         self.checkPackagePrefix = False
+
+    def resolveDeps(self):
+        super().resolveDeps()
+        self._resolveDepsHelper(self.shadedDeps)
+        not_libraries = [dep for dep in self.shadedDeps if not dep.isLibrary()]
+        if not_libraries:
+            raise self.abort(f"shadedDependencies must all be libraries, but the following are not libraries: {not_libraries}")
 
     def getBuildTask(self, args):
         jdk = mx.get_jdk(self.javaCompliance, tag=mx.DEFAULT_JDK_TAG, purpose='building ' + self.name)
@@ -199,7 +206,7 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
         proj = self.subject
         binDir = proj.output_dir()
         for dep in proj.shaded_deps():
-            srcFilePath = dep.get_source_path(True)
+            srcFilePath = dep.get_source_path(False)
             if srcFilePath is None:
                 continue
 
@@ -255,8 +262,8 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                             ]
 
         for dep in shadedDeps:
-            jarFilePath = dep.get_path(True)
-            srcFilePath = dep.get_source_path(True)
+            jarFilePath = dep.get_path(False)
+            srcFilePath = dep.get_source_path(False)
 
             if srcFilePath is None:
                 mx.abort(f'Cannot shade {dep} without a source jar (missing sourceDigest?)')

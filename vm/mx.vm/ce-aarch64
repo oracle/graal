@@ -1,5 +1,5 @@
 DYNAMIC_IMPORTS=/sdk,/truffle,/compiler,/substratevm
-COMPONENTS=cmp,lg,ni,nic,nil,sdkni,svm,svmt,svmsl,tflc,tflsm
+COMPONENTS=cmp,gvm,lg,ni,nic,nil,sdkni,svm,svmt,svmsl,tflc,tflsm
 NATIVE_IMAGES=lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,native-image
 NON_REBUILDABLE_IMAGES=lib:jvmcicompiler
 DISABLE_INSTALLABLES=False

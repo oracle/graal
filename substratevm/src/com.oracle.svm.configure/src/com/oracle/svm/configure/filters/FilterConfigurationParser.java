@@ -30,10 +30,11 @@ import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import jdk.graal.compiler.util.json.JSONParserException;
 
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationParser;
+
+import jdk.graal.compiler.util.json.JsonParserException;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class FilterConfigurationParser extends ConfigurationParser {
     private final ConfigurationFilter filter;
@@ -52,7 +53,7 @@ public class FilterConfigurationParser extends ConfigurationParser {
         MapCursor<String, Object> cursor = entry.getEntries();
         while (cursor.advance()) {
             if (qualified != null) {
-                throw new JSONParserException(exactlyOneMessage);
+                throw new JsonParserException(exactlyOneMessage);
             }
             qualified = cursor.getValue();
             if ("includeClasses".equals(cursor.getKey())) {
@@ -60,11 +61,11 @@ public class FilterConfigurationParser extends ConfigurationParser {
             } else if ("excludeClasses".equals(cursor.getKey())) {
                 inclusion = ConfigurationFilter.Inclusion.Exclude;
             } else {
-                throw new JSONParserException("Unknown attribute '" + cursor.getKey() + "' (supported attributes: 'includeClasses', 'excludeClasses') in filter");
+                throw new JsonParserException("Unknown attribute '" + cursor.getKey() + "' (supported attributes: 'includeClasses', 'excludeClasses') in filter");
             }
         }
         if (qualified == null) {
-            throw new JSONParserException(exactlyOneMessage);
+            throw new JsonParserException(exactlyOneMessage);
         }
         parsedEntryConsumer.accept(asString(qualified), inclusion);
     }

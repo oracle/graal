@@ -130,6 +130,11 @@ public interface StackOverflowCheck {
     boolean isWithinBounds(UnsignedWord address);
 
     /**
+     * Throws new {@link StackOverflowError}.
+     */
+    void throwStackOverflowError();
+
+    /**
      * Make the yellow zone of the stack available for usage. It must be eventually followed by a
      * call to {@link #protectYellowZone()}. Nested calls are supported: if the yellow zone is
      * already available, this function is a no-op.

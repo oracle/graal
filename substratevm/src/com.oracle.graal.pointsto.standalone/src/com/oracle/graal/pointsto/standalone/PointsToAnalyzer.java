@@ -187,14 +187,14 @@ public final class PointsToAnalyzer {
          * good example.
          */
         try (Indent ignored = debugContext.logAndIndent("add initial classes/fields/methods")) {
-            bigbang.addRootClass(Object.class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(String.class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(String[].class, false, false).registerAsInHeap("root class");
-            bigbang.addRootField(String.class, "value").registerAsInHeap("root class");
-            bigbang.addRootClass(long[].class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(byte[].class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(byte[][].class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(Object[].class, false, false).registerAsInHeap("root class");
+            bigbang.addRootClass(Object.class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(String.class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(String[].class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootField(String.class, "value").registerAsInstantiated("root class");
+            bigbang.addRootClass(long[].class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(byte[].class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(byte[][].class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(Object[].class, false, false).registerAsInstantiated("root class");
 
             var rootReason = "Registered in " + PointsToAnalyzer.class;
             bigbang.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, rootReason);
@@ -358,7 +358,7 @@ public final class PointsToAnalyzer {
                 boolean isInvokeSpecial = m.isConstructor() || m.isFinal();
                 AnalysisType t = m.getDeclaringClass();
                 if (!t.isAbstract()) {
-                    t.registerAsInHeap("Root class.");
+                    t.registerAsInstantiated("Root class.");
                 }
                 bigbang.addRootMethod(m, isInvokeSpecial, "Entry point from file, registered in " + PointsToAnalyzer.class);
             });

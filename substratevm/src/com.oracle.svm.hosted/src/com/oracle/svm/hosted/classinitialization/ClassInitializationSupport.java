@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.classinitialization;
 
 import static com.oracle.svm.core.SubstrateOptions.TraceObjectInstantiation;
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TrackTypeReachedOnInterfaces;
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllUserSpaceTypesAsTrackedForTypeReached;
 
 import java.io.Serializable;
@@ -51,12 +52,13 @@ import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.internal.misc.Unsafe;
@@ -207,6 +209,23 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
             } else {
                 String msg = "Class initialization of " + clazz.getTypeName() + " failed. " +
                                 instructionsToInitializeAtRuntime(clazz);
+
+                if (t instanceof ExceptionInInitializerError) {
+                    Throwable cause = t;
+                    while (cause.getCause() != null) {
+                        cause = cause.getCause();
+                    }
+                    msg = msg + " Exception thrown by the class initializer:" + System.lineSeparator() + System.lineSeparator() + cause + System.lineSeparator();
+                    for (var element : cause.getStackTrace()) {
+                        if (getClass().getName().equals(element.getClassName())) {
+                            msg = msg + "\t(internal stack frames of the image generator are omitted)" + System.lineSeparator();
+                            break;
+                        }
+                        msg = msg + "\tat " + element + System.lineSeparator();
+                    }
+                    msg = msg + System.lineSeparator();
+                }
+
                 throw UserError.abort(t, "%s", msg);
             }
         }
@@ -254,7 +273,7 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
         }
     }
 
-    static boolean isClassListedInStringOption(LocatableMultiOptionValue.Strings option, Class<?> clazz) {
+    static boolean isClassListedInStringOption(AccumulatingLocatableMultiOptionValue.Strings option, Class<?> clazz) {
         return option.values().contains(clazz.getName());
     }
 
@@ -475,8 +494,14 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
     }
 
     public void addForTypeReachedTracking(Class<?> clazz) {
+        if (TrackTypeReachedOnInterfaces.getValue() && clazz.isInterface() && !metaAccess.lookupJavaType(clazz).declaresDefaultMethods()) {
+            LogUtils.info("Detected 'typeReached' on interface type without default methods: %s", clazz.getName());
+        }
+
         if (!isAlwaysReached(clazz)) {
-            UserError.guarantee(!configurationSealed, "It is not possible to register types for reachability tracking after the analysis has started.");
+            UserError.guarantee(!configurationSealed || typesRequiringReachability.contains(clazz),
+                            "It is not possible to register types for reachability tracking after the analysis has started if they were not registered before analysis started. Trying to register: %s",
+                            clazz.getName());
             typesRequiringReachability.add(clazz);
         }
     }

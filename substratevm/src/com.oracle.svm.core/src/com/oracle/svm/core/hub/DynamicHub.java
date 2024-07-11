@@ -100,11 +100,11 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.JDK22OrLater;
-import com.oracle.svm.core.jdk.JDK23OrLater;
+import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
@@ -113,6 +113,7 @@ import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.ConstructorDescriptor;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.FieldDescriptor;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder.MethodDescriptor;
 import com.oracle.svm.core.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
+import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
@@ -312,7 +313,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /** Indicates whether the type has been discovered as instantiated by the static analysis. */
     private static final int IS_INSTANTIATED_BIT = 0;
     /** Can this class be instantiated as an instance. */
-    private static final int CAN_INSTANTIATE_AS_INSTANCE_BIT = 1;
+    private static final int CAN_UNSAFE_INSTANTIATE_AS_INSTANCE_BIT = 1;
 
     private static final int IS_REGISTERED_FOR_SERIALIZATION = 2;
 
@@ -370,7 +371,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * Back link to the SubstrateType used by the substrate meta access. Only used for the subset of
      * types for which a SubstrateType exists.
      */
-    @UnknownObjectField(fullyQualifiedTypes = "com.oracle.svm.graal.meta.SubstrateType")//
+    @UnknownObjectField(fullyQualifiedTypes = "com.oracle.svm.graal.meta.SubstrateType", canBeNull = true)//
     private SharedType metaType;
 
     /**
@@ -491,8 +492,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setSharedData(int layoutEncoding, int monitorOffset, int identityHashOffset, long referenceMapIndex,
-                    boolean isInstantiated, boolean canInstantiateAsInstance, boolean isRegisteredForSerialization) {
-        assert !(!isInstantiated && canInstantiateAsInstance);
+                    boolean isInstantiated, boolean canUnsafeInstantiateAsInstance) {
+        assert !(!isInstantiated && canUnsafeInstantiateAsInstance);
         VMError.guarantee(monitorOffset == (char) monitorOffset, "Class %s has an invalid monitor field offset. Most likely, its objects are larger than supported.", name);
         VMError.guarantee(identityHashOffset == (char) identityHashOffset, "Class %s has an invalid identity hash code field offset. Most likely, its objects are larger than supported.", name);
 
@@ -505,8 +506,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
         this.referenceMapIndex = (int) referenceMapIndex;
         this.additionalFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated) |
-                        makeFlag(CAN_INSTANTIATE_AS_INSTANCE_BIT, canInstantiateAsInstance) |
-                        makeFlag(IS_REGISTERED_FOR_SERIALIZATION, isRegisteredForSerialization));
+                        makeFlag(CAN_UNSAFE_INSTANTIATE_AS_INSTANCE_BIT, canUnsafeInstantiateAsInstance));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -602,7 +602,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private void checkClassFlag(int mask, String methodName) {
-        if (throwMissingRegistrationErrors() && !isClassFlagSet(mask)) {
+        if (throwMissingRegistrationErrors() && !(isClassFlagSet(mask) && getConditions().satisfied())) {
             MissingReflectionRegistrationUtils.forBulkQuery(DynamicHub.toClass(this), methodName);
         }
     }
@@ -747,8 +747,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return isFlagSet(additionalFlags, IS_INSTANTIATED_BIT);
     }
 
-    public boolean canInstantiateAsInstance() {
-        return isFlagSet(additionalFlags, CAN_INSTANTIATE_AS_INSTANCE_BIT);
+    public boolean canUnsafeInstantiateAsInstance() {
+        return isFlagSet(additionalFlags, CAN_UNSAFE_INSTANTIATE_AS_INSTANCE_BIT);
     }
 
     public boolean isProxyClass() {
@@ -982,7 +982,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public boolean isRegisteredForSerialization() {
-        return isFlagSet(additionalFlags, IS_REGISTERED_FOR_SERIALIZATION);
+        return ImageSingletons.lookup(SerializationRegistry.class).isRegisteredForSerialization(DynamicHub.toClass(this));
     }
 
     @KeepOriginal
@@ -1088,6 +1088,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private Field[] getFields() {
         checkClassFlag(ALL_FIELDS_FLAG, "getFields");
         return copyFields(privateGetPublicFields());
+    }
+
+    private RuntimeConditionSet getConditions() {
+        return ClassForNameSupport.singleton().getConditionFor(DynamicHub.toClass(this));
     }
 
     @Substitute
@@ -1490,7 +1494,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     public static native Class<?> forPrimitiveName(String primitiveName);
 
     @KeepOriginal
@@ -1535,11 +1539,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     public native String toGenericString();
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK23OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     private native void addSealingInfo(int modifiersParam, StringBuilder sb);
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK23OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     private native boolean hasSealedAncestor(Class<?> clazz);
 
     @KeepOriginal
@@ -1865,7 +1869,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native GenericsFactory getFactory();
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     native Method findMethod(boolean publicOnly, String nameParam, Class<?>... parameterTypes);
 
     @KeepOriginal
@@ -1879,7 +1883,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native Target_java_lang_PublicMethods_MethodList getMethodsRecursive(String methodName, Class<?>[] parameterTypes, boolean includeStatic);
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     private native Target_java_lang_PublicMethods_MethodList getMethodsRecursive(String methodName, Class<?>[] parameterTypes, boolean includeStatic, boolean publicOnly);
 
     @KeepOriginal
@@ -1946,7 +1950,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public boolean isReached() {
-        return classInitializationInfo.isTypeReached();
+        return classInitializationInfo.isTypeReached(this);
     }
 
     private static class ReflectionDataAccessors {
@@ -2132,7 +2136,7 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
      * @see Target_jdk_internal_reflect_DirectConstructorHandleAccessor
      */
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
+    @TargetElement(onlyWith = JDKLatest.class)
     @Fold // cut off the alternative branch, already during analysis
     static boolean useOldSerializableConstructor() {
         return true;

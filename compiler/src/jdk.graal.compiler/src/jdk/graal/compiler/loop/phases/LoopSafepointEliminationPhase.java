@@ -37,7 +37,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.Option;
@@ -73,7 +73,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
      * To be implemented by subclasses to compute additional fields.
      */
     @SuppressWarnings("unused")
-    protected void onSafepointDisabledLoopBegin(LoopEx loop) {
+    protected void onSafepointDisabledLoopBegin(Loop loop) {
     }
 
     /**
@@ -85,7 +85,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         return false;
     }
 
-    public static boolean loopIsIn32BitRange(LoopEx loop) {
+    public static boolean loopIsIn32BitRange(Loop loop) {
         if (loop.counted().getStamp().getBits() <= 32) {
             return true;
         }
@@ -126,7 +126,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
         if (Options.RemoveLoopSafepoints.getValue(graph.getOptions())) {
             loops.detectCountedLoops();
-            for (LoopEx loop : loops.countedLoops()) {
+            for (Loop loop : loops.countedLoops()) {
                 if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
                     boolean hasSafepoint = false;
                     for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
@@ -159,7 +159,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                 }
             }
         }
-        for (LoopEx loop : loops.loops()) {
+        for (Loop loop : loops.loops()) {
             if (!allowGuestSafepoints()) {
                 loop.loopBegin().disableGuestSafepoint();
             }

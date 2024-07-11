@@ -188,7 +188,7 @@ public final class CallTreePrinter {
                 roots.add(m);
             }
             if (m.isVirtualRootMethod()) {
-                for (AnalysisMethod impl : m.getImplementations()) {
+                for (AnalysisMethod impl : m.collectMethodImplementations(false)) {
                     AnalysisError.guarantee(impl.isImplementationInvoked());
                     roots.add(impl);
                 }

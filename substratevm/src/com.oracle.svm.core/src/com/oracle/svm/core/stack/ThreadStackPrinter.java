@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.stack;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -37,6 +37,7 @@ import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.ImageCodeInfo;
+import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -99,10 +100,20 @@ public class ThreadStackPrinter {
             return this;
         }
 
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
         @Override
-        protected final boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame, Object data) {
-            Log log = (Log) data;
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
+        protected final boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, Object data) {
+            return visitFrame(sp, ip, codeInfo, null, (Log) data);
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
+        protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptFrame, Object data) {
+            CodeInfo imageCodeInfo = CodeInfoTable.lookupImageCodeInfo(deoptStubIP);
+            return visitFrame(originalSP, deoptStubIP, imageCodeInfo, deoptFrame, (Log) data);
+        }
+
+        private boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame, Log log) {
             if (printedFrames >= MAX_STACK_FRAMES_PER_THREAD_TO_PRINT) {
                 log.string("... (truncated)").newline();
                 return false;
@@ -114,12 +125,9 @@ public class ThreadStackPrinter {
         }
 
         @Override
-        protected final boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Object data) {
+        protected final boolean unknownFrame(Pointer sp, CodePointer ip, Object data) {
             Log log = (Log) data;
             logFrameRaw(log, sp, ip, WordFactory.nullPointer());
-            if (DeoptimizationSupport.enabled()) {
-                log.string("  deoptFrame=").object(deoptimizedFrame);
-            }
             log.string("  IP is not within Java code. Aborting stack trace printing.").newline();
             printedFrames++;
             return false;
@@ -134,9 +142,12 @@ public class ThreadStackPrinter {
         protected static void logFrameRaw(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo) {
             log.string("SP ").zhex(sp);
             log.string(" IP ").zhex(ip);
+            log.string(" size=");
             if (codeInfo.isNonNull()) {
-                long frameSize = CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
-                log.string(" size=").signed(frameSize, 4, Log.LEFT_ALIGN);
+                long frameSize = CodeInfoAccess.lookupTotalFrameSize(codeInfo, ip);
+                log.signed(frameSize, 4, Log.LEFT_ALIGN);
+            } else {
+                log.string("unknown");
             }
         }
     }
@@ -208,34 +219,33 @@ public class ThreadStackPrinter {
         }
     }
 
-    /**
-     * Walk the stack printing each frame.
-     */
-    @NeverInline("debugger breakpoint")
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static void printBacktrace() {
-        // Only used as a debugger breakpoint
-    }
-
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
-    public static boolean printStacktrace(Pointer startSP, CodePointer startIP, Stage0StackFramePrintVisitor printVisitor, Log log) {
-        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
-        JavaStackWalker.initWalk(walk, startSP, startIP);
+    public static boolean printStacktrace(IsolateThread thread, Pointer initialSP, CodePointer initialIP, Stage0StackFramePrintVisitor printVisitor, Log log) {
+        Pointer sp = initialSP;
+        CodePointer ip = initialIP;
 
-        JavaFrameAnchor anchor = walk.getAnchor();
-        if (walk.getIPCodeInfo().isNull() && anchor.isNonNull()) {
-            logFrameAnchor(log, startSP, startIP);
-            walk.setSP(anchor.getLastJavaSP());
-            walk.setPossiblyStaleIP(anchor.getLastJavaIP());
-            walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(anchor.getLastJavaIP()));
+        /* Don't start the stack walk in a non-Java frame, even if the crash happened there. */
+        UntetheredCodeInfo info = CodeInfoTable.lookupCodeInfo(ip);
+        if (info.isNull()) {
+            logFrame(log, sp, ip);
+
+            JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(thread);
+            if (anchor.isNonNull()) {
+                sp = anchor.getLastJavaSP();
+                ip = anchor.getLastJavaIP();
+            } else {
+                return false;
+            }
         }
 
-        return JavaStackWalker.doWalk(walk, printVisitor, log);
+        JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
+        JavaStackWalker.initialize(walk, thread, sp, ip);
+        return JavaStackWalker.doWalk(walk, thread, printVisitor, log);
     }
 
-    @Uninterruptible(reason = "CodeInfo in JavaStackWalk is currently null, so printing to log is safe right now.", calleeMustBe = false)
-    private static void logFrameAnchor(Log log, Pointer startSP, CodePointer startIP) {
-        Stage0StackFramePrintVisitor.logFrameRaw(log, startSP, startIP, WordFactory.nullPointer());
+    @Uninterruptible(reason = "IP is not within Java code, so there is no risk that it gets invalidated.", calleeMustBe = false)
+    private static void logFrame(Log log, Pointer sp, CodePointer ip) {
+        Stage0StackFramePrintVisitor.logFrameRaw(log, sp, ip, WordFactory.nullPointer());
         log.string("  IP is not within Java code. Trying frame anchor of last Java frame instead.").newline();
     }
 }

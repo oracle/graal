@@ -67,7 +67,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
-import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
+import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
@@ -405,7 +405,7 @@ public final class Safepoint {
     }
 
     public static int getThreadLocalSafepointRequestedOffset() {
-        return VMThreadLocalInfos.getOffset(safepointRequested);
+        return VMThreadLocalOffsetProvider.getOffset(safepointRequested);
     }
 
     /**

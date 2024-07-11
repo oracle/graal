@@ -191,8 +191,8 @@ final class BreakpointInterceptor {
         if (tracer != null) {
             tracer.traceCall(context,
                             function,
-                            getClassNameOr(env, clazz, null, Tracer.UNKNOWN_VALUE),
-                            getClassNameOr(env, declaringClass, null, Tracer.UNKNOWN_VALUE),
+                            getClassOrProxyInterfaceNames(env, clazz),
+                            getClassOrProxyInterfaceNames(env, declaringClass),
                             getClassNameOr(env, callerClass, null, Tracer.UNKNOWN_VALUE),
                             result,
                             stackTrace,
@@ -208,6 +208,39 @@ final class BreakpointInterceptor {
             }
             clearException(env);
         }
+    }
+
+    /**
+     * If the given class is a proxy, returns an array containing the names of its implemented
+     * interfaces, else returns the class name. This prevents classes with arbitrary names from
+     * being exposed outside the agent, since those names only make sense within a single execution
+     * of the program.
+     *
+     * @param env JNI environment of the thread running the JVMTI callback.
+     * @param clazz Handle to the class.
+     * @return The interface, or the original class if it is not a proxy or implements multiple
+     *         interfaces.
+     */
+    private static Object getClassOrProxyInterfaceNames(JNIEnvironment env, JNIObjectHandle clazz) {
+        if (clazz.equal(nullHandle())) {
+            return null;
+        }
+
+        boolean isProxy = Support.callStaticBooleanMethodL(env, agent.handles().getJavaLangReflectProxy(env), agent.handles().getJavaLangReflectProxyIsProxyClass(env), clazz);
+        if (Support.clearException(env)) {
+            return Tracer.UNKNOWN_VALUE;
+        }
+
+        if (!isProxy) {
+            return getClassNameOr(env, clazz, null, Tracer.UNKNOWN_VALUE);
+        }
+
+        JNIObjectHandle interfaces = Support.callObjectMethod(env, clazz, agent.handles().javaLangClassGetInterfaces);
+        if (Support.clearException(env)) {
+            return Tracer.UNKNOWN_VALUE;
+        }
+
+        return getClassArrayNames(env, interfaces);
     }
 
     private static boolean forName(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
@@ -232,7 +265,7 @@ final class BreakpointInterceptor {
     private static boolean handleGetFields(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
         JNIObjectHandle self = getReceiver(thread);
-        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), nullHandle(), callerClass, bp.specification.methodName, null, state.getFullStackTraceOrNull());
+        traceReflectBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, null, state.getFullStackTraceOrNull());
         return true;
     }
 
@@ -256,8 +289,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
         JNIObjectHandle self = getReceiver(thread);
         /* When reflection metadata tracking is disabled, all methods are considered invoked */
-        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), nullHandle(), callerClass, bp.specification.methodName, trackReflectionMetadata ? null : true,
-                        state.getFullStackTraceOrNull());
+        traceReflectBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, trackReflectionMetadata ? null : true, state.getFullStackTraceOrNull());
         return true;
     }
 
@@ -315,8 +347,7 @@ final class BreakpointInterceptor {
                 declaring = nullHandle();
             }
         }
-        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), getClassOrSingleProxyInterface(jni, declaring), callerClass, bp.specification.methodName, name.notEqual(nullHandle()),
-                        state.getFullStackTraceOrNull(), fromJniString(jni, name));
+        traceReflectBreakpoint(jni, self, declaring, callerClass, bp.specification.methodName, name.notEqual(nullHandle()), state.getFullStackTraceOrNull(), fromJniString(jni, name));
         return true;
     }
 
@@ -379,8 +410,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle self = getReceiver(thread);
         JNIObjectHandle paramTypesHandle = getObjectArgument(thread, 1);
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
-        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(),
-                        paramTypes);
+        traceReflectBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(), paramTypes);
         return true;
     }
 
@@ -410,8 +440,7 @@ final class BreakpointInterceptor {
         }
         String name = fromJniString(jni, nameHandle);
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
-        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, self), getClassOrSingleProxyInterface(jni, declaring), callerClass, bp.specification.methodName,
-                        nameHandle.notEqual(nullHandle()), state.getFullStackTraceOrNull(), name, paramTypes);
+        traceReflectBreakpoint(jni, self, declaring, callerClass, bp.specification.methodName, nameHandle.notEqual(nullHandle()), state.getFullStackTraceOrNull(), name, paramTypes);
         return true;
     }
 
@@ -476,8 +505,7 @@ final class BreakpointInterceptor {
         }
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
 
-        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, declaring), getClassOrSingleProxyInterface(jni, declaring), callerClass, "invokeMethod", declaring.notEqual(nullHandle()),
-                        state.getFullStackTraceOrNull(), name, paramTypes);
+        traceReflectBreakpoint(jni, declaring, declaring, callerClass, "invokeMethod", declaring.notEqual(nullHandle()), state.getFullStackTraceOrNull(), name, paramTypes);
 
         /*
          * Calling Class.newInstance through Method.invoke should register the class for reflective
@@ -524,8 +552,7 @@ final class BreakpointInterceptor {
         }
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
 
-        traceReflectBreakpoint(jni, getClassOrSingleProxyInterface(jni, declaring), getClassOrSingleProxyInterface(jni, declaring), callerClass, "invokeConstructor", declaring.notEqual(nullHandle()),
-                        state.getFullStackTraceOrNull(), paramTypes);
+        traceReflectBreakpoint(jni, declaring, declaring, callerClass, "invokeConstructor", declaring.notEqual(nullHandle()), state.getFullStackTraceOrNull(), paramTypes);
         return true;
     }
 
@@ -1519,39 +1546,6 @@ final class BreakpointInterceptor {
         }
         guarantee(!testException(jni) && method.isNonNull());
         return method;
-    }
-
-    /**
-     * If the given class is a proxy implementing a single interface, returns this interface. This
-     * prevents classes with arbitrary names from being exposed outside the agent, since those names
-     * only make sense within a single execution of the program.
-     *
-     * @param env JNI environment of the thread running the JVMTI callback.
-     * @param clazz Handle to the class.
-     * @return The interface, or the original class if it is not a proxy or implements multiple
-     *         interfaces.
-     */
-    public static JNIObjectHandle getClassOrSingleProxyInterface(JNIEnvironment env, JNIObjectHandle clazz) {
-        boolean isProxy = Support.callStaticBooleanMethodL(env, agent.handles().getJavaLangReflectProxy(env), agent.handles().getJavaLangReflectProxyIsProxyClass(env), clazz);
-        if (Support.clearException(env) || !isProxy) {
-            return clazz;
-        }
-
-        JNIObjectHandle interfaces = Support.callObjectMethod(env, clazz, agent.handles().javaLangClassGetInterfaces);
-        if (Support.clearException(env) || interfaces.equal(nullHandle())) {
-            return clazz;
-        }
-
-        int interfacesLength = Support.jniFunctions().getGetArrayLength().invoke(env, interfaces);
-        guarantee(!Support.clearException(env));
-        if (interfacesLength != 1) {
-            return clazz;
-        }
-
-        JNIObjectHandle iface = Support.jniFunctions().getGetObjectArrayElement().invoke(env, interfaces, 0);
-        guarantee(!Support.clearException(env) && iface.notEqual(nullHandle()));
-
-        return iface;
     }
 
     private static void bindNativeBreakpoint(JNIEnvironment jni, NativeBreakpoint bp, CodePointer originalAddress, WordPointer newAddressPtr) {

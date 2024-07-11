@@ -46,6 +46,8 @@ final class FrameAccessor extends Accessor {
 
     @SuppressWarnings("unused") static final FrameAccessor ACCESSOR = new FrameAccessor();
 
+    static final NodeSupport NODES = ACCESSOR.nodeSupport();
+
     static final class FramesImpl extends FrameSupport {
         @Override
         public void markMaterializeCalled(FrameDescriptor descriptor) {

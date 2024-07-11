@@ -38,6 +38,8 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
@@ -49,7 +51,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
-public final class KnownOffsetsFeature implements InternalFeature {
+public final class KnownOffsetsFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {

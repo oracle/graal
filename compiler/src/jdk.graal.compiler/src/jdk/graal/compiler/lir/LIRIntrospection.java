@@ -40,13 +40,13 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+
 import jdk.graal.compiler.core.common.FieldIntrospection;
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.FieldsScanner;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstruction.OperandFlag;
 import jdk.graal.compiler.lir.LIRInstruction.OperandMode;
-
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.Value;
@@ -306,7 +306,8 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         }
     }
 
-    protected static void appendValues(StringBuilder sb, Object obj, String start, String end, String startMultiple, String endMultiple, String[] prefix, Fields... fieldsList) {
+    protected static void appendValues(StringBuilder sb, Object obj, String start, String end, String startMultiple, String endMultiple, boolean elideSingleName, String[] prefix,
+                    Fields... fieldsList) {
         int total = 0;
         for (Fields fields : fieldsList) {
             total += fields.getCount();
@@ -324,7 +325,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         for (Fields fields : fieldsList) {
             for (int j = 0; j < fields.getCount(); j++) {
                 sb.append(sep).append(prefix[i]);
-                if (total > 1) {
+                if (!elideSingleName || total > 1) {
                     sb.append(fields.getName(j)).append(": ");
                 }
                 sb.append(getFieldString(obj, j, fields));

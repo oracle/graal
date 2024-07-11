@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
+import com.oracle.truffle.nfi.backend.spi.NFIState;
 
 @TruffleLanguage.Registration(id = "internal/nfi-panama", name = "nfi-panama", version = "0.1", characterMimeTypes = PanamaNFILanguage.MIME_TYPE, internal = true, services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED)
 public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
@@ -65,8 +66,14 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
 
     public final ContextThreadLocal<ErrorContext> errorContext = createErrorContext();
 
+    @CompilationFinal private ContextThreadLocal<NFIState> state;
+
     static Assumption getSingleContextAssumption() {
         return get(null).singleContextAssumption;
+    }
+
+    NFIState getNFIState() {
+        return state.get();
     }
 
     @Override
@@ -85,13 +92,14 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
             }
 
             @Override
-            public NFIBackend createBackend() {
+            public NFIBackend createBackend(ContextThreadLocal<NFIState> newState) {
                 if (backend == null) {
                     /*
                      * Make sure there is exactly one backend instance per engine. That way we can
                      * use identity equality on the backend object for caching decisions.
                      */
                     backend = new PanamaNFIBackend(PanamaNFILanguage.this);
+                    state = newState;
                 }
                 return backend;
             }
@@ -122,6 +130,11 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
     @Override
     protected void initializeContext(PanamaNFIContext context) throws Exception {
         context.initialize();
+        errorContext.get().initialize();
+    }
+
+    @Override
+    protected void initializeThread(PanamaNFIContext context, Thread thread) {
         errorContext.get().initialize();
     }
 

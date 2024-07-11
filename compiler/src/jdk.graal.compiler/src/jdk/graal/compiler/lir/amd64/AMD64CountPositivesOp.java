@@ -26,7 +26,7 @@ package jdk.graal.compiler.lir.amd64;
 
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRMVOp.SHLX;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPBROADCASTD;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPXOR;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.ZMM;
@@ -55,7 +55,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/7bb59dc8da0c61c5da5c3aab5d56a6e4880001ce/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L4219-L4489",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/aaaa86b57172d45d1126c50efc270c6e49aba7a5/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L3860-L4130",
           sha1 = "684b5353c58bbf92e4403aa985113a78a1f38930")
 // @formatter:on
 @Opcode("AMD64_COUNT_POSITIVES")
@@ -144,7 +144,7 @@ public final class AMD64CountPositivesOp extends AMD64ComplexVectorOp {
             Register mask2 = asRegister(maskValue2);
 
             masm.movl(tmp1, len);
-            masm.emit(VPXOR, vec2, vec2, vec2, ZMM);
+            masm.emit(EVPXOR, vec2, vec2, vec2, ZMM);
             // tail count (in chars) 0x3
             masm.andl(tmp1, 0x0000003f);
             // vector count (in chars)

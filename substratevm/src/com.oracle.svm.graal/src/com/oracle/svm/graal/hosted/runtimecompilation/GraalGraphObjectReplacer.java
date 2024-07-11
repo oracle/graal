@@ -398,16 +398,16 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
     /**
      * Collect {@link SubstrateMethod} implementations.
      */
-    public void setMethodsImplementations() {
+    public void setMethodsImplementations(HostedUniverse hUniverse) {
         for (Map.Entry<AnalysisMethod, SubstrateMethod> entry : methods.entrySet()) {
             AnalysisMethod aMethod = entry.getKey();
             SubstrateMethod sMethod = entry.getValue();
-            AnalysisMethod[] aMethodImplementations = aMethod.getImplementations();
-            SubstrateMethod[] implementations = new SubstrateMethod[aMethodImplementations.length];
+            HostedMethod hMethod = hUniverse.lookup(aMethod);
+            SubstrateMethod[] implementations = new SubstrateMethod[hMethod.getImplementations().length];
             int idx = 0;
-            for (AnalysisMethod impl : aMethodImplementations) {
-                SubstrateMethod sImpl = methods.get(impl);
-                VMError.guarantee(sImpl != null, "SubstrateMethod for %s missing.", impl);
+            for (var hImplementation : hMethod.getImplementations()) {
+                SubstrateMethod sImpl = methods.get(hImplementation.getWrapped());
+                VMError.guarantee(sImpl != null, "SubstrateMethod for %s missing.", hImplementation);
                 implementations[idx++] = sImpl;
             }
             sMethod.setImplementations(implementations);

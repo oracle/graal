@@ -24,10 +24,14 @@
  */
 package com.oracle.svm.configure.config;
 
+import static com.oracle.svm.core.configure.ConfigurationParser.JNI_KEY;
+import static com.oracle.svm.core.configure.ConfigurationParser.REFLECTION_KEY;
+
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -35,13 +39,16 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.util.VMError;
 
 public class ConfigurationFileCollection {
     public static final Function<IOException, Exception> FAIL_ON_EXCEPTION = e -> e;
 
+    private final Set<URI> reachabilityMetadataPaths = new LinkedHashSet<>();
     private final Set<URI> jniConfigPaths = new LinkedHashSet<>();
     private final Set<URI> reflectConfigPaths = new LinkedHashSet<>();
     private final Set<URI> proxyConfigPaths = new LinkedHashSet<>();
@@ -51,6 +58,7 @@ public class ConfigurationFileCollection {
     private Set<URI> lockFilePaths;
 
     public void addDirectory(Path path) {
+        reachabilityMetadataPaths.add(path.resolve(ConfigurationFile.REACHABILITY_METADATA.getFileName()).toUri());
         jniConfigPaths.add(path.resolve(ConfigurationFile.JNI.getFileName()).toUri());
         reflectConfigPaths.add(path.resolve(ConfigurationFile.REFLECTION.getFileName()).toUri());
         proxyConfigPaths.add(path.resolve(ConfigurationFile.DYNAMIC_PROXY.getFileName()).toUri());
@@ -70,13 +78,21 @@ public class ConfigurationFileCollection {
     }
 
     public void addDirectory(Function<String, URI> fileResolver) {
-        jniConfigPaths.add(fileResolver.apply(ConfigurationFile.JNI.getFileName()));
-        reflectConfigPaths.add(fileResolver.apply(ConfigurationFile.REFLECTION.getFileName()));
-        proxyConfigPaths.add(fileResolver.apply(ConfigurationFile.DYNAMIC_PROXY.getFileName()));
-        resourceConfigPaths.add(fileResolver.apply(ConfigurationFile.RESOURCES.getFileName()));
-        serializationConfigPaths.add(fileResolver.apply(ConfigurationFile.SERIALIZATION.getFileName()));
-        predefinedClassesConfigPaths.add(fileResolver.apply(ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName()));
+        addFile(reachabilityMetadataPaths, fileResolver, ConfigurationFile.REACHABILITY_METADATA);
+        addFile(jniConfigPaths, fileResolver, ConfigurationFile.JNI);
+        addFile(reflectConfigPaths, fileResolver, ConfigurationFile.REFLECTION);
+        addFile(proxyConfigPaths, fileResolver, ConfigurationFile.DYNAMIC_PROXY);
+        addFile(resourceConfigPaths, fileResolver, ConfigurationFile.RESOURCES);
+        addFile(serializationConfigPaths, fileResolver, ConfigurationFile.SERIALIZATION);
+        addFile(predefinedClassesConfigPaths, fileResolver, ConfigurationFile.PREDEFINED_CLASSES_NAME);
         detectAgentLock(fileResolver.apply(ConfigurationFile.LOCK_FILE_NAME), Objects::nonNull, Function.identity());
+    }
+
+    private static void addFile(Set<URI> metadataPaths, Function<String, URI> fileResolver, ConfigurationFile configurationFile) {
+        URI uri = fileResolver.apply(configurationFile.getFileName());
+        if (uri != null) {
+            metadataPaths.add(uri);
+        }
     }
 
     public Set<URI> getDetectedAgentLockPaths() {
@@ -84,8 +100,27 @@ public class ConfigurationFileCollection {
     }
 
     public boolean isEmpty() {
-        return jniConfigPaths.isEmpty() && reflectConfigPaths.isEmpty() && proxyConfigPaths.isEmpty() &&
+        return reachabilityMetadataPaths.isEmpty() && jniConfigPaths.isEmpty() && reflectConfigPaths.isEmpty() && proxyConfigPaths.isEmpty() &&
                         resourceConfigPaths.isEmpty() && serializationConfigPaths.isEmpty() && predefinedClassesConfigPaths.isEmpty();
+    }
+
+    public Set<Path> getPaths(ConfigurationFile configurationFile) {
+        Set<URI> uris;
+        switch (configurationFile) {
+            case REACHABILITY_METADATA -> uris = getReachabilityMetadataPaths();
+            case DYNAMIC_PROXY -> uris = getProxyConfigPaths();
+            case RESOURCES -> uris = getResourceConfigPaths();
+            case JNI -> uris = getJniConfigPaths();
+            case REFLECTION -> uris = getReflectConfigPaths();
+            case SERIALIZATION -> uris = getSerializationConfigPaths();
+            case PREDEFINED_CLASSES_NAME -> uris = getPredefinedClassesConfigPaths();
+            default -> throw VMError.shouldNotReachHere("Cannot get paths for configuration file " + configurationFile);
+        }
+        return uris.stream().map(Paths::get).collect(Collectors.toSet());
+    }
+
+    public Set<URI> getReachabilityMetadataPaths() {
+        return reachabilityMetadataPaths;
     }
 
     public Set<URI> getJniConfigPaths() {
@@ -113,35 +148,37 @@ public class ConfigurationFileCollection {
     }
 
     public TypeConfiguration loadJniConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
-        return loadTypeConfig(jniConfigPaths, exceptionHandler);
+        return loadTypeConfig(JNI_KEY, jniConfigPaths, exceptionHandler);
     }
 
     public TypeConfiguration loadReflectConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
-        return loadTypeConfig(reflectConfigPaths, exceptionHandler);
+        return loadTypeConfig(REFLECTION_KEY, reflectConfigPaths, exceptionHandler);
     }
 
     public ProxyConfiguration loadProxyConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
-        loadConfig(proxyConfigPaths, proxyConfiguration.createParser(), exceptionHandler);
+        loadConfig(proxyConfigPaths, proxyConfiguration.createParser(false), exceptionHandler);
         return proxyConfiguration;
     }
 
     public PredefinedClassesConfiguration loadPredefinedClassesConfig(Path[] classDestinationDirs, Predicate<String> shouldExcludeClassesWithHash,
                     Function<IOException, Exception> exceptionHandler) throws Exception {
         PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(classDestinationDirs, shouldExcludeClassesWithHash);
-        loadConfig(predefinedClassesConfigPaths, predefinedClassesConfiguration.createParser(), exceptionHandler);
+        loadConfig(predefinedClassesConfigPaths, predefinedClassesConfiguration.createParser(false), exceptionHandler);
         return predefinedClassesConfiguration;
     }
 
     public ResourceConfiguration loadResourceConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
-        loadConfig(resourceConfigPaths, resourceConfiguration.createParser(), exceptionHandler);
+        loadConfig(reachabilityMetadataPaths, resourceConfiguration.createParser(true), exceptionHandler);
+        loadConfig(resourceConfigPaths, resourceConfiguration.createParser(false), exceptionHandler);
         return resourceConfiguration;
     }
 
     public SerializationConfiguration loadSerializationConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         SerializationConfiguration serializationConfiguration = new SerializationConfiguration();
-        loadConfig(serializationConfigPaths, serializationConfiguration.createParser(), exceptionHandler);
+        loadConfig(reachabilityMetadataPaths, serializationConfiguration.createParser(true), exceptionHandler);
+        loadConfig(serializationConfigPaths, serializationConfiguration.createParser(false), exceptionHandler);
         return serializationConfiguration;
     }
 
@@ -152,9 +189,10 @@ public class ConfigurationFileCollection {
                         loadPredefinedClassesConfig(predefinedConfigClassDestinationDirs, predefinedConfigClassWithHashExclusionPredicate, exceptionHandler));
     }
 
-    private static TypeConfiguration loadTypeConfig(Collection<URI> uris, Function<IOException, Exception> exceptionHandler) throws Exception {
-        TypeConfiguration configuration = new TypeConfiguration();
-        loadConfig(uris, configuration.createParser(), exceptionHandler);
+    private TypeConfiguration loadTypeConfig(String combinedFileKey, Collection<URI> uris, Function<IOException, Exception> exceptionHandler) throws Exception {
+        TypeConfiguration configuration = new TypeConfiguration(combinedFileKey);
+        loadConfig(reachabilityMetadataPaths, configuration.createParser(true), exceptionHandler);
+        loadConfig(uris, configuration.createParser(false), exceptionHandler);
         return configuration;
     }
 

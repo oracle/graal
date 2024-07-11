@@ -39,7 +39,7 @@ public final class ModuleNative {
     private ModuleNative() {
     }
 
-    /**
+    /*
      * Re-implementations of native methods from {@code src/hotspot/share/classfile/modules.cpp}.
      * See {@link Target_java_lang_Module} for more information on module system native
      * substitutions.

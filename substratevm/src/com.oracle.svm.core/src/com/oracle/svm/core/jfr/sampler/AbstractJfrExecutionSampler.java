@@ -24,47 +24,27 @@
  */
 package com.oracle.svm.core.jfr.sampler;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoQueryResult;
-import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.JfrStackWalker;
 import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.sampler.SamplerSampleWriter;
-import com.oracle.svm.core.sampler.SamplerSampleWriterData;
-import com.oracle.svm.core.sampler.SamplerSampleWriterDataAccess;
-import com.oracle.svm.core.sampler.SamplerStackWalkVisitor;
-import com.oracle.svm.core.stack.JavaFrameAnchor;
-import com.oracle.svm.core.stack.JavaFrameAnchors;
-import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
-import com.oracle.svm.core.util.PointerUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -193,7 +173,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
     protected abstract void uninstall(IsolateThread thread);
 
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
-    protected static void tryUninterruptibleStackWalk(CodePointer ip, Pointer sp) {
+    protected static void tryUninterruptibleStackWalk(CodePointer ip, Pointer sp, boolean isAsync) {
         /*
          * To prevent races, it is crucial that the thread count is incremented before we do any
          * other checks.
@@ -204,7 +184,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
                 /* Prevent recursive sampler invocations during the stack walk. */
                 JfrExecutionSampler.singleton().preventSamplingInCurrentThread();
                 try {
-                    doUninterruptibleStackWalk(ip, sp);
+                    JfrStackWalker.walkCurrentThread(ip, sp, isAsync);
                 } finally {
                     JfrExecutionSampler.singleton().allowSamplingInCurrentThread();
                 }
@@ -213,152 +193,6 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
             }
         } finally {
             threadsInSignalHandler().decrementAndGet();
-        }
-    }
-
-    @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
-    private static void doUninterruptibleStackWalk(CodePointer initialIp, Pointer initialSp) {
-        CodePointer ip = initialIp;
-        Pointer sp = initialSp;
-        if (!CodeInfoTable.isInAOTImageCode(ip)) {
-            JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
-            if (anchor.isNull()) {
-                /*
-                 * The anchor is still null if the function is interrupted during prologue (see:
-                 * com.oracle.svm.core.graal.snippets.CFunctionSnippets.prologueSnippet) or if java
-                 * calls a native method without transition and without previous anchors.
-                 */
-                return;
-            }
-
-            ip = anchor.getLastJavaIP();
-            sp = anchor.getLastJavaSP();
-            if (ip.isNull() || sp.isNull()) {
-                /*
-                 * It can happen that anchor is in the list of all anchors, but its IP and SP are
-                 * not filled yet.
-                 */
-                return;
-            }
-        }
-
-        /* Try to do a stack walk. */
-        SamplerSampleWriterData data = StackValue.get(SamplerSampleWriterData.class);
-        if (SamplerSampleWriterDataAccess.initialize(data, 0, false)) {
-            JfrThreadLocal.setSamplerWriterData(data);
-            try {
-                doUninterruptibleStackWalk(data, sp, ip);
-            } finally {
-                JfrThreadLocal.setSamplerWriterData(WordFactory.nullPointer());
-            }
-        }
-    }
-
-    /**
-     * Verify whether the stack pointer (SP) lies within the limits of the thread's stack. If not,
-     * attempting a stack walk might result in a segmentation fault (SEGFAULT). The stack pointer
-     * might be positioned outside the stack's boundaries if a signal interrupted the execution at
-     * the beginning of a method, before the SP was adjusted to its correct value.
-     */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean isSPOutsideStackBoundaries(Pointer sp) {
-        UnsignedWord stackBase = VMThreads.StackBase.get();
-        assert stackBase.notEqual(0);
-        Pointer returnAddressLocation = FrameAccess.singleton().getReturnAddressLocation(sp).add(FrameAccess.returnAddressSize());
-        return returnAddressLocation.aboveThan(stackBase) || returnAddressLocation.belowOrEqual(VMThreads.StackEnd.get());
-    }
-
-    @Uninterruptible(reason = "This method must be uninterruptible since it uses untethered code info.", callerMustBe = true)
-    private static Pointer getCallerSP(CodeInfo codeInfo, Pointer sp, CodePointer ip) {
-        long relativeIP = CodeInfoAccess.relativeIP(codeInfo, ip);
-        long totalFrameSize = CodeInfoAccess.lookupTotalFrameSize(codeInfo, relativeIP);
-        return sp.add(WordFactory.unsigned(totalFrameSize));
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean isSPAligned(Pointer sp) {
-        return PointerUtils.isAMultiple(sp, WordFactory.unsigned(ConfigurationValues.getTarget().stackAlignment));
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean isEntryPoint(CodeInfo codeInfo, CodePointer ip) {
-        long relativeIP = CodeInfoAccess.relativeIP(codeInfo, ip);
-        SimpleCodeInfoQueryResult queryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
-        CodeInfoAccess.lookupCodeInfo(codeInfo, relativeIP, queryResult);
-        return CodeInfoQueryResult.isEntryPoint(queryResult.getEncodedFrameSize());
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static JavaFrameAnchor findLastJavaFrameAnchor(Pointer callerSP) {
-        JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
-        while (anchor.isNonNull() && anchor.getLastJavaSP().belowOrEqual(callerSP)) {
-            /* Skip anchors that are in parts of the stack we are not traversing. */
-            anchor = anchor.getPreviousAnchor();
-        }
-        assert anchor.isNull() || anchor.getLastJavaSP().aboveThan(callerSP);
-        return anchor;
-    }
-
-    @Uninterruptible(reason = "This method must be uninterruptible since it uses untethered code info.", callerMustBe = true)
-    private static void doUninterruptibleStackWalk(SamplerSampleWriterData data, Pointer sp, CodePointer ip) {
-        SamplerSampleWriter.begin(data);
-        /*
-         * Visit the top frame.
-         *
-         * No matter where in the AOT-compiled code the signal has interrupted the execution, we
-         * know how to decode it.
-         */
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo(ip);
-        SamplerStackWalkVisitor visitor = ImageSingletons.lookup(SamplerStackWalkVisitor.class);
-        if (!visitor.visitFrame(sp, ip, codeInfo, null, null)) {
-            /* The top frame is also the last one. */
-            SamplerSampleWriter.end(data, SamplerSampleWriter.EXECUTION_SAMPLE_END);
-            return;
-        }
-
-        Pointer callerSP;
-        if (isSPAligned(sp)) {
-            /* Stack is probably in a normal, walkable state. */
-            callerSP = getCallerSP(codeInfo, sp, ip);
-            if (SubstrateOptions.hasFramePointer() && (isSPOutsideStackBoundaries(callerSP) || !CodeInfoTable.isInAOTImageCode(FrameAccess.singleton().readReturnAddress(callerSP)))) {
-                /*
-                 * We are in the prologue or epilogue. Frame pointer and return address are on top
-                 * of the stack.
-                 */
-                callerSP = sp.add(FrameAccess.wordSize()).add(FrameAccess.wordSize());
-            }
-        } else {
-            /* We are in the prologue or epilogue. Return address is at the top of the stack. */
-            callerSP = sp.add(FrameAccess.wordSize());
-        }
-
-        if (isSPOutsideStackBoundaries(callerSP)) {
-            /* We made an incorrect assumption earlier, the stack is not walkable. */
-            JfrThreadLocal.increaseUnparseableStacks();
-            return;
-        }
-
-        CodePointer returnAddressIP = FrameAccess.singleton().readReturnAddress(callerSP);
-        if (!CodeInfoTable.isInAOTImageCode(returnAddressIP)) {
-            if (isEntryPoint(codeInfo, ip)) {
-                JavaFrameAnchor anchor = findLastJavaFrameAnchor(callerSP);
-                if (anchor.isNonNull()) {
-                    callerSP = anchor.getLastJavaSP();
-                    returnAddressIP = anchor.getLastJavaIP();
-                } else {
-                    SamplerSampleWriter.end(data, SamplerSampleWriter.EXECUTION_SAMPLE_END);
-                    return;
-                }
-            } else {
-                /* We made an incorrect assumption earlier, the stack is not walkable. */
-                JfrThreadLocal.increaseUnparseableStacks();
-                return;
-            }
-        }
-
-        /* Start a stack walk but from the frame after the top one. */
-        if (JavaStackWalker.walkCurrentThread(callerSP, returnAddressIP, visitor) || data.getTruncated()) {
-            SamplerSampleWriter.end(data, SamplerSampleWriter.EXECUTION_SAMPLE_END);
         }
     }
 

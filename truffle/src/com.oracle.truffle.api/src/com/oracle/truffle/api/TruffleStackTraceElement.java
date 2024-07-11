@@ -57,12 +57,13 @@ public final class TruffleStackTraceElement {
     private final Node location;
     private final RootCallTarget target;
     private final Frame frame;
+    private final int bytecodeIndex;
 
-    TruffleStackTraceElement(Node location, RootCallTarget target, Frame frame) {
-        assert target != null;
+    TruffleStackTraceElement(Node location, RootCallTarget target, Frame frame, int bytecodeIndex) {
         this.location = location;
         this.target = target;
         this.frame = frame;
+        this.bytecodeIndex = bytecodeIndex;
     }
 
     /**
@@ -75,7 +76,21 @@ public final class TruffleStackTraceElement {
      */
     public static TruffleStackTraceElement create(Node location, RootCallTarget target, Frame frame) {
         Objects.requireNonNull(target, "RootCallTarget must not be null");
-        return new TruffleStackTraceElement(location, target, frame);
+        return new TruffleStackTraceElement(location, target, frame, -1);
+    }
+
+    /**
+     * Create a new stack trace element.
+     *
+     * @param location See {@link #getLocation()}
+     * @param target See {@link #getTarget()}
+     * @param frame See {@link #getFrame()}
+     * @param bytecodeIndex See {@link #getBytecodeIndex()}
+     * @since 24.1
+     */
+    public static TruffleStackTraceElement create(Node location, RootCallTarget target, Frame frame, int bytecodeIndex) {
+        Objects.requireNonNull(target, "RootCallTarget must not be null");
+        return new TruffleStackTraceElement(location, target, frame, bytecodeIndex);
     }
 
     /**
@@ -109,12 +124,36 @@ public final class TruffleStackTraceElement {
     /**
      * Returns the read-only frame. Returns <code>null</code> if the initial {@link RootNode} that
      * filled in the stack trace did not request frames to be captured by overriding
-     * {@link RootNode#isCaptureFramesForTrace()}.
+     * {@link RootNode#isCaptureFramesForTrace(Node)}.
      *
      * @since 0.31
      */
     public Frame getFrame() {
         return frame;
+    }
+
+    /**
+     * Returns <code>true</code> if the stack trace element contains a valid bytecode index, else
+     * <code>false</code>. If this method returns <code>false</code> then
+     * {@link #getBytecodeIndex()} will return a negative <code>int</code> value.
+     *
+     * @since 24.1
+     */
+    public boolean hasBytecodeIndex() {
+        return getBytecodeIndex() >= 0;
+    }
+
+    /**
+     * Returns the bytecode index at the time when this frame was created. If no bytecode index was
+     * captured then a negative <code>int</code> value is returned. When the stack trace element is
+     * captured {@link RootNode#findBytecodeIndex} is invoked to resolve the byte code index
+     * returned by this method.
+     *
+     * @see RootNode#findBytecodeIndex
+     * @since 24.1
+     */
+    public int getBytecodeIndex() {
+        return bytecodeIndex;
     }
 
     /**
@@ -134,6 +173,16 @@ public final class TruffleStackTraceElement {
         Object guestObject = LanguageAccessor.nodesAccess().translateStackTraceElement(this);
         assert LanguageAccessor.EXCEPTIONS.assertGuestObject(guestObject);
         return guestObject;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.0
+     */
+    @Override
+    public String toString() {
+        return "TruffleStackTraceElement[rootNode=" + target.getRootNode() + ", callNode=" + location + ", bytecodeIndex=" + bytecodeIndex + ", frame=" + frame + "]";
     }
 
 }

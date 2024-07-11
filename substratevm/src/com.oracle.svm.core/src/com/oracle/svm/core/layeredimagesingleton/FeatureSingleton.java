@@ -27,12 +27,13 @@ package com.oracle.svm.core.layeredimagesingleton;
 import java.util.EnumSet;
 
 /**
- * Feature singletons are hosted only and can only be accessed during build time.
+ * Feature singletons are hosted only and can only be accessed during build time. Further, we
+ * currently do not allow features to save information across layers.
  */
-public interface FeatureSingleton extends LayeredImageSingleton {
+public interface FeatureSingleton extends UnsavedSingleton {
 
     @Override
-    default EnumSet<ImageBuilderFlags> getImageBuilderFlags() {
-        return EnumSet.of(ImageBuilderFlags.BUILDTIME_ACCESS);
+    default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
     }
 }

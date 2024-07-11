@@ -29,14 +29,14 @@ Alternatively, you can go right to the [completed example](https://github.com/gr
 
 > Note: A Java version between 17 and 20 is required to execute Gradle (see the [Gradle Compatibility Matrix](https://docs.gradle.org/current/userguide/compatibility.html)). However, if you want to run your application with Java 21 (or higher), there is a workaround: set `JAVA_HOME` to a Java version between 17 and 20, and `GRAALVM_HOME` to GraalVM for JDK 21. See the [Native Image Gradle Plugin documentation](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html#_installing_graalvm_native_image_tool) for more details.
 
-1. Make sure you have installed GraalVM.
+### Prerequisite 
+Make sure you have installed a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-2. Create a new Java project with **Gradle** in your favorite IDE, called "H2Example", in the `org.graalvm.example` package.
+1. Create a new Java project with **Gradle** in your favorite IDE, called "H2Example", in the `org.graalvm.example` package.
 
-3. Rename the default _app_ directory to _H2Example_, then rename the default filename _App.java_ to _H2Example.java_ and replace its contents with the following: 
-
+2. Rename the default _app/_ directory to _H2Example/_, then rename the default filename _App.java_ to _H2Example.java_ and replace its contents with the following:
     ```java
     package org.graalvm.example;
 
@@ -119,10 +119,9 @@ For other installation options, visit the [Downloads section](https://www.graalv
     }
     ```
 
-4. Delete the _H2Example/src/test/java_ directory (if it exists).
+3. Delete the _H2Example/src/test/java/_ directory (if it exists).
 
-5. Open the Gradle configuration file _build.gradle_, and replace its contents with the following:
-
+4. Open the Gradle configuration file _build.gradle_, and replace its contents with the following:
     ```
     plugins {
         id 'application'
@@ -161,14 +160,13 @@ For other installation options, visit the [Downloads section](https://www.graalv
     **1** Enable the [Native Image Gradle plugin](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html).
     The plugin discovers which JAR files it needs to pass to `native-image` and what the executable main class should be.
     
-    **2** Specify explicitly the application main class.
+    **2** Specify the application main class explicitly.
 
     **3** Add a dependency on the [H2 Database](https://www.h2database.com/html/main.html), an open source SQL database for Java. The application interacts with this database through the JDBC driver.
     
     **4** You can pass parameters to the `native-image` tool in the `graalvmNative` plugin configuration. In individual `buildArgs` you can pass parameters exactly the same way as you do from a command line. The `-Ob` option to enable quick build mode (recommended during development only) is used as an example. `imageName.set()` is used to specify the name for the resulting binary. Learn about other configuration options from the [plugin's documentation](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html#configuration).
 
-6. The plugin is not yet available on the Gradle Plugin Portal, so declare an additional plugin repository. Open the _settings.gradle_ file and replace the default content with this:
-
+5. The plugin is not yet available on the Gradle Plugin Portal, so declare an additional plugin repository. Open the _settings.gradle_ file and replace the default content with this:
     ```
     pluginManagement {
         repositories {
@@ -182,7 +180,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
     ```
     Note that the `pluginManagement {}` block must appear before any other statements in the file.
 
-7.  (Optional) Build the application. From the root directory of the repository, run the following command:
+6.  (Optional) Build the application. From the root directory of the repository, run the following command:
     ```shell
     ./gradlew run
     ```
@@ -196,7 +194,6 @@ One of these is the [H2 Database](https://www.h2database.com/html/main.html) thi
 The support needs to be enabled explicitly.
 
 1. Open the _build.gradle_ file, and enable the GraalVM Reachability Metadata Repository in the `graalvmNative` plugin configuration: 
-
     ```
     metadataRepository {
         enabled = true

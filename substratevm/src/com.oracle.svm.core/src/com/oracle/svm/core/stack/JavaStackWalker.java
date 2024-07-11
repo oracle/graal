@@ -24,10 +24,17 @@
  */
 package com.oracle.svm.core.stack;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -35,229 +42,355 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.heap.StoredContinuationAccess;
+import com.oracle.svm.core.jfr.JfrStackWalker;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
+
 /**
- * Provides methods to iterate each of the Java frames in a thread stack. It skips native frames,
- * i.e., it only visits frames where {@link CodeInfoAccess#lookupTotalFrameSize Java frame
- * information} is available.
+ * Provides methods to iterate over the physical Java stack frames of a thread (native stack frames
+ * are skipped, see {@link JavaFrameAnchor}). When starting a stack walk, it is possible to
+ * explicitly pass a stack pointer (SP) and an instruction pointer (IP) to specify where the stack
+ * walk should be started. Note that this first frame must always be a Java frame.
  * <p>
  * For most cases, the "walk*" methods that apply a {@link StackFrameVisitor} are the preferred way
  * to do stack walking. Use cases that are extremely performance sensitive, or cannot use a visitor
- * approach, can use the various "init*" and "continue*" methods directly.
+ * approach, can use the various "initialize" and "advance" methods directly.
  * <p>
- * The stack walking code must be allocation free (so that it can be used during garbage collection)
- * and not use static state (so that multiple threads can walk their stacks concurrently). State is
- * therefore stored in a stack-allocated {@link JavaStackWalk} structure.
+ * The stack walking code must be uninterruptible so that it can be used during garbage collection
+ * and in situations where we are out of Java heap memory. It also must not have any static state so
+ * that multiple threads can walk their stacks concurrently. State is therefore stored in a
+ * stack-allocated {@link JavaStackWalk} structure.
+ * <p>
+ * If this implementation changes, other code that knows a lot about stack walking (e.g.,
+ * {@link JfrStackWalker}) needs to be changed as well.
+ *
+ * <p>
+ * Note that starting a stack walk is potentially dangerous when the walked thread has C code on the
+ * stack that was called without a transition (e.g., starting a stack walk in a signal handler). In
+ * such a case, stack walking may skip frames of AOT or JIT-compiled code, which can result in
+ * unexpected behavior. Here is one example:
+ * <ul>
+ * <li>We do a C call with {@link Transition#TO_NATIVE} (pushes a {@link JavaFrameAnchor}).</li>
+ * <li>The C call finishes and we are back in AOT-compiled code.</li>
+ * <li>The AOT-compiled code wants to do a transition back to {@link StatusSupport#STATUS_IN_JAVA}
+ * but the fastpath fails.</li>
+ * <li>The thread calls the slowpath, which pushes more frames of AOT-compiled code on the
+ * stack.</li>
+ * <li>A signal handler (such as the async sampler) interrupts execution and pushes native frames to
+ * the stack.</li>
+ * <li>The signal handler calls a {@link CEntryPoint} and starts executing AOT-compiled code.</li>
+ * <li>The AOT-compiled code triggers a segfault and the segfault handler starts a stack walk for
+ * the crash log.</li>
+ * <li>The stack walk prints the top AOT-compiled frames until it reaches the {@link CEntryPoint} of
+ * the signal handler. After that, the IP is outside of AOT-compiled code and the stack walk uses
+ * the last frame anchor to skip all frames in between (this includes all the safepoint slowpath
+ * frames, even though they belong to AOT-compiled code).</li>
+ * </ul>
  */
 public final class JavaStackWalker {
-
+    @Platforms(Platform.HOSTED_ONLY.class)
     private JavaStackWalker() {
     }
 
+    @Fold
+    static int getJavaFrameOffset() {
+        return NumUtil.roundUp(SizeOf.get(JavaStackWalkImpl.class), ConfigurationValues.getTarget().wordSize);
+    }
+
+    @Fold
+    public static int sizeOfJavaStackWalk() {
+        return getJavaFrameOffset() + SizeOf.get(JavaFrame.class);
+    }
+
     /**
-     * Initialize a stack walk for the current thread. The given {@code walk} parameter should
-     * normally be allocated on the stack.
-     * <p>
-     * The stack walker is only valid while the stack being walked is stable and existent.
-     *
-     * @param walk the stack-allocated walk base pointer
-     * @param startSP the starting SP
-     * @param startIP the starting IP
+     * Returns information about the current physical Java frame. Note that this data is updated
+     * in-place when {@link #continueStackWalk} is called. During a stack walk, it is therefore not
+     * possible to access the data of a previous frame.
      */
-    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
-    public static void initWalk(JavaStackWalk walk, Pointer startSP, CodePointer startIP) {
-        initWalk(walk, startSP, WordFactory.nullPointer(), startIP, JavaFrameAnchors.getFrameAnchor());
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static JavaFrame getCurrentFrame(JavaStackWalk walk) {
+        return (JavaFrame) ((Pointer) walk).add(getJavaFrameOffset());
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static Pointer getStartSP(JavaStackWalk walk) {
+        return cast(walk).getStartSP();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static Pointer getEndSP(JavaStackWalk walk) {
+        return cast(walk).getEndSP();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static JavaFrameAnchor getFrameAnchor(JavaStackWalk walk) {
+        return cast(walk).getFrameAnchor();
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
-    private static void initWalk(JavaStackWalk walk, Pointer startSP, Pointer endSP, CodePointer startIP, JavaFrameAnchor anchor) {
-        walk.setSP(startSP);
-        walk.setPossiblyStaleIP(startIP);
-        walk.setStartSP(startSP);
-        walk.setStartIP(startIP);
-        walk.setAnchor(anchor);
-        walk.setEndSP(endSP);
-        if (startIP.isNonNull()) {
-            // Storing the untethered object in a data structures requires that the caller and all
-            // places that use that value are uninterruptible as well.
-            walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(startIP));
-        } else { // will be read from the stack later
-            walk.setIPCodeInfo(WordFactory.nullPointer());
+    public static void initialize(JavaStackWalk walk, IsolateThread thread) {
+        initializeFromFrameAnchor(walk, thread, WordFactory.nullPointer());
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
+    public static void initialize(JavaStackWalk walk, IsolateThread thread, Pointer startSP) {
+        initWalk(walk, thread, startSP, WordFactory.nullPointer(), WordFactory.nullPointer(), JavaFrameAnchors.getFrameAnchor(thread));
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
+    public static void initialize(JavaStackWalk walk, IsolateThread thread, Pointer startSP, Pointer endSP) {
+        initWalk(walk, thread, startSP, endSP, WordFactory.nullPointer(), JavaFrameAnchors.getFrameAnchor(thread));
+    }
+
+    /**
+     * This method should only be used rarely as it is usually not necessary (and potentially
+     * dangerous) to specify a {@code startIP} for the stack walk.
+     */
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
+    public static void initialize(JavaStackWalk walk, IsolateThread thread, Pointer startSP, CodePointer startIP) {
+        initWalk(walk, thread, startSP, WordFactory.nullPointer(), startIP, JavaFrameAnchors.getFrameAnchor(thread));
+    }
+
+    /**
+     * This method should only be used rarely as it is usually not necessary (and potentially
+     * dangerous) to specify a {@code startIP} for the stack walk.
+     */
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
+    public static void initialize(JavaStackWalk walk, IsolateThread thread, Pointer startSP, CodePointer startIP, JavaFrameAnchor anchor) {
+        initWalk(walk, thread, startSP, WordFactory.nullPointer(), startIP, anchor);
+    }
+
+    @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
+    public static void initializeForContinuation(JavaStackWalk walk, StoredContinuation continuation) {
+        assert continuation != null;
+
+        CodePointer startIP = StoredContinuationAccess.getIP(continuation);
+        if (startIP.isNull()) {
+            /* StoredContinuation is uninitialized and therefore not walkable. */
+            markAsNotWalkable(walk);
+        } else {
+            Pointer startSP = StoredContinuationAccess.getFramesStart(continuation);
+            Pointer endSP = StoredContinuationAccess.getFramesEnd(continuation);
+            initWalk0(walk, startSP, endSP, startIP, WordFactory.nullPointer());
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void initWalkStoredContinuation(JavaStackWalk walk, Pointer startSP, Pointer endSP, CodePointer startIP) {
-        /*
-         * StoredContinuations don't need a Java frame anchor because we pin the thread (i.e.,
-         * yielding is not possible) if any native code is called.
-         */
-        initWalk(walk, startSP, endSP, startIP, WordFactory.nullPointer());
+    @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
+    public static void initializeForContinuation(JavaStackWalk walk, StoredContinuation continuation, CodePointer startIP) {
+        assert continuation != null;
+        assert startIP.isNonNull();
+
+        Pointer startSP = StoredContinuationAccess.getFramesStart(continuation);
+        Pointer endSP = StoredContinuationAccess.getFramesEnd(continuation);
+        initWalk0(walk, startSP, endSP, startIP, WordFactory.nullPointer());
     }
 
-    /**
-     * See {@link #initWalk(JavaStackWalk, Pointer, CodePointer)}, except that the instruction
-     * pointer will be read from the stack later on.
-     */
-    @Uninterruptible(reason = "Must be uninterruptible because it calls `initWalk`.")
-    public static void initWalk(JavaStackWalk walk, Pointer startSP) {
-        initWalk(walk, startSP, (CodePointer) WordFactory.nullPointer());
-        assert walk.getIPCodeInfo().isNull() : "otherwise, the caller would have to be uninterruptible as well";
-    }
-
-    @Uninterruptible(reason = "Must be uninterruptible because it calls `initWalk`.")
-    public static void initWalk(JavaStackWalk walk, Pointer startSP, Pointer endSP) {
-        initWalk(walk, startSP);
-        walk.setEndSP(endSP);
-    }
-
-    /**
-     * Initialize a stack walk for the given thread. The given {@code walk} parameter should
-     * normally be allocated on the stack.
-     *
-     * @param walk the stack-allocated walk base pointer
-     * @param thread the thread to examine
-     */
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
-    public static boolean initWalk(JavaStackWalk walk, IsolateThread thread) {
-        assert thread.notEqual(CurrentIsolate.getCurrentThread()) : "Cannot walk the current stack with this method, it would miss all frames after the last frame anchor";
-        assert VMOperation.isInProgressAtSafepoint() : "Walking the stack of another thread is only safe when that thread is stopped at a safepoint";
+    private static void initializeFromFrameAnchor(JavaStackWalk walk, IsolateThread thread, Pointer endSP) {
+        assert thread != CurrentIsolate.getCurrentThread() : "Walking the stack without specifying a start SP is only allowed when walking other threads";
+
+        JavaFrameAnchor frameAnchor = JavaFrameAnchors.getFrameAnchor(thread);
+        if (frameAnchor.isNull()) {
+            /* Threads that do not have a frame anchor at a safepoint are not walkable. */
+            markAsNotWalkable(walk);
+        } else {
+            initWalk(walk, thread, frameAnchor.getLastJavaSP(), endSP, frameAnchor.getLastJavaIP(), frameAnchor.getPreviousAnchor());
+        }
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
+    private static void initWalk(JavaStackWalk walk, IsolateThread thread, Pointer startSP, Pointer endSP, CodePointer startIP, JavaFrameAnchor anchor) {
+        assert thread.isNonNull();
+        assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint() : "Walking the stack of another thread is only safe when that thread is stopped at a safepoint";
+        assert startSP.isNonNull();
 
         if (SafepointBehavior.isCrashedThread(thread)) {
-            /* Skip crashed threads because they may no longer have a stack. */
+            /* Crashed threads may no longer have a stack. */
+            markAsNotWalkable(walk);
+        } else {
+            initWalk0(walk, startSP, endSP, startIP, anchor);
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static void markAsNotWalkable(JavaStackWalk walk) {
+        initWalk0(walk, WordFactory.nullPointer(), WordFactory.nullPointer(), WordFactory.nullPointer(), WordFactory.nullPointer());
+    }
+
+    @Uninterruptible(reason = "JavaStackWalk must not contain stale values when this method returns.", callerMustBe = true)
+    private static void initWalk0(JavaStackWalk walk, Pointer startSP, Pointer endSP, CodePointer startIP, JavaFrameAnchor anchor) {
+        JavaStackWalkImpl w = cast(walk);
+        w.setStarted(false);
+        w.setStartSP(startSP);
+        w.setEndSP(endSP);
+        w.setStartIP(startIP);
+        w.setFrameAnchor(anchor);
+
+        JavaFrame frame = getCurrentFrame(walk);
+        JavaFrames.clearData(frame);
+    }
+
+    @Uninterruptible(reason = "JavaStackWalk must not contain stale values when this method returns.", callerMustBe = true)
+    public static void updateStackPointerForContinuation(JavaStackWalk walk, StoredContinuation continuation) {
+        JavaStackWalkImpl w = cast(walk);
+        Pointer newStartSP = StoredContinuationAccess.getFramesStart(continuation);
+        long delta = newStartSP.rawValue() - w.getStartSP().rawValue();
+        long newEndSP = w.getEndSP().rawValue() + delta;
+
+        w.setStartSP(newStartSP);
+        w.setEndSP(WordFactory.pointer(newEndSP));
+
+        JavaFrame frame = getCurrentFrame(walk);
+        if (frame.getSP().isNonNull()) {
+            long newSP = frame.getSP().rawValue() + delta;
+            frame.setSP(WordFactory.pointer(newSP));
+        }
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization and GC while in this method.", callerMustBe = true)
+    public static boolean advance(JavaStackWalk walk, IsolateThread thread) {
+        return advance0(walk, thread, null);
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization and GC while in this method.", callerMustBe = true)
+    public static boolean advanceForContinuation(JavaStackWalk walk, StoredContinuation continuation) {
+        return advance0(walk, WordFactory.nullPointer(), continuation);
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization and GC while in this method.", callerMustBe = true)
+    private static boolean advance0(JavaStackWalk walk, IsolateThread thread, StoredContinuation continuation) {
+        JavaStackWalkImpl w = cast(walk);
+        if (!w.getStarted()) {
+            return startStackWalk(w, thread, continuation);
+        }
+        return continueStackWalk(w, thread, continuation);
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization and GC while in this method.", callerMustBe = true)
+    private static boolean startStackWalk(JavaStackWalkImpl walk, IsolateThread thread, StoredContinuation continuation) {
+        walk.setStarted(true);
+
+        JavaFrame frame = getCurrentFrame(walk);
+        Pointer startSP = walk.getStartSP();
+        Pointer endSP = walk.getEndSP();
+        if (startSP.isNull() || endSP.isNonNull() && endSP.belowOrEqual(startSP)) {
+            /* The stack is not walkable or there are no frames to walk. */
+            JavaFrames.clearData(frame);
             return false;
         }
 
-        JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(thread);
-        boolean result = anchor.isNonNull();
-        Pointer sp = WordFactory.nullPointer();
-        CodePointer ip = WordFactory.nullPointer();
-        if (result) {
-            sp = anchor.getLastJavaSP();
-            ip = anchor.getLastJavaIP();
+        /* Determine the actual start IP. */
+        CodePointer startIP = walk.getStartIP();
+        if (startIP.isNull()) {
+            JavaFrameAnchor anchor = skipUnnecessaryFrameAnchors(walk, startSP);
+            if (anchor.isNonNull() && startSP == anchor.getLastJavaSP()) {
+                startIP = anchor.getLastJavaIP();
+            } else {
+                startIP = readReturnAddress(thread, continuation, startSP);
+            }
+            walk.setStartIP(startIP);
+        } else {
+            assert CodeInfoTable.lookupCodeInfo(startIP).isNonNull();
         }
 
-        walk.setSP(sp);
-        walk.setPossiblyStaleIP(ip);
-        walk.setStartSP(sp);
-        walk.setStartIP(ip);
-        walk.setAnchor(anchor);
-        walk.setEndSP(WordFactory.nullPointer());
-        // Storing the untethered object in a data structures requires that the caller and all
-        // places that use that value are uninterruptible as well.
-        walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(ip));
+        /* It is guaranteed that we have at least one frame. */
+        JavaFrames.setData(frame, startSP, startIP);
+        return true;
+    }
 
-        return result;
+    @Uninterruptible(reason = "Prevent deoptimization and GC while in this method.", callerMustBe = true)
+    private static boolean continueStackWalk(JavaStackWalkImpl walk, IsolateThread thread, StoredContinuation continuation) {
+        assert thread.isNull() != (continuation == null);
+
+        JavaFrame frame = getCurrentFrame(walk);
+        Pointer sp = frame.getSP();
+        if (sp.isNull()) {
+            /* No more frames to walk. */
+            JavaFrames.clearData(frame);
+            return false;
+        }
+
+        Pointer endSP = walk.getEndSP();
+        sp = sp.add(JavaFrames.getTotalFrameSize(frame));
+        if (JavaFrames.isEntryPoint(frame)) {
+            /* Use the frame anchor to skip the native frames. */
+            JavaFrameAnchor anchor = skipUnnecessaryFrameAnchors(walk, sp);
+            if (anchor.isNonNull()) {
+                walk.setFrameAnchor(anchor.getPreviousAnchor());
+                if (endSP.isNull() || endSP.aboveThan(anchor.getLastJavaSP())) {
+                    JavaFrames.setData(frame, anchor.getLastJavaSP(), anchor.getLastJavaIP());
+                    return true;
+                }
+            }
+        } else {
+            /* Caller is a Java frame. */
+            if (endSP.isNull() || endSP.aboveThan(sp)) {
+                CodePointer ip = readReturnAddress(thread, continuation, sp);
+                JavaFrames.setData(frame, sp, ip);
+                return true;
+            }
+        }
+
+        /* No more frames. */
+        JavaFrames.clearData(frame);
+        return false;
     }
 
     /**
-     * Continue a started stack walk. This method must only be called after {@link #initWalk} was
-     * called to start the walk. Once this method returns {@code false}, it will always return
-     * {@code false}.
-     *
-     * @param walk the initiated stack walk pointer
-     * @return {@code true} if there is another frame, or {@code false} if there are no more frames
-     *         to iterate
+     * Skip frame anchors that are not needed for this stack walk. This is necessary because:
+     * <ul>
+     * <li>When starting a stack walk, the top frame anchor(s) could be outside the stack part that
+     * should be walked.</li>
+     * <li>While doing a stack walk for the current thread, we may encounter outdated frame anchors.
+     * For example, a thread that is in the middle of a transition from
+     * {@link StatusSupport#STATUS_IN_NATIVE} to {@link StatusSupport#STATUS_IN_JAVA} may enter the
+     * safepoint slowpath. The slowpath code will push Java frames to the top of the stack while the
+     * outdated frame anchor is still present and also still needed (another thread might be in the
+     * middle of a VM operation and must be able to walk the stack of all threads).</li>
+     * </ul>
      */
-    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
-    public static boolean continueWalk(JavaStackWalk walk, CodeInfo info) {
-        if (walk.getSP().isNull() || walk.getPossiblyStaleIP().isNull()) {
-            return false;
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static JavaFrameAnchor skipUnnecessaryFrameAnchors(JavaStackWalkImpl walk, Pointer sp) {
+        JavaFrameAnchor anchor = walk.getFrameAnchor();
+        while (anchor.isNonNull() && anchor.getLastJavaSP().belowThan(sp)) {
+            anchor = anchor.getPreviousAnchor();
         }
-
-        Pointer sp = walk.getSP();
-        SimpleCodeInfoQueryResult queryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
-
-        DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
-        if (deoptFrame == null) {
-            CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, walk.getPossiblyStaleIP()), queryResult);
-        }
-
-        return continueWalk(walk, queryResult, deoptFrame);
+        walk.setFrameAnchor(anchor);
+        return anchor;
     }
 
-    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
-    public static boolean continueWalk(JavaStackWalk walk, SimpleCodeInfoQueryResult queryResult, DeoptimizedFrame deoptFrame) {
-        boolean moreFrames;
-        Pointer sp = walk.getSP();
-
-        long encodedFrameSize;
-        if (deoptFrame != null) {
-            encodedFrameSize = deoptFrame.getSourceEncodedFrameSize();
+    @Uninterruptible(reason = "Stored continuation must not move.")
+    private static CodePointer readReturnAddress(IsolateThread thread, StoredContinuation continuation, Pointer startSP) {
+        if (ContinuationSupport.isSupported() && continuation != null) {
+            assert thread.isNull();
+            return FrameAccess.singleton().readReturnAddress(continuation, startSP);
         } else {
-            encodedFrameSize = queryResult.getEncodedFrameSize();
+            assert thread.isNonNull() && continuation == null;
+            return FrameAccess.singleton().readReturnAddress(thread, startSP);
         }
-
-        if (!CodeInfoQueryResult.isEntryPoint(encodedFrameSize)) {
-            long totalFrameSize = CodeInfoQueryResult.getTotalFrameSize(encodedFrameSize);
-
-            /* Bump sp *up* over my frame. */
-            sp = sp.add(WordFactory.unsigned(totalFrameSize));
-            /* Read the return address to my caller. */
-            CodePointer ip = FrameAccess.singleton().readReturnAddress(sp);
-
-            walk.setSP(sp);
-            walk.setPossiblyStaleIP(ip);
-
-            walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(ip));
-            moreFrames = true;
-
-        } else {
-            /* Reached an entry point frame. */
-
-            JavaFrameAnchor anchor = walk.getAnchor();
-            while (anchor.isNonNull() && anchor.getLastJavaSP().belowOrEqual(sp)) {
-                /* Skip anchors that are in parts of the stack we are not traversing. */
-                anchor = anchor.getPreviousAnchor();
-            }
-
-            if (anchor.isNonNull()) {
-                /* We have more Java frames after a block of C frames. */
-                assert anchor.getLastJavaSP().aboveThan(sp);
-                walk.setSP(anchor.getLastJavaSP());
-                walk.setPossiblyStaleIP(anchor.getLastJavaIP());
-                walk.setAnchor(anchor.getPreviousAnchor());
-                walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(anchor.getLastJavaIP()));
-                moreFrames = true;
-
-            } else {
-                /* Really at the end of the stack, we are done with walking. */
-                walk.setSP(WordFactory.nullPointer());
-                walk.setPossiblyStaleIP(WordFactory.nullPointer());
-                walk.setAnchor(WordFactory.nullPointer());
-                walk.setIPCodeInfo(WordFactory.nullPointer());
-                moreFrames = false;
-            }
-        }
-
-        if (moreFrames && walk.getEndSP().isNonNull() && walk.getSP().aboveOrEqual(walk.getEndSP())) {
-            moreFrames = false;
-        }
-        return moreFrames;
     }
 
     @Uninterruptible(reason = "Not really uninterruptible, but we are about to fatally fail.", calleeMustBe = false)
-    public static RuntimeException reportUnknownFrameEncountered(Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
+    public static RuntimeException fatalErrorUnknownFrameEncountered(Pointer sp, CodePointer ip) {
         Log log = Log.log().string("Stack walk must walk only frames of known code:");
         log.string("  sp=").zhex(sp).string("  ip=").zhex(ip);
-        if (DeoptimizationSupport.enabled()) {
-            log.string("  deoptFrame=").object(deoptFrame);
-        }
         log.newline();
         throw VMError.shouldNotReachHere("Stack walk must walk only frames of known code");
-
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
@@ -267,24 +400,26 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static boolean walkCurrentThread(Pointer startSP, Pointer endSP, StackFrameVisitor visitor) {
-        return walkCurrentThread(startSP, endSP, FrameAccess.singleton().readReturnAddress(startSP), visitor, null);
+        assert startSP.isNonNull();
+        return walkCurrentThread(startSP, endSP, WordFactory.nullPointer(), visitor, null);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static boolean walkCurrentThread(Pointer startSP, ParameterizedStackFrameVisitor visitor, Object data) {
-        return walkCurrentThread(startSP, WordFactory.nullPointer(), FrameAccess.singleton().readReturnAddress(startSP), visitor, data);
+        return walkCurrentThread(startSP, WordFactory.nullPointer(), WordFactory.nullPointer(), visitor, data);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean walkCurrentThread(Pointer startSP, CodePointer startIP, ParameterizedStackFrameVisitor visitor) {
         return walkCurrentThread(startSP, WordFactory.nullPointer(), startIP, visitor, null);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static boolean walkCurrentThread(Pointer startSP, Pointer endSP, CodePointer startIP, ParameterizedStackFrameVisitor visitor, Object data) {
-        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
-        initWalk(walk, startSP, endSP, startIP, JavaFrameAnchors.getFrameAnchor());
-        return doWalk(walk, visitor, data);
+        IsolateThread thread = CurrentIsolate.getCurrentThread();
+        JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
+        initWalk(walk, thread, startSP, endSP, startIP, JavaFrameAnchors.getFrameAnchor());
+        return doWalk(walk, thread, visitor, data);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
@@ -299,56 +434,70 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static boolean walkThread(IsolateThread thread, Pointer endSP, ParameterizedStackFrameVisitor visitor, Object data) {
-        assert thread.isNonNull();
-        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
-        if (initWalk(walk, thread)) {
-            walk.setEndSP(endSP);
-            return doWalk(walk, visitor, data);
-        } else {
-            return true;
-        }
+        JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
+        initializeFromFrameAnchor(walk, thread, endSP);
+        return doWalk(walk, thread, visitor, data);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
-    public static void walkThreadAtSafepoint(Pointer startSP, Pointer endSP, CodePointer startIP, StackFrameVisitor visitor) {
-        assert VMOperation.isInProgressAtSafepoint();
-        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
-        initWalk(walk, startSP, endSP, startIP, JavaFrameAnchors.getFrameAnchor());
-        doWalk(walk, visitor, null);
+    public static void walkThread(IsolateThread thread, Pointer startSP, Pointer endSP, CodePointer startIP, StackFrameVisitor visitor) {
+        JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
+        initWalk(walk, thread, startSP, endSP, startIP, JavaFrameAnchors.getFrameAnchor(thread));
+        doWalk(walk, thread, visitor, null);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
-    static boolean doWalk(JavaStackWalk walk, ParameterizedStackFrameVisitor visitor, Object data) {
-        while (true) {
-            UntetheredCodeInfo untetheredInfo = walk.getIPCodeInfo();
-            if (untetheredInfo.isNull()) {
-                return callUnknownFrame(walk, visitor, data);
+    static boolean doWalk(JavaStackWalk walk, IsolateThread thread, ParameterizedStackFrameVisitor visitor, Object data) {
+        while (advance(walk, thread)) {
+            JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
+            Pointer sp = frame.getSP();
+            CodePointer ip = frame.getIP();
+
+            if (JavaFrames.isUnknownFrame(frame)) {
+                return visitUnknownFrame(sp, ip, visitor, data);
             }
 
-            Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-            try {
-                CodeInfo tetheredInfo = CodeInfoAccess.convert(untetheredInfo, tether);
-                // now the value in walk.getIPCodeInfo() can be passed to interruptible code
-                if (!callVisitor(walk, tetheredInfo, visitor, data)) {
+            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(frame);
+            if (deoptimizedFrame != null) {
+                if (!vistDeoptimizedFrame(sp, ip, deoptimizedFrame, visitor, data)) {
                     return false;
                 }
-                if (!continueWalk(walk, tetheredInfo)) {
-                    return true;
+            } else {
+                UntetheredCodeInfo untetheredInfo = frame.getIPCodeInfo();
+                Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
+                try {
+                    CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
+                    if (!visitRegularFrame(sp, ip, info, visitor, data)) {
+                        return false;
+                    }
+                } finally {
+                    CodeInfoAccess.releaseTether(untetheredInfo, tether);
                 }
-            } finally {
-                CodeInfoAccess.releaseTether(untetheredInfo, tether);
             }
         }
+
+        return true;
     }
 
     @Uninterruptible(reason = "CodeInfo in JavaStackWalk is currently null, and we are going to abort the stack walking.", calleeMustBe = false)
-    private static boolean callUnknownFrame(JavaStackWalk walk, ParameterizedStackFrameVisitor visitor, Object data) {
-        return visitor.unknownFrame(walk.getSP(), walk.getPossiblyStaleIP(), Deoptimizer.checkDeoptimized(walk.getSP()), data);
+    private static boolean visitUnknownFrame(Pointer sp, CodePointer ip, ParameterizedStackFrameVisitor visitor, Object data) {
+        return visitor.unknownFrame(sp, ip, data);
     }
 
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
     @RestrictHeapAccess(reason = "Whitelisted because some StackFrameVisitor implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED)
-    public static boolean callVisitor(JavaStackWalk walk, CodeInfo info, ParameterizedStackFrameVisitor visitor, Object data) {
-        return visitor.visitFrame(walk.getSP(), walk.getPossiblyStaleIP(), info, Deoptimizer.checkDeoptimized(walk.getSP()), data);
+    private static boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo info, ParameterizedStackFrameVisitor visitor, Object data) {
+        return visitor.visitRegularFrame(sp, ip, info, data);
+    }
+
+    @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
+    @RestrictHeapAccess(reason = "Whitelisted because some StackFrameVisitor implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED)
+    private static boolean vistDeoptimizedFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, ParameterizedStackFrameVisitor visitor, Object data) {
+        return visitor.visitDeoptimizedFrame(sp, ip, deoptimizedFrame, data);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static JavaStackWalkImpl cast(JavaStackWalk walk) {
+        return (JavaStackWalkImpl) walk;
     }
 }

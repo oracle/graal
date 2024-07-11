@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
@@ -42,7 +43,8 @@ import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonWriter;
+
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class ResourceConfigurationTest {
 
@@ -79,7 +81,7 @@ public class ResourceConfigurationTest {
 
             Thread writerThread = new Thread(() -> {
                 try (JsonWriter w = jw) {
-                    rc.printJson(w);
+                    rc.printLegacyJson(w);
                 } catch (IOException e) {
                     Assert.fail(e.getMessage());
                 }
@@ -96,7 +98,12 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
-                public void addResource(Module module, String resourcePath) {
+                public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob) {
+                    throw VMError.shouldNotReachHere("Unused function.");
+                }
+
+                @Override
+                public void addResourceEntry(Module module, String resourcePath) {
                     throw VMError.shouldNotReachHere("Unused function.");
                 }
 
@@ -119,12 +126,17 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
+                public void addCondition(ConfigurationCondition configurationCondition, Module module, String resourcePath) {
+
+                }
+
+                @Override
                 public void addClassBasedResourceBundle(UnresolvedConfigurationCondition condition, String basename, String className) {
 
                 }
             };
 
-            ResourceConfigurationParser<UnresolvedConfigurationCondition> rcp = new ResourceConfigurationParser<>(ConfigurationConditionResolver.identityResolver(), registry, true);
+            ResourceConfigurationParser<UnresolvedConfigurationCondition> rcp = ResourceConfigurationParser.create(false, ConfigurationConditionResolver.identityResolver(), registry, true);
             writerThread.start();
             rcp.parseAndRegister(pr);
 

@@ -701,4 +701,96 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
             }
         }
     }
+
+    @Test
+    public void testExitFromThreadSpawnedFromExitNotification() {
+        setupEnv(Context.newBuilder().allowCreateThread(true), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) {
+                return new RootNode(languageInstance) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        LanguageContext languageContext = LanguageContext.get(this);
+                        languageContext.getEnv().getContext().closeExited(this, 1);
+                        return 0;
+                    }
+                }.getCallTarget();
+            }
+
+            @Override
+            protected void exitContext(LanguageContext ctx, ExitMode exitMode, int exitCode) {
+                Thread t = ctx.getEnv().newTruffleThreadBuilder(() -> {
+                    ctx.getEnv().getContext().closeExited(DUMMY_NODE, 5);
+                }).build();
+                t.start();
+                try {
+                    t.join();
+                } catch (InterruptedException ie) {
+                    throw new AssertionError(ie);
+                }
+            }
+
+            @Override
+            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                return true;
+            }
+        });
+        try {
+            context.eval(ProxyLanguage.ID, "");
+        } catch (PolyglotException pe) {
+            if (!pe.isExit() || pe.getExitStatus() != 1) {
+                throw pe;
+            }
+        }
+    }
+
+    @Test
+    public void testExitFromThreadTransitivelySpawnedFromExitNotification() {
+        setupEnv(Context.newBuilder().allowCreateThread(true), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) {
+                return new RootNode(languageInstance) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        LanguageContext languageContext = LanguageContext.get(this);
+                        languageContext.getEnv().getContext().closeExited(this, 1);
+                        return 0;
+                    }
+                }.getCallTarget();
+            }
+
+            @Override
+            protected void exitContext(LanguageContext ctx, ExitMode exitMode, int exitCode) {
+                Thread t = ctx.getEnv().newTruffleThreadBuilder(() -> {
+                    Thread t2 = ctx.getEnv().newTruffleThreadBuilder(() -> {
+                        ctx.getEnv().getContext().closeExited(DUMMY_NODE, 5);
+                    }).build();
+                    t2.start();
+                    try {
+                        t2.join();
+                    } catch (InterruptedException ie) {
+                        throw new AssertionError(ie);
+                    }
+                }).build();
+                t.start();
+                try {
+                    t.join();
+                } catch (InterruptedException ie) {
+                    throw new AssertionError(ie);
+                }
+            }
+
+            @Override
+            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                return true;
+            }
+        });
+        try {
+            context.eval(ProxyLanguage.ID, "");
+        } catch (PolyglotException pe) {
+            if (!pe.isExit() || pe.getExitStatus() != 1) {
+                throw pe;
+            }
+        }
+    }
 }

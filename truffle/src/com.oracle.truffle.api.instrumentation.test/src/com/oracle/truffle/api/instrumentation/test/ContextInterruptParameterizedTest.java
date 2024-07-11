@@ -257,7 +257,7 @@ public class ContextInterruptParameterizedTest {
     }
 
     private static Object getThreadLocalStackTraceIfAvailable() {
-        if (TruffleTestAssumptions.isFallbackRuntime() && !TruffleTestAssumptions.isClassLoaderEncapsulation()) {
+        if (TruffleTestAssumptions.isFallbackRuntime()) {
             DefaultTruffleRuntime runtime = (DefaultTruffleRuntime) (Truffle.getRuntime());
             try {
                 Method method = runtime.getClass().getDeclaredMethod("getThreadLocalStackTrace");

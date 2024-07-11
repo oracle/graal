@@ -53,7 +53,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Predicate;
+import java.util.function.IntPredicate;
 
 import org.graalvm.collections.Pair;
 
@@ -457,7 +457,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         return c;
     }
 
-    private String getMany(Predicate<Integer> pred) {
+    private String getMany(IntPredicate pred) {
         StringBuilder out = new StringBuilder();
         while (!atEnd() && pred.test(curChar())) {
             out.appendCodePoint(consumeChar());
@@ -465,7 +465,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         return out.toString();
     }
 
-    private String getUpTo(int count, Predicate<Integer> pred) {
+    private String getUpTo(int count, IntPredicate pred) {
         StringBuilder out = new StringBuilder();
         int found = 0;
         while (found < count && !atEnd() && pred.test(curChar())) {
@@ -960,7 +960,9 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             }
 
             if (getLocalFlags().isIgnoreCase()) {
-                MultiCharacterCaseFolding.caseFoldUnfoldString(CaseFoldData.CaseFoldAlgorithm.Ruby, codepointsBuffer.toArray(), inSource.getEncoding().getFullSet(), astBuilder);
+                int[] codepoints = codepointsBuffer.toArray();
+                CodePointSet encodingRange = inSource.getEncoding().getFullSet();
+                MultiCharacterCaseFolding.caseFoldUnfoldString(CaseFoldData.CaseFoldAlgorithm.Ruby, codepoints, encodingRange, false, true, astBuilder, null, astBuilder.getCompilationBuffer());
             } else {
                 for (int i = 0; i < codepointsBuffer.length(); i++) {
                     addChar(codepointsBuffer.get(i));
@@ -985,7 +987,9 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     private void buildChar(int codepoint) {
         if (!silent) {
             if (getLocalFlags().isIgnoreCase()) {
-                MultiCharacterCaseFolding.caseFoldUnfoldString(CaseFoldData.CaseFoldAlgorithm.Ruby, new int[]{codepoint}, inSource.getEncoding().getFullSet(), astBuilder);
+                CodePointSet encodingRange = inSource.getEncoding().getFullSet();
+                MultiCharacterCaseFolding.caseFoldUnfoldString(CaseFoldData.CaseFoldAlgorithm.Ruby, new int[]{codepoint}, encodingRange, false, true, astBuilder, null,
+                                astBuilder.getCompilationBuffer());
             } else {
                 addChar(codepoint);
             }
@@ -1746,7 +1750,8 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                         // don't have multi-codepoint expansions), `to` cannot be ASCII either
                         // if `from` is not in `fullyFoldableCharacters`.
                         boolean dropAsciiOnStart = !fullyFoldableCharacters.get().contains(from);
-                        MultiCharacterCaseFolding.caseFoldUnfoldString(CaseFoldData.CaseFoldAlgorithm.Ruby, to, inSource.getEncoding().getFullSet(), dropAsciiOnStart, astBuilder);
+                        MultiCharacterCaseFolding.caseFoldUnfoldString(CaseFoldData.CaseFoldAlgorithm.Ruby, to, inSource.getEncoding().getFullSet(), dropAsciiOnStart, true, astBuilder, null,
+                                        astBuilder.getCompilationBuffer());
                     }
                     popGroup();
                 } else {
@@ -1979,7 +1984,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     private void caseClosure() {
-        MultiCharacterCaseFolding.caseClosure(CaseFoldData.CaseFoldAlgorithm.Ruby, curCharClass, charClassTmp, this::acceptableCaseFold, inSource.getEncoding().getFullSet());
+        MultiCharacterCaseFolding.caseClosure(CaseFoldData.CaseFoldAlgorithm.Ruby, curCharClass, charClassTmp, this::acceptableCaseFold, inSource.getEncoding().getFullSet(), true);
     }
 
     /**

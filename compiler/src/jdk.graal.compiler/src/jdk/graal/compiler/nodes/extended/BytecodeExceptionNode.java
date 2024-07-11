@@ -149,7 +149,14 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
          * Represents a {@link ArithmeticException}, with the exception message indicating a long
          * overflow. No arguments are allowed.
          */
-        LONG_EXACT_OVERFLOW(0, ArithmeticException.class);
+        LONG_EXACT_OVERFLOW(0, ArithmeticException.class),
+
+        /**
+         * Represents an {@link IllegalMonitorStateException}, with a fixed exception message
+         * indicating the presence of unstructured locking which is not supported. No additional
+         * arguments are allowed.
+         */
+        UNSTRUCTURED_LOCKING(0, IllegalMonitorStateException.class, "Unstructured locking encountered. Native Image enforces structured locking (JVMS 2.11.10)");
 
         final int numArguments;
         final Class<? extends Throwable> exceptionClass;

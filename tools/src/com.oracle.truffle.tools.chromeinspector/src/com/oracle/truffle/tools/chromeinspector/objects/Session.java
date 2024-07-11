@@ -182,7 +182,7 @@ class Session extends AbstractInspectorObject {
             throw new InspectorStateException("The inspector session is already connected");
         }
         InspectorExecutionContext execContext = contextSupplier.get();
-        iss = InspectServerSession.create(execContext, false, new ConnectionWatcher());
+        iss = InspectServerSession.create(execContext, false, new ConnectionWatcher(), () -> disconnect());
         iss.open(getListeners());
         execContext.setSynchronous(true);
         // Enable the Runtime by default

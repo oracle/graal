@@ -43,12 +43,12 @@ import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
-import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodFactory;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
+import com.oracle.svm.hosted.nodes.TestDeoptimizeNode;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -115,7 +115,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         DeoptInfoProvider deoptInfo = null;
-        if (MultiMethod.isDeoptTarget(method)) {
+        if (SubstrateCompilationDirectives.isDeoptTarget(method)) {
             deoptInfo = new DeoptInfoProvider(method);
         }
 

@@ -63,7 +63,7 @@ public class G1BarrierSet implements BarrierSet {
 
     @Override
     public BarrierType writeBarrierType(RawStoreNode store) {
-        return store.needsBarrier() ? guessReadWriteBarrier(store.object(), store.value()) : BarrierType.NONE;
+        return store.needsBarrier() ? readWriteBarrier(store.object(), store.value()) : BarrierType.NONE;
     }
 
     @Override
@@ -92,7 +92,7 @@ public class G1BarrierSet implements BarrierSet {
     }
 
     @Override
-    public BarrierType guessReadWriteBarrier(ValueNode object, ValueNode value) {
+    public BarrierType readWriteBarrier(ValueNode object, ValueNode value) {
         if (value.getStackKind() == JavaKind.Object && object.getStackKind() == JavaKind.Object) {
             ResolvedJavaType type = StampTool.typeOrNull(object);
             if (type != null && type.isArray()) {
@@ -141,6 +141,10 @@ public class G1BarrierSet implements BarrierSet {
             StructuredGraph graph = node.graph();
             G1ReferentFieldReadBarrierNode barrier = graph.add(new G1ReferentFieldReadBarrierNode(node.getAddress(), maybeUncompressExpectedValue(node)));
             graph.addAfterFixed(node, barrier);
+        } else if (node.getBarrierType() == BarrierType.WEAK_REFERS_TO || node.getBarrierType() == BarrierType.PHANTOM_REFERS_TO) {
+            // No barrier node required
+        } else {
+            GraalError.guarantee(node.getBarrierType() == BarrierType.NONE, "invalid barrier on %s %s", node, node.getBarrierType());
         }
     }
 

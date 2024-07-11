@@ -130,7 +130,7 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
                 skipFully(stream, 4); // bootstrap_method_attr_index, name_and_type_index
                 return new ClassfileConstant.Unsupported(tag, "CONSTANT_InvokeDynamic_info");
             default:
-                throw new GraalError("Invalid constant pool tag: " + tag);
+                throw new ClassFormatError("Invalid constant pool tag: " + tag);
         }
     }
 

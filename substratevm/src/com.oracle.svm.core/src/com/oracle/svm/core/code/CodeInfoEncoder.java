@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,10 @@ package com.oracle.svm.core.code;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.util.BitSet;
+import java.util.EnumSet;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
@@ -52,6 +54,8 @@ import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -59,6 +63,13 @@ import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
@@ -68,6 +79,7 @@ import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.util.FrequencyEncoder;
@@ -118,8 +130,10 @@ public class CodeInfoEncoder {
     public static final class Encoders {
         static final Class<?> INVALID_CLASS = null;
         static final String INVALID_METHOD_NAME = "";
+        static final int INVALID_METHOD_MODIFIERS = -1;
+        static final String INVALID_METHOD_SIGNATURE = null;
 
-        public record Member(ResolvedJavaMethod method, Class<?> clazz, String name) {
+        public record Member(ResolvedJavaMethod method, Class<?> clazz, String name, String signature, int modifiers) {
         }
 
         public final FrequencyEncoder<JavaConstant> objectConstants;
@@ -141,7 +155,7 @@ public class CodeInfoEncoder {
         private final FrequencyEncoder<Member> methods;
         private Member[] encodedMethods;
 
-        public Encoders(boolean imageCode) {
+        public Encoders(boolean imageCode, Consumer<Class<?>> classVerifier) {
             this.objectConstants = FrequencyEncoder.createEqualityEncoder();
 
             /*
@@ -149,7 +163,7 @@ public class CodeInfoEncoder {
              * reference only image methods via method ids.
              */
             assert imageCode == SubstrateUtil.HOSTED;
-            this.classes = imageCode ? FrequencyEncoder.createEqualityEncoder() : null;
+            this.classes = imageCode ? FrequencyEncoder.createVerifyingEqualityEncoder(classVerifier) : null;
             this.memberNames = imageCode ? FrequencyEncoder.createEqualityEncoder() : null;
             this.methods = imageCode ? FrequencyEncoder.createEqualityEncoder() : null;
             this.otherStrings = imageCode ? FrequencyEncoder.createEqualityEncoder() : null;
@@ -158,23 +172,29 @@ public class CodeInfoEncoder {
                 this.methods.addObject(null);
                 this.classes.addObject(INVALID_CLASS);
                 this.memberNames.addObject(INVALID_METHOD_NAME);
+                if (shouldEncodeAllMethodMetadata()) {
+                    this.otherStrings.addObject(INVALID_METHOD_SIGNATURE);
+                }
             }
         }
 
-        public void addMethod(ResolvedJavaMethod method, Class<?> clazz, String name) {
+        public void addMethod(ResolvedJavaMethod method, Class<?> clazz, String name, String signature, int modifiers) {
             VMError.guarantee(SubstrateUtil.HOSTED, "Runtime code info must reference image methods by id");
 
-            Member member = new Member(Objects.requireNonNull(method), clazz, name);
+            Member member = new Member(Objects.requireNonNull(method), clazz, name, signature, modifiers);
             if (methods.addObject(member)) {
                 classes.addObject(clazz);
                 memberNames.addObject(name);
+                if (shouldEncodeAllMethodMetadata()) {
+                    otherStrings.addObject(signature);
+                }
             }
         }
 
-        public int findMethodIndex(ResolvedJavaMethod method, Class<?> clazz, String name, boolean optional) {
+        public int findMethodIndex(ResolvedJavaMethod method, Class<?> clazz, String name, String signature, int modifiers, boolean optional) {
             VMError.guarantee(SubstrateUtil.HOSTED, "Runtime code info must obtain method ids from image code info");
 
-            Member member = new Member(Objects.requireNonNull(method), clazz, name);
+            Member member = new Member(Objects.requireNonNull(method), clazz, name, signature, modifiers);
             return optional ? methods.findIndex(member) : methods.getIndex(member);
         }
 
@@ -189,12 +209,14 @@ public class CodeInfoEncoder {
             String[] memberNamesArray = encodeArray(memberNames, String[]::new);
             String[] otherStringsArray = encodeArray(otherStrings, String[]::new);
 
-            /*
-             * For image code, we currently have a single code info for which method ids start at 0
-             * (with 0 meaning invalid). Runtime code info can only reference image methods via
-             * these same ids and doesn't have its own method table.
-             */
-            int methodTableFirstId = 0;
+            int methodTableFirstId;
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                var idTracker = MethodTableFirstIDTracker.singleton();
+                methodTableFirstId = idTracker.startingID;
+                idTracker.nextStartingId = methodTableFirstId + methods.getLength();
+            } else {
+                methodTableFirstId = 0;
+            }
             NonmovableArray<Byte> methodTable = encodeMethodTable();
 
             install(target, objectConstantsArray, classesArray, memberNamesArray, otherStringsArray, methodTable, methodTableFirstId, adjuster);
@@ -214,7 +236,7 @@ public class CodeInfoEncoder {
          * fewer bytes}. Still, the fields of the entries are dimensioned to not be larger than
          * necessary to index into another array such as {@link #classes}.
          *
-         * @see CodeInfoDecoder#fillInSourceClassAndMethodName
+         * @see CodeInfoDecoder#fillSourceFields
          */
         private NonmovableArray<Byte> encodeMethodTable() {
             if (methods == null) {
@@ -225,18 +247,21 @@ public class CodeInfoEncoder {
 
             final boolean shortClassIndexes = (classes.getLength() <= 0xffff);
             final boolean shortNameIndexes = (memberNames.getLength() <= 0xffff);
+            final boolean shortSignatureIndexes = (otherStrings.getLength() <= 0xffff);
             UnsafeArrayTypeWriter writer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
             assert encodedMethods[0] == null : "id 0 must mean invalid";
-            encodeMethod(writer, INVALID_CLASS, INVALID_METHOD_NAME, shortClassIndexes, shortNameIndexes);
+            encodeMethod(writer, INVALID_CLASS, INVALID_METHOD_NAME, INVALID_METHOD_SIGNATURE, INVALID_METHOD_MODIFIERS, shortClassIndexes, shortNameIndexes, shortSignatureIndexes);
             for (int id = 1; id < encodedMethods.length; id++) {
-                encodeMethod(writer, encodedMethods[id].clazz, encodedMethods[id].name, shortClassIndexes, shortNameIndexes);
+                encodeMethod(writer, encodedMethods[id].clazz, encodedMethods[id].name, encodedMethods[id].signature, encodedMethods[id].modifiers, shortClassIndexes, shortNameIndexes,
+                                shortSignatureIndexes);
             }
             NonmovableArray<Byte> bytes = NonmovableArrays.createByteArray(NumUtil.safeToInt(writer.getBytesWritten()), NmtCategory.Code);
             writer.toByteBuffer(NonmovableArrays.asByteBuffer(bytes));
             return bytes;
         }
 
-        private void encodeMethod(UnsafeArrayTypeWriter writer, Class<?> clazz, String name, boolean shortClassIndexes, boolean shortNameIndexes) {
+        private void encodeMethod(UnsafeArrayTypeWriter writer, Class<?> clazz, String name, String signature, int modifiers, boolean shortClassIndexes, boolean shortNameIndexes,
+                        boolean shortSignatureIndexes) {
             int classIndex = classes.getIndex(clazz);
             if (shortClassIndexes) {
                 writer.putU2(classIndex);
@@ -248,6 +273,15 @@ public class CodeInfoEncoder {
                 writer.putU2(memberNamesIndex);
             } else {
                 writer.putU4(memberNamesIndex);
+            }
+            if (shouldEncodeAllMethodMetadata()) {
+                int signatureNamesIndex = otherStrings.getIndex(signature);
+                if (shortSignatureIndexes) {
+                    writer.putU2(signatureNamesIndex);
+                } else {
+                    writer.putU4(signatureNamesIndex);
+                }
+                writer.putS2(modifiers);
             }
         }
 
@@ -298,6 +332,16 @@ public class CodeInfoEncoder {
 
     public Encoders getEncoders() {
         return encoders;
+    }
+
+    @Fold
+    public static boolean shouldEncodeAllMethodMetadata() {
+        /*
+         * We don't support JFR stack traces if JIT compilation is enabled, so there's no need to
+         * include extra method metadata. Additionally, including extra metadata would increase the
+         * binary size.
+         */
+        return HasJfrSupport.get() && !RuntimeCompilation.isEnabled();
     }
 
     public static int getEntryOffset(Infopoint infopoint) {
@@ -382,10 +426,10 @@ public class CodeInfoEncoder {
         return result;
     }
 
-    public void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
+    public void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster, Runnable recordActivity) {
         encoders.encodeAllAndInstall(target, adjuster);
         encodeReferenceMaps();
-        frameInfoEncoder.encodeAllAndInstall(target);
+        frameInfoEncoder.encodeAllAndInstall(target, recordActivity);
         encodeIPData();
 
         install(target);
@@ -678,8 +722,7 @@ class CodeInfoVerifier {
     private void verifyValue(CompilationResult compilation, JavaValue e, ValueInfo actualValue, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
         JavaValue expectedValue = e;
 
-        if (expectedValue instanceof StackLockValue) {
-            StackLockValue lock = (StackLockValue) expectedValue;
+        if (expectedValue instanceof StackLockValue lock) {
             assert ValueUtil.isIllegal(lock.getSlot()) : actualValue;
             assert lock.isEliminated() == actualValue.isEliminatedMonitor() : actualValue;
             expectedValue = lock.getOwner();
@@ -827,6 +870,41 @@ class CodeInfoVerifier {
         ValueInfo illegal = new ValueInfo();
         illegal.type = ValueType.Illegal;
         return illegal;
+    }
+}
+
+@AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
+class MethodTableFirstIDTracker implements LayeredImageSingleton {
+    public final int startingID;
+    public int nextStartingId = -1;
+
+    MethodTableFirstIDTracker() {
+        this(0);
+    }
+
+    static MethodTableFirstIDTracker singleton() {
+        return ImageSingletons.lookup(MethodTableFirstIDTracker.class);
+    }
+
+    private MethodTableFirstIDTracker(int id) {
+        startingID = id;
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
+    }
+
+    @Override
+    public PersistFlags preparePersist(ImageSingletonWriter writer) {
+        assert nextStartingId > 0 : nextStartingId;
+        writer.writeInt("startingID", nextStartingId);
+        return PersistFlags.CREATE;
+    }
+
+    @SuppressWarnings("unused")
+    public static Object createFromLoader(ImageSingletonLoader loader) {
+        return new MethodTableFirstIDTracker(loader.readInt("startingID"));
     }
 }
 

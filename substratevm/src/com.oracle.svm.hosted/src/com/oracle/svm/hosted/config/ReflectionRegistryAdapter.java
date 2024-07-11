@@ -24,33 +24,44 @@
  */
 package com.oracle.svm.hosted.config;
 
-import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
 
-import java.util.List;
-
+import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 
 public class ReflectionRegistryAdapter extends RegistryAdapter {
     private final RuntimeReflectionSupport reflectionSupport;
+    private final ProxyRegistry proxyRegistry;
 
-    ReflectionRegistryAdapter(RuntimeReflectionSupport reflectionSupport, ImageClassLoader classLoader) {
+    ReflectionRegistryAdapter(RuntimeReflectionSupport reflectionSupport, ProxyRegistry proxyRegistry, ImageClassLoader classLoader) {
         super(reflectionSupport, classLoader);
         this.reflectionSupport = reflectionSupport;
+        this.proxyRegistry = proxyRegistry;
     }
 
     @Override
-    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, String typeName, boolean allowPrimitives, boolean includeAllElements) {
-        TypeResult<Class<?>> result = super.resolveType(condition, typeName, allowPrimitives, includeAllElements);
-        if (!result.isPresent()) {
+    public void registerType(ConfigurationCondition condition, Class<?> type) {
+        super.registerType(condition, type);
+        if (Proxy.isProxyClass(type)) {
+            proxyRegistry.accept(condition, Arrays.stream(type.getInterfaces()).map(Class::getTypeName).toList());
+        }
+    }
+
+    @Override
+    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+        TypeResult<Class<?>> result = super.resolveType(condition, typeDescriptor, allowPrimitives);
+        if (!result.isPresent() && typeDescriptor instanceof NamedConfigurationTypeDescriptor namedDescriptor) {
             Throwable classLookupException = result.getException();
             if (classLookupException instanceof LinkageError) {
-                reflectionSupport.registerClassLookupException(condition, typeName, classLookupException);
-            } else if (throwMissingRegistrationErrors() && classLookupException instanceof ClassNotFoundException) {
-                reflectionSupport.registerClassLookup(condition, typeName);
+                reflectionSupport.registerClassLookupException(condition, namedDescriptor.name(), classLookupException);
             }
         }
         return result;
@@ -87,13 +98,13 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    public void registerPublicFields(ConfigurationCondition condition, Class<?> type) {
-        reflectionSupport.registerAllFieldsQuery(condition, type);
+    public void registerPublicFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        ((ReflectionDataBuilder) reflectionSupport).registerAllFieldsQuery(condition, queriedOnly, type);
     }
 
     @Override
-    public void registerDeclaredFields(ConfigurationCondition condition, Class<?> type) {
-        reflectionSupport.registerAllDeclaredFieldsQuery(condition, type);
+    public void registerDeclaredFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        ((ReflectionDataBuilder) reflectionSupport).registerAllDeclaredFieldsQuery(condition, queriedOnly, type);
     }
 
     @Override
@@ -114,44 +125,5 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     @Override
     public void registerDeclaredConstructors(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
         reflectionSupport.registerAllDeclaredConstructorsQuery(condition, queriedOnly, type);
-    }
-
-    @Override
-    public void registerField(ConfigurationCondition condition, Class<?> type, String fieldName, boolean allowWrite) throws NoSuchFieldException {
-        try {
-            super.registerField(condition, type, fieldName, allowWrite);
-        } catch (NoSuchFieldException e) {
-            if (throwMissingRegistrationErrors()) {
-                reflectionSupport.registerFieldLookup(condition, type, fieldName);
-            } else {
-                throw e;
-            }
-        }
-    }
-
-    @Override
-    public void registerMethod(ConfigurationCondition condition, boolean queriedOnly, Class<?> type, String methodName, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
-        try {
-            super.registerMethod(condition, queriedOnly, type, methodName, methodParameterTypes);
-        } catch (NoSuchMethodException e) {
-            if (throwMissingRegistrationErrors()) {
-                reflectionSupport.registerMethodLookup(condition, type, methodName, getParameterTypes(methodParameterTypes));
-            } else {
-                throw e;
-            }
-        }
-    }
-
-    @Override
-    public void registerConstructor(ConfigurationCondition condition, boolean queriedOnly, Class<?> type, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
-        try {
-            super.registerConstructor(condition, queriedOnly, type, methodParameterTypes);
-        } catch (NoSuchMethodException e) {
-            if (throwMissingRegistrationErrors()) {
-                reflectionSupport.registerConstructorLookup(condition, type, getParameterTypes(methodParameterTypes));
-            } else {
-                throw e;
-            }
-        }
     }
 }

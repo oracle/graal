@@ -41,8 +41,8 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
 
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
@@ -70,7 +70,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class GuestFunctionToHostInterfaceProxyTest extends AbstractPolyglotTest {
 
@@ -237,8 +236,6 @@ public class GuestFunctionToHostInterfaceProxyTest extends AbstractPolyglotTest 
     }
 
     private void testGenericReturnTypeOfPolyglotProxy(Value join, Value collect) {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
-
         assertThat(join.as(BF_OOO).apply("X", "Y"), equalTo("X, Y"));
         assertThat(join.as(BF_VVV).apply(context.asValue("X"), context.asValue("Y")), isValueOfStringEqualTo("X, Y"));
         assertThat(join.as(BF_OOV).apply("X", "Y"), isValueOfStringEqualTo("X, Y"));
@@ -335,8 +332,6 @@ public class GuestFunctionToHostInterfaceProxyTest extends AbstractPolyglotTest 
 
     @Test
     public void testGenericReturnTypeOfPolyglotFunctionProxyForHostMethodParameter() {
-        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
-
         Value join = context.asValue(new JoinerFunctionObject());
         Value collect = context.asValue(new ArrayOfFunctionObject());
         Value target = context.asValue(new HostCallee());

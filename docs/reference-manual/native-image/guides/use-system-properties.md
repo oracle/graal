@@ -16,24 +16,27 @@ public class App {
     }
 }
 ```
-If you build a native executable using `native-image -Dfoo=bar App`, the system property `foo` will be available at *executable build time*. This means it is available to the [code in your application that is run at build time](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/ImageInfo.html#inImageBuildtimeCode--) (usually static field initializations and static initializers).
+
+If you build a native executable using `native-image -Dfoo=bar App`, the system property `foo` will be available at *executable build time*. 
+This means it is available to the [code in your application that is run at build time](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/ImageInfo.html#inImageBuildtimeCode--) (usually static field initializations and static initializers).
 Thus, if you run the resulting executable, it will not contain `foo` in the printed list of properties.
 
 If, on the other hand, you run the executable with `app -Dfoo=bar`, it will display `foo` in the list of properties because you specified property at *executable runtime*.
 
 In other words:
-* Pass `-D<key>=<value>` as an argument to `native-image` to control the properties seen at executable build time.
-* Pass `-D<key>=<value>` as an argument to a native executable to control the properties seen at executable runtime.
+* Pass `-D<key>=<value>` as an argument to `native-image` to control the properties seen at build time.
+* Pass `-D<key>=<value>` as an argument to a native executable to control the properties seen at runtime.
 
-## Reading System Properties at Build Time
+## Read System Properties at Build Time
+
 You can read system properties at build time and incorporate them into the resulting executable file, as shown in the following example.
 
-1. Make sure you have installed a GraalVM JDK.
+### Prerequisite 
+Make sure you have installed a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-2. Save the following Java code into a file named _ReadProperties.java_, then compile it using `javac`:
-
+1. Save the following Java code into a file named _ReadProperties.java_, then compile it using `javac`:
     ```java
     public class ReadProperties {
         private static final String STATIC_PROPERTY_KEY = "static_key";
@@ -62,7 +65,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
     }
     ```
 
-3. Build the native executable, passing a system property as a command-line argument. Then run the native executable, passing a different system property on the command line.
+2. Build the native executable, passing a system property as a command-line argument. Then run the native executable, passing a different system property on the command line.
     ```shell
     native-image -Dstatic_key=STATIC_VALUE ReadProperties
     ```
@@ -78,22 +81,21 @@ For other installation options, visit the [Downloads section](https://www.graalv
     Value of instance property: INSTANCE_VALUE
     ```
 
-    This indicates that the class static initializer was not run at **build time**, but at **runtime**.
+    This indicates that the class static initializer was not run at build time, but at **runtime**.
 
-4. To force the class static initializer to run at build time, use the `--initialize-at-build-time` flag, as follows:
-
+3. To force the class static initializer to run at build time, use the `--initialize-at-build-time` flag, as follows:
     ```shell
     native-image --initialize-at-build-time=ReadProperties -Dstatic_key=STATIC_VALUE ReadProperties
     ```
     In the output from the `native-image` tool you should see output similar to the following:
-   ```shell
+    ```shell
     ...
     [1/7] Initializing...                                            (7.7s @ 0.07GB)
     Getting value of static property with key: static_key
     ...
     ```
 
-    Run the executable again, as follows:
+ 4. Run the executable again, as follows:
     ```shell
     ./readproperties -Dinstance_key=INSTANCE_VALUE
     ```
@@ -109,4 +111,4 @@ For other installation options, visit the [Downloads section](https://www.graalv
 ### Related Documentation
 
 * [Class Initialization in Native Image](../ClassInitialization.md)
-* [Native Image Build Configuration](../BuildConfiguration.md)
+* [Specify Class Initialization Explicitly](specify-class-initialization.md)

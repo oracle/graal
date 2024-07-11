@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## GraalVM for JDK 24 (Internal Version 24.2.0)
+* (GR-54476): Issue a deprecation warning on first use of a legacy `graal.` prefix (see GR-49960 in [Compiler changelog](../compiler/CHANGELOG.md)).
+  The warning is planned to be replaced by an error in GraalVM for JDK 25.
+* (GR-48384) Added a GDB Python script (`gdb-debughelpers.py`) to improve the Native Image debugging experience.
+
 ## GraalVM for JDK 23 (Internal Version 24.1.0)
 * (GR-51520) The old class initialization strategy, which was deprecated in GraalVM for JDK 22, is removed. The option `StrictImageHeap` no longer has any effect.
 * (GR-51106) Fields that are accessed via a `VarHandle` or `MethodHandle` are no longer marked as "unsafe accessed" when the `VarHandle`/`MethodHandle` can be fully intrinsified.
@@ -20,6 +25,15 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-52534) Change the digest (used e.g. for symbol names) from SHA-1 encoded as a hex string (40 bytes) to 128-bit Murmur3 as a Base-62 string (22 bytes).
 * (GR-52578) Print information about embedded resources into `embedded-resources.json` using the `-H:+GenerateEmbeddedResourcesFile` option.
 * (GR-51172) Add support to catch OutOfMemoryError exceptions on native image if there is no memory left.
+* (GR-53803) In the strict reflection configuration mode (when `ThrowMissingRegistrationErrors` is enabled), only allow `Unsafe.allocateInstance` for types registered explicitly in the configuration.
+* (GR-43837) `--report-unsupported-elements-at-runtime` is now enabled by default and the option is deprecated.
+* (GR-53359) Provide the `.debug_gdb_scripts` section that triggers auto-loading of `svmhelpers.py` in GDB. Remove single and double quotes from `ClassLoader.nameAndId` in the debuginfo.
+* (GR-47365) Include dynamic proxy metadata in the reflection metadata with the syntax `"type": { "proxy": [<interface list>] }`. This allows members of proxy classes to be accessed reflectively. `proxy-config.json` is now deprecated but will still be honored.
+* (GR-18214) In-place compacting garbage collection for the Serial GC old generation with `-H:+CompactingOldGen`.
+* (GR-52844) Add `-Os`, a new optimization mode to configure the optimizer in a way to get the smallest code size.
+* (GR-49770) Add support for glob patterns in resource-config files in addition to regexp. The Tracing agent now prints entries in the glob format.
+* (GR-46386) Throw missing registration errors for JNI queries when the query was not included in the reachability metadata.
+* (GR-51479) Implement cgroup support in native code. See the [README](src/com.oracle.svm.native.libcontainer/README.md) and the [PR description](https://github.com/oracle/graal/pull/8989).
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.

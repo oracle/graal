@@ -26,11 +26,9 @@ package com.oracle.graal.reachability;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.util.AtomicUtils;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -53,47 +51,13 @@ public class ReachabilityAnalysisType extends AnalysisType {
 
     private final Set<ReachabilityAnalysisMethod> invokedSpecialMethods = ConcurrentHashMap.newKeySet();
 
-    private static final AtomicIntegerFieldUpdater<ReachabilityAnalysisType> isInstantiatedUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(ReachabilityAnalysisType.class, "isInstantiated");
-
-    @SuppressWarnings("unused") private volatile int isInstantiated;
-
     public ReachabilityAnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         super(universe, javaType, storageKind, objectType, cloneableType);
     }
 
-    @Override
-    public boolean registerAsInHeap(Object reason) {
-        if (!super.registerAsInHeap(reason)) {
-            return false;
-        }
-        if (registerAsInstantiated()) {
-            ReachabilityAnalysisEngine bb = (ReachabilityAnalysisEngine) universe.getBigbang();
-            bb.schedule(() -> bb.onTypeInstantiated(this, reason));
-        }
-        return true;
-    }
-
-    @Override
-    public boolean registerAsAllocated(Object reason) {
-        if (!super.registerAsAllocated(reason)) {
-            return false;
-        }
-        if (registerAsInstantiated()) {
-            ReachabilityAnalysisEngine bb = (ReachabilityAnalysisEngine) universe.getBigbang();
-            bb.schedule(() -> bb.onTypeInstantiated(this, reason));
-        }
-        return true;
-    }
-
-    private boolean registerAsInstantiated() {
-        return AtomicUtils.atomicMark(this, isInstantiatedUpdater);
-    }
-
     /** Register the type as instantiated with all its super types. */
     @Override
-    protected void onInstantiated(UsageKind usage) {
-        super.onInstantiated(usage);
+    protected void onInstantiated() {
         forAllSuperTypes(t -> ((ReachabilityAnalysisType) t).instantiatedSubtypes.add(this));
     }
 

@@ -80,13 +80,13 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, PolyglotWrapper {
     @Override
     @SuppressWarnings("unchecked")
     public final K getKey() {
-        return (K) cache.getKey.call(languageContext, guestObject);
+        return (K) cache.getKey.call(null, languageContext, guestObject);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public final V getValue() {
-        return (V) cache.getValue.call(languageContext, guestObject);
+        return (V) cache.getValue.call(null, languageContext, guestObject);
     }
 
     @Override

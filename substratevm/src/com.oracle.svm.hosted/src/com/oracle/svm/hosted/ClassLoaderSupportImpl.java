@@ -116,7 +116,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
         /* Collect remaining resources from classpath */
         classLoaderSupport.classpath().stream().parallel().forEach(classpathFile -> {
-            boolean includeCurrent = classLoaderSupport.getJavaPathsToInclude().contains(classpathFile);
+            boolean includeCurrent = classLoaderSupport.getJavaPathsToInclude().contains(classpathFile) || classLoaderSupport.includeAllFromClassPath();
             try {
                 if (Files.isDirectory(classpathFile)) {
                     scanDirectory(classpathFile, resourceCollector, includeCurrent);
@@ -220,11 +220,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     }
 
     private static void includeResource(ResourceCollector collector, Module module, String name, ConfigurationCondition condition) {
-        if (condition.isAlwaysTrue()) {
-            collector.addResource(module, name);
-        } else {
-            collector.addResourceConditionally(module, name, condition);
-        }
+        collector.addResourceConditionally(module, name, condition);
     }
 
     private static List<ConfigurationCondition> shouldIncludeEntry(Module module, ResourceCollector collector, String fileName, URI uri, boolean includeCurrent) {

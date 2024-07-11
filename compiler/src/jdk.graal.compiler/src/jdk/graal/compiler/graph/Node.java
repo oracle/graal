@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package jdk.graal.compiler.graph;
 
 import static jdk.graal.compiler.graph.Graph.isNodeModificationCountsEnabled;
-import static jdk.graal.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
@@ -62,8 +61,8 @@ import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.services.Services;
-import sun.misc.Unsafe;
 
 /**
  * This class is the base class for all nodes. It represents a node that can be inserted in a
@@ -94,7 +93,7 @@ import sun.misc.Unsafe;
 @NodeInfo
 public abstract class Node implements Cloneable, Formattable {
 
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     public static final NodeClass<?> TYPE = null;
 
@@ -1197,10 +1196,7 @@ public abstract class Node implements Cloneable, Formattable {
     private void maybeNotifyInputChanged(Node node) {
         if (graph != null) {
             assert !graph.isFrozen();
-            NodeEventListener listener = graph.nodeEventListener;
-            if (listener != null) {
-                listener.event(Graph.NodeEvent.INPUT_CHANGED, node);
-            }
+            graph.fireNodeEvent(Graph.NodeEvent.INPUT_CHANGED, node);
             graph.edgeModificationCount++;
         }
     }
@@ -1213,10 +1209,7 @@ public abstract class Node implements Cloneable, Formattable {
     public void maybeNotifyZeroUsages(Node node) {
         if (graph != null && node.isAlive()) {
             assert !graph.isFrozen();
-            NodeEventListener listener = graph.nodeEventListener;
-            if (listener != null) {
-                listener.event(Graph.NodeEvent.ZERO_USAGES, node);
-            }
+            graph.fireNodeEvent(Graph.NodeEvent.ZERO_USAGES, node);
         }
     }
 
@@ -1613,7 +1606,7 @@ public abstract class Node implements Cloneable, Formattable {
         return id;
     }
 
-    /**
+    /*
      * Do not overwrite the equality test of a node in subclasses. Equality tests must rely solely
      * on identity.
      */

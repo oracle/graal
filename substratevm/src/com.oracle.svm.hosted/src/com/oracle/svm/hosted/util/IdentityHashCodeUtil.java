@@ -74,10 +74,20 @@ public class IdentityHashCodeUtil {
     /**
      * Tries to inject the requested identity hash code into the object.
      *
+     * @return a boolean representing the outcome of the injection.
+     */
+    public static boolean injectIdentityHashCode(Object obj, int requestedHashCode) {
+        int hashCode = IdentityHashCodeUtil.tryInjectIdentityHashCode(obj, requestedHashCode);
+        return hashCode == requestedHashCode;
+    }
+
+    /**
+     * Tries to inject the requested identity hash code into the object.
+     *
      * @return the final value within the hash code, or the special flags described in
      *         {@link #readIdentityHashCode(Object)}.
      */
-    public static int injectIdentityHashCode(Object obj, int requestedHashCode) {
+    public static int tryInjectIdentityHashCode(Object obj, int requestedHashCode) {
         assert NumUtil.isUnsignedNbit(31, requestedHashCode) : Assertions.errorMessage("Injected hashcode should be a 31-bit unsigned value", requestedHashCode);
 
         if (obj == null) {

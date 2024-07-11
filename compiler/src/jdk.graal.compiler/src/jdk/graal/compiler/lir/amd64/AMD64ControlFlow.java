@@ -324,6 +324,25 @@ public class AMD64ControlFlow {
         }
     }
 
+    public static class BitTestAndBranchOp extends BranchOp {
+        public static final LIRInstructionClass<BitTestAndBranchOp> TYPE = LIRInstructionClass.create(BitTestAndBranchOp.class);
+
+        @Use protected AllocatableValue value;
+        private final int index;
+
+        public BitTestAndBranchOp(LabelRef trueDestination, LabelRef falseDestination, AllocatableValue value, double trueDestinationProbability, int index) {
+            super(TYPE, ConditionFlag.CarryClear, trueDestination, falseDestination, trueDestinationProbability);
+            this.value = value;
+            this.index = index;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            masm.btq(asRegister(value), index);
+            super.emitCode(crb, masm);
+        }
+    }
+
     public static class CmpBranchOp extends BranchOp implements StandardOp.ImplicitNullCheck {
 
         public static final LIRInstructionClass<CmpBranchOp> TYPE = LIRInstructionClass.create(CmpBranchOp.class);

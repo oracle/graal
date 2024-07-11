@@ -28,7 +28,7 @@ import java.util.EnumSet;
 import java.util.Optional;
 
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -72,7 +72,7 @@ import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.loop.InductionVariable.Direction;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.phases.FloatingGuardPhase;
 import jdk.graal.compiler.phases.Speculative;
@@ -275,7 +275,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 GuardNode guard = (GuardNode) node;
                 LogicNode condition = guard.getCondition();
 
-                Loop<HIRBlock> forcedHoisting = null;
+                CFGLoop<HIRBlock> forcedHoisting = null;
                 if (condition instanceof IntegerLessThanNode || condition instanceof IntegerBelowNode) {
                     forcedHoisting = tryOptimizeCompare(guard, (CompareNode) condition);
                 } else if (condition instanceof InstanceOfNode) {
@@ -322,7 +322,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return earliest;
         }
 
-        private Loop<HIRBlock> tryOptimizeCompare(GuardNode guard, CompareNode compare) {
+        private CFGLoop<HIRBlock> tryOptimizeCompare(GuardNode guard, CompareNode compare) {
             assert compare instanceof IntegerLessThanNode || compare instanceof IntegerBelowNode : Assertions.errorMessage(compare);
             assert !compare.usages().filter(GuardNode.class).isEmpty() : Assertions.errorMessage(compare, compare.usages());
             InductionVariable ivX = loops.getInductionVariable(compare.getX());
@@ -551,8 +551,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 return null;
             }
 
-            LoopEx loopEx = iv.getLoop();
-            Loop<HIRBlock> ivLoop = loopEx.loop();
+            Loop loopEx = iv.getLoop();
+            CFGLoop<HIRBlock> ivLoop = loopEx.loop();
             HIRBlock guardAnchorBlock = earliestBlock(guard.getAnchor().asNode());
             if (isInverted(iv.getLoop())) {
                 /*
@@ -614,7 +614,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 }
             }
 
-            Loop<HIRBlock> l = guardAnchorBlock.getLoop();
+            CFGLoop<HIRBlock> l = guardAnchorBlock.getLoop();
             if (isInverted(loopEx)) {
                 // guard is anchored outside the loop but the condition might still be in the loop
                 l = iv.getLoop().loop();
@@ -689,7 +689,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                  */
                 if (iv.getLoop().loop().getDepth() > 1 && iv.getLoop().loopBegin().loopExits().count() > 1) {
                     InductionVariable currentIv = iv;
-                    LoopEx currentLoop = iv.getLoop();
+                    Loop currentLoop = iv.getLoop();
                     /*
                      * Since we are calculating the inner loops max trip count based on the outer
                      * loop IV we also have to compute a different max trip count node for this
@@ -763,7 +763,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return NumUtil.isUInt(stamp.mayBeSet());
         }
 
-        private Loop<HIRBlock> tryOptimizeInstanceOf(GuardNode guard, InstanceOfNode compare) {
+        private CFGLoop<HIRBlock> tryOptimizeInstanceOf(GuardNode guard, InstanceOfNode compare) {
             AnchoringNode anchor = compare.getAnchor();
             if (anchor == null) {
                 return null;
@@ -773,7 +773,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 return null;
             }
             HIRBlock valueBlock = earliestBlock(compare.getValue());
-            Loop<HIRBlock> hoistAbove = findInstanceOfLoopHoisting(guard, anchorBlock, valueBlock);
+            CFGLoop<HIRBlock> hoistAbove = findInstanceOfLoopHoisting(guard, anchorBlock, valueBlock);
             if (hoistAbove != null) {
                 compare.setProfile(compare.profile(), hoistAbove.getHeader().getDominator().getBeginNode());
                 graph.getOptimizationLog().report(SpeculativeGuardMovementPhase.class, "InstanceOfOptimization", compare);
@@ -782,7 +782,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return null;
         }
 
-        private Loop<HIRBlock> findInstanceOfLoopHoisting(GuardNode guard, HIRBlock anchorBlock, HIRBlock valueBlock) {
+        private CFGLoop<HIRBlock> findInstanceOfLoopHoisting(GuardNode guard, HIRBlock anchorBlock, HIRBlock valueBlock) {
             assert anchorBlock.getLoop() != null;
             DebugContext debug = guard.getDebug();
             if (valueBlock.getLoop() == anchorBlock.getLoop()) {
@@ -828,8 +828,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
              * If one loop does not allow hoisting based on the speculation log, the traversal terminates sooner.
              */
             //@formatter:on
-            Loop<HIRBlock> hoistFrom = anchorBlock.getLoop();
-            Loop<HIRBlock> curLoop = anchorBlock.getLoop();
+            CFGLoop<HIRBlock> hoistFrom = anchorBlock.getLoop();
+            CFGLoop<HIRBlock> curLoop = anchorBlock.getLoop();
 
             // check hoisting from loop nests
             while (curLoop.getParent() != valueBlock.getLoop()) {
@@ -849,7 +849,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return hoistFrom;
         }
 
-        private HIRBlock earliestBlockForGuard(GuardNode guard, Loop<HIRBlock> forcedHoisting) {
+        private HIRBlock earliestBlockForGuard(GuardNode guard, CFGLoop<HIRBlock> forcedHoisting) {
             DebugContext debug = guard.getDebug();
             Node anchor = guard.getAnchor().asNode();
             assert guard.inputs().count() == 2 : Assertions.errorMessage(guard.inputs());
@@ -969,7 +969,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         return GUARD_MOVEMENT_LOOP_SPECULATIONS.createSpeculationReason(method, bci, reason);
     }
 
-    private static boolean isInverted(LoopEx loop) {
+    private static boolean isInverted(Loop loop) {
         return loop.isCounted() && loop.counted().isInverted();
     }
 }

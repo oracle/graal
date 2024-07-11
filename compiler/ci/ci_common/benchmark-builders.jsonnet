@@ -22,8 +22,6 @@
     c.daily                    + hw.e3 + jdk + cc.libgraal + bench.microservice_benchmarks,
     c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.micros_graal_whitebox,
     c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.micros_graal_dist,
-    c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.micros_misc_graal_dist,
-    c.weekly                   + hw.e3 + jdk + cc.libgraal + bench.micros_shootout_graal_dist,
     ]
   for jdk in cc.product_jdks
   ]),
@@ -38,8 +36,7 @@
   ]),
 
   local weekly_amd64_forks_builds = std.flattenArrays([
-    bc.generate_fork_builds(c.weekly  + hw.e3  + jdk + cc.libgraal + suite, subdir='compiler') +
-    bc.generate_fork_builds(c.monthly + hw.e3  + jdk + cc.jargraal + suite, subdir='compiler')
+    bc.generate_fork_builds(c.weekly  + hw.e3  + jdk + cc.libgraal + suite, subdir='compiler')
   for jdk in cc.product_jdks
   for suite in bench.groups.weekly_forks_suites
   ]),
@@ -54,6 +51,9 @@
     c.daily + hw.a12c + jdk + cc.libgraal + suite,
   for jdk in cc.product_jdks
   for suite in bench.groups.main_suites
+  ] + [
+    c.monthly + hw.a12c + jdk + cc.libgraal + bench.specjbb2015,
+  for jdk in cc.product_jdks
   ],
 
   local avx_builds = [
@@ -76,20 +76,7 @@
   for suite in bench.groups.main_suites
   ],
 
-  local no_tiered_builds = [
-    c.monthly + hw.e3 + jdk + cc.libgraal + cc.no_tiered_comp + suite,
-  for jdk in cc.product_jdks
-  for suite in bench.groups.main_suites
-  ],
-
-  local no_profile_info_builds = [
-    c.monthly + hw.e3 + jdk + cc.libgraal + cc.no_profile_info + suite,
-  for jdk in cc.product_jdks
-  for suite in bench.groups.main_suites
-  ],
-
-
-  local all_builds = main_builds + weekly_amd64_forks_builds + weekly_aarch64_forks_builds + profiling_builds + avx_builds + zgc_builds + zgc_avx_builds + aarch64_builds + no_tiered_builds + no_profile_info_builds,
+  local all_builds = main_builds + weekly_amd64_forks_builds + weekly_aarch64_forks_builds + profiling_builds + avx_builds + zgc_builds + zgc_avx_builds + aarch64_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version) && b.is_arch_supported(b.arch)],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: utils.add_defined_in(filtered_builds, std.thisFile),

@@ -70,7 +70,6 @@ import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
-import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
@@ -109,10 +108,8 @@ public class SubstrateGraphKit extends GraphKit {
         frameState.initializeForMethodStart(null, true, graphBuilderPlugins, collectedArguments);
         initialArguments = Collections.unmodifiableList(collectedArguments);
         graph.start().setStateAfter(frameState.create(bci(), graph.start()));
-    }
-
-    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId) {
-        this(debug, stubMethod, providers, graphBuilderPlugins, compilationId, false);
+        // Record method dependency in the graph
+        graph.recordMethod(graph.method());
     }
 
     @Override
@@ -373,11 +370,5 @@ public class SubstrateGraphKit extends GraphKit {
         lastFixedNode = noExceptionEdge;
 
         return withExceptionNode;
-    }
-
-    public void appendStateSplitProxy() {
-        StateSplitProxyNode proxy = new StateSplitProxyNode();
-        append(proxy);
-        proxy.setStateAfter(frameState.create(bci(), proxy));
     }
 }

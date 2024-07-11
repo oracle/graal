@@ -52,7 +52,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
-import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.net.URI;
@@ -75,7 +74,6 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.ModuleToUnnamedBridge;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -208,24 +206,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public Object initializeModuleToUnnamedAccess(Lookup unnamedLookup, Object unnamedAccess, Object unnamedAPIAccess, Object unnamedIOAccess, Object unnamedManagementAccess) {
-        ModuleToUnnamedBridge bridge = ModuleToUnnamedBridge.create(unnamedLookup, unnamedAccess, unnamedAPIAccess, unnamedIOAccess, unnamedManagementAccess);
-        AbstractPolyglotImpl impl = getRootImpl();
-        while (impl != null) {
-            initializeModuleToUnnamedBridge(impl, bridge);
-            impl = impl.getNextOrNull();
-        }
-        return bridge.getModuleAccess();
-    }
-
-    private static void initializeModuleToUnnamedBridge(AbstractPolyglotImpl impl, ModuleToUnnamedBridge bridge) {
-        impl.setConstructors(Objects.requireNonNull(bridge.getAPIAccess()));
-        impl.setIO(Objects.requireNonNull(bridge.getIOAccess()));
-        impl.setMonitoring(Objects.requireNonNull(bridge.getManagementAccess()));
-        impl.initialize();
-    }
-
-    @Override
     public Object buildLimits(long statementLimit, Predicate<Object> statementLimitSourceFilter,
                     Consumer<Object> onLimit) {
         try {
@@ -296,7 +276,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotEngineImpl impl = null;
         try {
             validateSandbox(sandboxPolicy);
-            InternalResourceRoots.ensureInitialized();
             if (TruffleOptions.AOT) {
                 EngineAccessor.ACCESSOR.initializeNativeImageTruffleLocator();
             }
@@ -385,6 +364,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
     }
 
+    @Override
+    public void onEngineCreated(Object polyglotEngine) {
+    }
+
     private static void logTruffleRuntimeWarning(Map<String, String> options, OptionValuesImpl engineOptions, EngineLoggerProvider loggerProvider) {
         boolean warnInterpreterOnly;
         if (engineOptions == null) {
@@ -464,7 +447,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Used for preinitialized contexts and fallback engine.
      */
     PolyglotEngineImpl createDefaultEngine(TruffleLanguage<Object> hostLanguage) {
-        InternalResourceRoots.ensureInitialized();
         Map<String, String> options = getAPIAccess().readOptionsFromSystemProperties();
         LogConfig logConfig = new LogConfig();
         SandboxPolicy sandboxPolicy = SandboxPolicy.TRUSTED;

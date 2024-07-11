@@ -116,9 +116,11 @@ import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -212,6 +214,10 @@ public abstract class Accessor {
         public abstract EncapsulatingNodeReference createEncapsulatingNodeReference(Thread thread);
 
         public abstract boolean isSameFrame(RootNode root, Frame frame1, Frame frame2);
+
+        public abstract int findBytecodeIndex(RootNode rootNode, Node callNode, Frame frame);
+
+        public abstract boolean isCaptureFramesForTrace(RootNode rootNode, boolean compiled);
     }
 
     public abstract static class SourceSupport extends Support {
@@ -368,6 +374,8 @@ public abstract class Accessor {
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
 
+        public abstract Object getScope(Object polyglotLanguageContext, LanguageInfo languageInfo, boolean internal);
+
         public abstract boolean hasCurrentContext();
 
         public abstract boolean isDisposed(Object polyglotLanguageContext);
@@ -467,7 +475,8 @@ public abstract class Accessor {
 
         public abstract boolean isCreateThreadAllowed(Object polyglotLanguageContext);
 
-        public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize, Runnable beforeEnter, Runnable afterLeave);
+        public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize, Runnable beforeEnter, Runnable afterLeave,
+                        boolean virtual);
 
         public abstract RuntimeException wrapHostException(Node callNode, Object languageContext, Throwable exception);
 
@@ -543,7 +552,7 @@ public abstract class Accessor {
 
         public abstract FileSystem getFileSystem(Object polyglotContext);
 
-        public abstract boolean isPolyglotEvalAllowed(Object polyglotLanguageContext);
+        public abstract boolean isPolyglotEvalAllowed(Object polyglotLanguageContext, LanguageInfo language);
 
         public abstract boolean isPolyglotBindingsAccessAllowed(Object polyglotLanguageContext);
 
@@ -731,7 +740,7 @@ public abstract class Accessor {
 
         public abstract String getFormatKind(LogRecord logRecord);
 
-        public abstract boolean isPolyglotThread(Thread thread);
+        public abstract boolean isCurrentThreadPolyglotThread();
 
         public abstract Object getHostNull();
 
@@ -772,6 +781,8 @@ public abstract class Accessor {
         public abstract Collection<String> getResourceIds(String componentId);
 
         public abstract void setIsolatePolyglot(AbstractPolyglotImpl instance);
+
+        public abstract Object getEngineData(Object polyglotEngine);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1122,6 +1133,10 @@ public abstract class Accessor {
         public ThreadLocalHandshake getThreadLocalHandshake() {
             return DefaultThreadLocalHandshake.SINGLETON;
         }
+
+        public abstract IndirectCallNode createIndirectCallNode();
+
+        public abstract DirectCallNode createDirectCallNode(CallTarget target);
 
         /**
          * Reports the execution count of a loop.

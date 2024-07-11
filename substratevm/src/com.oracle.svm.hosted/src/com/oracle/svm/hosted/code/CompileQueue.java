@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
-import static com.oracle.svm.common.meta.MultiMethod.DEOPT_TARGET_METHOD;
+import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -558,7 +558,7 @@ public class CompileQueue {
 
                 int deoptMethodSize = 0;
                 HostedMethod deoptTargetMethod = method.getMultiMethod(DEOPT_TARGET_METHOD);
-                if (deoptTargetMethod != null) {
+                if (deoptTargetMethod != null && isRegisteredDeoptTarget(deoptTargetMethod)) {
                     CompilationInfo dci = deoptTargetMethod.compilationInfo;
 
                     numberOfDeopt += 1;

@@ -51,13 +51,13 @@ public @interface OptionGroup {
     String prefix() default "";
 
     /**
-     * By default generated classes that specify an {@link Option} annotation are loaded as service.
-     * If this attribute is set to to <code>false</code> the generated options in this class are not
-     * loaded by the service mechanism. This allows to manually specify where the option
-     * descriptors.
+     * By default, generated classes that specify an {@link Option} annotation are loaded as a
+     * service. If this attribute is set to <code>false</code>, the generated options in this class
+     * are not loaded by the service mechanism. This allows manually specifying where the option
+     * descriptors come from.
      * <p>
-     * Since option services are registered by name using the "_OptionDescriptors" class name suffix
-     * the generated class is also does not end with "_OptionDescriptors" but just with
+     * Since option services are registered by name using the "_OptionDescriptors" class name
+     * suffix, the generated class also does not end with "_OptionDescriptors" but just with
      * "OptionDescriptors". This is hopefully obsolete after GR-46195 is implemented.
      */
     boolean registerAsService() default true;

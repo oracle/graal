@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.analysis;
 
+import java.util.List;
+
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -58,11 +60,11 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
         this.dynamicHubInitializer = new DynamicHubInitializer(this);
         this.unknownFieldHandler = new CustomTypeFieldHandler(this, metaAccess) {
             @Override
-            public void injectFieldTypes(AnalysisField aField, AnalysisType... declaredTypes) {
+            public void injectFieldTypes(AnalysisField aField, List<AnalysisType> declaredTypes, boolean canBeNull) {
                 assert aField.getJavaKind().isObject();
-                markFieldAccessed(aField, "@UnknownObjectField annotated field.");
+                aField.registerAsAccessed("@UnknownObjectField annotated field.");
                 for (AnalysisType declaredType : declaredTypes) {
-                    registerTypeAsReachable(declaredType, "injected field types for unknown annotated field " + aField.format("%H.%n"));
+                    declaredType.registerAsReachable("injected field types for unknown annotated field " + aField.format("%H.%n"));
                 }
             }
         };

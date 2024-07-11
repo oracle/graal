@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -145,8 +145,9 @@ final class NativeAPIImpl {
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = EnterNativeTruffleEnvPrologue.class)
-    static boolean exceptionCheck(@SuppressWarnings("unused") NativeTruffleEnv env) {
-        return NativeClosure.pendingException.get() != null;
+    static boolean exceptionCheck(NativeTruffleEnv env) {
+        Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext context = lookupContext(env.context());
+        return context.language.getNFIState().hasPendingException;
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
