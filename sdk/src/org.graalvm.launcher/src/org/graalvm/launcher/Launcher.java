@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1704,8 +1704,12 @@ public abstract class Launcher {
      * @throws IOException in case of I/O error opening the file
      * @since 20.0
      */
-    protected static OutputStream newLogStream(Path path) throws IOException {
+    public static OutputStream newLogStream(Path path) throws IOException {
         Path usedPath = path;
+        Path parent = path.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
         Path fileNamePath = path.getFileName();
         String fileName = fileNamePath == null ? "" : fileNamePath.toString();
         OutputStream outputStream;
@@ -1734,7 +1738,6 @@ public abstract class Launcher {
                     }
                 }
             }
-            assert lockFile != null && lockFileChannel != null;
             boolean success = false;
             try {
                 outputStream = new LockableOutputStream(
@@ -1752,8 +1755,8 @@ public abstract class Launcher {
     }
 
     private static Pair<FileChannel, Boolean> openChannel(Path path) throws IOException {
-        FileChannel channel = null;
-        for (int retries = 0; channel == null && retries < 2; retries++) {
+        FileChannel channel;
+        for (int retries = 0; retries < 2; retries++) {
             try {
                 channel = FileChannel.open(path, CREATE_NEW, WRITE);
                 return Pair.create(channel, true);
