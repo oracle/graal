@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -166,10 +167,12 @@ public class JfrFeature implements InternalFeature {
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
         JfrSerializerSupport.get().register(new JfrThreadStateSerializer());
         JfrSerializerSupport.get().register(new JfrMonitorInflationCauseSerializer());
-        JfrSerializerSupport.get().register(new JfrGCCauseSerializer());
-        JfrSerializerSupport.get().register(new JfrGCNameSerializer());
+        if (SubstrateOptions.useSerialGC()) {
+            JfrSerializerSupport.get().register(new JfrGCCauseSerializer());
+            JfrSerializerSupport.get().register(new JfrGCNameSerializer());
+            JfrSerializerSupport.get().register(new JfrGCWhenSerializer());
+        }
         JfrSerializerSupport.get().register(new JfrVMOperationNameSerializer());
-        JfrSerializerSupport.get().register(new JfrGCWhenSerializer());
         if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
             JfrSerializerSupport.get().register(new JfrNmtCategorySerializer());
         }
