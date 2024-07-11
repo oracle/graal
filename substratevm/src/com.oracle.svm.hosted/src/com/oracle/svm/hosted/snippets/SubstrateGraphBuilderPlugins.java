@@ -1151,7 +1151,7 @@ public class SubstrateGraphBuilderPlugins {
                      * to ensure certain singleton are not installed into the image.
                      */
                     if (!RuntimeCompilation.isEnabled()) {
-                        throw b.bailout("Layered image singleton without runtime access is in runtime graph: " + singleton);
+                        throw VMError.shouldNotReachHere("Layered image singleton without runtime access is in runtime graph: " + singleton);
                     }
                 }
                 b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(singleton), b.getMetaAccess()));
