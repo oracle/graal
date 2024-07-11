@@ -43,8 +43,13 @@ import jdk.jfr.StackTrace;
 @StackTrace(false)
 public class NativeMemoryUsageTotalPeakEvent extends Event {
     @Label("Peak Reserved")//
-    @DataAmount public long peakReserved;
+    @DataAmount//
+    public long peakReserved;
+
     @Label("Peak Committed")//
-    @DataAmount public long peakCommitted;
-    @Label("Count At Peak") public long countAtPeak;
+    @DataAmount//
+    public long peakCommitted;
+
+    @Label("Count At Peak")//
+    public long countAtPeak;
 }

@@ -42,10 +42,17 @@ import jdk.jfr.StackTrace;
 @Category({"Java Virtual Machine", "Memory"})
 @StackTrace(false)
 public class NativeMemoryUsagePeakEvent extends Event {
-    @Label("Memory Type") public String type;
+    @Label("Memory Type")//
+    public String type;
+
     @Label("Peak Reserved")//
-    @DataAmount public long peakReserved;
+    @DataAmount//
+    public long peakReserved;
+
     @Label("Peak Committed")//
-    @DataAmount public long peakCommitted;
-    @Label("Count At Peak") public long countAtPeak;
+    @DataAmount//
+    public long peakCommitted;
+
+    @Label("Count At Peak")//
+    public long countAtPeak;
 }
