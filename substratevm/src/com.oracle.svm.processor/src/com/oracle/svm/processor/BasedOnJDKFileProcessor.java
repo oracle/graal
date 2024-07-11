@@ -47,6 +47,7 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.tools.Diagnostic.Kind;
@@ -171,6 +172,9 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
         if (annotatedElement instanceof VariableElement variableElement) {
             TypeElement enclosingElement = (TypeElement) variableElement.getEnclosingElement();
             return enclosingElement.getQualifiedName().toString() + "#" + variableElement.getSimpleName();
+        }
+        if (annotatedElement instanceof PackageElement packageElement) {
+            return packageElement.getQualifiedName().toString();
         }
         throw new RuntimeException("Unexpected element class: " + annotatedElement.getClass().getSimpleName());
     }

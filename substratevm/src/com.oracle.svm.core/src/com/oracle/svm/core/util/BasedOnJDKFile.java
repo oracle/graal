@@ -39,7 +39,7 @@ import org.graalvm.nativeimage.Platforms;
  */
 @Repeatable(BasedOnJDKFile.List.class)
 @Retention(RetentionPolicy.RUNTIME)
-@Target(value = {ElementType.TYPE, ElementType.FIELD, ElementType.CONSTRUCTOR, ElementType.METHOD})
+@Target(value = {ElementType.TYPE, ElementType.FIELD, ElementType.CONSTRUCTOR, ElementType.METHOD, ElementType.PACKAGE})
 @Platforms(Platform.HOSTED_ONLY.class)
 public @interface BasedOnJDKFile {
 
