@@ -145,6 +145,35 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testRootNodeSourceSection() {
+        Source source = Source.newBuilder("test", "0123456789", "test.test").build();
+        BasicInterpreter node = parseNodeWithSource("source", b -> {
+            b.beginSource(source);
+            b.beginSourceSection(0, 10);
+            b.beginSourceSection(1, 9);
+            b.beginSourceSection(2, 8);
+
+            b.beginRoot(LANGUAGE);
+            b.emitLoadArgument(0);
+            b.beginSourceSection(3, 7);
+            b.beginReturn();
+            b.beginSourceSection(4, 6);
+            b.emitLoadConstant(1L);
+            b.endSourceSection();
+            b.endReturn();
+            b.endSourceSection();
+            b.endRoot();
+
+            b.endSourceSection();
+            b.endSourceSection();
+            b.endSourceSection();
+            b.endSource();
+        });
+        // The most specific source section should be chosen.
+        assertSourceSection(node.getSourceSection(), source, 2, 8);
+    }
+
+    @Test
     public void testWithoutSource() {
         BasicInterpreter node = parseNode("source", b -> {
             b.beginRoot(LANGUAGE);
@@ -161,6 +190,21 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
         assertNull(location1.getSourceLocation());
         assertNull(location2.getSourceLocation());
+    }
+
+    @Test
+    public void testWithoutSourceSection() {
+        Source source = Source.newBuilder("test", "return 1", "test.test").build();
+        BasicInterpreter node = parseNode("source", b -> {
+            b.beginSource(source);
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.emitLoadConstant(1L);
+            b.endReturn();
+            b.endRoot();
+            b.endSource();
+        });
+        assertNull(node.getSourceSection());
     }
 
     @Test

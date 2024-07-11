@@ -8568,16 +8568,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.getModifiers().remove(Modifier.ABSTRACT);
             ex.getModifiers().add(Modifier.FINAL);
             CodeTreeBuilder b = ex.createBuilder();
-
-            b.declaration(abstractBytecodeNode.asType(), "bytecode", "findBytecodeNode()");
-            b.startReturn().string("bytecode.findSourceLocations(enterBci, returnBci)").end();
+            b.startReturn().string("findBytecodeNode().findSourceLocations(enterBci)").end();
             return ex;
         }
 
         private CodeExecutableElement createCreateSourceSection() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), types.SourceSection, "createSourceSection");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
             CodeTreeBuilder b = ex.createBuilder();
-            b.startReturn().string("findBytecodeNode().findSourceLocation(enterBci, returnBci)").end();
+            // Because of operation nesting, any source section that applies to the tag.enter should
+            // apply to the whole tag operation.
+            b.startReturn().string("findBytecodeNode().findSourceLocation(enterBci)").end();
             return ex;
         }
 
@@ -8594,7 +8596,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.renameArguments("tag");
             ex.getModifiers().remove(Modifier.ABSTRACT);
             ex.getModifiers().add(Modifier.FINAL);
-
             CodeTreeBuilder b = ex.createBuilder();
 
             boolean elseIf = false;
@@ -8824,9 +8825,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             // Define methods for introspecting the bytecode and source.
             type.add(createGetSourceSection());
             type.add(createFindSourceLocation());
-            type.add(createFindSourceLocationBeginEnd());
             type.add(createFindSourceLocations());
-            type.add(createFindSourceLocationsBeginEnd());
             type.add(createCreateSourceSection());
             type.add(createFindInstruction());
             type.add(createGetSourceInformation());
@@ -10200,47 +10199,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
-            b.declaration(generic(type(List.class), types.Source), "localSources", "this.sources");
-            b.startIf().string("info == null").end().startBlock();
-            b.declaration(type.asType(), "newNode", "getRoot().ensureSources()");
-            b.statement("info = newNode.sourceInfo");
-            b.statement("localSources = newNode.sources");
-            b.end();
+            emitGetSourceInfo(b);
 
             b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
             b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
             b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
 
-            b.startIf().string("bci >= startBci && bci < endBci").end().startBlock();
-            b.startReturn().string("createSourceSection(localSources, info, i)").end();
-            b.end();
-
-            b.end();
-
-            b.startReturn().string("null").end();
-            return ex;
-        }
-
-        private CodeExecutableElement createFindSourceLocationBeginEnd() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocation", 2);
-            ex.getModifiers().add(FINAL);
-            ex.renameArguments("searchStartBci", "searchEndBci");
-
-            CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
-            b.declaration(generic(type(List.class), types.Source), "localSources", "this.sources");
-            b.startIf().string("info == null").end().startBlock();
-            b.declaration(type.asType(), "newNode", "getRoot().ensureSources()");
-            b.statement("info = newNode.sourceInfo");
-            b.statement("localSources = newNode.sources");
-            b.end();
-
-            b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
-            b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
-            b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
-
-            b.startIf().string("searchStartBci >= startBci && searchEndBci <= endBci").end().startBlock();
+            b.startIf().string("startBci <= bci && bci < endBci").end().startBlock();
             b.startReturn().string("createSourceSection(localSources, info, i)").end();
             b.end();
 
@@ -10256,26 +10221,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startReturn().startCall("findSourceLocations");
-            b.string("bci");
-            b.string("bci + 1"); // searchEndBci is inclusive.
-            b.end(2);
-            return ex;
-        }
-
-        private CodeExecutableElement createFindSourceLocationsBeginEnd() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocations", 2);
-            ex.getModifiers().add(FINAL);
-            ex.renameArguments("searchStartBci", "searchEndBci");
-            CodeTreeBuilder b = ex.createBuilder();
-
-            b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
-            b.declaration(generic(type(List.class), types.Source), "localSources", "this.sources");
-            b.startIf().string("info == null").end().startBlock();
-            b.declaration(type.asType(), "newNode", "getRoot().ensureSources()");
-            b.statement("info = newNode.sourceInfo");
-            b.statement("localSources = newNode.sources");
-            b.end();
+            emitGetSourceInfo(b);
 
             b.declaration(type(int.class), "sectionIndex", "0");
             b.startDeclaration(arrayOf(types.SourceSection), "sections").startNewArray(arrayOf(types.SourceSection), CodeTreeBuilder.singleString("8")).end().end();
@@ -10284,7 +10230,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
             b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
 
-            b.startIf().string("searchStartBci >= startBci && searchEndBci <= endBci").end().startBlock();
+            b.startIf().string("startBci <= bci && bci < endBci").end().startBlock();
 
             b.startIf().string("sectionIndex == sections.length").end().startBlock();
             b.startAssign("sections").startStaticCall(type(Arrays.class), "copyOf");
@@ -10326,8 +10272,41 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = GeneratorUtils.override(types.Node, "getSourceSection");
             ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
             CodeTreeBuilder b = ex.createBuilder();
-            b.startReturn().string("findSourceLocation(0, bytecodes.length)").end();
+
+            emitGetSourceInfo(b);
+
+            b.lineComment("The source table encodes a preorder traversal of a logical tree of source sections (with entries in reverse).");
+            b.lineComment("The most specific source section corresponds to the \"lowest\" node in the tree that covers the whole bytecode range.");
+            b.lineComment("We find this node by iterating the entries from the root until we hit a node that does not cover the bytecode range.");
+            b.declaration(type(int.class), "mostSpecific", "-1");
+
+            b.startFor().string("int i = info.length - SOURCE_INFO_LENGTH; i >= 0; i -= SOURCE_INFO_LENGTH").end().startBlock();
+            b.startIf();
+            b.string("info[i + SOURCE_INFO_OFFSET_START_BCI] != 0 ||").startIndention().newLine();
+            b.string("info[i + SOURCE_INFO_OFFSET_END_BCI] != bytecodes.length").end();
+            b.end().startBlock();
+            b.statement("break");
+            b.end(); // if
+            b.statement("mostSpecific = i"); // best so far
+            b.end(); // for
+
+            b.startIf().string("mostSpecific != -1").end().startBlock();
+            b.startReturn();
+            b.string("createSourceSection(localSources, info, mostSpecific)");
+            b.end();
+            b.end();
+            b.startReturn().string("null").end();
             return ex;
+        }
+
+        private void emitGetSourceInfo(CodeTreeBuilder b) {
+            b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
+            b.declaration(generic(type(List.class), types.Source), "localSources", "this.sources");
+            b.startIf().string("info == null").end().startBlock();
+            b.declaration(type.asType(), "newNode", "getRoot().ensureSources()");
+            b.statement("info = newNode.sourceInfo");
+            b.statement("localSources = newNode.sources");
+            b.end();
         }
 
         private CodeExecutableElement createFindInstruction() {

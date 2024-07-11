@@ -954,17 +954,6 @@ public abstract class BytecodeNode extends Node {
     public abstract SourceSection findSourceLocation(int bytecodeIndex);
 
     /**
-     * Finds the most concrete source location containing the given bytecode range. The method
-     * returns <code>null</code> if no source section could be found. Calling this method also
-     * {@link BytecodeRootNodes#ensureSources() ensures source sections} are materialized.
-     *
-     * @param beginBytecodeIndex the beginning of the bytecode range (inclusive)
-     * @param endBytecodeIndex the end of the bytecode range (exclusive)
-     * @since 24.2
-     */
-    public abstract SourceSection findSourceLocation(int beginBytecodeIndex, int endBytecodeIndex);
-
-    /**
      * Finds all source locations associated with the given bytecode index. More concrete source
      * sections appear earlier in the array. Typically, a given section will contain the previous
      * source section, but there is no guarantee that this the case. Calling this method also
@@ -974,18 +963,6 @@ public abstract class BytecodeNode extends Node {
      * @since 24.2
      */
     public abstract SourceSection[] findSourceLocations(int bytecodeIndex);
-
-    /**
-     * Finds all source locations containing the given bytecode range. More concrete source sections
-     * appear earlier in the array. Typically, a given section will contain the previous source
-     * section, but there is no guarantee that this the case. Calling this method also
-     * {@link BytecodeRootNodes#ensureSources() ensures source sections} are materialized.
-     *
-     * @param beginBytecodeIndex the beginning of the bytecode range (inclusive)
-     * @param endBytecodeIndex the end of the bytecode range (exclusive)
-     * @since 24.2
-     */
-    public abstract SourceSection[] findSourceLocations(int beginBytecodeIndex, int endBytecodeIndex);
 
     protected abstract Instruction findInstruction(int bytecodeIndex);
 
