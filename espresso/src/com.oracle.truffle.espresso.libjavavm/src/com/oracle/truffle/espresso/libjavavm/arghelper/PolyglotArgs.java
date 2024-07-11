@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -149,18 +149,15 @@ class PolyglotArgs {
 
     private OptionDescriptor findOptionDescriptor(String group, String key) {
         OptionDescriptors descriptors = null;
-        switch (group) {
-            case "engine":
-                descriptors = getTempEngine().getOptions();
-                break;
-            default:
-                Engine engine = getTempEngine();
-                if (engine.getLanguages().containsKey(group)) {
-                    descriptors = engine.getLanguages().get(group).getOptions();
-                } else if (engine.getInstruments().containsKey(group)) {
-                    descriptors = engine.getInstruments().get(group).getOptions();
-                }
-                break;
+        if (group.equals("engine")) {
+            descriptors = getTempEngine().getOptions();
+        } else {
+            Engine engine = getTempEngine();
+            if (engine.getLanguages().containsKey(group)) {
+                descriptors = engine.getLanguages().get(group).getOptions();
+            } else if (engine.getInstruments().containsKey(group)) {
+                descriptors = engine.getInstruments().get(group).getOptions();
+            }
         }
         if (descriptors == null) {
             return null;
@@ -219,7 +216,7 @@ class PolyglotArgs {
         final String option;
         final String description;
 
-        protected PrintableOption(String option, String description) {
+        private PrintableOption(String option, String description) {
             this.option = option;
             this.description = description;
         }
@@ -231,21 +228,12 @@ class PolyglotArgs {
     }
 
     private static String optionsTitle(String kind, OptionCategory optionCategory) {
-        String category;
-        switch (optionCategory) {
-            case USER:
-                category = "User ";
-                break;
-            case EXPERT:
-                category = "Expert ";
-                break;
-            case INTERNAL:
-                category = "Internal ";
-                break;
-            default:
-                category = "";
-                break;
-        }
+        String category = switch (optionCategory) {
+            case USER -> "User ";
+            case EXPERT -> "Expert ";
+            case INTERNAL -> "Internal ";
+            default -> "";
+        };
         return category + kind + " options:";
     }
 
@@ -279,9 +267,7 @@ class PolyglotArgs {
         StringBuilder key = new StringBuilder("--");
         key.append(descriptor.getName());
         Object defaultValue = descriptor.getKey().getDefaultValue();
-        if (defaultValue instanceof Boolean && defaultValue == Boolean.FALSE) {
-            // nothing to print
-        } else {
+        if (defaultValue != Boolean.FALSE) {
             key.append("=<");
             key.append(descriptor.getKey().getType().getName());
             key.append(">");
