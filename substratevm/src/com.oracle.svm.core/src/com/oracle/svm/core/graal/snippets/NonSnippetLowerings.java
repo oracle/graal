@@ -52,6 +52,8 @@ import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -417,7 +419,7 @@ public abstract class NonSnippetLowerings {
                         ValueNode offset = ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), targetMethod.getImageCodeOffset(), graph);
                         AddressNode address = graph.unique(new OffsetAddressNode(codeStart, offset));
 
-                        loweredCallTarget = graph.add(new IndirectCallTargetNode(
+                        loweredCallTarget = graph.add(new SubstrateIndirectCallTargetNode(
                                         address, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, targetMethod, callType, invokeKind));
                         graph.addBeforeFixed(node, codeStart);
                     }
@@ -491,7 +493,8 @@ public abstract class NonSnippetLowerings {
 
         protected IndirectCallTargetNode createIndirectCall(StructuredGraph graph, MethodCallTargetNode callTarget, NodeInputList<ValueNode> parameters, SharedMethod method, JavaType[] signature,
                         CallingConvention.Type callType, InvokeKind invokeKind, ValueNode entry) {
-            return graph.add(new IndirectCallTargetNode(entry, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind));
+            return graph.add(new SubstrateIndirectCallTargetNode(entry, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind,
+                            ((SubstrateMethodCallTargetNode) callTarget).getMethodProfile()));
         }
 
         private static CallTargetNode createUnreachableCallTarget(LoweringTool tool, FixedNode node, NodeInputList<ValueNode> parameters, StampPair returnStamp, JavaType[] signature,
