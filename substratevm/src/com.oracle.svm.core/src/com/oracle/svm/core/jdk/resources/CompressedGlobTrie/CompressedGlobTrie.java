@@ -127,8 +127,22 @@ public class CompressedGlobTrie {
             return root;
         }
 
+        /*
+         * this function should be called only when we are certain that all possible wildcards are
+         * actually escaped (i.e. only after validatePattern function)
+         */
+        private static String unescapePossibleWildcards(String pattern) {
+            String unescapedPattern = pattern;
+            for (char esc : GlobUtils.ALWAYS_ESCAPED_GLOB_WILDCARDS) {
+                unescapedPattern = unescapedPattern.replace("\\" + esc, String.valueOf(esc));
+            }
+
+            return unescapedPattern;
+        }
+
         private static void addPattern(GlobTrieNode root, GlobWithInfo pattern) {
-            List<GlobTrieNode> parts = getPatternParts(pattern.pattern());
+            String unescapedPattern = unescapePossibleWildcards(pattern.pattern());
+            List<GlobTrieNode> parts = getPatternParts(unescapedPattern);
 
             /*
              * if this pattern can be matched with some other existing pattern, we should just
@@ -382,6 +396,17 @@ public class CompressedGlobTrie {
         /* check unnecessary ** repetition */
         if (pattern.contains("**/**")) {
             sb.append("Pattern contains invalid sequence **/**. Valid pattern should have ** followed by something other than **. ");
+        }
+
+        /* check if there are unescaped wildcards */
+        boolean escapeMode = false;
+        for (int i = 0; i < pattern.length(); i++) {
+            char current = pattern.charAt(i);
+            if (GlobUtils.ALWAYS_ESCAPED_GLOB_WILDCARDS.contains(current) && !escapeMode) {
+                sb.append("Pattern contains unescaped character ").append(current).append(". ");
+            }
+
+            escapeMode = current == '\\';
         }
 
         // check if pattern contains ** without previous Literal parent. Example: */**/... or **/...

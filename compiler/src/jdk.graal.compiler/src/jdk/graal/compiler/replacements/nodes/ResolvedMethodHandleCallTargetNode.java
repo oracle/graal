@@ -41,15 +41,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * A call target that replaces itself in the graph when being lowered by restoring the original
- * {@link MethodHandle} invocation target. Prior to
- * https://bugs.openjdk.java.net/browse/JDK-8072008, this is required for when a
- * {@link MethodHandle} call is resolved to a constant target but the target was not inlined. In
- * that case, the original invocation must be restored with all of its original arguments. Why?
- * HotSpot linkage for {@link MethodHandle} intrinsics (see
- * {@code MethodHandles::generate_method_handle_dispatch}) expects certain implicit arguments to be
- * on the stack such as the MemberName suffix argument for a call to one of the MethodHandle.linkTo*
- * methods. An {@linkplain MethodHandleNode#tryResolveTargetInvoke resolved} {@link MethodHandle}
- * invocation drops these arguments which means the interpreter won't find them.
+ * {@link MethodHandle} invocation target. This is required for when a {@link MethodHandle} call is
+ * resolved to a constant target but the target was not inlined. In that case, the original
+ * invocation must be restored with all of its original arguments. Why? HotSpot linkage for
+ * {@link MethodHandle} intrinsics (see {@code MethodHandles::generate_method_handle_dispatch})
+ * expects certain implicit arguments to be on the stack such as the MemberName suffix argument for
+ * a call to one of the MethodHandle.linkTo* methods. An
+ * {@linkplain MethodHandleNode#tryResolveTargetInvoke resolved} {@link MethodHandle} invocation
+ * drops these arguments which means the interpreter won't find them.
  */
 @NodeInfo
 public final class ResolvedMethodHandleCallTargetNode extends MethodCallTargetNode implements Lowerable {

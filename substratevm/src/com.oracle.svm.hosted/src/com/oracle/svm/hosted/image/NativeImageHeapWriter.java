@@ -219,7 +219,11 @@ public final class NativeImageHeapWriter {
      * can only happen late, during compilation.
      */
     private RelocatedPointer prepareRelocatable(ObjectInfo info, JavaConstant value) {
-        return (RelocatedPointer) maybeReplace(snippetReflection().asObject(RelocatedPointer.class, value), info);
+        try {
+            return (RelocatedPointer) heap.aUniverse.replaceObject(snippetReflection().asObject(RelocatedPointer.class, value));
+        } catch (AnalysisError.TypeNotFoundError ex) {
+            throw NativeImageHeap.reportIllegalType(ex.getType(), info);
+        }
     }
 
     private void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, Object value, ObjectInfo info) {
@@ -465,14 +469,6 @@ public final class NativeImageHeapWriter {
         assert elementTypeSize == kind.getByteCount();
         Unsafe.getUnsafe().copyMemory(array, Unsafe.getUnsafe().arrayBaseOffset(array.getClass()), buffer.getBackingArray(),
                         Unsafe.ARRAY_BYTE_BASE_OFFSET + elementIndex, length * elementTypeSize);
-    }
-
-    private Object maybeReplace(Object object, Object reason) {
-        try {
-            return heap.aUniverse.replaceObject(object);
-        } catch (AnalysisError.TypeNotFoundError ex) {
-            throw NativeImageHeap.reportIllegalType(ex.getType(), reason);
-        }
     }
 
     private SnippetReflectionProvider snippetReflection() {

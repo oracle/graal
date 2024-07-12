@@ -22,42 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.hosted.imagelayer;
 
-package com.oracle.svm.core.jdk.resources.CompressedGlobTrie;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import java.util.List;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 
-import com.oracle.svm.util.StringUtil;
+/**
+ * Registry to manage cross-layer constant references.
+ */
+public interface CrossLayerConstantRegistry {
 
-public class GlobUtils {
-
-    /* list of glob wildcards we are always escaping because they are not supported yet */
-    public static final List<Character> ALWAYS_ESCAPED_GLOB_WILDCARDS = List.of('?', '[', ']', '{', '}');
-
-    public static String transformToTriePath(String resource, String module) {
-        String resolvedModuleName;
-        if (module == null || module.isEmpty()) {
-            resolvedModuleName = "ALL_UNNAMED";
-        } else {
-            resolvedModuleName = StringUtil.toSlashSeparated(module);
+    static CrossLayerConstantRegistry singletonOrNull() {
+        if (ImageSingletons.contains(CrossLayerConstantRegistry.class)) {
+            return ImageSingletons.lookup(CrossLayerConstantRegistry.class);
         }
 
-        /* prepare for concatenation */
-        if (!resolvedModuleName.endsWith("/")) {
-            resolvedModuleName += "/";
-        }
-
-        /*
-         * if somebody wrote resource like: /foo/bar/** we already append / in resolvedModuleName,
-         * and we don't want module//foo/bar/**
-         */
-        String resolvedResourceName;
-        if (resource.startsWith("/")) {
-            resolvedResourceName = resource.substring(1);
-        } else {
-            resolvedResourceName = resource;
-        }
-
-        return resolvedModuleName + resolvedResourceName;
+        return null;
     }
+
+    /**
+     * Retrieves the constant associated with {@code keyName}. If a constant does not exist then an
+     * error is thrown.
+     */
+    ImageHeapConstant getConstant(String keyName);
+
+    /**
+     * Checks whether a constant for {@code keyName} was stored in a prior layer.
+     */
+    boolean constantExists(String keyName);
+
+    /**
+     * Registers a value which may be stored in this layer's heap. If the value is stored in the
+     * heap, later layers can access it via {@link #getConstant} and check whether it exists via
+     * {@link #constantExists}.
+     */
+    void registerConstantCandidate(String keyName, Object obj);
 }

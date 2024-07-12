@@ -35,6 +35,7 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.jni.JNIJavaCallWrapperHolder;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
+import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.util.ReflectionUtil;
@@ -46,7 +47,6 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.IndirectCallTargetNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
@@ -260,7 +260,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
 
     private static ValueNode createMethodCall(JNIGraphKit kit, JavaType returnType, JavaType[] paramTypes, ValueNode methodAddress, ValueNode[] args) {
         StampPair returnStamp = StampFactory.forDeclaredType(kit.getAssumptions(), returnType, false);
-        CallTargetNode callTarget = new IndirectCallTargetNode(methodAddress, args, returnStamp, paramTypes,
+        CallTargetNode callTarget = new SubstrateIndirectCallTargetNode(methodAddress, args, returnStamp, paramTypes,
                         null, SubstrateCallingConventionKind.Java.toType(true), CallTargetNode.InvokeKind.Static);
 
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(callTarget, kit.getFrameState(), kit.bci());
