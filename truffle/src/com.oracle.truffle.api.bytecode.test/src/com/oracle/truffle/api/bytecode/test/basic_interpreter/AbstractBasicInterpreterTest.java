@@ -58,8 +58,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-import org.junit.Rule;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -188,8 +186,6 @@ public abstract class AbstractBasicInterpreterTest {
             };
         }
     };
-
-    @Rule public ExpectedException thrown = ExpectedException.none();
 
     @Parameters(name = "{0}")
     public static List<TestRun> getParameters() {

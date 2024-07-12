@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -307,50 +308,51 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
         // arg0.append(5);
 
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Backward branches are unsupported. Use a While operation to model backward control flow.");
-        parse("finallyTryBranchBackwardOutOfHandler", b -> {
-            b.beginRoot(LANGUAGE);
-            BytecodeLabel lbl = b.createLabel();
-            BytecodeLocal local = b.createLocal();
 
-            b.beginTeeLocal(local);
-            b.emitLoadConstant(0L);
-            b.endTeeLocal();
+        assertThrows("Backward branches are unsupported. Use a While operation to model backward control flow.", IllegalStateException.class, () -> {
+            parse("finallyTryBranchBackwardOutOfHandler", b -> {
+                b.beginRoot(LANGUAGE);
+                BytecodeLabel lbl = b.createLabel();
+                BytecodeLocal local = b.createLocal();
 
-            emitAppend(b, 1);
-
-            b.emitLabel(lbl);
-            b.beginIfThen();
-                b.beginLessThanOperation();
+                b.beginTeeLocal(local);
                 b.emitLoadConstant(0L);
-                b.emitLoadLocal(local);
-                b.endLessThanOperation();
+                b.endTeeLocal();
 
-                b.beginBlock();
-                    emitAppend(b, 4);
-                    emitReturn(b, 0);
-                b.endBlock();
-            b.endIfThen();
+                emitAppend(b, 1);
 
-            b.beginFinallyTry(() -> {
-                b.beginBlock();
-                    emitAppend(b, 3);
-                    b.emitBranch(lbl);
-                b.endBlock();
+                b.emitLabel(lbl);
+                b.beginIfThen();
+                    b.beginLessThanOperation();
+                    b.emitLoadConstant(0L);
+                    b.emitLoadLocal(local);
+                    b.endLessThanOperation();
+
+                    b.beginBlock();
+                        emitAppend(b, 4);
+                        emitReturn(b, 0);
+                    b.endBlock();
+                b.endIfThen();
+
+                b.beginFinallyTry(() -> {
+                    b.beginBlock();
+                        emitAppend(b, 3);
+                        b.emitBranch(lbl);
+                    b.endBlock();
+                });
+                    b.beginBlock();
+                        b.beginTeeLocal(local);
+                        b.emitLoadConstant(1L);
+                        b.endTeeLocal();
+                        emitAppend(b, 2);
+                        emitReturn(b, 0);
+                    b.endBlock();
+                b.endFinallyTry();
+
+                emitAppend(b, 5);
+
+                b.endRoot();
             });
-                b.beginBlock();
-                    b.beginTeeLocal(local);
-                    b.emitLoadConstant(1L);
-                    b.endTeeLocal();
-                    emitAppend(b, 2);
-                    emitReturn(b, 0);
-                b.endBlock();
-            b.endFinallyTry();
-
-            emitAppend(b, 5);
-
-            b.endRoot();
         });
     }
 
@@ -870,23 +872,24 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         //   return 0;
         // }
 
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Operation Block ended without emitting one or more declared labels. This likely indicates a bug in the parser.");
-        parse("finallyTryBranchWithinHandlerNoLabel", b -> {
-            b.beginRoot(LANGUAGE);
+        assertThrows("Operation Block ended without emitting one or more declared labels. This likely indicates a bug in the parser.", IllegalStateException.class, () -> {
+            parse("finallyTryBranchWithinHandlerNoLabel", b -> {
+                b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry(() -> {
-                b.beginBlock();
-                    b.emitBranch(b.createLabel());
-                    emitReturn(b, 0);
-                b.endBlock();
+                b.beginFinallyTry(() -> {
+                    b.beginBlock();
+                        b.emitBranch(b.createLabel());
+                        emitReturn(b, 0);
+                    b.endBlock();
+                });
+                    b.beginBlock();
+                        emitReturn(b, 0);
+                    b.endBlock();
+                b.endFinallyTry();
+                b.endRoot();
             });
-                b.beginBlock();
-                    emitReturn(b, 0);
-                b.endBlock();
-            b.endFinallyTry();
-            b.endRoot();
         });
+
     }
 
     @Test
@@ -901,25 +904,25 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         // This error has nothing to do with try-finally, but it's still useful to ensure this doesn't work.
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("BytecodeLabel must be emitted inside the same operation it was created in.");
-        parse("finallyTryBranchIntoTry", b -> {
-            b.beginRoot(LANGUAGE);
-            BytecodeLabel lbl = b.createLabel();
-            b.beginFinallyTry(() -> {
-                b.beginBlock();
-                    b.emitBranch(lbl);
-                    emitReturn(b, 0);
-                b.endBlock();
-            });
-                b.beginBlock();
-                    emitReturn(b, 0);
-                    b.emitLabel(lbl);
-                    emitReturn(b, 0);
-                b.endBlock();
-            b.endFinallyTry();
+        assertThrows("BytecodeLabel must be emitted inside the same operation it was created in.", IllegalStateException.class, () -> {
+            parse("finallyTryBranchIntoTry", b -> {
+                b.beginRoot(LANGUAGE);
+                BytecodeLabel lbl = b.createLabel();
+                b.beginFinallyTry(() -> {
+                    b.beginBlock();
+                        b.emitBranch(lbl);
+                        emitReturn(b, 0);
+                    b.endBlock();
+                });
+                    b.beginBlock();
+                        emitReturn(b, 0);
+                        b.emitLabel(lbl);
+                        emitReturn(b, 0);
+                    b.endBlock();
+                b.endFinallyTry();
 
-            b.endRoot();
+                b.endRoot();
+            });
         });
     }
 
@@ -934,24 +937,24 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         // This error has nothing to do with try-finally, but it's still useful to ensure this doesn't work.
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("BytecodeLabel must be emitted inside the same operation it was created in.");
-        parse("finallyTryBranchIntoFinally", b -> {
-            b.beginRoot(LANGUAGE);
-            BytecodeLabel lbl = b.createLabel();
-            b.beginFinallyTry(() -> {
-                b.beginBlock();
-                    b.emitLabel(lbl);
-                    emitReturn(b, 0);
-                b.endBlock();
-            });
-                b.beginBlock();
-                    b.emitBranch(lbl);
-                    emitReturn(b, 0);
-                b.endBlock();
-            b.endFinallyTry();
+        assertThrows("BytecodeLabel must be emitted inside the same operation it was created in.", IllegalStateException.class, () -> {
+            parse("finallyTryBranchIntoFinally", b -> {
+                b.beginRoot(LANGUAGE);
+                BytecodeLabel lbl = b.createLabel();
+                b.beginFinallyTry(() -> {
+                    b.beginBlock();
+                        b.emitLabel(lbl);
+                        emitReturn(b, 0);
+                    b.endBlock();
+                });
+                    b.beginBlock();
+                        b.emitBranch(lbl);
+                        emitReturn(b, 0);
+                    b.endBlock();
+                b.endFinallyTry();
 
-            b.endRoot();
+                b.endRoot();
+            });
         });
     }
 

@@ -45,6 +45,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
@@ -161,7 +162,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         }
     }
 
-    // @formatter:off
     @Test
     public void testAdd() {
         // return arg0 + arg1;
@@ -187,9 +187,9 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testMax() {
         // if (arg0 < arg1) {
-        //   return arg1;
+        // return arg1;
         // } else {
-        //   return arg0;
+        // return arg0;
         // }
 
         RootCallTarget root = parse("max", b -> {
@@ -223,7 +223,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testIfThen() {
         // if (arg0 < 0) {
-        //   return 0;
+        // return 0;
         // }
         // return arg0;
 
@@ -308,9 +308,9 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.emitBranch(lbl);
 
             b.beginConditional();
-                b.emitLoadArgument(0);
-                b.emitLoadConstant(1L);
-                b.emitLoadConstant(2L);
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(1L);
+            b.emitLoadConstant(2L);
             b.endConditional();
 
             b.emitLabel(lbl);
@@ -345,26 +345,26 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endStoreLocal();
 
             b.beginWhile();
-                b.beginLessThanOperation();
-                b.emitLoadLocal(locI);
-                b.emitLoadArgument(0);
-                b.endLessThanOperation();
+            b.beginLessThanOperation();
+            b.emitLoadLocal(locI);
+            b.emitLoadArgument(0);
+            b.endLessThanOperation();
 
-                b.beginBlock();
-                    b.beginStoreLocal(locJ);
-                        b.beginAddOperation();
-                        b.emitLoadLocal(locJ);
-                        b.emitLoadLocal(locI);
-                        b.endAddOperation();
-                    b.endStoreLocal();
+            b.beginBlock();
+            b.beginStoreLocal(locJ);
+            b.beginAddOperation();
+            b.emitLoadLocal(locJ);
+            b.emitLoadLocal(locI);
+            b.endAddOperation();
+            b.endStoreLocal();
 
-                    b.beginStoreLocal(locI);
-                        b.beginAddOperation();
-                        b.emitLoadLocal(locI);
-                        b.emitLoadConstant(1L);
-                        b.endAddOperation();
-                    b.endStoreLocal();
-                b.endBlock();
+            b.beginStoreLocal(locI);
+            b.beginAddOperation();
+            b.emitLoadLocal(locI);
+            b.emitLoadConstant(1L);
+            b.endAddOperation();
+            b.endStoreLocal();
+            b.endBlock();
             b.endWhile();
 
             b.beginReturn();
@@ -380,9 +380,9 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testTryCatch() {
         // try {
-        //   if (arg0 < 0) throw arg0+1
+        // if (arg0 < 0) throw arg0+1
         // } catch ex {
-        //   return ex.value;
+        // return ex.value;
         // }
         // return 0;
 
@@ -426,9 +426,9 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testTryCatchLoadExceptionUnevenStack() {
         // try {
-        //   throw arg0+1
+        // throw arg0+1
         // } catch ex {
-        //   1 + 2 + { return ex.value; 3 }
+        // 1 + 2 + { return ex.value; 3 }
         // }
 
         RootCallTarget root = parse("tryCatch", b -> {
@@ -469,15 +469,15 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testTryCatchNestedInTry() {
         // try {
-        //   try {
-        //     if (arg0 < 1) throw arg0
-        //   } catch ex2 {
-        //     if (arg0 < 0) throw arg0 - 100
-        //     return 42;
-        //   }
-        //   throw arg0;
+        // try {
+        // if (arg0 < 1) throw arg0
+        // } catch ex2 {
+        // if (arg0 < 0) throw arg0 - 100
+        // return 42;
+        // }
+        // throw arg0;
         // } catch ex1 {
-        //   return ex1.value
+        // return ex1.value
         // }
         RootCallTarget root = parse("tryCatch", b -> {
             b.beginRoot(LANGUAGE);
@@ -541,14 +541,14 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testTryCatchNestedInCatch() {
         // try {
-        //   throw arg0
+        // throw arg0
         // } catch ex1 {
-        //   try {
-        //     if (arg0 < 0) throw -1
-        //     return 42;
-        //   } catch ex2 {
-        //     return 123;
-        //   }
+        // try {
+        // if (arg0 < 0) throw -1
+        // return 42;
+        // } catch ex2 {
+        // return 123;
+        // }
         // }
         RootCallTarget root = parse("tryCatch", b -> {
             b.beginRoot(LANGUAGE);
@@ -591,102 +591,116 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBadLoadExceptionUsage1() {
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.");
+        assertThrows("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.",
+                        IllegalStateException.class, () -> {
+                            parse("badLoadExceptionUsage1", b -> {
+                                b.beginRoot(LANGUAGE);
+                                b.beginReturn();
+                                b.emitLoadException();
+                                b.endReturn();
+                                b.endRoot();
+                            });
+                        });
+    }
 
-        parse("badLoadExceptionUsage1", b -> {
-            b.beginRoot(LANGUAGE);
-            b.beginReturn();
-            b.emitLoadException();
-            b.endReturn();
-            b.endRoot();
+    @Test
+    public void testMissingEnd1() {
+        assertThrows("Unexpected parser end - there are still operations on the stack. Did you forget to end them?", IllegalStateException.class, () -> {
+            parse("missingEnd", b -> {
+                b.beginRoot(LANGUAGE);
+            });
+        });
+    }
+
+    @Test
+    public void testMissingEnd2() {
+        assertThrows("Unexpected parser end - there are still operations on the stack. Did you forget to end them?", IllegalStateException.class, () -> {
+            parse("missingEnd", b -> {
+                b.beginRoot(LANGUAGE);
+                b.beginBlock();
+                b.beginIfThen();
+            });
         });
     }
 
     @Test
     public void testBadLoadExceptionUsage2() {
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.");
-
-        parse("badLoadExceptionUsage2", b -> {
-            b.beginRoot(LANGUAGE);
-            b.beginTryCatch();
-            b.beginReturn();
-            b.emitLoadException();
-            b.endReturn();
-            b.emitVoidOperation();
-            b.endTryCatch();
-            b.endRoot();
+        assertThrows("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
+            parse("badLoadExceptionUsage2", b -> {
+                b.beginRoot(LANGUAGE);
+                b.beginTryCatch();
+                b.beginReturn();
+                b.emitLoadException();
+                b.endReturn();
+                b.emitVoidOperation();
+                b.endTryCatch();
+                b.endRoot();
+            });
         });
     }
 
     @Test
     public void testBadLoadExceptionUsage3() {
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.");
-
-        parse("badLoadExceptionUsage3", b -> {
-            b.beginRoot(LANGUAGE);
-            b.beginFinallyTryCatch(() -> b.emitVoidOperation());
-            b.beginReturn();
-            b.emitLoadException();
-            b.endReturn();
-            b.emitVoidOperation();
-            b.endFinallyTryCatch();
-            b.endRoot();
+        assertThrows("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
+            parse("badLoadExceptionUsage3", b -> {
+                b.beginRoot(LANGUAGE);
+                b.beginFinallyTryCatch(() -> b.emitVoidOperation());
+                b.beginReturn();
+                b.emitLoadException();
+                b.endReturn();
+                b.emitVoidOperation();
+                b.endFinallyTryCatch();
+                b.endRoot();
+            });
         });
     }
 
     @Test
     public void testBadLoadExceptionUsage4() {
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.");
-
-        parse("badLoadExceptionUsage4", b -> {
-            b.beginRoot(LANGUAGE);
-            b.beginFinallyTryCatch(() -> b.emitLoadException());
-            b.emitVoidOperation();
-            b.emitVoidOperation();
-            b.endFinallyTryCatch();
-            b.endRoot();
+        assertThrows("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
+            parse("badLoadExceptionUsage4", b -> {
+                b.beginRoot(LANGUAGE);
+                b.beginFinallyTryCatch(() -> b.emitLoadException());
+                b.emitVoidOperation();
+                b.emitVoidOperation();
+                b.endFinallyTryCatch();
+                b.endRoot();
+            });
         });
     }
 
     @Test
     public void testBadLoadExceptionUsage5() {
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.");
-
-        parse("badLoadExceptionUsage5", b -> {
-            b.beginRoot(LANGUAGE);
-            b.beginFinallyTry(() -> b.emitLoadException());
-            b.emitVoidOperation();
-            b.endFinallyTry();
-            b.endRoot();
+        assertThrows("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
+            parse("badLoadExceptionUsage5", b -> {
+                b.beginRoot(LANGUAGE);
+                b.beginFinallyTry(() -> b.emitLoadException());
+                b.emitVoidOperation();
+                b.endFinallyTry();
+                b.endRoot();
+            });
         });
     }
 
     @Test
     public void testBadLoadExceptionUsage6() {
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.");
+        assertThrows("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
+            parse("testBadLoadExceptionUsage6", b -> {
+                b.beginRoot(LANGUAGE);
+                b.beginTryCatch();
 
-        parse("testBadLoadExceptionUsage6", b -> {
-            b.beginRoot(LANGUAGE);
-            b.beginTryCatch();
+                b.emitVoidOperation();
 
-            b.emitVoidOperation();
+                b.beginBlock();
+                b.beginRoot(LANGUAGE);
+                b.emitLoadException();
+                b.endRoot();
+                b.endBlock();
 
-            b.beginBlock();
-            b.beginRoot(LANGUAGE);
-            b.emitLoadException();
-            b.endRoot();
-            b.endBlock();
-
-            b.endTryCatch();
-            b.endRoot();
+                b.endTryCatch();
+                b.endRoot();
+            });
         });
-
     }
 
     @Test
@@ -694,8 +708,8 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // local0 = 0;
         // local1 = 0;
         // while (local0 < 100) {
-        //   local1 = box(local1) + local0;
-        //   local0 = local0 + 1;
+        // local1 = box(local1) + local0;
+        // local0 = local0 + 1;
         // }
         // return local1;
 
@@ -762,7 +776,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                 b.emitBranch(lbl);
                 b.endRoot();
             });
-        }, IllegalStateException.class, (e)-> {
+        }, IllegalStateException.class, (e) -> {
             assertTrue(e.getMessage(), e.getMessage().endsWith("ended without emitting one or more declared labels. This likely indicates a bug in the parser."));
         });
     }
@@ -818,8 +832,8 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             BytecodeLocal local1 = b.createLocal();
             BytecodeLocal local2 = b.createLocal();
 
-            b.beginTeeLocalRange(new BytecodeLocal[] {local1, local2});
-            b.emitLoadConstant(new long[] {1L, 2L});
+            b.beginTeeLocalRange(new BytecodeLocal[]{local1, local2});
+            b.emitLoadConstant(new long[]{1L, 2L});
             b.endTeeLocalRange();
 
             b.beginReturn();
@@ -840,8 +854,8 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         RootCallTarget root = parse("teeLocalRangeEmptyRange", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginTeeLocalRange(new BytecodeLocal[] {});
-            b.emitLoadConstant(new long[] {});
+            b.beginTeeLocalRange(new BytecodeLocal[]{});
+            b.emitLoadConstant(new long[]{});
             b.endTeeLocalRange();
 
             b.beginReturn();
@@ -894,10 +908,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
             b.beginReturn();
             b.beginInvoke();
-                b.beginRoot(LANGUAGE);
-                emitReturn(b, 1);
-                BasicInterpreter innerRoot = b.endRoot();
-                b.emitLoadConstant(innerRoot);
+            b.beginRoot(LANGUAGE);
+            emitReturn(b, 1);
+            BasicInterpreter innerRoot = b.endRoot();
+            b.emitLoadConstant(innerRoot);
             b.endInvoke();
             b.endReturn();
             b.endRoot();
@@ -909,28 +923,28 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testMultipleNestedFunctions() {
         // return ({
-        //   x = () -> return 1
-        //   y = () -> return 2
-        //   arg0 ? x : y
+        // x = () -> return 1
+        // y = () -> return 2
+        // arg0 ? x : y
         // })();
 
         RootCallTarget root = parse("multipleNestedFunctions", b -> {
             b.beginRoot(LANGUAGE);
             b.beginReturn();
             b.beginInvoke();
-                b.beginRoot(LANGUAGE);
-                emitReturn(b, 1);
-                BasicInterpreter x = b.endRoot();
+            b.beginRoot(LANGUAGE);
+            emitReturn(b, 1);
+            BasicInterpreter x = b.endRoot();
 
-                b.beginRoot(LANGUAGE);
-                emitReturn(b, 2);
-                BasicInterpreter y = b.endRoot();
+            b.beginRoot(LANGUAGE);
+            emitReturn(b, 2);
+            BasicInterpreter y = b.endRoot();
 
-                b.beginConditional();
-                b.emitLoadArgument(0);
-                b.emitLoadConstant(x);
-                b.emitLoadConstant(y);
-                b.endConditional();
+            b.beginConditional();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(x);
+            b.emitLoadConstant(y);
+            b.endConditional();
             b.endInvoke();
             b.endReturn();
             b.endRoot();
@@ -1007,13 +1021,13 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             b.beginInvoke();
 
-                b.beginRoot(LANGUAGE);
-                b.beginReturn();
-                b.beginLoadLocalMaterialized(xLoc);
-                b.emitLoadArgument(0);
-                b.endLoadLocalMaterialized();
-                b.endReturn();
-                BasicInterpreter inner = b.endRoot();
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.beginLoadLocalMaterialized(xLoc);
+            b.emitLoadArgument(0);
+            b.endLoadLocalMaterialized();
+            b.endReturn();
+            BasicInterpreter inner = b.endRoot();
 
             b.beginCreateClosure();
             b.emitLoadConstant(inner);
@@ -1045,18 +1059,18 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             b.beginInvoke();
 
-                b.beginRoot(LANGUAGE);
+            b.beginRoot(LANGUAGE);
 
-                b.beginStoreLocalMaterialized(xLoc);
-                b.emitLoadArgument(0);
-                b.emitLoadConstant(2L);
-                b.endStoreLocalMaterialized();
+            b.beginStoreLocalMaterialized(xLoc);
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(2L);
+            b.endStoreLocalMaterialized();
 
-                b.beginReturn();
-                b.emitLoadConstant(null);
-                b.endReturn();
+            b.beginReturn();
+            b.emitLoadConstant(null);
+            b.endReturn();
 
-                BasicInterpreter inner = b.endRoot();
+            BasicInterpreter inner = b.endRoot();
 
             b.beginCreateClosure();
             b.emitLoadConstant(inner);
@@ -1075,7 +1089,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testVariadicZeroVarargs()  {
+    public void testVariadicZeroVarargs() {
         // return veryComplex(7);
 
         RootCallTarget root = parse("variadicZeroVarargs", b -> {
@@ -1094,7 +1108,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testVariadicOneVarargs()  {
+    public void testVariadicOneVarargs() {
         // return veryComplex(7, "foo");
 
         RootCallTarget root = parse("variadicOneVarargs", b -> {
@@ -1114,7 +1128,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testVariadicFewVarargs()  {
+    public void testVariadicFewVarargs() {
         // return veryComplex(7, "foo", "bar", "baz");
 
         RootCallTarget root = parse("variadicFewVarargs", b -> {
@@ -1136,7 +1150,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testVariadicManyVarargs()  {
+    public void testVariadicManyVarargs() {
         // return veryComplex(7, [1330 args]);
 
         RootCallTarget root = parse("variadicManyVarArgs", b -> {
@@ -1158,79 +1172,76 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
-    public void testVariadicTooFewArguments()  {
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Operation VeryComplexOperation expected at least 1 child, but 0 provided. This is probably a bug in the parser.");
+    public void testVariadicTooFewArguments() {
+        assertThrows("Operation VeryComplexOperation expected at least 1 child, but 0 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
+            parse("variadicTooFewArguments", b -> {
+                b.beginRoot(LANGUAGE);
 
-        parse("variadicTooFewArguments", b -> {
-            b.beginRoot(LANGUAGE);
+                b.beginReturn();
+                b.beginVeryComplexOperation();
+                b.endVeryComplexOperation();
+                b.endReturn();
 
-            b.beginReturn();
-            b.beginVeryComplexOperation();
-            b.endVeryComplexOperation();
-            b.endReturn();
-
-            b.endRoot();
+                b.endRoot();
+            });
         });
+
     }
 
     @Test
     public void testValidationTooFewArguments() {
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Operation AddOperation expected exactly 2 children, but 1 provided. This is probably a bug in the parser.");
+        assertThrows("Operation AddOperation expected exactly 2 children, but 1 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
+            parse("validationTooFewArguments", b -> {
+                b.beginRoot(LANGUAGE);
 
-        parse("validationTooFewArguments", b -> {
-            b.beginRoot(LANGUAGE);
+                b.beginReturn();
+                b.beginAddOperation();
+                b.emitLoadConstant(1L);
+                b.endAddOperation();
+                b.endReturn();
 
-            b.beginReturn();
-            b.beginAddOperation();
-            b.emitLoadConstant(1L);
-            b.endAddOperation();
-            b.endReturn();
-
-            b.endRoot();
+                b.endRoot();
+            });
         });
     }
 
     @Test
     public void testValidationTooManyArguments() {
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Operation AddOperation expected exactly 2 children, but 3 provided. This is probably a bug in the parser.");
+        assertThrows("Operation AddOperation expected exactly 2 children, but 3 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
+            parse("validationTooManyArguments", b -> {
+                b.beginRoot(LANGUAGE);
 
-        parse("validationTooManyArguments", b -> {
-            b.beginRoot(LANGUAGE);
+                b.beginReturn();
+                b.beginAddOperation();
+                b.emitLoadConstant(1L);
+                b.emitLoadConstant(2L);
+                b.emitLoadConstant(3L);
+                b.endAddOperation();
+                b.endReturn();
 
-            b.beginReturn();
-            b.beginAddOperation();
-            b.emitLoadConstant(1L);
-            b.emitLoadConstant(2L);
-            b.emitLoadConstant(3L);
-            b.endAddOperation();
-            b.endReturn();
-
-            b.endRoot();
+                b.endRoot();
+            });
         });
     }
 
     @Test
     public void testValidationNotValueArgument() {
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Operation AddOperation expected a value-producing child at position 0, but a void one was provided. This likely indicates a bug in the parser.");
+        assertThrows("Operation AddOperation expected a value-producing child at position 0, but a void one was provided. " + //
+                        "This likely indicates a bug in the parser.", IllegalStateException.class, () -> {
+                            parse("validationNotValueArgument", b -> {
+                                b.beginRoot(LANGUAGE);
 
-        parse("validationNotValueArgument", b -> {
-            b.beginRoot(LANGUAGE);
+                                b.beginReturn();
+                                b.beginAddOperation();
+                                b.emitVoidOperation();
+                                b.emitLoadConstant(2L);
+                                b.endAddOperation();
+                                b.endReturn();
 
-            b.beginReturn();
-            b.beginAddOperation();
-            b.emitVoidOperation();
-            b.emitLoadConstant(2L);
-            b.endAddOperation();
-            b.endReturn();
-
-            b.endRoot();
-        });
+                                b.endRoot();
+                            });
+                        });
     }
-
 
     @Test
     public void testShortCircuitingAllPass() {
@@ -1297,36 +1308,36 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testShortCircuitingNoChildren() {
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Operation ScAnd expected at least 1 child, but 0 provided. This is probably a bug in the parser.");
-        parse("shortCircuitingNoChildren", b -> {
-            b.beginRoot(LANGUAGE);
+        assertThrows("Operation ScAnd expected at least 1 child, but 0 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
+            parse("shortCircuitingNoChildren", b -> {
+                b.beginRoot(LANGUAGE);
 
-            b.beginReturn();
-            b.beginScAnd();
-            b.endScAnd();
-            b.endReturn();
+                b.beginReturn();
+                b.beginScAnd();
+                b.endScAnd();
+                b.endReturn();
 
-            b.endRoot();
+                b.endRoot();
+            });
         });
     }
 
     @Test
     public void testShortCircuitingNonValueChild() {
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Operation ScAnd expected a value-producing child at position 1, but a void one was provided. This likely indicates a bug in the parser.");
-        parse("shortCircuitingNonValueChild", b -> {
-            b.beginRoot(LANGUAGE);
+        assertThrows("Operation ScAnd expected a value-producing child at position 1, but a void one was provided. This likely indicates a bug in the parser.", IllegalStateException.class, () -> {
+            parse("shortCircuitingNonValueChild", b -> {
+                b.beginRoot(LANGUAGE);
 
-            b.beginReturn();
-            b.beginScAnd();
-            b.emitLoadConstant("test");
-            b.emitVoidOperation();
-            b.emitLoadConstant("tost");
-            b.endScAnd();
-            b.endReturn();
+                b.beginReturn();
+                b.beginScAnd();
+                b.emitLoadConstant("test");
+                b.emitVoidOperation();
+                b.emitLoadConstant("tost");
+                b.endScAnd();
+                b.endReturn();
 
-            b.endRoot();
+                b.endRoot();
+            });
         });
     }
 
@@ -1336,12 +1347,12 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginRoot(LANGUAGE);
 
             b.beginBlock();
-                b.beginBlock();
-                b.endBlock();
+            b.beginBlock();
+            b.endBlock();
 
-                b.beginReturn();
-                b.emitLoadConstant(42L);
-                b.endReturn();
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
             b.endBlock();
 
             b.endRoot();
@@ -1413,20 +1424,20 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBranchIntoOuterRoot() {
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Branch must be targeting a label that is declared in an enclosing operation of the current root.");
-        parse("branchIntoOuterRoot", b -> {
-            b.beginRoot(LANGUAGE);
-            b.beginBlock();
-            BytecodeLabel lbl = b.createLabel();
+        assertThrows("Branch must be targeting a label that is declared in an enclosing operation of the current root.", IllegalStateException.class, () -> {
+            parse("branchIntoOuterRoot", b -> {
+                b.beginRoot(LANGUAGE);
+                b.beginBlock();
+                BytecodeLabel lbl = b.createLabel();
 
-            b.beginRoot(LANGUAGE);
-            b.emitBranch(lbl);
-            b.endRoot();
+                b.beginRoot(LANGUAGE);
+                b.emitBranch(lbl);
+                b.endRoot();
 
-            b.emitLabel(lbl);
-            b.endBlock();
-            b.endRoot();
+                b.emitLabel(lbl);
+                b.endBlock();
+                b.endRoot();
+            });
         });
     }
 
@@ -1446,11 +1457,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         });
 
         assertInstructionsEqual(node.getBytecodeNode().getInstructionsAsList(),
-                            instr("load.argument").arg("index", Argument.Kind.INTEGER, 0).build(),
-                            instr("load.argument").arg("index", Argument.Kind.INTEGER, 1).build(),
-                            instr("c.AddOperation").build(),
-                            instr("return").build()
-                        );
+                        instr("load.argument").arg("index", Argument.Kind.INTEGER, 0).build(),
+                        instr("load.argument").arg("index", Argument.Kind.INTEGER, 1).build(),
+                        instr("c.AddOperation").build(),
+                        instr("return").build());
     }
 
     @Test
@@ -1473,8 +1483,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         instr("load.argument").arg("index", Argument.Kind.INTEGER, 0).build(),
                         instr("c.AddConstantOperationAtEnd").arg("constantRhs", Argument.Kind.CONSTANT, 30L).build(),
                         instr("c.AddConstantOperation").arg("constantLhs", Argument.Kind.CONSTANT, 10L).build(),
-                        instr("return").build()
-                    );
+                        instr("return").build());
     }
 
     private static String[] collectInstructions(BytecodeNode bytecode, int startBci, int endBci) {

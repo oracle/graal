@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
 
@@ -82,43 +83,43 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // x = x + 1;
         // goto lbl;
 
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Backward branches are unsupported. Use a While operation to model backward control flow.");
-        parse("branchBackward", b -> {
-            b.beginRoot(LANGUAGE);
+        assertThrows("Backward branches are unsupported. Use a While operation to model backward control flow.", IllegalStateException.class, () -> {
+            parse("branchBackward", b -> {
+                b.beginRoot(LANGUAGE);
 
-            BytecodeLabel lbl = b.createLabel();
-            BytecodeLocal loc = b.createLocal();
+                BytecodeLabel lbl = b.createLabel();
+                BytecodeLocal loc = b.createLocal();
 
-            b.beginStoreLocal(loc);
-            b.emitLoadConstant(0L);
-            b.endStoreLocal();
+                b.beginStoreLocal(loc);
+                b.emitLoadConstant(0L);
+                b.endStoreLocal();
 
-            b.emitLabel(lbl);
+                b.emitLabel(lbl);
 
-            b.beginIfThen();
+                b.beginIfThen();
 
-                b.beginLessThanOperation();
-                b.emitLoadConstant(5L);
+                    b.beginLessThanOperation();
+                    b.emitLoadConstant(5L);
+                    b.emitLoadLocal(loc);
+                    b.endLessThanOperation();
+
+                    b.beginReturn();
+                    b.emitLoadLocal(loc);
+                    b.endReturn();
+
+                b.endIfThen();
+
+                b.beginStoreLocal(loc);
+                b.beginAddOperation();
                 b.emitLoadLocal(loc);
-                b.endLessThanOperation();
+                b.emitLoadConstant(1L);
+                b.endAddOperation();
+                b.endStoreLocal();
 
-                b.beginReturn();
-                b.emitLoadLocal(loc);
-                b.endReturn();
+                b.emitBranch(lbl);
 
-            b.endIfThen();
-
-            b.beginStoreLocal(loc);
-            b.beginAddOperation();
-            b.emitLoadLocal(loc);
-            b.emitLoadConstant(1L);
-            b.endAddOperation();
-            b.endStoreLocal();
-
-            b.emitBranch(lbl);
-
-            b.endRoot();
+                b.endRoot();
+            });
         });
     }
 
@@ -198,25 +199,25 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // goto lbl;
         // return 1 + { lbl: 2 }
 
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("BytecodeLabel must be emitted inside the same operation it was created in.");
-        parse("branchInward", b -> {
-            b.beginRoot(LANGUAGE);
+        assertThrows("BytecodeLabel must be emitted inside the same operation it was created in.", IllegalStateException.class, () -> {
+            parse("branchInward", b -> {
+                b.beginRoot(LANGUAGE);
 
-            BytecodeLabel lbl = b.createLabel();
-            b.emitBranch(lbl);
+                BytecodeLabel lbl = b.createLabel();
+                b.emitBranch(lbl);
 
-            b.beginReturn();
-            b.beginAddOperation();
-            b.emitLoadConstant(1L);
-            b.beginBlock();
-              b.emitLabel(lbl);
-              b.emitLoadConstant(2L);
-            b.endBlock();
-            b.endAddOperation();
-            b.endReturn();
+                b.beginReturn();
+                b.beginAddOperation();
+                b.emitLoadConstant(1L);
+                b.beginBlock();
+                  b.emitLabel(lbl);
+                  b.emitLoadConstant(2L);
+                b.endBlock();
+                b.endAddOperation();
+                b.endReturn();
 
-            b.endRoot();
+                b.endRoot();
+            });
         });
     }
 
@@ -284,22 +285,22 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // { lbl: return 0 }
         // { goto lbl; }
 
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Branch must be targeting a label that is declared in an enclosing operation of the current root. Jumps into other operations are not permitted.");
-        parse("branchIntoAnotherBlock", b -> {
-            b.beginRoot(LANGUAGE);
+        assertThrows("Branch must be targeting a label that is declared in an enclosing operation of the current root. Jumps into other operations are not permitted.", IllegalStateException.class, () -> {
+            parse("branchIntoAnotherBlock", b -> {
+                b.beginRoot(LANGUAGE);
 
-            b.beginBlock();
-                BytecodeLabel lbl = b.createLabel();
-                b.emitLabel(lbl);
-                emitReturn(b, 0);
-            b.endBlock();
+                b.beginBlock();
+                    BytecodeLabel lbl = b.createLabel();
+                    b.emitLabel(lbl);
+                    emitReturn(b, 0);
+                b.endBlock();
 
-            b.beginBlock();
-                b.emitBranch(lbl);
-            b.endBlock();
+                b.beginBlock();
+                    b.emitBranch(lbl);
+                b.endBlock();
 
-            b.endRoot();
+                b.endRoot();
+            });
         });
     }
 
