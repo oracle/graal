@@ -32,6 +32,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.BarrierKind;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.code.CompilationResult;
@@ -42,9 +45,6 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import org.junit.Before;
-import org.junit.Test;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.runtime.JVMCI;
@@ -62,7 +62,7 @@ public class AArch64MembarOpTest extends BackendTest {
         final StructuredGraph graph = parseEager("stub", StructuredGraph.AllowAssumptions.YES);
         LIRGenerationResult lirGenRes = getLIRGenerationResult(graph);
         CompilationResult compResult = new CompilationResult(graph.compilationId());
-        this.crb = ((LIRGenerationProvider) getBackend()).newCompilationResultBuilder(lirGenRes, lirGenRes.getFrameMap(), compResult, CompilationResultBuilderFactory.Default);
+        this.crb = ((LIRGenerationProvider) getBackend()).newCompilationResultBuilder(lirGenRes, lirGenRes.getFrameMap(), compResult, CompilationResultBuilderFactory.Default, null);
     }
 
     public void stub() {

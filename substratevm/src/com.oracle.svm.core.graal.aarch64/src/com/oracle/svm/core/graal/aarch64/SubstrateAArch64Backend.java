@@ -1193,7 +1193,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory,
+                    EntryPointDecorator entryPointDecorator) {
         AArch64MacroAssembler masm = new AArch64MacroAssembler(getTarget());
         PatchConsumerFactory patchConsumerFactory;
         if (SubstrateUtil.HOSTED) {

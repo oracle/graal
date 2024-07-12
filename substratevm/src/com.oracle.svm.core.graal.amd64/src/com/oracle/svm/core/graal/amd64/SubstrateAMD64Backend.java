@@ -1736,7 +1736,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory,
+                    EntryPointDecorator entryPointDecorator) {
         LIR lir = lirGenResult.getLIR();
         OptionValues options = lir.getOptions();
         AMD64MacroAssembler masm = createAssembler(options);

@@ -1022,8 +1022,7 @@ def _get_specjbb_vmArgs(java_compliance):
         "-XX:+UseNUMA",
         "-XX:+AlwaysPreTouch",
         "-XX:-UseAdaptiveSizePolicy",
-        "-XX:-UseAdaptiveNUMAChunkSizing",
-        "-XX:+PrintGCDetails"
+        "-XX:-UseAdaptiveNUMAChunkSizing"
     ]
 
     if java_compliance < '16':

@@ -58,7 +58,13 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
     public EntryPointDecorator create(TruffleCompilerConfiguration compilerConfig, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
         return new TruffleEntryPointDecorator(compilerConfig, config, registers) {
             @Override
-            public void emitEntryPoint(CompilationResultBuilder crb) {
+            public void emitEntryPoint(CompilationResultBuilder crb, boolean beforeFrameSetup) {
+                if (beforeFrameSetup == (config.gc == HotSpotGraalRuntime.HotSpotGC.Z || config.gc == HotSpotGraalRuntime.HotSpotGC.X)) {
+                    // The Z load barrier must be performed after the nmethod entry barrier which is
+                    // part of the frame setup. The other GCs don't have a read barrier so it's
+                    // safe to do this dispatch before the frame is set up.
+                    return;
+                }
                 AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
                 Register thisRegister = crb.getCodeCache().getRegisterConfig().getCallingConventionRegisters(JavaCall, JavaKind.Object).get(0);
                 Register spillRegister = AMD64.r10;
@@ -69,7 +75,7 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
                 if (config.useCompressedOops) {
                     // First instruction must be at least 5 bytes long to be safe for
                     // patching
-                    masm.movl(spillRegister, address, true);
+                    masm.movl(spillRegister, address, beforeFrameSetup);
                     assert masm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE : masm.position() + "-" + pos;
                     CompressEncoding encoding = config.getOopEncoding();
                     Register heapBaseRegister = AMD64Move.UncompressPointerOp.hasBase(encoding) ? registers.getHeapBaseRegister() : Register.None;
@@ -77,21 +83,24 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
                 } else {
                     // First instruction must be at least 5 bytes long to be safe for
                     // patching
-                    masm.movq(spillRegister, address, true);
+                    masm.movq(spillRegister, address, beforeFrameSetup);
                     assert masm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE : masm.position() + "-" + pos;
                     if (config.gc == HotSpotGraalRuntime.HotSpotGC.X) {
                         ForeignCallLinkage callTarget = crb.getForeignCalls().lookupForeignCall(X_FIELD_BARRIER);
-                        AMD64HotSpotXBarrierSetLIRGenerator.emitBarrier(crb, masm, null, spillRegister, config, callTarget, address, null,
-                                        (AMD64HotSpotBackend.HotSpotFrameContext) crb.frameContext);
+                        AMD64HotSpotXBarrierSetLIRGenerator.emitBarrier(crb, masm, null, spillRegister, config, callTarget, address, null);
                     }
                     if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
                         ForeignCallLinkage callTarget = crb.getForeignCalls().lookupForeignCall(Z_LOAD_BARRIER);
                         AMD64HotSpotZBarrierSetLIRGenerator.emitLoadBarrier(crb, masm, spillRegister, callTarget, address, null,
-                                        (AMD64HotSpotBackend.HotSpotFrameContext) crb.frameContext, false);
+                                        false);
                     }
                 }
                 masm.movq(spillRegister, new AMD64Address(spillRegister, entryPointOffset));
                 masm.testqAndJcc(spillRegister, spillRegister, ConditionFlag.Equal, doProlog, true);
+                if (!beforeFrameSetup) {
+                    // Must tear down the frame before jumping
+                    ((AMD64HotSpotBackend.HotSpotFrameContext) crb.frameContext).rawLeave(crb);
+                }
                 masm.jmp(spillRegister);
                 masm.bind(doProlog);
             }

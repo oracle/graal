@@ -61,7 +61,7 @@ public final class AArch64HotSpotXCompareAndSwapOp extends AArch64AtomicMove.Com
         super.emitCode(crb, masm);
         AArch64Address location = AArch64Address.createBaseRegisterOnlyAddress(64, asRegister(addressValue));
         Label good = new Label();
-        AArch64HotSpotXBarrierSetLIRGenerator.emitBarrier(crb, masm, good, asRegister(resultValue), config, callTarget, location, this, null);
+        AArch64HotSpotXBarrierSetLIRGenerator.emitBarrier(crb, masm, good, asRegister(resultValue), config, callTarget, location, this);
         super.emitCode(crb, masm);
         masm.bind(good);
     }

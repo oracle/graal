@@ -25,8 +25,8 @@
 package jdk.graal.compiler.core.gen;
 
 import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -36,7 +36,6 @@ import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -59,7 +58,8 @@ public interface LIRGenerationProvider {
     CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult,
                     FrameMap frameMap,
                     CompilationResult compilationResult,
-                    CompilationResultBuilderFactory factory);
+                    CompilationResultBuilderFactory factory,
+                    EntryPointDecorator entryPointDecorator);
 
     /**
      * Emits the code for a given graph.
