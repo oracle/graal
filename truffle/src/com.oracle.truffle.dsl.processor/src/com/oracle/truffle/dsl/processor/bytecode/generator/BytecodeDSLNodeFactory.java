@@ -3554,6 +3554,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "finish");
             CodeTreeBuilder b = ex.createBuilder();
 
+            b.startIf().string("operationSp != 0").end().startBlock();
+            b.startThrow().startNew(type(IllegalStateException.class)).doubleQuote("Unexpected parser end - there are still operations on the stack. Did you forget to end them?").end().end();
+            b.end();
+
             b.startIf().string("reparseReason == null").end().startBlock();
             b.startStatement().string("nodes.setNodes(builtNodes.toArray(new ").type(bytecodeNodeGen.asType()).string("[0]))").end();
             b.end();
