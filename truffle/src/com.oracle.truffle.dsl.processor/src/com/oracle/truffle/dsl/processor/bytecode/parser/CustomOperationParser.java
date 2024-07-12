@@ -929,12 +929,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
     private boolean shouldGenerateUncached() {
         if (forProxyValidation) {
-            /*
-             * NB: When we're just validating a Proxyable node, we do not know whether it'll be used
-             * in an uncached interpreter. However, a Proxyable can only be used in an uncached
-             * interpreter when it declares @GenerateUncached, so this annotation suffices for
-             * validation.
-             */
             return uncachedProxyValidation;
         } else {
             return parent.enableUncachedInterpreter;

@@ -2861,6 +2861,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(createFinish());
             builder.add(createBeforeEmitBranch());
             builder.add(createBeforeEmitReturn());
+            builder.add(createPatchHandlerTable());
             builder.add(createDoEmitRoot());
             builder.add(createAllocateNode());
             builder.add(createAllocateBranchProfile());
@@ -4966,9 +4967,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startDeclaration(arrayOf(tagNode.asType()), "tagNodes_").string("this.tagNodes.toArray(TagNode[]::new)").end();
 
                 b.declaration(tagNode.asType(), "tagTree_");
-                b.startIf().string("this.tagRoots == null || this.tagRoots.isEmpty()").end().startBlock();
-                b.startAssign("tagTree_").string("null").end();
-                b.end().startElseIf().string("this.tagRoots.size() == 1").end().startBlock();
+
+                b.startAssert().string("!this.tagRoots.isEmpty()").end();
+                b.startIf().string("this.tagRoots.size() == 1").end().startBlock();
                 b.startAssign("tagTree_").string("this.tagRoots.get(0)").end();
                 b.end().startElseBlock();
                 b.startAssign("tagTree_").startNew(tagNode.asType());
@@ -5275,7 +5276,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.lineComment("update exception table; force handler code to be reachable");
             b.statement("this.reachable = true");
 
-            emitPatchHandlerTable(b);
+            b.startStatement().startCall("patchHandlerTable");
+            b.string("operationData.extraTableEntriesStart");
+            b.string("operationData.extraTableEntriesEnd");
+            b.string("operationData.handlerId");
+            b.string("bci");
+            b.string("handlerSp");
+            b.end(2);
 
             b.startIf().string("exHandlerIndex != ", UNINIT).end().startBlock();
             b.statement("handlerTable[exHandlerIndex + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = bci");
@@ -5298,25 +5305,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             // The regular handler branches over the exceptional handler. Patch its bci.
             b.startIf().string("operationData.endBranchFixupBci != ", UNINIT).end().startBlock();
             b.statement(writeBc("operationData.endBranchFixupBci", "(short) bci"));
-            b.end();
-        }
-
-        /**
-         * Produces code to walk the handler table and patch the handler bci + sp for any entries
-         * corresponding to the current handler.
-         */
-        private void emitPatchHandlerTable(CodeTreeBuilder b) {
-            b.startFor().string("int i = operationData.extraTableEntriesStart; i < operationData.extraTableEntriesEnd; i += EXCEPTION_HANDLER_LENGTH").end().startBlock();
-
-            b.startIf().string("handlerTable[i + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_CUSTOM").end().startBlock();
-            b.statement("continue");
-            b.end();
-            b.startIf().string("handlerTable[i + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] != -operationData.handlerId").end().startBlock();
-            b.statement("continue");
-            b.end();
-
-            b.statement("handlerTable[i + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = bci");
-            b.statement("handlerTable[i + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] = handlerSp");
             b.end();
         }
 
@@ -6181,7 +6169,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end(); // if tryReachable
 
                         b.declaration(type(int.class), "handlerSp", "currentStackHeight + 1");
-                        emitPatchHandlerTable(b);
+                        b.startStatement().startCall("patchHandlerTable");
+                        b.string("operationData.extraTableEntriesStart");
+                        b.string("operationData.extraTableEntriesEnd");
+                        b.string("operationData.handlerId");
+                        b.string("bci");
+                        b.string("handlerSp");
+                        b.end(2);
 
                         b.statement("doCreateExceptionHandler(operationData.tryStartBci, tryEndBci, HANDLER_CUSTOM, bci, handlerSp)");
 
@@ -6954,6 +6948,37 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 b.end(); // switch
             });
+
+            return ex;
+        }
+
+        private CodeExecutableElement createPatchHandlerTable() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "patchHandlerTable");
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "tableStart"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "tableEnd"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "handlerId"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "handlerBci"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "handlerSp"));
+
+            addJavadoc(ex, """
+                            Iterates the handler table, searching for unresolved entries corresponding to the given handlerId.
+                            Patches them with the handlerBci and handlerSp now that those values are known.
+                            """);
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startFor().string("int i = tableStart; i < tableEnd; i += EXCEPTION_HANDLER_LENGTH").end().startBlock();
+
+            b.startIf().string("handlerTable[i + EXCEPTION_HANDLER_OFFSET_KIND] != HANDLER_CUSTOM").end().startBlock();
+            b.statement("continue");
+            b.end();
+            b.startIf().string("handlerTable[i + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] != -handlerId").end().startBlock();
+            b.statement("continue");
+            b.end();
+
+            b.statement("handlerTable[i + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI] = handlerBci");
+            b.statement("handlerTable[i + EXCEPTION_HANDLER_OFFSET_HANDLER_SP] = handlerSp");
+            b.end();
 
             return ex;
         }

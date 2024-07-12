@@ -55,11 +55,10 @@ import com.oracle.truffle.api.source.SourceSection;
 /**
  * A materialized bytecode location.
  * <p>
- * The current bytecode location can be bound using
- * <code>@Bind("$location") BytecodeLocation location</code> in {@link Operation operations}. In
- * order to avoid the overhead of the BytecodeLocation allocation, e.g. for exceptional cases, it is
- * possible to create the bytecode location lazily from two fields:
- * <code>@Bind("$bytecode") BytecodeNode bytecode</code> and
+ * The current bytecode location can be bound using <code>@Bind BytecodeLocation location</code> in
+ * {@link Operation operations}. In order to avoid the overhead of the BytecodeLocation allocation,
+ * e.g. for exceptional cases, it is possible to create the bytecode location lazily from two
+ * fields: <code>@Bind BytecodeNode bytecode</code> and
  * <code>@Bind("$bytecodeIndex") int bci</code>. This avoids the eager allocation of the bytecode
  * location. To create a bytecode location when it is needed the
  * {@link BytecodeLocation#get(Node, int)} method can be used.
@@ -258,8 +257,9 @@ public final class BytecodeLocation {
     /**
      * Creates a {@link BytecodeLocation} associated with the given node and bci.
      *
-     * @param location a node in the interpreter (can be bound using {@code @Bind("$bytecode")})
-     * @param bci a bytecode index (can be bound using {@code @Bind("$bytecodeIndex")})
+     * @param location a node in the interpreter (can be bound using
+     *            {@code @Bind BytecodeNode bytecode})
+     * @param bci a bytecode index (can be bound using {@code @Bind("$bytecodeIndex") int bci})
      * @return the {@link BytecodeLocation} or {@code null} if {@code location} is not adopted by a
      *         {@link BytecodeNode}.
      * @since 24.2

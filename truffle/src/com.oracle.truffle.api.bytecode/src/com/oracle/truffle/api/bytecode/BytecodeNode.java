@@ -70,7 +70,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * Since an interpreter's bytecode can change over time, a bytecode index (bound using
  * <code>@Bind("$bytecodeIndex")</code>) is only meaningful when accompanied by a
  * {@link BytecodeNode}. The current bytecode node can be bound using
- * <code>@Bind("$bytecode") BytecodeNode bytecode</code> with {@link Operation operations}.
+ * <code>@Bind BytecodeNode bytecode</code> with {@link Operation operations}.
  *
  * @since 24.2
  */
