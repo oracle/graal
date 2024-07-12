@@ -44,7 +44,6 @@ import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBas
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -231,7 +230,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testSourceNoSourceSet() {
-        assertThrows("No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.", IllegalStateException.class, () -> {
             parseNodeWithSource("sourceNoSourceSet", b -> {
                 b.beginRoot(LANGUAGE);
                 b.beginSourceSection(0, 8);

@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -309,7 +308,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(5);
 
 
-        assertThrows("Backward branches are unsupported. Use a While operation to model backward control flow.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Backward branches are unsupported. Use a While operation to model backward control flow.", IllegalStateException.class, () -> {
             parse("finallyTryBranchBackwardOutOfHandler", b -> {
                 b.beginRoot(LANGUAGE);
                 BytecodeLabel lbl = b.createLabel();
@@ -872,7 +871,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         //   return 0;
         // }
 
-        assertThrows("Operation Block ended without emitting one or more declared labels. This likely indicates a bug in the parser.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Operation Block ended without emitting one or more declared labels.", IllegalStateException.class, () -> {
             parse("finallyTryBranchWithinHandlerNoLabel", b -> {
                 b.beginRoot(LANGUAGE);
 
@@ -904,7 +903,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         // This error has nothing to do with try-finally, but it's still useful to ensure this doesn't work.
-        assertThrows("BytecodeLabel must be emitted inside the same operation it was created in.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("BytecodeLabel must be emitted inside the same operation it was created in.", IllegalStateException.class, () -> {
             parse("finallyTryBranchIntoTry", b -> {
                 b.beginRoot(LANGUAGE);
                 BytecodeLabel lbl = b.createLabel();
@@ -937,7 +936,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         // This error has nothing to do with try-finally, but it's still useful to ensure this doesn't work.
-        assertThrows("BytecodeLabel must be emitted inside the same operation it was created in.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("BytecodeLabel must be emitted inside the same operation it was created in.", IllegalStateException.class, () -> {
             parse("finallyTryBranchIntoFinally", b -> {
                 b.beginRoot(LANGUAGE);
                 BytecodeLabel lbl = b.createLabel();

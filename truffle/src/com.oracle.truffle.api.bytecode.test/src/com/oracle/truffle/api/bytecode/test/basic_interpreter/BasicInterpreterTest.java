@@ -45,7 +45,6 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
@@ -591,7 +590,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBadLoadExceptionUsage1() {
-        assertThrows("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.",
+        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.",
                         IllegalStateException.class, () -> {
                             parse("badLoadExceptionUsage1", b -> {
                                 b.beginRoot(LANGUAGE);
@@ -605,7 +604,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testMissingEnd1() {
-        assertThrows("Unexpected parser end - there are still operations on the stack. Did you forget to end them?", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Unexpected parser end - there are still operations on the stack. Did you forget to end them?", IllegalStateException.class, () -> {
             parse("missingEnd", b -> {
                 b.beginRoot(LANGUAGE);
             });
@@ -614,7 +613,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testMissingEnd2() {
-        assertThrows("Unexpected parser end - there are still operations on the stack. Did you forget to end them?", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Unexpected parser end - there are still operations on the stack. Did you forget to end them?", IllegalStateException.class, () -> {
             parse("missingEnd", b -> {
                 b.beginRoot(LANGUAGE);
                 b.beginBlock();
@@ -625,7 +624,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBadLoadExceptionUsage2() {
-        assertThrows("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
             parse("badLoadExceptionUsage2", b -> {
                 b.beginRoot(LANGUAGE);
                 b.beginTryCatch();
@@ -641,7 +640,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBadLoadExceptionUsage3() {
-        assertThrows("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
             parse("badLoadExceptionUsage3", b -> {
                 b.beginRoot(LANGUAGE);
                 b.beginFinallyTryCatch(() -> b.emitVoidOperation());
@@ -657,7 +656,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBadLoadExceptionUsage4() {
-        assertThrows("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
             parse("badLoadExceptionUsage4", b -> {
                 b.beginRoot(LANGUAGE);
                 b.beginFinallyTryCatch(() -> b.emitLoadException());
@@ -671,7 +670,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBadLoadExceptionUsage5() {
-        assertThrows("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
             parse("badLoadExceptionUsage5", b -> {
                 b.beginRoot(LANGUAGE);
                 b.beginFinallyTry(() -> b.emitLoadException());
@@ -684,7 +683,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBadLoadExceptionUsage6() {
-        assertThrows("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
             parse("testBadLoadExceptionUsage6", b -> {
                 b.beginRoot(LANGUAGE);
                 b.beginTryCatch();
@@ -777,7 +776,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                 b.endRoot();
             });
         }, IllegalStateException.class, (e) -> {
-            assertTrue(e.getMessage(), e.getMessage().endsWith("ended without emitting one or more declared labels. This likely indicates a bug in the parser."));
+            assertTrue(e.getMessage(), e.getMessage().contains("ended without emitting one or more declared labels."));
         });
     }
 
@@ -1173,7 +1172,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testVariadicTooFewArguments() {
-        assertThrows("Operation VeryComplexOperation expected at least 1 child, but 0 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Operation VeryComplexOperation expected at least 1 child, but 0 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
             parse("variadicTooFewArguments", b -> {
                 b.beginRoot(LANGUAGE);
 
@@ -1190,7 +1189,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testValidationTooFewArguments() {
-        assertThrows("Operation AddOperation expected exactly 2 children, but 1 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Operation AddOperation expected exactly 2 children, but 1 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
             parse("validationTooFewArguments", b -> {
                 b.beginRoot(LANGUAGE);
 
@@ -1207,7 +1206,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testValidationTooManyArguments() {
-        assertThrows("Operation AddOperation expected exactly 2 children, but 3 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Operation AddOperation expected exactly 2 children, but 3 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
             parse("validationTooManyArguments", b -> {
                 b.beginRoot(LANGUAGE);
 
@@ -1226,21 +1225,20 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testValidationNotValueArgument() {
-        assertThrows("Operation AddOperation expected a value-producing child at position 0, but a void one was provided. " + //
-                        "This likely indicates a bug in the parser.", IllegalStateException.class, () -> {
-                            parse("validationNotValueArgument", b -> {
-                                b.beginRoot(LANGUAGE);
+        assertThrowsWithMessage("Operation AddOperation expected a value-producing child at position 0, but a void one was provided. ", IllegalStateException.class, () -> {
+            parse("validationNotValueArgument", b -> {
+                b.beginRoot(LANGUAGE);
 
-                                b.beginReturn();
-                                b.beginAddOperation();
-                                b.emitVoidOperation();
-                                b.emitLoadConstant(2L);
-                                b.endAddOperation();
-                                b.endReturn();
+                b.beginReturn();
+                b.beginAddOperation();
+                b.emitVoidOperation();
+                b.emitLoadConstant(2L);
+                b.endAddOperation();
+                b.endReturn();
 
-                                b.endRoot();
-                            });
-                        });
+                b.endRoot();
+            });
+        });
     }
 
     @Test
@@ -1308,7 +1306,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testShortCircuitingNoChildren() {
-        assertThrows("Operation ScAnd expected at least 1 child, but 0 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Operation ScAnd expected at least 1 child, but 0 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
             parse("shortCircuitingNoChildren", b -> {
                 b.beginRoot(LANGUAGE);
 
@@ -1324,7 +1322,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testShortCircuitingNonValueChild() {
-        assertThrows("Operation ScAnd expected a value-producing child at position 1, but a void one was provided. This likely indicates a bug in the parser.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Operation ScAnd expected a value-producing child at position 1, but a void one was provided.", IllegalStateException.class, () -> {
             parse("shortCircuitingNonValueChild", b -> {
                 b.beginRoot(LANGUAGE);
 
@@ -1424,7 +1422,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testBranchIntoOuterRoot() {
-        assertThrows("Branch must be targeting a label that is declared in an enclosing operation of the current root.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Branch must be targeting a label that is declared in an enclosing operation of the current root.", IllegalStateException.class, () -> {
             parse("branchIntoOuterRoot", b -> {
                 b.beginRoot(LANGUAGE);
                 b.beginBlock();

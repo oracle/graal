@@ -1599,7 +1599,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement stub = CodeExecutableElement.cloneNoAnnotations(method);
             addOverride(stub);
             CodeTreeBuilder b = stub.createBuilder();
-            emitThrowIllegalStateException(b, "\"method should not be called\"");
+            emitThrow(b, IllegalStateException.class, "\"method should not be called\"");
             serializationRootNode.add(stub);
         }
     }
@@ -2203,7 +2203,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             private CodeExecutableElement createToString0() {
                 CodeExecutableElement ex = GeneratorUtils.overrideImplement(context.getDeclaredType(Object.class), "toString");
                 CodeTreeBuilder b = ex.createBuilder();
-                b.statement("return toString(null)");
+                b.statement("return \"(\" + toString(null) + \")\"");
                 addOverride(ex);
                 return ex;
             }
@@ -2214,7 +2214,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 CodeTreeBuilder b = ex.createBuilder();
 
                 b.startDeclaration(type(StringBuilder.class), "b").startNew(type(StringBuilder.class)).end().end();
-                b.startStatement().startCall("b.append").doubleQuote("(").end().end();
                 b.startStatement().startCall("b.append").string("OPERATION_NAMES[operation]").end().end();
 
                 b.startSwitch().string("operation").end().startBlock();
@@ -2282,7 +2281,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                 }
                 b.end(); // switch
-                b.startStatement().startCall("b.append").doubleQuote(")").end().end();
 
                 b.statement("return b.toString()");
                 return ex;
@@ -2515,7 +2513,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             private CodeExecutableElement createGetLocalOffset() {
                 CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeLocal, "getLocalOffset");
                 CodeTreeBuilder b = ex.createBuilder();
-                emitThrowIllegalStateException(b, null);
+                emitThrow(b, IllegalStateException.class, null);
                 return ex;
             }
         }
@@ -2888,6 +2886,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             builder.add(createToString());
+            builder.add(createFailState());
+            builder.add(createFailArgument());
+            builder.add(createDumpAt());
 
             builder.addAll(doEmitInstructionMethods.values());
 
@@ -3395,7 +3396,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                         b.declaration(type(int.class), "serializedContextDepth", "buffer.readInt()");
                         b.startIf().string("context.").variable(deserializationElements.depth).string(" != serializedContextDepth").end().startBlock();
-                        b.startThrow().startNew(context.getType(IllegalStateException.class));
+                        b.startThrow().startNew(context.getType(AssertionError.class));
                         b.startGroup();
                         b.doubleQuote("Invalid context depth. Expected ").string(" + context.").variable(deserializationElements.depth).string(" + ");
                         b.doubleQuote(" but got ").string(" + serializedContextDepth");
@@ -3418,7 +3419,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             b.caseDefault().startBlock();
-            b.startThrow().startNew(context.getType(IllegalStateException.class));
+            b.startThrow().startNew(context.getType(AssertionError.class));
             b.startGroup();
             b.doubleQuote("Unknown operation code ").string(" + code");
             b.end();
@@ -3555,7 +3556,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startIf().string("operationSp != 0").end().startBlock();
-            b.startThrow().startNew(type(IllegalStateException.class)).doubleQuote("Unexpected parser end - there are still operations on the stack. Did you forget to end them?").end().end();
+            b.startThrow().startCall("failState").doubleQuote("Unexpected parser end - there are still operations on the stack. Did you forget to end them?").end().end();
             b.end();
 
             b.startIf().string("reparseReason == null").end().startBlock();
@@ -3681,7 +3682,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("return e");
                 b.end();
             });
-            b.startThrow().startNew(type(IllegalStateException.class)).doubleQuote("Invalid scope for local variable.").end().end();
+            b.startThrow().startCall("failState").doubleQuote("Invalid scope for local variable.").end().end();
             return method;
 
         }
@@ -3717,7 +3718,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("operationSp == 0 || (operationStack[operationSp - 1].operation != ").tree(createOperationConstant(model.blockOperation));
             b.string(" && operationStack[operationSp - 1].operation != ").tree(createOperationConstant(model.rootOperation)).string(")");
             b.end().startBlock();
-            emitThrowIllegalStateException(b, "\"Labels must be created inside either Block or Root operations.\"");
+            b.startThrow().startCall("failState").doubleQuote("Labels must be created inside either Block or Root operations.").end().end();
             b.end();
 
             b.startAssign("BytecodeLabel result").startNew(bytecodeLabelImpl.asType());
@@ -4009,7 +4010,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             if (operation.kind == OperationKind.TAG) {
                 b.startIf().string("newTags.length == 0").end().startBlock();
-                b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("The tags parameter for beginTag must not be empty. Please specify at least one tag.").end().end();
+                b.startThrow().startCall("failArgument").doubleQuote("The tags parameter for beginTag must not be empty. Please specify at least one tag.").end().end();
                 b.end();
 
                 b.declaration(type(int.class), "encodedTags", "encodeTags(newTags)");
@@ -4133,12 +4134,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 return validateScope;
             }
 
-            CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(void.class), "validateLocalScope");
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "validateLocalScope");
             method.addParameter(new CodeVariableElement(types.BytecodeLocal, "local"));
 
             CodeTreeBuilder b = method.createBuilder();
             b.startIf().string("!(").cast(bytecodeLocalImpl.asType()).string("local").string(").scope.valid").end().startBlock();
-            b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("Local variable scope of this local no longer valid.").end().end();
+            b.startThrow().startCall("failArgument").doubleQuote("Local variable scope of this local no longer valid.").end().end();
             b.end();
 
             builder.add(method);
@@ -4399,7 +4400,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case BLOCK -> createOperationData(className, "this.currentStackHeight");
                 case SOURCE -> {
                     b.startIf().string(operation.getOperationBeginArgumentName(0) + ".hasBytes()").end().startBlock();
-                    b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("Byte-based sources are not supported.").end(2);
+                    b.startThrow().startCall("failArgument").doubleQuote("Byte-based sources are not supported.").end(2);
                     b.end();
 
                     b.statement("int index = sources.indexOf(" + operation.getOperationBeginArgumentName(0) + ")");
@@ -4426,7 +4427,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     });
 
                     b.startIf().string("foundSourceIndex == -1").end().startBlock();
-                    emitThrowIllegalStateException(b, "\"No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.\"");
+                    b.startThrow().startCall("failState").doubleQuote("No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.").end().end();
                     b.end();
 
                     b.declaration(type(int.class), "startBci");
@@ -4473,26 +4474,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startIf().string("operationSp == 0").end().startBlock(); // {
-            b.startThrow().startNew(context.getType(IllegalStateException.class));
-            b.string("\"Unexpected operation end - there are no operations on the stack. Did you forget a beginRoot()?\"").end();
+            b.startThrow().startCall("failState");
+            b.doubleQuote("Unexpected operation end - there are no operations on the stack. Did you forget a beginRoot()?");
             b.end(2);
             b.end(); // }
 
             b.statement("OperationStackEntry entry = operationStack[operationSp - 1]");
 
             b.startIf().string("entry.operation != id").end().startBlock(); // {
-            b.startThrow().startNew(context.getType(IllegalStateException.class));
-            b.string("\"Unexpected operation end, expected end\" + OPERATION_NAMES[entry.operation] + \", but got end\" + OPERATION_NAMES[id]").end();
-            b.end(2);
+            b.startThrow().startCall("failState");
+            b.startGroup().doubleQuote("Unexpected operation end, expected end").string(" + OPERATION_NAMES[entry.operation] + ").doubleQuote(", but got end").string(" +  OPERATION_NAMES[id]").end();
+            b.end(2); // throw, call
             b.end(); // }
 
             b.startIf().string("entry.declaredLabels != null").end().startBlock();
             b.startFor().string("BytecodeLabel label : entry.declaredLabels").end().startBlock();
             b.statement("BytecodeLabelImpl impl = (BytecodeLabelImpl) label");
             b.startIf().string("!impl.isDefined()").end().startBlock();
-            b.startThrow().startNew(context.getType(IllegalStateException.class));
-            b.string("\"Operation \" + OPERATION_NAMES[id] + \" ended without emitting one or more declared labels. This likely indicates a bug in the parser.\"").end();
-            b.end(2);
+            b.startThrow().startCall("failState");
+            b.string("\"Operation \" + OPERATION_NAMES[id] + \" ended without emitting one or more declared labels.\"");
+            b.end(2); // throw, call
             b.end(3);
 
             b.statement("operationStack[operationSp - 1] = null");
@@ -4526,7 +4527,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             if (operation.kind == OperationKind.TAG) {
                 b.startIf().string("newTags.length == 0").end().startBlock();
-                b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("The tags parameter for beginTag must not be empty. Please specify at least one tag.").end().end();
+                b.startThrow().startCall("failArgument").doubleQuote("The tags parameter for beginTag must not be empty. Please specify at least one tag.").end().end();
                 b.end();
                 b.declaration(type(int.class), "encodedTags", "encodeTags(newTags)");
                 b.startIf().string("(encodedTags & this.tags) == 0").end().startBlock();
@@ -4569,20 +4570,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                 // Short-circuiting operations should have at least one child.
                 b.startIf().string("operation.childCount == 0").end().startBlock();
-                emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(1) +
-                                ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"");
+                b.startThrow().startCall("failState").string("\"Operation " + operation.name + " expected at least " + childString(1) +
+                                ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"").end().end();
                 b.end();
             } else if (operation.isVariadic && operation.numDynamicOperands() > 1) {
                 // The variadic child is included in numChildren, so the operation requires
                 // numChildren - 1 children at minimum.
                 b.startIf().string("operation.childCount < " + (operation.numDynamicOperands() - 1)).end().startBlock();
-                emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(operation.numDynamicOperands() - 1) +
-                                ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"");
+                b.startThrow().startCall("failState").string("\"Operation " + operation.name + " expected at least " + childString(operation.numDynamicOperands() - 1) +
+                                ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"").end().end();
                 b.end();
             } else if (!operation.isVariadic) {
                 b.startIf().string("operation.childCount != " + operation.numDynamicOperands()).end().startBlock();
-                emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected exactly " + childString(operation.numDynamicOperands()) +
-                                ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"");
+                b.startThrow().startCall("failState").string("\"Operation " + operation.name + " expected exactly " + childString(operation.numDynamicOperands()) +
+                                ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"").end().end();
                 b.end();
             }
 
@@ -5414,11 +5415,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationBeginArgumentName(0)).end();
 
             b.startIf().string("labelImpl.isDefined()").end().startBlock();
-            emitThrowIllegalStateException(b, "\"BytecodeLabel already emitted. Each label must be emitted exactly once.\"");
+            b.startThrow().startCall("failState").doubleQuote("BytecodeLabel already emitted. Each label must be emitted exactly once.").end().end();
             b.end();
 
             b.startIf().string("labelImpl.declaringOp != operationStack[operationSp - 1].sequenceNumber").end().startBlock();
-            emitThrowIllegalStateException(b, "\"BytecodeLabel must be emitted inside the same operation it was created in.\"");
+            b.startThrow().startCall("failState").doubleQuote("BytecodeLabel must be emitted inside the same operation it was created in.").end().end();
             b.end();
 
             b.startIf().string("operationStack[operationSp - 1].data instanceof " + getDataClassName(model.blockOperation) + " blockData").end().startBlock();
@@ -5450,11 +5451,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
              * operation or an enclosing one.
              */
             b.startIf().string("declaringOperationSp == ", UNINIT).end().startBlock();
-            emitThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation of the current root. Jumps into other operations are not permitted.\"");
+            b.startThrow().startCall("failState").doubleQuote(
+                            "Branch must be targeting a label that is declared in an enclosing operation of the current root. Jumps into other operations are not permitted.").end().end();
             b.end();
 
             b.startIf().string("labelImpl.isDefined()").end().startBlock();
-            emitThrowIllegalStateException(b, "\"Backward branches are unsupported. Use a While operation to model backward control flow.\"");
+            b.startThrow().startCall("failState").doubleQuote("Backward branches are unsupported. Use a While operation to model backward control flow.").end().end();
             b.end();
 
             b.declaration(type(int.class), "targetStackHeight");
@@ -5526,7 +5528,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             });
 
             b.startIf().string("exceptionStackHeight == ", UNINIT).end().startBlock();
-            emitThrowIllegalStateException(b, "\"LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.\"");
+            b.startThrow().startCall("failState").doubleQuote("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.").end().end();
             b.end();
 
             buildEmitInstruction(b, operation.instruction, "exceptionStackHeight");
@@ -5538,8 +5540,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startIf().string("rootOperationSp == -1").end().startBlock(); // {
-            b.startThrow().startNew(context.getType(IllegalStateException.class));
-            b.string("\"Unexpected operation emit - no root operation present. Did you forget a beginRoot()?\"").end();
+            b.startThrow().startCall("failState");
+            b.doubleQuote("Unexpected operation emit - no root operation present. Did you forget a beginRoot()?");
             b.end(2);
             b.end(); // }
 
@@ -6009,10 +6011,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (nonValueChildren.isEmpty()) {
                         // Simplification: each child should be value producing.
                         b.startIf().string("!producedValue").end().startBlock();
-                        b.startThrow().startNew(context.getType(IllegalStateException.class));
+                        b.startThrow().startCall("failState");
                         b.string("\"Operation " + op.name + " expected a value-producing child at position \"",
                                         " + childIndex + ",
-                                        "\", but a void one was provided. This likely indicates a bug in the parser.\"");
+                                        "\", but a void one was provided.\"");
                         b.end(3);
                     } else if (valueChildren.isEmpty()) {
                         // Simplification: each child should not be value producing.
@@ -6032,10 +6034,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         }
                         b.string(") && !producedValue");
                         b.end().startBlock();
-                        b.startThrow().startNew(context.getType(IllegalStateException.class));
+                        b.startThrow().startCall("failState");
                         b.string("\"Operation " + op.name + " expected a value-producing child at position \"",
                                         " + childIndex + ",
-                                        "\", but a void one was provided. This likely indicates a bug in the parser.\"");
+                                        "\", but a void one was provided.\"");
                         b.end(3);
 
                         b.startElseIf();
@@ -6699,6 +6701,58 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private CodeExecutableElement createFailState() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(RuntimeException.class), "failState");
+            ex.addParameter(new CodeVariableElement(context.getType(String.class), "message"));
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startThrow().startNew(type(IllegalStateException.class));
+            b.startGroup();
+            b.doubleQuote("Invalid builder usage: ");
+            b.string(" + ").string("message").string(" + ").doubleQuote(" Operation stack: ").string(" + dumpAt()");
+            b.end().end().end();
+
+            return ex;
+        }
+
+        private CodeExecutableElement createFailArgument() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(RuntimeException.class), "failArgument");
+            ex.addParameter(new CodeVariableElement(context.getType(String.class), "message"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startThrow().startNew(type(IllegalArgumentException.class));
+            b.startGroup();
+            b.doubleQuote("Invalid builder operation argument: ");
+            b.string(" + ").string("message").string(" + ").doubleQuote(" Operation stack: ").string(" + dumpAt()");
+            b.end().end().end();
+
+            return ex;
+        }
+
+        private CodeExecutableElement createDumpAt() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(String.class), "dumpAt");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startTryBlock();
+            b.startDeclaration(type(StringBuilder.class), "b").startNew(type(StringBuilder.class)).end().end();
+            // for operation stacks
+            b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
+            b.startStatement().startCall("b.append").doubleQuote("(").end().end();
+            b.startStatement().startCall("b.append").string("operationStack[i].toString(this)").end().end();
+            b.end(); // for
+
+            b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
+            b.startStatement().startCall("b.append").doubleQuote(")").end().end();
+            b.end(); // for
+
+            b.statement("return b.toString()");
+            b.end().startCatchBlock(type(Exception.class), "e");
+            b.startReturn().doubleQuote("<invalid-location>").end();
+            b.end();
+
+            return ex;
+        }
+
         private CodeExecutableElement createToString() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(Object.class), "toString");
             CodeTreeBuilder b = ex.createBuilder();
@@ -6708,7 +6762,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("b.append('.')");
             b.startStatement().startCall("b.append").startGroup().typeLiteral(builder.asType()).string(".getSimpleName()").end().end().end();
             b.startStatement().startCall("b.append").doubleQuote("[").end().end();
-            b.startStatement().startCall("b.append").doubleQuote("mode=").end().end();
+
+            b.startStatement().startCall("b.append").doubleQuote("at=").end().end();
+
+            // for operation stacks
+            b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
+            b.startStatement().startCall("b.append").doubleQuote("(").end().end();
+            b.startStatement().startCall("b.append").string("operationStack[i].toString(this)").end().end();
+            b.end(); // for
+
+            b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
+            b.startStatement().startCall("b.append").doubleQuote(")").end().end();
+            b.end(); // for
+
+            b.startStatement().startCall("b.append").doubleQuote(", mode=").end().end();
 
             boolean elseIf = false;
             if (model.enableSerialization) {
@@ -6727,13 +6794,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startStatement().startCall("b.append").doubleQuote("default").end().end();
             b.end();
 
-            b.startStatement().startCall("b.append").doubleQuote("\\n     bytecodeIndex = ").end().startCall(".append").string("bci").end().end();
-            b.startStatement().startCall("b.append").doubleQuote("\\n     stackPointer = ").end().startCall(".append").string("currentStackHeight").end().end();
-            b.startStatement().startCall("b.append").doubleQuote("\\n     bytecodes = ").end().startCall(".append").string("parseBytecodes").end().end();
-            b.startStatement().startCall("b.append").doubleQuote("\\n     sources = ").end().startCall(".append").string("parseSources").end().end();
+            b.startStatement().startCall("b.append").doubleQuote(", bytecodeIndex=").end().startCall(".append").string("bci").end().end();
+            b.startStatement().startCall("b.append").doubleQuote(", stackPointer=").end().startCall(".append").string("currentStackHeight").end().end();
+            b.startStatement().startCall("b.append").doubleQuote(", bytecodes=").end().startCall(".append").string("parseBytecodes").end().end();
+            b.startStatement().startCall("b.append").doubleQuote(", sources=").end().startCall(".append").string("parseSources").end().end();
 
             if (!model.instrumentations.isEmpty()) {
-                b.startStatement().startCall("b.append").doubleQuote("\\n    instruments = [").end().end();
+                b.startStatement().startCall("b.append").doubleQuote(", instruments=[").end().end();
                 b.declaration(type(String.class), "sep", "\"\"");
                 for (CustomOperationModel customOp : model.getInstrumentations()) {
                     OperationModel operation = customOp.operation;
@@ -6749,7 +6816,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (model.enableTagInstrumentation) {
-                b.startStatement().startCall("b.append").doubleQuote("\\n     tags = ").end().end();
+                b.startStatement().startCall("b.append").doubleQuote(", tags=").end().end();
                 b.declaration(type(String.class), "sepTag", "\"\"");
                 for (TypeMirror tag : model.getProvidedTags()) {
                     b.startIf().string("(tags & CLASS_TO_TAG_MASK.get(").typeLiteral(tag).string(")) != 0").end().startBlock();
@@ -6760,16 +6827,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
             }
 
-            b.startStatement().startCall("b.append").doubleQuote("\\n     stack = ").end().end();
-
-            // for operation stacks
-            b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
-            b.startStatement().startCall("b.append").doubleQuote("\\n       ").end().end();
-            b.startFor().string("int y = 0; y < i; y++").end().startBlock();
-            b.statement("b.append(\"  \")");
-            b.end(); // for
-            b.startStatement().startCall("b.append").string("operationStack[i].toString(this)").end().end();
-            b.end(); // for
+            b.startStatement().startCall("b.append").doubleQuote("]").end().end();
 
             b.statement("return b.toString()");
             return ex;
@@ -14030,10 +14088,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private void emitFence(CodeTreeBuilder b) {
         b.startStatement().startStaticCall(context.getType(VarHandle.class), "storeStoreFence").end(2);
-    }
-
-    private void emitThrowIllegalStateException(CodeTreeBuilder b, String reason) {
-        emitThrow(b, IllegalStateException.class, reason);
     }
 
     private static void emitThrowAssertionError(CodeTreeBuilder b, String reason) {

@@ -58,8 +58,6 @@ package com.oracle.truffle.api.bytecode;
 @SuppressWarnings("static-method")
 public abstract class BytecodeBuilder {
 
-    protected static final Class<?>[] EMPTY_ARRAY = new Class<?>[0];
-
     /**
      * Default constructor for a {@link BytecodeBuilder}.
      *

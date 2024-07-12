@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
 
@@ -83,7 +82,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // x = x + 1;
         // goto lbl;
 
-        assertThrows("Backward branches are unsupported. Use a While operation to model backward control flow.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Backward branches are unsupported. Use a While operation to model backward control flow.", IllegalStateException.class, () -> {
             parse("branchBackward", b -> {
                 b.beginRoot(LANGUAGE);
 
@@ -199,7 +198,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // goto lbl;
         // return 1 + { lbl: 2 }
 
-        assertThrows("BytecodeLabel must be emitted inside the same operation it was created in.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("BytecodeLabel must be emitted inside the same operation it was created in.", IllegalStateException.class, () -> {
             parse("branchInward", b -> {
                 b.beginRoot(LANGUAGE);
 
@@ -285,7 +284,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // { lbl: return 0 }
         // { goto lbl; }
 
-        assertThrows("Branch must be targeting a label that is declared in an enclosing operation of the current root. Jumps into other operations are not permitted.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Branch must be targeting a label that is declared in an enclosing operation of the current root. Jumps into other operations are not permitted.", IllegalStateException.class, () -> {
             parse("branchIntoAnotherBlock", b -> {
                 b.beginRoot(LANGUAGE);
 

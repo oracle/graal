@@ -43,6 +43,7 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
@@ -58,6 +59,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
+import org.junit.Assert;
+import org.junit.function.ThrowingRunnable;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -111,6 +114,13 @@ public abstract class AbstractBasicInterpreterTest {
             return interpreterClass.getSimpleName() + "[serialize=" + testSerialize + "]";
         }
 
+    }
+
+    public static <T extends Throwable> T assertThrowsWithMessage(String message, Class<T> expectedThrowable,
+                    ThrowingRunnable runnable) {
+        T error = Assert.assertThrows(expectedThrowable, runnable);
+        assertTrue("Invalid message: ", error.getMessage().contains(message));
+        return error;
     }
 
     protected static final BytecodeDSLTestLanguage LANGUAGE = null;
