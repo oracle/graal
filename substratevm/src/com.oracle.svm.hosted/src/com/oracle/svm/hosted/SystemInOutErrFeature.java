@@ -31,10 +31,15 @@ import java.io.PrintStream;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.SystemInOutErrSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.jdk.SystemInOutErrSupport;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 
 /**
  * We use an {@link Feature.DuringSetupAccess#registerObjectReplacer object replacer} because the
@@ -43,7 +48,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
  * {@link RecomputeFieldValue} annotations.
  */
 @AutomaticallyRegisteredFeature
-public class SystemInOutErrFeature implements InternalFeature {
+public class SystemInOutErrFeature implements InternalFeature, FeatureSingleton {
     private final InputStream hostedIn;
     private final PrintStream hostedOut;
     private final PrintStream hostedErr;
@@ -57,16 +62,36 @@ public class SystemInOutErrFeature implements InternalFeature {
 
     private SystemInOutErrSupport runtime;
 
+    private static final String SYSTEM_IN_KEY_NAME = "System#in";
+    private static final String SYSTEM_ERR_KEY_NAME = "System#err";
+    private static final String SYSTEM_OUT_KEY_NAME = "System#out";
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        runtime = new SystemInOutErrSupport();
-        ImageSingletons.add(SystemInOutErrSupport.class, runtime);
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            runtime = new SystemInOutErrSupport();
+            ImageSingletons.add(SystemInOutErrSupport.class, runtime);
+        }
     }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
         NativeImageSystemIOWrappers.singleton().verifySystemOutErrReplacement();
-        access.registerObjectReplacer(this::replaceStreams);
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            if (ImageLayerBuildingSupport.buildingInitialLayer()) {
+                var registry = CrossLayerConstantRegistry.singletonOrNull();
+                registry.registerConstantCandidate(SYSTEM_IN_KEY_NAME, runtime.in());
+                registry.registerConstantCandidate(SYSTEM_OUT_KEY_NAME, runtime.out());
+                registry.registerConstantCandidate(SYSTEM_ERR_KEY_NAME, runtime.err());
+            }
+            access.registerObjectReplacer(this::replaceStreamsWithRuntimeObject);
+        } else {
+            var registry = CrossLayerConstantRegistry.singletonOrNull();
+            VMError.guarantee(registry.constantExists(SYSTEM_IN_KEY_NAME), "Missing Constant %s", SYSTEM_IN_KEY_NAME);
+            VMError.guarantee(registry.constantExists(SYSTEM_OUT_KEY_NAME), "Missing Constant %s", SYSTEM_OUT_KEY_NAME);
+            VMError.guarantee(registry.constantExists(SYSTEM_ERR_KEY_NAME), "Missing Constant %s", SYSTEM_ERR_KEY_NAME);
+            ((FeatureImpl.DuringSetupAccessImpl) access).registerObjectToConstantReplacer(obj -> replaceStreamsWithLayerConstant(registry, obj));
+        }
     }
 
     @Override
@@ -74,7 +99,7 @@ public class SystemInOutErrFeature implements InternalFeature {
         NativeImageSystemIOWrappers.singleton().verifySystemOutErrReplacement();
     }
 
-    Object replaceStreams(Object object) {
+    Object replaceStreamsWithRuntimeObject(Object object) {
         if (object == hostedIn) {
             return runtime.in();
         } else if (object == hostedOut) {
@@ -83,6 +108,18 @@ public class SystemInOutErrFeature implements InternalFeature {
             return runtime.err();
         } else {
             return object;
+        }
+    }
+
+    ImageHeapConstant replaceStreamsWithLayerConstant(CrossLayerConstantRegistry idTracking, Object object) {
+        if (object == hostedIn) {
+            return idTracking.getConstant(SYSTEM_IN_KEY_NAME);
+        } else if (object == hostedOut) {
+            return idTracking.getConstant(SYSTEM_OUT_KEY_NAME);
+        } else if (object == hostedErr) {
+            return idTracking.getConstant(SYSTEM_ERR_KEY_NAME);
+        } else {
+            return null;
         }
     }
 }

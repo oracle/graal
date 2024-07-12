@@ -413,9 +413,9 @@ public abstract class ImageHeapScanner {
         /* Run all registered object replacers. */
         if (constant.getJavaKind() == JavaKind.Object) {
             try {
-                Object replaced = universe.replaceObject(unwrapped);
-                if (replaced != unwrapped) {
-                    return Optional.of(hostedValuesProvider.validateReplacedConstant(universe.getHostedValuesProvider().forObject(replaced)));
+                JavaConstant replaced = universe.replaceObjectWithConstant(unwrapped);
+                if (!replaced.equals(constant)) {
+                    return Optional.of(hostedValuesProvider.validateReplacedConstant(replaced));
                 }
             } catch (UnsupportedFeatureException e) {
                 /* Enhance the unsupported feature message with the object trace and rethrow. */
