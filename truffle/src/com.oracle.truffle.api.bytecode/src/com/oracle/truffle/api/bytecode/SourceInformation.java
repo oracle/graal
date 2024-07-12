@@ -75,8 +75,10 @@ public abstract class SourceInformation {
     public abstract int getEndBytecodeIndex();
 
     /**
-     * Returns the source section associated with this source information object. Never
-     * <code>null</code>.
+     * Returns the source section associated with this source information object.
+     * <p>
+     * The result is never <code>null</code>, with the possible exception of the root of a
+     * {@link SourceInformationTree} (see {@link BytecodeNode#getSourceInformationTree}).
      *
      * @since 24.2
      */

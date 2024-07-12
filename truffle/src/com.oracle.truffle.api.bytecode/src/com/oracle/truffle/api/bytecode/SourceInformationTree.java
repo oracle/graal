@@ -46,6 +46,10 @@ import java.util.List;
  * Represents a tree of {@link SourceInformation} instances. Like {@link SourceInformation}, this
  * class models the source section for a bytecode range. Its children model the source sections of
  * subranges directly contained by this node's bytecode range.
+ * <p>
+ * Note: it is possible for {@link SourceInformationTree#getSourceSection()} to return {@code null}
+ * for the root of the tree when the Root operation is not enclosed in a SourceSection operation.
+ * See the discussion in {@link BytecodeNode#getSourceInformationTree()} for more information.
  *
  * @since 24.2
  * @see BytecodeNode#getSourceInformationTree()

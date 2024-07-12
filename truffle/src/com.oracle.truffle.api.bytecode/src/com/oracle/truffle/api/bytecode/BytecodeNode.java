@@ -292,6 +292,14 @@ public abstract class BytecodeNode extends Node {
      * Produces a {@link SourceInformationTree} for this node. If no source information is
      * available, returns {@code null}.
      * <p>
+     * The tree returned by this method will have a {@link SourceInformationTree#getSourceSection()
+     * source section} that spans the whole bytecode range, or a {@code null} section if no such
+     * section exists. For example, the Root operation could directly contain two SourceSection
+     * operations that cover different bytecode ranges. The source section can be {@code null} even
+     * if there is a single SourceSection operation containing the entire root body. For reliable
+     * source information that covers the entire bytecode range, the Root operation should be nested
+     * inside of a SourceSection operation.
+     * <p>
      * Footprint note: this method eagerly materializes an entire tree, unlike
      * {@link #getSourceInformation()}, which allocates its elements on demand. Prefer to use
      * {@link #getSourceInformation()} unless you need to traverse the source tree.
