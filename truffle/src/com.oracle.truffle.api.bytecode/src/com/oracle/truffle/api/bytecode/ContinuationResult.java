@@ -42,6 +42,9 @@ package com.oracle.truffle.api.bytecode;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -79,11 +82,12 @@ import com.oracle.truffle.api.nodes.RootNode;
  *      tutorial</a>
  * @since 24.2
  */
-public final class ContinuationResult {
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "result")
+public final class ContinuationResult implements TruffleObject {
 
     private final ContinuationRootNode rootNode;
     private final MaterializedFrame frame;
-    private final Object result;
+    final Object result;
 
     /**
      * Creates a continuation.
