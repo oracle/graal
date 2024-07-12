@@ -44,8 +44,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
@@ -57,12 +59,14 @@ import com.oracle.truffle.api.source.SourceSection;
  * <code>@Bind("$location") BytecodeLocation location</code> in {@link Operation operations}. In
  * order to avoid the overhead of the BytecodeLocation allocation, e.g. for exceptional cases, it is
  * possible to create the bytecode location lazily from two fields:
- * <code>@Bind("$bytecode") BytecodeNode bytecode</code> and <code>@Bind("$bci") int bci</code>.
- * This avoids the eager allocation of the bytecode location. To create a bytecode location when it
- * is needed the {@link BytecodeLocation#get(Node, int)} method can be used.
+ * <code>@Bind("$bytecode") BytecodeNode bytecode</code> and
+ * <code>@Bind("$bytecodeIndex") int bci</code>. This avoids the eager allocation of the bytecode
+ * location. To create a bytecode location when it is needed the
+ * {@link BytecodeLocation#get(Node, int)} method can be used.
  *
  * @since 24.2
  */
+@Bind.DefaultExpression("$bytecodeNode.getBytecodeLocation($bytecodeIndex)")
 public final class BytecodeLocation {
 
     private final BytecodeNode bytecodes;
@@ -255,14 +259,14 @@ public final class BytecodeLocation {
      * Creates a {@link BytecodeLocation} associated with the given node and bci.
      *
      * @param location a node in the interpreter (can be bound using {@code @Bind("$bytecode")})
-     * @param bci a bytecode index (can be bound using {@code @Bind("$bci")})
+     * @param bci a bytecode index (can be bound using {@code @Bind("$bytecodeIndex")})
      * @return the {@link BytecodeLocation} or {@code null} if {@code location} is not adopted by a
      *         {@link BytecodeNode}.
      * @since 24.2
      */
-    @TruffleBoundary
     public static BytecodeLocation get(Node location, int bci) {
         Objects.requireNonNull(location);
+        CompilerAsserts.partialEvaluationConstant(location);
         for (Node current = location; current != null; current = current.getParent()) {
             if (current instanceof BytecodeNode bytecodeNode) {
                 return bytecodeNode.getBytecodeLocation(bci);

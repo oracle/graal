@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.TagTreeNode;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -72,19 +73,19 @@ import com.oracle.truffle.sl.runtime.SLStrings;
 final class SLBytecodeScopeExports {
 
     @ExportMessage
-    static boolean hasRootInstance(TagTreeNode node, Frame frame) {
-        return getRootInstanceSlowPath(node) != null;
+    static boolean hasRootInstance(TagTreeNode node, Frame frame, @Bind SLContext context) {
+        return getRootInstanceSlowPath(context, node) != null;
     }
 
     @ExportMessage
-    static Object getRootInstance(TagTreeNode node, Frame frame) throws UnsupportedMessageException {
+    static Object getRootInstance(TagTreeNode node, Frame frame, @Bind SLContext context) throws UnsupportedMessageException {
         // The instance of the current RootNode is a function of the same name.
-        return getRootInstanceSlowPath(node);
+        return getRootInstanceSlowPath(context, node);
     }
 
     @TruffleBoundary
-    private static Object getRootInstanceSlowPath(TagTreeNode node) {
-        return SLContext.get(node).getFunctionRegistry().getFunction(SLStrings.getSLRootName(node.getRootNode()));
+    private static Object getRootInstanceSlowPath(SLContext context, TagTreeNode node) {
+        return context.getFunctionRegistry().getFunction(SLStrings.getSLRootName(node.getRootNode()));
     }
 
     @ExportMessage

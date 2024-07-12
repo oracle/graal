@@ -112,6 +112,10 @@ import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
 
 public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
+    public static final String SYMBOL_ROOT_NODE = "$rootNode";
+    public static final String SYMBOL_BYTECODE_NODE = "$bytecodeNode";
+    public static final String SYMBOL_BYTECODE_INDEX = "$bytecodeIndex";
+
     private static final EnumSet<TypeKind> BOXABLE_TYPE_KINDS = EnumSet.of(TypeKind.BOOLEAN, TypeKind.BYTE, TypeKind.INT, TypeKind.FLOAT, TypeKind.LONG, TypeKind.DOUBLE);
 
     @SuppressWarnings("unchecked")

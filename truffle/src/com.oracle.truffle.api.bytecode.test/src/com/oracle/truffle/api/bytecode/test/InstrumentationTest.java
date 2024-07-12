@@ -326,7 +326,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
             @Specialization
             @TruffleBoundary
             public static void doDefault(Class<?> instrumentationClass,
-                            @Bind("$location") BytecodeLocation location) {
+                           @Bind BytecodeLocation location) {
 
                 location.getBytecodeNode().getBytecodeRootNode().getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentation(instrumentationClass).build());
 
@@ -340,7 +340,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
             @Specialization
             @TruffleBoundary
             public static void doDefault(Consumer<?> consumer,
-                            @Bind("$root") InstrumentationTestRootNode root) {
+                            @Bind InstrumentationTestRootNode root) {
                 ((Consumer<ThreadLocalData>) consumer).accept(root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get());
             }
 
@@ -350,7 +350,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
         static final class PointInstrumentation1 {
 
             @Specialization
-            public static void doDefault(@Bind("$root") InstrumentationTestRootNode root) {
+            public static void doDefault(@Bind InstrumentationTestRootNode root) {
                 root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get().add(PointInstrumentation1.class, null);
             }
 
@@ -360,7 +360,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
         static final class PointInstrumentation2 {
 
             @Specialization
-            public static void doDefault(@Bind("$root") InstrumentationTestRootNode root) {
+            public static void doDefault(@Bind InstrumentationTestRootNode root) {
                 root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get().add(PointInstrumentation2.class, null);
             }
 
@@ -370,7 +370,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
         static final class PointInstrumentationRecursive1 {
 
             @Specialization
-            public static void doDefault(@Bind("$root") InstrumentationTestRootNode root) {
+            public static void doDefault(@Bind InstrumentationTestRootNode root) {
                 root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get().add(PointInstrumentationRecursive1.class, null);
                 root.getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentation(PointInstrumentation1.class).build());
             }
@@ -381,7 +381,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
         static final class PointInstrumentationRecursive2 {
 
             @Specialization
-            public static void doDefault(@Bind("$root") InstrumentationTestRootNode root) {
+            public static void doDefault(@Bind InstrumentationTestRootNode root) {
                 ThreadLocalData tl = root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get();
                 tl.add(PointInstrumentationRecursive2.class, null);
 
@@ -397,7 +397,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
         static final class InstrumentationOperandReturn {
 
             @Specialization
-            public static Object doDefault(Object operand, @Bind("$root") InstrumentationTestRootNode root) {
+            public static Object doDefault(Object operand, @Bind InstrumentationTestRootNode root) {
                 root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get().add(InstrumentationOperandReturn.class, operand);
                 return operand;
             }
@@ -407,7 +407,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
         static final class DecrementEnableInstrumentationIf4 {
 
             @Specialization
-            public static int doInt(int operand, @Bind("$root") InstrumentationTestRootNode root) {
+            public static int doInt(int operand, @Bind InstrumentationTestRootNode root) {
                 if (operand == 4) {
                     root.getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentation(InstrumentationDecrement.class).build());
                 }
@@ -437,7 +437,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
         static final class InstrumentationDecrement {
 
             @Specialization
-            public static int doInt(int operand, @Bind("$root") InstrumentationTestRootNode root) {
+            public static int doInt(int operand, @Bind InstrumentationTestRootNode root) {
                 root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get().add(InstrumentationDecrement.class, operand);
                 return operand - 1;
             }

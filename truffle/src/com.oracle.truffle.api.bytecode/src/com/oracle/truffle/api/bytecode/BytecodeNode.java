@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.Instruction.InstructionIterable;
+import com.oracle.truffle.api.dsl.Bind.DefaultExpression;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -67,12 +68,13 @@ import com.oracle.truffle.api.source.SourceSection;
  * encapsulates the current state.
  * <p>
  * Since an interpreter's bytecode can change over time, a bytecode index (bound using
- * <code>@Bind("$bci")</code>) is only meaningful when accompanied by a {@link BytecodeNode}. The
- * current bytecode node can be bound using <code>@Bind("$bytecode") BytecodeNode bytecode</code>
- * with {@link Operation operations}.
+ * <code>@Bind("$bytecodeIndex")</code>) is only meaningful when accompanied by a
+ * {@link BytecodeNode}. The current bytecode node can be bound using
+ * <code>@Bind("$bytecode") BytecodeNode bytecode</code> with {@link Operation operations}.
  *
  * @since 24.2
  */
+@DefaultExpression("$bytecodeNode")
 public abstract class BytecodeNode extends Node {
 
     protected BytecodeNode(Object token) {
@@ -113,8 +115,8 @@ public abstract class BytecodeNode extends Node {
 
     /**
      * Gets the bytecode location associated with a bytecode index. The result is only valid if
-     * bytecode index was obtained from this bytecode node (using a bind variable or
-     * {@link #getBytecodeIndex}).
+     * bytecode index was obtained from this bytecode node using a bind variable $bytecodeIndex or
+     * {@link #getBytecodeIndex}.
      *
      * @param bytecodeIndex the bytecode index
      * @return the bytecode location, or null if the bytecode index is invalid
@@ -125,6 +127,24 @@ public abstract class BytecodeNode extends Node {
             return null;
         }
         return findLocation(bytecodeIndex);
+    }
+
+    /**
+     * Gets the instruction with a bytecode index. The result is only valid if bytecode index was
+     * obtained from this bytecode node using a bind variable $bytecodeIndex or
+     * {@link #getBytecodeIndex}. The {@link Instruction} class should only be used for debugging or
+     * tracing purposes as the underlying instruction format may change with future version of
+     * Truffle.
+     *
+     * @param bytecodeIndex the bytecode index
+     * @return the instruction or null if the bytecode index is invalid
+     * @since 24.2
+     */
+    public final Instruction getInstruction(int bytecodeIndex) {
+        if (bytecodeIndex < 0) {
+            return null;
+        }
+        return findInstruction(bytecodeIndex);
     }
 
     /**
@@ -1076,7 +1096,7 @@ public abstract class BytecodeNode extends Node {
      * @return the corresponding bytecode location or null if no location can be found.
      * @since 24.2
      */
-    @TruffleBoundary
+    @ExplodeLoop
     public static BytecodeNode get(Node node) {
         Node location = node;
         for (Node currentNode = location; currentNode != null; currentNode = currentNode.getParent()) {

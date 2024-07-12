@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.builtins;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -61,9 +62,10 @@ public abstract class SLImportBuiltin extends SLBuiltinNode {
     @Specialization
     public Object importSymbol(TruffleString symbol,
                     @Cached TruffleString.ToJavaStringNode toJavaStringNode,
-                    @CachedLibrary(limit = "3") InteropLibrary arrays) {
+                    @CachedLibrary(limit = "3") InteropLibrary arrays,
+                    @Bind SLContext context) {
         try {
-            return arrays.readMember(SLContext.get(this).getPolyglotBindings(), toJavaStringNode.execute(symbol));
+            return arrays.readMember(context.getPolyglotBindings(), toJavaStringNode.execute(symbol));
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             return SLNull.SINGLETON;
         } catch (SecurityException e) {

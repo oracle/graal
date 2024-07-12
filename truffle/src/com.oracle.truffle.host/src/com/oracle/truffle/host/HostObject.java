@@ -279,7 +279,7 @@ final class HostObject implements TruffleObject {
 
         @ExportMessage
         String readArrayElement(long idx,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile error) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(idx)) {
                 error.enter(node);
@@ -300,7 +300,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     Object readMember(String name,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("lookupField") @Cached LookupFieldNode lookupField,
                     @Shared("readField") @Cached ReadFieldNode readField,
                     @Shared("lookupMethod") @Cached LookupMethodNode lookupMethod,
@@ -392,7 +392,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     void writeMember(String member, Object value,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("lookupField") @Cached LookupFieldNode lookupField,
                     @Cached WriteFieldNode writeField,
                     @Shared("error") @Cached InlinedBranchProfile error)
@@ -444,7 +444,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     Object invokeMember(String name, Object[] args,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("lookupMethod") @Cached LookupMethodNode lookupMethod,
                     @Shared("hostExecute") @Cached HostExecuteNode executeMethod,
                     @Shared("lookupField") @Cached LookupFieldNode lookupField,
@@ -494,7 +494,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         static boolean doList(HostObject receiver, long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) {
             try {
@@ -537,7 +537,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         static boolean doList(HostObject receiver, long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) {
             try {
@@ -574,7 +574,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = "!receiver.isNull()")
         static boolean doNonNull(HostObject receiver,
                         long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) {
             try {
@@ -596,7 +596,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"})
         static void doArray(HostObject receiver, long index, Object value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("toHost") @Cached(inline = true) HostToTypeNode toHostNode,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Cached ArraySet arraySet,
@@ -627,7 +627,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         static void doList(HostObject receiver, long index, Object value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("toHost") @Cached(inline = true) HostToTypeNode toHostNode,
                         @Shared("error") @Cached InlinedBranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
@@ -659,7 +659,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isMapEntry(hostClassCache)"})
         static void doMapEntry(HostObject receiver, long index, Object value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("toHost") @Cached(inline = true) HostToTypeNode toHostNode,
                         @Shared("error") @Cached InlinedBranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
@@ -706,7 +706,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         static boolean doList(HostObject receiver, long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) {
             try {
@@ -735,7 +735,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         static void doList(HostObject receiver, long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || Integer.MAX_VALUE < index) {
@@ -785,7 +785,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"})
         protected static Object doArray(HostObject receiver, long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached ArrayGet arrayGet,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("toGuest") @Cached(inline = true) ToGuestValueNode toGuest,
@@ -808,7 +808,7 @@ final class HostObject implements TruffleObject {
         @TruffleBoundary
         @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         protected static Object doList(HostObject receiver, long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("toGuest") @Cached(inline = true) ToGuestValueNode toGuest,
                         @Shared("error") @Cached InlinedBranchProfile error) throws InvalidArrayIndexException {
@@ -831,7 +831,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isMapEntry(hostClassCache)"})
         protected static Object doMapEntry(HostObject receiver, long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("toGuest") @Cached(inline = true) ToGuestValueNode toGuest,
                         @Shared("error") @Cached InlinedBranchProfile error) throws InvalidArrayIndexException {
@@ -883,7 +883,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         protected static long doList(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) {
             try {
@@ -952,7 +952,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
         static boolean doOther(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
             if (receiver.isBuffer(hostClassCache)) {
@@ -979,7 +979,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"receiver.isByteSequence()"})
         static long doByteSequence(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
             if (hostClassCache.isBufferAccess()) {
@@ -991,7 +991,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
         static long doOther(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
             if (receiver.isBuffer(hostClassCache)) {
@@ -1032,7 +1032,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = {"receiver.isByteSequence()"})
         static byte doByteSequence(HostObject receiver,
                         long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (!hostClassCache.isBufferAccess()) {
@@ -1054,7 +1054,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
         static byte doOther(HostObject receiver,
                         long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws UnsupportedMessageException, InvalidBufferOffsetException {
@@ -1096,7 +1096,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = "!receiver.isNull()")
         static void doNonNull(HostObject receiver, long index, byte value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws InvalidBufferOffsetException, UnsupportedMessageException {
@@ -1142,7 +1142,7 @@ final class HostObject implements TruffleObject {
         static short doByteSequence(HostObject receiver,
                         ByteOrder order,
                         long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (!hostClassCache.isBufferAccess()) {
@@ -1163,7 +1163,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
         static short doOther(HostObject receiver, ByteOrder order, long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws UnsupportedMessageException, InvalidBufferOffsetException {
@@ -1215,7 +1215,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = "!receiver.isNull()")
         static void doNonNull(HostObject receiver, ByteOrder order, long index, short value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws InvalidBufferOffsetException, UnsupportedMessageException {
@@ -1264,7 +1264,7 @@ final class HostObject implements TruffleObject {
         static int doByteSequence(HostObject receiver,
                         ByteOrder order,
                         long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (!hostClassCache.isBufferAccess()) {
@@ -1285,7 +1285,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
         static int doOther(HostObject receiver, ByteOrder order, long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws UnsupportedMessageException, InvalidBufferOffsetException {
@@ -1339,7 +1339,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = "!receiver.isNull()")
         static void doNonNull(HostObject receiver, ByteOrder order, long index, int value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws InvalidBufferOffsetException, UnsupportedMessageException {
@@ -1388,7 +1388,7 @@ final class HostObject implements TruffleObject {
         static long doByteSequence(HostObject receiver,
                         ByteOrder order,
                         long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (!hostClassCache.isBufferAccess()) {
@@ -1409,7 +1409,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
         static long doOther(HostObject receiver, ByteOrder order, long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws UnsupportedMessageException, InvalidBufferOffsetException {
@@ -1467,7 +1467,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = "!receiver.isNull()")
         static void doNonNull(HostObject receiver, ByteOrder order, long index, long value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws InvalidBufferOffsetException, UnsupportedMessageException {
@@ -1516,7 +1516,7 @@ final class HostObject implements TruffleObject {
         static float doByteSequence(HostObject receiver,
                         ByteOrder order,
                         long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (!hostClassCache.isBufferAccess()) {
@@ -1537,7 +1537,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
         static float doOther(HostObject receiver, ByteOrder order, long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws UnsupportedMessageException, InvalidBufferOffsetException {
@@ -1583,7 +1583,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = "!receiver.isNull()")
         static void doNonNull(HostObject receiver, ByteOrder order, long index, float value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws InvalidBufferOffsetException, UnsupportedMessageException {
@@ -1632,7 +1632,7 @@ final class HostObject implements TruffleObject {
         static double doByteSequence(HostObject receiver,
                         ByteOrder order,
                         long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (!hostClassCache.isBufferAccess()) {
@@ -1653,7 +1653,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isByteSequence()"})
         static double doOther(HostObject receiver, ByteOrder order, long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws UnsupportedMessageException, InvalidBufferOffsetException {
@@ -1699,7 +1699,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = "!receiver.isNull()")
         static void doNonNull(HostObject receiver, ByteOrder order, long index, double value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws InvalidBufferOffsetException, UnsupportedMessageException {
@@ -1750,7 +1750,7 @@ final class HostObject implements TruffleObject {
                         byte[] destination,
                         int destinationOffset,
                         int byteLength,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (!hostClassCache.isBufferAccess()) {
@@ -1775,7 +1775,7 @@ final class HostObject implements TruffleObject {
                         byte[] destination,
                         int destinationOffset,
                         int byteLength,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) throws UnsupportedMessageException, InvalidBufferOffsetException {
@@ -1832,7 +1832,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = "receiver.isDefaultClass()")
         static boolean doObjectCached(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("lookupConstructor") @Cached LookupConstructorNode lookupConstructor) {
             return lookupConstructor.execute(node, receiver, receiver.asClass()) != null;
         }
@@ -1840,14 +1840,14 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     boolean isExecutable(
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("lookupFunctionalMethod") @Cached LookupFunctionalMethodNode lookupMethod) {
         return !isNull() && !isClass() && lookupMethod.execute(node, this, getLookupClass()) != null;
     }
 
     @ExportMessage
     Object execute(Object[] args,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("hostExecute") @Cached HostExecuteNode doExecute,
                     @Shared("lookupFunctionalMethod") @Cached LookupFunctionalMethodNode lookupMethod,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
@@ -1872,7 +1872,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = "receiver.isArrayClass()")
         static Object doArrayCached(HostObject receiver, Object[] args,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "1") InteropLibrary indexes,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
             if (args.length != 1) {
@@ -1893,7 +1893,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = "receiver.isDefaultClass()")
         static Object doObjectCached(HostObject receiver, Object[] arguments,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("lookupConstructor") @Cached LookupConstructorNode lookupConstructor,
                         @Shared("hostExecute") @Cached HostExecuteNode executeMethod,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
@@ -1923,7 +1923,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isBigInteger()"})
         static boolean doOther(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) {
             Class<?> c = classProfile.profile(node, receiver.obj).getClass();
             return c == Byte.class || c == Short.class || c == Integer.class || c == Long.class || c == Float.class || c == Double.class;
@@ -2230,7 +2230,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"receiver.isBigInteger()"})
         static byte doBigInteger(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
             if (hostClassCache.isBigIntegerNumberAccess()) {
@@ -2243,7 +2243,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isBigInteger()"})
         static byte doOther(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary("receiver") InteropLibrary receiverLibrary,
                         @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
@@ -2275,7 +2275,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"receiver.isBigInteger()"})
         static short doBigInteger(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
             if (hostClassCache.isBigIntegerNumberAccess()) {
@@ -2288,7 +2288,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isBigInteger()"})
         static short doOther(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary("receiver") InteropLibrary receiverLibrary,
                         @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
@@ -2320,7 +2320,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"receiver.isBigInteger()"})
         static int doBigInteger(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
             if (hostClassCache.isBigIntegerNumberAccess()) {
@@ -2333,7 +2333,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isBigInteger()"})
         static int doOther(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary("receiver") InteropLibrary receiverLibrary,
                         @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
@@ -2365,7 +2365,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"receiver.isBigInteger()"})
         static long doBigInteger(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
             if (hostClassCache.isBigIntegerNumberAccess()) {
@@ -2378,7 +2378,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isBigInteger()"})
         static long doOther(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary("receiver") InteropLibrary receiverLibrary,
                         @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
@@ -2410,7 +2410,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"receiver.isBigInteger()"})
         static BigInteger doBigInteger(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
             if (hostClassCache.isBigIntegerNumberAccess()) {
@@ -2423,7 +2423,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isBigInteger()"})
         static BigInteger doOther(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary("receiver") InteropLibrary receiverLibrary,
                         @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
@@ -2446,7 +2446,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"receiver.isBigInteger()"})
         static float doBigInteger(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
             if (hostClassCache.isBigIntegerNumberAccess()) {
@@ -2459,7 +2459,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isBigInteger()"})
         static float doOther(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary("receiver") InteropLibrary receiverLibrary,
                         @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
@@ -2491,7 +2491,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"receiver.isBigInteger()"})
         static double doBigInteger(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
             if (hostClassCache.isBigIntegerNumberAccess()) {
@@ -2504,7 +2504,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isBigInteger()"})
         static double doOther(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary("receiver") InteropLibrary receiverLibrary,
                         @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
@@ -2528,7 +2528,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     boolean isString(
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("classProfile") @Cached InlinedExactClassProfile classProfile) {
         if (isNull()) {
             return false;
@@ -2538,7 +2538,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    String asString(@Bind("$node") Node node,
+    String asString(@Bind Node node,
                     @CachedLibrary("this") InteropLibrary thisLibrary,
                     @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary strings,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
@@ -2560,7 +2560,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     boolean asBoolean(
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
         if (isBoolean()) {
             return (boolean) obj;
@@ -2679,7 +2679,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     ExceptionType getExceptionType(
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
         if (isException()) {
             return obj instanceof InterruptedException ? ExceptionType.INTERRUPT : ExceptionType.RUNTIME_ERROR;
@@ -2690,7 +2690,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     boolean isExceptionIncompleteSource(
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
         if (isException()) {
             return false;
@@ -2702,7 +2702,7 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     @SuppressWarnings("static-method")
     int getExceptionExitStatus(
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
         error.enter(node);
         throw UnsupportedMessageException.create();
@@ -2717,7 +2717,7 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object getExceptionMessage(
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
         String message = isException() ? ((Throwable) obj).getMessage() : null;
         if (message != null) {
@@ -2778,7 +2778,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     RuntimeException throwException(
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
         if (isException()) {
             RuntimeException ex = (HostException) extraInfo;
@@ -2909,7 +2909,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"})
         protected static Object doArray(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("toGuest") @Cached(inline = true) ToGuestValueNode toGuest) {
             return toGuest.execute(node, receiver.context, arrayIteratorImpl(receiver));
@@ -2922,7 +2922,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isIterable(hostClassCache)"})
         protected static Object doIterable(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("toGuest") @Cached(inline = true) ToGuestValueNode toGuest,
                         @Shared("error") @Cached InlinedBranchProfile error) {
@@ -2970,7 +2970,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isIteratorLocal(hostClassCache)"})
         protected static boolean doIterator(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) {
             try {
@@ -2999,7 +2999,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isIteratorLocal(hostClassCache)"})
         protected static Object doIterator(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("toGuest") @Cached(inline = true) ToGuestValueNode toGuest,
                         @Shared("error") @Cached InlinedBranchProfile error,
@@ -3051,7 +3051,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"})
         protected static long doMap(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("error") @Cached InlinedBranchProfile error) {
             try {
@@ -3083,7 +3083,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = "!receiver.isNull()")
         static boolean doNonNull(HostObject receiver,
                         Object key,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("containsKey") @Cached ContainsKeyNode containsKey,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
             return receiver.isMap(hostClassCache) && containsKey.execute(node, receiver, key, hostClassCache);
@@ -3102,7 +3102,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"})
         protected static Object doMap(HostObject receiver, Object key,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("toHost") @Cached(inline = true) HostToTypeNode toHost,
                         @Shared("toGuest") @Cached(inline = true) ToGuestValueNode toGuest,
@@ -3152,7 +3152,7 @@ final class HostObject implements TruffleObject {
         static boolean doNonNull(
                         HostObject receiver,
                         Object key,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("containsKey") @Cached ContainsKeyNode containsKey,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
             return receiver.isMap(hostClassCache) && !containsKey.execute(node, receiver, key, hostClassCache);
@@ -3169,7 +3169,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"})
         protected static void doMap(HostObject receiver, Object key, Object value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("toHost") @Cached(inline = true) HostToTypeNode toHost,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
@@ -3223,7 +3223,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"})
         protected static void doMap(HostObject receiver, Object key,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("toHost") @Cached(inline = true) HostToTypeNode toHost,
                         @Shared("error") @Cached InlinedBranchProfile error) throws UnknownKeyException {
@@ -3269,7 +3269,7 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"})
         protected static Object doMap(HostObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
                         @Shared("toGuest") @Cached(inline = true) ToGuestValueNode toGuest,
                         @Shared("error") @Cached InlinedBranchProfile error) {
@@ -3337,7 +3337,7 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean isMetaInstance(Object other,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @CachedLibrary("this") InteropLibrary library,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
         if (isClass()) {
@@ -3420,7 +3420,7 @@ final class HostObject implements TruffleObject {
 
         @ExportMessage
         Object readArrayElement(long idx,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile error) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(idx)) {
                 error.enter(node);

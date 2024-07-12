@@ -316,7 +316,7 @@ public @interface GenerateBytecode {
      * {@link BytecodeNode#getBytecodeLocation(int)}).
      * <p>
      * Note that operations always have fast-path access to the bci using a bind parameter (e.g.,
-     * {@code @Bind("$bci") int bci}); this feature should only be enabled for fast-path bci access
+     * {@code @Bind("$bytecodeIndex") int bci}); this feature should only be enabled for fast-path bci access
      * outside of the current operation (e.g., for closures or frame introspection). Storing the bci
      * in the frame increases frame size and requires additional frame writes, so it can negatively
      * affect performance.

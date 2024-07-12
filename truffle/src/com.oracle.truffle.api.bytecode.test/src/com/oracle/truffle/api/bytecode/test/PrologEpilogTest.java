@@ -538,7 +538,7 @@ abstract class PrologEpilogBytecodeNode extends DebugBytecodeRootNode implements
     @Prolog
     public static final class StoreFirstArg {
         @Specialization
-        public static void doStoreFirstArg(VirtualFrame frame, @Bind("$root") PrologEpilogBytecodeNode root) {
+        public static void doStoreFirstArg(VirtualFrame frame, @Bind PrologEpilogBytecodeNode root) {
             if (root.throwInProlog != null) {
                 throw root.throwInProlog;
             }
@@ -549,7 +549,7 @@ abstract class PrologEpilogBytecodeNode extends DebugBytecodeRootNode implements
     @EpilogReturn
     public static final class StoreReturnValue {
         @Specialization
-        public static int doStoreReturnValueBoxingEliminated(int returnValue, @Bind("$root") PrologEpilogBytecodeNode root) {
+        public static int doStoreReturnValueBoxingEliminated(int returnValue, @Bind PrologEpilogBytecodeNode root) {
             if (root.throwInReturnEpilog != null) {
                 throw root.throwInReturnEpilog;
             }
@@ -558,7 +558,7 @@ abstract class PrologEpilogBytecodeNode extends DebugBytecodeRootNode implements
         }
 
         @Specialization
-        public static Object doStoreReturnValue(Object returnValue, @Bind("$root") PrologEpilogBytecodeNode root) {
+        public static Object doStoreReturnValue(Object returnValue, @Bind PrologEpilogBytecodeNode root) {
             if (root.throwInReturnEpilog != null) {
                 throw root.throwInReturnEpilog;
             }
@@ -570,7 +570,7 @@ abstract class PrologEpilogBytecodeNode extends DebugBytecodeRootNode implements
     @EpilogExceptional
     public static final class StoreExceptionalValue {
         @Specialization
-        public static void doStoreExceptionalValue(AbstractTruffleException exception, @Bind("$root") PrologEpilogBytecodeNode root) {
+        public static void doStoreExceptionalValue(AbstractTruffleException exception, @Bind PrologEpilogBytecodeNode root) {
             if (root.throwInExceptionalEpilog != null) {
                 throw root.throwInExceptionalEpilog;
             }

@@ -65,6 +65,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.debug.DebuggerTags;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
@@ -96,7 +97,6 @@ import com.oracle.truffle.sl.nodes.SLAstRootNode;
 import com.oracle.truffle.sl.nodes.SLBuiltinAstNode;
 import com.oracle.truffle.sl.nodes.SLBuiltinAstNodeGen;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
-import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.SLUndefinedFunctionRootNode;
@@ -122,7 +122,6 @@ import com.oracle.truffle.sl.nodes.expression.SLReadPropertyNode;
 import com.oracle.truffle.sl.nodes.expression.SLStringLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLSubNode;
 import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
-import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.parser.SLBytecodeVisitor;
@@ -223,6 +222,7 @@ import com.oracle.truffle.sl.runtime.SLStrings;
                 website = "https://www.graalvm.org/graalvm-as-a-platform/implement-language/")
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.ExpressionTag.class, DebuggerTags.AlwaysHalt.class,
                 StandardTags.ReadVariableTag.class, StandardTags.WriteVariableTag.class})
+@Bind.DefaultExpression("get($node)")
 public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static volatile int counter;
 

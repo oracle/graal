@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -49,6 +50,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * @see BytecodeNode#getSourceInformation()
  * @see BytecodeLocation#getSourceInformation()
  */
+@Bind.DefaultExpression("")
 public abstract class SourceInformation {
 
     /**

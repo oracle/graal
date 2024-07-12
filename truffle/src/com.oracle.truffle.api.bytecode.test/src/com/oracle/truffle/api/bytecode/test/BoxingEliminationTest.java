@@ -1510,8 +1510,8 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         static final class GetLocals {
             @Specialization
             static Object[] perform(VirtualFrame frame,
-                            @Bind("$bytecode") BytecodeNode bytecode,
-                            @Bind("$bci") int bci) {
+                            @Bind BytecodeNode bytecode,
+                            @Bind("$bytecodeIndex") int bci) {
                 return bytecode.getLocalValues(bci, frame);
             }
         }
@@ -1520,8 +1520,8 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         static final class GetLocal {
             @Specialization
             static Object perform(VirtualFrame frame, int i,
-                            @Bind("$bytecode") BytecodeNode bytecode,
-                            @Bind("$bci") int bci) {
+                            @Bind BytecodeNode bytecode,
+                            @Bind("$bytecodeIndex") int bci) {
                 return bytecode.getLocalValue(bci, frame, i);
             }
         }

@@ -266,7 +266,7 @@ public class StackTraceTest extends AbstractInstructionTest {
         @ConstantOperand(type = CallTarget.class)
         static final class Call {
             @Specialization
-            static Object doDefault(CallTarget target, @Bind("$node") Node node) {
+            static Object doDefault(CallTarget target,@Bind Node node) {
                 return target.call(node);
             }
         }
@@ -297,7 +297,7 @@ public class StackTraceTest extends AbstractInstructionTest {
         static final class ThrowError {
 
             @Specialization
-            static Object doDefault(@Bind("$node") Node node) {
+            static Object doDefault(@Bind Node node) {
                 throw new TestException(node);
             }
         }
@@ -315,7 +315,7 @@ public class StackTraceTest extends AbstractInstructionTest {
         static final class CaptureStack {
 
             @Specialization
-            static Object doDefault(@Bind("$node") Node node) {
+            static Object doDefault(@Bind Node node) {
                 TestException ex = new TestException(node);
                 return TruffleStackTrace.getStackTrace(ex);
             }

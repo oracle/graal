@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -57,6 +58,7 @@ import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
+import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.LocalSetter;
 import com.oracle.truffle.api.bytecode.LocalSetterRange;
@@ -234,7 +236,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     static final class ThrowOperation {
         @Specialization
         public static Object perform(long value,
-                        @Bind("$node") Node node) {
+                        @Bind Node node) {
             throw new TestException("fail", node, value);
         }
     }
@@ -272,8 +274,8 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         public static long doInt(VirtualFrame frame,
                         LocalSetter setter,
                         long value,
-                        @Bind("$bytecode") BytecodeNode bytecode,
-                        @Bind("$bci") int bci) {
+                        @Bind BytecodeNode bytecode,
+                        @Bind("$bytecodeIndex") int bci) {
             setter.setLong(bytecode, bci, frame, value);
             return value;
         }
@@ -282,8 +284,8 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         public static Object doGeneric(VirtualFrame frame,
                         LocalSetter setter,
                         Object value,
-                        @Bind("$bytecode") BytecodeNode bytecode,
-                        @Bind("$bci") int bci) {
+                        @Bind BytecodeNode bytecode,
+                        @Bind("$bytecodeIndex") int bci) {
             setter.setObject(bytecode, bci, frame, value);
             return value;
         }
@@ -297,8 +299,8 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         public static Object doLong(VirtualFrame frame,
                         LocalSetterRange setter,
                         long[] value,
-                        @Bind("$bytecode") BytecodeNode bytecode,
-                        @Bind("$bci") int bci) {
+                        @Bind BytecodeNode bytecode,
+                        @Bind("$bytecodeIndex") int bci) {
             for (int i = 0; i < value.length; i++) {
                 setter.setLong(bytecode, bci, frame, i, value[i]);
             }
@@ -310,8 +312,8 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         public static Object doGeneric(VirtualFrame frame,
                         LocalSetterRange setter,
                         Object[] value,
-                        @Bind("$bytecode") BytecodeNode bytecode,
-                        @Bind("$bci") int bci) {
+                        @Bind BytecodeNode bytecode,
+                        @Bind("$bytecodeIndex") int bci) {
             for (int i = 0; i < value.length; i++) {
                 setter.setObject(bytecode, bci, frame, i, value[i]);
             }
@@ -412,8 +414,8 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     public static final class GetSourcePositions {
         @Specialization
         public static Object doOperation(VirtualFrame frame,
-                        @Bind("$node") Node node,
-                        @Bind("$bytecode") BytecodeNode bytecode) {
+                        @Bind Node node,
+                        @Bind BytecodeNode bytecode) {
             return bytecode.getSourceLocations(frame, node);
         }
     }
@@ -422,8 +424,8 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     public static final class CopyLocalsToFrame {
         @Specialization
         public static Frame doSomeLocals(VirtualFrame frame, long length,
-                        @Bind("$bytecode") BytecodeNode bytecodeNode,
-                        @Bind("$bci") int bci) {
+                        @Bind BytecodeNode bytecodeNode,
+                        @Bind("$bytecodeIndex") int bci) {
             Frame newFrame = Truffle.getRuntime().createMaterializedFrame(frame.getArguments(), frame.getFrameDescriptor());
             bytecodeNode.copyLocalValues(bci, frame, newFrame, 0, (int) length);
             return newFrame;
@@ -431,8 +433,8 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
 
         @Specialization(guards = {"length == null"})
         public static Frame doAllLocals(VirtualFrame frame, @SuppressWarnings("unused") Object length,
-                        @Bind("$bytecode") BytecodeNode bytecodeNode,
-                        @Bind("$bci") int bci) {
+                        @Bind BytecodeNode bytecodeNode,
+                        @Bind("$bytecodeIndex") int bci) {
             Frame newFrame = Truffle.getRuntime().createMaterializedFrame(frame.getArguments(), frame.getFrameDescriptor());
             bytecodeNode.copyLocalValues(bci, frame, newFrame);
             return newFrame;
@@ -474,7 +476,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     @Operation
     public static final class CurrentLocation {
         @Specialization
-        public static BytecodeLocation perform(@Bind("$location") BytecodeLocation location) {
+        public static BytecodeLocation perform(@Bind BytecodeLocation location) {
             return location;
         }
     }
@@ -506,7 +508,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     @Operation
     public static final class EnableIncrementValueInstrumentation {
         @Specialization
-        public static void doEnable(@Bind("$root") BasicInterpreter root) {
+        public static void doEnable(@Bind BasicInterpreter root) {
             BytecodeConfig.Builder configBuilder = AbstractBasicInterpreterTest.invokeNewConfigBuilder(root.getClass());
             configBuilder.addInstrumentation(IncrementValue.class);
             root.getRootNodes().update(configBuilder.build());
@@ -516,13 +518,66 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     @Operation
     public static final class EnableDoubleValueInstrumentation {
         @Specialization
-        public static void doEnable(@Bind("$root") BasicInterpreter root) {
+        public static void doEnable(@Bind BasicInterpreter root) {
             BytecodeConfig.Builder configBuilder = AbstractBasicInterpreterTest.invokeNewConfigBuilder(root.getClass());
             configBuilder.addInstrumentation(DoubleValue.class);
             root.getRootNodes().update(configBuilder.build());
         }
     }
 
+    static record Bindings(
+                    BytecodeNode bytecode,
+                    RootNode root,
+                    BytecodeLocation location,
+                    Instruction instruction,
+                    Node node,
+                    int bytecodeIndex) {
+    }
+
+    @Operation
+    static final class ExplicitBindingsTest {
+        @Specialization
+        @SuppressWarnings("truffle")
+        public static Bindings doDefault(
+                        @Bind("$bytecodeNode") BytecodeNode bytecode,
+                        @Bind("$rootNode") BasicInterpreter root1,
+                        @Bind("$rootNode") BytecodeRootNode root2,
+                        @Bind("$rootNode") RootNode root3,
+                        @Bind("$bytecodeNode.getBytecodeLocation($bytecodeIndex)") BytecodeLocation location,
+                        @Bind("$bytecodeNode.getInstruction($bytecodeIndex)") Instruction instruction,
+                        @Bind("this") Node node1,
+                        @Bind("$node") Node node2,
+                        @Bind("$bytecodeIndex") int bytecodeIndex) {
+            if (root1 != root2 || root2 != root3) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+            if (node1 != node2) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+            return new Bindings(bytecode, root1, location, instruction, node1, bytecodeIndex);
+        }
+    }
+
+    @Operation
+    static final class ImplicitBindingsTest {
+        @Specialization
+        public static Bindings doDefault(
+                        @Bind BytecodeNode bytecode,
+                        @Bind BasicInterpreter root1,
+                        @Bind BytecodeRootNode root2,
+                        @Bind RootNode root3,
+                        @Bind BytecodeLocation location,
+                        @Bind Instruction instruction,
+                        @Bind Node node,
+                        @Bind("$bytecodeIndex") int bytecodeIndex) {
+
+            if (root1 != root2 || root2 != root3) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+
+            return new Bindings(bytecode, root1, location, instruction, node, bytecodeIndex);
+        }
+    }
 }
 
 class TestClosure {

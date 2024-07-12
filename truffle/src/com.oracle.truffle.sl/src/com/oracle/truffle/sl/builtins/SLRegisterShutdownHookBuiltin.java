@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.builtins;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.runtime.SLContext;
@@ -54,8 +55,8 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public abstract class SLRegisterShutdownHookBuiltin extends SLBuiltinNode {
 
     @Specialization
-    protected Object doDefault(SLFunction shutdownHook) {
-        SLContext.get(this).registerShutdownHook(shutdownHook);
+    protected Object doDefault(SLFunction shutdownHook, @Bind SLContext context) {
+        context.registerShutdownHook(shutdownHook);
         return SLNull.SINGLETON;
     }
 }

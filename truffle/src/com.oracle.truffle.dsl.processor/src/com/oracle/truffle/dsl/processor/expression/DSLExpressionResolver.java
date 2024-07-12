@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.expression;
 
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.findAnnotationMirror;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -85,7 +83,6 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
     private final ProcessorContext context;
     private final DSLExpressionResolver parent;
     private final TypeElement accessType;
-    private final boolean isOperationProxyable;
 
     private final List<? extends Element> unprocessedElements;
     private boolean processed;
@@ -94,7 +91,6 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
         this.context = context;
         this.parent = parent;
         this.accessType = accessType;
-        this.isOperationProxyable = findAnnotationMirror(accessType, context.getTypes().OperationProxy_Proxyable) != null;
         this.unprocessedElements = new ArrayList<>(lookupElements);
     }
 
@@ -297,22 +293,6 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
 
                 if (parent != null) {
                     return parent.resolveVariable(variable);
-                }
-
-                /**
-                 * An @OperationProxy.Proxyable node can bind operation values. In non-operation
-                 * contexts (e.g., when executing like a regular node), we patch in default values.
-                 */
-                if (isOperationProxyable) {
-                    if (name.equals("$root")) {
-                        return new CodeVariableElement(ProcessorContext.getInstance().getTypes().Node, "this");
-                    } else if (name.equals("$bytecode")) {
-                        return new CodeVariableElement(ProcessorContext.getInstance().getTypes().BytecodeNode, "null");
-                    } else if (name.equals("$location")) {
-                        return new CodeVariableElement(ProcessorContext.getInstance().getTypes().BytecodeLocation, "null");
-                    } else if (name.equals("$bci")) {
-                        return new CodeVariableElement(ProcessorContext.getInstance().getType(int.class), "-1");
-                    }
                 }
                 return null;
         }

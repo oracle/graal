@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.bytecode;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -56,6 +57,7 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
  * @see GenerateBytecode
  * @since 24.2
  */
+@Bind.DefaultExpression("$rootNode")
 public interface BytecodeRootNode {
 
     /**

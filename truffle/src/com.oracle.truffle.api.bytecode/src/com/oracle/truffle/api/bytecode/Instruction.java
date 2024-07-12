@@ -44,12 +44,19 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 import com.oracle.truffle.api.dsl.Introspection;
+import com.oracle.truffle.api.dsl.Bind.DefaultExpression;
 import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
+/**
+ * The {@link Instruction} class should only be used for debugging or tracing purposes as the
+ * underlying instruction format may change with future version of Truffle.
+ */
+@DefaultExpression("$bytecodeNode.getInstruction($bytecodeIndex)")
 public abstract class Instruction {
 
     protected Instruction(Object token) {
@@ -95,6 +102,22 @@ public abstract class Instruction {
     }
 
     protected abstract Instruction next();
+
+    @Override
+    public final int hashCode() {
+        return Objects.hash(getBytecodeNode(), getBytecodeIndex(), getOperationCode());
+    }
+
+    @Override
+    public final boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        } else if (obj instanceof Instruction other) {
+            return getBytecodeNode() == other.getBytecodeNode() && getBytecodeIndex() == other.getBytecodeIndex() && getOperationCode() == other.getOperationCode();
+        } else {
+            return false;
+        }
+    }
 
     @Override
     public String toString() {

@@ -266,7 +266,6 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
                         assumptions = "callTargetStable")
         @SuppressWarnings("unused")
         protected static Object doDirect(SLFunction function, @Variadic Object[] arguments,
-                        @Bind("this") Node node,
                         @Cached("function.getCallTargetStable()") Assumption callTargetStable,
                         @Cached("function.getCallTarget()") RootCallTarget cachedTarget,
                         @Cached("create(cachedTarget)") DirectCallNode callNode) {
@@ -296,12 +295,12 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
                         Object function,
                         @Variadic Object[] arguments,
                         @CachedLibrary(limit = "3") InteropLibrary library,
-                        @Bind("$node") Node node) {
+                        @Bind Node location) {
             try {
                 return library.execute(function, arguments);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 /* Execute was not successful. */
-                throw SLException.undefinedFunction(node, function);
+                throw SLException.undefinedFunction(location, function);
             }
         }
     }

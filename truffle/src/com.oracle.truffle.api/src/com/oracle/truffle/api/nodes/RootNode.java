@@ -125,6 +125,7 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * @since 0.8 or earlier
  */
+// @DefaultSymbol("$rootNode")
 public abstract class RootNode extends ExecutableNode {
 
     private static final AtomicReferenceFieldUpdater<RootNode, ReentrantLock> LOCK_UPDATER = AtomicReferenceFieldUpdater.newUpdater(RootNode.class, ReentrantLock.class, "lock");

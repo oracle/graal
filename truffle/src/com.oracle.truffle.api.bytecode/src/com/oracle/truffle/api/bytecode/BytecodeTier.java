@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import com.oracle.truffle.api.dsl.Bind;
+
 /**
  * Represents the tier of a given {@link BytecodeNode}.
  *
  * @since 24.2
  */
+@Bind.DefaultExpression("$bytecodeNode.getTier()")
 public enum BytecodeTier {
     UNCACHED,
     CACHED;

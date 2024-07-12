@@ -227,7 +227,7 @@ public class ProfileInliningTest extends AbstractPolyglotTest {
         @ExportMessage
         @SuppressWarnings("unused")
         static Object execute(UsageExport receiver, Object[] arguments,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile p0,
                         @Cached InlinedConditionProfile p1,
                         @Cached InlinedCountingConditionProfile p2,

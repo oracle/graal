@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.builtins;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -65,8 +66,9 @@ public abstract class SLNewObjectBuiltin extends SLBuiltinNode {
     @Specialization
     @SuppressWarnings("unused")
     public Object newObject(SLNull o,
-                    @Cached(value = "lookup()", neverDefault = true) AllocationReporter reporter) {
-        return SLLanguage.get(this).createObject(reporter);
+                    @Cached(value = "lookup()", neverDefault = true) AllocationReporter reporter,
+                    @Bind SLLanguage language) {
+        return language.createObject(reporter);
     }
 
     final AllocationReporter lookup() {

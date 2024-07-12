@@ -2560,7 +2560,7 @@ public class TagTest extends AbstractInstructionTest {
         @Operation
         static final class Throw {
             @Specialization
-            public static void doInt(@Bind("$node") Node node) {
+            public static void doInt(@Bind Node node) {
                 throw new TestException(node);
             }
         }
@@ -2585,7 +2585,7 @@ public class TagTest extends AbstractInstructionTest {
         @Operation
         static final class ValueOrThrow {
             @Specialization
-            public static Object doInt(Object value, boolean shouldThrow, @Bind("$node") Node node) {
+            public static Object doInt(Object value, boolean shouldThrow,@Bind Node node) {
                 if (shouldThrow) {
                     throw new TestException(node);
                 }
@@ -2609,7 +2609,7 @@ public class TagTest extends AbstractInstructionTest {
         @Prolog
         static final class EnterMethod {
             @Specialization
-            public static void doDefault(@Bind("$node") Node node) {
+            public static void doDefault(@Bind Node node) {
                 TagTestLanguage.getThreadData(node).notifyProlog();
             }
         }
@@ -2617,7 +2617,7 @@ public class TagTest extends AbstractInstructionTest {
         @EpilogExceptional
         static final class LeaveExceptional {
             @Specialization
-            public static void doDefault(@SuppressWarnings("unused") AbstractTruffleException t, @Bind("$node") Node node) {
+            public static void doDefault(@SuppressWarnings("unused") AbstractTruffleException t,@Bind Node node) {
                 TagTestLanguage.getThreadData(node).notifyEpilogExceptional();
             }
         }
@@ -2625,7 +2625,7 @@ public class TagTest extends AbstractInstructionTest {
         @EpilogReturn
         static final class LeaveValue {
             @Specialization
-            public static int doDefault(int a, @Bind("$node") Node node) {
+            public static int doDefault(int a,@Bind Node node) {
                 TagTestLanguage.getThreadData(node).notifyEpilogValue(a);
                 return a;
             }
@@ -2642,7 +2642,7 @@ public class TagTest extends AbstractInstructionTest {
         @Operation
         static final class Throw {
             @Specialization
-            public static void doInt(@Bind("$node") Node node) {
+            public static void doInt(@Bind Node node) {
                 throw new TestException(node);
             }
         }

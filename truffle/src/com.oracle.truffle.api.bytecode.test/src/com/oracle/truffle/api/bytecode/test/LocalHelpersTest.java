@@ -730,8 +730,8 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
     public static final class GetLocals {
         @Specialization
         public static Map<String, Object> getLocals(VirtualFrame frame,
-                        @Bind("$bytecode") BytecodeNode node,
-                        @Bind("$bci") int bci) {
+                        @Bind BytecodeNode node,
+                        @Bind("$bytecodeIndex") int bci) {
             Object[] locals = node.getLocalValues(bci, frame);
             return makeMap(node.getLocalNames(bci), locals);
         }
@@ -751,8 +751,8 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
     public static final class GetLocal {
         @Specialization
         public static Object perform(VirtualFrame frame, int i,
-                        @Bind("$bytecode") BytecodeNode node,
-                        @Bind("$bci") int bci) {
+                        @Bind BytecodeNode node,
+                        @Bind("$bytecodeIndex") int bci) {
             return node.getLocalValue(bci, frame, i);
         }
     }
@@ -761,9 +761,9 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
     public static final class GetLocalUsingBytecodeLocalIndex {
         @Specialization
         public static Object perform(VirtualFrame frame,
-                        @Bind("$root") BytecodeNodeWithLocalIntrospection root,
-                        @Bind("$bytecode") BytecodeNode node,
-                        @Bind("$bci") int bci) {
+                        @Bind BytecodeNodeWithLocalIntrospection root,
+                        @Bind BytecodeNode node,
+                        @Bind("$bytecodeIndex") int bci) {
             assert root.reservedLocalIndex != -1;
             return node.getLocalValue(bci, frame, root.reservedLocalIndex);
         }
@@ -773,8 +773,8 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
     public static final class SetLocal {
         @Specialization
         public static void perform(VirtualFrame frame, int i, Object value,
-                        @Bind("$bytecode") BytecodeNode node,
-                        @Bind("$bci") int bci) {
+                        @Bind BytecodeNode node,
+                        @Bind("$bytecodeIndex") int bci) {
             node.setLocalValue(bci, frame, i, value);
         }
     }
@@ -783,9 +783,9 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
     public static final class SetLocalUsingBytecodeLocalIndex {
         @Specialization
         public static void perform(VirtualFrame frame, Object value,
-                        @Bind("$root") BytecodeNodeWithLocalIntrospection root,
-                        @Bind("$bytecode") BytecodeNode node,
-                        @Bind("$bci") int bci) {
+                        @Bind BytecodeNodeWithLocalIntrospection root,
+                        @Bind BytecodeNode node,
+                        @Bind("$bytecodeIndex") int bci) {
             assert root.reservedLocalIndex != -1;
             node.setLocalValue(bci, frame, root.reservedLocalIndex, value);
         }

@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.dsl;
 
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
@@ -100,6 +101,20 @@ public @interface Bind {
      * @see Bind
      * @since 20.2
      */
-    String value();
+    String value() default "";
 
+    @Retention(RetentionPolicy.CLASS)
+    @Target({ElementType.TYPE})
+    @Inherited
+    public @interface DefaultExpression {
+
+        /**
+         * The default symbol to be used for a particular type.
+         *
+         * @see Bind
+         * @since 20.2
+         */
+        String value();
+
+    }
 }

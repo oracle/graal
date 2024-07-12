@@ -119,7 +119,7 @@ public class GR50026Test extends AbstractLibraryTest {
     public static final class TestBindNode {
 
         @ExportMessage
-        String m0(@Bind("$node") Node node) {
+        String m0(@Bind Node node) {
             Assert.assertTrue(node.isAdoptable());
             return "m0";
         }

@@ -337,15 +337,15 @@ abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeR
     public static final class SetCheckValue {
         @Specialization(guards = "arg == constantOperand")
         public static void doMatch(VirtualFrame frame, int constantOperand, LocalSetter setter, int arg,
-                        @Bind("$bytecode") BytecodeNode bytecode,
-                        @Bind("$bci") int bci) {
+                        @Bind BytecodeNode bytecode,
+                        @Bind("$bytecodeIndex") int bci) {
             setter.setBoolean(bytecode, bci, frame, true);
         }
 
         @Fallback
         public static void doNoMatch(VirtualFrame frame, int constantOperand, LocalSetter setter, Object arg,
-                        @Bind("$bytecode") BytecodeNode bytecode,
-                        @Bind("$bci") int bci) {
+                        @Bind BytecodeNode bytecode,
+                        @Bind("$bytecodeIndex") int bci) {
             setter.setBoolean(bytecode, bci, frame, false);
         }
     }
@@ -374,7 +374,7 @@ abstract class ConstantOperandsInPrologTestRootNode extends RootNode implements 
     public static final class PrologOperation {
         @Specialization
         @TruffleBoundary
-        public static void doVoid(String name, int number, @Bind("$root") ConstantOperandsInPrologTestRootNode root) {
+        public static void doVoid(String name, int number, @Bind ConstantOperandsInPrologTestRootNode root) {
             root.prologEvents.add(name);
             root.prologEvents.add(number);
         }

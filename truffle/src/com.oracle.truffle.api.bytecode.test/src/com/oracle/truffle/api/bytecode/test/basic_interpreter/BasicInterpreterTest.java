@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
+import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.ExpectedSourceTree.expectedSourceTree;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -47,7 +48,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
-import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.ExpectedSourceTree.expectedSourceTree;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,7 +67,6 @@ import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instruction.Argument;
 import com.oracle.truffle.api.bytecode.SourceInformation;
-import com.oracle.truffle.api.bytecode.SourceInformationTree;
 import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;

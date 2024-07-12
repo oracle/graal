@@ -143,7 +143,7 @@ public class SetTraceFuncTest extends AbstractInstructionTest {
         @Prolog
         static final class CheckTraceFunOnEnter {
             @Specialization
-            public static void doProlog(@Bind("$root") SetTraceFuncRootNode root) {
+            public static void doProlog(@Bind SetTraceFuncRootNode root) {
                 if (root.getLanguage(TraceFunLanguage.class).noTraceFun.isValid()) {
                     return;
                 }
@@ -162,7 +162,7 @@ public class SetTraceFuncTest extends AbstractInstructionTest {
             @Specialization
             @TruffleBoundary
             public static void doDefault(Runnable run,
-                            @Bind("$root") SetTraceFuncRootNode root) {
+                            @Bind SetTraceFuncRootNode root) {
                 TraceFunLanguage language = root.getLanguage(TraceFunLanguage.class);
                 language.threadLocal.get().traceFun = run;
                 language.noTraceFun.invalidate();
@@ -180,7 +180,7 @@ public class SetTraceFuncTest extends AbstractInstructionTest {
         static final class TraceFun {
 
             @Specialization
-            public static void doDefault(@Bind("$root") SetTraceFuncRootNode node) {
+            public static void doDefault(@Bind SetTraceFuncRootNode node) {
                 Runnable fun = node.getLanguage(TraceFunLanguage.class).threadLocal.get().traceFun;
                 if (fun != null) {
                     invokeSetTraceFunc(fun);

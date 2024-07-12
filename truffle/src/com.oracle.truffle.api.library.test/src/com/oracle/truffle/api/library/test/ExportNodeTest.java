@@ -463,13 +463,13 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
         @ExportMessage
         public String m0(String argument, @Exclusive @Cached InlinableNode inlinableNode,
-                        @Bind("$node") Node node) {
+                        @Bind Node node) {
             return inlinableNode.execute(node, argument);
         }
 
         @ExportMessage
         public String m1(String argument, @Exclusive @Cached InlinableNode inlinableNode,
-                        @Bind("$node") Node node) {
+                        @Bind Node node) {
             return inlinableNode.execute(node, argument);
         }
 

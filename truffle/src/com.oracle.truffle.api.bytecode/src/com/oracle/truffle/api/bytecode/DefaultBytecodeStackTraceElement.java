@@ -62,12 +62,16 @@ final class DefaultBytecodeStackTraceElement implements TruffleObject {
     @TruffleBoundary
     @SuppressWarnings("static-method")
     boolean hasExecutableName() {
-        return stackTrace.getTarget().getRootNode().getName() != null;
+        return getExecutableNameImpl() != null;
     }
 
     @ExportMessage
     @TruffleBoundary
     Object getExecutableName() {
+        return getExecutableNameImpl();
+    }
+
+    private String getExecutableNameImpl() {
         return stackTrace.getTarget().getRootNode().getName();
     }
 

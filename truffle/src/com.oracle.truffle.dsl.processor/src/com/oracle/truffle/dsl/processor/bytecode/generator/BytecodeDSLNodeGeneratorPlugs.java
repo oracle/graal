@@ -57,6 +57,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
+import com.oracle.truffle.dsl.processor.bytecode.parser.BytecodeDSLParser;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecutionResult;
@@ -72,6 +73,7 @@ import com.oracle.truffle.dsl.processor.model.NodeChildData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
+import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
 public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
@@ -221,44 +223,24 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     }
 
     public CodeTree bindExpressionValue(FrameState frameState, Variable variable) {
-        String name = variable.getName();
-        if (frameState.getMode().isUncached()) {
-            switch (name) {
-                case "this":
-                case "$node":
-                case "$bytecode":
+        switch (variable.getName()) {
+            case NodeParser.SYMBOL_THIS:
+            case NodeParser.SYMBOL_NODE:
+                if (frameState.getMode().isUncached()) {
                     return CodeTreeBuilder.singleString("$bytecode");
-                case "$root":
-                    return CodeTreeBuilder.singleString("$bytecode.getRoot()");
-                case "$bci":
-                    return CodeTreeBuilder.singleString("$bci");
-                case "$location":
-                    CodeTreeBuilder b = new CodeTreeBuilder(null);
-                    b.startStaticCall(nodeType, "findLocation").string("$bytecode").string("$bci").end();
-                    return b.build();
-                default:
-                    return null;
-            }
-        } else {
-            switch (name) {
-                case "this":
-                case "$node":
+                } else {
                     // use default handling (which could resolve to the specialization class)
                     return null;
-                case "$bytecode":
-                    return CodeTreeBuilder.singleString("$bytecode");
-                case "$root":
-                    return CodeTreeBuilder.singleString("$bytecode.getRoot()");
-                case "$bci":
-                    return CodeTreeBuilder.singleString("$bci");
-                case "$location":
-                    CodeTreeBuilder b = new CodeTreeBuilder(null);
-                    b.startStaticCall(nodeType, "findLocation").string("$bytecode").string("$bci").end();
-                    return b.build();
-                default:
-                    return null;
+                }
+            case BytecodeDSLParser.SYMBOL_BYTECODE_NODE:
+                return CodeTreeBuilder.singleString("$bytecode");
+            case BytecodeDSLParser.SYMBOL_ROOT_NODE:
+                return CodeTreeBuilder.singleString("$bytecode.getRoot()");
+            case BytecodeDSLParser.SYMBOL_BYTECODE_INDEX:
+                return CodeTreeBuilder.singleString("$bci");
+            default:
+                return null;
 
-            }
         }
     }
 

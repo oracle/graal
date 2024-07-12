@@ -232,6 +232,7 @@ public class TruffleTypes {
 
     // DSL API
     public static final String Bind_Name = "com.oracle.truffle.api.dsl.Bind";
+    public static final String Bind_DefaultExpression_Name = "com.oracle.truffle.api.dsl.Bind.DefaultExpression";
     public static final String Cached_Exclusive_Name = "com.oracle.truffle.api.dsl.Cached.Exclusive";
     public static final String Cached_Name = "com.oracle.truffle.api.dsl.Cached";
     public static final String Cached_Shared_Name = "com.oracle.truffle.api.dsl.Cached.Shared";
@@ -293,6 +294,7 @@ public class TruffleTypes {
     public static final String UnsupportedSpecializationException_Name = "com.oracle.truffle.api.dsl.UnsupportedSpecializationException";
 
     public final DeclaredType Bind = c.getDeclaredType(Bind_Name);
+    public final DeclaredType Bind_DefaultExpression = c.getDeclaredType(Bind_DefaultExpression_Name);
     public final DeclaredType Cached = c.getDeclaredType(Cached_Name);
     public final DeclaredType Cached_Exclusive = c.getDeclaredType(Cached_Exclusive_Name);
     public final DeclaredType Cached_Shared = c.getDeclaredType(Cached_Shared_Name);

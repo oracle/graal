@@ -333,7 +333,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         static final class Increment {
             @Specialization
             public static void perform(VirtualFrame frame, LocalSetter variable, int currentValue,
-                            @Bind("$bytecode") BytecodeNode bytecodeNode, @Bind("$bci") int bci) {
+                            @Bind BytecodeNode bytecodeNode, @Bind("$bytecodeIndex") int bci) {
                 variable.setInt(bytecodeNode, bci, frame, currentValue + 1);
             }
         }
@@ -343,7 +343,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         static final class IncrementIfCompiled {
             @Specialization
             public static void perform(VirtualFrame frame, LocalSetter variable, int currentValue,
-                            @Bind("$bytecode") BytecodeNode bytecodeNode, @Bind("$bci") int bci) {
+                            @Bind BytecodeNode bytecodeNode, @Bind("$bytecodeIndex") int bci) {
                 /**
                  * NB: this is implemented as one operation rather than a built-in IfThen operation
                  * because the IfThen branch profile would mark the "in compiled code" branch as
@@ -367,7 +367,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         static final class InstrumentIfCompiled {
             @Specialization
 
-            public static void perform(@Bind("$root") BytecodeDSLOSRTestRootNode root) {
+            public static void perform(@Bind BytecodeDSLOSRTestRootNode root) {
                 if (CompilerDirectives.inCompiledCode()) {
                     enableInstrumentation(root);
                 }
@@ -401,7 +401,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         static final class Increment {
             @Specialization
             public static void perform(VirtualFrame frame, LocalSetter variable, int currentValue,
-                            @Bind("$bytecode") BytecodeNode bytecodeNode, @Bind("$bci") int bci) {
+                            @Bind BytecodeNode bytecodeNode, @Bind("$bytecodeIndex") int bci) {
                 variable.setInt(bytecodeNode, bci, frame, currentValue + 1);
             }
         }
@@ -411,7 +411,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         static final class IncrementIfCompiled {
             @Specialization
             public static void perform(VirtualFrame frame, LocalSetter variable, int currentValue,
-                            @Bind("$bytecode") BytecodeNode bytecodeNode, @Bind("$bci") int bci) {
+                            @Bind BytecodeNode bytecodeNode, @Bind("$bytecodeIndex") int bci) {
                 /**
                  * NB: this is implemented as one operation rather than a built-in IfThen operation
                  * because the IfThen branch profile would mark the "in compiled code" branch as

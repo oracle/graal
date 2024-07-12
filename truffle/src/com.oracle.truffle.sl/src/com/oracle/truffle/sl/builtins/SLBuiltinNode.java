@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.builtins;
 
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -56,6 +57,7 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
  * functions; there is no special function lookup or call node for builtin functions.
  */
 @GenerateNodeFactory
+@GenerateInline(value = false, inherit = true)
 public abstract class SLBuiltinNode extends Node {
 
     public abstract Object execute(VirtualFrame frame, Object... arguments);
