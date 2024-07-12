@@ -261,7 +261,7 @@ class PolyglotIterator<T> implements Iterator<T>, PolyglotWrapper {
             @Specialization(limit = "LIMIT")
             @SuppressWarnings({"unused", "truffle-static-method"})
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary iterators,
                             @Cached InlinedBranchProfile error) {
                 try {
@@ -287,7 +287,7 @@ class PolyglotIterator<T> implements Iterator<T>, PolyglotWrapper {
             @Specialization(limit = "LIMIT")
             @SuppressWarnings({"unused", "truffle-static-method"})
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary iterators,
                             @Cached PolyglotToHostNode toHost,
                             @Cached InlinedBranchProfile error,

@@ -70,8 +70,9 @@ public abstract class SLFunctionLiteralNode extends SLExpressionNode {
     @Specialization
     public static SLFunction perform(
                     TruffleString functionName,
-                    @Cached(value = "lookupFunctionCached(functionName, this)", uncached = "lookupFunction(functionName, this)") SLFunction result,
-                    @Bind("this") Node node) {
+                    @Bind Node node,
+                    @Cached(value = "lookupFunctionCached(functionName, node)",//
+                                    uncached = "lookupFunction(functionName, node)") SLFunction result) {
         if (result == null) {
             return lookupFunction(functionName, node);
         } else {

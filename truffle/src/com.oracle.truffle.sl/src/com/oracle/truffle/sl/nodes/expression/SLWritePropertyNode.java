@@ -81,7 +81,7 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
 
     @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "LIBRARY_LIMIT")
     public static Object writeArray(Object receiver, Object index, Object value,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("receiver") InteropLibrary arrays,
                     @CachedLibrary("index") InteropLibrary numbers) {
         try {
@@ -95,7 +95,7 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
 
     @Specialization(limit = "LIBRARY_LIMIT")
     public static Object writeSLObject(SLObject receiver, Object name, Object value,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
                     @Cached SLToTruffleStringNode toTruffleStringNode) {
         objectLibrary.put(receiver, toTruffleStringNode.execute(node, name), value);
@@ -104,7 +104,7 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
 
     @Specialization(guards = "!isSLObject(receiver)", limit = "LIBRARY_LIMIT")
     public static Object writeObject(Object receiver, Object name, Object value,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("receiver") InteropLibrary objectLibrary,
                     @Cached SLToMemberNode asMember) {
         try {

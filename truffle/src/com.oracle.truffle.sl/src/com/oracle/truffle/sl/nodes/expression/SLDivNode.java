@@ -96,7 +96,7 @@ public abstract class SLDivNode extends SLBinaryNode {
     }
 
     @Fallback
-    public static Object typeError(Object left, Object right, @Bind("this") Node node) {
+    public static Object typeError(Object left, Object right, @Bind Node node) {
         throw SLException.typeError(node, "/", left, right);
     }
 }

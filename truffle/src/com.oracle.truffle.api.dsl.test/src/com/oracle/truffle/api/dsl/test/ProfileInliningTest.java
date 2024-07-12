@@ -166,7 +166,7 @@ public class ProfileInliningTest extends AbstractPolyglotTest {
 
         @Specialization
         static Object doLong(long arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached InlinedLongValueProfile p) {
             return p.profile(node, arg);
         }

@@ -159,7 +159,7 @@ abstract class ArgumentNode extends Node {
 
         @Specialization(limit = "3", replaces = {"putPointer", "putNull"})
         static long putGeneric(Object arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @CachedLibrary("arg") InteropLibrary interop,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {

@@ -276,7 +276,7 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, PolyglotWrapper {
             @Specialization(limit = "LIMIT")
             @SuppressWarnings({"unused", "truffle-static-method"})
             protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Cached PolyglotToHostNode toHost,
                             @Cached InlinedBranchProfile error) {

@@ -3319,7 +3319,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private boolean warnForThisVariable(CacheExpression cache, DSLExpression expression) {
         if (expression != null && expression.isSymbolBoundBound(types.Node, NodeParser.SYMBOL_THIS)) {
             cache.addSuppressableWarning(TruffleSuppressedWarnings.TRUFFLE,
-                            "This expression binds variable '%s' which should no longer be used for nodes. Use the '%s' variable instead to resolve this warning.",
+                            "This expression binds variable '%s' which should no longer be used. Use the '%s' variable instead to resolve this warning.",
                             NodeParser.SYMBOL_THIS, NodeParser.SYMBOL_NODE);
             return true;
         }

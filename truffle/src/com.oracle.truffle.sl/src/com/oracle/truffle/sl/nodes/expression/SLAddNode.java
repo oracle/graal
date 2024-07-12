@@ -150,7 +150,7 @@ public abstract class SLAddNode extends SLBinaryNode {
     @Specialization(guards = "isString(left, right)")
     @TruffleBoundary
     public static TruffleString doString(Object left, Object right,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @Cached SLToTruffleStringNode toTruffleStringNodeLeft,
                     @Cached SLToTruffleStringNode toTruffleStringNodeRight,
                     @Cached TruffleString.ConcatNode concatNode) {
@@ -166,7 +166,7 @@ public abstract class SLAddNode extends SLBinaryNode {
     }
 
     @Fallback
-    public static Object typeError(Object left, Object right, @Bind("this") Node node) {
+    public static Object typeError(Object left, Object right, @Bind Node node) {
         throw SLException.typeError(node, "+", left, right);
     }
 }

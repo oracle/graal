@@ -110,7 +110,7 @@ abstract class PolyglotExecuteNode extends Node {
     @Specialization(limit = "5")
     static Object doCached(PolyglotLanguageContext languageContext, Object function, Object[] argsArray,
                     Class<?> resultClass, Type resultType,
-                    @Bind("this") Node node,
+                    @Bind Node node,
                     @CachedLibrary("function") InteropLibrary interop,
                     @Cached ToGuestValuesNode toGuests,
                     @Cached PolyglotToHostNode toHost,

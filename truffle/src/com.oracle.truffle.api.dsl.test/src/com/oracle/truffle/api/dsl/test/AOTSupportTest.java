@@ -583,7 +583,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
 
             @Specialization(guards = {"arg == 8"})
             static int profiles(AOTInitializable receiver, int arg,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @Cached(inline = false) BranchProfile branch,
                             @Cached(inline = false) ConditionProfile binaryCondition,
                             @Cached(inline = false) CountingConditionProfile countingCondition,

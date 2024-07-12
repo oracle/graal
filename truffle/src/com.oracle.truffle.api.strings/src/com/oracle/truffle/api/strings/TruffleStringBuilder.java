@@ -1197,7 +1197,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
 
         @Specialization
         static void append(TruffleStringBuilderGeneric sb, AbstractTruffleString a, int fromIndex, int length,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Exclusive TruffleString.ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached @Exclusive TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,

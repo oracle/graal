@@ -767,7 +767,7 @@ public class BindExpressionTest extends AbstractPolyglotTest {
 
         @Specialization
         Object s0(
-                        @ExpectError("This expression binds variable 'this' which should no longer be used for nodes. Use the '$node' variable instead to resolve this warning.%")//
+                        @ExpectError("This expression binds variable 'this' which should no longer be used. Use the '$node' variable instead to resolve this warning.%")//
                         @Bind("this") Node result) {
             return result;
         }

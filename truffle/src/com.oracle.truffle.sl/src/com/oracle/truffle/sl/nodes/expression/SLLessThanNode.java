@@ -88,7 +88,7 @@ public abstract class SLLessThanNode extends SLBinaryNode {
     }
 
     @Fallback
-    public static boolean typeError(Object left, Object right, @Bind("this") Node node) {
+    public static boolean typeError(Object left, Object right, @Bind Node node) {
         throw SLException.typeError(node, "<", left, right);
     }
 
