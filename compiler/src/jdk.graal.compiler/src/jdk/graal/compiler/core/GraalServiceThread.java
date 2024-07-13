@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.core;
 
-import jdk.vm.ci.services.Services;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 
 /**
  * This is a utility class for Threads started by the compiler itself. In certain execution
@@ -65,7 +65,7 @@ public class GraalServiceThread extends Thread {
      * @param error the error
      */
     protected void onAttachError(InternalError error) {
-        if (Boolean.parseBoolean(Services.getSavedProperty("GraalServiceThread.verbose", "false"))) {
+        if (Boolean.parseBoolean(GraalServices.getSavedProperty("GraalServiceThread.verbose", "false"))) {
             error.printStackTrace();
         }
     }

@@ -107,7 +107,7 @@ public final class CallTreePrinter {
 
         @Override
         public String format() {
-            return methodNode.method.format(METHOD_FORMAT) + " id-ref=" + methodNode.id;
+            return ReportUtils.loaderName(methodNode.method.getDeclaringClass()) + ':' + methodNode.method.format(METHOD_FORMAT) + " id-ref=" + methodNode.id;
         }
 
     }
@@ -137,7 +137,7 @@ public final class CallTreePrinter {
 
         @Override
         public String format() {
-            return method.format(METHOD_FORMAT) + " id=" + id;
+            return ReportUtils.loaderName(method.getDeclaringClass()) + ':' + method.format(METHOD_FORMAT) + " id=" + id;
         }
     }
 
@@ -317,7 +317,7 @@ public final class CallTreePrinter {
     private void printUsedMethods(PrintWriter out) {
         List<String> methodsList = new ArrayList<>();
         for (AnalysisMethod method : methodToNode.keySet()) {
-            methodsList.add(method.format("%H.%n(%p):%r"));
+            methodsList.add(ReportUtils.loaderName(method.getDeclaringClass()) + ':' + method.format(METHOD_FORMAT));
         }
         methodsList.sort(null);
         for (String name : methodsList) {
@@ -335,8 +335,8 @@ public final class CallTreePrinter {
 
     public Set<String> classesSet(boolean packageNameOnly) {
         Set<String> classSet = new HashSet<>();
-        for (AnalysisMethod method : methodToNode.keySet()) {
-            String name = method.getDeclaringClass().toJavaName(true);
+        for (AnalysisType type : usedAnalysisTypes()) {
+            String name = type.toJavaName(true);
             if (packageNameOnly) {
                 name = packagePrefix(name);
                 if (LambdaUtils.isLambdaClassName(name)) {
@@ -344,7 +344,15 @@ public final class CallTreePrinter {
                     name = packagePrefix(name);
                 }
             }
-            classSet.add(name);
+            classSet.add(ReportUtils.loaderName(type) + ':' + name);
+        }
+        return classSet;
+    }
+
+    public Set<AnalysisType> usedAnalysisTypes() {
+        Set<AnalysisType> classSet = new HashSet<>();
+        for (AnalysisMethod method : methodToNode.keySet()) {
+            classSet.add(method.getDeclaringClass());
         }
         return classSet;
     }

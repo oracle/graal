@@ -50,8 +50,12 @@ public class OptionsParser {
     /**
      * Gets an iterable of available {@link OptionDescriptors}.
      */
-    @ExcludeFromJacocoGeneratedReport("contains libgraal only path")
     public static Iterable<OptionDescriptors> getOptionsLoader() {
+        return getOptionsLoader(ClassLoader.getSystemClassLoader());
+    }
+
+    @ExcludeFromJacocoGeneratedReport("contains libgraal only path")
+    public static Iterable<OptionDescriptors> getOptionsLoader(ClassLoader loader) {
         if (IS_IN_NATIVE_IMAGE || cachedOptionDescriptors != null) {
             return cachedOptionDescriptors;
         }
@@ -61,7 +65,7 @@ public class OptionsParser {
          * need to start the provider search at the app class loader instead of the platform class
          * loader.
          */
-        return ServiceLoader.load(OptionDescriptors.class, ClassLoader.getSystemClassLoader());
+        return ServiceLoader.load(OptionDescriptors.class, loader);
     }
 
     @ExcludeFromJacocoGeneratedReport("only called when building libgraal")

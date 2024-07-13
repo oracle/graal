@@ -54,7 +54,6 @@ import jdk.graal.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.services.Services;
 
 //JaCoCo Exclude
 
@@ -92,7 +91,7 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
         this.printerSupplier = printerSupplier;
         /* Add the JVM and Java arguments to the graph properties to help identify it. */
         this.jvmArguments = jvmArguments();
-        this.sunJavaCommand = Services.getSavedProperty("sun.java.command");
+        this.sunJavaCommand = GraalServices.getSavedProperty("sun.java.command");
     }
 
     private static String jvmArguments() {

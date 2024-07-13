@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.lang.annotation.Target;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -139,6 +140,21 @@ public @interface TargetClass {
      * @since 22.3
      */
     String[] innerClass() default {};
+
+    /**
+     * Specifies a custom classloader that will be used to look up the substitutee class name.
+     *
+     * @since 24.2
+     */
+    Class<? extends Supplier<ClassLoader>> classLoader() default NoClassLoaderProvider.class;
+
+    /**
+     * Marker value for {@link #classLoader} that no custom classloader should be used.
+     *
+     * @since 24.2
+     */
+    interface NoClassLoaderProvider extends Supplier<ClassLoader> {
+    }
 
     /**
      * Substitute only if all provided predicates are true (default: unconditional substitution that

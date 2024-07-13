@@ -1310,13 +1310,74 @@ suite = {
             "jacoco" : "exclude",
         },
 
+        "com.oracle.svm.graal.hotspot" : {
+            "subDir": "src",
+            "sourceDirs" : [
+                "src"
+            ],
+            "dependencies": [
+                "sdk:JNIUTILS",
+                "compiler:GRAAL",
+                "SVM",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.services",
+                    "jdk.vm.ci.runtime",
+                ],
+            },
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "checkstyle" : "com.oracle.svm.hosted",
+            "javaCompliance" : "21+",
+            "workingSets" : "SVM",
+            "jacoco" : "exclude",
+        },
+
+        "com.oracle.svm.graal.hotspot.guestgraal" : {
+            "subDir": "src",
+            "sourceDirs" : [
+                "src",
+                "resources",
+            ],
+            "dependencies": [
+                "com.oracle.svm.graal.hotspot",
+                "sdk:NATIVEIMAGE",
+                "sdk:NATIVEBRIDGE",
+                "compiler:GRAAL",
+                "SVM",
+            ],
+            "requires": [
+                "java.management",
+                "jdk.management",
+            ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.jimage",
+                    "jdk.internal.misc",
+                ],
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.services",
+                    "jdk.vm.ci.runtime",
+                ],
+            },
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "checkstyle" : "com.oracle.svm.hosted",
+            "javaCompliance" : "21+",
+            "workingSets" : "SVM",
+            "jacoco" : "exclude",
+        },
+
         "com.oracle.svm.graal.hotspot.libgraal" : {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
+                "com.oracle.svm.graal.hotspot",
                 "com.oracle.svm.graal",
                 "compiler:GRAAL",
-                "sdk:JNIUTILS",
                 "sdk:NATIVEBRIDGE",
             ],
             "requires" : [
@@ -1819,7 +1880,8 @@ suite = {
                 "com.oracle.svm.graal.hotspot.libgraal",
             ],
             "overlaps" : [
-                "LIBRARY_SUPPORT"
+                "LIBRARY_SUPPORT",
+                "GUESTGRAAL_LIBRARY"
             ],
             "distDependencies": [
                 "SVM",
@@ -1827,6 +1889,21 @@ suite = {
                 "sdk:NATIVEBRIDGE",
             ],
             "defaultBuild": False,
+            "maven": False,
+        },
+
+        "GUESTGRAAL_LIBRARY": {
+            "subDir": "src",
+            "description" : "GuestGraal HotSpot Graal library support",
+            "javaCompliance" : "21+",
+            "dependencies": [
+                "com.oracle.svm.graal.hotspot.guestgraal",
+            ],
+            "distDependencies": [
+                "SVM",
+                "sdk:JNIUTILS",
+                "sdk:NATIVEBRIDGE",
+            ],
             "maven": False,
         },
 
