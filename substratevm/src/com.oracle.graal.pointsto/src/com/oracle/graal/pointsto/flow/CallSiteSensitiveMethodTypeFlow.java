@@ -29,8 +29,6 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import jdk.graal.compiler.options.OptionValues;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
@@ -40,6 +38,8 @@ import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysis
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
+
+import jdk.graal.compiler.options.OptionValues;
 
 public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
 
@@ -116,7 +116,10 @@ public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
         if (originalTypeFlow == null) {
             return null;
         }
-
+        if (originalTypeFlow instanceof FieldTypeFlow || originalTypeFlow instanceof ArrayElementsTypeFlow) {
+            // field and array flows are not call site sensitive and thus not cloneable
+            return originalTypeFlow.state;
+        }
         TypeState result = TypeState.forEmpty();
         for (MethodFlowsGraph methodFlows : clonedMethodFlows.values()) {
             TypeFlow<?> clonedTypeFlow = methodFlows.lookupCloneOf(bb, originalTypeFlow);
@@ -135,6 +138,10 @@ public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
     /** Check if the type flow is saturated, i.e., any of its clones is saturated. */
     @Override
     public boolean isSaturated(PointsToAnalysis bb, TypeFlow<?> originalTypeFlow) {
+        if (originalTypeFlow instanceof FieldTypeFlow || originalTypeFlow instanceof ArrayElementsTypeFlow) {
+            // field and array flows are not call site sensitive and thus not cloneable
+            return originalTypeFlow.isSaturated();
+        }
         boolean saturated = false;
         for (MethodFlowsGraph methodFlows : clonedMethodFlows.values()) {
             TypeFlow<?> clonedTypeFlow = methodFlows.lookupCloneOf(bb, originalTypeFlow);
