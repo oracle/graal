@@ -35,6 +35,7 @@ import java.util.Locale;
 import java.util.ServiceLoader;
 import java.util.regex.Pattern;
 
+import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -45,7 +46,7 @@ import org.graalvm.collections.MapCursor;
  */
 public class OptionsParser {
 
-    private static volatile List<OptionDescriptors> cachedOptionDescriptors;
+    private static volatile List<OptionDescriptors> libgraalOptionDescriptors;
 
     /**
      * Gets an iterable of available {@link OptionDescriptors}.
@@ -56,8 +57,9 @@ public class OptionsParser {
 
     @ExcludeFromJacocoGeneratedReport("contains libgraal only path")
     public static Iterable<OptionDescriptors> getOptionsLoader(ClassLoader loader) {
-        if (IS_IN_NATIVE_IMAGE || cachedOptionDescriptors != null) {
-            return cachedOptionDescriptors;
+        if (IS_IN_NATIVE_IMAGE) {
+            GraalError.guarantee(libgraalOptionDescriptors != null, "missing options");
+            return libgraalOptionDescriptors;
         }
         /*
          * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
@@ -69,9 +71,9 @@ public class OptionsParser {
     }
 
     @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
-    public static void setCachedOptionDescriptors(List<OptionDescriptors> list) {
+    public static void setLibgraalOptionDescriptors(List<OptionDescriptors> list) {
         assert IS_BUILDING_NATIVE_IMAGE : "Used to pre-initialize the option descriptors during native image generation";
-        OptionsParser.cachedOptionDescriptors = list;
+        OptionsParser.libgraalOptionDescriptors = list;
     }
 
     /**

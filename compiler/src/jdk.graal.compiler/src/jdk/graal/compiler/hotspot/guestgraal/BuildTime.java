@@ -90,7 +90,7 @@ public class BuildTime {
         Iterable<OptionDescriptors> optionsLoaderIterable = OptionsParser.getOptionsLoader(LOADER);
         List<OptionDescriptors> cachedOptionDescriptors = new ArrayList<>();
         optionsLoaderIterable.forEach(cachedOptionDescriptors::add);
-        OptionsParser.setCachedOptionDescriptors(List.copyOf(cachedOptionDescriptors));
+        OptionsParser.setLibgraalOptionDescriptors(List.copyOf(cachedOptionDescriptors));
     }
 
     @SuppressWarnings("unused")
