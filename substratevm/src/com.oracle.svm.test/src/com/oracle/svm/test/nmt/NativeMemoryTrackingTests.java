@@ -94,11 +94,11 @@ public class NativeMemoryTrackingTests {
         assertEquals(0, getUsedMemory());
 
         Pointer ptr1 = NativeMemory.malloc(M, NmtCategory.Code);
-        long peakUsed = NativeMemoryTracking.singleton().getPeakUsedMemory(NmtCategory.Code);
+        long peakUsed = NativeMemoryTracking.singleton().getPeakMallocMemory(NmtCategory.Code);
         assertEquals(M, peakUsed);
 
         Pointer ptr2 = NativeMemory.malloc(M, NmtCategory.Code);
-        peakUsed = NativeMemoryTracking.singleton().getPeakUsedMemory(NmtCategory.Code);
+        peakUsed = NativeMemoryTracking.singleton().getPeakMallocMemory(NmtCategory.Code);
         assertEquals(2 * M, peakUsed);
 
         NativeMemory.free(ptr1);
@@ -108,21 +108,21 @@ public class NativeMemoryTrackingTests {
         ptr2 = WordFactory.nullPointer();
 
         assertEquals(0, getUsedMemory());
-        assertEquals(2 * M, NativeMemoryTracking.singleton().getPeakUsedMemory(NmtCategory.Code));
+        assertEquals(2 * M, NativeMemoryTracking.singleton().getPeakMallocMemory(NmtCategory.Code));
 
         Pointer ptr3 = NativeMemory.malloc(3 * M, NmtCategory.Code);
-        peakUsed = NativeMemoryTracking.singleton().getPeakUsedMemory(NmtCategory.Code);
+        peakUsed = NativeMemoryTracking.singleton().getPeakMallocMemory(NmtCategory.Code);
         assertEquals(3 * M, peakUsed);
 
         NativeMemory.free(ptr3);
         ptr3 = WordFactory.nullPointer();
 
         assertEquals(0, getUsedMemory());
-        assertEquals(3 * M, NativeMemoryTracking.singleton().getPeakUsedMemory(NmtCategory.Code));
+        assertEquals(3 * M, NativeMemoryTracking.singleton().getPeakMallocMemory(NmtCategory.Code));
     }
 
     private static long getUsedMemory() {
-        return NativeMemoryTracking.singleton().getUsedMemory(NmtCategory.Code);
+        return NativeMemoryTracking.singleton().getMallocMemory(NmtCategory.Code);
     }
 
     @Test
@@ -387,7 +387,7 @@ public class NativeMemoryTrackingTests {
         assertEquals("Test should start with no memory already allocated in the test category.", 0, getReserved());
         assertEquals("Test should start with no memory already allocated in the test category.", 0, getCommitted());
 
-        long initialPeak = NativeMemoryTracking.singleton().getPeakReservedByCategory(NmtCategory.Code);
+        long initialPeak = NativeMemoryTracking.singleton().getPeakReservedVirtualMemory(NmtCategory.Code);
 
         Pointer reservePtr1 = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(initialPeak), GRANULARITY, false,
                         NmtCategory.Code);
@@ -396,34 +396,34 @@ public class NativeMemoryTrackingTests {
         Pointer reservePtr2 = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(initialPeak), GRANULARITY, false,
                         NmtCategory.Code);
         long peakReserved = getReserved();
-        assertEquals(peakReserved, NativeMemoryTracking.singleton().getPeakReservedByCategory(NmtCategory.Code));
+        assertEquals(peakReserved, NativeMemoryTracking.singleton().getPeakReservedVirtualMemory(NmtCategory.Code));
 
         free(reservePtr1, initialPeak);
         free(reservePtr2, initialPeak);
 
-        assertEquals(peakReserved, NativeMemoryTracking.singleton().getPeakReservedByCategory(NmtCategory.Code));
+        assertEquals(peakReserved, NativeMemoryTracking.singleton().getPeakReservedVirtualMemory(NmtCategory.Code));
         assertEquals(0, getReserved());
     }
 
     @Test
     public void testCommittedPeak() {
-        long initialPeak = NativeMemoryTracking.singleton().getPeakCommittedByCategory(NmtCategory.Code);
+        long initialPeak = NativeMemoryTracking.singleton().getPeakCommittedVirtualMemory(NmtCategory.Code);
         long largeReserveSize = initialPeak * 2;
         int largeCommitSize = (int) initialPeak;
         Pointer reservePtr = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(largeReserveSize), HeapParameters.getAlignedHeapChunkSize(), false,
                         NmtCategory.Code);
 
         Pointer commitPtr1 = commit(reservePtr, largeCommitSize);
-        assertEquals(getCommitted(), NativeMemoryTracking.singleton().getPeakCommittedByCategory(NmtCategory.Code));
+        assertEquals(getCommitted(), NativeMemoryTracking.singleton().getPeakCommittedVirtualMemory(NmtCategory.Code));
 
         Pointer commitPtr2 = commit(commitPtr1.add(largeCommitSize), largeCommitSize);
         long recordedCommittedSize2 = getCommitted();
-        assertEquals(recordedCommittedSize2, NativeMemoryTracking.singleton().getPeakCommittedByCategory(NmtCategory.Code));
+        assertEquals(recordedCommittedSize2, NativeMemoryTracking.singleton().getPeakCommittedVirtualMemory(NmtCategory.Code));
 
         uncommit(commitPtr1, largeCommitSize);
         uncommit(commitPtr2, largeCommitSize);
         assertEquals(0, getCommitted());
-        assertEquals(recordedCommittedSize2, NativeMemoryTracking.singleton().getPeakCommittedByCategory(NmtCategory.Code));
+        assertEquals(recordedCommittedSize2, NativeMemoryTracking.singleton().getPeakCommittedVirtualMemory(NmtCategory.Code));
 
         free(reservePtr, largeReserveSize);
         assertEquals(0, getReserved());
@@ -447,11 +447,11 @@ public class NativeMemoryTrackingTests {
     }
 
     private static long getReserved() {
-        return NativeMemoryTracking.singleton().getReservedByCategory(NmtCategory.Code);
+        return NativeMemoryTracking.singleton().getReservedVirtualMemory(NmtCategory.Code);
     }
 
     private static long getCommitted() {
-        return NativeMemoryTracking.singleton().getCommittedByCategory(NmtCategory.Code);
+        return NativeMemoryTracking.singleton().getCommittedVirtualMemory(NmtCategory.Code);
     }
 
     private static Pointer beginVirtualMemoryTestAndReserve() {

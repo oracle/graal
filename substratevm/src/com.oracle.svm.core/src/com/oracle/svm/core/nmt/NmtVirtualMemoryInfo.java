@@ -81,18 +81,22 @@ class NmtVirtualMemoryInfo {
         }
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     long getReservedSize() {
         return reservedSize.get();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     long getCommittedSize() {
         return committedSize.get();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     long getPeakReservedSize() {
         return peakReservedSize.get();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     long getPeakCommittedSize() {
         return peakCommittedSize.get();
     }
