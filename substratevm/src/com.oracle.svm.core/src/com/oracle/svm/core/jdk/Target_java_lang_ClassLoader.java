@@ -46,7 +46,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
-import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.java.LambdaUtils;
@@ -206,11 +205,6 @@ public final class Target_java_lang_ClassLoader {
     @Alias
     native Stream<Package> packages();
 
-    @SuppressWarnings("static-method")
-    @Substitute
-    public Target_java_lang_Module getUnnamedModule() {
-        return ClassLoaderUtil.unnamedModuleReference.get();
-    }
     /*
      * The assertion status of classes is fixed at image build time because it is baked into the AOT
      * compiled code. All methods that modify the assertion status are substituted to throw an
@@ -359,11 +353,6 @@ class PackageFieldTransformer implements FieldValueTransformerWithAvailability {
             return useConcurrentHashMap ? packages : new HashMap<>(packages);
         }
     }
-}
-
-final class ClassLoaderUtil {
-
-    public static final LazyFinalReference<Target_java_lang_Module> unnamedModuleReference = new LazyFinalReference<>(Target_java_lang_Module::new);
 }
 
 @TargetClass(className = "java.lang.ClassLoader", innerClass = "ParallelLoaders")
