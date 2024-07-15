@@ -1269,7 +1269,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
-                            graphToCompile.getProfilingInfo(), suites, createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, null, true);
+                            graphToCompile.getProfilingInfo(), suites, createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, null, null, true);
             CompilationResult result = GraalCompiler.compile(request);
             graphToCompile.getOptimizationLog().emit(new StableMethodNameFormatter(getDefaultGraphBuilderPhase(), getProviders(), graphToCompile.getDebug()));
             return result;

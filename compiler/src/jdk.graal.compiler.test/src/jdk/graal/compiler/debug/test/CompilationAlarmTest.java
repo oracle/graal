@@ -111,7 +111,7 @@ public class CompilationAlarmTest extends GraalCompilerTest {
                 CompilationIdentifier compilationId = getOrCreateCompilationId(codeOwner, graph);
                 Request<CompilationResult> request = new Request<>(graph, codeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
                                 graph.getProfilingInfo(), getSuites(thread, workSeconds, withProgressCounterEvents, opt), createLIRSuites(opt), new CompilationResult(compilationId),
-                                CompilationResultBuilderFactory.Default, null, true);
+                                CompilationResultBuilderFactory.Default, null, null, true);
                 try {
                     GraalCompiler.compile(request);
                     if (expectedExceptionText != null) {

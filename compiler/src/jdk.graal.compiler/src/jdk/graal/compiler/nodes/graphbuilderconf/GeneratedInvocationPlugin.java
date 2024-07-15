@@ -30,6 +30,7 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.util.List;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.debug.GraalError;
@@ -37,7 +38,6 @@ import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.nodes.PluginReplacementNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
-
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -47,6 +47,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * {@link Fold}.
  */
 public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvocationPlugin {
+
+    private static List<Class<?>> foldNodePluginClasses = List.of(GeneratedFoldInvocationPlugin.class, PluginReplacementNode.ReplacementFunction.class);
+
+    public static void setFoldNodePluginClasses(List<Class<?>> customFoldNodePluginClasses) {
+        foldNodePluginClasses = customFoldNodePluginClasses;
+    }
+
+    public static List<Class<?>> getFoldNodePluginClasses() {
+        return foldNodePluginClasses;
+    }
 
     private ResolvedJavaMethod executeMethod;
 
@@ -90,13 +100,11 @@ public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvoca
         if (IS_BUILDING_NATIVE_IMAGE) {
             // The use of this plugin in the plugin itself shouldn't be folded since that defeats
             // the purpose of the fold.
-            ResolvedJavaType foldNodeClass = b.getMetaAccess().lookupJavaType(PluginReplacementNode.ReplacementFunction.class);
-            if (foldNodeClass.isAssignableFrom(b.getMethod().getDeclaringClass())) {
-                return false;
-            }
-            ResolvedJavaType foldPluginClass = b.getMetaAccess().lookupJavaType(GeneratedFoldInvocationPlugin.class);
-            if (foldPluginClass.isAssignableFrom(b.getMethod().getDeclaringClass())) {
-                return false;
+            for (Class<?> foldNodePluginClass : foldNodePluginClasses) {
+                ResolvedJavaType foldNodeClass = b.getMetaAccess().lookupJavaType(foldNodePluginClass);
+                if (foldNodeClass.isAssignableFrom(b.getMethod().getDeclaringClass())) {
+                    return false;
+                }
             }
         }
 

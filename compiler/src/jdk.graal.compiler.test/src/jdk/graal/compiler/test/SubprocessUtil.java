@@ -45,17 +45,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.junit.Assume;
 
 import jdk.graal.compiler.util.CollectionsUtil;
-import jdk.vm.ci.services.Services;
 
 /**
  * Utility methods for spawning a VM in a subprocess during unit tests.
  */
 public final class SubprocessUtil {
 
-    private static final boolean DEBUG = Boolean.parseBoolean(Services.getSavedProperty("debug." + SubprocessUtil.class.getName()));
+    private static final boolean DEBUG = Boolean.parseBoolean(GraalServices.getSavedProperty("debug." + SubprocessUtil.class.getName()));
 
     private SubprocessUtil() {
     }

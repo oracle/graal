@@ -38,6 +38,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -111,7 +112,7 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
     }
 
     private void initialize() {
-        JVMCIVersionCheck.check(Services.getSavedProperties(), false, null);
+        JVMCIVersionCheck.check(GraalServices.getSavedProperties(), false, null);
         assert options == null : "cannot select " + getClass() + " service more than once";
         try {
             options = HotSpotGraalOptionValues.defaultOptions();

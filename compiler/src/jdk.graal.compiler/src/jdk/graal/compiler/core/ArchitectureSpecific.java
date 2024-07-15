@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.truffle.test;
 
-import org.graalvm.polyglot.Context;
-import org.junit.Test;
+package jdk.graal.compiler.core;
 
-/**
- * Test lazy initialization of Graal in the context of Truffle. When simply executing Truffle code,
- * Graal should not be initialized unless there is an actual call targets created.
- */
-/*
- * This test is used indirectly by jdk.graal.compiler.truffle.test.LazyInitializationTest.
- */
-public class LazyClassLoadingTargetPositiveTest {
+import jdk.vm.ci.code.Architecture;
 
-    @Test
-    public void testInit() {
-        Context c = Context.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "false").build();
-        c.initialize("sl"); // creates builtin call targets and triggers initialization
-        c.close();
-    }
-
+public interface ArchitectureSpecific {
+    /**
+     * Gets the {@linkplain Architecture#getName() name} of the architecture this Graal component is
+     * associated with.
+     */
+    String getArchitecture();
 }

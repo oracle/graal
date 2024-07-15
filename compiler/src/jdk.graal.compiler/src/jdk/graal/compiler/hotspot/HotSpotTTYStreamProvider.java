@@ -47,7 +47,6 @@ import jdk.graal.compiler.word.Word;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.services.Services;
 
 @ServiceProvider(TTYStreamProvider.class)
 public class HotSpotTTYStreamProvider implements TTYStreamProvider {
@@ -225,7 +224,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                 if (inputArguments != null) {
                     ps.println("VM Arguments: " + String.join(" ", inputArguments));
                 }
-                String cmd = Services.getSavedProperty("sun.java.command");
+                String cmd = GraalServices.getSavedProperty("sun.java.command");
                 if (cmd != null) {
                     ps.println("sun.java.command=" + cmd);
                 }

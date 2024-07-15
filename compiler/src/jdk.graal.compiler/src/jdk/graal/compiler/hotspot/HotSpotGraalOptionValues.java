@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionDescriptors;
@@ -40,7 +41,6 @@ import jdk.graal.compiler.options.OptionsParser;
 
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.common.NativeImageReinitialize;
-import jdk.vm.ci.services.Services;
 
 /**
  * The {@link #defaultOptions()} method returns the options values initialized in a HotSpot VM. The
@@ -98,7 +98,7 @@ public class HotSpotGraalOptionValues {
     }
 
     /**
-     * Gets and parses options based on {@linkplain Services#getSavedProperties() saved system
+     * Gets and parses options based on {@linkplain GraalServices#getSavedProperties() saved system
      * properties}. The values for these options are initialized by parsing system properties whose
      * names start with {@value #GRAAL_OPTION_PROPERTY_PREFIX}.
      */
@@ -108,7 +108,7 @@ public class HotSpotGraalOptionValues {
         try (InitTimer t = timer("InitializeOptions")) {
 
             Iterable<OptionDescriptors> descriptors = OptionsParser.getOptionsLoader();
-            Map<String, String> savedProps = jdk.vm.ci.services.Services.getSavedProperties();
+            Map<String, String> savedProps = GraalServices.getSavedProperties();
 
             EconomicMap<String, String> compilerOptionSettings = EconomicMap.create();
             EconomicMap<String, String> vmOptionSettings = EconomicMap.create();
@@ -176,14 +176,13 @@ public class HotSpotGraalOptionValues {
         }
     }
 
-    /**
-     * Substituted by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues}
-     * to update {@code com.oracle.svm.core.option.RuntimeOptionValues.singleton()} instead of
-     * creating a new {@link OptionValues} object.
-     */
     private static OptionValues initializeOptions() {
-        return new OptionValues(parseOptions());
+        EconomicMap<OptionKey<?>, Object> values = parseOptions();
+        OptionValues options = new OptionValues(values);
+        if (HotSpotGraalCompiler.Options.CrashAtThrowsOOME.getValue(options) && HotSpotGraalCompiler.Options.CrashAtIsFatal.getValue(options) != 0) {
+            throw new IllegalArgumentException("CrashAtThrowsOOME and CrashAtIsFatal cannot both be enabled");
+        }
+        return options;
     }
 
     static void printProperties(OptionValues compilerOptions, PrintStream out) {

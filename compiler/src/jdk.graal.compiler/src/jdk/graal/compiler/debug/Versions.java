@@ -32,13 +32,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.vm.ci.services.Services;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 
 /** Avoid using directly. Only public for the needs of unit testing. */
 public final class Versions {
     static final Versions VERSIONS;
     static {
-        String home = Services.getSavedProperty("java.home");
+        String home = GraalServices.getSavedProperty("java.home");
         VERSIONS = new Versions(home);
     }
 

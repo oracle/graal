@@ -748,6 +748,8 @@ class ShellEscapedStringAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         # do not override existing values
         old_values = getattr(namespace, self.dest)
+        # shlex.split interprets '\' as an escape char so it needs to be escaped itself
+        values = values.replace("\\", "\\\\")
         setattr(namespace, self.dest, (old_values if old_values else []) + shlex.split(values))
 
 mx_gate.add_gate_runner(_suite, _graal_gate_runner)
