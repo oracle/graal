@@ -29,6 +29,6 @@ package com.oracle.svm.core.jfr;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDKLatest;
 
-@TargetClass(className = "jdk.jfr.internal.HiddenWait", onlyWith = {HasJfrSupport.class, JDKLatest.class})
-public final class Target_jdk_jfr_internal_HiddenWait {
+@TargetClass(className = "jdk.jfr.internal.management.HiddenWait", onlyWith = {HasJfrSupport.class, JDKLatest.class})
+public final class Target_jdk_jfr_internal_management_HiddenWait {
 }
