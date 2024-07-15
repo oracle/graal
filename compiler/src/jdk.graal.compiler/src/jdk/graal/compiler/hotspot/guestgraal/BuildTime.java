@@ -54,7 +54,8 @@ import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotInvocationPluginProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
-import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.truffle.PartialEvaluatorConfiguration;
@@ -78,19 +79,39 @@ public class BuildTime {
     private static final ClassLoader LOADER = BuildTime.class.getClassLoader();
 
     /**
-     * This method gets called from {@code GuestGraalFeature#afterRegistration()} to ensure static
-     * field {@code OptionsParser#cachedOptionDescriptors} gets initialized only with
-     * OptionDescriptors service providers from the classes in the GuestGraalClassLoader.
+     * Creates and {@linkplain OptionsParser#setLibgraalOptionDescriptors registers} the map used
+     * for looking up libgraal compiler options.
      */
     @SuppressWarnings("unused")
-    public static void configureOptionsParserCachedOptionDescriptors() {
+    public static Object initLibgraalOptionDescriptors() {
+        EconomicMap<String, OptionDescriptor> descriptors = EconomicMap.create();
+        OptionsParser.setLibgraalOptionDescriptors(descriptors);
+        return descriptors;
+    }
+
+    /**
+     * Processes the entries in {@code optionObjects} and adds their
+     * {@linkplain OptionDescriptor#isServiceLoaded() non-service loaded} descriptors to
+     * {@code descriptorsObject}.
+     *
+     * @param optionObjects a list of {@link OptionKey} objects
+     * @param descriptorsObject the value returned by {@link #initLibgraalOptionDescriptors()}
+     * @return the {@link OptionDescriptor} objects added to {@code descriptorsObject}
+     */
+    @SuppressWarnings({"unused", "unchecked"})
+    public static Iterable<?> finalizeLibgraalOptionDescriptors(List<Object> optionObjects, Object descriptorsObject) {
         GraalError.guarantee(VALID_LOADER_NAME.equals(LOADER.getName()),
                         "Only call this method from classloader " + VALID_LOADER_NAME);
-
-        Iterable<OptionDescriptors> optionsLoaderIterable = OptionsParser.getOptionsLoader(LOADER);
-        List<OptionDescriptors> cachedOptionDescriptors = new ArrayList<>();
-        optionsLoaderIterable.forEach(cachedOptionDescriptors::add);
-        OptionsParser.setLibgraalOptionDescriptors(List.copyOf(cachedOptionDescriptors));
+        EconomicMap<String, OptionDescriptor> descriptors = (EconomicMap<String, OptionDescriptor>) descriptorsObject;
+        for (Object optionObject : optionObjects) {
+            OptionKey<?> option = (OptionKey<?>) optionObject;
+            OptionDescriptor descriptor = option.getDescriptor();
+            if (descriptor.isServiceLoaded()) {
+                String name = option.getName();
+                descriptors.put(name, descriptor);
+            }
+        }
+        return descriptors.getValues();
     }
 
     @SuppressWarnings("unused")

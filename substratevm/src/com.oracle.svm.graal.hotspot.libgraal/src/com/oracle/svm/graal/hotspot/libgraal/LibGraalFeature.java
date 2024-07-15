@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal;
 
-import static com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalOptionValuesUtil.vmOptionDescriptors;
-
 import java.io.PrintStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -41,7 +39,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -97,7 +94,6 @@ import jdk.graal.compiler.nodes.spi.SnippetParameterInfo;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionDescriptorsMap;
-import jdk.graal.compiler.options.OptionGroup;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
@@ -119,7 +115,7 @@ import jdk.vm.ci.services.Services;
 
 public class LibGraalFeature implements InternalFeature {
 
-    private final OptionCollector optionCollector = new OptionCollector();
+    private final OptionCollector optionCollector = new OptionCollector(HotSpotGraalOptionValuesUtil.vmOptionDescriptors);
     private HotSpotReplacementsImpl hotSpotSubstrateReplacements;
 
     public LibGraalFeature() {
@@ -160,24 +156,29 @@ public class LibGraalFeature implements InternalFeature {
     /**
      * Collects all {@link OptionKey}s that are reachable at run time.
      * <p>
-     * This {@linkplain OptionsParser#setLibgraalOptionDescriptors(List) initializes} the set of
-     * compiler options available in libgraal to an empty set that is populated after analysis.
+     * This {@linkplain OptionsParser#setLibgraalOptionDescriptors initializes} the set of compiler
+     * options available in libgraal to an empty set that is populated after analysis.
      */
     private static class OptionCollector implements ObjectReachableCallback<OptionKey<?>> {
-        final ConcurrentHashMap<OptionKey<?>, OptionKey<?>> options = new ConcurrentHashMap<>();
+        private final ConcurrentHashMap<OptionKey<?>, OptionKey<?>> options = new ConcurrentHashMap<>();
 
         /**
-         * Graal compiler options. This is disjoint from
-         * {@link HotSpotGraalOptionValuesUtil#vmOptionDescriptors}.
+         * Libgraal compiler options. This is disjoint from {@link #vmOptionDescriptors}.
+         * {@link #vmOptionDescriptors}.
          */
-        final EconomicMap<String, OptionDescriptor> compilerOptionDescriptors;
+        private final EconomicMap<String, OptionDescriptor> compilerOptionDescriptors;
+
+        /**
+         * Libgraal VM options. This is disjoint from {@link #compilerOptionDescriptors}.
+         */
+        private final EconomicMap<String, OptionDescriptor> vmOptionDescriptors;
 
         private boolean sealed;
 
-        OptionCollector() {
-            compilerOptionDescriptors = EconomicMap.create();
-            List<OptionDescriptors> list = Collections.singletonList(new OptionDescriptorsMap(compilerOptionDescriptors));
-            OptionsParser.setLibgraalOptionDescriptors(list);
+        OptionCollector(EconomicMap<String, OptionDescriptor> vmOptionDescriptors) {
+            this.compilerOptionDescriptors = EconomicMap.create();
+            this.vmOptionDescriptors = vmOptionDescriptors;
+            OptionsParser.setLibgraalOptionDescriptors(compilerOptionDescriptors);
         }
 
         @Override
@@ -189,8 +190,21 @@ public class LibGraalFeature implements InternalFeature {
             }
         }
 
-        public void setSealed() {
+        void afterAnalysis(AfterAnalysisAccess access) {
             sealed = true;
+            for (OptionKey<?> option : options.keySet()) {
+                OptionDescriptor descriptor = option.getDescriptor();
+                if (descriptor.isServiceLoaded()) {
+                    VMError.guarantee(access.isReachable(option.getClass()));
+                    VMError.guarantee(access.isReachable(descriptor.getClass()));
+                    String name = option.getName();
+                    if (!isNativeImageOption(option)) {
+                        compilerOptionDescriptors.put(name, descriptor);
+                    } else {
+                        vmOptionDescriptors.put(name, descriptor);
+                    }
+                }
+            }
         }
     }
 
@@ -293,30 +307,8 @@ public class LibGraalFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        optionCollector.setSealed();
-
+        optionCollector.afterAnalysis(access);
         verifyReachableTruffleClasses(access);
-        registerReachableOptions(access);
-    }
-
-    private void registerReachableOptions(AfterAnalysisAccess access) {
-        vmOptionDescriptors = EconomicMap.create();
-        for (OptionKey<?> option : optionCollector.options.keySet()) {
-            OptionDescriptor descriptor = option.getDescriptor();
-            OptionGroup group = descriptor.getDeclaringClass().getAnnotation(OptionGroup.class);
-            if (group != null && !group.registerAsService()) {
-                // Ignore options (such as TruffleCompilerOptions) that should not
-                // be service loaded.
-                continue;
-            }
-            VMError.guarantee(access.isReachable(option.getClass()));
-            VMError.guarantee(access.isReachable(descriptor.getClass()));
-            if (!isNativeImageOption(option)) {
-                optionCollector.compilerOptionDescriptors.put(option.getName(), descriptor);
-            } else {
-                vmOptionDescriptors.put(option.getName(), descriptor);
-            }
-        }
     }
 
     /**
@@ -454,47 +446,52 @@ final class Target_jdk_vm_ci_hotspot_DirectHotSpotObjectConstantImpl {
 final class Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues {
 
     @Substitute
-    private static void notifyLibgraalOptions(EconomicMap<OptionKey<?>, Object> compilerOptionValues, EconomicMap<String, String> vmOptionSettings) {
-        HotSpotGraalOptionValuesUtil.initializeOptions(compilerOptionValues, vmOptionSettings);
+    private static void notifyLibgraalOptions(Map<String, String> vmOptionSettings) {
+        HotSpotGraalOptionValuesUtil.initializeOptions(vmOptionSettings);
     }
 
     @Substitute
     private static void printLibgraalProperties(PrintStream out, String prefix) {
-        RuntimeOptionValues vmOptions = RuntimeOptionValues.singleton();
-        Iterable<OptionDescriptors> vmOptionLoader = Collections.singletonList(new OptionDescriptorsMap(vmOptionDescriptors));
-        vmOptions.printHelp(vmOptionLoader, out, prefix, true);
+        HotSpotGraalOptionValuesUtil.printOptions(out, prefix);
     }
 }
 
+/**
+ * Support for {@link Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues}.
+ */
 final class HotSpotGraalOptionValuesUtil {
     /**
      * Options configuring the VM in which libgraal is running.
      */
     @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl") //
-    static EconomicMap<String, OptionDescriptor> vmOptionDescriptors;
+    static EconomicMap<String, OptionDescriptor> vmOptionDescriptors = EconomicMap.create();
 
-    static void initializeOptions(EconomicMap<OptionKey<?>, Object> compilerOptionValues, EconomicMap<String, String> vmOptionSettings) {
+    static void initializeOptions(Map<String, String> settings) {
+        processXOptions(settings);
+        EconomicMap<OptionKey<?>, Object> vmOptionValues = OptionValues.newOptionMap();
+        Iterable<OptionDescriptors> vmOptionLoader = List.of(new OptionDescriptorsMap(vmOptionDescriptors));
+        OptionsParser.parseOptions(EconomicMap.wrapMap(settings), vmOptionValues, vmOptionLoader);
+        RuntimeOptionValues.singleton().update(vmOptionValues);
+    }
 
-        RuntimeOptionValues vmOptions = RuntimeOptionValues.singleton();
-        vmOptions.update(compilerOptionValues);
-
-        if (!vmOptionSettings.isEmpty()) {
-            MapCursor<String, String> entries = vmOptionSettings.getEntries();
-            while (entries.advance()) {
-                String key = entries.getKey();
-                String value = entries.getValue();
-                if (key.startsWith("X") && value.isEmpty()) {
-                    String xarg = key.substring(1);
-                    if (XOptions.setOption(xarg)) {
-                        entries.remove();
-                    }
+    private static void processXOptions(Map<String, String> settings) {
+        for (var i = settings.entrySet().iterator(); i.hasNext();) {
+            var e = i.next();
+            String key = e.getKey();
+            String value = e.getValue();
+            if (key.startsWith("X") && value.isEmpty()) {
+                String xarg = key.substring(1);
+                if (XOptions.setOption(xarg)) {
+                    i.remove();
                 }
             }
-            EconomicMap<OptionKey<?>, Object> vmOptionValues = OptionValues.newOptionMap();
-            Iterable<OptionDescriptors> vmOptionLoader = Collections.singletonList(new OptionDescriptorsMap(vmOptionDescriptors));
-            OptionsParser.parseOptions(vmOptionSettings, vmOptionValues, vmOptionLoader);
-            vmOptions.update(vmOptionValues);
         }
+    }
+
+    static void printOptions(PrintStream out, String prefix) {
+        RuntimeOptionValues vmOptions = RuntimeOptionValues.singleton();
+        Iterable<OptionDescriptors> vmOptionLoader = Collections.singletonList(new OptionDescriptorsMap(vmOptionDescriptors));
+        vmOptions.printHelp(vmOptionLoader, out, prefix, true);
     }
 }
 

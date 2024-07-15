@@ -46,34 +46,46 @@ import org.graalvm.collections.MapCursor;
  */
 public class OptionsParser {
 
-    private static volatile List<OptionDescriptors> libgraalOptionDescriptors;
+    /**
+     * The set of compiler options available in libgraal. These correspond to the reachable
+     * {@link OptionKey}s discovered during Native Image static analysis. This field is only
+     * non-null when {@link OptionsParser} is loaded by the GuestGraal class loader.
+     */
+    private static EconomicMap<String, OptionDescriptor> libgraalOptionDescriptors;
 
     /**
      * Gets an iterable of available {@link OptionDescriptors}.
      */
+    @ExcludeFromJacocoGeneratedReport("contains libgraal-only path")
     public static Iterable<OptionDescriptors> getOptionsLoader() {
-        return getOptionsLoader(ClassLoader.getSystemClassLoader());
-    }
-
-    @ExcludeFromJacocoGeneratedReport("contains libgraal only path")
-    public static Iterable<OptionDescriptors> getOptionsLoader(ClassLoader loader) {
         if (IS_IN_NATIVE_IMAGE) {
             GraalError.guarantee(libgraalOptionDescriptors != null, "missing options");
-            return libgraalOptionDescriptors;
+            return List.of(new OptionDescriptorsMap(libgraalOptionDescriptors));
         }
-        /*
-         * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
-         * Modules that depend on and extend Graal are loaded by the app class loader. As such, we
-         * need to start the provider search at the app class loader instead of the platform class
-         * loader.
-         */
-        return ServiceLoader.load(OptionDescriptors.class, loader);
+        boolean inGuestGraal = libgraalOptionDescriptors != null;
+        if (inGuestGraal && IS_BUILDING_NATIVE_IMAGE) {
+            /*
+             * Graal code is being run in the context of the GuestGraal loader while building
+             * libgraal so use the GuestGraal loader to load the OptionDescriptors.
+             */
+            ClassLoader myCL = OptionsParser.class.getClassLoader();
+            return ServiceLoader.load(OptionDescriptors.class, myCL);
+        } else {
+            /*
+             * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
+             * Modules that depend on and extend Graal are loaded by the app class loader so use it
+             * (instead of the platform class loader) to load the OptionDescriptors.
+             */
+            ClassLoader loader = ClassLoader.getSystemClassLoader();
+            return ServiceLoader.load(OptionDescriptors.class, loader);
+        }
     }
 
     @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
-    public static void setLibgraalOptionDescriptors(List<OptionDescriptors> list) {
-        assert IS_BUILDING_NATIVE_IMAGE : "Used to pre-initialize the option descriptors during native image generation";
-        OptionsParser.libgraalOptionDescriptors = list;
+    public static void setLibgraalOptionDescriptors(EconomicMap<String, OptionDescriptor> descriptors) {
+        GraalError.guarantee(IS_BUILDING_NATIVE_IMAGE, "Can only set libgraal compiler options when building libgraal");
+        GraalError.guarantee(libgraalOptionDescriptors == null, "Libgraal compiler options must be set exactly once");
+        OptionsParser.libgraalOptionDescriptors = descriptors;
     }
 
     /**

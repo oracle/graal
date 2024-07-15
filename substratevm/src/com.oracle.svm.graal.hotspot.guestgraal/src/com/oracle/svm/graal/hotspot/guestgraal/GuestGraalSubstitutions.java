@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.graal.hotspot.guestgraal;
 
+import java.io.PrintStream;
 import java.lang.ref.Cleaner;
 import java.lang.ref.ReferenceQueue;
 import java.util.Map;
@@ -416,6 +417,20 @@ public class GuestGraalSubstitutions {
                 throw VMError.shouldNotReachHere(String.format("Unknown composite value class: %s%n", clazz.getName()));
             }
             return SubstrateUtil.cast(compositeValueClass, Target_jdk_graal_compiler_lir_CompositeValueClass.class);
+        }
+    }
+
+    @TargetClass(className = "jdk.graal.compiler.hotspot.HotSpotGraalOptionValues", classLoader = GuestGraalClassLoaderSupplier.class, onlyWith = GuestGraalFeature.IsEnabled.class)
+    final class Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues {
+
+        @Substitute
+        private static void notifyLibgraalOptions(Map<String, String> vmOptionSettings) {
+            GuestGraal.initializeOptions(vmOptionSettings);
+        }
+
+        @Substitute
+        private static void printLibgraalProperties(PrintStream out, String prefix) {
+            GuestGraal.printOptions(out, prefix);
         }
     }
 }
