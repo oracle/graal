@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.config;
 
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.ReachabilityMetadataResources;
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllNameEntriesAsType;
 
 import java.io.IOException;
@@ -86,7 +87,8 @@ public final class ConfigurationParserUtils {
     }
 
     public static int parseAndRegisterConfigurationsFromCombinedFile(ConfigurationParser parser, ImageClassLoader classLoader, String featureName) {
-        return parseAndRegisterConfigurations(parser, classLoader, featureName, ConfigurationFile.REACHABILITY_METADATA.getFileName(), Collections.emptyList(), Collections.emptyList());
+        return parseAndRegisterConfigurations(parser, classLoader, featureName, ConfigurationFile.REACHABILITY_METADATA.getFileName(), Collections.emptyList(),
+                        ReachabilityMetadataResources.getValue().values());
     }
 
     public static int parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader,
