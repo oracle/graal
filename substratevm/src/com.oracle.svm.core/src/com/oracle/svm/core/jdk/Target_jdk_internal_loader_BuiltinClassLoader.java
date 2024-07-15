@@ -54,7 +54,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     protected Class<?> loadClass(String cn, boolean resolve) throws ClassNotFoundException {
-        return ClassLoaderUtil.loadClass(SubstrateUtil.cast(this, Target_java_lang_ClassLoader.class), cn);
+        return ClassLoaderUtil.loadClass(SubstrateUtil.cast(this, Target_java_lang_ClassLoader.class), cn, true);
     }
 
     @Substitute

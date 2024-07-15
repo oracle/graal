@@ -125,7 +125,7 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings("unused")
     Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        return ClassLoaderUtil.loadClass(this, name);
+        return ClassLoaderUtil.loadClass(this, name, false);
     }
 
     @Substitute
@@ -307,16 +307,21 @@ final class Target_java_lang_AssertionStatusDirectives {
 
 final class ClassLoaderUtil {
 
-    public static Class<?> loadClass(Target_java_lang_ClassLoader receiver, String name) throws ClassNotFoundException {
+    public static Class<?> loadClass(Target_java_lang_ClassLoader receiver, String name, boolean isBuiltin) throws ClassNotFoundException {
         Class<?> clazz = receiver.findLoadedClass(name);
         if (clazz != null) {
             return clazz;
         }
         try {
-            if (receiver.parent != null) {
-                clazz = SubstrateUtil.cast(receiver.parent, ClassLoader.class).loadClass(name);
+            ClassLoader loaderForModule = isBuiltin ? ClassForNameSupport.singleton().findLoadedModuleLoader(name) : null;
+            if (loaderForModule != null) {
+                clazz = ClassForNameSupport.singleton().forNameOrNull(name, loaderForModule);
             } else {
-                clazz = Target_java_lang_ClassLoader.findBootstrapClassOrNull(name);
+                if (receiver.parent != null) {
+                    clazz = SubstrateUtil.cast(receiver.parent, ClassLoader.class).loadClass(name);
+                } else {
+                    clazz = Target_java_lang_ClassLoader.findBootstrapClassOrNull(name);
+                }
             }
             if (clazz != null) {
                 return clazz;

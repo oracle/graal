@@ -56,6 +56,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -67,6 +68,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.RuntimeModuleSupport;
@@ -254,6 +256,19 @@ public final class ModuleLayerFeature implements InternalFeature {
         List<ModuleLayer> runtimeModuleLayers = synthesizeRuntimeModuleLayers(accessImpl, reachableModuleLayers, runtimeImageNamedModules, analysisReachableSyntheticModules, rootModules);
         ModuleLayer runtimeBootLayer = runtimeModuleLayers.getFirst();
         RuntimeModuleSupport.instance().setBootLayer(runtimeBootLayer);
+
+        EconomicMap<String, ClassLoader> packageToLoader = EconomicMap.create();
+        for (Module bootLayerModule : runtimeBootLayer.modules()) {
+            ClassLoader loader = bootLayerModule.getClassLoader();
+            if (loader == null) {
+                /* Do nothing. Classes will be found via findBootstrapClassOrNull. */
+                continue;
+            }
+            for (String packageName : bootLayerModule.getPackages()) {
+                packageToLoader.put(packageName, loader);
+            }
+        }
+        ClassForNameSupport.singleton().setPackageToLoader(packageToLoader);
 
         /*
          * Ensure that runtime modules have the same relations (i.e., reads, opens and exports) as

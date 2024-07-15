@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -56,6 +57,23 @@ public final class ClassForNameSupport {
 
     public static ClassForNameSupport singleton() {
         return ImageSingletons.lookup(ClassForNameSupport.class);
+    }
+
+    @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl") //
+    private EconomicMap<String, ClassLoader> packageToLoader;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setPackageToLoader(EconomicMap<String, ClassLoader> packageToLoader) {
+        this.packageToLoader = packageToLoader;
+    }
+
+    public ClassLoader findLoadedModuleLoader(String cn) {
+        int pos = cn.lastIndexOf('.');
+        if (pos < 0) {
+            return null; /* unnamed package */
+        }
+        String pn = cn.substring(0, pos);
+        return packageToLoader.get(pn);
     }
 
     private record Entry(ClassLoader loader, String className) {
