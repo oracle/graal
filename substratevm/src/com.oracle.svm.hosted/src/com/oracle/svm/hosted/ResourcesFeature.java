@@ -84,9 +84,9 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.CompressedGlobTrie;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobTrieNode;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobUtils;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -635,6 +635,11 @@ public class ResourcesFeature implements InternalFeature {
 
             BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, reportLocation);
         }
+
+        /* prepare resources GlobTrie for runtime */
+        GlobTrieNode root = ImageSingletons.lookup(GlobTrieNode.class);
+        CompressedGlobTrie.removeNodes(root, (type) -> !access.isReachable(access.findClassByName(type)));
+        CompressedGlobTrie.finalize(root);
     }
 
     @Override
