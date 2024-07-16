@@ -186,6 +186,10 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                 Class<?> hotspotCompilationSupport = Class.forName(compilerModule, pkg + ".HotSpotTruffleCompilationSupport");
                 compilationSupport = (TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance();
                 if (!Boolean.getBoolean("polyglotimpl.DisableVersionChecks")) {
+                    String jvmciVersionCheckError = verifyJVMCIVersion(hotspotCompilationSupport);
+                    if (jvmciVersionCheckError != null) {
+                        return new DefaultTruffleRuntime(jvmciVersionCheckError);
+                    }
                     Version truffleVersion = getTruffleVersion();
                     Version compilerVersion = getCompilerVersion(compilationSupport);
                     if (!compilerVersion.equals(truffleVersion)) {
@@ -256,6 +260,25 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             throw new InternalError(e);
         }
         return compilerVersionString != null ? Version.parse(compilerVersionString) : Version.create(23, 1, 1);
+    }
+
+    private static String verifyJVMCIVersion(Class<?> hotspotCompilationSupport) {
+        /*
+         * The TruffleCompilationSupport is present in both the maven artifact
+         * org.graalvm.truffle/truffle-compiler and the JDK org.graalvm.truffle.compiler module. The
+         * JDK version of TruffleCompilationSupport may be outdated and lack the verifyJVMCIVersion
+         * method. To address this, we use reflection.
+         */
+        String errorMessage = null;
+        try {
+            Method verifyJVMCIVersion = hotspotCompilationSupport.getDeclaredMethod("verifyJVMCIVersion");
+            errorMessage = (String) verifyJVMCIVersion.invoke(null);
+        } catch (NoSuchMethodException noMethod) {
+            // pass with result set to true
+        } catch (ReflectiveOperationException e) {
+            throw new InternalError(e);
+        }
+        return errorMessage;
     }
 
     /**

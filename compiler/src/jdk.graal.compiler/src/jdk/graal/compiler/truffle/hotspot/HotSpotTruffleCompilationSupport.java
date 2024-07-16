@@ -26,6 +26,7 @@ package jdk.graal.compiler.truffle.hotspot;
 
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.hotspot.HotSpotGraalOptionValues;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.truffle.AbstractTruffleCompilationSupport;
 
@@ -33,6 +34,7 @@ import com.oracle.truffle.compiler.TruffleCompiler;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.services.Services;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -92,5 +94,9 @@ public final class HotSpotTruffleCompilationSupport extends AbstractTruffleCompi
         } catch (IOException ioe) {
             throw new InternalError(ioe);
         }
+    }
+
+    public static String verifyJVMCIVersion() {
+        return JVMCIVersionCheck.check(Services.getSavedProperties());
     }
 }
