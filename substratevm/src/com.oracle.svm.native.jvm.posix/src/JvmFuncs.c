@@ -277,6 +277,19 @@ JNIEXPORT jlong JNICALL Java_jdk_internal_misc_VM_getNanoTimeAdjustment(void *en
     return JVM_GetNanoTimeAdjustment(env, ignored, offset_secs);
 }
 
+JNIEXPORT void JNICALL JVM_ArrayCopy(JNIEnv *env, jclass ignored, jobject src, jint src_pos, jobject dst, jint dst_pos, jint length) {
+    jclass systemClass = (*env)->FindClass(env, "java/lang/System");
+    if (systemClass != NULL && !(*env)->ExceptionCheck(env)) {
+        jmethodID arraycopy = (*env)->GetStaticMethodID(env, systemClass, "arraycopy", "(Ljava/lang/Object;ILjava/lang/Object;II)V");
+        if (arraycopy != NULL && !(*env)->ExceptionCheck(env)) {
+            (*env)->CallStaticVoidMethod(env, systemClass, arraycopy, src, src_pos, dst, dst_pos, length);
+            return;
+        }
+    }
+
+    (*env)->FatalError(env, "JVM_ArrayCopy called: Could not find System#arraycopy");
+}
+
 JNIEXPORT void JNICALL JVM_Halt(int retcode) {
     exit(retcode);
 }
