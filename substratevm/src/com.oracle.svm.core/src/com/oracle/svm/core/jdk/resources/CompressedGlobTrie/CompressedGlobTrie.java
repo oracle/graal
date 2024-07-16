@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import org.graalvm.nativeimage.Platform;
@@ -123,12 +124,25 @@ public class CompressedGlobTrie {
             starPatterns.forEach(pattern -> addPattern(root, pattern));
             noStarPatterns.forEach(pattern -> addPattern(root, pattern));
 
-            root.trim();
             return root;
         }
 
+        /*
+         * this function should be called only when we are certain that all possible wildcards are
+         * actually escaped (i.e. only after validatePattern function)
+         */
+        private static String unescapePossibleWildcards(String pattern) {
+            String unescapedPattern = pattern;
+            for (char esc : GlobUtils.ALWAYS_ESCAPED_GLOB_WILDCARDS) {
+                unescapedPattern = unescapedPattern.replace("\\" + esc, String.valueOf(esc));
+            }
+
+            return unescapedPattern;
+        }
+
         private static void addPattern(GlobTrieNode root, GlobWithInfo pattern) {
-            List<GlobTrieNode> parts = getPatternParts(pattern.pattern());
+            String unescapedPattern = unescapePossibleWildcards(pattern.pattern());
+            List<GlobTrieNode> parts = getPatternParts(unescapedPattern);
 
             /*
              * if this pattern can be matched with some other existing pattern, we should just
@@ -327,6 +341,13 @@ public class CompressedGlobTrie {
     }
 
     /**
+     * Trims the Trie and makes it unmodifiable.
+     */
+    public static void finalize(GlobTrieNode root) {
+        root.trim();
+    }
+
+    /**
      * Returns list of information from all glob patterns that could match given text.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -382,6 +403,17 @@ public class CompressedGlobTrie {
         /* check unnecessary ** repetition */
         if (pattern.contains("**/**")) {
             sb.append("Pattern contains invalid sequence **/**. Valid pattern should have ** followed by something other than **. ");
+        }
+
+        /* check if there are unescaped wildcards */
+        boolean escapeMode = false;
+        for (int i = 0; i < pattern.length(); i++) {
+            char current = pattern.charAt(i);
+            if (GlobUtils.ALWAYS_ESCAPED_GLOB_WILDCARDS.contains(current) && !escapeMode) {
+                sb.append("Pattern contains unescaped character ").append(current).append(". ");
+            }
+
+            escapeMode = current == '\\';
         }
 
         // check if pattern contains ** without previous Literal parent. Example: */**/... or **/...
@@ -682,5 +714,37 @@ public class CompressedGlobTrie {
 
     private static boolean patternReachedEnd(int index, List<GlobTrieNode> parts) {
         return index >= parts.size();
+    }
+
+    public static void removeNodes(GlobTrieNode head, Predicate<String> shouldRemove) {
+        List<String> contentToRemove = head.getAdditionalContent().stream().filter(shouldRemove).toList();
+        head.removeAdditionalContent(contentToRemove);
+
+        List<GlobTrieNode> childrenToRemove = new ArrayList<>();
+        for (GlobTrieNode child : head.getChildren()) {
+            removeNodes(child, shouldRemove);
+
+            /* leaf without additional content should be removed */
+            if (child.isLeaf() && child.getAdditionalContent().isEmpty()) {
+                if (child.getChildren().isEmpty()) {
+                    /* if it is the last node remove it physically */
+                    childrenToRemove.add(child);
+                } else {
+                    /*
+                     * the child still has children, but it terminated some pattern => don't remove
+                     * it, just say that it doesn't terminate any pattern anymore
+                     */
+                    child.makeNodeInternal();
+                }
+                continue;
+            }
+
+            /* internal node without children should be removed */
+            if (!child.isLeaf() && child.getChildren().isEmpty()) {
+                childrenToRemove.add(child);
+            }
+        }
+
+        head.removeChildren(childrenToRemove);
     }
 }

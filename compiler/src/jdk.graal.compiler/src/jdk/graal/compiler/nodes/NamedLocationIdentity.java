@@ -126,14 +126,23 @@ public class NamedLocationIdentity extends LocationIdentity implements FormatWit
         return ARRAY_LOCATIONS.get(elementKind);
     }
 
-    private static final EnumMap<JavaKind, LocationIdentity> ARRAY_LOCATIONS = initArrayLocations();
+    private static final EnumMap<JavaKind, LocationIdentity> ARRAY_LOCATIONS = new EnumMap<>(JavaKind.class);
 
-    private static EnumMap<JavaKind, LocationIdentity> initArrayLocations() {
-        EnumMap<JavaKind, LocationIdentity> result = new EnumMap<>(JavaKind.class);
-        for (JavaKind kind : JavaKind.values()) {
-            result.put(kind, NamedLocationIdentity.mutable("Array: " + kind.getJavaName()));
-        }
-        return result;
+    // These exist so that GuestGraal construction can read these values from static fields.
+    public static final LocationIdentity BOOLEAN_ARRAY_LOCATION = initArrayLocation(JavaKind.Boolean);
+    public static final LocationIdentity BYTE_ARRAY_LOCATION = initArrayLocation(JavaKind.Byte);
+    public static final LocationIdentity CHAR_ARRAY_LOCATION = initArrayLocation(JavaKind.Char);
+    public static final LocationIdentity SHORT_ARRAY_LOCATION = initArrayLocation(JavaKind.Short);
+    public static final LocationIdentity INT_ARRAY_LOCATION = initArrayLocation(JavaKind.Int);
+    public static final LocationIdentity FLOAT_ARRAY_LOCATION = initArrayLocation(JavaKind.Float);
+    public static final LocationIdentity LONG_ARRAY_LOCATION = initArrayLocation(JavaKind.Long);
+    public static final LocationIdentity DOUBLE_ARRAY_LOCATION = initArrayLocation(JavaKind.Double);
+    public static final LocationIdentity OBJECT_ARRAY_LOCATION = initArrayLocation(JavaKind.Object);
+
+    private static NamedLocationIdentity initArrayLocation(JavaKind kind) {
+        NamedLocationIdentity loc = NamedLocationIdentity.mutable("Array: " + kind.getJavaName());
+        ARRAY_LOCATIONS.put(kind, loc);
+        return loc;
     }
 
     public static boolean isArrayLocation(LocationIdentity l) {

@@ -121,6 +121,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
      * is marked as read.
      */
     void setFieldTask(AnalysisField field, AnalysisFuture<JavaConstant> task) {
+        Objects.requireNonNull(task);
         arrayHandle.setVolatile(getFieldValues(), field.getPosition(), task);
     }
 
@@ -130,6 +131,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
      * and replaced.
      */
     public void setFieldValue(AnalysisField field, JavaConstant value) {
+        Objects.requireNonNull(value);
         arrayHandle.setVolatile(getFieldValues(), field.getPosition(), value);
     }
 

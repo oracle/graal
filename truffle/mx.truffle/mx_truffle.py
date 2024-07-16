@@ -627,6 +627,8 @@ def sl_jvm_gate_tests():
     _sl_jvm_gate_tests(mx.get_jdk(tag='default'), force_cp=False, supports_optimization=False)
     _sl_jvm_gate_tests(mx.get_jdk(tag='default'), force_cp=True, supports_optimization=False)
 
+    _sl_jvm_comiler_on_upgrade_module_path_gate_tests(mx.get_jdk(tag='default'))
+
 
 def _sl_jvm_gate_tests(jdk, force_cp=False, supports_optimization=True):
     default_args = []
@@ -673,6 +675,30 @@ def _sl_jvm_gate_tests(jdk, force_cp=False, supports_optimization=True):
 
         mx.log(f'Run SL JVM Optimized  Test No Truffle Enterprise JVMCI disabled on {jdk.home} force_cp={force_cp}')
         _run_sl_tests(run_jvm_no_enterprise_jvmci_disabled)
+
+
+def _sl_jvm_comiler_on_upgrade_module_path_gate_tests(jdk):
+    if _is_graalvm(jdk):
+        # Ignore tests for Truffle LTS gate using GraalVM as a base JDK
+        mx.log(f'Ignoring SL JVM Optimized with Compiler on Upgrade Module Path on {jdk.home} because JDK is GraalVM')
+        return
+    compiler = mx.distribution('compiler:GRAAL')
+    vm_args = [
+        '-XX:+UnlockExperimentalVMOptions',
+        '-XX:+EnableJVMCI',
+        f'--upgrade-module-path={compiler.classpath_repr()}',
+    ]
+
+    def run_jvm_optimized(test_file):
+        return _sl_command(jdk, vm_args, [test_file, '--disable-launcher-output'], use_optimized_runtime=True)
+
+    def run_jvm_optimized_immediately(test_file):
+        return _sl_command(jdk, vm_args, [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false'], use_optimized_runtime=True)
+
+    mx.log(f'Run SL JVM Optimized Test on {jdk.home} with Compiler on Upgrade Module Path')
+    _run_sl_tests(run_jvm_optimized)
+    mx.log(f'Run SL JVM Optimized Immediately Test on {jdk.home} with Compiler on Upgrade Module Path')
+    _run_sl_tests(run_jvm_optimized_immediately)
 
 
 # Run in VM suite with:
@@ -1525,10 +1551,10 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
         self.out_dir = self.get_output_root()
         if mx.get_os() == 'windows':
             self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
-                                                           os.path.join(self.out_dir, 'libffi-3.4.4'),
+                                                           os.path.join(self.out_dir, 'libffi-3.4.6'),
                                                            'static_lib',
                                                            deliverable='ffi',
-                                                           cflags=['-MD', '-O2', '-DFFI_BUILDING_DLL'])
+                                                           cflags=['-MD', '-O2', '-DFFI_STATIC_BUILD'])
             self.delegate._source = dict(tree=['include',
                                                'src',
                                                os.path.join('src', 'x86')],
@@ -1562,7 +1588,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                   'include/ffi.h',
                                                   'include/ffitarget.h'],
                                                  os.path.join(self.out_dir, 'libffi-build'),
-                                                 os.path.join(self.out_dir, 'libffi-3.4.4'))
+                                                 os.path.join(self.out_dir, 'libffi-3.4.6'))
             configure_args = ['--disable-dependency-tracking',
                               '--disable-shared',
                               '--with-pic',

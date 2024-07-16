@@ -171,9 +171,9 @@ public class ConditionalConfigurationComputer {
         for (List<MethodCallNode> value : methodCallNodes.values()) {
             for (MethodCallNode node : value) {
                 String className = node.methodInfo.getJavaDeclaringClassName();
-                UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.create(className, false);
-                var resolveCondition = ConfigurationConditionResolver.identityResolver().resolveCondition(condition);
-                addConfigurationWithCondition(configurationSet, node.configuration, resolveCondition.get());
+                UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.create(className, true);
+                var resolvedCondition = ConfigurationConditionResolver.identityResolver().resolveCondition(condition);
+                addConfigurationWithCondition(configurationSet, node.configuration, resolvedCondition.get());
             }
         }
 

@@ -181,6 +181,13 @@ final class TruffleToLibGraalEntryPoints {
     @SuppressWarnings({"unused", "try"})
     @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_newCompiler")
     public static long newCompiler(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long truffleRuntimeHandle) {
+        /*
+         * Unlike `LibGraalTruffleHostEnvironment`, Truffle libgraal entry points use the global
+         * compilation context by default, so we don't need to call
+         * `HotSpotGraalServices.enterGlobalCompilationContext()` before creating
+         * `TruffleCompilerImpl`. The `doCompile` method enters a local compilation context through
+         * its own call to `HotSpotGraalServices.openLocalCompilationContext`.
+         */
         try (JNIMethodScope s = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, NewCompiler, env)) {
             HSTruffleCompilerRuntime hsTruffleRuntime = LibGraalObjectHandles.resolve(truffleRuntimeHandle, HSTruffleCompilerRuntime.class);
             HotSpotTruffleCompilerImpl compiler = HotSpotTruffleCompilerImpl.create(hsTruffleRuntime);

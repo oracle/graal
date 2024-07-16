@@ -33,6 +33,8 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
+
 import org.junit.Test;
 
 public class LoopFullUnrollTest extends GraalCompilerTest {
@@ -87,6 +89,8 @@ public class LoopFullUnrollTest extends GraalCompilerTest {
         DebugContext debug = getDebugContext();
         try (DebugContext.Scope s = debug.scope(getClass().getSimpleName(), new DebugDumpScope(snippet))) {
             final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO, debug);
+
+            new DisableOverflownCountedLoopsPhase().apply(graph);
 
             CoreProviders context = getProviders();
             new LoopFullUnrollPhase(createCanonicalizerPhase(), new DefaultLoopPolicies()).apply(graph, context);

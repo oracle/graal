@@ -25,9 +25,14 @@
 
 package com.oracle.svm.core.jdk.resources.CompressedGlobTrie;
 
+import java.util.List;
+
 import com.oracle.svm.util.StringUtil;
 
 public class GlobUtils {
+
+    /* list of glob wildcards we are always escaping because they are not supported yet */
+    public static final List<Character> ALWAYS_ESCAPED_GLOB_WILDCARDS = List.of('?', '[', ']', '{', '}');
 
     public static String transformToTriePath(String resource, String module) {
         String resolvedModuleName;

@@ -45,6 +45,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
+import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CInterfaceError;
@@ -72,7 +73,6 @@ import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.IndirectCallTargetNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -711,7 +711,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         } else {
             returnStamp = b.getInvokeReturnStamp(null).getTrustedStamp();
         }
-        CallTargetNode indirectCallTargetNode = b.add(new IndirectCallTargetNode(methodAddress, argsWithoutReceiver,
+        CallTargetNode indirectCallTargetNode = b.add(new SubstrateIndirectCallTargetNode(methodAddress, argsWithoutReceiver,
                         StampPair.createSingle(returnStamp), parameterTypes, null, SubstrateCallingConventionKind.Java.toType(true), InvokeKind.Static));
 
         b.handleReplacedInvoke(indirectCallTargetNode, b.getInvokeReturnType().getJavaKind());

@@ -37,8 +37,8 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.CompilationRequest;
-import jdk.vm.ci.services.Services;
 
 /**
  * A watch dog that monitors the duration and compilation rate during a
@@ -108,7 +108,7 @@ final class BootstrapWatchDog extends Thread {
     /**
      * Set to true to debug the watch dog.
      */
-    private static final boolean DEBUG = Boolean.parseBoolean(Services.getSavedProperty("debug.graal.BootstrapWatchDog"));
+    private static final boolean DEBUG = Boolean.parseBoolean(GraalServices.getSavedProperty("debug.graal.BootstrapWatchDog"));
 
     /**
      * Seconds to delay before starting to measure the compilation rate.

@@ -48,6 +48,7 @@ import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.util.json.JsonPrinter;
@@ -209,12 +210,21 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     }
 
     public void addGlobPattern(UnresolvedConfigurationCondition condition, String pattern, String module) {
-        ResourceEntry element = new ResourceEntry(pattern, module);
+        ResourceEntry element = new ResourceEntry(escapePossibleGlobWildcards(pattern), module);
         addedGlobs.add(new ConditionalElement<>(condition, element));
     }
 
-    private static String unquotePattern(String pattern) {
-        return pattern.replace("\\Q", "").replace("\\E", "");
+    private static String escapePossibleGlobWildcards(String pattern) {
+        String escapedPattern = pattern;
+        for (char wildcard : GlobUtils.ALWAYS_ESCAPED_GLOB_WILDCARDS) {
+            escapedPattern = escapedPattern.replace(String.valueOf(wildcard), "\\" + wildcard);
+        }
+
+        return escapedPattern;
+    }
+
+    private static String convertSimpleRegexToGlob(String pattern) {
+        return escapePossibleGlobWildcards(pattern.replace("\\Q", "").replace("\\E", ""));
     }
 
     private static boolean isModuleIdentifierChar(int c) {
@@ -255,7 +265,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     private void classifyAndAddPattern(ConditionalElement<String> entry) {
         String pattern = entry.element();
         if (isSimpleQuotedPattern(pattern)) {
-            String unquotedPattern = unquotePattern(pattern);
+            String unquotedPattern = convertSimpleRegexToGlob(pattern);
             String module = null;
             int moduleSplitter = pattern.indexOf(':');
             if (moduleSplitter != -1) {

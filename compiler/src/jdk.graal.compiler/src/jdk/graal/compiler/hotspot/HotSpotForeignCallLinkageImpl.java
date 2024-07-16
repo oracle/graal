@@ -297,41 +297,13 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         return true;
     }
 
-    /**
-     * Encapsulates a stub's entry point and set of killed registers.
-     */
-    public static final class CodeInfo {
-        /**
-         * Address of first instruction in the stub.
-         */
-        final long start;
-
-        /**
-         * @see Stub#getDestroyedCallerRegisters()
-         */
-        final EconomicSet<Register> killedRegisters;
-
-        public CodeInfo(long start, EconomicSet<Register> killedRegisters) {
-            this.start = start;
-            this.killedRegisters = killedRegisters;
-        }
-    }
-
-    /**
-     * Substituted by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_jdk_graal_compiler_hotspot_HotSpotForeignCallLinkageImpl}.
-     */
-    private static CodeInfo getCodeInfo(Stub stub, Backend backend) {
-        return new CodeInfo(stub.getCode(backend).getStart(), stub.getDestroyedCallerRegisters());
-    }
-
     @Override
     public void finalizeAddress(Backend backend) {
         if (address == 0) {
             assert checkStubCondition();
-            CodeInfo codeInfo = getCodeInfo(stub, backend);
+            CodeInfo codeInfo = HotSpotForeignCallLinkage.Stubs.getCodeInfo(stub, backend);
 
-            EconomicSet<Register> killedRegisters = codeInfo.killedRegisters;
+            EconomicSet<Register> killedRegisters = codeInfo.killedRegisters();
             if (!killedRegisters.isEmpty()) {
                 AllocatableValue[] temporaryLocations = new AllocatableValue[killedRegisters.size()];
                 int i = 0;
@@ -343,7 +315,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
                 }
                 temporaries = temporaryLocations;
             }
-            address = codeInfo.start;
+            address = codeInfo.start();
         }
     }
 

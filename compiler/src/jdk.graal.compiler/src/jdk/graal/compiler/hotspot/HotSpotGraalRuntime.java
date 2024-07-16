@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import jdk.vm.ci.services.Services;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -65,6 +66,7 @@ import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.serviceprovider.VMSupport;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.common.InitTimer;
@@ -191,7 +193,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         this.compilerProfiler = GraalServices.loadSingle(CompilerProfiler.class, false);
 
-        startupLibGraal(this);
+        VMSupport.startupLibGraal();
     }
 
     /**
@@ -437,27 +439,19 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         outputDirectory.close();
 
-        shutdownLibGraal(this);
-    }
-
-    /**
-     * Substituted by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_jdk_graal_compiler_hotspot_HotSpotGraalRuntime}
-     * to notify {@code org.graalvm.libgraal.LibGraalIsolate} and call
-     * {@code org.graalvm.nativeimage.VMRuntime.initialize()}.
-     */
-    @SuppressWarnings("unused")
-    private static void startupLibGraal(HotSpotGraalRuntime runtime) {
-    }
-
-    /**
-     * Substituted by
-     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_jdk_graal_compiler_hotspot_HotSpotGraalRuntime}
-     * to notify {@code org.graalvm.libgraal.LibGraalIsolate} and call
-     * {@code org.graalvm.nativeimage.VMRuntime.shutdown()}.
-     */
-    @SuppressWarnings("unused")
-    private static void shutdownLibGraal(HotSpotGraalRuntime runtime) {
+        if (Services.IS_IN_NATIVE_IMAGE) {
+            String callback = HotSpotGraalCompiler.Options.OnShutdownCallback.getValue(options);
+            if (callback != null) {
+                int lastDot = callback.lastIndexOf('.');
+                if (lastDot < 1 || lastDot == callback.length() - 1) {
+                    throw new IllegalArgumentException(HotSpotGraalCompiler.Options.OnShutdownCallback.getName() + " value does not have <classname>.<method name> format: " + callback);
+                }
+                String cbClassName = callback.substring(0, lastDot);
+                String cbMethodName = callback.substring(lastDot + 1);
+                VMSupport.invokeShutdownCallback(cbClassName, cbMethodName);
+            }
+            VMSupport.shutdownLibGraal();
+        }
     }
 
     void clearMetrics() {

@@ -19,7 +19,7 @@ Depending on your application dependencies, there are three ways to provide the 
 2. [Using the Tracing Agent](#build-a-native-executable-with-the-tracing-agent)
 3. [Autodetecting](https://graalvm.github.io/native-build-tools/latest/gradle-plugin-quickstart.html#build-a-native-executable-with-resources-autodetection) (if the required resources are directly available on the classpath, in the _src/main/resources_ directory)
 
-This guide demonstrates how to build a native executable using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata), and with the [Tracing agent](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html#agent-support).
+This guide demonstrates how to build a native executable using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata), and with the [Tracing Agent](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html#agent-support).
 The goal of this guide is to illustrate the difference between the two approaches, and demonstrate how the use of reachability metadata can simplify your development tasks.
 
 We recommend that you follow the instructions and create the application step-by-step. 
@@ -295,7 +295,7 @@ The support needs to be enabled explicitly.
 
 ## Build a Native Executable with the Tracing Agent
 
-The second way to provide the medatata configuration for `native-image` is by injecting the [Tracing agent](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#agent-support) (later *the agent*) at compile time.
+The second way to provide the medatata configuration for `native-image` is by injecting the [Tracing Agent](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#agent-support) (later *the agent*) at compile time.
 The agent is disabled by default, but it can be enabled within your _pom.xml_ file or via the command line.
 
 The agent can run in three modes:
@@ -303,7 +303,7 @@ The agent can run in three modes:
 - **Conditional**: Collects metadata with conditions. This is recommended if you are creating conditional metadata for a native shared library intended for further use.
 - **Direct**: For advanced users only. This mode allows directly controlling the command line passed to the agent.
 
-See below how to collect metadata with the tracing agent, and build a native executable applying the provided configuration.
+See below how to collect metadata with the Tracing Agent, and build a native executable applying the provided configuration.
 
 1. Enable the agent by adding the following into the `<configuration>` element of the `native` profile:
     ```xml
@@ -375,7 +375,7 @@ In the `native` Maven profile section, add the `exec-maven-plugin` plugin:
 
 ### Summary
 
-This guide demonstrated how to build a native executable using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata) and with the Tracing agent. The goal was to show the difference, and prove how using the reachability metadata can simplify the work.
+This guide demonstrated how to build a native executable using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata) and with the Tracing Agent. The goal was to show the difference, and prove how using the reachability metadata can simplify the work.
 
 Note that if your application does not call any dynamic features at run time, enabling the GraalVM Reachability Metadata Repository is needless. 
 Your workflow in that case would just be:

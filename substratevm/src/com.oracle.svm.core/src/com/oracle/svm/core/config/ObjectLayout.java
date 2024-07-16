@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.config;
 
+import jdk.vm.ci.meta.UnresolvedJavaType;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.word.WordBase;
@@ -37,6 +38,7 @@ import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -245,11 +247,16 @@ public final class ObjectLayout {
         return Math.min(getMinImageHeapArraySize(), getMinImageHeapInstanceSize());
     }
 
-    public static JavaKind getCallSignatureKind(boolean isEntryPoint, ResolvedJavaType type, MetaAccessProvider metaAccess, TargetDescription target) {
-        if (metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(type)) {
+    public static JavaKind getCallSignatureKind(boolean isEntryPoint, JavaType type, MetaAccessProvider metaAccess, TargetDescription target) {
+        if (!(type instanceof ResolvedJavaType resolvedJavaType)) {
+            assert type instanceof UnresolvedJavaType : type;
+            return JavaKind.Object;
+        }
+
+        if (metaAccess != null && metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(resolvedJavaType)) {
             return target.wordJavaKind;
         }
-        if (isEntryPoint && AnnotationAccess.isAnnotationPresent(type, CEnum.class)) {
+        if (isEntryPoint && AnnotationAccess.isAnnotationPresent(resolvedJavaType, CEnum.class)) {
             return JavaKind.Int;
         }
         return type.getJavaKind();

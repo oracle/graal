@@ -57,6 +57,10 @@ public final class ReflectionUtil {
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ReflectionUtil.class, declaringClass);
     }
 
+    public static Class<?> lookupClass(String className) {
+        return lookupClass(false, className);
+    }
+
     public static Class<?> lookupClass(boolean optional, String className) {
         try {
             return Class.forName(className, false, ReflectionUtil.class.getClassLoader());

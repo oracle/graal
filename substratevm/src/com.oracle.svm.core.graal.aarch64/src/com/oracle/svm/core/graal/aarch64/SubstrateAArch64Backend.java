@@ -825,7 +825,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
     }
 
-    protected static class SubstrateAArch64FrameContext implements FrameContext {
+    public static class SubstrateAArch64FrameContext implements FrameContext {
 
         protected final SharedMethod method;
 
@@ -1206,14 +1206,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         Deoptimizer.StubType stubType = method.getDeoptStubType();
         DataBuilder dataBuilder = new SubstrateDataBuilder();
         CallingConvention callingConvention = lirGenResult.getCallingConvention();
-        final FrameContext frameContext;
-        if (stubType == Deoptimizer.StubType.EntryStub) {
-            frameContext = new DeoptEntryStubContext(method, callingConvention);
-        } else if (stubType == Deoptimizer.StubType.ExitStub) {
-            frameContext = new DeoptExitStubContext(method, callingConvention);
-        } else {
-            frameContext = createFrameContext(method);
-        }
+        FrameContext frameContext = createFrameContext(method, stubType, callingConvention);
         LIR lir = lirGenResult.getLIR();
         OptionValues options = lir.getOptions();
         DebugContext debug = lir.getDebug();
@@ -1224,7 +1217,12 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         return crb;
     }
 
-    protected FrameContext createFrameContext(SharedMethod method) {
+    protected FrameContext createFrameContext(SharedMethod method, Deoptimizer.StubType stubType, CallingConvention callingConvention) {
+        if (stubType == Deoptimizer.StubType.EntryStub) {
+            return new DeoptEntryStubContext(method, callingConvention);
+        } else if (stubType == Deoptimizer.StubType.ExitStub) {
+            return new DeoptExitStubContext(method, callingConvention);
+        }
         return new SubstrateAArch64FrameContext(method);
     }
 
@@ -1308,7 +1306,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         result.recordMark(asm.position(), PROLOGUE_END);
         byte[] instructions = asm.close(true);
         result.setTargetCode(instructions, instructions.length);
-        result.setTotalFrameSize(getTarget().wordSize * 2); // not really, but 0 not allowed
+        result.setTotalFrameSize(getTarget().stackAlignment); // not really, but 0 not allowed
         return result;
     }
 

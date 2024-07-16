@@ -43,6 +43,7 @@ import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
+import jdk.graal.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.test.SubprocessUtil;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
@@ -443,6 +444,7 @@ public class EscapeAnalysisTest extends EATestBase {
     @Test
     public void testFullyUnrolledLoop() {
         prepareGraph("testFullyUnrolledLoopSnippet", false);
+        new DisableOverflownCountedLoopsPhase().apply(graph);
         new LoopFullUnrollPhase(createCanonicalizerPhase(), new DefaultLoopPolicies()).apply(graph, context);
         new PartialEscapePhase(false, createCanonicalizerPhase(), graph.getOptions()).apply(graph, context);
         Assert.assertEquals(1, returnNodes.size());
@@ -474,6 +476,7 @@ public class EscapeAnalysisTest extends EATestBase {
     @Test
     public void testPeeledLoop() {
         prepareGraph("testPeeledLoopSnippet", false);
+        new DisableOverflownCountedLoopsPhase().apply(graph);
         new LoopPeelingPhase(new DefaultLoopPolicies(), createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
         new SchedulePhase(graph.getOptions()).apply(graph, getDefaultHighTierContext());
     }

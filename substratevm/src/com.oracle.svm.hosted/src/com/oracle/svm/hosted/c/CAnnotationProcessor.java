@@ -34,7 +34,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -43,6 +42,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.codegen.QueryCodeWriter;
 import com.oracle.svm.hosted.c.info.InfoTreeBuilder;
@@ -90,10 +90,9 @@ public class CAnnotationProcessor {
         if (nativeLibs.getErrors().size() > 0) {
             return codeInfo;
         }
-        if (CAnnotationProcessorCache.Options.UseCAPCache.getValue()) {
-            /* If using a CAP cache, short cut the whole building/compile/execute query. */
-            cache.get(nativeLibs, codeInfo);
-        } else {
+
+        boolean cached = CAnnotationProcessorCache.Options.UseCAPCache.getValue() && cache.get(nativeLibs, codeInfo);
+        if (!cached) {
             /*
              * Generate C source file (the "Query") that will produce the information needed (e.g.,
              * size of struct/union and offsets to their fields, value of enum/macros etc.).
@@ -120,8 +119,8 @@ public class CAnnotationProcessor {
                 return codeInfo;
             }
         }
-        RawStructureLayoutPlanner.plan(nativeLibs, codeInfo);
 
+        RawStructureLayoutPlanner.plan(nativeLibs, codeInfo);
         SizeAndSignednessVerifier.verify(nativeLibs, codeInfo);
         return codeInfo;
     }

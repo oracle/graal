@@ -54,6 +54,8 @@ import com.oracle.svm.core.collections.GrowableWordArrayAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
+import com.oracle.svm.core.heap.FillerArray;
+import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -1342,15 +1344,22 @@ public class HeapDumpWriter {
         @Override
         @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
         public boolean visitObject(Object obj) {
-            if (isLarge(obj)) {
-                boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedPointer(obj), NmtCategory.HeapDump);
-                if (!added) {
-                    Log.log().string("Failed to add an element to the large object list. Heap dump will be incomplete.").newline();
+            if (!isFillerObject(obj)) {
+                if (isLarge(obj)) {
+                    boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedPointer(obj), NmtCategory.HeapDump);
+                    if (!added) {
+                        Log.log().string("Failed to add an element to the large object list. Heap dump will be incomplete.").newline();
+                    }
+                } else {
+                    writeObject(obj);
                 }
-            } else {
-                writeObject(obj);
             }
             return true;
+        }
+
+        private static boolean isFillerObject(Object obj) {
+            /* Filler objects increase the size of the heap dump but don't add much value. */
+            return obj.getClass() == FillerArray.class || obj.getClass() == FillerObject.class;
         }
 
         private boolean isLarge(Object obj) {

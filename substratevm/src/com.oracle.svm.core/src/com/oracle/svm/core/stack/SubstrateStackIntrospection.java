@@ -244,7 +244,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
         } else {
             result = locals[index];
             if (result == null) {
-                result = getDeoptimizer().readLocalVariable(index, frameInfo);
+                result = getDeoptimizer().getDeoptState().readLocalVariable(index, frameInfo);
                 locals[index] = result;
             }
         }

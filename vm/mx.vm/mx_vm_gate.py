@@ -139,7 +139,7 @@ def _test_libgraal_check_build_path(libgraal_location):
 def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
     """
     Tests basic libgraal execution by running CountUppercase, ensuring it has a 0 exit code
-    and that the output for -DgraalShowConfiguration=info describes a libgraal execution.
+    and that the output for -Djdk.graal.ShowConfiguration=info describes a libgraal execution.
     """
 
     graalvm_home = mx_sdk_vm_impl.graalvm_home()
@@ -218,7 +218,7 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
         # Verify execution via raw java launcher in `mx graalvm-home`.
         for jre_name, jre, jre_args in jres:
             try:
-                cmd = [join(jre, 'bin', 'java')] + jre_args + args
+                cmd = [join(jre, 'bin', 'java')] + jre_args + extra_vm_arguments + args
                 mx.log(f'{jre_name}: {" ".join(cmd)}')
                 mx.run(cmd)
             finally:
@@ -232,7 +232,7 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
         finally:
             _check_compiler_log(compiler_log_file, expect)
 
-def _test_libgraal_fatal_error_handling():
+def _test_libgraal_fatal_error_handling(extra_vm_arguments):
     """
     Tests that fatal errors in libgraal route back to HotSpot fatal error handling.
     """
@@ -240,7 +240,7 @@ def _test_libgraal_fatal_error_handling():
     vmargs = ['-XX:+PrintFlagsFinal',
               '-Djdk.graal.CrashAt=*',
               '-Djdk.graal.CrashAtIsFatal=1']
-    cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
+    cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + extra_vm_arguments + _get_CountUppercase_vmargs()
     out = mx.OutputCapture()
     scratch_dir = mkdtemp(dir='.')
     exitcode = mx.run(cmd, nonZeroIsFatal=False, err=out, out=out, cwd=scratch_dir)
@@ -282,7 +282,7 @@ def _test_libgraal_fatal_error_handling():
     mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
     mx.rmtree(scratch_dir)
 
-def _test_libgraal_oome_dumping():
+def _test_libgraal_oome_dumping(extra_vm_arguments):
     """
     Tests the HeapDumpOnOutOfMemoryError libgraal option.
     """
@@ -307,7 +307,7 @@ def _test_libgraal_oome_dumping():
                   f'-Djdk.graal.internal.HeapDumpPath={n}',
                   '-Djdk.graal.SystemicCompilationFailureRate=0',
                   '-Djdk.graal.CrashAtThrowsOOME=true']
-        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + extra_vm_arguments + _get_CountUppercase_vmargs()
         mx.run(cmd, cwd=scratch_dir)
         heap_dumps = glob.glob(v)
         if not heap_dumps:
@@ -322,7 +322,7 @@ def _test_libgraal_oome_dumping():
     mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
     mx.rmtree(scratch_dir)
 
-def _test_libgraal_systemic_failure_detection():
+def _test_libgraal_systemic_failure_detection(extra_vm_arguments):
     """
     Tests that system compilation failures are detected and cause the VM to exit.
     """
@@ -334,7 +334,7 @@ def _test_libgraal_systemic_failure_detection():
             '-Djdk.graal.DumpOnError=false',
             '-Djdk.graal.CompilationFailureAction=Silent'
         ]
-        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + extra_vm_arguments + _get_CountUppercase_vmargs()
         out = mx.OutputCapture()
         scratch_dir = mkdtemp(dir='.')
         exitcode = mx.run(cmd, nonZeroIsFatal=False, err=out, out=out, cwd=scratch_dir)
@@ -362,7 +362,7 @@ def _jdk_has_ForceTranslateFailure_jvmci_option(jdk):
         return False
     mx.abort(sink.data)
 
-def _test_libgraal_CompilationTimeout_JIT():
+def _test_libgraal_CompilationTimeout_JIT(extra_vm_arguments):
     """
     Tests timeout handling of CompileBroker compilations.
     """
@@ -380,7 +380,7 @@ def _test_libgraal_CompilationTimeout_JIT():
                   f'{G}LogFile={compiler_log_file}',
                    '-Ddebug.graal.CompilationWatchDog=true'] # helps debug failure
 
-        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + extra_vm_arguments + _get_CountUppercase_vmargs()
         exit_code = mx.run(cmd, nonZeroIsFatal=False)
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
         _check_compiler_log(compiler_log_file, expectations)
@@ -422,7 +422,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
 
         delay = abspath(join(dirname(__file__), 'Delay.sl'))
         cp_args = mx.get_runtime_jvm_args(mx_truffle.resolve_sl_dist_names(use_optimized_runtime=True, use_enterprise=True))
-        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + cp_args + ['--module', 'org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain', delay]
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + extra_vm_arguments + cp_args + ['--module', 'org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain', delay]
         err = mx.OutputCapture()
         exit_code = mx.run(cmd, nonZeroIsFatal=False, err=err)
         if err.data:
@@ -528,13 +528,13 @@ def gate_body(args, tasks):
                 with Task('LibGraal Compiler:Basic', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_basic(extra_vm_arguments, libgraal_location)
                 with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
-                    if t: _test_libgraal_fatal_error_handling()
+                    if t: _test_libgraal_fatal_error_handling(extra_vm_arguments)
                 with Task('LibGraal Compiler:OOMEDumping', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
-                    if t: _test_libgraal_oome_dumping()
+                    if t: _test_libgraal_oome_dumping(extra_vm_arguments)
                 with Task('LibGraal Compiler:SystemicFailureDetection', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
-                    if t: _test_libgraal_systemic_failure_detection()
+                    if t: _test_libgraal_systemic_failure_detection(extra_vm_arguments)
                 with Task('LibGraal Compiler:CompilationTimeout:JIT', tasks, tags=[VmGateTasks.libgraal]) as t:
-                    if t: _test_libgraal_CompilationTimeout_JIT()
+                    if t: _test_libgraal_CompilationTimeout_JIT(extra_vm_arguments)
                 with Task('LibGraal Compiler:CompilationTimeout:Truffle', tasks, tags=[VmGateTasks.libgraal]) as t:
                     if t: _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments)
 

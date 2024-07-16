@@ -51,8 +51,12 @@ import java.io.Serial;
 public final class FormatVersionException extends IOException {
     @Serial private static final long serialVersionUID = 6913545866116536598L;
 
-    public FormatVersionException(int version, int supported) {
-        super("Unsupported serialized continuation version: " + version + "\n" +
+    FormatVersionException(int version, int supported) {
+        this("Unsupported serialized continuation version: " + version + "\n" +
                         "Current supported version: " + supported);
+    }
+
+    FormatVersionException(String message) {
+        super(message);
     }
 }

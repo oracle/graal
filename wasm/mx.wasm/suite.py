@@ -39,17 +39,17 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.27.0",
+  "mxversion": "7.27.1",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
   "version" : "24.2.0",
   "versionConflictResolution" : "latest",
   "url" : "http://graalvm.org/",
   "developer" : {
-    "name" : "Truffle and Graal developers",
-    "email" : "graalvm-dev@oss.oracle.com",
-    "organization" : "Oracle Corporation",
-    "organizationUrl" : "http://www.graalvm.org/",
+    "name": "GraalVM Development",
+    "email": "graalvm-dev@oss.oracle.com",
+    "organization": "Oracle Corporation",
+    "organizationUrl": "http://www.graalvm.org/",
   },
   "scm" : {
     "url" : "https://github.com/oracle/graal",

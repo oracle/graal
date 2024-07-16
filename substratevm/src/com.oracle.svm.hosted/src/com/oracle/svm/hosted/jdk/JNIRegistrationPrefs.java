@@ -98,6 +98,8 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Interna
         if (isDarwin()) {
             /* Darwin allocates a string array from native code */
             RuntimeJNIAccess.register(String[].class);
+            /* Called by libprefs on Darwin */
+            RuntimeJNIAccess.register(method(access, "java.lang.System", "arraycopy", Object.class, int.class, Object.class, int.class, int.class));
         }
     }
 }

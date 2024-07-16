@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.phases.common;
 
-import static jdk.vm.ci.services.Services.getSavedProperty;
+import static jdk.graal.compiler.serviceprovider.GraalServices.getSavedProperty;
 
 import java.util.Arrays;
 import java.util.Collection;

@@ -1447,6 +1447,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
         }
 
+        CompilerAsserts.partialEvaluationConstant(this);
         if (getSuperKlass() != null) {
             return getSuperKlass().lookupField(fieldName, fieldType, mode);
         }

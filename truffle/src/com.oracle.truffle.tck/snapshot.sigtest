@@ -127,12 +127,12 @@ meth public abstract boolean testLineColumn(int,int)
 
 CLSS public com.oracle.truffle.tck.TruffleRunner
 cons public init(java.lang.Class<?>) throws org.junit.runners.model.InitializationError
+cons public init(org.junit.runners.model.TestClass) throws org.junit.runners.model.InitializationError
 innr public abstract interface static !annotation Inject
 innr public abstract interface static !annotation Warmup
 innr public final static ParametersFactory
 innr public final static RunWithPolyglotRule
 meth protected final org.junit.runners.model.Statement methodInvoker(org.junit.runners.model.FrameworkMethod,java.lang.Object)
-meth protected final org.junit.runners.model.TestClass createTestClass(java.lang.Class<?>)
 meth protected final void validateTestMethods(java.util.List<java.lang.Throwable>)
 supr org.junit.runners.BlockJUnit4ClassRunner
 hfds truffleTestInvoker
@@ -242,13 +242,19 @@ supr java.lang.Object
 CLSS public abstract interface org.junit.runner.manipulation.Filterable
 meth public abstract void filter(org.junit.runner.manipulation.Filter) throws org.junit.runner.manipulation.NoTestsRemainException
 
+CLSS public abstract interface org.junit.runner.manipulation.Orderable
+intf org.junit.runner.manipulation.Sortable
+meth public abstract void order(org.junit.runner.manipulation.Orderer) throws org.junit.runner.manipulation.InvalidOrderingException
+
 CLSS public abstract interface org.junit.runner.manipulation.Sortable
 meth public abstract void sort(org.junit.runner.manipulation.Sorter)
 
 CLSS public org.junit.runners.BlockJUnit4ClassRunner
+cons protected init(org.junit.runners.model.TestClass) throws org.junit.runners.model.InitializationError
 cons public init(java.lang.Class<?>) throws org.junit.runners.model.InitializationError
 meth protected boolean isIgnored(org.junit.runners.model.FrameworkMethod)
 meth protected java.lang.Object createTest() throws java.lang.Exception
+meth protected java.lang.Object createTest(org.junit.runners.model.FrameworkMethod) throws java.lang.Exception
 meth protected java.lang.String testName(org.junit.runners.model.FrameworkMethod)
 meth protected java.util.List<org.junit.rules.MethodRule> rules(java.lang.Object)
 meth protected java.util.List<org.junit.rules.TestRule> getTestRules(java.lang.Object)
@@ -273,16 +279,19 @@ meth protected void validateOnlyOneConstructor(java.util.List<java.lang.Throwabl
 meth protected void validateTestMethods(java.util.List<java.lang.Throwable>)
 meth protected void validateZeroArgConstructor(java.util.List<java.lang.Throwable>)
 supr org.junit.runners.ParentRunner<org.junit.runners.model.FrameworkMethod>
-hfds methodDescriptions
+hfds CURRENT_RULE_CONTAINER,PUBLIC_CLASS_VALIDATOR,methodDescriptions
+hcls RuleCollector
 
 CLSS public abstract org.junit.runners.ParentRunner<%0 extends java.lang.Object>
 cons protected init(java.lang.Class<?>) throws org.junit.runners.model.InitializationError
+cons protected init(org.junit.runners.model.TestClass) throws org.junit.runners.model.InitializationError
 intf org.junit.runner.manipulation.Filterable
-intf org.junit.runner.manipulation.Sortable
+intf org.junit.runner.manipulation.Orderable
 meth protected abstract java.util.List<{org.junit.runners.ParentRunner%0}> getChildren()
 meth protected abstract org.junit.runner.Description describeChild({org.junit.runners.ParentRunner%0})
 meth protected abstract void runChild({org.junit.runners.ParentRunner%0},org.junit.runner.notification.RunNotifier)
 meth protected boolean isIgnored({org.junit.runners.ParentRunner%0})
+meth protected final org.junit.runners.model.Statement withInterruptIsolation(org.junit.runners.model.Statement)
 meth protected final void runLeaf(org.junit.runners.model.Statement,org.junit.runner.Description,org.junit.runner.notification.RunNotifier)
 meth protected java.lang.String getName()
 meth protected java.lang.annotation.Annotation[] getRunnerAnnotations()
@@ -292,16 +301,19 @@ meth protected org.junit.runners.model.Statement classBlock(org.junit.runner.not
 meth protected org.junit.runners.model.Statement withAfterClasses(org.junit.runners.model.Statement)
 meth protected org.junit.runners.model.Statement withBeforeClasses(org.junit.runners.model.Statement)
 meth protected org.junit.runners.model.TestClass createTestClass(java.lang.Class<?>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth protected void collectInitializationErrors(java.util.List<java.lang.Throwable>)
 meth protected void validatePublicVoidNoArgMethods(java.lang.Class<? extends java.lang.annotation.Annotation>,boolean,java.util.List<java.lang.Throwable>)
 meth public final org.junit.runners.model.TestClass getTestClass()
 meth public org.junit.runner.Description getDescription()
 meth public void filter(org.junit.runner.manipulation.Filter) throws org.junit.runner.manipulation.NoTestsRemainException
+meth public void order(org.junit.runner.manipulation.Orderer) throws org.junit.runner.manipulation.InvalidOrderingException
 meth public void run(org.junit.runner.notification.RunNotifier)
 meth public void setScheduler(org.junit.runners.model.RunnerScheduler)
 meth public void sort(org.junit.runner.manipulation.Sorter)
 supr org.junit.runner.Runner
 hfds VALIDATORS,childrenLock,filteredChildren,scheduler,testClass
+hcls ClassRuleCollector
 
 CLSS public abstract interface org.junit.runners.parameterized.ParametersRunnerFactory
 meth public abstract org.junit.runner.Runner createRunnerForTestWithParameters(org.junit.runners.parameterized.TestWithParameters) throws org.junit.runners.model.InitializationError

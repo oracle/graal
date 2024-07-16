@@ -282,7 +282,11 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
 
     @TruffleBoundary
     public static EspressoFrameDescriptor apply(Method.MethodVersion m, int bci) {
-        return new FrameAnalysis(bci, m).apply();
+        try {
+            return new FrameAnalysis(bci, m).apply();
+        } catch (Exception e) {
+            throw EspressoError.shouldNotReachHere(String.format("Failed suspension during frame analysis of method '%s'", m), e);
+        }
     }
 
     public ConstantPool pool() {
@@ -355,7 +359,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                 branchTargets.set(bs.readBranchDest(bci));
             } else if (opcode == TABLESWITCH || opcode == LOOKUPSWITCH) {
                 BytecodeSwitch helper = BytecodeSwitch.get(opcode);
-                for (int i = 0; i < helper.numberOfCases(bs, opcode); i++) {
+                for (int i = 0; i < helper.numberOfCases(bs, bci); i++) {
                     branchTargets.set(helper.targetAt(bs, bci, i));
                 }
                 branchTargets.set(helper.defaultTarget(bs, bci));
@@ -443,8 +447,13 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
             switch (opcode) {
                 case NOP: // fallthrough
                 case IINC: // fallthrough
-                case CHECKCAST:
                     break;
+                case CHECKCAST: {
+                    frame.pop();
+                    Symbol<Type> type = queryPoolType(bs.readCPI(bci), ConstantPool.Tag.CLASS);
+                    frame.push(FrameType.forType(type));
+                    break;
+                }
                 case ACONST_NULL:
                     frame.push(FrameType.NULL);
                     break;
@@ -633,8 +642,13 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                     frame.push(k2, false);
                     break;
                 }
-                case LADD, LSUB, LMUL, LDIV, LREM, LSHL, LSHR, LUSHR, LAND, LOR, LXOR:
+                case LADD, LSUB, LMUL, LDIV, LREM, LAND, LOR, LXOR:
                     frame.pop2();
+                    frame.pop2();
+                    frame.push(FrameType.LONG);
+                    break;
+                case LSHL, LSHR, LUSHR:
+                    frame.pop();
                     frame.pop2();
                     frame.push(FrameType.LONG);
                     break;
@@ -698,9 +712,9 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                     throw EspressoError.shouldNotReachHere("Should have prevented jsr/ret");
                 case TABLESWITCH, LOOKUPSWITCH: {
                     frame.pop();
-                    BytecodeSwitch bytecodeSwitch = BytecodeSwitch.get(bci);
-                    for (int i = 0; i <= bytecodeSwitch.numberOfCases(bs, bci); i++) {
-                        branch(bci, i, frame);
+                    BytecodeSwitch bytecodeSwitch = BytecodeSwitch.get(opcode);
+                    for (int i = 0; i < bytecodeSwitch.numberOfCases(bs, bci); i++) {
+                        branch(bci, bytecodeSwitch.targetAt(bs, bci, i), frame);
                     }
                     branch(bci, bytecodeSwitch.defaultTarget(bs, bci), frame);
                     return;

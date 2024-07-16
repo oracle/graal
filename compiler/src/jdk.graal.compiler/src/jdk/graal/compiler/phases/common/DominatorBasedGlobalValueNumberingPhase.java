@@ -178,23 +178,23 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
         }
 
         /**
-         * Traversal order and kill effects: The visit order of the dominator tree guarantees
-         * that predecessors (except loop edges which are handled explicitly) are visited before
-         * a block itself (i.e. the post dominator of a split). This ensures we will have seen
-         * all necessary predecessor kills before we process a merge block.
+         * Traversal order and kill effects: The visit order of the dominator tree guarantees that
+         * predecessors (except loop edges which are handled explicitly) are visited before a block
+         * itself (i.e. the post dominator of a split). This ensures we will have seen all necessary
+         * predecessor kills before we process a merge block.
          *
          * Example: Block b0,b1,b2,b3
          *
-         * @formatter:off
+         * <pre>
          * if()  b0
          *  b1
          * else
          *  b2
          * merge b3
+         * </pre>
          *
          * The order of traversal would be b0,b1,b2,b3(post dom) where the effects of b1 and b2 are
          * collected and applied to b3 as well
-         * @formatter:on
          */
         @Override
         public ValueMap enter(HIRBlock b) {

@@ -31,6 +31,7 @@ import java.io.PrintStream;
 import java.util.EnumMap;
 import java.util.Map;
 
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -204,8 +205,19 @@ public class SubstrateGraalUtils {
 
             try (Indent indent2 = debug.logAndIndent("do compilation")) {
                 SubstrateCompilationResult result = new SubstrateCompilationResult(graph.compilationId(), method.format("%H.%n(%p)"));
-                GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, optimisticOpts, null, suites, lirSuites, result,
-                                CompilationResultBuilderFactory.Default, false);
+                Providers providers = backend.getProviders();
+                GraalCompiler.compile(new GraalCompiler.Request<>(graph,
+                                method,
+                                providers,
+                                backend,
+                                null,
+                                optimisticOpts,
+                                null,
+                                suites,
+                                lirSuites,
+                                result,
+                                CompilationResultBuilderFactory.Default,
+                                false));
                 return result;
             }
         }

@@ -61,7 +61,6 @@ import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
@@ -145,7 +144,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         }
 
         List<DebugHandlersFactory> handlers = new ArrayList<>();
-        for (DebugHandlersFactory factory : GraalServices.load(DebugHandlersFactory.class)) {
+        for (DebugHandlersFactory factory : DebugHandlersFactory.LOADER) {
             if (factory instanceof GraalDebugHandlersFactory) {
                 handlers.add(new GraalDebugHandlersFactory(snippetReflection));
             } else {

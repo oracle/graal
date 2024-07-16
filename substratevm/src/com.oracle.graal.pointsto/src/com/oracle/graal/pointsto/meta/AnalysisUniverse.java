@@ -47,6 +47,7 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -103,6 +104,7 @@ public class AnalysisUniverse implements Universe {
     protected final SubstitutionProcessor substitutions;
 
     private Function<Object, Object>[] objectReplacers;
+    private Function<Object, ImageHeapConstant>[] objectToConstantReplacers;
 
     private SubstitutionProcessor[] featureSubstitutions;
     private SubstitutionProcessor[] featureNativeSubstitutions;
@@ -142,6 +144,7 @@ public class AnalysisUniverse implements Universe {
 
         sealed = false;
         objectReplacers = (Function<Object, Object>[]) new Function<?, ?>[0];
+        objectToConstantReplacers = (Function<Object, ImageHeapConstant>[]) new Function<?, ?>[0];
         featureSubstitutions = new SubstitutionProcessor[0];
         featureNativeSubstitutions = new SubstitutionProcessor[0];
     }
@@ -565,6 +568,12 @@ public class AnalysisUniverse implements Universe {
         objectReplacers[objectReplacers.length - 1] = replacer;
     }
 
+    public void registerObjectToConstantReplacer(Function<Object, ImageHeapConstant> replacer) {
+        assert replacer != null;
+        objectToConstantReplacers = Arrays.copyOf(objectToConstantReplacers, objectToConstantReplacers.length + 1);
+        objectToConstantReplacers[objectToConstantReplacers.length - 1] = replacer;
+    }
+
     public void registerFeatureSubstitution(SubstitutionProcessor substitution) {
         SubstitutionProcessor[] subs = featureSubstitutions;
         subs = Arrays.copyOf(subs, subs.length + 1);
@@ -587,22 +596,56 @@ public class AnalysisUniverse implements Universe {
         return featureNativeSubstitutions;
     }
 
+    public Object replaceObject(Object source) {
+        return replaceObject0(source, false);
+    }
+
+    public JavaConstant replaceObjectWithConstant(Object source) {
+        assert !(source instanceof ImageHeapConstant) : source;
+
+        var replacedObject = replaceObject0(source, true);
+        if (replacedObject instanceof ImageHeapConstant constant) {
+            return constant;
+        }
+
+        return getHostedValuesProvider().forObject(replacedObject);
+    }
+
     /**
-     * Invokes all registered object replacers for an object.
+     * Invokes all registered object replacers and "object to constant" replacers for an object.>
+     *
+     * <p>
+     * The "object to constant" replacer is allowed to successfully complete only when
+     * {@code allowObjectToConstantReplacement} is true. When
+     * {@code allowObjectToConstantReplacement} is false, if any "object to constant" replacer is
+     * triggered we throw an error.
      *
      * @param source The source object
+     * @param allowObjectToConstantReplacement whether object to constant replacement is supported
      * @return The replaced object or the original source, if the source is not replaced by any
      *         registered replacer.
      */
-    public Object replaceObject(Object source) {
+    private Object replaceObject0(Object source, boolean allowObjectToConstantReplacement) {
         if (source == null) {
             return null;
         }
+
         Object destination = source;
         for (Function<Object, Object> replacer : objectReplacers) {
             destination = replacer.apply(destination);
         }
-        return destination;
+
+        ImageHeapConstant ihc = null;
+        for (Function<Object, ImageHeapConstant> replacer : objectToConstantReplacers) {
+            var result = replacer.apply(destination);
+            if (result != null) {
+                AnalysisError.guarantee(allowObjectToConstantReplacement, "Object to constant replacement has been triggered from an unsupported location");
+                AnalysisError.guarantee(ihc == null, "Multiple object to constant replacers have been trigger on a single object %s %s %s", destination, ihc, result);
+                ihc = result;
+            }
+        }
+
+        return ihc == null ? destination : ihc;
     }
 
     public void registerOverrideReachabilityNotification(AnalysisMethod declaredMethod, MethodOverrideReachableNotification notification) {

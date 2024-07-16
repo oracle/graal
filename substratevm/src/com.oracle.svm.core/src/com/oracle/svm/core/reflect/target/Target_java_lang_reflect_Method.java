@@ -87,7 +87,6 @@ public final class Target_java_lang_reflect_Method {
      */
     @Substitute
     public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
-        assert methodAccessorFromMetadata != null || methodAccessor != null : "This method has likely be called without checking if methodAccessor is null so it is in inconsistent state.";
         RuntimeConditionSet conditions = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).conditions;
         if (methodAccessorFromMetadata == null || !conditions.satisfied()) {
             throw MissingReflectionRegistrationUtils.errorForQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));

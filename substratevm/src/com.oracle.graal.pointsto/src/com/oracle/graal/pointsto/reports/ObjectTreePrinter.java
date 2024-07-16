@@ -45,9 +45,11 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.graal.compiler.options.OptionValues;
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -77,16 +79,16 @@ public final class ObjectTreePrinter extends ObjectScanner {
         }
 
         String format() {
-            if (source instanceof ResolvedJavaField) {
-                ResolvedJavaField field = (ResolvedJavaField) source;
-                return field.format("%H.%n:%T");
-            } else if (source instanceof ResolvedJavaMethod) {
-                ResolvedJavaMethod method = (ResolvedJavaMethod) source;
-                return method.format("%H.%n(%p)");
-            } else if (source != null) {
-                return source.toString();
-            }
-            throw JVMCIError.shouldNotReachHere("null source");
+            return format(source);
+        }
+
+        private static String format(Object srcObj) {
+            return switch (srcObj) {
+                case AnalysisField field -> ReportUtils.loaderName(field.getDeclaringClass()) + ':' + field.format("%H.%n:%T");
+                case AnalysisMethod method -> ReportUtils.loaderName(method.getDeclaringClass()) + ':' + method.format("%H.%n(%p)");
+                case BytecodePosition bcp -> "%s [bci: %d]".formatted(format(bcp.getMethod()), bcp.getBCI());
+                default -> throw JVMCIError.shouldNotReachHere("unknown srcObj");
+            };
         }
     }
 
@@ -396,6 +398,10 @@ public final class ObjectTreePrinter extends ObjectScanner {
 
     static String constantAsString(BigBang bb, JavaConstant constant) {
         Object object = constantAsObject(bb, constant);
+        String loaderPrefix = "";
+        if (object != null) {
+            loaderPrefix = ReportUtils.loaderName(object.getClass().getClassLoader()) + ':';
+        }
         if (object instanceof String) {
             String str = (String) object;
             str = escape(str);
@@ -403,9 +409,9 @@ public final class ObjectTreePrinter extends ObjectScanner {
                 str = str.substring(0, 10);
                 str = str + "...";
             }
-            return "\"" + str + "\"";
+            return loaderPrefix + "\"" + str + "\"";
         } else {
-            return escape(JavaKind.Object.format(object));
+            return loaderPrefix + escape(JavaKind.Object.format(object));
         }
     }
 

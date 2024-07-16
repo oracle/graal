@@ -250,8 +250,8 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
      * the compilation result and then {@linkplain #closeCompilationResult() closes} it.
      */
     public void finish() {
-        int position = asm.position();
-        compilationResult.setTargetCode(asm.close(false), position);
+        byte[] data = asm.close(false);
+        compilationResult.setTargetCode(data, asm.finalCodeSize());
 
         // Record exception handlers if they exist
         if (exceptionInfoList != null) {

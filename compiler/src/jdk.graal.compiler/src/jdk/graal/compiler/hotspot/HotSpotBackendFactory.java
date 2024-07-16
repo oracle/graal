@@ -29,6 +29,7 @@ import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
@@ -67,7 +68,6 @@ import jdk.graal.compiler.nodes.type.NarrowOopStamp;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 import jdk.graal.compiler.replacements.classfile.ClassfileBytecodeProvider;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.InitTimer;
@@ -80,7 +80,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.runtime.JVMCIBackend;
 
-public abstract class HotSpotBackendFactory {
+public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
 
     protected HotSpotGraalConstantFieldProvider createConstantFieldProvider(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         return new HotSpotGraalConstantFieldProvider(config, metaAccess);
@@ -120,12 +120,6 @@ public abstract class HotSpotBackendFactory {
      * on this name.
      */
     public abstract String getName();
-
-    /**
-     * Gets the class describing the architecture the backend created by this factory is associated
-     * with.
-     */
-    public abstract Class<? extends Architecture> getArchitecture();
 
     protected LoopsDataProvider createLoopsDataProvider() {
         return new LoopsDataProviderImpl();

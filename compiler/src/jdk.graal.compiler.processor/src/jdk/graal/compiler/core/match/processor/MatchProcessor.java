@@ -518,6 +518,7 @@ public class MatchProcessor extends AbstractProcessor {
             out.println("import jdk.graal.compiler.core.match.*;");
             out.println("import jdk.graal.compiler.core.gen.NodeMatchRules;");
             out.println("import jdk.graal.compiler.graph.Position;");
+
             for (String p : info.requiredPackages) {
                 if (p.equals(pkg)) {
                     continue;
@@ -592,6 +593,17 @@ public class MatchProcessor extends AbstractProcessor {
             out.println("    }");
 
             out.println();
+
+            out.println("    @Override");
+            out.println("    public String getArchitecture() {");
+            String archStr = topDeclaringClass.toString().replace("NodeMatchRules", "");
+            if (!archStr.equals("AMD64")) {
+                // The AMD64 JVMCI class is the exception in terms of using an uppercase value
+                // for the name field.
+                archStr = archStr.toLowerCase();
+            }
+            out.println("        return " + '"' + archStr + "\";");
+            out.println("    }");
 
             out.println("}");
         }

@@ -38,6 +38,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 
@@ -63,6 +64,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.hotspot.stubs.AbstractForeignCallStub;
 import jdk.graal.compiler.hotspot.stubs.ForeignCallStub;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
 import jdk.graal.compiler.java.BytecodeParser;
@@ -108,6 +110,7 @@ import jdk.graal.compiler.replacements.SnippetCounter;
 import jdk.graal.compiler.replacements.SnippetIntegerHistogram;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.classfile.ClassfileBytecode;
+import jdk.graal.compiler.util.ObjectCopier;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
@@ -138,7 +141,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * This class performs graph encoding using {@link GraphEncoder} but also converts JVMCI type and
  * method references into a symbolic form that can be resolved at graph decode time using
  * {@link SymbolicJVMCIReference}.
- *
+ * <p>
  * An instance of this class only exist when
  * {@link jdk.vm.ci.services.Services#IS_BUILDING_NATIVE_IMAGE} is true.
  */
@@ -403,7 +406,7 @@ public class SymbolicSnippetEncoder {
      * Encode all pending graphs and return the result.
      */
     @SuppressWarnings("try")
-    private synchronized EncodedSnippets encodeSnippets(OptionValues options) {
+    public synchronized EncodedSnippets encodeSnippets(OptionValues options) {
         GraphBuilderConfiguration.Plugins plugins = originalReplacements.getGraphBuilderPlugins();
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         GraphBuilderConfiguration.Plugins copy = new GraphBuilderConfiguration.Plugins(plugins, invocationPlugins);
@@ -547,6 +550,13 @@ public class SymbolicSnippetEncoder {
         lookupSnippetType(NamedLocationIdentity.class);
         lookupSnippetType(SnippetTemplate.EagerSnippetInfo.class);
         lookupSnippetType(ForeignCallStub.class);
+
+        // Ensure AbstractForeignCallStub.getGraph is available
+        MetaAccessProvider metaAccess = originalReplacements.getProviders().getMetaAccess();
+        ResolvedJavaMethod[] stubMethods = metaAccess.lookupJavaType(AbstractForeignCallStub.class).getDeclaredMethods();
+        Optional<ResolvedJavaMethod> abstractForeignCallStubGetName = Arrays.stream(stubMethods).filter(resolvedJavaMethod -> resolvedJavaMethod.getName().equals("getGraph")).findFirst();
+        GraalError.guarantee(abstractForeignCallStubGetName.isPresent(), "ResolvedJavaMethod for AbstractForeignCallStub.getGraph() unavailable");
+        findSnippetMethod(abstractForeignCallStubGetName.get());
 
         SnippetObjectFilter filter = new SnippetObjectFilter(originalReplacements.getProviders());
         byte[] snippetEncoding = encoder.getEncoding();
@@ -1061,7 +1071,11 @@ public class SymbolicSnippetEncoder {
         }
     }
 
-    private static final Map<Class<?>, SnippetResolvedJavaType> snippetTypes = new HashMap<>();
+    /**
+     * To prevent this field being considered as an <i>externalValue</i> by
+     * {@link ObjectCopier#encode(Object, List)}, it must <b>not</b> be {@code final}.
+     */
+    private static Map<Class<?>, SnippetResolvedJavaType> snippetTypes = new HashMap<>();
 
     private static synchronized SnippetResolvedJavaType lookupSnippetType(Class<?> clazz) {
         SnippetResolvedJavaType type = null;

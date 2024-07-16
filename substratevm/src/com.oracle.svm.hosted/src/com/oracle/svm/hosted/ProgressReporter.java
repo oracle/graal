@@ -73,9 +73,9 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
@@ -732,7 +732,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         recordJsonMetric(ResourceUsageKey.TOTAL_SECS, totalSeconds);
 
         createAdditionalArtifacts(imageName, generator, wasSuccessfulBuild, parsedHostedOptions);
-        printArtifacts(generator.getBuildArtifacts());
+        printArtifacts(BuildArtifacts.singleton());
 
         l().printHeadlineSeparator();
 
@@ -777,7 +777,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         if (wasSuccessfulBuild) {
             createAdditionalArtifactsOnSuccess(artifacts, generator, parsedHostedOptions);
         }
-        BuildArtifactsExporter.run(imageName, artifacts, generator.getBuildArtifacts());
+        BuildArtifactsExporter.run(imageName, artifacts);
     }
 
     private void createAdditionalArtifactsOnSuccess(BuildArtifacts artifacts, NativeImageGenerator generator, OptionValues parsedHostedOptions) {
@@ -791,7 +791,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         ImageSingletons.lookup(ProgressReporterFeature.class).createAdditionalArtifactsOnSuccess(artifacts);
     }
 
-    private void printArtifacts(Map<ArtifactType, List<Path>> artifacts) {
+    private void printArtifacts(BuildArtifacts artifacts) {
         if (artifacts.isEmpty()) {
             return;
         }

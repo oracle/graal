@@ -24,14 +24,17 @@
  */
 package com.oracle.svm.hosted.jfr;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.RandomAccessFile;
 import java.lang.reflect.Method;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -45,10 +48,12 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.reflect.ReflectionFeature;
 
 import jdk.internal.event.Event;
 import jdk.jfr.internal.JVM;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import sun.nio.ch.FileChannelImpl;
 
 /**
  * Support for Java-level JFR events. This feature is only present if the {@link JfrFeature} is used
@@ -63,7 +68,16 @@ public class JfrEventFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(JfrFeature.class);
+        return List.of(JfrFeature.class, ReflectionFeature.class);
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        RuntimeReflection.registerFieldLookup(Throwable.class, "jfrTracing");
+        RuntimeReflection.registerFieldLookup(FileInputStream.class, "jfrTracing");
+        RuntimeReflection.registerFieldLookup(FileOutputStream.class, "jfrTracing");
+        RuntimeReflection.registerFieldLookup(FileChannelImpl.class, "jfrTracing");
+        RuntimeReflection.registerFieldLookup(RandomAccessFile.class, "jfrTracing");
     }
 
     @Override

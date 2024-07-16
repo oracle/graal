@@ -47,6 +47,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -82,11 +83,13 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
+import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.heap.UnknownClass;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
+import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -394,7 +397,7 @@ public class SVMHost extends HostVM {
          * bytecode-liveness. This greatly helps debugging. Note that when local variable numbers
          * are reused by javac, local variables can still be assigned to illegal values.
          */
-        return SubstrateOptions.optimizationLevel() == OptimizationLevel.O0;
+        return SubstrateOptions.optimizationLevel() == OptimizationLevel.O0 || InterpreterSupport.isEnabled();
     }
 
     @Override
@@ -407,6 +410,10 @@ public class SVMHost extends HostVM {
             targetMethod = Optional.of((AnalysisMethod) linkage.getMethod());
         }
         return targetMethod;
+    }
+
+    public DynamicHub dynamicHub(Class<?> type) {
+        return dynamicHub(providers.getMetaAccess().lookupJavaType(type));
     }
 
     public DynamicHub dynamicHub(ResolvedJavaType type) {
@@ -432,11 +439,14 @@ public class SVMHost extends HostVM {
         if ((type.isInstanceClass() && type.getSuperclass() != null) || type.isArray()) {
             superHub = dynamicHub(type.getSuperclass());
         }
+        Class<?> javaClass = type.getJavaClass();
         DynamicHub componentHub = null;
         if (type.isArray()) {
             componentHub = dynamicHub(type.getComponentType());
+        } else if (javaClass == FillerArray.class) {
+            Hybrid hybrid = AnnotationAccess.getAnnotation(javaClass, Hybrid.class);
+            componentHub = dynamicHub(hybrid.componentType());
         }
-        Class<?> javaClass = type.getJavaClass();
         int modifiers = javaClass.getModifiers();
 
         /*
@@ -561,6 +571,8 @@ public class SVMHost extends HostVM {
                 return HubType.POD_INSTANCE;
             } else if (ContinuationSupport.isSupported() && type.getJavaClass() == StoredContinuation.class) {
                 return HubType.STORED_CONTINUATION_INSTANCE;
+            } else if (type.getJavaClass() == FillerArray.class) {
+                return HubType.PRIMITIVE_ARRAY;
             }
             assert !Target_java_lang_ref_Reference.class.isAssignableFrom(type.getJavaClass()) : "should not see substitution type here";
             return HubType.INSTANCE;
@@ -979,9 +991,9 @@ public class SVMHost extends HostVM {
     @Override
     public HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
         if (parsingSupport != null) {
-            HostedProviders providers = parsingSupport.getHostedProviders(key);
-            if (providers != null) {
-                return providers;
+            HostedProviders p = parsingSupport.getHostedProviders(key);
+            if (p != null) {
+                return p;
             }
         }
         return super.getProviders(key);

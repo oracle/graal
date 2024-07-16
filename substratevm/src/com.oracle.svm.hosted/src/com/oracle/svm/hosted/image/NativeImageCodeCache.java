@@ -49,6 +49,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.oracle.svm.core.meta.CompressedNullConstant;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -379,24 +380,26 @@ public abstract class NativeImageCodeCache {
 
         Set<AnalysisField> includedFields = new HashSet<>();
         Set<AnalysisMethod> includedMethods = new HashSet<>();
-        Map<AnalysisField, ConditionalRuntimeValue<Field>> configurationFields = reflectionSupport.getReflectionFields();
-        Map<AnalysisMethod, ConditionalRuntimeValue<Executable>> configurationExecutables = reflectionSupport.getReflectionExecutables();
+        Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> configurationFields = reflectionSupport.getReflectionFields();
+        Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> configurationExecutables = reflectionSupport.getReflectionExecutables();
 
         reflectionSupport.getHeapReflectionFields().forEach(((analysisField, reflectField) -> {
             if (includedFields.add(analysisField)) {
                 HostedField hostedField = hUniverse.lookup(analysisField);
-                runtimeMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedField, reflectField, configurationFields.containsKey(analysisField));
+                runtimeMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedField, reflectField,
+                                configurationFields.getOrDefault(analysisField.getDeclaringClass(), Collections.emptyMap()).containsKey(analysisField));
             }
         }));
 
         reflectionSupport.getHeapReflectionExecutables().forEach(((analysisMethod, reflectMethod) -> {
             if (includedMethods.add(analysisMethod)) {
                 HostedMethod hostedMethod = hUniverse.lookup(analysisMethod);
-                runtimeMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedMethod, reflectMethod, configurationExecutables.containsKey(analysisMethod));
+                runtimeMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedMethod, reflectMethod,
+                                configurationExecutables.getOrDefault(analysisMethod.getDeclaringClass(), Collections.emptyMap()).containsKey(analysisMethod));
             }
         }));
 
-        configurationFields.forEach(((analysisField, reflectField) -> {
+        configurationFields.forEach((declaringClass, classFields) -> classFields.forEach((analysisField, reflectField) -> {
             if (includedFields.add(analysisField)) {
                 HostedField hostedField = hUniverse.lookup(analysisField);
                 runtimeMetadataEncoder.addReflectionFieldMetadata(hMetaAccess, hostedField, reflectField);
@@ -404,7 +407,7 @@ public abstract class NativeImageCodeCache {
         }));
 
         var symbolTracker = PriorLayerSymbolTracker.singletonOrNull();
-        configurationExecutables.forEach(((analysisMethod, reflectMethod) -> {
+        configurationExecutables.forEach((declaringClass, classMethods) -> classMethods.forEach((analysisMethod, reflectMethod) -> {
             if (includedMethods.add(analysisMethod)) {
                 HostedMethod method = hUniverse.lookup(analysisMethod);
                 if (analysisMethod.isInBaseLayer()) {
@@ -498,6 +501,12 @@ public abstract class NativeImageCodeCache {
 
         if (ImageSingletons.contains(CallStackFrameMethodInfo.class)) {
             ImageSingletons.lookup(CallStackFrameMethodInfo.class).initialize(encoders, hMetaAccess);
+        }
+
+        if (InterpreterSupport.isEnabled()) {
+            // Required to precisely obtain the associated interpreter method from a compiled stack
+            // frame.
+            InterpreterSupport.singleton().buildMethodIdMapping(encoders.getEncodedMethods());
         }
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {

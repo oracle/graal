@@ -33,9 +33,7 @@ public final class IsolateUtil {
      * Gets the address of the current isolate or 0 if this not an isolate-aware runtime.
      */
     public static long getIsolateAddress() {
-        // Substituted by
-        // com.oracle.svm.graal.Target_jdk_graal_compiler_serviceprovider_IsolateUtil
-        return 0;
+        return VMSupport.getIsolateAddress();
     }
 
     /**
@@ -44,9 +42,7 @@ public final class IsolateUtil {
      * process.
      */
     public static long getIsolateID() {
-        // Substituted by
-        // com.oracle.svm.graal.Target_jdk_graal_compiler_serviceprovider_IsolateUtil
-        return 0;
+        return VMSupport.getIsolateID();
     }
 
     /**

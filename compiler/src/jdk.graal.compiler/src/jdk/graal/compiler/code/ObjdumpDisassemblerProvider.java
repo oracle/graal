@@ -40,6 +40,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
 import jdk.graal.compiler.util.CollectionsUtil;
 
@@ -54,7 +55,6 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
-import jdk.vm.ci.services.Services;
 
 /**
  * A provider that uses the {@code GNU objdump} utility to disassemble code.
@@ -102,7 +102,7 @@ public class ObjdumpDisassemblerProvider implements DisassemblerProvider {
             }
 
             String[] cmdline;
-            String arch = Services.getSavedProperty("os.arch");
+            String arch = GraalServices.getSavedProperty("os.arch");
             if (arch.equals("amd64") || arch.equals("x86_64")) {
                 cmdline = new String[]{objdump, "-D", "-b", "binary", "-M", "x86-64", "-m", "i386", tmp.getAbsolutePath()};
             } else if (arch.equals("aarch64")) {

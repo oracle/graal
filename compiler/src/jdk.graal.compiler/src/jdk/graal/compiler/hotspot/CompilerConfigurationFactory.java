@@ -135,14 +135,14 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
 
     public static class DefaultBackendMap implements BackendMap {
 
-        private final EconomicMap<Class<? extends Architecture>, HotSpotBackendFactory> backends = EconomicMap.create();
+        private final EconomicMap<String, HotSpotBackendFactory> backends = EconomicMap.create();
 
         @SuppressWarnings("try")
         public DefaultBackendMap(String backendName) {
             try (InitTimer t = timer("HotSpotBackendFactory.register")) {
                 for (HotSpotBackendFactory backend : GraalServices.load(HotSpotBackendFactory.class)) {
                     if (backend.getName().equals(backendName)) {
-                        Class<? extends Architecture> arch = backend.getArchitecture();
+                        String arch = backend.getArchitecture();
                         if (arch != null) {
                             HotSpotBackendFactory oldEntry = backends.put(arch, backend);
                             assert oldEntry == null || oldEntry == backend : "duplicate Graal backend";
@@ -154,7 +154,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
 
         @Override
         public final HotSpotBackendFactory getBackendFactory(Architecture arch) {
-            return backends.get(arch.getClass());
+            return backends.get(arch.getName());
         }
     }
 

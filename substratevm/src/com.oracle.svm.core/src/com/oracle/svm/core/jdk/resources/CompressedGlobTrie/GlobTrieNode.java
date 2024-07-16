@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.svm.core.heap.UnknownObjectField;
+
 public class GlobTrieNode {
     protected static final String STAR = "*";
     protected static final String STAR_STAR = "**";
@@ -38,9 +40,11 @@ public class GlobTrieNode {
     public static final String SAME_LEVEL_IDENTIFIER = "#";
 
     private String content;
+    @UnknownObjectField(fullyQualifiedTypes = {"java.util.HashMap", "java.util.ImmutableCollections$MapN", "java.util.ImmutableCollections$Map1"}) //
     private Map<String, GlobTrieNode> children;
     private boolean isLeaf;
     private boolean isNewLevel;
+    @UnknownObjectField(fullyQualifiedTypes = {"java.util.HashSet", "java.util.ImmutableCollections$SetN", "java.util.ImmutableCollections$Set12"}) //
     private Set<String> additionalContent;
 
     protected GlobTrieNode() {
@@ -72,12 +76,20 @@ public class GlobTrieNode {
         isLeaf = true;
     }
 
+    protected void makeNodeInternal() {
+        isLeaf = false;
+    }
+
     public String getContent() {
         return content;
     }
 
     protected Set<String> getAdditionalContent() {
         return additionalContent;
+    }
+
+    protected void removeAdditionalContent(List<String> ac) {
+        additionalContent.removeAll(ac);
     }
 
     protected void addAdditionalContent(String ac) {
@@ -90,6 +102,19 @@ public class GlobTrieNode {
 
     protected GlobTrieNode getChild(String child) {
         return children.get(child);
+    }
+
+    protected void removeChildren(List<GlobTrieNode> childKeys) {
+        for (var child : childKeys) {
+            /*
+             * we need exact name of the child key in order to delete it. In case when we have a
+             * complex level (with stars), all children from the same level will have
+             * SAME_LEVEL_IDENTIFIER, so we must append it here
+             */
+            String sameLevel = !child.isNewLevel() ? SAME_LEVEL_IDENTIFIER : "";
+            String childKey = child.getContent() + sameLevel;
+            children.remove(childKey);
+        }
     }
 
     protected GlobTrieNode getChildFromSameLevel(String child) {
@@ -142,5 +167,4 @@ public class GlobTrieNode {
         additionalContent = Set.copyOf(additionalContent);
         children = Map.copyOf(children);
     }
-
 }

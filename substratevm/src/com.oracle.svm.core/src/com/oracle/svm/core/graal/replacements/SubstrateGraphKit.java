@@ -34,6 +34,7 @@ import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.nodes.CFunctionCaptureNode;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
@@ -54,7 +55,6 @@ import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.nodes.IndirectCallTargetNode;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.MergeNode;
@@ -259,7 +259,7 @@ public class SubstrateGraphKit extends GraphKit {
 
         int bci = bci();
         CallTargetNode callTarget = getGraph().add(
-                        new IndirectCallTargetNode(targetAddress, args.toArray(new ValueNode[args.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
+                        new SubstrateIndirectCallTargetNode(targetAddress, args.toArray(new ValueNode[args.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
                                         convention, InvokeKind.Static));
         InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
