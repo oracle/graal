@@ -44,6 +44,8 @@ import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 @ExportLibrary(NodeLibrary.class)
 public abstract class BaseQuickNode extends EspressoNode implements BciProvider, InstrumentableNode {
 
+    public static final BaseQuickNode[] EMPTY_ARRAY = new BaseQuickNode[0];
+
     public abstract int execute(VirtualFrame frame, boolean isContinuationResume);
 
     public boolean isInstrumentable() {
