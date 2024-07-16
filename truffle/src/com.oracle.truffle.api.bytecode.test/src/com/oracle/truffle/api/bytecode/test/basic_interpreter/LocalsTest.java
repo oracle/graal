@@ -43,6 +43,8 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.List;
 
@@ -52,6 +54,8 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.LocalVariable;
+import com.oracle.truffle.api.bytecode.Instruction.Argument;
+import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 
 public class LocalsTest extends AbstractBasicInterpreterTest {
@@ -121,11 +125,12 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         // @formatter:off
         // l0 = 1;
         // try
+        //   l1 = l0
         //   if (true) {
-        //     return l0
+        //     return l1
         //   }
         // } finally {
-        //   l1 = 42
+        //   l2 = 42
         // }
         // return l0;
         // @formatter:on
@@ -142,20 +147,27 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
             b.beginFinallyTry(() -> {
                 // finally block
                 b.beginBlock();
-                BytecodeLocal l1 = b.createLocal("l1", null);
-                b.beginStoreLocal(l1);
+                BytecodeLocal l2 = b.createLocal("l2", null);
+                b.beginStoreLocal(l2);
                 b.emitLoadConstant(42L);
                 b.endStoreLocal();
                 b.endBlock();
             });
 
-            // if block
+            // try block
+            b.beginBlock();
+            BytecodeLocal l1 = b.createLocal("l1", null);
+            b.beginStoreLocal(l1);
+            b.emitLoadLocal(l0);
+            b.endStoreLocal();
             b.beginIfThen();
             b.emitLoadConstant(true);
             b.beginReturn();
             b.emitLoadLocal(l0);
             b.endReturn();
             b.endIfThen();
+            b.emitLoadConstant(123L);
+            b.endBlock();
 
             b.endFinallyTry();
 
@@ -166,9 +178,91 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        // TODO proper assertions when properly implemented
-
+        BytecodeNode b = root.getBytecodeNode();
+        List<LocalVariable> locals = b.getLocals();
         assertEquals(1L, root.getCallTarget().call());
+
+        if (run.hasLocalScopes()) {
+            assertEquals(7, locals.size());
+            LocalVariable l0a = locals.get(0);
+            LocalVariable l1a = locals.get(1);
+            LocalVariable l2a = locals.get(2); // early return handler
+            LocalVariable l1b = locals.get(3);
+            LocalVariable l0b = locals.get(4);
+            LocalVariable l2b = locals.get(5); // fallthrough handler
+            LocalVariable l2c = locals.get(6); // exceptional handler
+
+            assertEquals("l0", l0a.getName());
+            assertEquals("l0", l0b.getName());
+            assertEquals(l0a.getLocalOffset(), l0b.getLocalOffset());
+            assertEquals("l1", l1a.getName());
+            assertEquals("l1", l1b.getName());
+            assertEquals(l1a.getLocalOffset(), l1b.getLocalOffset());
+            assertEquals("l2", l2a.getName());
+            assertEquals("l2", l2b.getName());
+            assertEquals("l2", l2c.getName());
+
+            // Use the load.constant consts to identify which block an instruction belongs to.
+            for (Instruction instruction : b.getInstructions()) {
+                if (!instruction.getName().equals("load.constant")) {
+                    continue;
+                }
+                for (Argument arg : instruction.getArguments()) {
+                    if (arg.getKind() != Kind.CONSTANT) {
+                        continue;
+                    }
+                    Object constant = arg.asConstant();
+
+                    if (constant == Long.valueOf(1L)) {
+                        // root block
+                        int bci = instruction.getBytecodeIndex();
+                        assertEquals(1, b.getLocalCount(bci));
+                        assertEquals("l0", b.getLocalName(bci, 0));
+                        assertNull(b.getLocalInfo(bci, 0));
+                    } else if (constant == Boolean.valueOf(true)) {
+                        // try block (before return)
+                        int bci = instruction.getBytecodeIndex();
+                        assertEquals(2, b.getLocalCount(bci));
+                        assertEquals("l0", b.getLocalName(bci, 0));
+                        assertNull(b.getLocalInfo(bci, 0));
+                        assertEquals("l1", b.getLocalName(bci, 1));
+                        assertNull(b.getLocalInfo(bci, 1));
+                    } else if (constant == Long.valueOf(123L)) {
+                        // TODO: walk stack bottom-up during rewind to support proper local
+                        // introspection order
+                        // try block (after return)
+                        int bci = instruction.getBytecodeIndex();
+                        assertEquals(2, b.getLocalCount(bci));
+                        assertEquals("l1", b.getLocalName(bci, 0));
+                        assertNull(b.getLocalInfo(bci, 0));
+                        assertEquals("l0", b.getLocalName(bci, 1));
+                        assertNull(b.getLocalInfo(bci, 1));
+                    } else if (constant == Long.valueOf(42L)) {
+                        // finally block
+                        int bci = instruction.getBytecodeIndex();
+                        assertEquals(2, b.getLocalCount(bci));
+                        assertEquals("l0", b.getLocalName(bci, 0));
+                        assertNull(b.getLocalInfo(bci, 0));
+                        assertEquals("l2", b.getLocalName(bci, 1));
+                        assertNull(b.getLocalInfo(bci, 1));
+                    } else {
+                        fail("Unexpected constant " + constant);
+                    }
+                }
+            }
+        } else {
+            assertEquals(5, locals.size());
+            LocalVariable l0 = locals.get(0);
+            LocalVariable l1 = locals.get(1);
+            LocalVariable l2a = locals.get(2); // early return handler
+            LocalVariable l2b = locals.get(3); // fallthrough handler
+            LocalVariable l2c = locals.get(4); // exceptional handler
+            assertEquals("l0", l0.getName());
+            assertEquals("l1", l1.getName());
+            assertEquals("l2", l2a.getName());
+            assertEquals("l2", l2b.getName());
+            assertEquals("l2", l2c.getName());
+        }
     }
 
     @Test
@@ -203,7 +297,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
             // l1 = l0
             BytecodeLocal l1 = b.createLocal("l1", null);
             b.beginStoreLocal(l1);
-            b.emitLoadLocal(l1);
+            b.emitLoadLocal(l0);
             b.endStoreLocal();
 
             b.endBlock();
@@ -270,6 +364,8 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
             assertEquals(instructions.get(5).getBytecodeIndex(), locals.get(2).getStartIndex());
             assertEquals(endBci, locals.get(2).getEndIndex());
             assertEquals("l2", locals.get(2).getName());
+            // l1 and l2 should use the same frame slot.
+            assertEquals(locals.get(1).getLocalOffset(), locals.get(2).getLocalOffset());
 
             assertEquals(instructions.get(7).getBytecodeIndex(), locals.get(3).getStartIndex());
             assertEquals(instructions.get(16).getBytecodeIndex(), locals.get(3).getEndIndex());
@@ -413,34 +509,31 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
             b.emitLoadConstant(42L);
             b.endStoreLocal();
 
-            {
-                b.beginBlock();
+            b.beginBlock();
 
-                BytecodeLocal l1 = b.createLocal("l1", null);
-                b.beginStoreLocal(l1);
-                b.emitLoadConstant("");
-                b.endStoreLocal();
-                BytecodeLocal l2 = b.createLocal("l2", null);
-                b.beginStoreLocal(l2);
-                b.emitLoadConstant(42L);
-                b.endStoreLocal();
+            BytecodeLocal l1 = b.createLocal("l1", null);
+            b.beginStoreLocal(l1);
+            b.emitLoadConstant("");
+            b.endStoreLocal();
+            BytecodeLocal l2 = b.createLocal("l2", null);
+            b.beginStoreLocal(l2);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
 
-                b.endBlock();
-            }
-            {
-                b.beginBlock();
+            b.endBlock();
 
-                BytecodeLocal l1 = b.createLocal("l1", null);
-                b.beginStoreLocal(l1);
-                b.emitLoadConstant(42L);
-                b.endStoreLocal();
-                BytecodeLocal l2 = b.createLocal("l2", null);
-                b.beginStoreLocal(l2);
-                b.emitLoadConstant("");
-                b.endStoreLocal();
+            b.beginBlock();
 
-                b.endBlock();
-            }
+            l1 = b.createLocal("l1", null);
+            b.beginStoreLocal(l1);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+            l2 = b.createLocal("l2", null);
+            b.beginStoreLocal(l2);
+            b.emitLoadConstant("");
+            b.endStoreLocal();
+
+            b.endBlock();
 
             b.beginReturn();
             b.emitLoadLocal(l0);
@@ -452,54 +545,54 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         List<LocalVariable> locals = root.getBytecodeNode().getLocals();
         assertEquals(5, locals.size());
         LocalVariable l0 = locals.get(0);
-        LocalVariable l1_0 = locals.get(1);
-        LocalVariable l2_0 = locals.get(2);
-        LocalVariable l1_1 = locals.get(3);
-        LocalVariable l2_2 = locals.get(4);
+        LocalVariable l1a = locals.get(1);
+        LocalVariable l2a = locals.get(2);
+        LocalVariable l1b = locals.get(3);
+        LocalVariable l2b = locals.get(4);
 
         assertEquals("l0", l0.getName());
-        assertEquals("l1", l1_0.getName());
-        assertEquals("l2", l2_0.getName());
-        assertEquals("l1", l1_1.getName());
-        assertEquals("l2", l2_2.getName());
+        assertEquals("l1", l1a.getName());
+        assertEquals("l2", l2a.getName());
+        assertEquals("l1", l1b.getName());
+        assertEquals("l2", l2b.getName());
 
         assertNull(l0.getInfo());
-        assertNull(l1_0.getInfo());
-        assertNull(l2_0.getInfo());
-        assertNull(l1_1.getInfo());
-        assertNull(l2_2.getInfo());
+        assertNull(l1a.getInfo());
+        assertNull(l2a.getInfo());
+        assertNull(l1b.getInfo());
+        assertNull(l2b.getInfo());
 
         assertNotNull(l0.toString());
-        assertNotNull(l1_0.toString());
-        assertNotNull(l2_0.toString());
-        assertNotNull(l1_1.toString());
-        assertNotNull(l2_2.toString());
+        assertNotNull(l1a.toString());
+        assertNotNull(l2a.toString());
+        assertNotNull(l1b.toString());
+        assertNotNull(l2b.toString());
 
         assertNull(l0.getTypeProfile());
-        assertNull(l1_0.getTypeProfile());
-        assertNull(l2_0.getTypeProfile());
-        assertNull(l1_1.getTypeProfile());
-        assertNull(l2_2.getTypeProfile());
+        assertNull(l1a.getTypeProfile());
+        assertNull(l2a.getTypeProfile());
+        assertNull(l1b.getTypeProfile());
+        assertNull(l2b.getTypeProfile());
 
         if (run.hasGlobalScopes()) {
             assertEquals(0, l0.getLocalOffset());
-            assertEquals(1, l1_0.getLocalOffset());
-            assertEquals(2, l2_0.getLocalOffset());
-            assertEquals(3, l1_1.getLocalOffset());
-            assertEquals(4, l2_2.getLocalOffset());
+            assertEquals(1, l1a.getLocalOffset());
+            assertEquals(2, l2a.getLocalOffset());
+            assertEquals(3, l1b.getLocalOffset());
+            assertEquals(4, l2b.getLocalOffset());
         } else {
             assertEquals(0, l0.getLocalOffset());
-            assertEquals(1, l1_0.getLocalOffset());
-            assertEquals(2, l2_0.getLocalOffset());
-            assertEquals(1, l1_1.getLocalOffset());
-            assertEquals(2, l2_2.getLocalOffset());
+            assertEquals(1, l1a.getLocalOffset());
+            assertEquals(2, l2a.getLocalOffset());
+            assertEquals(1, l1b.getLocalOffset());
+            assertEquals(2, l2b.getLocalOffset());
         }
 
         assertEquals(0, l0.getLocalIndex());
-        assertEquals(1, l1_0.getLocalIndex());
-        assertEquals(2, l2_0.getLocalIndex());
-        assertEquals(3, l1_1.getLocalIndex());
-        assertEquals(4, l2_2.getLocalIndex());
+        assertEquals(1, l1a.getLocalIndex());
+        assertEquals(2, l2a.getLocalIndex());
+        assertEquals(3, l1b.getLocalIndex());
+        assertEquals(4, l2b.getLocalIndex());
 
         root.getBytecodeNode().setUncachedThreshold(0);
         assertEquals(42L, root.getCallTarget().call());
@@ -507,41 +600,41 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         // re-read locals as old
         locals = root.getBytecodeNode().getLocals();
         l0 = locals.get(0);
-        l1_0 = locals.get(1);
-        l2_0 = locals.get(2);
-        l1_1 = locals.get(3);
-        l2_2 = locals.get(4);
+        l1a = locals.get(1);
+        l2a = locals.get(2);
+        l1b = locals.get(3);
+        l2b = locals.get(4);
 
         if (run.hasBoxingElimination()) {
             assertEquals(FrameSlotKind.Long, l0.getTypeProfile());
-            assertEquals(FrameSlotKind.Object, l1_0.getTypeProfile());
-            assertEquals(FrameSlotKind.Long, l2_0.getTypeProfile());
-            assertEquals(FrameSlotKind.Long, l1_1.getTypeProfile());
-            assertEquals(FrameSlotKind.Object, l2_2.getTypeProfile());
+            assertEquals(FrameSlotKind.Object, l1a.getTypeProfile());
+            assertEquals(FrameSlotKind.Long, l2a.getTypeProfile());
+            assertEquals(FrameSlotKind.Long, l1b.getTypeProfile());
+            assertEquals(FrameSlotKind.Object, l2b.getTypeProfile());
         } else {
             // no profile collected if not boxing-eliminated
             assertNull(l0.getTypeProfile());
-            assertNull(l1_0.getTypeProfile());
-            assertNull(l2_0.getTypeProfile());
-            assertNull(l1_1.getTypeProfile());
-            assertNull(l2_2.getTypeProfile());
+            assertNull(l1a.getTypeProfile());
+            assertNull(l2a.getTypeProfile());
+            assertNull(l1b.getTypeProfile());
+            assertNull(l2b.getTypeProfile());
         }
 
         assertEquals(42L, root.getCallTarget().call());
 
         if (run.hasBoxingElimination()) {
             assertEquals(FrameSlotKind.Long, l0.getTypeProfile());
-            assertEquals(FrameSlotKind.Object, l1_0.getTypeProfile());
-            assertEquals(FrameSlotKind.Long, l2_0.getTypeProfile());
-            assertEquals(FrameSlotKind.Long, l1_1.getTypeProfile());
-            assertEquals(FrameSlotKind.Object, l2_2.getTypeProfile());
+            assertEquals(FrameSlotKind.Object, l1a.getTypeProfile());
+            assertEquals(FrameSlotKind.Long, l2a.getTypeProfile());
+            assertEquals(FrameSlotKind.Long, l1b.getTypeProfile());
+            assertEquals(FrameSlotKind.Object, l2b.getTypeProfile());
         } else {
             // no profile collected if not boxing-eliminated
             assertNull(l0.getTypeProfile());
-            assertNull(l1_0.getTypeProfile());
-            assertNull(l2_0.getTypeProfile());
-            assertNull(l1_1.getTypeProfile());
-            assertNull(l2_2.getTypeProfile());
+            assertNull(l1a.getTypeProfile());
+            assertNull(l2a.getTypeProfile());
+            assertNull(l1b.getTypeProfile());
+            assertNull(l2b.getTypeProfile());
         }
     }
 
