@@ -1786,7 +1786,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dir_name='icu4j',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=['Truffle', 'XZ'],
     truffle_jars=[
         'truffle:TRUFFLE_ICU4J',
     ],
