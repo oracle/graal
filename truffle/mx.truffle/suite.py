@@ -1173,6 +1173,8 @@ suite = {
         "java.desktop",
       ],
       "dependencies" : [
+        "sdk:NATIVEIMAGE",
+        "truffle:TRUFFLE_XZ",
       ],
       "shadedDependencies" : [
         "truffle:ICU4J",
@@ -1200,20 +1202,31 @@ suite = {
           "com/ibm/icu/ICUConfig.properties" : {
             "com\\.ibm\\.icu\\." : "org.graalvm.shadowed.com.ibm.icu.",
           },
-          "com/ibm/icu/util/VTimeZone.java" : {
-            # confuses the codesnippet doclet
-            " (BEGIN|END):(\\w+)\\b" : " \'\\1:\\2\'",
-          },
           "com/ibm/icu/impl/ICUBinary.java" : {
             # we want to make this code unreachable in native image builds
             "addDataFilesFromPath\\(dataPath, icuDataFiles\\);" : "// \\g<0>",
           },
           "com/ibm/icu/impl/ICUData.java" : {
             # [GR-47166] we load an absolute path from ICUData.class, to
-            # workaround an issue we don't understand when this is on the
-            # module path
+            # workaround an issue we don't understand when on the module path
             "ICU_DATA_PATH = \"(?!/)" : "\\g<0>/",
-            "loader.getResourceAsStream\\(resourceName\\)": "(loader == ICUData.class.getClassLoader() ? ICUData.class.getResourceAsStream(resourceName) : \\g<0>)",
+            "root.getResourceAsStream\\(resourceName\\)": "getResourceStream(null, root, resourceName)",
+            "loader.getResourceAsStream\\(resourceName\\)": "getResourceStream(loader, null, resourceName)",
+            "private static InputStream getStream": """
+    private static InputStream getResourceStream(ClassLoader loader, Class<?> root, String resourceName) {
+        Class<?> refClass = root;
+        if (refClass == null && loader == ICUData.class.getClassLoader()) {
+            refClass = ICUData.class;
+        }
+        InputStream inputStream;
+        if (refClass != null) {
+            inputStream = refClass.getResourceAsStream(resourceName);
+        } else {
+            inputStream = loader.getResourceAsStream(resourceName);
+        }
+        return inputStream;
+    }
+    \\g<0>""",
           },
           "com/ibm/icu/impl/URLHandler.java" : {
             # we want to make this code unreachable in native image builds
@@ -2309,6 +2322,7 @@ suite = {
         "requires" : [
           "static java.xml",
           "static java.desktop",
+          "static org.graalvm.shadowed.xz",
         ],
         "exports" : [
           # Qualified exports.
@@ -2328,8 +2342,8 @@ suite = {
         "org.graalvm.shadowed.com.ibm.icu",
       ],
       "distDependencies" : [
-      ],
-      "exclude" : [
+        "sdk:NATIVEIMAGE",
+        "truffle:TRUFFLE_XZ",
       ],
       "description" : "ICU4J shaded module.",
       "allowsJavadocWarnings" : True,
@@ -2351,8 +2365,8 @@ suite = {
         ],
         "exports" : [
           # Qualified exports.
-          "org.graalvm.shadowed.org.tukaani.xz to org.graalvm.py, org.graalvm.r",
-          "org.graalvm.shadowed.org.tukaani.xz.* to org.graalvm.py, org.graalvm.r",
+          "org.graalvm.shadowed.org.tukaani.xz to org.graalvm.py, org.graalvm.r, org.graalvm.shadowed.icu4j",
+          "org.graalvm.shadowed.org.tukaani.xz.* to org.graalvm.py, org.graalvm.r, org.graalvm.shadowed.icu4j",
         ],
       },
       "subDir" : "src",
