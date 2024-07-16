@@ -403,6 +403,7 @@ public final class Space {
             if (probability(SLOW_PATH_PROBABILITY, ObjectHeaderImpl.hasIdentityHashFromAddressInline(header))) {
                 addIdentityHashField = true;
                 copySize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, true);
+                assert copySize.aboveOrEqual(originalSize);
             }
         }
 
@@ -431,7 +432,7 @@ public final class Space {
             // If the object was promoted to the old gen, we need to take care of the remembered
             // set bit and the first object table (even when promoting from old to old).
             AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
-            RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
+            RememberedSet.get().enableRememberedSetForObject(copyChunk, copy, copySize);
         }
         return copy;
     }

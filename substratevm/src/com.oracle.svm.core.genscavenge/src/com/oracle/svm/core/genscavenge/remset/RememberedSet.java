@@ -93,7 +93,7 @@ public interface RememberedSet extends BarrierSetProvider {
      */
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void enableRememberedSetForObject(AlignedHeader chunk, Object obj);
+    void enableRememberedSetForObject(AlignedHeader chunk, Object obj, UnsignedWord objSize);
 
     /** Clears the remembered set of an aligned chunk. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

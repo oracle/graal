@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.LogHandler;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.impl.InternalPlatform;
-
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -81,12 +76,7 @@ public class OutOfMemoryUtil {
         }
 
         if (SubstrateGCOptions.ReportFatalErrorOnOutOfMemoryError.getValue()) {
-            if (Platform.includedIn(InternalPlatform.NATIVE_ONLY.class)) {
-                Log.log().string("Reporting Fatal Error due to java.lang.OutOfMemoryError: ").exception(error);
-            } else {
-                Log.log().string("Reporting Fatal Error due to java.lang.OutOfMemoryError").newline();
-            }
-            ImageSingletons.lookup(LogHandler.class).fatalError();
+            throw VMError.shouldNotReachHere("reporting due to java.lang.OutOfMemoryError");
         }
     }
 }

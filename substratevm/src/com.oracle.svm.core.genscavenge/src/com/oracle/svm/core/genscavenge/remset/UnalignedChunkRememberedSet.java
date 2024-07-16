@@ -106,7 +106,7 @@ final class UnalignedChunkRememberedSet {
     }
 
     public static boolean verify(UnalignedHeader chunk) {
-        return CardTable.verify(getCardTableStart(chunk), UnalignedHeapChunk.getObjectStart(chunk), HeapChunk.getTopPointer(chunk));
+        return CardTable.verify(getCardTableStart(chunk), getCardTableEnd(chunk), UnalignedHeapChunk.getObjectStart(chunk), HeapChunk.getTopPointer(chunk));
     }
 
     @Fold
@@ -145,5 +145,10 @@ final class UnalignedChunkRememberedSet {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer getCardTableStart(Pointer chunk) {
         return chunk.add(getCardTableStartOffset());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static Pointer getCardTableEnd(UnalignedHeader chunk) {
+        return getCardTableStart(chunk).add(getCardTableSize());
     }
 }

@@ -48,6 +48,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
@@ -74,6 +75,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -414,11 +416,14 @@ public final class ThreadLocalAllocation {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void guaranteeZeroed(Pointer memory, UnsignedWord size) {
+        VMError.guarantee(UnsignedUtils.isAMultiple(size, WordFactory.unsigned(ConfigurationValues.getTarget().wordSize)));
+
         Pointer pos = memory;
         Pointer end = memory.add(size);
         while (pos.belowThan(end)) {
-            VMError.guarantee(pos.readByte(0) == 0);
-            pos = pos.add(1);
+            Word v = pos.readWord(0);
+            VMError.guarantee(v.equal(0));
+            pos = pos.add(ConfigurationValues.getTarget().wordSize);
         }
     }
 
