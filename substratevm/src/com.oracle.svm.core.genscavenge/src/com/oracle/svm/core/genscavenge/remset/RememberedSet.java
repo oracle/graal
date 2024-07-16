@@ -88,7 +88,7 @@ public interface RememberedSet extends BarrierSetProvider {
      * Enables remembered set tracking for a single object in an aligned chunk. Must be called when
      * an object is added to the image heap or old generation.
      */
-    void enableRememberedSetForObject(AlignedHeader chunk, Object obj);
+    void enableRememberedSetForObject(AlignedHeader chunk, Object obj, UnsignedWord objSize);
 
     /** Clears the remembered set of an aligned chunk. */
     void clearRememberedSet(AlignedHeader chunk);

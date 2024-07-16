@@ -59,6 +59,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
+import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -78,6 +79,7 @@ import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.log.Log;
@@ -219,13 +221,18 @@ public final class GCImpl implements GC {
 
         timers.resetAllExceptMutator();
 
+        GCCause cause = GCCause.fromId(data.getCauseId());
+        printGCBefore(cause.getName());
+
         /* Flush all TLAB chunks to eden. */
         ThreadLocalAllocation.disableAndFlushForAllThreads();
 
-        GCCause cause = GCCause.fromId(data.getCauseId());
-        printGCBefore(cause.getName());
+        verifyBeforeGC();
+
         boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
         printGCAfter(cause.getName());
+        verifyAfterGC();
+
 
         finishCollection();
         timers.mutator.open();
@@ -303,11 +310,7 @@ public final class GCImpl implements GC {
 
         Timer collectionTimer = timers.collection.open();
         try {
-            if (!followsIncremental) { // we would have verified the heap after the incremental GC
-                verifyBeforeGC();
-            }
             scavenge(!complete);
-            verifyAfterGC();
             if (complete) {
                 lastWholeHeapExaminedTimeMillis = System.currentTimeMillis();
             }
@@ -330,6 +333,10 @@ public final class GCImpl implements GC {
 
     private void verifyBeforeGC() {
         if (SubstrateGCOptions.VerifyHeap.getValue()) {
+            if (SubstrateGCOptions.VerboseGC.getValue()) {
+                printGCPrefixAndTime().string("Verifying Before GC ").newline();
+            }
+
             Timer verifyBeforeTimer = timers.verifyBefore.open();
             try {
                 boolean success = true;
@@ -344,11 +351,19 @@ public final class GCImpl implements GC {
             } finally {
                 verifyBeforeTimer.close();
             }
+
+            if (SubstrateGCOptions.VerboseGC.getValue()) {
+                printGCPrefixAndTime().string("Verifying Before GC ").rational(timers.verifyBefore.getMeasuredNanos(), TimeUtils.nanosPerMilli, 3).string("ms").newline();
+            }
         }
     }
 
     private void verifyAfterGC() {
         if (SubstrateGCOptions.VerifyHeap.getValue()) {
+            if (SubstrateGCOptions.VerboseGC.getValue()) {
+                printGCPrefixAndTime().string("Verifying After GC ").newline();
+            }
+
             Timer verifyAfterTime = timers.verifyAfter.open();
             try {
                 boolean success = true;
@@ -362,6 +377,10 @@ public final class GCImpl implements GC {
                 }
             } finally {
                 verifyAfterTime.close();
+            }
+
+            if (SubstrateGCOptions.VerboseGC.getValue()) {
+                printGCPrefixAndTime().string("Verifying After GC ").rational(timers.verifyAfter.getMeasuredNanos(), TimeUtils.nanosPerMilli, 3).string("ms").newline();
             }
         }
     }

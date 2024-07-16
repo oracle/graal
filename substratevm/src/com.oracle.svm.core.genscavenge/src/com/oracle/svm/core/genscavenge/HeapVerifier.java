@@ -141,7 +141,7 @@ public final class HeapVerifier {
          * reasonable state. Now, we can verify the remembered sets without having to worry about
          * basic heap consistency.
          */
-        if (!SubstrateOptions.useRememberedSet() || !SerialGCOptions.VerifyRememberedSet.getValue()) {
+        if (!SerialGCOptions.useRememberedSet()) {
             return true;
         }
 
@@ -209,6 +209,7 @@ public final class HeapVerifier {
 
     private static boolean verifyAlignedChunks(Space space, AlignedHeader firstAlignedHeapChunk) {
         boolean success = true;
+
         AlignedHeader aChunk = firstAlignedHeapChunk;
         while (aChunk.isNonNull()) {
             if (space != aChunk.getSpace()) {
@@ -227,6 +228,7 @@ public final class HeapVerifier {
 
     private static boolean verifyUnalignedChunks(Space space, UnalignedHeader firstUnalignedHeapChunk) {
         boolean success = true;
+
         UnalignedHeader uChunk = firstUnalignedHeapChunk;
         while (uChunk.isNonNull()) {
             if (space != uChunk.getSpace()) {
@@ -260,6 +262,11 @@ public final class HeapVerifier {
         Word header = ObjectHeaderImpl.getObjectHeaderImpl().readHeaderFromPointer(ptr);
         if (ObjectHeaderImpl.isProducedHeapChunkZapped(header) || ObjectHeaderImpl.isConsumedHeapChunkZapped(header)) {
             Log.log().string("Object ").zhex(ptr).string(" has a zapped header: ").zhex(header).newline();
+            return false;
+        }
+
+        if (!HeapImpl.getHeap().getObjectHeader().isEncodedObjectHeader(header)) {
+            Log.log().string("Object ").zhex(ptr).string(" does not have a valid hub: ").zhex(header).newline();
             return false;
         }
 
@@ -314,12 +321,6 @@ public final class HeapVerifier {
             }
         }
 
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
-        if (!HeapImpl.getHeapImpl().isInImageHeap(hub)) {
-            Log.log().string("Object ").zhex(ptr).string(" references a hub that is not in the image heap: ").zhex(Word.objectToUntrackedPointer(hub)).newline();
-            return false;
-        }
-
         return verifyReferences(obj);
     }
 
@@ -364,11 +365,29 @@ public final class HeapVerifier {
             return false;
         }
 
-        if (!ObjectHeaderImpl.getObjectHeaderImpl().pointsToObjectHeader(referencedObject)) {
+        Word header = ObjectHeader.readHeaderFromPointer(referencedObject);
+        if (!ObjectHeaderImpl.getObjectHeaderImpl().isEncodedObjectHeader(header)) {
             Log.log().string("Object reference at ").zhex(reference).string(" does not point to a Java object or the object header of the Java object is invalid: ").zhex(referencedObject)
                             .string(". ");
             printParentObject(parentObject);
             return false;
+        }
+
+        if (ObjectHeaderImpl.isAlignedHeader(header)) {
+            AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(referencedObject);
+            if (referencedObject.belowThan(AlignedHeapChunk.getObjectsStart(chunk)) || referencedObject.aboveOrEqual(HeapChunk.getTopPointer(chunk))) {
+                Log.log().string("Object reference ").zhex(reference).string(" points to ").zhex(referencedObject).string(", which is outside the usable part of the corresponding aligned chunk.");
+                printParent(parentObject);
+                return false;
+            }
+        } else {
+            assert ObjectHeaderImpl.isUnalignedHeader(header);
+            UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunkFromObjectPointer(referencedObject);
+            if (referencedObject != UnalignedHeapChunk.getObjectStart(chunk)) {
+                Log.log().string("Object reference ").zhex(reference).string(" points to ").zhex(referencedObject).string(", which is outside the usable part of the corresponding unaligned chunk.");
+                printParent(parentObject);
+                return false;
+            }
         }
 
         return true;

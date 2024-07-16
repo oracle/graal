@@ -95,7 +95,7 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
-    public void enableRememberedSetForObject(AlignedHeader chunk, Object obj) {
+    public void enableRememberedSetForObject(AlignedHeader chunk, Object obj, UnsignedWord objSize) {
         // Nothing to do.
     }
 
