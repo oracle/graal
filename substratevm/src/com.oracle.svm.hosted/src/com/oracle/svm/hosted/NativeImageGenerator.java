@@ -54,6 +54,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
@@ -353,8 +354,6 @@ public class NativeImageGenerator {
 
     protected Pair<Method, CEntryPointData> mainEntryPoint;
 
-    protected final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
-
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter) {
         this.loader = loader;
         this.mainEntryPoint = mainEntryPoint;
@@ -540,7 +539,7 @@ public class NativeImageGenerator {
         ImageSingletons.add(TimerCollection.class, timerCollection);
         ImageSingletons.add(ImageBuildStatistics.TimerCollectionPrinter.class, timerCollection);
         ImageSingletons.add(AnnotationExtractor.class, loader.classLoaderSupport.annotationExtractor);
-        ImageSingletons.add(BuildArtifacts.class, (type, artifact) -> buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact));
+        ImageSingletons.add(BuildArtifacts.class, new BuildArtifactsImpl());
         ImageSingletons.add(HostedOptionValues.class, hostedOptionValues);
         ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
 
@@ -1877,10 +1876,6 @@ public class NativeImageGenerator {
         return bb;
     }
 
-    public Map<ArtifactType, List<Path>> getBuildArtifacts() {
-        return buildArtifacts;
-    }
-
     private void printTypes() {
         String reportsPath = SubstrateOptions.reportsPath();
         ReportUtils.report("hosted universe", reportsPath, "universe_analysis", "txt",
@@ -2035,5 +2030,30 @@ public class NativeImageGenerator {
             }
         }
         return result;
+    }
+
+    private static class BuildArtifactsImpl implements BuildArtifacts {
+        private final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
+
+        @Override
+        public void add(ArtifactType type, Path artifact) {
+            buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact);
+        }
+
+        @Override
+        public List<Path> get(ArtifactType type) {
+            VMError.guarantee(buildArtifacts.containsKey(type), "Artifact type is missing: %s", type);
+            return buildArtifacts.get(type);
+        }
+
+        @Override
+        public void forEach(BiConsumer<ArtifactType, List<Path>> action) {
+            buildArtifacts.forEach(action);
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return buildArtifacts.isEmpty();
+        }
     }
 }
