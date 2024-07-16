@@ -54,9 +54,15 @@ final class PauseThreadLocalAction extends ThreadLocalAction {
 
     final PolyglotContextImpl context;
 
+    private volatile Future<Void> pauseActionFuture;
+
     PauseThreadLocalAction(PolyglotContextImpl context) {
         super(false, true);
         this.context = context;
+    }
+
+    void setPauseActionFuture(Future<Void> pauseActionFuture) {
+        this.pauseActionFuture = pauseActionFuture;
     }
 
     @Override
@@ -72,7 +78,8 @@ final class PauseThreadLocalAction extends ThreadLocalAction {
                 public void apply(Object waitObject) throws InterruptedException {
                     synchronized (waitObject) {
                         PolyglotContextImpl.State localContextState = context.state;
-                        while (pause && !localContextState.isClosed() && !localContextState.isCancelling() && !localContextState.isExiting()) {
+                        while (pause && !localContextState.isClosed() && !localContextState.isCancelling() && !localContextState.isExiting() &&
+                                        (pauseActionFuture == null || !pauseActionFuture.isCancelled())) {
                             waitObject.wait();
                         }
                     }
