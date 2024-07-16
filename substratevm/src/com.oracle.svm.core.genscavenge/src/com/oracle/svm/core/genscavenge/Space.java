@@ -421,6 +421,7 @@ public final class Space {
             if (probability(SLOW_PATH_PROBABILITY, ObjectHeaderImpl.hasIdentityHashFromAddressInline(header))) {
                 addIdentityHashField = true;
                 copySize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, true);
+                assert copySize.aboveOrEqual(originalSize);
             }
         }
 
@@ -457,7 +458,7 @@ public final class Space {
                  * and the first object table must be updated (even when copying from old to old).
                  */
                 AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
-                RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
+                RememberedSet.get().enableRememberedSetForObject(copyChunk, copy, copySize);
             }
         }
         return copy;
