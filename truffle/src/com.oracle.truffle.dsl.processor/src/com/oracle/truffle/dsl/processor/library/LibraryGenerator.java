@@ -509,6 +509,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         // UncachedDispatch
         final CodeTypeElement uncachedDispatch = createClass(model, null, modifiers(PRIVATE, STATIC, FINAL), "UncachedDispatch", libraryTypeMirror);
         uncachedDispatch.addAnnotationMirror(new CodeAnnotationMirror(types.DenyReplace));
+        uncachedDispatch.getImplements().add(types.UncachedNode);
 
         for (MessageObjects message : methods) {
             CodeExecutableElement execute = uncachedDispatch.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));

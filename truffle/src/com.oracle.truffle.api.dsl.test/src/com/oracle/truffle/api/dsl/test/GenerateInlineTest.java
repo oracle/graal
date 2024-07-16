@@ -42,6 +42,7 @@ package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -93,6 +94,8 @@ import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.SharedAndNonSha
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.SharedAndNonSharedInlinedMultipleInstances2NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.SharedProfileInSpecializationClassNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.SpecializationClassAndInlinedNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.TestInlinedAndCachedNodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.TestInlinedAndCachedUsageNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.Use128BitsNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.Use2048BitsNodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.Use32BitsNodeGen;
@@ -2638,4 +2641,49 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         }
         assertTrue(String.format("Node %s did not throw when it used wrong inlineTarget. Is the UseInlinedByDefault really inlined?", testCaseName), thrown);
     }
+
+    @GenerateInline
+    @GenerateCached(true)
+    @GenerateUncached
+    public abstract static class TestInlinedAndCachedNode extends Node {
+
+        public abstract Object execute(Node node);
+
+        @Specialization
+        Object doDefault(Node node) {
+            return node;
+        }
+
+    }
+
+    @GenerateCached
+    @GenerateInline(false)
+    @GenerateUncached
+    public abstract static class TestInlinedAndCachedUsageNode extends Node {
+
+        public abstract Object execute();
+
+        @Specialization
+        Object doDefault(@Cached(inline = false) TestInlinedAndCachedNode n) {
+            return n.execute(null);
+        }
+
+    }
+
+    @Test
+    public void testInlinedAndCached() {
+        TestInlinedAndCachedUsageNode cached = TestInlinedAndCachedUsageNodeGen.create();
+        Node inlineContextNode = (Node) cached.execute();
+        assertTrue(inlineContextNode.isAdoptable());
+        assertFalse(inlineContextNode.isUncached());
+        assertTrue(inlineContextNode instanceof TestInlinedAndCachedNode);
+
+        TestInlinedAndCachedUsageNode uncached = TestInlinedAndCachedUsageNodeGen.getUncached();
+        inlineContextNode = (Node) uncached.execute();
+        assertNotNull(inlineContextNode);
+        assertFalse(inlineContextNode.isAdoptable());
+        assertTrue(inlineContextNode.isUncached());
+        assertSame(inlineContextNode, TestInlinedAndCachedNodeGen.getUncached());
+    }
+
 }

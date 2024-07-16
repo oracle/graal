@@ -44,6 +44,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.UncachedNode;
 
 /**
  * Exception wrapper for an error occurred in the host language.
@@ -56,7 +57,7 @@ final class HostException extends AbstractTruffleException {
     final HostObject delegate;
 
     private HostException(Throwable original, HostContext context, Node location) {
-        super(location);
+        super(UncachedNode.resolveLocation(location));
         this.original = original;
         this.delegate = HostObject.forException(original, context, this);
     }

@@ -90,11 +90,17 @@ public interface CallTarget {
      * the result.
      * <p>
      * This method should be preferred over {@link #call(Object...)} if the current location is
-     * known, as it avoids looking up the current location from a thread-local.
+     * known, as it avoids looking up the current location from the
+     * {@link EncapsulatingNodeReference}.
      * <p>
      *
      * @param location A {@link Node} that identifies the location of this call. The location may be
-     *            <code>null</code> if no location is available.
+     *            <code>null</code> if no location is available. The location must not represent an
+     *            {@link Node#isUncached() uncached} and {@link Node#isAdoptable() unadoptable}
+     *            node, otherwise an {@link IllegalArgumentException} is thrown if assertions (-ea)
+     *            are enabled. When calling from uncached locations use {@link #call(Object...)}
+     *            instead. If the call is either performed from a cached or uncached location use a
+     *            {@link DirectCallNode} or {@link IndirectCallNode} instead.
      * @param arguments The arguments passed to the call, as an object array.
      * @return The result of the call.
      * @see #call(Object...)

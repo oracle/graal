@@ -1172,6 +1172,7 @@ public class FlatNodeGenFactory {
             CodeTypeElement uncached = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, STATIC, FINAL), "Uncached", node.getTemplateType().asType());
             uncached.getEnclosedElements().addAll(createUncachedFields());
             uncached.addAnnotationMirror(new CodeAnnotationMirror(types.DenyReplace));
+            uncached.getImplements().add(types.UncachedNode);
 
             for (NodeFieldData field : node.getFields()) {
                 if (!field.isGenerated()) {
@@ -6925,15 +6926,19 @@ public class FlatNodeGenFactory {
             // bind local variable
             if (resolvedParameter.getSpecification().isSignature()) {
                 NodeExecutionData execution = resolvedParameter.getSpecification().getExecution();
-                if (!frameState.getMode().isUncached() && specialization.isNodeReceiverVariable(resolvedParameter.getVariableElement())) {
-                    if (substituteNodeWithSpecializationClass(specialization)) {
-                        String localName = createSpecializationLocalName(specialization);
-                        localVariable = new LocalVariable(types.Node, localName, createGetSpecializationClass(frameState, specialization, true));
+                if (specialization.isNodeReceiverVariable(resolvedParameter.getVariableElement())) {
+                    if (frameState.getMode().isUncached()) {
+                        localVariable = new LocalVariable(types.Node, "this", CodeTreeBuilder.singleString("this"));
                     } else {
-                        if (frameState.isInlinedNode()) {
-                            localVariable = frameState.getValue(execution);
+                        if (substituteNodeWithSpecializationClass(specialization)) {
+                            String localName = createSpecializationLocalName(specialization);
+                            localVariable = new LocalVariable(types.Node, localName, createGetSpecializationClass(frameState, specialization, true));
                         } else {
-                            localVariable = new LocalVariable(types.Node, "this", CodeTreeBuilder.singleString("this"));
+                            if (frameState.isInlinedNode()) {
+                                localVariable = frameState.getValue(execution);
+                            } else {
+                                localVariable = new LocalVariable(types.Node, "this", CodeTreeBuilder.singleString("this"));
+                            }
                         }
                     }
                 } else {

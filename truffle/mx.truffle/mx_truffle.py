@@ -227,6 +227,8 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
         # Disable VirtualThread warning
         vmArgs = vmArgs + ['-Dpolyglot.engine.WarnVirtualThreadSupport=false']
+        # GR-55183 will be default in 25.0
+        vmArgs = vmArgs + ['-Dtruffle.StrictLocationChecks=true']
 
         return (vmArgs, mainClass, mainClassArgs)
 

@@ -42,6 +42,7 @@ package com.oracle.truffle.api.impl;
 
 import static com.oracle.truffle.api.impl.DefaultTruffleRuntime.getRuntime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -56,6 +57,8 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public final class DefaultCallTarget implements RootCallTarget {
 
+    // TODO GR-55183 make this default in 25.0
+    private static final boolean STRICT_CHECKS = Boolean.getBoolean("truffle.StrictLocationChecks");
     public static final String CALL_BOUNDARY_METHOD = "call";
     private final RootNode rootNode;
     private volatile boolean initialized;
@@ -88,6 +91,7 @@ public final class DefaultCallTarget implements RootCallTarget {
     }
 
     public Object call(Node location, Object... args) {
+        assert validateLocation(location);
         if (!this.initialized) {
             initialize();
         }
@@ -103,6 +107,28 @@ public final class DefaultCallTarget implements RootCallTarget {
         } finally {
             getRuntime().popFrame(callerFrame);
         }
+    }
+
+    private static boolean validateLocation(Node location) {
+        if (!STRICT_CHECKS) {
+            return true;
+        }
+
+        if (location == null) {
+            return true;
+        }
+        if (location.isUncached()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalArgumentException("An uncached node of type '" + location.getClass().getName() + "' was provided as a location for a call. " + //
+                            "Uncached nodes must not be used as locations for calls. For uncached code paths use CallTarget.call(Object...) instead. " + //
+                            "For code paths that may be cached or uncached use DirectCallNode or IndirectCallNode instead.");
+        } else if (!location.isAdoptable()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalArgumentException("An unadoptable node type '" + location.getClass().getName() + "' was provided as a location for a call. " + //
+                            "Unadoptable nodes must not be used as locations for calls. Unadoptable nodes are shared across multiple locations so do not identify a location uniquely. " +
+                            "Change the node type to be adoptable or use a different node as location instead.");
+        }
+        return true;
     }
 
     private void initialize() {

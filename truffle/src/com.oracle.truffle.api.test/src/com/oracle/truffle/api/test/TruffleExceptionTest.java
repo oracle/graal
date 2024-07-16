@@ -41,6 +41,9 @@
 package com.oracle.truffle.api.test;
 
 import static com.oracle.truffle.api.test.RootNodeTest.verifyStackTraceElementGuestObject;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -83,9 +86,11 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.UncachedNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
@@ -143,6 +148,44 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         },
                         "<proxyLanguage> test",
                         "(org.graalvm.polyglot/)?org.graalvm.polyglot.Context.eval");
+    }
+
+    static class UncachedTestNode extends Node implements UncachedNode {
+    }
+
+    @Test
+    public void testUncachedLocation() {
+        TruffleTestAssumptions.assumeNotAOT();
+
+        Node expectedNode = new Node() {
+        };
+        RootNode root = new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return null;
+            }
+        };
+        // the node needs to be adopted to be used as EncapsulatingNodeReference
+        root.insert(expectedNode);
+
+        UncachedTestNode uncachedNode = new UncachedTestNode();
+
+        var ref = EncapsulatingNodeReference.getCurrent();
+        ref.set(expectedNode);
+        try {
+            assertFails(() -> new TruffleExceptionImpl("test", uncachedNode), IllegalArgumentException.class, (e) -> {
+                assertTrue(e.getMessage(), e.getMessage().startsWith("An uncached node of type"));
+            });
+
+            TruffleExceptionImpl ex = new TruffleExceptionImpl("test", expectedNode);
+            assertSame(expectedNode, ex.getLocation());
+
+            ex = new TruffleExceptionImpl("test", null);
+            assertNull(ex.getLocation());
+
+        } finally {
+            ref.set(null);
+        }
     }
 
     @Test
