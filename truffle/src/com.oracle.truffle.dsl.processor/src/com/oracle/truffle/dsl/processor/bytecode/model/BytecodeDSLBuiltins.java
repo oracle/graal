@@ -266,12 +266,17 @@ public class BytecodeDSLBuiltins {
                         .setDynamicOperands(transparentOperationChild());
         m.sourceSectionOperation = m.operation(OperationKind.SOURCE_SECTION, "SourceSection",
                         """
-                                        SourceSection associates the children in its {@code body} with the source {@code index} and {@code length}. It must be (directly or indirectly) enclosed within a Source operation.
+                                        SourceSection associates the children in its {@code body} with the source section with the given character {@code index} and {@code length}.
+                                        To specify an {@link Source#createUnavailableSection() unavailable source section}, provide {@code -1} for both arguments.
+                                        This operation must be (directly or indirectly) enclosed within a Source operation.
                                         """) //
                         .setTransparent(true) //
                         .setVariadic(true) //
-                        .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index", "the starting character index of the source section"),
-                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "length", "the length (in characters) of the source section")) //
+                        .setOperationBeginArguments(
+                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index",
+                                                        "the starting character index of the source section, or -1 if the section is unavailable"),
+                                        new OperationArgument(context.getType(int.class), Encoding.INTEGER, "length",
+                                                        "the length (in characters) of the source section, or -1 if the section is unavailable")) //
                         .setDynamicOperands(transparentOperationChild());
 
         if (m.enableTagInstrumentation) {

@@ -229,6 +229,35 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testSourceUnavailable() {
+        Source source = Source.newBuilder("test", "return 1", "test.test").build();
+        BasicInterpreter node = parseNodeWithSource("source", b -> {
+            b.beginSource(source);
+            b.beginSourceSectionUnavailable();
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginSourceSection(7, 1);
+            b.emitLoadConstant(1L);
+            b.endSourceSection();
+            b.endReturn();
+
+            b.endRoot();
+            b.endSourceSectionUnavailable();
+            b.endSource();
+        });
+
+        assertTrue(!node.getSourceSection().isAvailable());
+
+        BytecodeNode bytecode = node.getBytecodeNode();
+        List<Instruction> instructions = bytecode.getInstructionsAsList();
+        assertInstructionSourceSection(instructions.get(0), source, 7, 1);
+        assertTrue(!instructions.get(1).getSourceSection().isAvailable());
+
+        assertSourceInformationTree(bytecode, ExpectedSourceTree.expectedSourceTreeUnavailable(est("1")));
+    }
+
+    @Test
     public void testSourceNoSourceSet() {
         assertThrowsWithMessage("No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.", IllegalStateException.class, () -> {
             parseNodeWithSource("sourceNoSourceSet", b -> {

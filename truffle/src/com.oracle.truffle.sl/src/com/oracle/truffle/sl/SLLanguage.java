@@ -350,8 +350,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     private SLBytecodeRootNode createBytecodeBuiltin(TruffleString name, int argumentCount, SLBuiltinNode builtinNode) {
         SLBytecodeRootNode node = SLBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, (b) -> {
             b.beginSource(BUILTIN_SOURCE);
-            // TODO the dsl does not yet support unavailable source sections
-            b.beginSourceSection(0, 0);
+            b.beginSourceSectionUnavailable();
             b.beginRoot(this);
             b.beginReturn();
             b.beginTag(RootTag.class, RootBodyTag.class);
@@ -359,7 +358,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             b.endTag(RootTag.class, RootBodyTag.class);
             b.endReturn();
             b.endRoot().setTSName(name);
-            b.endSourceSection();
+            b.endSourceSectionUnavailable();
             b.endSource();
         }).getNodes().get(0);
         /*

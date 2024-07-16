@@ -2829,6 +2829,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(createCreateLocal());
             builder.add(createCreateLocalAllParameters());
             builder.add(createCreateLabel());
+            builder.addAll(createSourceSectionUnavailableHelpers());
             builder.add(createRegisterUnresolvedLabel());
             builder.add(createResolveUnresolvedLabel());
             builder.add(createCreateBranchLabelMapping());
@@ -3735,6 +3736,28 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private List<CodeExecutableElement> createSourceSectionUnavailableHelpers() {
+            CodeExecutableElement begin = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "beginSourceSectionUnavailable");
+            addJavadoc(begin, """
+                            Begins a built-in SourceSection operation with an unavailable source section.
+
+                            @see #beginSourceSection(int, int)
+                            @see #endSourceSectionUnavailable()
+                            """);
+            begin.createBuilder().statement("beginSourceSection(-1, -1)");
+
+            CodeExecutableElement end = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "endSourceSectionUnavailable");
+            addJavadoc(end, """
+                            Ends a built-in SourceSection operation with an unavailable source section.
+
+                            @see #endSourceSection()
+                            @see #beginSourceSectionUnavailable()
+                            """);
+            end.createBuilder().statement("endSourceSection()");
+
+            return List.of(begin, end);
+        }
+
         private CodeExecutableElement createRegisterUnresolvedLabel() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "registerUnresolvedLabel");
             ex.addParameter(new CodeVariableElement(types.BytecodeLabel, "label"));
@@ -4431,6 +4454,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startThrow().startCall("failState").doubleQuote("No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.").end().end();
                     b.end();
 
+                    String index = operation.getOperationBeginArgumentName(0);
+                    String length = operation.getOperationBeginArgumentName(1);
+
+                    b.startAssert().string("(", index, " == -1 && ", length, " == -1) || (", index, " >= 0 && ", length, ">= 0 && ", index, " + ", length,
+                                    " <= sources.get(foundSourceIndex).getLength())").end();
+
                     b.declaration(type(int.class), "startBci");
                     b.startIf().string("rootOperationSp == -1").end().startBlock();
                     b.lineComment("not in a root yet");
@@ -4439,7 +4468,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("startBci = bci");
                     b.end();
 
-                    yield createOperationData(className, "foundSourceIndex", "startBci", operation.getOperationBeginArgumentName(0), operation.getOperationBeginArgumentName(1));
+                    yield createOperationData(className, "foundSourceIndex", "startBci", index, length);
                 }
                 default -> {
                     if (operation.isTransparent) {
@@ -10367,7 +10396,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration(type(int.class), "start", "info[index + SOURCE_INFO_OFFSET_START]");
             b.declaration(type(int.class), "length", "info[index + SOURCE_INFO_OFFSET_LENGTH]");
 
-            b.startAssert().string("sourceIndex >= 0 && sourceIndex < sources.size() : ").doubleQuote("source index out of bounds").end();
+            b.startIf().string("start == -1 && length == -1").end().startBlock();
+            b.startReturn().string("sources.get(sourceIndex).createUnavailableSection()").end();
+            b.end();
+
             b.startAssert().string("start >= 0 : ").doubleQuote("invalid source start index").end();
             b.startAssert().string("length >= 0 : ").doubleQuote("invalid source length").end();
             b.startReturn().string("sources.get(sourceIndex).createSection(start, length)").end();

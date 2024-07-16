@@ -397,9 +397,11 @@ public abstract class AbstractBasicInterpreterTest {
     /**
      * Helper class for validating SourceInformationTrees.
      */
-    record ExpectedSourceTree(String contents, ExpectedSourceTree... children) {
+    record ExpectedSourceTree(boolean available, String contents, ExpectedSourceTree... children) {
         public void assertTreeEquals(SourceInformationTree actual) {
-            if (contents == null) {
+            if (!available) {
+                assertTrue(!actual.getSourceSection().isAvailable());
+            } else if (contents == null) {
                 assertNull(actual.getSourceSection());
             } else {
                 assertEquals(contents, actual.getSourceSection().getCharacters().toString());
@@ -411,7 +413,11 @@ public abstract class AbstractBasicInterpreterTest {
         }
 
         public static ExpectedSourceTree expectedSourceTree(String contents, ExpectedSourceTree... children) {
-            return new ExpectedSourceTree(contents, children);
+            return new ExpectedSourceTree(true, contents, children);
+        }
+
+        public static ExpectedSourceTree expectedSourceTreeUnavailable(ExpectedSourceTree... children) {
+            return new ExpectedSourceTree(false, null, children);
         }
     }
 

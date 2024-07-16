@@ -381,6 +381,7 @@ public class SLDebugTest extends AbstractSLTest {
                 event.prepareContinue();
             });
             expectSuspended((SuspendedEvent event) -> {
+                Assert.assertFalse(event.getSourceSection().isAvailable());
                 Assert.assertEquals("nanoTime", event.getTopStackFrame().getName());
                 Iterator<DebugStackFrame> frames = event.getStackFrames().iterator();
                 frames.next(); // Skip the top one
