@@ -43,7 +43,7 @@
          "--kill-with-sigquit",
          "gate",
          "--strict-mode",
-         "--extra-vm-argument=-Djdk.graal.DumpOnError=true -Djdk.graal.PrintGraphFile=true -Djdk.graal.PrintBackendCFG=true -DGCUtils.saveHeapDumpTo=." +
+         "--extra-vm-argument=-Djdk.graal.DumpOnError=true -Djdk.graal.PrintGraph=File -Djdk.graal.PrintBackendCFG=true -DGCUtils.saveHeapDumpTo=." +
            (if extra_vm_args == "" then "" else " " + extra_vm_args)
       ] + (if extra_unittest_args != "" then [
         "--extra-unittest-argument=" + extra_unittest_args,

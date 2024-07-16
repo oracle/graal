@@ -181,13 +181,17 @@ public class OptionsParser {
 
         OptionDescriptor desc = lookup(loader, name);
         if (desc == null) {
-            List<OptionDescriptor> matches = fuzzyMatch(loader, name);
             Formatter msg = new Formatter();
-            msg.format("Could not find option %s", name);
-            if (!matches.isEmpty()) {
-                msg.format("%nDid you mean one of the following?");
-                for (OptionDescriptor match : matches) {
-                    msg.format("%n    %s=<value>", match.getName());
+            if (name.equals("PrintGraphFile")) {
+                msg.format("Option PrintGraphFile has been removed - use PrintGraph=File instead");
+            } else {
+                List<OptionDescriptor> matches = fuzzyMatch(loader, name);
+                msg.format("Could not find option %s", name);
+                if (!matches.isEmpty()) {
+                    msg.format("%nDid you mean one of the following?");
+                    for (OptionDescriptor match : matches) {
+                        msg.format("%n    %s=<value>", match.getName());
+                    }
                 }
             }
             throw new IllegalArgumentException(msg.toString());

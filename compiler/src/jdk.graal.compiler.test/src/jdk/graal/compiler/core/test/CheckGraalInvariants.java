@@ -206,18 +206,9 @@ public class CheckGraalInvariants extends GraalCompilerTest {
          * Determines if {@code option} should be checked to ensure it has at least one usage.
          */
         public boolean shouldCheckUsage(OptionDescriptor option) {
-            Class<?> declaringClass = option.getDeclaringClass();
-            if (declaringClass.getName().equals("jdk.graal.compiler.truffle.TruffleCompilerOptions")) {
-                /*
-                 * These options are deprecated and will be removed in GraalVM 20.2.0. The
-                 * TruffleIntrinsifyFrameAccess option has no replacement and is unused.
-                 */
-                return false;
-            }
             if (option.getOptionKey().getClass().isAnonymousClass()) {
                 /*
-                 * Probably a derived option such as
-                 * jdk.graal.compiler.debug.DebugOptions.PrintGraphFile.
+                 * A derived option.
                  */
                 return false;
             }
