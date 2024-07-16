@@ -412,8 +412,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     // Nodes for bytecodes that were replaced with QUICK, indexed by the constant pool index
     // referenced by the bytecode.
     // Must not be of type QuickNode as it might be wrapped by instrumentation
-    @Children private BaseQuickNode[] nodes = QuickNode.EMPTY_ARRAY;
-    @Children private BaseQuickNode[] sparseNodes = QuickNode.EMPTY_ARRAY;
+    @Children private BaseQuickNode[] nodes = BaseQuickNode.EMPTY_ARRAY;
+    @Children private BaseQuickNode[] sparseNodes = BaseQuickNode.EMPTY_ARRAY;
 
     /**
      * Ideally, we would want one such node per AASTORE bytecode. Unfortunately, the AASTORE
