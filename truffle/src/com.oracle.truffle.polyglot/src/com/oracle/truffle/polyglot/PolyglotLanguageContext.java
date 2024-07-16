@@ -820,11 +820,16 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     private void waitWhileInitializing() {
         assert Thread.holdsLock(context);
+        boolean interrupted = false;
         while (initializing) {
             try {
                 context.wait();
             } catch (InterruptedException ie) {
+                interrupted = true;
             }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
         }
     }
 

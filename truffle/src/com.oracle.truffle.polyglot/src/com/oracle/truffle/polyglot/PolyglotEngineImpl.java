@@ -1491,6 +1491,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 return waitForThreads(context, startMillis, timeout);
             }
         } finally {
+            boolean interrupted = false;
             for (Future<Void> future : futures) {
                 boolean timedOut = false;
                 try {
@@ -1509,8 +1510,13 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     } else {
                         future.get();
                     }
-                } catch (ExecutionException | InterruptedException e) {
+                } catch (ExecutionException e) {
                     throw CompilerDirectives.shouldNotReachHere(e);
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                }
+                if (interrupted) {
+                    Thread.currentThread().interrupt();
                 }
                 if (timedOut) {
                     return false;

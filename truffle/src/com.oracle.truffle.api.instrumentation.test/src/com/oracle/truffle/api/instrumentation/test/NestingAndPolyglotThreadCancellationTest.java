@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -49,6 +51,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -158,7 +162,7 @@ public class NestingAndPolyglotThreadCancellationTest {
             future.get();
         } finally {
             executorService.shutdownNow();
-            executorService.awaitTermination(100, TimeUnit.SECONDS);
+            assertTrue(executorService.awaitTermination(100, TimeUnit.SECONDS));
         }
     }
 
@@ -241,7 +245,7 @@ public class NestingAndPolyglotThreadCancellationTest {
             }
         } finally {
             executorService.shutdownNow();
-            executorService.awaitTermination(100, TimeUnit.SECONDS);
+            assertTrue(executorService.awaitTermination(100, TimeUnit.SECONDS));
         }
     }
 
@@ -306,8 +310,90 @@ public class NestingAndPolyglotThreadCancellationTest {
                 }
             } finally {
                 executorService.shutdownNow();
-                executorService.awaitTermination(100, TimeUnit.SECONDS);
+                assertTrue(executorService.awaitTermination(100, TimeUnit.SECONDS));
             }
         }
     }
+
+    @Test
+    public void testThreadInterruptInsideClose() throws ExecutionException, InterruptedException, IOException, TimeoutException {
+        /*
+         * This test verifies that Context.close(true) does not swallow thread interrupt and so it
+         * can still be used to terminate the thread that uses Context.close(true).
+         */
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        try (Context context = Context.newBuilder().allowCreateThread(true).build()) {
+            context.initialize(InstrumentationTestLanguage.ID);
+            Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(STATEMENT)",
+                            "InfiniteLoop").build();
+            TruffleInstrument.Env instrumentEnv = context.getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
+            CountDownLatch cancelLatch = new CountDownLatch(1);
+            CountDownLatch cancelCalledLatch = new CountDownLatch(1);
+            CountDownLatch finishLatch = new CountDownLatch(1);
+            instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build(), new ExecutionEventListener() {
+                @Override
+                public void onEnter(EventContext ctx, VirtualFrame frame) {
+                    onEnterBoundary();
+                }
+
+                @CompilerDirectives.TruffleBoundary
+                private void onEnterBoundary() {
+                    cancelLatch.countDown();
+                    boolean interrupted = false;
+                    while (true) {
+                        try {
+                            finishLatch.await();
+                            break;
+                        } catch (InterruptedException ie) {
+                            interrupted = true;
+                            cancelCalledLatch.countDown();
+                        }
+                    }
+                    if (interrupted) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+
+                @Override
+                public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+
+                }
+
+                @Override
+                public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+
+                }
+            });
+            Future<?> infiniteLoopFuture = executorService.submit(() -> {
+                try {
+                    context.eval(source);
+                } catch (PolyglotException pe) {
+                    if (!pe.isCancelled()) {
+                        throw pe;
+                    }
+                }
+            });
+            cancelLatch.await();
+            AtomicReference<Thread> cancelContextThread = new AtomicReference<>();
+            Future<?> cancelContextThreadFuture = executorService.submit(() -> {
+                cancelContextThread.set(Thread.currentThread());
+                while (!Thread.interrupted()) {
+                    context.close(true);
+                }
+            });
+            cancelCalledLatch.await();
+            cancelContextThread.get().interrupt();
+            finishLatch.countDown();
+            infiniteLoopFuture.get();
+            cancelContextThreadFuture.get(100, TimeUnit.SECONDS);
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
+            }
+        } finally {
+            executorService.shutdownNow();
+            assertTrue(executorService.awaitTermination(100, TimeUnit.SECONDS));
+        }
+    }
+
 }
