@@ -62,6 +62,7 @@ import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -393,13 +394,16 @@ public class NativeImageGeneratorRunner {
                 Pair<Method, CEntryPointData> mainEntryPointData = Pair.empty();
                 JavaMainSupport javaMainSupport = null;
 
-                NativeImageKind imageKind;
+                NativeImageKind imageKind = null;
                 boolean isStaticExecutable = SubstrateOptions.StaticExecutable.getValue(parsedHostedOptions);
                 boolean isSharedLibrary = SubstrateOptions.SharedLibrary.getValue(parsedHostedOptions);
                 boolean isImageLayer = SubstrateOptions.ImageLayer.getValue(parsedHostedOptions);
-                if ((isStaticExecutable && isSharedLibrary) || (isStaticExecutable && isImageLayer) || (isSharedLibrary && isImageLayer)) {
-                    throw UserError.abort("Cannot pass multiple options: %s, %s, %s", SubstrateOptionsParser.commandArgument(SubstrateOptions.SharedLibrary, "+"),
-                                    SubstrateOptionsParser.commandArgument(SubstrateOptions.StaticExecutable, "+"), SubstrateOptionsParser.commandArgument(SubstrateOptions.ImageLayer, "+"));
+                if (isStaticExecutable && isSharedLibrary) {
+                    reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.StaticExecutable);
+                } else if (isStaticExecutable && isImageLayer) {
+                    reportConflictingOptions(SubstrateOptions.StaticExecutable, SubstrateOptions.ImageLayer);
+                } else if (isSharedLibrary && isImageLayer) {
+                    reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.ImageLayer);
                 } else if (isSharedLibrary) {
                     imageKind = NativeImageKind.SHARED_LIBRARY;
                 } else if (isImageLayer) {
@@ -581,6 +585,10 @@ public class NativeImageGeneratorRunner {
             ImageSingletonsSupportImpl.HostedManagement.clear();
         }
         return ExitStatus.OK.getValue();
+    }
+
+    private static void reportConflictingOptions(HostedOptionKey<Boolean> o1, HostedOptionKey<Boolean> o2) {
+        throw UserError.abort("Cannot pass both options: %s and %s", SubstrateOptionsParser.commandArgument(o1, "+"), SubstrateOptionsParser.commandArgument(o2, "+"));
     }
 
     protected void reportEpilog(String imageName, ProgressReporter reporter, ImageClassLoader classLoader, boolean wasSuccessfulBuild, Throwable unhandledThrowable, OptionValues parsedHostedOptions) {
