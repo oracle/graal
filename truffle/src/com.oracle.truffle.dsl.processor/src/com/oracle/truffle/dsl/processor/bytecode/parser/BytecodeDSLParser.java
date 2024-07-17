@@ -398,26 +398,12 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         }
 
         // find and bind type system
-        AnnotationMirror typeSystemRefMirror = ElementUtils.findAnnotationMirror(typeElement, types.TypeSystemReference);
-        if (typeSystemRefMirror != null) {
-            TypeMirror typeSystemType = getAnnotationValue(TypeMirror.class, typeSystemRefMirror, "value");
-
-            TypeSystemData typeSystem = null;
-            if (typeSystemType instanceof DeclaredType) {
-                typeSystem = context.parseIfAbsent((TypeElement) ((DeclaredType) typeSystemType).asElement(), TypeSystemParser.class, (e) -> {
-                    TypeSystemParser parser = new TypeSystemParser();
-                    return parser.parse(e, false);
-                });
-            }
-            if (typeSystem == null) {
-                model.addError("The used type system '%s' is invalid. Fix errors in the type system first.", getQualifiedName(typeSystemType));
-                return;
-            }
-
-            model.typeSystem = typeSystem;
-        } else {
-            model.typeSystem = new TypeSystemData(context, typeElement, null, true);
+        TypeSystemData typeSystem = parseTypeSystemReference(typeElement);
+        if (typeSystem == null) {
+            model.addError("The used type system is invalid. Fix errors in the type system first.");
+            return;
         }
+        model.typeSystem = typeSystem;
 
         // find and bind boxing elimination types
         Set<TypeMirror> beTypes = new LinkedHashSet<>();
@@ -944,6 +930,22 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.finalizeInstructions();
 
         return;
+    }
+
+    private TypeSystemData parseTypeSystemReference(TypeElement typeElement) {
+        AnnotationMirror typeSystemRefMirror = ElementUtils.findAnnotationMirror(typeElement, types.TypeSystemReference);
+        if (typeSystemRefMirror != null) {
+            TypeMirror typeSystemType = getAnnotationValue(TypeMirror.class, typeSystemRefMirror, "value");
+            if (typeSystemType instanceof DeclaredType) {
+                return context.parseIfAbsent((TypeElement) ((DeclaredType) typeSystemType).asElement(), TypeSystemParser.class, (e) -> {
+                    TypeSystemParser parser = new TypeSystemParser();
+                    return parser.parse(e, false);
+                });
+            }
+            return null;
+        } else {
+            return new TypeSystemData(context, typeElement, null, true);
+        }
     }
 
     private void parseTagTreeNodeLibrary(BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror) {

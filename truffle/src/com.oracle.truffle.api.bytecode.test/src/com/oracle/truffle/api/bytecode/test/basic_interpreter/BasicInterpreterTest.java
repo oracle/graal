@@ -54,7 +54,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -98,22 +97,23 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                 this.arguments = new ArrayList<>();
             }
 
-            private Builder bci(Integer newBci) {
+            @SuppressWarnings("unused")
+            Builder bci(Integer newBci) {
                 this.bci = newBci;
                 return this;
             }
 
-            private Builder instrumented(Boolean newInstrumented) {
+            Builder instrumented(Boolean newInstrumented) {
                 this.instrumented = newInstrumented;
                 return this;
             }
 
-            private Builder arg(String argName, Argument.Kind kind, Object value) {
+            Builder arg(String argName, Argument.Kind kind, Object value) {
                 this.arguments.add(new ExpectedArgument(argName, kind, value));
                 return this;
             }
 
-            private ExpectedInstruction build() {
+            ExpectedInstruction build() {
                 return new ExpectedInstruction(name, bci, instrumented, arguments.toArray(new ExpectedArgument[0]));
             }
         }
@@ -2064,61 +2064,5 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "load.argument",
                         "c.AddConstantOperationAtEnd",
                         "return");
-    }
-
-    @Test
-    @Ignore
-    public void testDecisionQuicken() {
-        BasicInterpreter node = parseNode("decisionQuicken", b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.beginReturn();
-            b.beginAddOperation();
-            b.emitLoadArgument(0);
-            b.emitLoadArgument(1);
-            b.endAddOperation();
-            b.endReturn();
-
-            b.endRoot();
-        });
-
-        // todo these tests do not pass, since quickening is not implemented yet properly
-
-        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
-        int bci = instructions.get(1).getNextBytecodeIndex();
-
-        assertInstructionEquals(instructions.get(2), instr("c.AddOperation").bci(bci).build());
-
-        assertEquals(3L, node.getCallTarget().call(1L, 2L));
-
-        assertInstructionEquals(instructions.get(2), instr("c.AddOperation.q.AddLongs").bci(bci).build());
-
-        assertEquals("foobar", node.getCallTarget().call("foo", "bar"));
-
-        assertInstructionEquals(instructions.get(2), instr("c.AddOperation").bci(bci).build());
-    }
-
-    @Test
-    @Ignore
-    public void testDecisionSuperInstruction() {
-        BasicInterpreter node = parseNode("decisionSuperInstruction", b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.beginReturn();
-            b.beginLessThanOperation();
-            b.emitLoadArgument(0);
-            b.emitLoadArgument(1);
-            b.endLessThanOperation();
-            b.endReturn();
-
-            b.endRoot();
-        });
-
-        // todo these tests do not pass, since quickening is not implemented yet properly
-
-        List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
-        int bci = instructions.get(0).getNextBytecodeIndex();
-
-        assertInstructionEquals(instructions.get(1), instr("si.load.argument.c.LessThanOperation").bci(bci).build());
     }
 }

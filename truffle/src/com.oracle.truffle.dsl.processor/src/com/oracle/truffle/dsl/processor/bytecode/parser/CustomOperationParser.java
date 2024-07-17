@@ -72,6 +72,7 @@ import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Types;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.ConstantOperandModel;
@@ -84,9 +85,9 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.ConstantOperandsModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
-import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
+import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -881,8 +882,18 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return null;
         }
 
+        if (result.getTypeSystem() == null) {
+            customOperation.addError("Error parsing type system for operation. Fix problems in the referenced type system class first.");
+            return null;
+        }
+
         if (result.getTypeSystem().isDefault()) {
             result.setTypeSystem(parent.typeSystem);
+        } else {
+            if (ElementUtils.typeEquals(result.getTypeSystem().getTemplateType().asType(), parent.typeSystem.getTemplateType().asType())) {
+                customOperation.addSuppressableWarning(TruffleSuppressedWarnings.UNUSED,
+                                "Type type system referenced of this operation equals to the type system reference of the parent bytecode root node. Remove this the operation type system reference to resolve this warning.");
+            }
         }
 
         result.redirectMessagesOnGeneratedElements(parent);
