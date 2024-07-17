@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,16 +26,15 @@ package jdk.graal.compiler.hotspot.jdk21.test;
 
 import java.io.IOException;
 
-import jdk.graal.compiler.api.test.ModuleSupport;
-import jdk.graal.compiler.core.test.SubprocessTest;
-import jdk.graal.compiler.hotspot.test.HotSpotGraalCompilerTest;
-import jdk.graal.compiler.test.AddExports;
-import jdk.graal.compiler.test.SubprocessUtil;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-@AddExports("java.base/jdk.internal.misc")
+import jdk.graal.compiler.api.test.ModuleSupport;
+import jdk.graal.compiler.core.test.SubprocessTest;
+import jdk.graal.compiler.hotspot.test.HotSpotGraalCompilerTest;
+import jdk.graal.compiler.test.SubprocessUtil;
+
 public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
 
     @Before

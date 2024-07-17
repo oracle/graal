@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,17 +29,17 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.bytecode.BytecodeDisassembler;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.bytecode.BytecodeDisassembler;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.Unsafe;
 
 /**
  * Test on-stack-replacement with Graal. The test manually triggers a Graal OSR-compilation which is

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,20 +31,19 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.test.SubprocessUtil;
 import jdk.graal.compiler.test.SubprocessUtil.Subprocess;
-import org.junit.Assert;
-import org.junit.Test;
-
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Tests that a hs_err crash log contains expected content.
@@ -114,6 +113,9 @@ public class HsErrLogTest extends GraalCompilerTest {
 }
 
 class Crasher {
+
+    static final Unsafe UNSAFE = Unsafe.getUnsafe();
+
     public static void main(String[] args) {
         int iter = 0;
         long mem = UNSAFE.allocateMemory(1000);
@@ -130,24 +132,6 @@ class Crasher {
         } else {
             UNSAFE.putInt(mem, iter);
             return UNSAFE.getInt(mem);
-        }
-    }
-
-    static final Unsafe UNSAFE = initUnsafe();
-
-    private static Unsafe initUnsafe() {
-        try {
-            // Fast path when we are trusted.
-            return Unsafe.getUnsafe();
-        } catch (SecurityException se) {
-            // Slow path when we are not trusted.
-            try {
-                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafe.setAccessible(true);
-                return (Unsafe) theUnsafe.get(Unsafe.class);
-            } catch (Exception e) {
-                throw new RuntimeException("exception while trying to get Unsafe", e);
-            }
         }
     }
 }

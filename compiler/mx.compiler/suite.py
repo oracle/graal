@@ -168,7 +168,6 @@ suite = {
       ],
       "requires" : [
         "jdk.internal.vm.ci",
-        "jdk.unsupported",
         "java.logging",
       ],
       "requiresConcealed" : {
@@ -527,9 +526,6 @@ suite = {
       # This distribution defines a module.
       "moduleInfo" : {
         "name" : "jdk.graal.compiler",
-        "requires" : [
-          "jdk.unsupported" # sun.misc.Unsafe
-        ],
         "exports" : [
           """* to com.oracle.graal.graal_enterprise,
                   org.graalvm.nativeimage.pointsto,

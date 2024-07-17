@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicReference;
@@ -58,17 +57,10 @@ import jdk.vm.ci.code.InvalidInstalledCodeException;
 @AddExports("java.base/jdk.internal.misc")
 public class GCBarrierEmissionTest extends SubprocessTest {
 
-    static final jdk.internal.misc.Unsafe INTERNAL_MISC_UNSAFE = jdk.internal.misc.Unsafe.getUnsafe();
-
-    @SuppressWarnings("deprecation" /* JDK-8277863 */)
-    public static long getObjectFieldOffset(Field field) {
-        return UNSAFE.objectFieldOffset(field);
-    }
-
     public static final long f1FieldOffset;
     static {
         try {
-            f1FieldOffset = getObjectFieldOffset(TestObject.class.getDeclaredField("f1"));
+            f1FieldOffset = UNSAFE.objectFieldOffset(TestObject.class.getDeclaredField("f1"));
         } catch (Exception ex) {
             throw new ExceptionInInitializerError(ex);
         }
@@ -134,7 +126,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
         if (t == null) {
             return;
         }
-        UNSAFE.putObjectVolatile(t, objectArrayBaseOffset, value);
+        UNSAFE.putReferenceVolatile(t, objectArrayBaseOffset, value);
     }
 
     @Test
@@ -173,7 +165,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
         if (t1 == null) {
             return null;
         }
-        return INTERNAL_MISC_UNSAFE.compareAndExchangeReference(t1, f1FieldOffset, null, value);
+        return UNSAFE.compareAndExchangeReference(t1, f1FieldOffset, null, value);
     }
 
     @Test
@@ -189,7 +181,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
         if (t1 == null) {
             return false;
         }
-        return UNSAFE.compareAndSwapObject(t1, f1FieldOffset, null, value);
+        return UNSAFE.compareAndSetReference(t1, f1FieldOffset, null, value);
     }
 
     @Test
@@ -205,7 +197,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
         if (t1 == null) {
             return null;
         }
-        return UNSAFE.getAndSetObject(t1, f1FieldOffset, value);
+        return UNSAFE.getAndSetReference(t1, f1FieldOffset, value);
     }
 
     @Test
