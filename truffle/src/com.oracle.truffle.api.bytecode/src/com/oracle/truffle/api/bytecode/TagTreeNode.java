@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.bytecode;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
@@ -82,6 +83,22 @@ public abstract class TagTreeNode extends Node implements TagTree {
 
     public BytecodeNode getBytecodeNode() {
         return BytecodeNode.get(this);
+    }
+
+    /**
+     * Creates a default scope implementation based of this tag tree node. The scope returned
+     * represents the default scope implementation in use without any configuration in
+     * {@link GenerateBytecode}. Use this method if the default scope implementation is usable for
+     * your language but other methods in {@link NodeLibrary} need to be implemented differently.
+     * <p>
+     * The scope used for a tag tree node can be customized by setting
+     * {@link GenerateBytecode#tagTreeNodeLibrary()} and overriding
+     * {@link NodeLibrary#getScope(Object, Frame, boolean)}.
+     *
+     * @since 24.2
+     */
+    public final Object createDefaultScope(Frame frame, boolean nodeEnter) {
+        return new DefaultBytecodeScope(this, frame, nodeEnter);
     }
 
     @Override

@@ -45,11 +45,9 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.TagTreeNode;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
@@ -95,36 +93,34 @@ final class SLBytecodeScopeExports {
 
     @ExportMessage
     static Object getScope(TagTreeNode node, Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
-        return new Scope(node, frame, nodeEnter);
+        if (node.hasTag(RootTag.class)) {
+            /*
+             * Simple language has special behavior for arguments outside of regular nodes as it
+             * translates arguments to values directly.
+             */
+            return new ArgumentsScope(node, frame);
+        } else {
+            /*
+             * We are lucky, language semantics exactly match the default scoping behavior
+             */
+            return node.createDefaultScope(frame, nodeEnter);
+        }
     }
 
+    /**
+     * Scope of function arguments. This scope is provided by nodes just under a root, outside of
+     * any block.
+     */
     @ExportLibrary(InteropLibrary.class)
-    static final class Scope implements TruffleObject {
+    static final class ArgumentsScope implements TruffleObject {
 
-        @NeverDefault final BytecodeNode bytecode;
-        @NeverDefault final TagTreeNode node;
-        @NeverDefault final int bci;
-
-        final boolean rootScope;
-
+        @NeverDefault final SLBytecodeRootNode rootNode;
         final Frame frame;
-
         private Map<String, Integer> nameToIndex;
 
-        private Scope(TagTreeNode node, Frame frame, boolean nodeEnter) {
-            this.bytecode = node.getBytecodeNode();
-            this.node = node;
+        private ArgumentsScope(TagTreeNode node, Frame frame) {
+            this.rootNode = (SLBytecodeRootNode) node.getBytecodeNode().getBytecodeRootNode();
             this.frame = frame;
-            this.rootScope = node.hasTag(RootTag.class);
-            this.bci = nodeEnter ? node.getEnterBytecodeIndex() : node.getReturnBytecodeIndex();
-        }
-
-        @ExportMessage
-        boolean accepts(@Shared @Cached("this.bytecode") BytecodeNode cachedBytecode,
-                        @Shared @Cached("this.node") TagTreeNode cachedNode,
-                        @Shared @Cached("this.bci") int cachedBci,
-                        @Shared @Cached("this.rootScope") boolean cachedRootScope) {
-            return this.bytecode == cachedBytecode && this.bci == cachedBci && this.node == cachedNode && this.rootScope == cachedRootScope;
         }
 
         @ExportMessage
@@ -133,9 +129,14 @@ final class SLBytecodeScopeExports {
         }
 
         @ExportMessage
-        Class<? extends TruffleLanguage<?>> getLanguage(
-                        @Shared @Cached("this.node") TagTreeNode cachedNode) throws UnsupportedMessageException {
+        Class<? extends TruffleLanguage<?>> getLanguage() {
             return SLLanguage.class;
+        }
+
+        @ExportMessage
+        @SuppressWarnings({"hiding", "unused"})//
+        boolean accepts(@Cached(value = "this.rootNode", adopt = false) SLBytecodeRootNode cachedRootNode) {
+            return this.rootNode == cachedRootNode;
         }
 
         @ExportMessage
@@ -152,55 +153,43 @@ final class SLBytecodeScopeExports {
         static class ReadMember {
 
             @Specialization(guards = {"equalsString(cachedMember, member)"}, limit = "5")
-            static Object doCached(Scope scope, String member,
-                            @Shared @Cached("scope.bytecode") BytecodeNode cachedBytecode,
-                            @Shared @Cached("scope.bci") int cachedBci,
-                            @Shared @Cached(value = "scope.rootScope", neverDefault = false) boolean cachedRootScope,
+            static Object doCached(ArgumentsScope scope, String member,
                             @Cached("member") String cachedMember,
                             @Cached("scope.slotToIndex(cachedMember)") int index) throws UnsupportedMessageException {
                 if (index == -1) {
                     throw UnsupportedMessageException.create();
                 }
                 Frame frame = scope.frame;
-                if (frame == null) {
+                Object[] arguments = frame != null ? scope.frame.getArguments() : null;
+                if (arguments == null || index >= arguments.length) {
                     return SLNull.SINGLETON;
                 }
-                if (cachedRootScope) {
-                    return frame.getArguments()[index];
-                } else {
-                    Object o = cachedBytecode.getLocalValue(cachedBci, frame, index);
-                    if (o == null) {
-                        o = SLNull.SINGLETON;
-                    }
-                    return o;
-                }
+                return arguments[index];
             }
 
             @Specialization(replaces = "doCached")
-            @TruffleBoundary
-            static Object doGeneric(Scope scope, String member) throws UnsupportedMessageException {
-                return doCached(scope, member, scope.bytecode, scope.bci, scope.rootScope, member, scope.slotToIndex(member));
+            static Object doGeneric(ArgumentsScope scope, String member) throws UnsupportedMessageException {
+                return doCached(scope, member, member, scope.slotToIndex(member));
             }
-
         }
 
         @ExportMessage
         Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            return new Members(this);
+            return new Members(rootNode.getArgumentNames());
         }
 
         @ExportMessage
         static class IsMemberReadable {
 
             @Specialization(guards = {"equalsString(cachedMember, member)"}, limit = "5")
-            static boolean doCached(Scope scope, String member,
+            static boolean doCached(ArgumentsScope scope, String member,
                             @Cached("member") String cachedMember,
                             @Cached("scope.slotToIndex(cachedMember)") int index) {
                 return index != -1;
             }
 
             @Specialization(replaces = "doCached")
-            static boolean doGeneric(Scope scope, String member) {
+            static boolean doGeneric(ArgumentsScope scope, String member) {
                 return scope.slotToIndex(member) != -1;
             }
 
@@ -210,15 +199,15 @@ final class SLBytecodeScopeExports {
         static class IsMemberModifiable {
 
             @Specialization(guards = {"equalsString(cachedMember, member)"}, limit = "5")
-            static boolean doCached(Scope scope, String member,
+            static boolean doCached(ArgumentsScope scope, String member,
                             @Cached("member") String cachedMember,
                             @Cached("scope.slotToIndex(cachedMember)") int index) {
-                return index != -1 && scope.frame != null;
+                return index != -1 && scope.frame != null && index < scope.frame.getArguments().length;
             }
 
             @Specialization(replaces = "doCached")
-            static boolean doGeneric(Scope scope, String member) {
-                return scope.slotToIndex(member) != -1 && scope.frame != null;
+            static boolean doGeneric(ArgumentsScope scope, String member) {
+                return doCached(scope, member, member, scope.slotToIndex(member));
             }
 
         }
@@ -226,26 +215,23 @@ final class SLBytecodeScopeExports {
         @ExportMessage
         static class WriteMember {
             @Specialization(guards = {"equalsString(cachedMember, member)"}, limit = "5")
-            static void doCached(Scope scope, String member, Object value,
-                            @Shared @Cached("scope.bytecode") BytecodeNode cachedBytecode,
-                            @Shared @Cached("scope.bci") int cachedBci,
-                            @Shared @Cached(value = "scope.rootScope", neverDefault = false) boolean cachedRootScope,
+            static void doCached(ArgumentsScope scope, String member, Object value,
                             @Cached("member") String cachedMember,
                             @Cached("scope.slotToIndex(cachedMember)") int index) throws UnknownIdentifierException, UnsupportedMessageException {
                 if (index == -1 || scope.frame == null) {
                     throw UnsupportedMessageException.create();
                 }
-                if (cachedRootScope) {
-                    scope.frame.getArguments()[index] = value;
-                } else {
-                    cachedBytecode.setLocalValue(cachedBci, scope.frame, index, value);
+                Object[] arguments = scope.frame.getArguments();
+                if (index >= arguments.length) {
+                    throw UnsupportedMessageException.create();
                 }
+                arguments[index] = value;
             }
 
             @Specialization(replaces = "doCached")
             @TruffleBoundary
-            static void doGeneric(Scope scope, String member, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
-                doCached(scope, member, value, scope.bytecode, scope.bci, scope.rootScope, member, scope.slotToIndex(member));
+            static void doGeneric(ArgumentsScope scope, String member, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
+                doCached(scope, member, value, member, scope.slotToIndex(member));
             }
         }
 
@@ -257,13 +243,13 @@ final class SLBytecodeScopeExports {
         @ExportMessage
         @TruffleBoundary
         boolean hasSourceLocation() {
-            return node.getSourceSection() != null;
+            return this.rootNode.getSourceSection() != null;
         }
 
         @ExportMessage
         @TruffleBoundary
         SourceSection getSourceLocation() throws UnsupportedMessageException {
-            SourceSection section = node.getSourceSection();
+            SourceSection section = this.rootNode.getSourceSection();
             if (section == null) {
                 throw UnsupportedMessageException.create();
             }
@@ -273,7 +259,7 @@ final class SLBytecodeScopeExports {
         @ExportMessage
         @TruffleBoundary
         Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-            return bytecode.getRootNode().getName();
+            return rootNode.getName();
         }
 
         @Override
@@ -303,13 +289,7 @@ final class SLBytecodeScopeExports {
         private Map<String, Integer> createNameToIndex() {
             Map<String, Integer> locals = new LinkedHashMap<>();
             int index = 0;
-            Object[] names;
-            if (this.rootScope) {
-                SLBytecodeRootNode root = (SLBytecodeRootNode) this.node.getBytecodeNode().getBytecodeRootNode();
-                names = root.getArgumentNames();
-            } else {
-                names = this.bytecode.getLocalNames(this.bci);
-            }
+            Object[] names = this.rootNode.getArgumentNames();
             for (Object local : names) {
                 String name = resolveLocalName(local);
                 locals.put(name, index);
@@ -330,7 +310,7 @@ final class SLBytecodeScopeExports {
         }
 
         private Members createMembers() {
-            return new Members(this);
+            return new Members(rootNode.getArgumentNames());
         }
 
         @TruffleBoundary
@@ -343,10 +323,10 @@ final class SLBytecodeScopeExports {
     @ExportLibrary(InteropLibrary.class)
     static final class Members implements TruffleObject {
 
-        final Scope scope;
+        final Object[] argumentNames;
 
-        Members(Scope scope) {
-            this.scope = scope;
+        Members(Object[] argumentNames) {
+            this.argumentNames = argumentNames;
         }
 
         @ExportMessage
@@ -355,13 +335,8 @@ final class SLBytecodeScopeExports {
         }
 
         @ExportMessage
-        @TruffleBoundary
         long getArraySize() {
-            if (scope.rootScope) {
-                return ((SLBytecodeRootNode) scope.bytecode.getBytecodeRootNode()).parameterCount;
-            } else {
-                return scope.bytecode.getLocalCount(scope.bci);
-            }
+            return argumentNames.length;
         }
 
         @ExportMessage
@@ -371,11 +346,7 @@ final class SLBytecodeScopeExports {
             if (index < 0 || index >= size) {
                 throw InvalidArrayIndexException.create(index);
             }
-            if (scope.rootScope) {
-                return scope.bytecode.getLocals().get((int) index).getName();
-            } else {
-                return scope.bytecode.getLocalName(scope.bci, (int) index);
-            }
+            return argumentNames[(int) index];
         }
 
         @ExportMessage

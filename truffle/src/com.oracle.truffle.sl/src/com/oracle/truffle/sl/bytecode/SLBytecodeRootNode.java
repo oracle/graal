@@ -102,11 +102,12 @@ import com.oracle.truffle.sl.runtime.SLNull;
                 decisionsFile = "decisions.json", //
                 boxingEliminationTypes = {long.class, boolean.class}, //
                 enableUncachedInterpreter = true,
-                /*
-                 * Simple language needs to run code before the root tag to set local variables, so
-                 * we disable implicit root and root-body tagging.
+                /**
+                 * Simple language needs to run code before the root body tag to set local
+                 * variables, so we disable implicit root-body tagging and do this manually in
+                 * {@link SLBytecodeVisitor#visitFunction}.
                  */
-                enableRootBodyTagging = false, enableRootTagging = false, //
+                enableRootBodyTagging = false,//
                 tagTreeNodeLibrary = SLBytecodeScopeExports.class, enableSerialization = true, //
                 enableTagInstrumentation = true)
 @TypeSystemReference(SLTypes.class)
@@ -197,7 +198,6 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
 
     // see also SLReadArgumentNode
     @Operation
-    @TypeSystemReference(SLTypes.class)
     @ConstantOperand(type = int.class)
     public static final class SLLoadArgument {
 
@@ -259,7 +259,6 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
     }
 
     @Operation
-    @TypeSystemReference(SLTypes.class)
     public static final class SLInvoke {
         @Specialization(limit = "3", //
                         guards = "function.getCallTarget() == cachedTarget", //

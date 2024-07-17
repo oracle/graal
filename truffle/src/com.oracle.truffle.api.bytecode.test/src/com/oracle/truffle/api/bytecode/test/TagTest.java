@@ -274,6 +274,7 @@ public class TagTest extends AbstractInstructionTest {
                         "load.local",
                         "tag.leave",
                         "return");
+
         boolean[] isInstrumentation = new boolean[]{true, false, false, true, true, false, true, false};
         List<Instruction> instructions = node.getBytecodeNode().getInstructionsAsList();
         for (int i = 0; i < instructions.size(); i++) {
@@ -539,7 +540,8 @@ public class TagTest extends AbstractInstructionTest {
                         "load.local",
                         "return");
 
-        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, StandardTags.ExpressionTag.class).build());
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class,
+                        StandardTags.ExpressionTag.class).build());
 
         assertInstructions(node,
                         "tag.enter",
@@ -2036,9 +2038,6 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
-    private static final NodeLibrary NODE_LIBRARY = NodeLibrary.getUncached();
-    private static final InteropLibrary INTEROP = InteropLibrary.getUncached();
-
     @Test
     public void testNodeLibrary() {
         TagInstrumentationTestRootNode node = parse((b) -> {
@@ -2125,6 +2124,12 @@ public class TagTest extends AbstractInstructionTest {
         instrumenter.attachExecutionEventFactory(filter, (c) -> {
             return new ExecutionEventNode() {
 
+                @Child NodeLibrary nodeLibrary = insert(NodeLibrary.getFactory().create(c.getInstrumentedNode()));
+                @Child InteropLibrary scopeLibrary = insert(InteropLibrary.getFactory().createDispatched(1));
+                @Child InteropLibrary membersLibrary = insert(InteropLibrary.getFactory().createDispatched(1));
+                @Child InteropLibrary memberLibrary = insert(InteropLibrary.getFactory().createDispatched(1));
+                @Child InteropLibrary valueLibrary = insert(InteropLibrary.getFactory().createDispatched(1));
+
                 @Override
                 protected void onEnter(VirtualFrame frame) {
                     int index = enterIndex.getAndIncrement();
@@ -2135,25 +2140,24 @@ public class TagTest extends AbstractInstructionTest {
                 protected void onReturnValue(VirtualFrame frame, Object result) {
                     int index = returnIndex.getAndIncrement();
                     assertScope(frame.materialize(), index, false, onLeaveLocals.get(index));
-
                 }
 
                 @TruffleBoundary
                 private void assertScope(Frame frame, int index, boolean enter, List<ExpectedLocal> locals) {
                     try {
                         Node instrumentedScope = c.getInstrumentedNode();
-                        Object scope = NODE_LIBRARY.getScope(instrumentedScope, frame, enter);
-                        Object members = INTEROP.getMembers(scope);
-                        assertEquals(locals.size(), INTEROP.getArraySize(members));
+                        Object scope = nodeLibrary.getScope(instrumentedScope, frame, enter);
+                        Object members = scopeLibrary.getMembers(scope);
+                        assertEquals(locals.size(), membersLibrary.getArraySize(members));
 
                         for (int i = 0; i < locals.size(); i++) {
                             ExpectedLocal expectedLocal = locals.get(i);
 
-                            Object actualName = INTEROP.readArrayElement(members, i);
-                            assertEquals(expectedLocal.name(), INTEROP.asString(actualName));
-                            Object actualValue = INTEROP.readMember(scope, INTEROP.asString(actualName));
+                            Object actualName = membersLibrary.readArrayElement(members, i);
+                            assertEquals(expectedLocal.name(), memberLibrary.asString(actualName));
+                            Object actualValue = scopeLibrary.readMember(scope, memberLibrary.asString(actualName));
                             if (expectedLocal.value() == null) {
-                                assertTrue(INTEROP.isNull(actualValue));
+                                assertTrue(valueLibrary.isNull(actualValue));
                             } else {
                                 assertEquals(expectedLocal.value(), actualValue);
                             }

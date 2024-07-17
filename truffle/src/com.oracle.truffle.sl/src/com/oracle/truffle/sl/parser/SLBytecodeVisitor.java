@@ -66,7 +66,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
-import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
 import com.oracle.truffle.api.source.Source;
@@ -204,7 +203,6 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         b.beginSourceSection(functionStartPos, functionEndPos - functionStartPos + 1);
         b.beginRoot(language);
 
-        b.beginTag(RootTag.class);
         b.beginBlock();
         int parameterCount = enterFunction(ctx).size();
         for (int i = 0; i < parameterCount; i++) {
@@ -229,7 +227,6 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
 
         b.endTag(RootBodyTag.class);
         b.endBlock();
-        b.endTag(RootTag.class);
 
         b.beginReturn();
         b.emitLoadConstant(SLNull.SINGLETON);
