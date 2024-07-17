@@ -262,13 +262,17 @@ public abstract class ConfigurationParser {
         throw new JsonParserException(message);
     }
 
-    protected static Optional<ConfigurationTypeDescriptor> parseTypeOrName(EconomicMap<String, Object> data, boolean treatAllNameEntriesAsType) {
+    protected record TypeDescriptorWithOrigin(ConfigurationTypeDescriptor typeDescriptor, boolean definedAsType) {
+    }
+
+    protected static Optional<TypeDescriptorWithOrigin> parseTypeOrName(EconomicMap<String, Object> data, boolean treatAllNameEntriesAsType) {
         Object typeObject = data.get(TYPE_KEY);
         Object name = data.get(NAME_KEY);
         if (typeObject != null) {
-            return parseTypeContents(typeObject);
+            return parseTypeContents(typeObject).map(typeDescriptor -> new TypeDescriptorWithOrigin(typeDescriptor, true));
         } else if (name != null) {
-            return Optional.of(new NamedConfigurationTypeDescriptor(asString(name), treatAllNameEntriesAsType));
+            NamedConfigurationTypeDescriptor typeDescriptor = new NamedConfigurationTypeDescriptor(asString(name));
+            return Optional.of(new TypeDescriptorWithOrigin(typeDescriptor, treatAllNameEntriesAsType));
         } else {
             throw failOnSchemaError("must have type or name specified for an element");
         }
@@ -276,7 +280,7 @@ public abstract class ConfigurationParser {
 
     protected static Optional<ConfigurationTypeDescriptor> parseTypeContents(Object typeObject) {
         if (typeObject instanceof String stringValue) {
-            return Optional.of(new NamedConfigurationTypeDescriptor(stringValue, true));
+            return Optional.of(new NamedConfigurationTypeDescriptor(stringValue));
         } else {
             EconomicMap<String, Object> type = asMap(typeObject, "type descriptor should be a string or object");
             if (type.containsKey(PROXY_KEY)) {
