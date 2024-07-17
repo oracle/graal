@@ -108,6 +108,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     private final BytecodeDSLModel parent;
     private final DeclaredType annotationType;
     private final boolean forProxyValidation;
+    private boolean explicitParse;
     private boolean uncachedProxyValidation;
 
     private CustomOperationParser(ProcessorContext context, BytecodeDSLModel parent, DeclaredType annotationType, boolean forProxyValidation) {
@@ -164,15 +165,19 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             throw new IllegalArgumentException(String.format("Expected element %s to have one %s annotation, but %d found.", typeElement.getSimpleName(), annotationType, annotationMirrors.size()));
         }
         AnnotationMirror mirror = annotationMirrors.get(0);
-
-        return parseCustomOperation(typeElement, mirror);
+        explicitParse = false;
+        return parseImpl(typeElement, mirror);
     }
 
     public CustomOperationModel parseCustomOperation(TypeElement typeElement, AnnotationMirror mirror) {
+        explicitParse = true;
+        return parseImpl(typeElement, mirror);
+    }
+
+    private CustomOperationModel parseImpl(TypeElement typeElement, AnnotationMirror mirror) {
         if (forProxyValidation) {
             this.uncachedProxyValidation = ElementUtils.getAnnotationValue(Boolean.class, mirror, "allowUncached");
         }
-
         if (isShortCircuit()) {
             return parseCustomShortCircuitOperation(typeElement, mirror);
         } else {
@@ -180,7 +185,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
     }
 
-    public CustomOperationModel parseCustomRegularOperation(TypeElement typeElement, AnnotationMirror mirror) {
+    private CustomOperationModel parseCustomRegularOperation(TypeElement typeElement, AnnotationMirror mirror) {
         String name = getCustomOperationName(typeElement, mirror);
         String javadoc = ElementUtils.getAnnotationValue(String.class, mirror, "javadoc");
         boolean isInstrumentation = ElementUtils.typeEquals(mirror.getAnnotationType(), types.Instrumentation);
@@ -459,7 +464,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return name + "Value";
     }
 
-    public CustomOperationModel parseCustomShortCircuitOperation(TypeElement typeElement, AnnotationMirror mirror) {
+    private CustomOperationModel parseCustomShortCircuitOperation(TypeElement typeElement, AnnotationMirror mirror) {
         String name = getCustomOperationName(typeElement, mirror);
         String javadoc = ElementUtils.getAnnotationValue(String.class, mirror, "javadoc");
         CustomOperationModel customOperation = parent.customShortCircuitOperation(OperationKind.CUSTOM_SHORT_CIRCUIT, name, javadoc, mirror);
@@ -890,7 +895,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (result.getTypeSystem().isDefault()) {
             result.setTypeSystem(parent.typeSystem);
         } else {
-            if (ElementUtils.typeEquals(result.getTypeSystem().getTemplateType().asType(), parent.typeSystem.getTemplateType().asType())) {
+            if (explicitParse && ElementUtils.typeEquals(result.getTypeSystem().getTemplateType().asType(), parent.typeSystem.getTemplateType().asType())) {
                 customOperation.addSuppressableWarning(TruffleSuppressedWarnings.UNUSED,
                                 "Type type system referenced of this operation equals to the type system reference of the parent bytecode root node. Remove this the operation type system reference to resolve this warning.");
             }

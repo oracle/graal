@@ -218,7 +218,7 @@ public class ErrorTests {
 
     }
 
-    @ExpectError("The used type system 'com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.ErroredTypeSystem' is invalid. Fix errors in the type system first.")
+    @ExpectError("The used type system is invalid. Fix errors in the type system first.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     @TypeSystemReference(ErroredTypeSystem.class)
     public abstract static class BadTypeSystem extends RootNode implements BytecodeRootNode {
