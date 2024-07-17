@@ -468,7 +468,7 @@ public class ObjectCopier {
             this.loader = loader;
         }
 
-        Class<?> loadClass(String className) {
+        public Class<?> loadClass(String className) {
             try {
                 return Class.forName(className, false, loader);
             } catch (ClassNotFoundException e) {

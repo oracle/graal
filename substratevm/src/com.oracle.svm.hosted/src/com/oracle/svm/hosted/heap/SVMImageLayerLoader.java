@@ -53,7 +53,9 @@ import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
@@ -61,6 +63,7 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFl
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
@@ -88,6 +91,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private final Field dynamicHubArrayHubField;
 
     private HostedUniverse hostedUniverse;
+    private ImageClassLoader imageClassLoader;
 
     public SVMImageLayerLoader(List<Path> loaderPaths) {
         super(new SVMImageLayerSnapshotUtil(), loaderPaths);
@@ -98,8 +102,25 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         this.hostedUniverse = hostedUniverse;
     }
 
+    public void setImageClassLoader(ImageClassLoader imageClassLoader) {
+        this.imageClassLoader = imageClassLoader;
+    }
+
     public HostedUniverse getHostedUniverse() {
         return hostedUniverse;
+    }
+
+    @Override
+    public Class<?> lookupClass(boolean optional, String className) {
+        TypeResult<Class<?>> typeResult = imageClassLoader.findClass(className);
+        if (!typeResult.isPresent()) {
+            if (optional) {
+                return null;
+            } else {
+                throw AnalysisError.shouldNotReachHere("Class not found: " + className);
+            }
+        }
+        return typeResult.get();
     }
 
     @Override
@@ -175,7 +196,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             String methodName = (String) constantValue;
             Class<?> definingClass = lookupBaseLayerTypeInHostVM((String) constantData.get(2));
             List<String> parameters = cast(constantData.get(3));
-            Class<?>[] parameterTypes = parameters.stream().map(ImageLayerLoader::lookupBaseLayerTypeInHostVM).toList().toArray(new Class<?>[0]);
+            Class<?>[] parameterTypes = parameters.stream().map(this::lookupBaseLayerTypeInHostVM).toList().toArray(new Class<?>[0]);
             values[i] = new RelocatableConstant(new CEntryPointLiteralCodePointer(definingClass, methodName, parameterTypes), cEntryPointerLiteralPointerType);
             return true;
         }
@@ -289,9 +310,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             // create singleton object instance
             Object result;
             try {
-                Class<?> clazz = ReflectionUtil.lookupClass(false, className);
+                Class<?> clazz = lookupClass(false, className);
                 Method createMethod = ReflectionUtil.lookupMethod(clazz, "createFromLoader", ImageSingletonLoader.class);
-                result = createMethod.invoke(null, new ImageSingletonLoaderImpl(keyStore));
+                result = createMethod.invoke(null, new ImageSingletonLoaderImpl(keyStore, imageClassLoader));
             } catch (Throwable t) {
                 throw VMError.shouldNotReachHere("Failed to recreate image singleton", t);
             }
@@ -309,12 +330,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             if (persistInfo == PersistFlags.CREATE) {
                 assert id != -1 : "Create image singletons should be linked to an object";
                 Object singletonObject = idToObjectMap.get(id);
-                Class<?> clazz = ReflectionUtil.lookupClass(false, key);
+                Class<?> clazz = lookupClass(false, key);
                 singletonInitializationMap.computeIfAbsent(singletonObject, (k) -> new HashSet<>());
                 singletonInitializationMap.get(singletonObject).add(clazz);
             } else if (persistInfo == PersistFlags.FORBIDDEN) {
                 assert id == -1 : "Unrestored image singleton should not be linked to an object";
-                Class<?> clazz = ReflectionUtil.lookupClass(false, key);
+                Class<?> clazz = lookupClass(false, key);
                 singletonInitializationMap.computeIfAbsent(forbiddenObject, (k) -> new HashSet<>());
                 singletonInitializationMap.get(forbiddenObject).add(clazz);
             } else {
@@ -330,9 +351,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
 class ImageSingletonLoaderImpl implements ImageSingletonLoader {
     private final UnmodifiableEconomicMap<String, Object> keyStore;
+    private final ImageClassLoader imageClassLoader;
 
-    ImageSingletonLoaderImpl(UnmodifiableEconomicMap<String, Object> keyStore) {
+    ImageSingletonLoaderImpl(UnmodifiableEconomicMap<String, Object> keyStore, ImageClassLoader imageClassLoader) {
         this.keyStore = keyStore;
+        this.imageClassLoader = imageClassLoader;
     }
 
     @SuppressWarnings("unchecked")
@@ -379,5 +402,10 @@ class ImageSingletonLoaderImpl implements ImageSingletonLoader {
         String type = cast(value.get(0));
         assert type.equals("S(") : type;
         return cast(value.get(1));
+    }
+
+    @Override
+    public Class<?> lookupClass(String className) {
+        return imageClassLoader.findClass(className).get();
     }
 }

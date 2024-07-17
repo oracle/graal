@@ -234,9 +234,12 @@ public class ImageLayerSnapshotUtil {
     }
 
     public static class GraphDecoder extends ObjectCopier.Decoder {
+        private final ImageLayerLoader imageLayerLoader;
+
         @SuppressWarnings("this-escape")
         public GraphDecoder(ClassLoader classLoader, ImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod) {
             super(classLoader);
+            this.imageLayerLoader = imageLayerLoader;
             addBuiltin(new NodeClassBuiltIn());
             addBuiltin(new ImageHeapConstantBuiltIn(null, imageLayerLoader));
             addBuiltin(new AnalysisTypeBuiltIn(null, imageLayerLoader));
@@ -244,6 +247,11 @@ public class ImageLayerSnapshotUtil {
             addBuiltin(new AnalysisFieldBuiltIn(null, imageLayerLoader));
             addBuiltin(new FieldLocationIdentityBuiltIn(null, imageLayerLoader));
             addBuiltin(new NamedLocationIdentityArrayBuiltIn());
+        }
+
+        @Override
+        public Class<?> loadClass(String className) {
+            return imageLayerLoader.lookupClass(false, className);
         }
     }
 

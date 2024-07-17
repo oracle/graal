@@ -97,7 +97,7 @@ public interface ReachabilityAnalysis {
      * @see ReachabilityAnalysis#addRootMethod(AnalysisMethod, boolean, Object,
      *      MultiMethod.MultiMethodKey...)
      */
-    AnalysisMethod forcedAddRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots);
+    AnalysisMethod forcedAddRootMethod(AnalysisMethod method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots);
 
     /**
      * Waits until the analysis is done.
