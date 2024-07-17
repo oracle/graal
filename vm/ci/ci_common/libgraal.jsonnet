@@ -85,7 +85,9 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     local tasks = [
       "LibGraal Compiler:Basic",
       "LibGraal Compiler:FatalErrorHandling",
+      "LibGraal Compiler:OOMEDumping",
       "LibGraal Compiler:SystemicFailureDetection",
+      "LibGraal Compiler:CompilationTimeout:JIT",
       "LibGraal Compiler:CTW",
       "LibGraal Compiler:DaCapo",
       "LibGraal Compiler:ScalaDaCapo"
