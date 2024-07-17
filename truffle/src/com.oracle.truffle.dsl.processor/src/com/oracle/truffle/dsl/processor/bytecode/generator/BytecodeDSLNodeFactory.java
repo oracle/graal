@@ -4255,6 +4255,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("maxStackHeight = 0");
             b.statement("handlerTable = new int[2 * EXCEPTION_HANDLER_LENGTH]");
             b.statement("handlerTableSize = 0");
+            b.statement("locals = null");
+            b.statement("localsTableIndex = 0");
             b.statement("unresolvedLabels = new HashMap<>()");
             if (model.enableTracing) {
                 b.statement("basicBlockBoundary = new boolean[33]");
