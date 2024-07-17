@@ -7215,7 +7215,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
             b.startIf().string("needsRewind").end().startBlock();
 
-            buildOperationStackWalk(b, lowestOperationIndex, () -> {
+            buildOperationStackWalkFromBottom(b, lowestOperationIndex, () -> {
                 b.startSwitch().string("operationStack[i].operation").end().startBlock();
 
                 if (model.enableTagInstrumentation) {

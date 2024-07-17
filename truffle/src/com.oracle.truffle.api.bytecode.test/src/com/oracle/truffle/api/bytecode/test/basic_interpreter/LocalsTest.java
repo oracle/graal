@@ -188,8 +188,8 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
             LocalVariable l0a = locals.get(0);
             LocalVariable l1a = locals.get(1);
             LocalVariable l2a = locals.get(2); // early return handler
-            LocalVariable l1b = locals.get(3);
-            LocalVariable l0b = locals.get(4);
+            LocalVariable l0b = locals.get(3);
+            LocalVariable l1b = locals.get(4);
             LocalVariable l2b = locals.get(5); // fallthrough handler
             LocalVariable l2c = locals.get(6); // exceptional handler
 
@@ -244,23 +244,13 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
                         assertEquals(1, b.getLocalCount(bci));
                         assertEquals("l0", b.getLocalName(bci, 0));
                         assertNull(b.getLocalInfo(bci, 0));
-                    } else if (constant == Boolean.valueOf(true)) {
-                        // try block (before return)
+                    } else if (constant == Boolean.valueOf(true) || constant == Long.valueOf(123L)) {
+                        // try block
                         int bci = instruction.getBytecodeIndex();
                         assertEquals(2, b.getLocalCount(bci));
                         assertEquals("l0", b.getLocalName(bci, 0));
                         assertNull(b.getLocalInfo(bci, 0));
                         assertEquals("l1", b.getLocalName(bci, 1));
-                        assertNull(b.getLocalInfo(bci, 1));
-                    } else if (constant == Long.valueOf(123L)) {
-                        // TODO: walk stack bottom-up during rewind to support proper local
-                        // introspection order
-                        // try block (after return)
-                        int bci = instruction.getBytecodeIndex();
-                        assertEquals(2, b.getLocalCount(bci));
-                        assertEquals("l1", b.getLocalName(bci, 0));
-                        assertNull(b.getLocalInfo(bci, 0));
-                        assertEquals("l0", b.getLocalName(bci, 1));
                         assertNull(b.getLocalInfo(bci, 1));
                     } else if (constant == Boolean.valueOf(false)) {
                         // finally block
