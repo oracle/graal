@@ -46,7 +46,7 @@ For the demo, run a "fortune teller" application that simulates the traditional 
 
 3. Check the file size which should be around 13M:
     ```bash
-    du -sh target/fortune*
+    du -h target/fortune
     ```
 
 ## Build a Native Executable Optimized for Size
@@ -88,8 +88,15 @@ Next create a native executable with the size optimization on, giving a differen
 How much the file size can be reduced by the `-Os` option varies between applications, and depends on how much Native Image applies inlining and other optimizations that increase size in the default `-O2` mode.
 
 The build report generated in the previous step, _fortune-optimized-build-report.html_, tells exactly what was included in your native executable.
-It is an HTML file. 
-You can open it in a regular web browser and examine. 
+It is an HTML file that you can open in a regular web browser. 
+
+In case your native executable is quite large in file size, you may want to review the list of embedded resources, the list of modules and packages included in the code area, or the list of object types in the image heap, and check whether these elements are essential for your application.
+Sometimes, large files are accidentally embedded as a resource due to erroneous regular expression patterns in the resource configuration of reachability metadata.
+Registering wrong or too many Java types for reflection can also increase the size of a native executable significantly, by making unnecessary parts of the application, libraries, or the JDK reachable by accident.
+Moreover, build-time initialization, if not used towards a specific goal, can cause large Java objects such as empty caches to be accidentally included in the image heap and, thus, cause bloat in a native executable.
+
+Generally, it is a good idea to check file size, number of embedded resources, or other metrics from time to time, for example, when adding or updating dependencies, or even monitor build metrics frequently.
+For this, you can use the [machine-readable version of the build output](../overview/BuildOutput.md#machine-readable-build-output) or the [build reports for GitHub Actions](https://medium.com/graalvm/native-image-build-reports-and-update-notifications-351aca964a55){:target="_blank"}.
 
 There are other Native Image techniques that can positively affect the executable size, besides improving other metrics, for example, [Profile-Guided Optimizations (PGO)](optimize-native-executable-with-pgo.md). 
 
