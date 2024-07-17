@@ -54,8 +54,9 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 import sun.misc.Unsafe;
 
 /**
- * This class provides implementations for {@code @CEntryPoint}s that libgraal has to provide as JVM
- * JIT compiler as public methods.
+ * This class provides implementations for {@code @CEntryPoint}s that libgraal has to provide as a
+ * JVM JIT compiler as well as handles (created by {@link BuildTime#getRuntimeHandles}) to other
+ * utility methods needed by {@code GuestGraalFeature}.
  */
 public class RunTime {
 
@@ -112,7 +113,7 @@ public class RunTime {
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
 
         int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
-        HotSpotResolvedJavaMethod method = HotSpotJVMCIRuntime.runtime().unhand(HotSpotResolvedJavaMethod.class, methodHandle);
+        HotSpotResolvedJavaMethod method = runtime.unhand(HotSpotResolvedJavaMethod.class, methodHandle);
         HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
         try (CompilationContext ignored = HotSpotGraalServices.openLocalCompilationContext(request)) {
             CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, false, eagerResolving, installAsDefault);
@@ -140,7 +141,7 @@ public class RunTime {
                 metricValues.print(options);
                 metricValues.clear();
             }
-            return HotSpotJVMCIRuntime.runtime().translate(installedCode);
+            return runtime.translate(installedCode);
         }
     }
 
@@ -164,5 +165,36 @@ public class RunTime {
         long offset = getJniEnvironmentOffset();
         long javaThreadAddr = jvmciRuntime.getCurrentJavaThread();
         return javaThreadAddr + offset;
+    }
+
+    /**
+     * Ensures the current thread is attached to the peer runtime.
+     *
+     * @param isDaemon if the thread is not yet attached, should it be attached as a daemon
+     * @param isolate if non-null, the isolate for the current thread is returned in element 0
+     * @return {@code true} if this call attached the current thread, {@code false} if the current
+     *         thread was already attached
+     */
+    public static boolean attachCurrentThread(boolean isDaemon, long[] isolate) {
+        long[] javaVMInfo = isolate != null ? new long[4] : null;
+        boolean res = HotSpotJVMCIRuntime.runtime().attachCurrentThread(isDaemon, javaVMInfo);
+        if (isolate != null) {
+            isolate[0] = javaVMInfo[1];
+        }
+        return res;
+    }
+
+    /**
+     * Detaches the current thread from the peer runtime.
+     *
+     * @param release if {@code true} and the VM supports releasing the {@code JavaVM} associated
+     *            with libgraal runtimes and this is the last thread attached to a libgraal runtime,
+     *            then this call destroys the associated {@code JavaVM} instance, releasing its
+     *            resources
+     * @return {@code true} if the {@code JavaVM} associated with the libgraal runtime was destroyed
+     *         as a result of this call
+     */
+    public static boolean detachCurrentThread(boolean release) {
+        return HotSpotJVMCIRuntime.runtime().detachCurrentThread(release);
     }
 }

@@ -82,6 +82,8 @@ final class GuestGraal {
     private final MethodHandle getSavedProperty;
     private final MethodHandle ttyPrintf;
     private final MethodHandle compileMethod;
+    private final MethodHandle attachCurrentThread;
+    private final MethodHandle detachCurrentThread;
 
     /**
      * Returns the {@link GuestGraal} instance registered in the {@link ImageSingletons}.
@@ -95,6 +97,8 @@ final class GuestGraal {
         this.getSavedProperty = handles.get("getSavedProperty");
         this.ttyPrintf = handles.get("ttyPrintf");
         this.compileMethod = handles.get("compileMethod");
+        this.attachCurrentThread = handles.get("attachCurrentThread");
+        this.detachCurrentThread = handles.get("detachCurrentThread");
     }
 
     /**
@@ -117,6 +121,26 @@ final class GuestGraal {
     static String getSavedProperty(String name) {
         try {
             return (String) singleton().getSavedProperty.invoke(name);
+        } catch (RuntimeException | Error e) {
+            throw e;
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    static boolean attachCurrentThread(boolean daemon, long[] isolate) {
+        try {
+            return (boolean) singleton().attachCurrentThread.invoke(daemon, isolate);
+        } catch (RuntimeException | Error e) {
+            throw e;
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    static boolean detachCurrentThread(boolean release) {
+        try {
+            return (boolean) singleton().detachCurrentThread.invoke(release);
         } catch (RuntimeException | Error e) {
             throw e;
         } catch (Throwable e) {

@@ -433,6 +433,23 @@ public class GuestGraalSubstitutions {
             GuestGraal.printOptions(out, prefix);
         }
     }
+
+    @TargetClass(className = "jdk.graal.compiler.core.GraalServiceThread", classLoader = GuestGraalClassLoaderSupplier.class, onlyWith = GuestGraalFeature.IsEnabled.class)
+    final class Target_jdk_graal_compiler_core_GraalServiceThread {
+        @Substitute()
+        void beforeRun() {
+            Thread thread = SubstrateUtil.cast(this, Thread.class);
+            if (!GuestGraal.attachCurrentThread(thread.isDaemon(), null)) {
+                throw new InternalError("Couldn't attach to HotSpot runtime");
+            }
+        }
+
+        @Substitute
+        @SuppressWarnings("static-method")
+        void afterRun() {
+            GuestGraal.detachCurrentThread(false);
+        }
+    }
 }
 
 /*
