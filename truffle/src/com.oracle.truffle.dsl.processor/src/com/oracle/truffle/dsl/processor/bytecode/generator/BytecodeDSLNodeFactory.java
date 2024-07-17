@@ -5230,6 +5230,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          *
          * The supplied Runnable contains the loop body and can use "i" to reference the current
          * index.
+         *
+         * Note: lowerLimit is inclusive (iteration will include lowerLimit).
          */
         private void buildOperationStackWalk(CodeTreeBuilder b, String lowerLimit, Runnable r) {
             b.startFor().string("int i = operationSp - 1; i >= ", lowerLimit, "; i--").end().startBlock();
@@ -5260,6 +5262,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          * the bottom of the operation stack. Uses the {@code finallyHandlerSp} field on
          * {@code FinallyTryData} to skip "try" operations when a finally handler is being emitted
          * in-line.
+         *
+         * Note: lowerLimit is inclusive (iteration will start from lowerLimit).
          */
         private void buildOperationStackWalkFromBottom(CodeTreeBuilder b, String lowerLimit, Runnable r) {
             b.startFor().string("int i = ", lowerLimit, "; i < operationSp; i++").end().startBlock();
@@ -6970,7 +6974,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createBeforeEmitBranch() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeEmitBranch");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "declaringOperationSp"));
-            emitStackWalksBeforeEarlyExit(ex, OperationKind.BRANCH, "branch", "declaringOperationSp");
+            emitStackWalksBeforeEarlyExit(ex, OperationKind.BRANCH, "branch", "declaringOperationSp + 1");
             return ex;
         }
 
@@ -6982,7 +6986,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createBeforeEmitReturn() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeEmitReturn");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "parentBci"));
-            emitStackWalksBeforeEarlyExit(ex, OperationKind.RETURN, "return", "rootOperationSp");
+            emitStackWalksBeforeEarlyExit(ex, OperationKind.RETURN, "return", "rootOperationSp + 1");
             return ex;
         }
 
@@ -7186,7 +7190,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     emitCastOperationData(b, model.blockOperation, "i");
                     b.startFor().string("int j = 0; j < operationData.numLocals; j++").end().startBlock();
                     b.statement("locals[operationData.locals[j] + LOCALS_OFFSET_END_BCI] = bci");
+                    if (operationKind == OperationKind.BRANCH) {
+                        buildEmitInstruction(b, model.clearLocalInstruction, "locals[operationData.locals[j] + LOCALS_OFFSET_FRAME_INDEX]");
+                    }
+                    b.statement("needsRewind = true");
                     b.end(); // for
+                    b.statement("break");
                     b.end(); // case block
                 }
 

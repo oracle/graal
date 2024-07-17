@@ -2016,7 +2016,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // } finally {
         //   def f() { arg0.append(4) }
         //   def g() { arg0.append(5) }
-        //   x = if (arg2) f() else g()
+        //   x = if (arg2) f else g
         // }
         // arg0.append(3)
         // lbl:

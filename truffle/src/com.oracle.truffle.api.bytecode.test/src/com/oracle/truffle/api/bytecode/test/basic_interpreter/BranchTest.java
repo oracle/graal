@@ -41,12 +41,16 @@
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 
 public class BranchTest extends AbstractBasicInterpreterTest {
     // @formatter:off
@@ -191,6 +195,63 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         });
 
         assertEquals(42L, root.getCallTarget().call());
+    }
+
+    @Test
+    public void testBranchOutwardClearedLocal() {
+        assumeTrue(run.hasLocalScopes());
+        // y = 4
+        // {
+        //   x = 123;
+        //   if (arg0) goto lbl
+        //   nop;
+        // }
+        // lbl:
+        // return 42;
+
+        BasicInterpreter root = parseNode("branchOutwardUnbalanced", b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLabel lbl = b.createLabel();
+
+            b.beginBlock();
+            BytecodeLocal x = b.createLocal();
+
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(123L);
+            b.endStoreLocal();
+
+            emitBranchIf(b, 0, lbl);
+
+            b.emitLoadConstant(42L);
+
+            b.endBlock();
+
+            b.emitLabel(lbl);
+
+            b.beginReturn();
+            b.emitMaterializeFrame();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        // The local should be cleared when the block is exited normally.
+        MaterializedFrame f = (MaterializedFrame) root.getCallTarget().call(false);
+        for (int i = 0; i < f.getFrameDescriptor().getNumberOfSlots(); i++) {
+            if (f.getTag(i) != FrameSlotKind.Illegal.tag) {
+                assertTrue(f.getValue(i) != Long.valueOf(123L));
+            }
+        }
+
+        // The local should also be cleared when the block is exited early.
+        f = (MaterializedFrame) root.getCallTarget().call(true);
+        for (int i = 0; i < f.getFrameDescriptor().getNumberOfSlots(); i++) {
+            if (f.getTag(i) != FrameSlotKind.Illegal.tag) {
+                assertTrue(f.getValue(i) != Long.valueOf(123L));
+            }
+        }
+
     }
 
     @Test
