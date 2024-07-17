@@ -130,7 +130,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         //     return l1
         //   }
         // } finally {
-        //   l2 = 42
+        //   l2 = false
         // }
         // return l0;
         // @formatter:on
@@ -149,7 +149,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
                 b.beginBlock();
                 BytecodeLocal l2 = b.createLocal("l2", null);
                 b.beginStoreLocal(l2);
-                b.emitLoadConstant(42L);
+                b.emitLoadConstant(false);
                 b.endStoreLocal();
                 b.endBlock();
             });
@@ -177,10 +177,11 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
 
             b.endRoot();
         });
+        root.getBytecodeNode().setUncachedThreshold(0);
+        assertEquals(1L, root.getCallTarget().call());
 
         BytecodeNode b = root.getBytecodeNode();
         List<LocalVariable> locals = b.getLocals();
-        assertEquals(1L, root.getCallTarget().call());
 
         if (run.hasLocalScopes()) {
             assertEquals(7, locals.size());
@@ -195,12 +196,36 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
             assertEquals("l0", l0a.getName());
             assertEquals("l0", l0b.getName());
             assertEquals(l0a.getLocalOffset(), l0b.getLocalOffset());
+            assertEquals(l0a.getLocalIndex(), l0b.getLocalIndex());
             assertEquals("l1", l1a.getName());
             assertEquals("l1", l1b.getName());
             assertEquals(l1a.getLocalOffset(), l1b.getLocalOffset());
+            assertEquals(l1a.getLocalIndex(), l1b.getLocalIndex());
             assertEquals("l2", l2a.getName());
             assertEquals("l2", l2b.getName());
             assertEquals("l2", l2c.getName());
+            assertTrue(l2a.getLocalIndex() != l2b.getLocalIndex());
+            assertTrue(l2b.getLocalIndex() != l2c.getLocalIndex());
+
+            if (run.hasBoxingElimination()) {
+                assertEquals(FrameSlotKind.Long, l0a.getTypeProfile());
+                assertEquals(FrameSlotKind.Long, l0b.getTypeProfile());
+                assertEquals(FrameSlotKind.Long, l1a.getTypeProfile());
+                assertEquals(FrameSlotKind.Long, l1b.getTypeProfile());
+                assertEquals(FrameSlotKind.Boolean, l2a.getTypeProfile());
+                // Locals in finally handlers are unique. The fallthrough/exception handlers haven't
+                // been hit.
+                assertEquals(FrameSlotKind.Illegal, l2b.getTypeProfile());
+                assertEquals(FrameSlotKind.Illegal, l2c.getTypeProfile());
+            } else {
+                assertNull(l0a.getTypeProfile());
+                assertNull(l0b.getTypeProfile());
+                assertNull(l1a.getTypeProfile());
+                assertNull(l1b.getTypeProfile());
+                assertNull(l2a.getTypeProfile());
+                assertNull(l2b.getTypeProfile());
+                assertNull(l2c.getTypeProfile());
+            }
 
             // Use the load.constant consts to identify which block an instruction belongs to.
             for (Instruction instruction : b.getInstructions()) {
@@ -237,7 +262,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
                         assertNull(b.getLocalInfo(bci, 0));
                         assertEquals("l0", b.getLocalName(bci, 1));
                         assertNull(b.getLocalInfo(bci, 1));
-                    } else if (constant == Long.valueOf(42L)) {
+                    } else if (constant == Boolean.valueOf(false)) {
                         // finally block
                         int bci = instruction.getBytecodeIndex();
                         assertEquals(2, b.getLocalCount(bci));

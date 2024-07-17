@@ -268,7 +268,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         CodeVariableElement bytecodeNode = new CodeVariableElement(Set.of(PRIVATE, VOLATILE), abstractBytecodeNode.asType(), "bytecode");
         bytecodeNodeGen.add(child(bytecodeNode));
         bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), bytecodeRootNodesImpl.asType(), "nodes"));
-        bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "numLocals"));
+        addJavadoc(bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "maxLocals")), "The number of frame slots required for locals.");
+        if (usesLocalTags()) {
+            addJavadoc(bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "numLocals")), "The total number of locals created.");
+        }
         bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "buildIndex"));
         bytecodeNodeGen.add(createBytecodeUpdater());
 
@@ -781,6 +784,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return ex;
     }
 
+    private boolean usesLocalTags() {
+        return model.enableLocalScoping && model.usesBoxingElimination();
+    }
+
     private enum InterpreterTier {
         UNINITIALIZED("Uninitialized"),
         UNCACHED("Uncached"),
@@ -850,7 +857,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         ctor.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
         ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
         ctor.addParameter(new CodeVariableElement(bytecodeRootNodesImpl.asType(), "nodes"));
-        ctor.addParameter(new CodeVariableElement(type(int.class), "numLocals"));
+        ctor.addParameter(new CodeVariableElement(type(int.class), "maxLocals"));
+        if (usesLocalTags()) {
+            ctor.addParameter(new CodeVariableElement(type(int.class), "numLocals"));
+        }
         ctor.addParameter(new CodeVariableElement(type(int.class), "buildIndex"));
 
         for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
@@ -870,7 +880,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end(2);
 
         b.statement("this.nodes = nodes");
-        b.statement("this.numLocals = numLocals");
+        b.statement("this.maxLocals = maxLocals");
+        if (usesLocalTags()) {
+            b.statement("this.numLocals = numLocals");
+        }
         b.statement("this.buildIndex = buildIndex");
         b.startStatement();
         b.string("this.bytecode = ");
@@ -896,7 +909,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         b.startReturn().startCall("continueAt");
         b.string("bytecode");
-        b.string("numLocals << 16");
+        b.string("maxLocals << 16");
         b.string("frame");
         if (model.enableYield) {
             b.string("frame");
@@ -1353,7 +1366,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.declaration(abstractBytecodeNode.asType(), "newBytecode");
         b.startDoBlock();
         b.statement("oldBytecode = this.bytecode");
-        b.statement("newBytecode = insert(oldBytecode.toCached())");
+        b.startAssign("newBytecode").startCall("insert").startCall("oldBytecode.toCached");
+        if (usesLocalTags()) {
+            b.string("this.numLocals");
+        }
+        b.end(3);
         emitFence(b);
         b.startIf().string("oldBytecode == newBytecode").end().startBlock();
         b.returnStatement();
@@ -3671,9 +3688,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.enableLocalScoping) {
                 TypeMirror scopeType = scopeDataType.asType();
                 b.declaration(scopeType, "scope", "getCurrentScope()");
-                b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_IDX + scope.frameOffset + scope.numLocals /* location in frame */");
                 b.declaration(type(int.class), "localIndex", "numLocals++ /* unique global index */");
-                b.declaration(type(int.class), "tableIndex", "doEmitLocal(frameIndex, name, info) /* index in global table */");
+                b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_IDX + scope.frameOffset + scope.numLocals /* location in frame */");
+                b.declaration(type(int.class), "tableIndex", "doEmitLocal(localIndex, frameIndex, name, info) /* index in global table */");
                 b.statement("scope.registerLocal(tableIndex)");
             } else {
                 b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_IDX + numLocals++ /* location in frame */");
@@ -4897,7 +4914,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startFor().string("int index = 0; index < operationData.numLocals; index++").end().startBlock();
             b.statement("locals[operationData.locals[index] + LOCALS_OFFSET_END_BCI] = bci");
             if (!isRoot) {
-                buildEmitInstruction(b, model.clearLocalInstruction, "locals[operationData.locals[index] + LOCALS_OFFSET_INDEX]");
+                buildEmitInstruction(b, model.clearLocalInstruction, "locals[operationData.locals[index] + LOCALS_OFFSET_FRAME_INDEX]");
             }
             b.end(); // for
             b.end(); // block
@@ -5051,7 +5068,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startIf().string("parseBytecodes").end().startBlock();
             b.declaration(abstractBytecodeNode.asType(), "oldBytecodeNode", "result.bytecode");
-            b.statement("assert result.numLocals == " + maxLocals());
+            b.statement("assert result.maxLocals == " + maxLocals());
             b.statement("assert result.nodes == this.nodes");
             b.statement("assert constants_.length == oldBytecodeNode.constants.length");
             b.startAssert();
@@ -5116,6 +5133,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("frameDescriptorBuilder");
             b.string("nodes"); // BytecodeRootNodesImpl
             b.string(maxLocals());
+            if (usesLocalTags()) {
+                b.string("numLocals");
+            }
             b.string("operationData.index");
 
             for (VariableElement e : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
@@ -5372,7 +5392,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation, String customChildBci, String sp, List<String> constantOperandIndices) {
             String[] args = switch (operation.kind) {
                 case LOAD_LOCAL -> {
-                    if (model.enableLocalScoping && model.usesBoxingElimination()) {
+                    if (usesLocalTags()) {
                         yield new String[]{
                                         "((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").frameIndex",
                                         "((BytecodeLocalImpl) " + operation.getOperationBeginArgumentName(0) + ").localIndex"};
@@ -6362,6 +6382,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createDoEmitLocal() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "doEmitLocal");
             if (model.enableLocalScoping) {
+                ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
             }
             ex.addParameter(new CodeVariableElement(type(Object.class), "name"));
@@ -6380,6 +6401,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startReturn().startCall("doEmitLocal");
             if (model.enableLocalScoping) {
+                b.string("localIndex");
                 b.string("frameIndex");
             }
             b.string("nameIndex");
@@ -6392,10 +6414,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.enableLocalScoping) {
                 bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_START_BCI")).createInitBuilder().string("0");
                 bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_END_BCI")).createInitBuilder().string("1");
-                bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_INDEX")).createInitBuilder().string("2");
-                bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_NAME")).createInitBuilder().string("3");
-                bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_INFO")).createInitBuilder().string("4");
-                bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_LENGTH")).createInitBuilder().string("5");
+                bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_LOCAL_INDEX")).createInitBuilder().string("2");
+                bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_FRAME_INDEX")).createInitBuilder().string("3");
+                bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_NAME")).createInitBuilder().string("4");
+                bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_INFO")).createInitBuilder().string("5");
+                bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_LENGTH")).createInitBuilder().string("6");
             } else {
                 bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_NAME")).createInitBuilder().string("0");
                 bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "LOCALS_OFFSET_INFO")).createInitBuilder().string("1");
@@ -6404,6 +6427,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "doEmitLocal");
             if (model.enableLocalScoping) {
+                ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
             }
             ex.addParameter(new CodeVariableElement(type(int.class), "nameIndex"));
@@ -6417,7 +6441,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("locals[tableIndex + LOCALS_OFFSET_START_BCI] = bci");
                 b.lineComment("will be patched later at the end of the block");
                 b.statement("locals[tableIndex + LOCALS_OFFSET_END_BCI] = -1");
-                b.statement("locals[tableIndex + LOCALS_OFFSET_INDEX] = frameIndex");
+                b.statement("locals[tableIndex + LOCALS_OFFSET_LOCAL_INDEX] = localIndex");
+                b.statement("locals[tableIndex + LOCALS_OFFSET_FRAME_INDEX] = frameIndex");
             }
             b.statement("locals[tableIndex + LOCALS_OFFSET_NAME] = nameIndex");
             b.statement("locals[tableIndex + LOCALS_OFFSET_INFO] = infoIndex");
@@ -7235,10 +7260,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startFor().string("int j = 0; j < operationData.numLocals; j++").end().startBlock();
                     b.lineComment("Create a new table entry with a new bytecode range and the same metadata.");
                     b.declaration(type(int.class), "prevTableIndex", "operationData.locals[j]");
-                    b.declaration(type(int.class), "frameIndex", "locals[prevTableIndex + LOCALS_OFFSET_INDEX]");
+                    b.declaration(type(int.class), "localIndex", "locals[prevTableIndex + LOCALS_OFFSET_LOCAL_INDEX]");
+                    b.declaration(type(int.class), "frameIndex", "locals[prevTableIndex + LOCALS_OFFSET_FRAME_INDEX]");
                     b.declaration(type(int.class), "nameIndex", "locals[prevTableIndex + LOCALS_OFFSET_NAME]");
                     b.declaration(type(int.class), "infoIndex", "locals[prevTableIndex + LOCALS_OFFSET_INFO]");
-                    b.statement("operationData.locals[j] = doEmitLocal(frameIndex, nameIndex, infoIndex)");
+                    b.statement("operationData.locals[j] = doEmitLocal(localIndex, frameIndex, nameIndex, infoIndex)");
                     b.end(); // for
                     b.end(); // case block
                 }
@@ -8107,7 +8133,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createGetLocalIndex() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.LocalVariable, "getLocalIndex");
             CodeTreeBuilder b = ex.createBuilder();
-            b.statement("return baseIndex / LOCALS_LENGTH");
+            if (model.enableLocalScoping) {
+                b.statement("return bytecode.locals[baseIndex + LOCALS_OFFSET_LOCAL_INDEX]");
+            } else {
+                b.statement("return baseIndex / LOCALS_LENGTH");
+            }
             return ex;
         }
 
@@ -8115,7 +8145,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.LocalVariable, "getLocalOffset");
             CodeTreeBuilder b = ex.createBuilder();
             if (model.enableLocalScoping) {
-                b.statement("return bytecode.locals[baseIndex + LOCALS_OFFSET_INDEX] - USER_LOCALS_START_IDX");
+                b.statement("return bytecode.locals[baseIndex + LOCALS_OFFSET_FRAME_INDEX] - USER_LOCALS_START_IDX");
             } else {
                 b.statement("return baseIndex / LOCALS_LENGTH");
             }
@@ -9002,7 +9032,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b = findLocation.createBuilder();
             b.startReturn().startCall("node.findLocation").string("bci").end().end();
 
-            type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "toCached"));
+            var toCached = type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "toCached"));
+            if (usesLocalTags()) {
+                toCached.addParameter(new CodeVariableElement(type(int.class), "numLocals"));
+            }
+
             CodeExecutableElement update = type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "update"));
 
             for (VariableElement e : ElementFilter.fieldsIn(type.getEnclosedElements())) {
@@ -9060,7 +9094,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (model.enableLocalScoping) {
-                type.add(createResolveLocalsIndex());
+                type.add(createLocalOffsetToTableIndex());
+                type.add(createLocalIndexToTableIndex());
             }
 
             type.add(createGetLocalName());
@@ -9320,14 +9355,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.enableLocalScoping) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "localOffset"));
-                b.startAssert().string("locals[resolveLocalsIndex(bci, localOffset) + LOCALS_OFFSET_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
+                b.startAssert().string("locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
 
-                b.declaration(type(byte.class), "tag");
                 b.declaration(type(byte[].class), "localTags", "getLocalTags()");
                 b.startIf().string("localTags == null").end().startBlock();
                 b.startReturn().staticReference(types.FrameSlotKind, "Object").end();
                 b.end().startElseBlock();
-                b.startReturn().startStaticCall(types.FrameSlotKind, "fromTag").string("localTags[resolveLocalsIndex(bci, localOffset) / LOCALS_LENGTH]").end().end();
+                b.declaration(type(int.class), "localIndex", "locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_LOCAL_INDEX]");
+                b.startReturn().startStaticCall(types.FrameSlotKind, "fromTag").string("localTags[localIndex]").end().end();
                 b.end();
             } else {
                 b.statement("return getRoot().getFrameDescriptor().getSlotKind(frameIndex)");
@@ -9341,14 +9376,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), types.FrameSlotKind, "getCachedLocalKindInternal");
-            ex.addParameter(new CodeVariableElement(types.Frame, "frame"));
             ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
 
             CodeTreeBuilder b = ex.createBuilder();
             if (model.enableLocalScoping) {
+                ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
-                b.startAssert().string("locals[(localIndex * LOCALS_LENGTH) + LOCALS_OFFSET_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
-                b.declaration(type(byte.class), "tag");
+                b.startAssert().string("locals[localIndexToTableIndex(bci, localIndex) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
                 b.declaration(type(byte[].class), "localTags", "getLocalTags()");
                 b.startAssert().string("localTags != null").end();
                 b.startReturn().startStaticCall(types.FrameSlotKind, "fromTag").string("localTags[localIndex]").end().end();
@@ -9366,15 +9400,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.enableLocalScoping) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "localOffset"));
-                b.startAssert().string("locals[resolveLocalsIndex(bci, localOffset) + LOCALS_OFFSET_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
+                b.startAssert().string("locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
 
-                b.declaration(type(byte.class), "tag");
                 b.declaration(type(byte[].class), "localTags", "getLocalTags()");
                 b.startIf().string("localTags == null").end().startBlock();
                 b.lineComment("Method not yet cached.");
                 b.statement("return");
                 b.end().startElseBlock();
-                b.statement("localTags[resolveLocalsIndex(bci, localOffset) / LOCALS_LENGTH] = kind.tag");
+                b.declaration(type(int.class), "localIndex", "locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_LOCAL_INDEX]");
+                b.statement("localTags[localIndex] = kind.tag");
                 b.end();
             } else {
                 b.statement("getRoot().getFrameDescriptor().setSlotKind(frameIndex, kind)");
@@ -9389,9 +9423,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(types.FrameSlotKind, "kind"));
             CodeTreeBuilder b = ex.createBuilder();
             if (model.enableLocalScoping) {
+                ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
-                b.startAssert().string("locals[(localIndex * LOCALS_LENGTH) + LOCALS_OFFSET_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
-                b.declaration(type(byte.class), "tag");
+                b.startAssert().string("locals[localIndexToTableIndex(bci, localIndex) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
                 b.declaration(type(byte[].class), "localTags", "getLocalTags()");
                 b.startIf().string("localTags == null").end().startBlock();
                 b.lineComment("bytecode node not yet cached.");
@@ -9444,7 +9478,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
             buildVerifyLocalsIndex(b);
             if (model.enableLocalScoping) {
-                b.declaration(type(int.class), "index", "resolveLocalsIndex(bci, localOffset)");
+                b.declaration(type(int.class), "index", "localOffsetToTableIndex(bci, localOffset)");
                 b.startIf().string("index == -1").end().startBlock();
                 b.returnNull();
                 b.end();
@@ -9460,28 +9494,43 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement createResolveLocalsIndex() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "resolveLocalsIndex");
+        private CodeExecutableElement createLocalOffsetToTableIndex() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "localOffsetToTableIndex");
             ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
             ex.addParameter(new CodeVariableElement(type(int.class), "localOffset"));
             ex.addAnnotationMirror(new CodeAnnotationMirror(types.ExplodeLoop));
             CodeTreeBuilder b = ex.createBuilder();
-            if (model.enableLocalScoping) {
-                b.declaration(type(int.class), "count", "0");
-                b.startFor().string("int index = 0; index < locals.length; index += LOCALS_LENGTH").end().startBlock();
-                b.declaration(type(int.class), "startIndex", "locals[index + LOCALS_OFFSET_START_BCI]");
-                b.declaration(type(int.class), "endIndex", "locals[index + LOCALS_OFFSET_END_BCI]");
-                b.startIf().string("bci >= startIndex && bci < endIndex").end().startBlock();
-                b.startIf().string("count == localOffset").end().startBlock();
-                b.startReturn().string("index").end();
-                b.end();
-                b.statement("count++");
-                b.end();
-                b.end();
-                b.statement("return -1");
-            } else {
-                b.statement("return localOffset");
-            }
+            b.declaration(type(int.class), "count", "0");
+            b.startFor().string("int index = 0; index < locals.length; index += LOCALS_LENGTH").end().startBlock();
+            b.declaration(type(int.class), "startIndex", "locals[index + LOCALS_OFFSET_START_BCI]");
+            b.declaration(type(int.class), "endIndex", "locals[index + LOCALS_OFFSET_END_BCI]");
+            b.startIf().string("bci >= startIndex && bci < endIndex").end().startBlock();
+            b.startIf().string("count == localOffset").end().startBlock();
+            b.startReturn().string("index").end();
+            b.end();
+            b.statement("count++");
+            b.end();
+            b.end();
+            b.statement("return -1");
+            return ex;
+        }
+
+        private CodeExecutableElement createLocalIndexToTableIndex() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "localIndexToTableIndex");
+            ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
+            ex.addAnnotationMirror(new CodeAnnotationMirror(types.ExplodeLoop));
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startFor().string("int index = 0; index < locals.length; index += LOCALS_LENGTH").end().startBlock();
+            b.declaration(type(int.class), "startIndex", "locals[index + LOCALS_OFFSET_START_BCI]");
+            b.declaration(type(int.class), "endIndex", "locals[index + LOCALS_OFFSET_END_BCI]");
+            b.startIf().string("bci >= startIndex && bci < endIndex").end().startBlock();
+            b.startIf().string("locals[index + LOCALS_OFFSET_LOCAL_INDEX] == localIndex").end().startBlock();
+            b.startReturn().string("index").end();
+            b.end();
+            b.end();
+            b.end();
+            b.statement("return -1");
             return ex;
         }
 
@@ -9492,7 +9541,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             buildVerifyLocalsIndex(b);
 
             if (model.enableLocalScoping) {
-                b.declaration(type(int.class), "index", "resolveLocalsIndex(bci, localOffset)");
+                b.declaration(type(int.class), "index", "localOffsetToTableIndex(bci, localOffset)");
                 b.startIf().string("index == -1").end().startBlock();
                 b.returnNull();
                 b.end();
@@ -9571,7 +9620,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             break;
                         case STACK_POINTER:
                             b.startAssign("root").string("this.getRoot()").end();
-                            b.declaration(type(int.class), "maxStackHeight", "root.getFrameDescriptor().getNumberOfSlots() - root.numLocals");
+                            b.declaration(type(int.class), "maxStackHeight", "root.getFrameDescriptor().getNumberOfSlots() - root.maxLocals");
                             b.startIf().string(localName, " < 0 || ", localName, " > maxStackHeight").end().startBlock();
                             b.tree(createValidationErrorWithBci("stack pointer is out of bounds"));
                             b.end();
@@ -9584,7 +9633,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 b.startAssign("root").string("this.getRoot().getBytecodeRootNodeImpl(", readBc("bci + " + root.offset()), ")").end();
                             }
                             b.startIf().string(localName).string(" - USER_LOCALS_START_IDX").string(" < 0 || ").string(localName).string(" - USER_LOCALS_START_IDX").string(
-                                            " >= root.numLocals").end().startBlock();
+                                            " >= root.maxLocals").end().startBlock();
                             b.tree(createValidationErrorWithBci("local offset is out of bounds"));
                             b.end();
                             break;
@@ -9596,7 +9645,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             } else {
                                 b.startAssign("root").string("this.getRoot().getBytecodeRootNodeImpl(", readBc("bci + " + root.offset()), ")").end();
                             }
-                            b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= root.bytecode.locals.length").end().startBlock();
+                            b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= root.numLocals").end().startBlock();
                             b.tree(createValidationErrorWithBci("local index is out of bounds"));
                             b.end();
                             break;
@@ -10606,7 +10655,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     type.add(child(new CodeVariableElement(Set.of(PRIVATE), getCachedDataClassType(model.epilogExceptional.operation.instruction), "epilogExceptionalNode_")));
                 }
 
-                if (model.enableLocalScoping && model.usesBoxingElimination()) {
+                if (usesLocalTags()) {
                     type.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(type(byte.class)), "localTags_")));
                 }
 
@@ -10642,7 +10691,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
             }
 
-            if (model.enableLocalScoping && model.usesBoxingElimination()) {
+            if (usesLocalTags()) {
                 type.add(createGetLocalTags());
             }
 
@@ -10813,13 +10862,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) abstractBytecodeNode.asType(), "cloneUninitialized");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
-            b.startNew(InterpreterTier.CACHED.friendlyName + "BytecodeNode");
+            b.startNew(tier.friendlyName + "BytecodeNode");
             for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
                 if (cloneUninitializedNeedsUnquickenedBytecode() && var.getSimpleName().contentEquals("bytecodes")) {
                     b.startCall("unquickenBytecode").string("this.bytecodes").end();
                 } else {
                     b.string("this.", var.getSimpleName().toString());
                 }
+            }
+            if (tier.isCached() && usesLocalTags()) {
+                b.string("this.localTags_.length");
             }
             b.end();
             b.end();
@@ -10897,6 +10949,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startNew(InterpreterTier.CACHED.friendlyName + "BytecodeNode");
                     for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
                         b.string("this.", var.getSimpleName().toString());
+                    }
+                    if (usesLocalTags()) {
+                        b.string("numLocals");
                     }
                     b.end();
                     b.end();
@@ -10993,6 +11048,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         continue;
                     }
                     b.string(e.getSimpleName().toString() + "__");
+                }
+                if (usesLocalTags()) {
+                    b.string("this.localTags_.length");
                 }
                 b.end();
                 b.end();
@@ -11161,6 +11219,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             CodeExecutableElement ex = GeneratorUtils.createConstructorUsingFields(Set.of(), type);
+            if (usesLocalTags()) {
+                // The cached node needs numLocals to allocate the tags array (below).
+                ex.addParameter(new CodeVariableElement(type(int.class), "numLocals"));
+            }
 
             TypeMirror nodeArrayType = new ArrayCodeTypeMirror(types.Node);
 
@@ -11226,8 +11288,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startAssign("this.epilogExceptionalNode_").startCall("insert").startNew(getCachedDataClassType(model.epilogExceptional.operation.instruction)).end().end().end();
             }
 
-            if (model.enableLocalScoping && model.usesBoxingElimination()) {
-                b.declaration(type(byte[].class), "localTags", "new byte[this.locals.length / LOCALS_LENGTH]");
+            if (usesLocalTags()) {
+                b.declaration(type(byte[].class), "localTags", "new byte[numLocals]");
                 b.statement("Arrays.fill(localTags, FrameSlotKind.Illegal.tag)");
                 b.startAssign("this.localTags_").string("localTags").end();
             }
@@ -11617,7 +11679,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case LOAD_EXCEPTION:
                         b.startStatement();
                         startSetFrame(b, context.getType(Object.class)).string("frame").string("sp");
-                        startGetFrameUnsafe(b, "frame", type(Object.class)).string("$root.numLocals + ", readBc("bci + 1")).end();
+                        startGetFrameUnsafe(b, "frame", type(Object.class)).string("$root.maxLocals + ", readBc("bci + 1")).end();
                         b.end(); // set frame
                         b.end(); // statement
                         b.statement("sp += 1");
@@ -11791,8 +11853,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case YIELD:
                         storeBciInFrameIfNecessary(b);
                         emitBeforeReturnProfiling(b);
-                        b.statement("int numLocals = $root.numLocals");
-                        b.statement(copyFrameTo("frame", "numLocals", "localFrame", "numLocals", "(sp - 1 - numLocals)"));
+                        b.statement("int maxLocals = $root.maxLocals");
+                        b.statement(copyFrameTo("frame", "maxLocals", "localFrame", "maxLocals", "(sp - 1 - maxLocals)"));
 
                         b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
                         b.cast(continuationRootNodeImpl.asType());
@@ -11927,9 +11989,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("int result = doTagExceptional($root, frame, bc, bci, ex, localHandlers[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], localHandlers[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_SP])");
                     b.statement("targetSp = result >> 16 & 0xFFFF");
                     b.statement("bci = result & 0xFFFF");
-                    b.startIf().string("sp < targetSp + $root.numLocals").end().startBlock();
+                    b.startIf().string("sp < targetSp + $root.maxLocals").end().startBlock();
                     b.lineComment("The instrumentation pushed a value on the stack.");
-                    b.statement("assert sp == targetSp + $root.numLocals - 1");
+                    b.statement("assert sp == targetSp + $root.maxLocals - 1");
                     b.statement("sp++");
                     b.end();
                     b.statement("break");
@@ -11944,7 +12006,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssert().string("ex instanceof ").type(types.AbstractTruffleException).end();
             b.statement("bci = localHandlers[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
             b.statement("targetSp = localHandlers[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_SP]");
-            b.statement(setFrameObject("targetSp - 1 + $root.numLocals", "ex"));
+            b.statement(setFrameObject("targetSp - 1 + $root.maxLocals", "ex"));
 
             if (hasSpecialHandler) {
                 b.statement("break");
@@ -11959,7 +12021,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            b.statement("int handlerSp = targetSp + $root.numLocals");
+            b.statement("int handlerSp = targetSp + $root.maxLocals");
             /**
              * handlerSp - 1 is the sp before pushing the exception. The current sp should be at or
              * above this height.
@@ -12035,8 +12097,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssign("Object result").startCall("$root", model.interceptControlFlowException).string("cfe").string("frame").string("this").string("bci").end(2);
             emitBeforeReturnProfiling(b);
             // There may not be room above the sp. Just use the first stack slot.
-            b.statement(setFrameObject("$root.numLocals", "result"));
-            b.startDeclaration(type(int.class), "sp").string("$root.numLocals + 1").end();
+            b.statement(setFrameObject("$root.maxLocals", "result"));
+            b.startDeclaration(type(int.class), "sp").string("$root.maxLocals + 1").end();
             emitReturnTopOfStack(b);
             return method;
 
@@ -12272,7 +12334,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
 
                 b.startStatement();
-                startSetFrame(b, targetType).string("frame").string("targetSp - 1 + $root.numLocals");
+                startSetFrame(b, targetType).string("frame").string("targetSp - 1 + $root.maxLocals");
                 if (expectMethod == null) {
                     b.string("result");
                 } else {
@@ -12286,7 +12348,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 if (!ElementUtils.isObject(targetType)) {
                     b.end().startCatchBlock(types.UnexpectedResultException, "e");
                     b.startStatement();
-                    startSetFrame(b, type(Object.class)).string("frame").string("targetSp - 1 + $root.numLocals").string("e.getResult()").end();
+                    startSetFrame(b, type(Object.class)).string("frame").string("targetSp - 1 + $root.maxLocals").string("e.getResult()").end();
                     b.end(); // statement
                     b.end(); // catch
                 }
@@ -12964,8 +13026,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
             b.startDeclaration(types.FrameSlotKind, "kind");
             b.startCall(bytecodeNode, "getCachedLocalKindInternal");
-            b.string("frame").string("slot");
+            b.string("slot");
             if (model.enableLocalScoping) {
+                b.string("bci");
                 b.string("localIndex");
             }
             b.end(); // call
@@ -13290,8 +13353,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
                 b.startDeclaration(types.FrameSlotKind, "kind");
                 b.startCall(bytecodeNode, "getCachedLocalKindInternal");
-                b.string("frame").string("slot");
+                b.string("slot");
                 if (model.enableLocalScoping) {
+                    b.string("bci");
                     b.string("localIndex");
                 }
                 b.end(); // call
@@ -13402,8 +13466,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startDeclaration(types.FrameSlotKind, "oldKind");
             b.startCall(bytecodeNode, "getCachedLocalKindInternal");
-            b.string("frame").string("slot");
+            b.string("slot");
             if (model.enableLocalScoping) {
+                b.string("bci");
                 b.string("localIndex");
             }
             b.end(); // call
@@ -13493,6 +13558,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("slot");
             b.string("newKind");
             if (model.enableLocalScoping) {
+                b.string("bci");
                 b.string("localIndex");
             }
             b.end().end();
@@ -13507,6 +13573,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("slot");
             b.staticReference(types.FrameSlotKind, "Object");
             if (model.enableLocalScoping) {
+                b.string("bci");
                 b.string("localIndex");
             }
             b.end().end();
@@ -13963,11 +14030,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             b.lineComment("Copy any existing stack values (from numLocals to sp - 1) to the current frame, which will be used for stack accesses.");
-            b.statement(copyFrameTo("parentFrame", "root.numLocals", "frame", "root.numLocals", "sp - 1"));
+            b.statement(copyFrameTo("parentFrame", "root.maxLocals", "frame", "root.maxLocals", "sp - 1"));
             b.statement(setFrameObject(COROUTINE_FRAME_IDX, "parentFrame"));
-            b.statement(setFrameObject("root.numLocals + sp - 1", "inputValue"));
+            b.statement(setFrameObject("root.maxLocals + sp - 1", "inputValue"));
             b.declaration(types.BytecodeLocation, "bytecodeLocation", "location");
-            b.statement("int startState = ((sp + root.numLocals) << 16) | (bytecodeLocation.getBytecodeIndex() & 0xFFFF)");
+            b.statement("int startState = ((sp + root.maxLocals) << 16) | (bytecodeLocation.getBytecodeIndex() & 0xFFFF)");
 
             b.startReturn();
             b.startCall("root.continueAt");
