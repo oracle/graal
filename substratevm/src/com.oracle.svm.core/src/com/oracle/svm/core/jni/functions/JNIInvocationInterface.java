@@ -235,7 +235,7 @@ public final class JNIInvocationInterface {
         @Uninterruptible(reason = "No Java context")
         static int JNI_GetDefaultJavaVMInitArgs(JNIJavaVMInitArgs vmArgs) {
             int version = vmArgs.getVersion();
-            if (JNIVersion.isSupported(vmArgs.getVersion()) && version != JNIVersion.JNI_VERSION_1_1()) {
+            if (JNIVersion.isSupported(vmArgs.getVersion(), false) && version != JNIVersion.JNI_VERSION_1_1()) {
                 return JNIErrors.JNI_OK();
             }
             if (version == JNIVersion.JNI_VERSION_1_1()) {
@@ -324,7 +324,7 @@ public final class JNIInvocationInterface {
                 if (vm.isNull() || env.isNull()) {
                     return JNIErrors.JNI_ERR();
                 }
-                if (!JNIVersion.isSupported(version)) {
+                if (!JNIVersion.isSupported(version, false)) {
                     env.write(WordFactory.nullPointer());
                     return JNIErrors.JNI_EVERSION();
                 }
