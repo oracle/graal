@@ -15,6 +15,8 @@ If you are new to Oracle GraalVM, we recommend starting with the [GraalVM Overvi
 
 If you have Oracle GraalVM already installed and have experience using it, you can skip this page and proceed to the in-depth [reference manuals](../reference-manual/reference-manuals.md).
 
+## Installing
+
 Installation steps for your specific platform:
 
 * [Oracle Linux](https://docs.oracle.com/en/graalvm/jdk/23/docs/getting-started/oci/compute-instance/){:target="_blank"}
@@ -22,7 +24,7 @@ Installation steps for your specific platform:
 * [macOS](macos.md)
 * [Windows](windows.md)
 
-## Start Running Applications
+## Running an Application
 
 Oracle GraalVM includes the Java Development Kit (JDK), the just-in-time compiler (the Graal compiler), Native Image, and other familiar Java tools.
 You can use the GraalVM JDK just like any other JDK in your IDE, so having installed Oracle GraalVM, you can run any Java application unmodified.
