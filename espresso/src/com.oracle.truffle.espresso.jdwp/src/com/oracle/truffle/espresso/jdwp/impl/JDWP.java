@@ -2730,6 +2730,7 @@ public final class JDWP {
                         writeValue(sigbyte, value, reply, true, context);
                     }
                 } catch (ArrayIndexOutOfBoundsException | InteropException ex) {
+                    ex.printStackTrace();
                     // invalid slot provided
                     reply.errorCode(ErrorCodes.INVALID_SLOT);
                     return new CommandResult(reply);
