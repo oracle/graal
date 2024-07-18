@@ -184,19 +184,15 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         List<LocalVariable> locals = b.getLocals();
 
         if (run.hasLocalScopes()) {
-            assertEquals(7, locals.size());
-            LocalVariable l0a = locals.get(0);
+            assertEquals(6, locals.size());
+            LocalVariable l0 = locals.get(0);  // can be merged
             LocalVariable l1a = locals.get(1);
             LocalVariable l2a = locals.get(2); // early return handler
-            LocalVariable l0b = locals.get(3);
-            LocalVariable l1b = locals.get(4);
-            LocalVariable l2b = locals.get(5); // fallthrough handler
-            LocalVariable l2c = locals.get(6); // exceptional handler
+            LocalVariable l1b = locals.get(3);
+            LocalVariable l2b = locals.get(4); // fallthrough handler
+            LocalVariable l2c = locals.get(5); // exceptional handler
 
-            assertEquals("l0", l0a.getName());
-            assertEquals("l0", l0b.getName());
-            assertEquals(l0a.getLocalOffset(), l0b.getLocalOffset());
-            assertEquals(l0a.getLocalIndex(), l0b.getLocalIndex());
+            assertEquals("l0", l0.getName());
             assertEquals("l1", l1a.getName());
             assertEquals("l1", l1b.getName());
             assertEquals(l1a.getLocalOffset(), l1b.getLocalOffset());
@@ -208,8 +204,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
             assertTrue(l2b.getLocalIndex() != l2c.getLocalIndex());
 
             if (run.hasBoxingElimination()) {
-                assertEquals(FrameSlotKind.Long, l0a.getTypeProfile());
-                assertEquals(FrameSlotKind.Long, l0b.getTypeProfile());
+                assertEquals(FrameSlotKind.Long, l0.getTypeProfile());
                 assertEquals(FrameSlotKind.Long, l1a.getTypeProfile());
                 assertEquals(FrameSlotKind.Long, l1b.getTypeProfile());
                 assertEquals(FrameSlotKind.Boolean, l2a.getTypeProfile());
@@ -218,8 +213,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
                 assertEquals(FrameSlotKind.Illegal, l2b.getTypeProfile());
                 assertEquals(FrameSlotKind.Illegal, l2c.getTypeProfile());
             } else {
-                assertNull(l0a.getTypeProfile());
-                assertNull(l0b.getTypeProfile());
+                assertNull(l0.getTypeProfile());
                 assertNull(l1a.getTypeProfile());
                 assertNull(l1b.getTypeProfile());
                 assertNull(l2a.getTypeProfile());
