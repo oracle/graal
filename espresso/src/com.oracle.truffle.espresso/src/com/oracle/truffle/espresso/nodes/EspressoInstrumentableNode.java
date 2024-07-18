@@ -26,7 +26,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 
 abstract class EspressoInstrumentableNode extends EspressoNode implements InstrumentableNode, BciProvider {
     @Override
-    public final boolean isInstrumentable() {
+    public boolean isInstrumentable() {
         return true;
     }
 }

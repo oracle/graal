@@ -380,15 +380,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             if (!isOverridable(method)) {
                 continue;
             }
-            if (hasMethodPrefix(method, types, EXECUTE_METHOD_PREFIX)) {
-                if (topLevelClass && !testFirstParamIsVirtualFrame(e, types, method)) {
-                    return null;
-                }
-                if (ElementUtils.isObject(method.getReturnType()) && method.getParameters().size() == 1 && genericExecuteDelegate == null) {
-                    genericExecuteDelegate = method;
-                }
-                wrappedExecuteMethods.add(method);
-            } else if (isResume && hasMethodPrefix(method, types, resumeMethodPrefix)) {
+            if (isResume && hasMethodPrefix(method, types, resumeMethodPrefix)) {
                 if (topLevelClass && !testFirstParamIsVirtualFrame(e, types, method)) {
                     return null;
                 }
@@ -396,6 +388,14 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                     genericResumeDelegate = method;
                 }
                 wrappedResumeMethods.add(method);
+            } else if (hasMethodPrefix(method, types, EXECUTE_METHOD_PREFIX)) {
+                if (topLevelClass && !testFirstParamIsVirtualFrame(e, types, method)) {
+                    return null;
+                }
+                if (ElementUtils.isObject(method.getReturnType()) && method.getParameters().size() == 1 && genericExecuteDelegate == null) {
+                    genericExecuteDelegate = method;
+                }
+                wrappedExecuteMethods.add(method);
             } else {
                 String methodName = method.getSimpleName().toString();
                 if (method.getModifiers().contains(Modifier.ABSTRACT) && !methodName.equals(METHOD_GET_NODE_COST) && !hasUnexpectedResult(context, method)) {
