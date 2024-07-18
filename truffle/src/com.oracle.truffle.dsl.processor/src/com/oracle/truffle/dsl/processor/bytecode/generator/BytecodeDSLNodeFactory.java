@@ -6438,35 +6438,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(type(int.class), "infoIndex"));
             CodeTreeBuilder b = ex.createBuilder();
 
+            b.declaration(type(int.class), "tableIndex", "allocateLocalsTableEntry()");
+
             if (model.enableLocalScoping) {
-                b.declaration(type(int.class), "tableIndex", "localsTableIndex - LOCALS_LENGTH");
-                b.startWhile().string("tableIndex >= 0").end().startBlock();
-                b.startIf().string("this.bci == locals[tableIndex + LOCALS_OFFSET_END_BCI] && localIndex == locals[tableIndex + LOCALS_OFFSET_LOCAL_INDEX]").end().startBlock();
-                b.statement("assert frameIndex == locals[tableIndex + LOCALS_OFFSET_FRAME_INDEX]");
-                b.statement("assert nameIndex  == locals[tableIndex + LOCALS_OFFSET_NAME]");
-                b.statement("assert infoIndex  == locals[tableIndex + LOCALS_OFFSET_INFO]");
-                b.lineComment("Merge duplicate entries");
-                b.statement("locals[tableIndex + LOCALS_OFFSET_END_BCI] = -1");
-                b.statement("return tableIndex");
-                b.end();// if
-                b.statement("tableIndex = tableIndex - LOCALS_LENGTH");
-
-                b.end(); // while block
-
-                b.statement("tableIndex = allocateLocalsTableEntry()");
                 b.statement("assert frameIndex - USER_LOCALS_START_IDX >= 0");
                 b.statement("locals[tableIndex + LOCALS_OFFSET_START_BCI] = bci");
                 b.lineComment("will be patched later at the end of the block");
                 b.statement("locals[tableIndex + LOCALS_OFFSET_END_BCI] = -1");
                 b.statement("locals[tableIndex + LOCALS_OFFSET_LOCAL_INDEX] = localIndex");
                 b.statement("locals[tableIndex + LOCALS_OFFSET_FRAME_INDEX] = frameIndex");
-                b.statement("locals[tableIndex + LOCALS_OFFSET_NAME] = nameIndex");
-                b.statement("locals[tableIndex + LOCALS_OFFSET_INFO] = infoIndex");
-            } else {
-                b.declaration(type(int.class), "tableIndex", "allocateLocalsTableEntry()");
-                b.statement("locals[tableIndex + LOCALS_OFFSET_NAME] = nameIndex");
-                b.statement("locals[tableIndex + LOCALS_OFFSET_INFO] = infoIndex");
             }
+            b.statement("locals[tableIndex + LOCALS_OFFSET_NAME] = nameIndex");
+            b.statement("locals[tableIndex + LOCALS_OFFSET_INFO] = infoIndex");
 
             b.statement("return tableIndex");
             return ex;
@@ -7114,7 +7097,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             emitUnwindBeforeEarlyExit(b, operationKind, lowestOperationIndex);
-            emitRewindBeforeEarlyExit(b, lowestOperationIndex);
+            emitRewindBeforeEarlyExit(b, operationKind, lowestOperationIndex);
         }
 
         /**
@@ -7235,7 +7218,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         /**
          * Generates code to reopen bytecode ranges after "exiting" the parent operations.
          */
-        private void emitRewindBeforeEarlyExit(CodeTreeBuilder b, String lowestOperationIndex) {
+        private void emitRewindBeforeEarlyExit(CodeTreeBuilder b, OperationKind operationKind, String lowestOperationIndex) {
             b.startJavadoc();
             b.string("Now that all \"exit\" instructions have been emitted, reopen bytecode ranges.").newLine();
             b.end();
@@ -7284,8 +7267,24 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startBlock();
                     emitCastOperationData(b, model.blockOperation, "i");
                     b.startFor().string("int j = 0; j < operationData.numLocals; j++").end().startBlock();
-                    b.lineComment("Create a new table entry with a new bytecode range and the same metadata.");
                     b.declaration(type(int.class), "prevTableIndex", "operationData.locals[j]");
+
+                    /**
+                     * We need to emit multiple local ranges if instructions were emitted after
+                     * unwinding the block (i.e., instructions at which the local is not live).
+                     * Otherwise, we can reuse the same local table entry. We cannot reuse the entry
+                     * after a branch because we emit a clear.local instruction when unwinding.
+                     */
+                    if (operationKind != OperationKind.BRANCH) {
+                        b.declaration(type(int.class), "endBci", "locals[prevTableIndex + LOCALS_OFFSET_END_BCI]");
+                        b.startIf().string("endBci == bci").end().startBlock();
+                        b.lineComment("No need to split. Reuse the existing entry.");
+                        b.statement("locals[prevTableIndex + LOCALS_OFFSET_END_BCI] = ", UNINIT);
+                        b.statement("continue");
+                        b.end();
+                    }
+
+                    b.lineComment("Create a new table entry with a new bytecode range and the same metadata.");
                     b.declaration(type(int.class), "localIndex", "locals[prevTableIndex + LOCALS_OFFSET_LOCAL_INDEX]");
                     b.declaration(type(int.class), "frameIndex", "locals[prevTableIndex + LOCALS_OFFSET_FRAME_INDEX]");
                     b.declaration(type(int.class), "nameIndex", "locals[prevTableIndex + LOCALS_OFFSET_NAME]");
