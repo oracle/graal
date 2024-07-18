@@ -105,7 +105,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
                 /**
                  * Simple language needs to run code before the root body tag to set local
                  * variables, so we disable implicit root-body tagging and do this manually in
-                 * {@link SLBytecodeVisitor#visitFunction}.
+                 * {@link SLBytecodeParser#visitFunction}.
                  */
                 enableRootBodyTagging = false, //
                 tagTreeNodeLibrary = SLBytecodeScopeExports.class, enableSerialization = true, //

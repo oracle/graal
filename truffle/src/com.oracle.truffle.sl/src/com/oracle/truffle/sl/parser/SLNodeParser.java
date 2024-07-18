@@ -92,35 +92,38 @@ import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNodeGen;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNodeGen;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNodeGen;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.ArithmeticContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.BlockContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Break_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Continue_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Debugger_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.ExpressionContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Expression_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.FunctionContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.If_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Logic_factorContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Logic_termContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.MemberAssignContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.MemberCallContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.MemberFieldContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.MemberIndexContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Member_expressionContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.NameAccessContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.NumericLiteralContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.ParenExpressionContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Return_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.StatementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.StringLiteralContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.TermContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.While_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.ArithmeticContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.BlockContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Break_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Continue_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Debugger_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.ExpressionContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Expression_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.FunctionContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.If_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Logic_factorContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Logic_termContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.MemberAssignContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.MemberCallContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.MemberFieldContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.MemberIndexContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Member_expressionContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.NameAccessContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.NumericLiteralContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.ParenExpressionContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Return_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.StatementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.StringLiteralContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.TermContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.While_statementContext;
 
-public class SLNodeVisitor extends SLBaseVisitor {
+/**
+ * SL AST visitor that parses to Truffle ASTs.
+ */
+public class SLNodeParser extends SLBaseParser {
 
     public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, Source source) {
-        SLNodeVisitor visitor = new SLNodeVisitor(language, source);
+        SLNodeParser visitor = new SLNodeParser(language, source);
         parseSLImpl(source, visitor);
         return visitor.functions;
     }
@@ -132,7 +135,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
     private int loopDepth = 0;
     private final Map<TruffleString, RootCallTarget> functions = new HashMap<>();
 
-    protected SLNodeVisitor(SLLanguage language, Source source) {
+    protected SLNodeParser(SLLanguage language, Source source) {
         super(language, source);
     }
 
@@ -189,7 +192,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
         return node;
     }
 
-    private class SLStatementVisitor extends SimpleLanguageBytecodeBaseVisitor<SLStatementNode> {
+    private class SLStatementVisitor extends SimpleLanguageBaseVisitor<SLStatementNode> {
         @Override
         public SLStatementNode visitBlock(BlockContext ctx) {
             List<TruffleString> newLocals = enterBlock(ctx);
@@ -323,7 +326,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
         }
     }
 
-    private class SLExpressionVisitor extends SimpleLanguageBytecodeBaseVisitor<SLExpressionNode> {
+    private class SLExpressionVisitor extends SimpleLanguageBaseVisitor<SLExpressionNode> {
         @Override
         public SLExpressionNode visitExpression(ExpressionContext ctx) {
             return createBinary(ctx.logic_term(), ctx.OP_OR());
@@ -481,7 +484,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
 
     }
 
-    private class MemberExpressionVisitor extends SimpleLanguageBytecodeBaseVisitor<SLExpressionNode> {
+    private class MemberExpressionVisitor extends SimpleLanguageBaseVisitor<SLExpressionNode> {
         SLExpressionNode receiver;
         private SLExpressionNode assignmentReceiver;
         private SLExpressionNode assignmentName;

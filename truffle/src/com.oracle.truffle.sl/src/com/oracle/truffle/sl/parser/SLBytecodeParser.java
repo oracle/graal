@@ -74,35 +74,35 @@ import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.bytecode.SLBytecodeRootNode;
 import com.oracle.truffle.sl.bytecode.SLBytecodeRootNodeGen;
 import com.oracle.truffle.sl.bytecode.SLBytecodeSerialization;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.ArithmeticContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.BlockContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Break_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Continue_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Debugger_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.ExpressionContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.FunctionContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.If_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Logic_factorContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Logic_termContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.MemberAssignContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.MemberCallContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.MemberFieldContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.MemberIndexContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Member_expressionContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.NameAccessContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.NumericLiteralContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Return_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.StatementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.StringLiteralContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.TermContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.While_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.ArithmeticContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.BlockContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Break_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Continue_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Debugger_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.ExpressionContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.FunctionContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.If_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Logic_factorContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Logic_termContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.MemberAssignContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.MemberCallContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.MemberFieldContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.MemberIndexContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Member_expressionContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.NameAccessContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.NumericLiteralContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.Return_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.StatementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.StringLiteralContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.TermContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser.While_statementContext;
 import com.oracle.truffle.sl.runtime.SLBigInteger;
 import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
- * SL AST visitor that uses the Bytecode DSL for generating code.
+ * SL AST visitor that parses to Bytecode DSL bytecode.
  */
-public final class SLBytecodeVisitor extends SLBaseVisitor {
+public final class SLBytecodeParser extends SLBaseParser {
 
     private static final boolean DO_LOG_NODE_CREATION = false;
     private static final boolean FORCE_SERIALIZE = false;
@@ -117,7 +117,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
 
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
         BytecodeParser<SLBytecodeRootNodeGen.Builder> slParser = (b) -> {
-            SLBytecodeVisitor visitor = new SLBytecodeVisitor(language, source, b);
+            SLBytecodeParser visitor = new SLBytecodeParser(language, source, b);
             b.beginSource(source);
             parseSLImpl(source, visitor);
             b.endSource();
@@ -178,7 +178,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         return roots;
     }
 
-    private SLBytecodeVisitor(SLLanguage language, Source source, SLBytecodeRootNodeGen.Builder builder) {
+    private SLBytecodeParser(SLLanguage language, Source source, SLBytecodeRootNodeGen.Builder builder) {
         super(language, source);
         this.b = builder;
     }

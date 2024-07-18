@@ -39,169 +39,169 @@
  * SOFTWARE.
  */
 // Checkstyle: stop
-//@formatter:off
-// Generated from /Users/matt/code/graal/truffle/src/com.oracle.truffle.sl/src/com/oracle/truffle/sl/parser/SimpleLanguageBytecode.g4 by ANTLR 4.12.0
+// @formatter:off
+// Generated from /Users/matt/code/graal/truffle/src/com.oracle.truffle.sl/src/com/oracle/truffle/sl/parser/SimpleLanguage.g4 by ANTLR 4.12.0
 package com.oracle.truffle.sl.parser;
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
 /**
  * This interface defines a complete generic visitor for a parse tree produced
- * by {@link SimpleLanguageBytecodeParser}.
+ * by {@link SimpleLanguageParser}.
  *
  * @param <T> The return type of the visit operation. Use {@link Void} for
  * operations with no return type.
  */
-public interface SimpleLanguageBytecodeVisitor<T> extends ParseTreeVisitor<T> {
+public interface SimpleLanguageVisitor<T> extends ParseTreeVisitor<T> {
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#simplelanguage}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#simplelanguage}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitSimplelanguage(SimpleLanguageBytecodeParser.SimplelanguageContext ctx);
+	T visitSimplelanguage(SimpleLanguageParser.SimplelanguageContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#function}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#function}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitFunction(SimpleLanguageBytecodeParser.FunctionContext ctx);
+	T visitFunction(SimpleLanguageParser.FunctionContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#block}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#block}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitBlock(SimpleLanguageBytecodeParser.BlockContext ctx);
+	T visitBlock(SimpleLanguageParser.BlockContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#statement}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#statement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitStatement(SimpleLanguageBytecodeParser.StatementContext ctx);
+	T visitStatement(SimpleLanguageParser.StatementContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#break_statement}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#break_statement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitBreak_statement(SimpleLanguageBytecodeParser.Break_statementContext ctx);
+	T visitBreak_statement(SimpleLanguageParser.Break_statementContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#continue_statement}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#continue_statement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitContinue_statement(SimpleLanguageBytecodeParser.Continue_statementContext ctx);
+	T visitContinue_statement(SimpleLanguageParser.Continue_statementContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#expression_statement}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#expression_statement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitExpression_statement(SimpleLanguageBytecodeParser.Expression_statementContext ctx);
+	T visitExpression_statement(SimpleLanguageParser.Expression_statementContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#debugger_statement}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#debugger_statement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitDebugger_statement(SimpleLanguageBytecodeParser.Debugger_statementContext ctx);
+	T visitDebugger_statement(SimpleLanguageParser.Debugger_statementContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#while_statement}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#while_statement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitWhile_statement(SimpleLanguageBytecodeParser.While_statementContext ctx);
+	T visitWhile_statement(SimpleLanguageParser.While_statementContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#if_statement}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#if_statement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitIf_statement(SimpleLanguageBytecodeParser.If_statementContext ctx);
+	T visitIf_statement(SimpleLanguageParser.If_statementContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#return_statement}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#return_statement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitReturn_statement(SimpleLanguageBytecodeParser.Return_statementContext ctx);
+	T visitReturn_statement(SimpleLanguageParser.Return_statementContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#expression}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#expression}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitExpression(SimpleLanguageBytecodeParser.ExpressionContext ctx);
+	T visitExpression(SimpleLanguageParser.ExpressionContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#logic_term}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#logic_term}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitLogic_term(SimpleLanguageBytecodeParser.Logic_termContext ctx);
+	T visitLogic_term(SimpleLanguageParser.Logic_termContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#logic_factor}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#logic_factor}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitLogic_factor(SimpleLanguageBytecodeParser.Logic_factorContext ctx);
+	T visitLogic_factor(SimpleLanguageParser.Logic_factorContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#arithmetic}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#arithmetic}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitArithmetic(SimpleLanguageBytecodeParser.ArithmeticContext ctx);
+	T visitArithmetic(SimpleLanguageParser.ArithmeticContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link SimpleLanguageBytecodeParser#term}.
+	 * Visit a parse tree produced by {@link SimpleLanguageParser#term}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitTerm(SimpleLanguageBytecodeParser.TermContext ctx);
+	T visitTerm(SimpleLanguageParser.TermContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code NameAccess}
-	 * labeled alternative in {@link SimpleLanguageBytecodeParser#factor}.
+	 * labeled alternative in {@link SimpleLanguageParser#factor}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitNameAccess(SimpleLanguageBytecodeParser.NameAccessContext ctx);
+	T visitNameAccess(SimpleLanguageParser.NameAccessContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code StringLiteral}
-	 * labeled alternative in {@link SimpleLanguageBytecodeParser#factor}.
+	 * labeled alternative in {@link SimpleLanguageParser#factor}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitStringLiteral(SimpleLanguageBytecodeParser.StringLiteralContext ctx);
+	T visitStringLiteral(SimpleLanguageParser.StringLiteralContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code NumericLiteral}
-	 * labeled alternative in {@link SimpleLanguageBytecodeParser#factor}.
+	 * labeled alternative in {@link SimpleLanguageParser#factor}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitNumericLiteral(SimpleLanguageBytecodeParser.NumericLiteralContext ctx);
+	T visitNumericLiteral(SimpleLanguageParser.NumericLiteralContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code ParenExpression}
-	 * labeled alternative in {@link SimpleLanguageBytecodeParser#factor}.
+	 * labeled alternative in {@link SimpleLanguageParser#factor}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitParenExpression(SimpleLanguageBytecodeParser.ParenExpressionContext ctx);
+	T visitParenExpression(SimpleLanguageParser.ParenExpressionContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code MemberCall}
-	 * labeled alternative in {@link SimpleLanguageBytecodeParser#member_expression}.
+	 * labeled alternative in {@link SimpleLanguageParser#member_expression}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitMemberCall(SimpleLanguageBytecodeParser.MemberCallContext ctx);
+	T visitMemberCall(SimpleLanguageParser.MemberCallContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code MemberAssign}
-	 * labeled alternative in {@link SimpleLanguageBytecodeParser#member_expression}.
+	 * labeled alternative in {@link SimpleLanguageParser#member_expression}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitMemberAssign(SimpleLanguageBytecodeParser.MemberAssignContext ctx);
+	T visitMemberAssign(SimpleLanguageParser.MemberAssignContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code MemberField}
-	 * labeled alternative in {@link SimpleLanguageBytecodeParser#member_expression}.
+	 * labeled alternative in {@link SimpleLanguageParser#member_expression}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitMemberField(SimpleLanguageBytecodeParser.MemberFieldContext ctx);
+	T visitMemberField(SimpleLanguageParser.MemberFieldContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code MemberIndex}
-	 * labeled alternative in {@link SimpleLanguageBytecodeParser#member_expression}.
+	 * labeled alternative in {@link SimpleLanguageParser#member_expression}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitMemberIndex(SimpleLanguageBytecodeParser.MemberIndexContext ctx);
+	T visitMemberIndex(SimpleLanguageParser.MemberIndexContext ctx);
 }
