@@ -40,534 +40,152 @@
  */
 package com.oracle.truffle.api.bytecode.test;
 
-import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
+
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
-import com.oracle.truffle.api.bytecode.BytecodeLocal;
-import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
-import com.oracle.truffle.api.bytecode.ForceQuickening;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.test.BoxingEliminationTypeSystemTest.BoxingEliminationTypeSystemRootNode.ObjectProducer;
+import com.oracle.truffle.api.bytecode.test.TypeSystemTest.EmptyTypeSystem;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameDescriptor.Builder;
 
 // TODO this test should be rewritten once we have something working for boxing elimination.
 @Ignore
 public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
 
-    private static final BoxingLanguage LANGUAGE = null;
-
-    private static final int NUM_ITERATIONS = 10_000;
+    private static final BytecodeDSLTestLanguage LANGUAGE = null;
 
     private static BoxingEliminationTypeSystemRootNode parse(BytecodeParser<BoxingEliminationTypeSystemRootNodeGen.Builder> builder) {
         BytecodeRootNodes<BoxingEliminationTypeSystemRootNode> nodes = BoxingEliminationTypeSystemRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 
-    private static void testInvalidations(BoxingEliminationTypeSystemRootNode node, int invalidations, Runnable r) {
-        r.run();
-        int totalInval = node.totalInvalidations;
-        Assert.assertEquals(invalidations, totalInval);
-    }
-
     @Test
-    public void testCastsPrimToPrim() {
-        BoxingEliminationTypeSystemRootNode root = parse(b -> {
+    public void testCastConstantIntToLong() {
+        BoxingEliminationTypeSystemRootNode node = (BoxingEliminationTypeSystemRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
-
             b.beginReturn();
-            b.beginLongOperator();
-            b.emitIntProducer();
-            b.endLongOperator();
+            b.beginLongConsumer();
+            b.emitLoadConstant(42);
+            b.endLongConsumer();
             b.endReturn();
             b.endRoot();
-        });
+        }).getRootNode();
 
-        root.getCallTarget().call();
+        assertInstructions(node,
+                        "load.constant",
+                        "c.LongConsumer",
+                        "return");
+        assertQuickenings(node, 0, 0);
 
-        root.getCallTarget().call();
+        assertEquals(BoxingEliminationTypeSystem.INT_AS_LONG_VALUE, node.getCallTarget().call());
+        assertQuickenings(node, 2, 1);
 
-        RootCallTarget callTarget = root.getCallTarget();
-        testInvalidations(root, 1, () -> {
-            for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, callTarget.call());
-            }
-        });
-    }
+        assertInstructions(node,
+                        "load.constant$Int",
+                        "c.LongConsumer$Default",
+                        "return");
 
-    // @Test
-    public void testCastsRefToPrim() {
-        BoxingEliminationTypeSystemRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
+        assertEquals(BoxingEliminationTypeSystem.INT_AS_LONG_VALUE, node.getCallTarget().call());
+        assertQuickenings(node, 4, 2);
 
-            b.beginReturn();
-            b.beginLongOperator();
-            b.emitRefBProducer();
-            b.endLongOperator();
-            b.endReturn();
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "c.Abs$GreaterZero#LessThanZero",
+                        "return");
 
-            b.endRoot();
-        });
+        assertEquals("42", node.getCallTarget().call("42"));
+        var stable = assertQuickenings(node, 7, 3);
 
-        RootCallTarget callTarget = root.getCallTarget();
+        assertInstructions(node,
+                        "load.argument",
+                        "c.Abs",
+                        "return");
 
-        testInvalidations(root, 1, () -> {
-            for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, callTarget.call());
-            }
-        });
-    }
-
-    @Test
-    public void testCastsPrimToRef() {
-        BoxingEliminationTypeSystemRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.beginReturn();
-            b.beginStringOperator();
-            b.emitBooleanProducer();
-            b.endStringOperator();
-            b.endReturn();
-
-            b.endRoot();
-        });
-
-        RootCallTarget callTarget = root.getCallTarget();
-
-        testInvalidations(root, 1, () -> {
-            for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, callTarget.call());
-            }
-        });
-    }
-
-    @Test
-    public void testCastsRefToRef() {
-        BoxingEliminationTypeSystemRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.beginReturn();
-            b.beginStringOperator();
-            b.emitRefAProducer();
-            b.endStringOperator();
-            b.endReturn();
-
-            b.endRoot();
-        });
-
-        RootCallTarget callTarget = root.getCallTarget();
-
-        testInvalidations(root, 1, () -> {
-            for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, callTarget.call());
-            }
-        });
-    }
-
-    @Test
-    public void testCastsChangePrim() {
-        BoxingEliminationTypeSystemRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.beginReturn();
-            b.beginLongOperator();
-            b.beginObjectProducer();
-            b.emitLoadArgument(0);
-            b.endObjectProducer();
-            b.endLongOperator();
-            b.endReturn();
-
-            b.endRoot();
-        });
-
-        RootCallTarget callTarget = root.getCallTarget();
-
-        testInvalidations(root, 4, () -> {
-            for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, callTarget.call(ObjectProducer.PRODUCE_INT));
-            }
-            // for (int i = 0; i < NUM_ITERATIONS; i++) {
-            // Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE,
-            // callTarget.call(ObjectProducer.PRODUCE_REF_B));
-            // }
-            try {
-                callTarget.call(ObjectProducer.PRODUCE_BOOLEAN);
-                Assert.fail();
-            } catch (UnsupportedSpecializationException e) {
-            }
-        });
-    }
-
-    @Test
-    public void testCastsChangeRef() {
-        BoxingEliminationTypeSystemRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.beginReturn();
-            b.beginStringOperator();
-            b.beginObjectProducer();
-            b.emitLoadArgument(0);
-            b.endObjectProducer();
-            b.endStringOperator();
-            b.endReturn();
-
-            b.endRoot();
-        });
-
-        RootCallTarget callTarget = root.getCallTarget();
-
-        testInvalidations(root, 4, () -> {
-            for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, callTarget.call(ObjectProducer.PRODUCE_BOOLEAN));
-            }
-
-            for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, callTarget.call(ObjectProducer.PRODUCE_REF_A));
-            }
-
-            try {
-                callTarget.call(ObjectProducer.PRODUCE_INT);
-                Assert.fail();
-            } catch (UnsupportedSpecializationException e) {
-            }
-        });
-    }
-
-    @Test
-    public void testCastsChangeSpecPrim() {
-        BoxingEliminationTypeSystemRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.beginReturn();
-            b.beginLongOperator();
-            b.beginSpecializedObjectProducer();
-            b.emitLoadArgument(0);
-            b.endSpecializedObjectProducer();
-            b.endLongOperator();
-            b.endReturn();
-
-            b.endRoot();
-        });
-
-        RootCallTarget callTarget = root.getCallTarget();
-
-        testInvalidations(root, 7, () -> {
-            for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, callTarget.call(ObjectProducer.PRODUCE_INT));
-            }
-
-            // for (int i = 0; i < NUM_ITERATIONS; i++) {
-            // Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE,
-            // callTarget.call(ObjectProducer.PRODUCE_REF_B));
-            // }
-
-            try {
-                callTarget.call(ObjectProducer.PRODUCE_BOOLEAN);
-                Assert.fail();
-            } catch (UnsupportedSpecializationException e) {
-            }
-        });
-    }
-
-    @Test
-    public void testCastsChangeSpecRef() {
-        BoxingEliminationTypeSystemRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.beginReturn();
-            b.beginStringOperator();
-            b.beginSpecializedObjectProducer();
-            b.emitLoadArgument(0);
-            b.endSpecializedObjectProducer();
-            b.endStringOperator();
-            b.endReturn();
-
-            b.endRoot();
-        });
-
-        RootCallTarget callTarget = root.getCallTarget();
-
-        testInvalidations(root, 6, () -> {
-            for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.BOOLEAN_AS_STRING_VALUE, callTarget.call(ObjectProducer.PRODUCE_BOOLEAN));
-            }
-            for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.REF_A_AS_STRING_VALUE, callTarget.call(ObjectProducer.PRODUCE_REF_A));
-            }
-            try {
-                callTarget.call(ObjectProducer.PRODUCE_INT);
-                Assert.fail();
-            } catch (UnsupportedSpecializationException e) {
-            }
-        });
-    }
-
-    @Test
-    public void testLBEMultipleLoads() {
-        BoxingEliminationTypeSystemRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
-
-            BytecodeLocal local = b.createLocal();
-
-            b.beginStoreLocal(local);
-            b.emitLoadConstant(1L);
-            b.endStoreLocal();
-
-            b.beginLongOperator();
-            b.emitLoadLocal(local);
-            b.endLongOperator();
-
-            b.beginReturn();
-            b.emitLoadLocal(local);
-            b.endReturn();
-
-            b.endRoot();
-        });
-
-        RootCallTarget callTarget = root.getCallTarget();
-
-        testInvalidations(root, 5, () -> {
-            for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(1L, callTarget.call());
-            }
-        });
+        assertStable(stable, node, 42L);
+        assertStable(stable, node, "42");
+        assertStable(stable, node, -42L);
     }
 
     @GenerateBytecode(//
-                    languageClass = BoxingLanguage.class, //
+                    languageClass = BytecodeDSLTestLanguage.class, //
                     enableQuickening = true, boxingEliminationTypes = {boolean.class, int.class, long.class})
-    @TypeSystemReference(BoxingTypeSystem.class)
+    @TypeSystemReference(BoxingEliminationTypeSystem.class)
     @SuppressWarnings("unused")
     abstract static class BoxingEliminationTypeSystemRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
-
-        private static final boolean LOG = false;
-        int totalInvalidations = 0;
-
-        protected void transferToInterpreterAndInvalidate() {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.totalInvalidations++;
-            if (LOG) {
-                System.err.println("[INVAL] --------------------");
-                StackWalker.getInstance().forEach(sf -> {
-                    System.err.println("   " + sf);
-                });
-            }
-        }
-
-        protected BoxingEliminationTypeSystemRootNode(TruffleLanguage<?> language, Builder frameDescriptor) {
-            super(language, frameDescriptor.build());
-        }
 
         protected BoxingEliminationTypeSystemRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
         @Operation
-        @TypeSystemReference(BoxingTypeSystem.class)
         public static final class IntProducer {
             @Specialization
-            public static int produce() {
+            public static int doDefault() {
                 return 1;
             }
         }
 
         @Operation
-        @TypeSystemReference(BoxingTypeSystem.class)
-        public static final class BooleanProducer {
+        public static final class LongConsumer {
             @Specialization
-            public static boolean produce() {
-                return true;
+            public static long doDefault(long v) {
+                return v;
             }
         }
 
         @Operation
-        @TypeSystemReference(BoxingTypeSystem.class)
-        public static final class RefAProducer {
-            @Specialization
-            public static ReferenceTypeA produce() {
-                return new ReferenceTypeA();
-            }
-        }
-
-        @Operation
-        @TypeSystemReference(BoxingTypeSystem.class)
-        public static final class RefBProducer {
-            @Specialization
-            public static ReferenceTypeB produce() {
-                return new ReferenceTypeB();
-            }
-        }
-
-        @Operation
-        @TypeSystemReference(BoxingTypeSystem.class)
-        public static final class ObjectProducer {
-
-            public static final short PRODUCE_INT = 0;
-            public static final short PRODUCE_LONG = 1;
-            public static final short PRODUCE_STRING = 2;
-            public static final short PRODUCE_BOOLEAN = 3;
-            public static final short PRODUCE_REF_A = 4;
-            public static final short PRODUCE_REF_B = 5;
+        @TypeSystemReference(EmptyTypeSystem.class)
+        public static final class LongConsumerNoTypeSystem {
 
             @Specialization
-            public static Object produce(short type) {
-                switch (type) {
-                    case PRODUCE_INT:
-                        return 1;
-                    case PRODUCE_LONG:
-                        return BoxingTypeSystem.LONG_VALUE;
-                    case PRODUCE_STRING:
-                        return BoxingTypeSystem.STRING_VALUE;
-                    case PRODUCE_BOOLEAN:
-                        return true;
-                    case PRODUCE_REF_A:
-                        return new ReferenceTypeA();
-                    case PRODUCE_REF_B:
-                        return new ReferenceTypeB();
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere();
-                }
-            }
-        }
-
-        @Operation
-        @TypeSystemReference(BoxingTypeSystem.class)
-        public static final class SpecializedObjectProducer {
-
-            public static final short PRODUCE_INT = 0;
-            public static final short PRODUCE_LONG = 1;
-            public static final short PRODUCE_STRING = 2;
-            public static final short PRODUCE_BOOLEAN = 3;
-            public static final short PRODUCE_REF_A = 4;
-            public static final short PRODUCE_REF_B = 5;
-
-            @Specialization(guards = {"type == PRODUCE_INT"})
-            @ForceQuickening
-            public static int produceInt(short type) {
-                return 1;
-            }
-
-            @Specialization(guards = {"type == PRODUCE_LONG"})
-            @ForceQuickening
-            public static long produceLong(short type) {
-                return BoxingTypeSystem.LONG_VALUE;
-            }
-
-            @Specialization(guards = {"type == PRODUCE_STRING"})
-            public static String produceString(short type) {
-                return BoxingTypeSystem.STRING_VALUE;
-            }
-
-            @Specialization(guards = {"type == PRODUCE_BOOLEAN"})
-            @ForceQuickening
-            public static boolean produceBoolean(short type) {
-                return true;
-            }
-
-            @Specialization(guards = {"type == PRODUCE_REF_A"})
-            public static ReferenceTypeA produceRefA(short type) {
-                return new ReferenceTypeA();
-            }
-
-            @Specialization(guards = {"type == PRODUCE_REF_B"})
-            public static ReferenceTypeB produceRefB(short type) {
-                return new ReferenceTypeB();
-            }
-        }
-
-        @Operation
-        @TypeSystemReference(BoxingTypeSystem.class)
-        public static final class LongOperator {
-            @Specialization
-            public static long operate(long value) {
-                return value;
-            }
-        }
-
-        @Operation
-        @TypeSystemReference(BoxingTypeSystem.class)
-        public static final class StringOperator {
-            @Specialization
-            public static String operate(String value) {
-                return value;
-            }
-        }
-
-        @Operation
-        public static final class SecondValueBoxingElim {
-            @Specialization
-            @ForceQuickening
-            public static Object doInt(Object a, int b) {
-                return null;
+            public static long doLong(long v) {
+                return v;
             }
 
             @Specialization
-            @ForceQuickening
-            public static Object doLong(Object a, long b) {
-                return null;
+            public static long doInt(int v) {
+                return v;
             }
 
             @Specialization
-            public static Object doGeneric(Object a, Object b) {
-                return null;
+            @TruffleBoundary
+            public static long doString(String v) {
+                return Long.parseLong(v);
             }
         }
-    }
 
-    static class BoxingLanguage extends TruffleLanguage<BoxingContext> {
-        @Override
-        protected BoxingContext createContext(Env env) {
-            return new BoxingContext();
-        }
-
-    }
-
-    static class BoxingContext {
-    }
-
-    static class ReferenceTypeA {
-    }
-
-    static class ReferenceTypeB {
     }
 
     @TypeSystem
     @SuppressWarnings("unused")
-    static class BoxingTypeSystem {
+    static class BoxingEliminationTypeSystem {
 
-        public static final String STRING_VALUE = "<string>";
-        public static final String BOOLEAN_AS_STRING_VALUE = "<bool>";
-        public static final String REF_A_AS_STRING_VALUE = "<ref-a>";
-
-        public static final long LONG_VALUE = 0xf00;
         public static final long INT_AS_LONG_VALUE = 0xba7;
-        public static final long REF_B_AS_LONG_VALUE = 0xb00;
-
-        @ImplicitCast
-        static String castString(boolean b) {
-            return BOOLEAN_AS_STRING_VALUE;
-        }
-
-        @ImplicitCast
-        static String castString(ReferenceTypeA a) {
-            return REF_A_AS_STRING_VALUE;
-        }
 
         @ImplicitCast
         static long castLong(int i) {
+            return INT_AS_LONG_VALUE;
+        }
+
+        @ImplicitCast
+        static long castByte(byte i) {
+            return INT_AS_LONG_VALUE;
+        }
+
+        @ImplicitCast
+        static long castString(String i) {
             return INT_AS_LONG_VALUE;
         }
 
