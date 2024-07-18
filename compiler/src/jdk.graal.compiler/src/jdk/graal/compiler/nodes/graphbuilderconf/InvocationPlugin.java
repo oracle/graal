@@ -381,7 +381,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
 
     public String getSourceLocation() {
         Class<?> c = getClass();
-        for (Method m : c.getDeclaredMethods()) {
+        for (Method m : c.getMethods()) {
             if (m.getName().equals("apply") || m.getName().equals("defaultHandler")) {
                 return String.format("%s.%s()", m.getDeclaringClass().getName(), m.getName());
             }
@@ -497,6 +497,13 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         @Override
         public final boolean canBeDisabled() {
             return false;
+        }
+
+        @Override
+        public boolean isGraalOnly() {
+            // We treat all required invocation plugins as Graal only. This will skip the return
+            // type check in BytecodeParser.
+            return true;
         }
     }
 
