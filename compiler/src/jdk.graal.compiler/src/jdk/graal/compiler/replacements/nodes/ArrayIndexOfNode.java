@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.util.EnumSet;
 
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -305,12 +306,26 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
             // arrayOffset is given in bytes, scale it to the stride.
             long arrayBaseOffsetBytesConstant = arrayOffset.asJavaConstant().asLong();
             arrayBaseOffsetBytesConstant -= getArrayBaseOffset(tool.getMetaAccess(), arrayPointer, constantArrayKind);
-            final int arrayOffsetConstant = (int) (arrayBaseOffsetBytesConstant / stride.value);
+            final long arrayOffsetConstantScaled = arrayBaseOffsetBytesConstant >> stride.log2;
 
             final int arrayLengthConstant = arrayLength.asJavaConstant().asInt();
-            ConstantReflectionUtil.boundsCheckTypePunnedGuarantee(arrayLengthConstant, stride, actualArrayLength, constantArrayKind);
-
             final int fromIndexConstant = fromIndex.asJavaConstant().asInt();
+            if (!ConstantReflectionUtil.boundsCheckTypePunned(arrayOffsetConstantScaled, arrayLengthConstant, stride, actualArrayLength, constantArrayKind) ||
+                            (fromIndexConstant < 0 || fromIndexConstant > arrayLengthConstant)) {
+                /*
+                 * One or more arguments is out of bounds for the given constant array.
+                 *
+                 * This may happen when this node is in a branch that won't be taken for the given
+                 * constant input values, but is still visible in the current compilation unit.
+                 * Since this isn't necessarily an error, we want to handle this case gracefully and
+                 * simply give up on trying to constant-fold. Explicit range checks preceding the
+                 * intrinsic call will take care of throwing an exception. Alternatively, we could
+                 * deoptimize here.
+                 */
+                return this;
+            }
+            final int arrayOffsetConstant = NumUtil.safeToInt(arrayOffsetConstantScaled);
+
             final int[] valuesConstant = new int[searchValues.size()];
             for (int i = 0; i < searchValues.size(); i++) {
                 valuesConstant[i] = searchValues.get(i).asJavaConstant().asInt();
