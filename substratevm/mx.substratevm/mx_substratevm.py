@@ -1160,6 +1160,9 @@ libgraal_build_args = [
     # No VM-internal threads may be spawned for libgraal and the reference handling is executed manually.
     '-H:-AllowVMInternalThreads',
     '-R:-AutomaticReferenceHandling',
+
+    # No need for container support in libgraal as HotSpot already takes care of it
+    '-H:-UseContainerSupport',
 ]
 
 libgraal = mx_sdk_vm.GraalVmJreComponent(
