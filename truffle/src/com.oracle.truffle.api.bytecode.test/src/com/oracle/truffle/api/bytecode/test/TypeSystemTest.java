@@ -299,7 +299,7 @@ public class TypeSystemTest extends AbstractInstructionTest {
             super(language, d);
         }
 
-        @ExpectError("Type type system referenced of this operation equals to the type system reference of the parent bytecode root node. Remove this the operation type system reference to resolve this warning.%")
+        @ExpectError("Type system referenced by this operation is the same as the type system referenced by the parent bytecode root node. Remove the operation type system reference to resolve this warning.%")
         @Operation
         @TypeSystemReference(TypeSystemTestTypeSystem.class)
         public static final class StringOperator {

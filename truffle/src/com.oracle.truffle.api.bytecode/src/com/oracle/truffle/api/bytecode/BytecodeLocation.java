@@ -97,17 +97,11 @@ public final class BytecodeLocation {
         return bytecodes;
     }
 
-    /**
-     * @since 24.2
-     */
     @Override
     public int hashCode() {
         return Objects.hash(bytecodes, bci);
     }
 
-    /**
-     * @since 24.2
-     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -119,9 +113,6 @@ public final class BytecodeLocation {
         }
     }
 
-    /**
-     * @since 24.2
-     */
     @Override
     public String toString() {
         return String.format("BytecodeLocation [bytecode=%s, bci=%d]", bytecodes, bci);
@@ -280,7 +271,7 @@ public final class BytecodeLocation {
      *
      * @return the {@link BytecodeLocation} or {@code null} if no bytecode interpreter can be found
      *         in the stack trace element.
-     * @since 24.1
+     * @since 24.2
      */
     public static BytecodeLocation get(TruffleStackTraceElement element) {
         Node location = element.getLocation();

@@ -44,21 +44,45 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 
 /**
+ * Introspection class modeling a local variable and its liveness info in a bytecode interpreter.
+ * There can be more than one local variable for a given {@link BytecodeLocal} because locals can be
+ * live for multiple disjoint bytecode ranges.
+ *
+ * Note: Introspection classes are intended to be used for debugging purposes only. These APIs may
+ * change in the future.
+ *
  * @since 24.2
+ * @see BytecodeNode#getLocals()
  */
 public abstract class LocalVariable {
 
     /**
+     * Internal constructor for generated code. Do not use.
+     *
      * @since 24.2
      */
     public LocalVariable(Object token) {
         BytecodeRootNodes.checkToken(token);
     }
 
+    /**
+     * Returns the bytecode index at which this local starts being live. If
+     * {@link GenerateBytecode#enableLocalScoping() local scoping} is disabled, returns
+     * <code>-1</code>.
+     *
+     * @since 24.2
+     */
     public int getStartIndex() {
         return -1;
     }
 
+    /**
+     * Returns the bytecode index at which this local stops being live. If
+     * {@link GenerateBytecode#enableLocalScoping() local scoping} is disabled, returns
+     * <code>-1</code>.
+     *
+     * @since 24.2
+     */
     public int getEndIndex() {
         return -1;
     }
@@ -67,12 +91,17 @@ public abstract class LocalVariable {
      * Returns the local index used when accessing local values with a local accessor like
      * {@link BytecodeNode#getLocalValue(int, Frame, int)}. Always returns an integer greater or
      * equal to zero. Note that the local offset can only be read if the current bytecode index is
-     * between {@link #getStartIndex()} and {@link #getEndIndex()}(exclusive).
+     * between {@link #getStartIndex()} and {@link #getEndIndex()} (exclusive).
      *
      * @since 24.2
      */
     public abstract int getLocalOffset();
 
+    /**
+     * Returns the local index, a unique identifier for each {@link BytecodeLocal} in a root node.
+     *
+     * @since 24.2
+     */
     public abstract int getLocalIndex();
 
     /**
@@ -83,8 +112,18 @@ public abstract class LocalVariable {
      */
     public abstract FrameSlotKind getTypeProfile();
 
+    /**
+     * Returns the info provided for the local, or <code>null</code> if no info was provided.
+     *
+     * @since 24.2
+     */
     public abstract Object getInfo();
 
+    /**
+     * Returns the name provided for the local, or <code>null</code> if no name was provided.
+     *
+     * @since 24.2
+     */
     public abstract Object getName();
 
     @Override

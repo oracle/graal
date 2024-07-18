@@ -747,7 +747,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             result.add(createNodeChildAnnotation(operation.getConstantOperandBeforeName(i), constantOperands.before().get(i).type()));
         }
         for (int i = 0; i < signature.dynamicOperandCount; i++) {
-            // TODO dynamic operand name
             result.add(createNodeChildAnnotation("child" + i, signature.getGenericType(i)));
         }
         for (int i = 0; i < operation.numConstantOperandsAfter(); i++) {
@@ -814,7 +813,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 ex.addParameter(new CodeVariableElement(constantOperands.before().get(i).type(), operation.getConstantOperandBeforeName(i)));
             }
             for (int i = 0; i < signature.dynamicOperandCount; i++) {
-                // TODO: dynamic operand name
                 ex.addParameter(new CodeVariableElement(signature.getGenericType(i), "child" + i + "Value"));
             }
             for (int i = 0; i < operation.numConstantOperandsAfter(); i++) {
@@ -901,7 +899,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             } else {
                 if (isOperation() && ElementUtils.typeEquals(result.getTypeSystem().getTemplateType().asType(), parent.typeSystem.getTemplateType().asType())) {
                     customOperation.addSuppressableWarning(TruffleSuppressedWarnings.UNUSED,
-                                    "Type type system referenced of this operation equals to the type system reference of the parent bytecode root node. Remove this the operation type system reference to resolve this warning.");
+                                    "Type system referenced by this operation is the same as the type system referenced by the parent bytecode root node. Remove the operation type system reference to resolve this warning.");
                 }
             }
         }

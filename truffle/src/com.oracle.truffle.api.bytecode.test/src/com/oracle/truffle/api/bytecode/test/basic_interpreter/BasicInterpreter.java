@@ -525,7 +525,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         }
     }
 
-    static record Bindings(
+    record Bindings(
                     BytecodeNode bytecode,
                     RootNode root,
                     BytecodeLocation location,

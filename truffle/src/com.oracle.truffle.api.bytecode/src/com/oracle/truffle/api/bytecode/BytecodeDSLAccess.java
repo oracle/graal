@@ -71,7 +71,7 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
     public static volatile BytecodeDSLAccess unsafeSingleton;
 
     /**
-     * Obtains an accessor. Do not use directly.
+     * Obtains an accessor. Used by generated code; do not use directly.
      *
      * @since 24.2
      */

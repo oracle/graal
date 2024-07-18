@@ -41,12 +41,17 @@
 package com.oracle.truffle.api.bytecode;
 
 /**
- * Abstract definition of a local.
+ * Abstract definition of a local variables in the interpreter.
  * <p>
- * Locals are stored in (and have the same extent as) the frame. They are accessed in the bytecode
- * using {@code StoreLocal} and {@code LoadLocal} operations. Code can also programmatically read
- * locals from the frame using {@link BytecodeRootNode#getLocal} or
- * {@link BytecodeRootNode#getLocals}.
+ * Local variables are stored in the frame. They are typically accessed in the bytecode using
+ * {@code StoreLocal} and {@code LoadLocal} operations. For uncommon scenarios where locals need to
+ * be accessed programmatically (e.g., in a node), locals can be accessed using accessor methods on
+ * the {@link BytecodeNode}, such as {@link BytecodeNode#getLocalValue(int, Frame, int)} and
+ * {@link BytecodeNode#setLocalValue(int, com.oracle.truffle.api.frame.Frame, int, Object)}.
+ * <p>
+ * By default a local variable is live for the extent of the block that defines it ("local
+ * scoping"). Interpreters can also be configured so that locals live for the extent of the root
+ * node ("global scoping"). See {@link GenerateBytecode#enableLocalScoping()} for details.
  * <p>
  * Refer to the <a href=
  * "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">user
@@ -57,7 +62,7 @@ package com.oracle.truffle.api.bytecode;
 public abstract class BytecodeLocal {
 
     /**
-     * Default constructor for a {@link BytecodeLocal}.
+     * Internal constructor for generated code. Do not use.
      *
      * @since 24.2
      */
@@ -65,7 +70,12 @@ public abstract class BytecodeLocal {
         BytecodeRootNodes.checkToken(token);
     }
 
-    // TODO try to remove
+    /**
+     * Returns the local index used when accessing local values with a local accessor like
+     * {@link BytecodeNode#getLocalValue(int, Frame, int)}.
+     *
+     * @since 24.2
+     */
     public abstract int getLocalOffset();
 
 }

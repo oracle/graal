@@ -48,7 +48,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
- * Representation of a continuation closure, consisting of a {@link ContinuationLocation}, the
+ * Representation of a continuation closure, consisting of a resumable {@link RootNode}, the
  * interpreter state, and a yielded result. A {@link ContinuationResult} is returned when the
  * interpreter yields.
  * <p>

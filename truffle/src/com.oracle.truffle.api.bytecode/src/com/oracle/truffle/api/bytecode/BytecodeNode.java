@@ -77,6 +77,11 @@ import com.oracle.truffle.api.source.SourceSection;
 @DefaultExpression("$bytecodeNode")
 public abstract class BytecodeNode extends Node {
 
+    /**
+     * Internal constructor for generated code. Do not use.
+     *
+     * @since 24.2
+     */
     protected BytecodeNode(Object token) {
         BytecodeRootNodes.checkToken(token);
     }
@@ -132,9 +137,7 @@ public abstract class BytecodeNode extends Node {
     /**
      * Gets the instruction with a bytecode index. The result is only valid if bytecode index was
      * obtained from this bytecode node using a bind variable $bytecodeIndex or
-     * {@link #getBytecodeIndex}. The {@link Instruction} class should only be used for debugging or
-     * tracing purposes as the underlying instruction format may change with future version of
-     * Truffle.
+     * {@link #getBytecodeIndex}.
      *
      * @param bytecodeIndex the bytecode index
      * @return the instruction or null if the bytecode index is invalid
@@ -784,8 +787,7 @@ public abstract class BytecodeNode extends Node {
     public abstract int getLocalCount(int bytecodeIndex);
 
     /**
-     * Returns a list of all of the {@link LocalVariable local variables} declared (regardless of
-     * liveness).
+     * Returns a list of all of the {@link LocalVariable local variables} with liveness info.
      *
      * @return a list of locals
      * @since 24.2
@@ -829,18 +831,18 @@ public abstract class BytecodeNode extends Node {
      * @since 24.2
      */
     @TruffleBoundary
-    public final String dump(BytecodeLocation highlighedLocation) {
+    public final String dump(BytecodeLocation highlightedLocation) {
         record IndexedInstruction(Instruction instruction, int index) {
         }
 
-        if (highlighedLocation != null && highlighedLocation.getBytecodeNode() != this) {
+        if (highlightedLocation != null && highlightedLocation.getBytecodeNode() != this) {
             throw new IllegalArgumentException("Invalid highlighted location. Belongs to a different BytecodeNode.");
         }
         List<Instruction> instructions = getInstructionsAsList();
         List<ExceptionHandler> exceptions = getExceptionHandlers();
         List<LocalVariable> locals = getLocals();
         List<SourceInformation> sourceInformation = getSourceInformation();
-        int highlightedBci = highlighedLocation == null ? -1 : highlighedLocation.getBytecodeIndex();
+        int highlightedBci = highlightedLocation == null ? -1 : highlightedLocation.getBytecodeIndex();
 
         int instructionCount = instructions.size();
         int maxLabelSize = Math.min(80, instructions.stream().mapToInt((i) -> Instruction.formatLabel(i).length()).max().orElse(0));
@@ -1010,7 +1012,7 @@ public abstract class BytecodeNode extends Node {
      * Returns a new array containing the current value of each live local in the
      * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
      *
-     * @see #getLocalValues(Frame)
+     * @see #getLocalValues(int, Frame)
      * @param frameInstance the frame instance
      * @return a new array of local values, or null if the frame instance does not correspond to an
      *         {@link BytecodeRootNode}
@@ -1111,9 +1113,9 @@ public abstract class BytecodeNode extends Node {
      * Gets the bytecode location for a given {@link TruffleStackTraceElement}, if it can be found
      * using the stack trace location.
      *
-     * @param node the node
+     * @param element the stack trace element
      * @return the corresponding bytecode location or null if no location can be found.
-     * @since 24.1
+     * @since 24.2
      */
     public static BytecodeNode get(TruffleStackTraceElement element) {
         Node location = element.getLocation();

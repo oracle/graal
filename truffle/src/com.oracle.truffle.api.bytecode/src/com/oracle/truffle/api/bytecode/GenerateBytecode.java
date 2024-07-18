@@ -123,22 +123,22 @@ public @interface GenerateBytecode {
      * Whether the generated interpreter should support serialization and deserialization.
      * <p>
      * When serialization is enabled, Bytecode DSL generates code to convert bytecode nodes to and
-     * from a serialized byte array representation. The code serializes the node's execution data
-     * (bytecode, constants, etc.) and all of its non-transient fields.
+     * from a serialized byte array representation. The code effectively serializes the node's
+     * execution data (bytecode, constants, etc.) and all of its non-transient fields.
      * <p>
      * The serialization logic is defined in static {@code serialize} and {@code deserialize}
      * methods on the generated root class. The generated {@link BytecodeRootNodes} class also
-     * overrides {@link BytecodeRootNodes#serialize} for convenience.
+     * overrides {@link BytecodeRootNodes#serialize}.
      * <p>
-     * This feature can be used to avoid the overhead of reparsing source code. Note that there is
-     * still some overhead, as it does not trivially copy bytecode directly: in order to validate
-     * the bytecode (for a balanced stack pointer, valid branches, etc.), serialization encodes the
-     * calls to the builder object and deserialization replays those calls.
+     * This feature can be used to avoid the overhead of parsing source code on start up. Note that
+     * serialization still incurs some overhead, as it does not trivially copy bytecode directly: in
+     * order to validate the bytecode (balanced stack pointers, valid branches, etc.), serialization
+     * encodes builder method calls and deserialization replays those calls.
      * <p>
      * Note that the generated {@code deserialize} method takes a {@link java.util.function.Supplier
      * Supplier<DataInput>} rather than a {@link java.io.DataInput} directly. The supplier should
      * produce a fresh {@link java.io.DataInput} each time because the input may be processed
-     * multiple times (due to {@link BytecodeRootNodes#reparse reparsing}).
+     * multiple times (due to {@link BytecodeRootNodes#update(BytecodeConfig) reparsing}).
      *
      * @see com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer
      * @see com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer
@@ -316,10 +316,10 @@ public @interface GenerateBytecode {
      * {@link BytecodeNode#getBytecodeLocation(int)}).
      * <p>
      * Note that operations always have fast-path access to the bci using a bind parameter (e.g.,
-     * {@code @Bind("$bytecodeIndex") int bci}); this feature should only be enabled for fast-path bci access
-     * outside of the current operation (e.g., for closures or frame introspection). Storing the bci
-     * in the frame increases frame size and requires additional frame writes, so it can negatively
-     * affect performance.
+     * {@code @Bind("$bytecodeIndex") int bci}); this feature should only be enabled for fast-path
+     * bci access outside of the current operation (e.g., for closures or frame introspection).
+     * Storing the bci in the frame increases frame size and requires additional frame writes, so it
+     * can negatively affect performance.
      *
      * @since 24.2
      */
@@ -373,9 +373,8 @@ public @interface GenerateBytecode {
 
     /**
      * Whether to generate introspection data for specializations. The data is accessible using
-     * {@link Argument#getSpecializationInfo()}.
+     * {@link com.oracle.truffle.api.bytecode.Instruction.Argument#getSpecializationInfo()}.
      *
-     * @see com.oracle.truffle.api.bytecode.BytecodeIntrospection
      * @since 24.2
      */
     boolean enableSpecializationIntrospection() default true;

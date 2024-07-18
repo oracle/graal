@@ -999,12 +999,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testLocalsNonlocalRead() {
-        // TODO this test fails when boxing elimination is enabled
-        // locals accessed non-locally must have boxing elimination disabled
-        // since non-local reads do not do boxing elimination
-
-        // this can be done automatically, or by
-        // having `createLocal(boolean accessedFromClosure)` or similar
         BasicInterpreter node = parseNode("localsNonlocalRead", b -> {
             // x = 1
             // return (lambda: x)()

@@ -53,8 +53,15 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * The {@link Instruction} class should only be used for debugging or tracing purposes as the
- * underlying instruction format may change with future version of Truffle.
+ * Introspection class modeling an instruction in a bytecode interpreter.
+ *
+ * Note: Introspection classes are intended to be used for debugging purposes only. These APIs may
+ * change in the future.
+ *
+ * @since 24.2
+ * @see BytecodeNode#getInstructions()
+ * @see BytecodeNode#getInstructionsAsList()
+ * @see BytecodeNode#getInstruction(int)
  */
 @DefaultExpression("$bytecodeNode.getInstruction($bytecodeIndex)")
 public abstract class Instruction {

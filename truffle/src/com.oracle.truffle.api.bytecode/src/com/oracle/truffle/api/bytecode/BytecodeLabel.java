@@ -52,7 +52,7 @@ package com.oracle.truffle.api.bytecode;
  */
 public abstract class BytecodeLabel {
     /**
-     * Default constructor for a {@link BytecodeLabel}.
+     * Internal constructor for generated code. Do not use.
      *
      * @since 24.2
      */

@@ -167,6 +167,9 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
      * Serializes the nodes to a byte buffer. This method will always fail unless serialization is
      * {@link GenerateBytecode#enableSerialization enabled}.
      * <p>
+     * Unlike the static {@code serialize} method defined on the generated root node, this method
+     * serializes the nodes using their current field values.
+     * <p>
      * This method will be overridden by the Bytecode DSL. Do not override.
      *
      * @param buffer The buffer to write the serialized bytes to.

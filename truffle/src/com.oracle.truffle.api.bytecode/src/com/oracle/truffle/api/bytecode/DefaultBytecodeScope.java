@@ -355,7 +355,7 @@ final class DefaultBytecodeScope implements TruffleObject {
         }
 
         @TruffleBoundary
-        final int slotToIndex(DefaultBytecodeScope scope, String member) {
+        int slotToIndex(DefaultBytecodeScope scope, String member) {
             Map<String, Integer> locals = getNameToIndex(scope);
             Integer index = locals.get(member);
             if (index == null) {

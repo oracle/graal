@@ -107,7 +107,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
                  * variables, so we disable implicit root-body tagging and do this manually in
                  * {@link SLBytecodeVisitor#visitFunction}.
                  */
-                enableRootBodyTagging = false,//
+                enableRootBodyTagging = false, //
                 tagTreeNodeLibrary = SLBytecodeScopeExports.class, enableSerialization = true, //
                 enableTagInstrumentation = true)
 @TypeSystemReference(SLTypes.class)
