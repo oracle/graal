@@ -71,6 +71,4 @@ public interface ConfigurationTypeDescriptor extends Comparable<ConfigurationTyp
         assert javaName.indexOf('/') == -1 || javaName.indexOf('/') > javaName.lastIndexOf('.') : "Requires qualified Java name, not internal representation: %s".formatted(javaName);
         return canonicalizeTypeName(javaName);
     }
-
-    boolean definedAsType();
 }

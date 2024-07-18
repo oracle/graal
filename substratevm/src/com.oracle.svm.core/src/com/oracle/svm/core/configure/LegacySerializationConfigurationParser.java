@@ -89,26 +89,28 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
             checkHasExactlyOneAttribute(data, "serialization descriptor object", List.of(TYPE_KEY, NAME_KEY));
         }
 
-        Optional<ConfigurationTypeDescriptor> targetSerializationClass = parseTypeOrName(data, false);
-        if (targetSerializationClass.isEmpty()) {
+        Optional<TypeDescriptorWithOrigin> target = parseTypeOrName(data, false);
+        if (target.isEmpty()) {
             return;
         }
+        ConfigurationTypeDescriptor targetSerializationClass = target.get().typeDescriptor();
+        boolean definedAsType = target.get().definedAsType();
 
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, targetSerializationClass.get().definedAsType());
+        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, definedAsType);
         var condition = conditionResolver.resolveCondition(unresolvedCondition);
         if (!condition.isPresent()) {
             return;
         }
 
         if (lambdaCapturingType) {
-            String className = ((NamedConfigurationTypeDescriptor) targetSerializationClass.get()).name();
+            String className = ((NamedConfigurationTypeDescriptor) targetSerializationClass).name();
             serializationSupport.registerLambdaCapturingClass(condition.get(), className);
         } else {
             Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
             String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
-            if (targetSerializationClass.get() instanceof NamedConfigurationTypeDescriptor namedClass) {
+            if (targetSerializationClass instanceof NamedConfigurationTypeDescriptor namedClass) {
                 serializationSupport.registerWithTargetConstructorClass(condition.get(), namedClass.name(), customTargetConstructorClass);
-            } else if (targetSerializationClass.get() instanceof ProxyConfigurationTypeDescriptor proxyClass) {
+            } else if (targetSerializationClass instanceof ProxyConfigurationTypeDescriptor proxyClass) {
                 serializationSupport.registerProxyClass(condition.get(), Arrays.asList(proxyClass.interfaceNames()));
             } else {
                 throw new JsonParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
