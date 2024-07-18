@@ -93,7 +93,6 @@ import jdk.graal.compiler.hotspot.replacements.MonitorSnippets;
 import jdk.graal.compiler.hotspot.replacements.ObjectCloneSnippets;
 import jdk.graal.compiler.hotspot.replacements.ObjectSnippets;
 import jdk.graal.compiler.hotspot.replacements.RegisterFinalizerSnippets;
-import jdk.graal.compiler.hotspot.replacements.StringToBytesSnippets;
 import jdk.graal.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import jdk.graal.compiler.hotspot.replacements.UnsafeSetMemoryNode;
 import jdk.graal.compiler.hotspot.replacements.UnsafeSnippets;
@@ -139,7 +138,6 @@ import jdk.graal.compiler.nodes.calc.SignedDivNode;
 import jdk.graal.compiler.nodes.calc.SignedFloatingIntegerDivNode;
 import jdk.graal.compiler.nodes.calc.SignedFloatingIntegerRemNode;
 import jdk.graal.compiler.nodes.calc.SignedRemNode;
-import jdk.graal.compiler.nodes.debug.StringToBytesNode;
 import jdk.graal.compiler.nodes.debug.VerifyHeapNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
@@ -272,7 +270,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected AssertionSnippets.Templates assertionSnippets;
     protected LogSnippets.Templates logSnippets;
     protected ArrayCopySnippets.Templates arraycopySnippets;
-    protected StringToBytesSnippets.Templates stringToBytesSnippets;
     protected ObjectSnippets.Templates objectSnippets;
     protected UnsafeSnippets.Templates unsafeSnippets;
     protected ObjectCloneSnippets.Templates objectCloneSnippets;
@@ -325,7 +322,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         assertionSnippets = new AssertionSnippets.Templates(options, providers);
         logSnippets = new LogSnippets.Templates(options, providers);
         arraycopySnippets = arraycopySnippetTemplates;
-        stringToBytesSnippets = new StringToBytesSnippets.Templates(options, providers);
         identityHashCodeSnippets = new IdentityHashCodeSnippets.Templates(new HotSpotHashCodeSnippets(), options, providers, HotSpotReplacementsUtil.MARK_WORD_LOCATION);
         isArraySnippets = new IsArraySnippets.Templates(new HotSpotIsArraySnippets(), options, providers);
         objectCloneSnippets = new ObjectCloneSnippets.Templates(options, providers);
@@ -532,10 +528,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             assertionSnippets.lower((AssertionNode) n, tool);
         } else if (n instanceof LogNode) {
             logSnippets.lower((LogNode) n, tool);
-        } else if (n instanceof StringToBytesNode) {
-            if (graph.getGuardsStage().areDeoptsFixed()) {
-                stringToBytesSnippets.lower((StringToBytesNode) n, tool);
-            }
         } else if (n instanceof AbstractDeoptimizeNode || n instanceof UnwindNode || n instanceof RemNode || n instanceof SafepointNode) {
             /* No lowering, we generate LIR directly for these nodes. */
         } else if (n instanceof ClassGetHubNode) {
