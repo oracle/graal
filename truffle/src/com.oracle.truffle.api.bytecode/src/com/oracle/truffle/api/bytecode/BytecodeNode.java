@@ -236,7 +236,6 @@ public abstract class BytecodeNode extends Node {
      * @return the source location, or null if a location could not be found
      * @since 24.2
      */
-    // TODO add tests
     public final SourceSection getSourceLocation(FrameInstance frameInstance) {
         int bci = findBytecodeIndex(frameInstance);
         if (bci == -1) {

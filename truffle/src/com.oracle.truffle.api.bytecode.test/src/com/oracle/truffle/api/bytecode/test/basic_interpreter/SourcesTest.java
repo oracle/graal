@@ -381,6 +381,104 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testGetSourcePositionFrameInstance() {
+        Source fooSource = Source.newBuilder("test", "return arg0()", "testGetSourcePositionFrameInstance#foo").build();
+        BasicInterpreter foo = parseNodeWithSource("foo", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginSource(fooSource);
+            b.beginSourceSection(0, 13);
+
+            b.beginReturn();
+            b.beginSourceSection(7, 6);
+            b.beginInvoke();
+            b.beginSourceSection(7, 4);
+            b.emitLoadArgument(0);
+            b.endSourceSection();
+            b.endInvoke();
+            b.endSourceSection();
+            b.endReturn();
+
+            b.endSourceSection();
+            b.endSource();
+            b.endRoot();
+        });
+
+        Source barSource = Source.newBuilder("test", "return <position>", "testGetSourcePositionFrameInstance#bar").build();
+        BasicInterpreter bar = parseNodeWithSource("bar", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginSource(barSource);
+            b.beginSourceSection(0, 17);
+
+            b.beginReturn();
+
+            b.beginSourceSection(7, 10);
+            b.emitCollectSourceLocations();
+            b.endSourceSection();
+
+            b.endReturn();
+
+            b.endSourceSection();
+            b.endSource();
+            b.endRoot();
+        });
+
+        @SuppressWarnings("unchecked")
+        List<SourceSection> result = (List<SourceSection>) foo.getCallTarget().call(new Object[]{bar});
+        assertEquals(2, result.size());
+        assertSourceSection(result.get(0), barSource, 7, 10);
+        assertSourceSection(result.get(1), fooSource, 7, 6);
+    }
+
+    @Test
+    public void testGetSourcePositionsFrameInstance() {
+        Source fooSource = Source.newBuilder("test", "return arg0()", "testGetSourcePositionFrameInstance#foo").build();
+        BasicInterpreter foo = parseNodeWithSource("foo", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginSource(fooSource);
+            b.beginSourceSection(0, 13);
+
+            b.beginReturn();
+            b.beginSourceSection(7, 6);
+            b.beginInvoke();
+            b.beginSourceSection(7, 4);
+            b.emitLoadArgument(0);
+            b.endSourceSection();
+            b.endInvoke();
+            b.endSourceSection();
+            b.endReturn();
+
+            b.endSourceSection();
+            b.endSource();
+            b.endRoot();
+        });
+
+        Source barSource = Source.newBuilder("test", "return <position>", "testGetSourcePositionFrameInstance#bar").build();
+        BasicInterpreter bar = parseNodeWithSource("bar", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginSource(barSource);
+            b.beginSourceSection(0, 17);
+
+            b.beginReturn();
+
+            b.beginSourceSection(7, 10);
+            b.emitCollectAllSourceLocations();
+            b.endSourceSection();
+
+            b.endReturn();
+
+            b.endSourceSection();
+            b.endSource();
+            b.endRoot();
+        });
+
+        @SuppressWarnings("unchecked")
+        List<SourceSection[]> result = (List<SourceSection[]>) foo.getCallTarget().call(new Object[]{bar});
+        assertEquals(2, result.size());
+        assertSourceSections(result.get(0), barSource, 7, 10, 0, 17);
+        assertSourceSections(result.get(1), fooSource, 7, 6, 0, 13);
+    }
+
+    @Test
     public void testSourceFinallyTry() {
         // Finally handlers get emitted multiple times. Each handler's source info should be emitted
         // as expected.

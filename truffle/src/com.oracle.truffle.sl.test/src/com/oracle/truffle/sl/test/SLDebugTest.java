@@ -68,7 +68,6 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -950,9 +949,6 @@ public class SLDebugTest extends AbstractSLTest {
 
     @Test
     public void testUnwindAndReenter() {
-        // TODO currently incompatible. Needs investigation.
-        Assume.assumeFalse(this.mode.isBytecode());
-
         final Source source = slCode("function main() {\n" +
                         "  return fac(10);\n" +
                         "}\n" +

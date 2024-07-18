@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,6 +83,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * This class defines a set of interpreter variants with different configurations. Where possible,
@@ -451,6 +452,54 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
                 return null;
             });
             return bytecodeIndices;
+        }
+    }
+
+    @Operation
+    public static final class CollectSourceLocations {
+        @Specialization
+        public static List<SourceSection> perform(
+                        @Bind BytecodeLocation location,
+                        @Bind BasicInterpreter currentRootNode) {
+            List<SourceSection> sourceLocations = new ArrayList<>();
+            Truffle.getRuntime().iterateFrames(f -> {
+                if (f.getCallTarget() instanceof RootCallTarget rct && rct.getRootNode() instanceof BasicInterpreter frameRootNode) {
+                    if (currentRootNode == frameRootNode) {
+                        // The top-most stack trace element doesn't have a call node.
+                        sourceLocations.add(location.getSourceLocation());
+                    } else {
+                        sourceLocations.add(frameRootNode.getBytecodeNode().getSourceLocation(f));
+                    }
+                } else {
+                    sourceLocations.add(null);
+                }
+                return null;
+            });
+            return sourceLocations;
+        }
+    }
+
+    @Operation
+    public static final class CollectAllSourceLocations {
+        @Specialization
+        public static List<SourceSection[]> perform(
+                        @Bind BytecodeLocation location,
+                        @Bind BasicInterpreter currentRootNode) {
+            List<SourceSection[]> allSourceLocations = new ArrayList<>();
+            Truffle.getRuntime().iterateFrames(f -> {
+                if (f.getCallTarget() instanceof RootCallTarget rct && rct.getRootNode() instanceof BasicInterpreter frameRootNode) {
+                    if (currentRootNode == frameRootNode) {
+                        // The top-most stack trace element doesn't have a call node.
+                        allSourceLocations.add(location.getSourceLocations());
+                    } else {
+                        allSourceLocations.add(frameRootNode.getBytecodeNode().getSourceLocations(f));
+                    }
+                } else {
+                    allSourceLocations.add(null);
+                }
+                return null;
+            });
+            return allSourceLocations;
         }
     }
 

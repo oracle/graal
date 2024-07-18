@@ -236,7 +236,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogExceptional)) {
             validateEpilogExceptionalSignature(customOperation, signature, specializations, signatures);
         } else {
-            assert ElementUtils.typeEqualsAny(mirror.getAnnotationType(), types.Operation, types.OperationProxy);
             List<TypeMirror> tags = ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "tags");
 
             MessageContainer modelForErrors;
