@@ -99,6 +99,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
+import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
@@ -108,7 +109,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     private final BytecodeDSLModel parent;
     private final DeclaredType annotationType;
     private final boolean forProxyValidation;
-    private boolean explicitParse;
     private boolean uncachedProxyValidation;
 
     private CustomOperationParser(ProcessorContext context, BytecodeDSLModel parent, DeclaredType annotationType, boolean forProxyValidation) {
@@ -165,12 +165,10 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             throw new IllegalArgumentException(String.format("Expected element %s to have one %s annotation, but %d found.", typeElement.getSimpleName(), annotationType, annotationMirrors.size()));
         }
         AnnotationMirror mirror = annotationMirrors.get(0);
-        explicitParse = false;
         return parseImpl(typeElement, mirror);
     }
 
     public CustomOperationModel parseCustomOperation(TypeElement typeElement, AnnotationMirror mirror) {
-        explicitParse = true;
         return parseImpl(typeElement, mirror);
     }
 
@@ -729,11 +727,15 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     private boolean isShortCircuit() {
-        return context.getEnvironment().getTypeUtils().isSameType(annotationType, context.getTypes().ShortCircuitOperation);
+        return ElementUtils.typeEquals(annotationType, context.getTypes().ShortCircuitOperation);
     }
 
     private boolean isProxy() {
-        return context.getEnvironment().getTypeUtils().isSameType(annotationType, context.getTypes().OperationProxy_Proxyable);
+        return ElementUtils.typeEquals(annotationType, context.getTypes().OperationProxy_Proxyable);
+    }
+
+    private boolean isOperation() {
+        return ElementUtils.typeEquals(annotationType, context.getTypes().Operation);
     }
 
     private List<AnnotationMirror> createNodeChildAnnotations(CustomOperationModel customOperation, Signature signature) {
@@ -892,12 +894,15 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return null;
         }
 
-        if (result.getTypeSystem().isDefault()) {
-            result.setTypeSystem(parent.typeSystem);
-        } else {
-            if (explicitParse && ElementUtils.typeEquals(result.getTypeSystem().getTemplateType().asType(), parent.typeSystem.getTemplateType().asType())) {
-                customOperation.addSuppressableWarning(TruffleSuppressedWarnings.UNUSED,
-                                "Type type system referenced of this operation equals to the type system reference of the parent bytecode root node. Remove this the operation type system reference to resolve this warning.");
+        TypeSystemData parentTypeSystem = parent.typeSystem;
+        if (parentTypeSystem != null && !parentTypeSystem.isDefault()) {
+            if (result.getTypeSystem().isDefault()) {
+                result.setTypeSystem(parentTypeSystem);
+            } else {
+                if (isOperation() && ElementUtils.typeEquals(result.getTypeSystem().getTemplateType().asType(), parent.typeSystem.getTemplateType().asType())) {
+                    customOperation.addSuppressableWarning(TruffleSuppressedWarnings.UNUSED,
+                                    "Type type system referenced of this operation equals to the type system reference of the parent bytecode root node. Remove this the operation type system reference to resolve this warning.");
+                }
             }
         }
 
