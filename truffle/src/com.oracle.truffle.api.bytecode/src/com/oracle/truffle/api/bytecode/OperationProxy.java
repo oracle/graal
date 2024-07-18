@@ -99,16 +99,11 @@ public @interface OperationProxy {
     }
 
     /**
-     * Automatically assigns instrumentation tags to operations.
-     * <p>
-     * This feature is not yet supported.
-     *
-     * @see GenerateBytecode#enableTagInstrumentation()
-     * @see OperationProxy#tags()
+     * The instrumentation tags that should be implicitly associated with this operation.
      *
      * @since 24.2
+     * @see GenerateBytecode#enableTagInstrumentation()
      */
-    // TODO GR-51945 implement Tags support
     Class<? extends Tag>[] tags() default {};
 
     /**

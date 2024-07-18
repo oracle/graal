@@ -82,13 +82,11 @@ import com.oracle.truffle.api.instrumentation.Tag;
 public @interface Operation {
 
     /**
-     * The instrumentation tags that should always be associated with the given operation.
-     * <p>
-     * This feature is not yet supported.
+     * The instrumentation tags that should be implicitly associated with this operation.
      *
      * @since 24.2
+     * @see GenerateBytecode#enableTagInstrumentation()
      */
-    // TODO GR-51945 implement Tags support
     Class<? extends Tag>[] tags() default {};
 
     /**

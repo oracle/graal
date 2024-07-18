@@ -76,6 +76,7 @@ import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.TagTree;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
@@ -1046,6 +1047,44 @@ public class TagTest extends AbstractInstructionTest {
                         "load.constant",
                         "load.constant",
                         "c.ImplicitExpressionAdd",
+                        "tag.leave",
+                        "return");
+
+        assertEquals(42, node.getCallTarget().call());
+
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x000a, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x000a, 42, ExpressionTag.class));
+
+    }
+
+    @Test
+    public void testImplicitCustomProxyTag() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginReturn();
+            b.beginImplicitExpressionAddProxy();
+            b.emitLoadConstant(20);
+            b.emitLoadConstant(22);
+            b.endImplicitExpressionAddProxy();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(42, node.getCallTarget().call());
+
+        assertInstructions(node,
+                        "load.constant",
+                        "load.constant",
+                        "c.ImplicitExpressionAddProxy",
+                        "return");
+
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build());
+        assertInstructions(node,
+                        "tag.enter",
+                        "load.constant",
+                        "load.constant",
+                        "c.ImplicitExpressionAddProxy",
                         "tag.leave",
                         "return");
 
@@ -2491,6 +2530,7 @@ public class TagTest extends AbstractInstructionTest {
                     enableSerialization = true, //
                     enableYield = true, //
                     boxingEliminationTypes = {int.class})
+    @OperationProxy(value = ExpressionAdd.class, name = "ImplicitExpressionAddProxy", tags = ExpressionTag.class)
     public abstract static class TagInstrumentationTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected TagInstrumentationTestRootNode(TruffleLanguage<?> language,
@@ -2873,7 +2913,7 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @GenerateBytecode(languageClass = NoRootBodyTagTestLanguage.class, //
-                    enableTagInstrumentation = false, enableRootBodyTagging = false)
+                    enableTagInstrumentation = false)
     public abstract static class ErrorImplicitTag1 extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected ErrorImplicitTag1(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -2911,6 +2951,43 @@ public class TagTest extends AbstractInstructionTest {
             }
         }
 
+    }
+
+    @GenerateBytecode(languageClass = NoRootBodyTagTestLanguage.class, //
+                    enableTagInstrumentation = false)
+    @ExpectError("Tag instrumentation is not enabled. The tags attribute can only be used if tag instrumentation is enabled for the parent root node. " +
+                    "Enable tag instrumentation using @GenerateBytecode(... enableTagInstrumentation = true) to resolve this or remove the tags attribute.")
+    @OperationProxy(value = ExpressionAdd.class, tags = ExpressionTag.class)
+    public abstract static class ErrorImplicitTag3 extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected ErrorImplicitTag3(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+    }
+
+    @GenerateBytecode(languageClass = NoRootTagTestLanguage.class, //
+                    enableTagInstrumentation = true, enableRootTagging = false)
+    @ExpectError("Invalid tag 'StatementTag' specified. The tag is not provided by language 'com.oracle.truffle.api.bytecode.test.TagTest.NoRootTagTestLanguage'.")
+    @OperationProxy(value = ExpressionAdd.class, tags = StatementTag.class)
+    public abstract static class ErrorImplicitTag4 extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected ErrorImplicitTag4(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+    }
+
+    @OperationProxy.Proxyable(allowUncached = true)
+    @SuppressWarnings("truffle-inlining")
+    abstract static class ExpressionAdd extends Node {
+
+        public abstract int execute(int a, int b);
+
+        @Specialization
+        public static int doInt(int a, int b) {
+            return a + b;
+        }
     }
 
 }

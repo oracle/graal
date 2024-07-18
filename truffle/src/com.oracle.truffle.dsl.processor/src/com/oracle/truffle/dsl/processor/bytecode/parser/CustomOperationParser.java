@@ -236,19 +236,29 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogExceptional)) {
             validateEpilogExceptionalSignature(customOperation, signature, specializations, signatures);
         } else {
+            assert ElementUtils.typeEqualsAny(mirror.getAnnotationType(), types.Operation, types.OperationProxy);
             List<TypeMirror> tags = ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "tags");
+
+            MessageContainer modelForErrors;
+            if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.OperationProxy)) {
+                // Tag errors should appear on the @OperationProxy annotation, not the proxied node.
+                modelForErrors = parent;
+            } else {
+                assert ElementUtils.typeEquals(mirror.getAnnotationType(), types.Operation);
+                modelForErrors = customOperation;
+            }
             if (!tags.isEmpty()) {
                 AnnotationValue tagsValue = ElementUtils.getAnnotationValue(mirror, "tags");
                 customOperation.implicitTags.addAll(tags);
                 if (!parent.enableTagInstrumentation) {
-                    customOperation.addError(tagsValue,
+                    modelForErrors.addError(mirror, tagsValue,
                                     "Tag instrumentation is not enabled. The tags attribute can only be used if tag instrumentation is enabled for the parent root node. " +
                                                     "Enable tag instrumentation using @%s(... enableTagInstrumentation = true) to resolve this or remove the tags attribute.",
                                     getSimpleName(types.GenerateBytecode));
                 } else {
                     for (TypeMirror tag : tags) {
                         if (!customOperation.bytecode.isTagProvided(tag)) {
-                            customOperation.addError(tagsValue,
+                            modelForErrors.addError(mirror, tagsValue,
                                             "Invalid tag '%s' specified. The tag is not provided by language '%s'.",
                                             getSimpleName(tag),
                                             ElementUtils.getQualifiedName(parent.languageClass));

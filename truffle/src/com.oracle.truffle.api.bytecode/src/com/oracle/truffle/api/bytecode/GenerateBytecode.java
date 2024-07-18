@@ -152,14 +152,14 @@ public @interface GenerateBytecode {
     /**
      * Whether the generated interpreter should support Truffle tag instrumentation. When
      * instrumentation is enabled, the generated builder will define <code>startTag(...)</code> and
-     * <code>endTag()</code> methods that can be used to annotate the bytecode with
+     * <code>endTag(...)</code> methods that can be used to annotate the bytecode with
      * {@link com.oracle.truffle.api.instrumentation.Tag tags}. Truffle tag instrumentation also
      * allows you to specify implicit tagging using {@link Operation#tags()}. If tag instrumentation
      * is enabled all tagged operations will automatically handle and insert {@link ProbeNode
      * probes} from the Truffle instrumentation framework.
      * <p>
-     * Only tags are allowed to be used that are also {@link ProvidedTags provided} by the specified
-     * {@link #languageClass() Truffle language}.
+     * Only tags that are {@link ProvidedTags provided} by the specified {@link #languageClass()
+     * Truffle language} can be used.
      *
      * @see #enableRootTagging() to enable implicit root and root body tagging (default enabled)
      * @see #enableRootBodyTagging() to enable implicit root body tagging (default enabled)
