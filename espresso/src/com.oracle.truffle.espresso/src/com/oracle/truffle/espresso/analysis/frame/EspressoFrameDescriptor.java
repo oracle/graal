@@ -93,6 +93,7 @@ public class EspressoFrameDescriptor {
         assert objects != null && primitives != null;
         assert slotTypes.length == objects.length && slotTypes.length == primitives.length;
         Arrays.fill(objects, StaticObject.NULL);
+        Arrays.fill(primitives, 0);
         for (int slot = 0; slot < slotTypes.length; slot++) {
             importSlot(frame, slot, objects, primitives);
         }

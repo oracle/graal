@@ -44,12 +44,15 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
-@GenerateWrapper
+@GenerateWrapper(yieldExceptions = UnwindContinuationException.class, resumeMethodPrefix = "resumeContinuation")
 @ExportLibrary(NodeLibrary.class)
 abstract class AbstractInstrumentableBytecodeNode extends EspressoInstrumentableNode {
 
     abstract Object execute(VirtualFrame frame);
+
+    abstract Object resumeContinuation(VirtualFrame frame, int bci, int top);
 
     abstract void initializeFrame(VirtualFrame frame);
 
