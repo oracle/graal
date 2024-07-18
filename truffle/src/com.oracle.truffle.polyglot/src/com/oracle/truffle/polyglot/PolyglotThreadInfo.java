@@ -42,8 +42,8 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
-import java.util.BitSet;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -80,6 +80,7 @@ final class PolyglotThreadInfo {
     private volatile int enteredCount;
     private volatile TruffleSafepoint.Interrupter leaveAndEnterInterrupter;
     final LinkedList<Object[]> explicitContextStack = new LinkedList<>();
+    boolean interruptSent;
     volatile boolean cancelled;
     volatile boolean leaveAndEnterInterrupted;
     private Object originalContextClassLoader = NULL_CLASS_LOADER;
