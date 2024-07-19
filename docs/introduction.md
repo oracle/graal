@@ -33,7 +33,7 @@ Check the [licenses](https://github.com/oracle/graal#license) of individual Graa
 
 ## What to Read Next
 
-Start with installing GraalVM by following the [installation guide](getting-started/graalvm-community/get-started-graalvm-community.md).
+Start with installing GraalVM by following the [installation guide](getting-started/get-started.md).
 
 Whether you are new to GraalVM Native Image or have little experience using it, continue to [Getting Started](reference-manual/native-image/README.md).
 
