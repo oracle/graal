@@ -220,20 +220,30 @@ public final class GCImpl implements GC {
         startCollectionOrExit();
 
         timers.resetAllExceptMutator();
+        /* The type of collection will be determined later on. */
+        completeCollection = false;
 
         GCCause cause = GCCause.fromId(data.getCauseId());
         printGCBefore(cause.getName());
 
-        /* Flush all TLAB chunks to eden. */
-        ThreadLocalAllocation.disableAndFlushForAllThreads();
+        Timer collectionTimer = timers.collection.open();
+        try {
+            /* Flush all TLAB chunks to eden. */
+            ThreadLocalAllocation.disableAndFlushForAllThreads();
 
-        verifyBeforeGC();
+            verifyBeforeGC();
 
-        boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
+            boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
+            data.setOutOfMemory(outOfMemory);
+
+            verifyAfterGC();
+        } finally {
+            collectionTimer.close();
+        }
+
+        accounting.updateCollectionCountAndTime(completeCollection, collectionTimer.getMeasuredNanos());
+
         printGCAfter(cause.getName());
-        verifyAfterGC();
-
-
         finishCollection();
         timers.mutator.open();
 
@@ -303,23 +313,19 @@ public final class GCImpl implements GC {
 
     private boolean doCollectOnce(GCCause cause, long requestingNanoTime, boolean complete, boolean followsIncremental) {
         assert !followsIncremental || complete : "An incremental collection cannot be followed by another incremental collection";
+        assert !completeCollection || complete : "After a complete collection, no further incremental collections may happen";
         completeCollection = complete;
 
-        accounting.beforeCollection(completeCollection);
+        accounting.beforeCollectOnce(completeCollection);
         policy.onCollectionBegin(completeCollection, requestingNanoTime);
 
-        Timer collectionTimer = timers.collection.open();
-        try {
-            scavenge(!complete);
-            if (complete) {
-                lastWholeHeapExaminedTimeMillis = System.currentTimeMillis();
-            }
-        } finally {
-            collectionTimer.close();
+        scavenge(!complete);
+        if (complete) {
+            lastWholeHeapExaminedTimeMillis = System.currentTimeMillis();
         }
 
         HeapImpl.getHeapImpl().getAccounting().setEdenAndYoungGenBytes(WordFactory.zero(), accounting.getYoungChunkBytesAfter());
-        accounting.afterCollection(completeCollection, collectionTimer);
+        accounting.afterCollectOnce(completeCollection);
         policy.onCollectionEnd(completeCollection, cause);
 
         GenScavengeMemoryPoolMXBeans.notifyAfterCollection(accounting);

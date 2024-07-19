@@ -125,7 +125,7 @@ public final class GCAccounting {
         return lastIncrementalCollectionOverflowedSurvivors;
     }
 
-    void beforeCollection(boolean completeCollection) {
+    void beforeCollectOnce(boolean completeCollection) {
         Log trace = Log.noopLog().string("[GCImpl.Accounting.beforeCollection:").newline();
         /* Gather some space statistics. */
         HeapImpl heap = HeapImpl.getHeapImpl();
@@ -158,42 +158,16 @@ public final class GCAccounting {
         lastIncrementalCollectionOverflowedSurvivors = true;
     }
 
-    void afterCollection(boolean completeCollection, Timer collectionTimer) {
-        if (completeCollection) {
-            afterCompleteCollection(collectionTimer);
-        } else {
-            afterIncrementalCollection(collectionTimer);
-        }
-    }
-
-    private void afterIncrementalCollection(Timer collectionTimer) {
+    void afterCollectOnce(boolean completeCollection) {
         Log trace = Log.noopLog().string("[GCImpl.Accounting.afterIncrementalCollection:");
-        /*
-         * Aggregating collection information is needed because any given collection policy may not
-         * be called for all collections, but may want to make decisions based on the aggregate
-         * values.
-         */
-        incrementalCollectionCount += 1;
-        afterCollectionCommon();
-        lastIncrementalCollectionPromotedChunkBytes = oldChunkBytesAfter.subtract(oldChunkBytesBefore);
-        incrementalCollectionTotalNanos += collectionTimer.getMeasuredNanos();
         trace.string("  incrementalCollectionCount: ").signed(incrementalCollectionCount)
                         .string("  oldChunkBytesAfter: ").unsigned(oldChunkBytesAfter)
                         .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
         trace.string("]").newline();
-    }
-
-    private void afterCompleteCollection(Timer collectionTimer) {
         Log trace = Log.noopLog().string("[GCImpl.Accounting.afterCompleteCollection:");
-        completeCollectionCount += 1;
-        afterCollectionCommon();
-        completeCollectionTotalNanos += collectionTimer.getMeasuredNanos();
         trace.string("  completeCollectionCount: ").signed(completeCollectionCount)
                         .string("  oldChunkBytesAfter: ").unsigned(oldChunkBytesAfter);
         trace.string("]").newline();
-    }
-
-    private void afterCollectionCommon() {
         HeapImpl heap = HeapImpl.getHeapImpl();
         // This is called after the collection, after the space flip, so OldSpace is FromSpace.
         YoungGeneration youngGen = heap.getYoungGeneration();
@@ -210,6 +184,25 @@ public final class GCAccounting {
             UnsignedWord beforeObjectBytes = youngObjectBytesBefore.add(oldObjectBytesBefore);
             UnsignedWord collectedObjectBytes = beforeObjectBytes.subtract(oldObjectBytesAfter).subtract(youngObjectBytesAfter);
             collectedTotalObjectBytes = collectedTotalObjectBytes.add(collectedObjectBytes);
+        }
+
+        if (!completeCollection) {
+            /*
+             * Aggregating collection information is needed because any given collection policy may
+             * not be called for all collections, but may want to make decisions based on the
+             * aggregate values.
+             */
+            lastIncrementalCollectionPromotedChunkBytes = oldChunkBytesAfter.subtract(oldChunkBytesBefore);
+        }
+    }
+
+    void updateCollectionCountAndTime(boolean completeCollection, long collectionTime) {
+        if (completeCollection) {
+            completeCollectionCount += 1;
+            completeCollectionTotalNanos += collectionTime;
+        } else {
+            incrementalCollectionCount += 1;
+            incrementalCollectionTotalNanos += collectionTime;
         }
     }
 }
