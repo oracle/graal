@@ -220,22 +220,30 @@ public final class GCImpl implements GC {
 
         timers.mutator.closeAt(data.getRequestingNanoTime());
         timers.resetAllExceptMutator();
+        /* The type of collection will be determined later on. */
+        completeCollection = false;
 
         JfrGCHeapSummaryEvent.emit(JfrGCWhen.BEFORE_GC);
         GCCause cause = GCCause.fromId(data.getCauseId());
         printGCBefore(cause);
 
-        ThreadLocalAllocation.disableAndFlushForAllThreads();
-        GenScavengeMemoryPoolMXBeans.notifyBeforeCollection();
-        HeapImpl.getAccounting().notifyBeforeCollection();
+        Timer collectionTimer = timers.collection.open();
+        try {
+            ThreadLocalAllocation.disableAndFlushForAllThreads();
+            GenScavengeMemoryPoolMXBeans.notifyBeforeCollection();
+            HeapImpl.getAccounting().notifyBeforeCollection();
 
-        verifyBeforeGC();
+            verifyBeforeGC();
 
-        boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
-        data.setOutOfMemory(outOfMemory);
+            boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
+            data.setOutOfMemory(outOfMemory);
 
-        verifyAfterGC();
+            verifyAfterGC();
+        } finally {
+            collectionTimer.close();
+        }
 
+        accounting.updateCollectionCountAndTime(completeCollection, collectionTimer.getMeasuredNanos());
         HeapImpl.getAccounting().notifyAfterCollection();
         GenScavengeMemoryPoolMXBeans.notifyAfterCollection();
 
@@ -304,22 +312,18 @@ public final class GCImpl implements GC {
 
     private boolean doCollectOnce(GCCause cause, long requestingNanoTime, boolean complete, boolean followsIncremental) {
         assert !followsIncremental || complete : "An incremental collection cannot be followed by another incremental collection";
+        assert !completeCollection || complete : "After a complete collection, no further incremental collections may happen";
         completeCollection = complete;
 
-        accounting.beforeCollection(completeCollection);
+        accounting.beforeCollectOnce(completeCollection);
         policy.onCollectionBegin(completeCollection, requestingNanoTime);
 
-        Timer collectionTimer = timers.collection.open();
-        try {
-            scavenge(!complete);
-            if (complete) {
-                lastWholeHeapExaminedTimeMillis = System.currentTimeMillis();
-            }
-        } finally {
-            collectionTimer.close();
+        scavenge(!complete);
+        if (complete) {
+            lastWholeHeapExaminedTimeMillis = System.currentTimeMillis();
         }
 
-        accounting.afterCollection(completeCollection, collectionTimer);
+        accounting.afterCollectOnce(completeCollection);
         policy.onCollectionEnd(completeCollection, cause);
 
         UnsignedWord usedBytes = getChunkBytes();

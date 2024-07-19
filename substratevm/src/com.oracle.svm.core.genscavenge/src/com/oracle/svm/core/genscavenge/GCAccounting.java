@@ -118,7 +118,7 @@ public final class GCAccounting {
         return lastIncrementalCollectionOverflowedSurvivors;
     }
 
-    void beforeCollection(boolean completeCollection) {
+    void beforeCollectOnce(boolean completeCollection) {
         /* Gather some space statistics. */
         HeapImpl heap = HeapImpl.getHeapImpl();
         YoungGeneration youngGen = heap.getYoungGeneration();
@@ -148,33 +148,7 @@ public final class GCAccounting {
         lastIncrementalCollectionOverflowedSurvivors = true;
     }
 
-    void afterCollection(boolean completeCollection, Timer collectionTimer) {
-        if (completeCollection) {
-            afterCompleteCollection(collectionTimer);
-        } else {
-            afterIncrementalCollection(collectionTimer);
-        }
-    }
-
-    private void afterIncrementalCollection(Timer collectionTimer) {
-        /*
-         * Aggregating collection information is needed because any given collection policy may not
-         * be called for all collections, but may want to make decisions based on the aggregate
-         * values.
-         */
-        incrementalCollectionCount += 1;
-        afterCollectionCommon();
-        lastIncrementalCollectionPromotedChunkBytes = oldChunkBytesAfter.subtract(oldChunkBytesBefore);
-        incrementalCollectionTotalNanos += collectionTimer.getMeasuredNanos();
-    }
-
-    private void afterCompleteCollection(Timer collectionTimer) {
-        completeCollectionCount += 1;
-        afterCollectionCommon();
-        completeCollectionTotalNanos += collectionTimer.getMeasuredNanos();
-    }
-
-    private void afterCollectionCommon() {
+    void afterCollectOnce(boolean completeCollection) {
         HeapImpl heap = HeapImpl.getHeapImpl();
         YoungGeneration youngGen = heap.getYoungGeneration();
         OldGeneration oldGen = heap.getOldGeneration();
@@ -205,6 +179,25 @@ public final class GCAccounting {
                 UnsignedWord collectedObjectBytes = beforeObjectBytes.subtract(afterObjectBytesAfter);
                 totalCollectedObjectBytes = totalCollectedObjectBytes.add(collectedObjectBytes);
             }
+        }
+
+        if (!completeCollection) {
+            /*
+             * Aggregating collection information is needed because any given collection policy may
+             * not be called for all collections, but may want to make decisions based on the
+             * aggregate values.
+             */
+            lastIncrementalCollectionPromotedChunkBytes = oldChunkBytesAfter.subtract(oldChunkBytesBefore);
+        }
+    }
+
+    void updateCollectionCountAndTime(boolean completeCollection, long collectionTime) {
+        if (completeCollection) {
+            completeCollectionCount += 1;
+            completeCollectionTotalNanos += collectionTime;
+        } else {
+            incrementalCollectionCount += 1;
+            incrementalCollectionTotalNanos += collectionTime;
         }
     }
 }
