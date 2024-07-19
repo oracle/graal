@@ -24,67 +24,36 @@
  */
 package com.oracle.svm.core;
 
-import java.lang.management.PlatformManagedObject;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
+import java.lang.management.MemoryManagerMXBean;
+import java.lang.management.MemoryPoolMXBean;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.code.CodeCacheManagerMXBean;
+import com.oracle.svm.core.code.CodeCachePoolMXBean;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
-import com.oracle.svm.core.util.UserError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
+/**
+ * Keeps track of all GC-related MX beans. The actual implementation of this class is GC-specific.
+ * Note that multiple instances of this class may be in the same image if the image contains more
+ * than one garbage collector.
+ */
 public class GCRelatedMXBeans {
-
-    private final Map<Class<?>, Object> platformManagedObjectsMap = new HashMap<>();
-    private final Set<PlatformManagedObject> platformManagedObjectsSet = Collections.newSetFromMap(new IdentityHashMap<>());
+    protected final ManagementSupport.MXBeans beans = new ManagementSupport.MXBeans();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public GCRelatedMXBeans() {
+        beans.addList(MemoryManagerMXBean.class, List.of(new CodeCacheManagerMXBean()));
+        beans.addList(MemoryPoolMXBean.class, List.of(new CodeCachePoolMXBean.CodeAndDataPool(), new CodeCachePoolMXBean.NativeMetadataPool()));
     }
 
     @Fold
-    public static GCRelatedMXBeans getSingleton() {
-        return ImageSingletons.lookup(GCRelatedMXBeans.class);
+    public static ManagementSupport.MXBeans mxBeans() {
+        return ImageSingletons.lookup(GCRelatedMXBeans.class).beans;
     }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public <T extends PlatformManagedObject> void addPlatformMXBeanSingleton(Class<T> clazz, T object) {
-        if (!clazz.isInterface()) {
-            throw UserError.abort("Key for registration of a PlatformManagedObject must be an interface");
-        }
-        ManagementSupport.doAddPlatformManagedObjectSingleton(platformManagedObjectsMap, platformManagedObjectsSet, clazz, object);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public <T extends PlatformManagedObject> void addPlatformMXBeanList(Class<T> clazz, List<T> objects) {
-        if (!clazz.isInterface()) {
-            throw UserError.abort("Key for registration of a PlatformManagedObject must be an interface");
-        }
-        ManagementSupport.doAddPlatformManagedObjectList(platformManagedObjectsMap, platformManagedObjectsSet, clazz, objects);
-    }
-
-    public Object getPlatformMXBeanObject(Class<? extends PlatformManagedObject> mxbeanInterface) {
-        return platformManagedObjectsMap.get(mxbeanInterface);
-    }
-
-    public boolean contains(PlatformManagedObject object) {
-        return platformManagedObjectsSet.contains(object);
-    }
-
-    public Set<PlatformManagedObject> getPlatformManagedObjectsSet() {
-        return Collections.unmodifiableSet(platformManagedObjectsSet);
-    }
-
-    public Set<Class<?>> getUsedInterfaces() {
-        return platformManagedObjectsMap.keySet();
-    }
-
 }

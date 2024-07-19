@@ -28,7 +28,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -42,12 +41,8 @@ import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
 import com.sun.management.GarbageCollectorMXBean;
 
 public final class GenScavengeRelatedMXBeans extends GCRelatedMXBeans {
-
     @Platforms(Platform.HOSTED_ONLY.class)
-    public GenScavengeRelatedMXBeans() {
-        GenScavengeMemoryPoolMXBeans memoryPoolMXBeans = new GenScavengeMemoryPoolMXBeans();
-        ImageSingletons.add(GenScavengeMemoryPoolMXBeans.class, memoryPoolMXBeans);
-
+    public GenScavengeRelatedMXBeans(GenScavengeMemoryPoolMXBeans memoryPoolMXBeans) {
         List<GarbageCollectorMXBean> garbageCollectors;
         if (SubstrateOptions.useEpsilonGC()) {
             garbageCollectors = List.of(new EpsilonGarbageCollectorMXBean());
@@ -55,10 +50,9 @@ public final class GenScavengeRelatedMXBeans extends GCRelatedMXBeans {
             garbageCollectors = Arrays.asList(new IncrementalGarbageCollectorMXBean(), new CompleteGarbageCollectorMXBean());
         }
 
-        addPlatformMXBeanSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
-        addPlatformMXBeanList(java.lang.management.MemoryPoolMXBean.class, Arrays.asList(memoryPoolMXBeans.getMXBeans()));
-        addPlatformMXBeanList(com.sun.management.GarbageCollectorMXBean.class, garbageCollectors);
-        addPlatformMXBeanList(java.lang.management.BufferPoolMXBean.class, Collections.emptyList());
+        beans.addSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
+        beans.addList(java.lang.management.MemoryPoolMXBean.class, Arrays.asList(memoryPoolMXBeans.getMXBeans()));
+        beans.addList(java.lang.management.BufferPoolMXBean.class, Collections.emptyList());
+        beans.addList(com.sun.management.GarbageCollectorMXBean.class, garbageCollectors);
     }
-
 }

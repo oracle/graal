@@ -47,7 +47,7 @@ final class Target_java_lang_management_ManagementFactory {
     }
 
     @Substitute
-    private static Set<Class<?>> getPlatformManagementInterfaces() {
+    private static Set<Class<? extends PlatformManagedObject>> getPlatformManagementInterfaces() {
         return ManagementSupport.getSingleton().getPlatformManagementInterfaces();
     }
 

@@ -37,6 +37,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapLayouter;
+import com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
@@ -82,7 +83,9 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(RememberedSet.class, rememberedSet);
         ImageSingletons.add(BarrierSetProvider.class, rememberedSet);
 
-        ImageSingletons.add(GCRelatedMXBeans.class, new GenScavengeRelatedMXBeans());
+        GenScavengeMemoryPoolMXBeans memoryPoolMXBeans = new GenScavengeMemoryPoolMXBeans();
+        ImageSingletons.add(GenScavengeMemoryPoolMXBeans.class, memoryPoolMXBeans);
+        ImageSingletons.add(GCRelatedMXBeans.class, new GenScavengeRelatedMXBeans(memoryPoolMXBeans));
     }
 
     @Override

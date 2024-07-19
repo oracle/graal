@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.code;
 
-import java.lang.management.MemoryManagerMXBean;
-import java.lang.management.MemoryPoolMXBean;
 import java.util.Arrays;
 import java.util.List;
 
@@ -35,7 +33,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.GCRelatedMXBeans;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -317,13 +314,6 @@ class CodeInfoFeature implements InternalFeature {
         ImageSingletons.add(RuntimeCodeInfoHistory.class, new RuntimeCodeInfoHistory());
         ImageSingletons.add(RuntimeCodeCache.class, new RuntimeCodeCache());
         ImageSingletons.add(RuntimeCodeInfoMemory.class, new RuntimeCodeInfoMemory());
-
-        List<MemoryManagerMXBean> memoryManagers = List.of(new CodeCacheManagerMXBean());
-        List<MemoryPoolMXBean> memoryPools = CodeCachePoolMXBean.getMemoryPools();
-
-        GCRelatedMXBeans gcRelatedMXBeans = GCRelatedMXBeans.getSingleton();
-        gcRelatedMXBeans.addPlatformMXBeanList(MemoryManagerMXBean.class, memoryManagers);
-        gcRelatedMXBeans.addPlatformMXBeanList(MemoryPoolMXBean.class, memoryPools);
     }
 
     @Override
