@@ -399,7 +399,7 @@ public class Field extends Member<Type> implements FieldRef {
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
 
         if (getDeclaringKlass().getContext().anyHierarchyChanged()) {
-            checkSetValueValifity(value);
+            checkSetValueValidity(value);
         }
         if (isVolatile() || forceVolatile) {
             linkedField.setObjectVolatile(obj, value);
@@ -408,7 +408,7 @@ public class Field extends Member<Type> implements FieldRef {
         }
     }
 
-    protected void checkSetValueValifity(Object value) {
+    protected void checkSetValueValidity(Object value) {
         if (value != StaticObject.NULL && value instanceof StaticObject) {
             Klass klass = null;
             try {
