@@ -32,17 +32,25 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hotspot.GetCompilerConfig;
 import com.oracle.svm.graal.hotspot.GetJNIConfig;
 import com.oracle.svm.hosted.FeatureImpl;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionKey;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -56,7 +64,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.CallTreePrinter;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -179,21 +186,11 @@ public final class GuestGraalFeature implements Feature {
 
         loader = new GuestGraalClassLoader(Options.GuestJavaHome.getValue().resolve(Path.of("lib", "modules")));
 
-        try {
-            buildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.guestgraal.BuildTime");
+        buildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.guestgraal.BuildTime");
 
-            // Guest JVMCI and Graal need access to some JDK internal packages
-            String[] basePackages = {"jdk.internal.misc", "jdk.internal.util"};
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, false, "java.base", basePackages);
-
-            /*
-             * Ensure OptionsParser.cachedOptionDescriptors is initialized with OptionDescriptors
-             * from GuestGraalClassLoader.
-             */
-            mhl.findStatic(buildTimeClass, "configureOptionsParserCachedOptionDescriptors", methodType(void.class)).invoke();
-        } catch (Throwable e) {
-            throw VMError.shouldNotReachHere("Failed to invoke jdk.graal.compiler.hotspot.guestgraal.BuildTime.configureOptionsParserCachedOptionDescriptors", e);
-        }
+        // Guest JVMCI and Graal need access to some JDK internal packages
+        String[] basePackages = {"jdk.internal.misc", "jdk.internal.util"};
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, false, "java.base", basePackages);
 
         try {
             /*
@@ -240,10 +237,86 @@ public final class GuestGraalFeature implements Feature {
         }
 
         DuringSetupAccessImpl accessImpl = (DuringSetupAccessImpl) access;
-
         accessImpl.registerClassReachabilityListener(this::registerPhaseStatistics);
-
+        optionCollector = new OptionCollector(GuestGraal.vmOptionDescriptors);
+        accessImpl.registerObjectReachableCallback(OptionKey.class, optionCollector::doCallback);
+        accessImpl.registerObjectReachableCallback(loader.loadClassOrFail(OptionKey.class.getName()), optionCollector::doCallback);
         GetJNIConfig.register(loader);
+    }
+
+    private OptionCollector optionCollector;
+
+    /**
+     * Collects all options that are reachable at run time. Reachable options are the
+     * {@link OptionKey} instances reached by the static analysis. The VM options are instances of
+     * {@link OptionKey} loaded by the {@link com.oracle.svm.hosted.NativeImageClassLoader} and
+     * compiler options are instances of {@link OptionKey} loaded by the
+     * {@link GuestGraalClassLoader}.
+     */
+    private class OptionCollector implements ObjectReachableCallback<Object> {
+        private final Set<Object> options = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+        /**
+         * Libgraal VM options.
+         */
+        private final EconomicMap<String, OptionDescriptor> vmOptionDescriptors;
+
+        /**
+         * Libgraal compiler options.
+         */
+        private final Object compilerOptionDescriptors;
+
+        private boolean sealed;
+
+        OptionCollector(EconomicMap<String, OptionDescriptor> vmOptionDescriptors) {
+            this.vmOptionDescriptors = vmOptionDescriptors;
+            try {
+                MethodType mt = methodType(Object.class);
+                MethodHandle mh = mhl.findStatic(buildTimeClass, "initLibgraalOptionDescriptors", mt);
+                compilerOptionDescriptors = mh.invoke();
+            } catch (Throwable e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+
+        @Override
+        public void doCallback(DuringAnalysisAccess access, Object option, ObjectScanner.ScanReason reason) {
+            if (sealed) {
+                VMError.guarantee(options.contains(option), "All options must have been discovered during static analysis: %s", option);
+            } else {
+                options.add(option);
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        void afterAnalysis(AfterAnalysisAccess access) {
+            sealed = true;
+            List<Object> compilerOptions = new ArrayList<>(options.size());
+            for (Object option : options) {
+                if (option instanceof OptionKey<?> optionKey) {
+                    OptionDescriptor descriptor = optionKey.getDescriptor();
+                    if (descriptor.isServiceLoaded()) {
+                        VMError.guarantee(access.isReachable(option.getClass()), "%s", option.getClass());
+                        VMError.guarantee(access.isReachable(descriptor.getClass()), "%s", descriptor.getClass());
+                        vmOptionDescriptors.put(optionKey.getName(), descriptor);
+                    }
+                } else {
+                    ClassLoader optionCL = option.getClass().getClassLoader();
+                    VMError.guarantee(optionCL == loader, "unexpected option loader: %s", optionCL);
+                    compilerOptions.add(option);
+                }
+            }
+            try {
+                MethodType mt = methodType(Iterable.class, List.class, Object.class);
+                MethodHandle mh = mhl.findStatic(buildTimeClass, "finalizeLibgraalOptionDescriptors", mt);
+                Iterable<Object> values = (Iterable<Object>) mh.invoke(compilerOptions, compilerOptionDescriptors);
+                for (Object descriptor : values) {
+                    VMError.guarantee(access.isReachable(descriptor.getClass()), "%s", descriptor.getClass());
+                }
+            } catch (Throwable e) {
+                VMError.shouldNotReachHere(e);
+            }
+        }
     }
 
     private record StatisticsCreator(MethodHandle ctorHandle) {
@@ -335,7 +408,7 @@ public final class GuestGraalFeature implements Feature {
             initRuntimeHandles(mhl.findStatic(buildTimeClass, "getRuntimeHandles", methodType(Map.class)));
 
         } catch (Throwable e) {
-            throw VMError.shouldNotReachHere("Failed to invoke jdk.graal.compiler.hotspot.guestgraal.BuildTime methods", e);
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -404,6 +477,7 @@ public final class GuestGraalFeature implements Feature {
         if (!forbiddenReachableTypes.isEmpty()) {
             VMError.shouldNotReachHere("GuestGraal build found forbidden hosted types as reachable: %s", String.join(", ", forbiddenReachableTypes));
         }
+        optionCollector.afterAnalysis(a);
     }
 
     @Override

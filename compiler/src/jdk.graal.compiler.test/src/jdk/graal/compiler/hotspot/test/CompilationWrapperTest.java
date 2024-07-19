@@ -249,7 +249,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         vmArgs.remove("-ea");
         vmArgs.add("-Djdk.graal.DumpPath=" + dumpPath);
         // Force output to a file even if there's a running IGV instance available.
-        vmArgs.add("-Djdk.graal.PrintGraphFile=true");
+        vmArgs.add("-Djdk.graal.PrintGraph=File");
         vmArgs.addAll(extraVmArgs);
 
         Subprocess proc = SubprocessUtil.java(vmArgs, mainClassAndArgs);
