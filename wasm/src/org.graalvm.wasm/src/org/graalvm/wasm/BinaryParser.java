@@ -2102,8 +2102,8 @@ public class BinaryParser extends BinaryStreamParser {
                     state.push(I32_TYPE);
                     state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                     if (calculable) {
-                        int x = (int) stack.removeLast();
-                        int y = (int) stack.removeLast();
+                        int x = (int) stack.remove(stack.size() - 1);
+                        int y = (int) stack.remove(stack.size() - 1);
                         stack.add(switch (opcode) {
                             case Instructions.I32_ADD -> y + x;
                             case Instructions.I32_SUB -> y - x;
@@ -2123,8 +2123,8 @@ public class BinaryParser extends BinaryStreamParser {
                     state.push(I64_TYPE);
                     state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                     if (calculable) {
-                        long x = (long) stack.removeLast();
-                        long y = (long) stack.removeLast();
+                        long x = (long) stack.remove(stack.size() - 1);
+                        long y = (long) stack.remove(stack.size() - 1);
                         stack.add(switch (opcode) {
                             case Instructions.I64_ADD -> y + x;
                             case Instructions.I64_SUB -> y - x;
@@ -2141,7 +2141,7 @@ public class BinaryParser extends BinaryStreamParser {
         assertIntEqual(state.valueStackSize(), 1, "Multiple results on stack at constant expression end", Failure.TYPE_MISMATCH);
         state.exit(multiValue);
         if (calculable) {
-            return Pair.create(stack.removeLast(), null);
+            return Pair.create(stack.remove(stack.size() - 1), null);
         } else {
             return Pair.create(null, bytecode.toArray());
         }
