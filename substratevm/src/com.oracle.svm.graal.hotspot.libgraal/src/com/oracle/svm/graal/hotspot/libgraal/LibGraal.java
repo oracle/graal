@@ -26,9 +26,6 @@ package com.oracle.svm.graal.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
-import java.lang.reflect.Method;
-import java.util.Arrays;
-
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -68,12 +65,6 @@ public final class LibGraal {
         // Initialize JVMCI to ensure JVMCI opens its packages to Graal.
         Services.initializeJVMCI();
     }
-
-    private static final Method unhand = methodOrNull(HotSpotJVMCIRuntime.class, "unhand", sig(Class.class, Long.TYPE));
-    private static final Method attachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "attachCurrentThread", sig(Boolean.TYPE, long[].class), sig(Boolean.TYPE));
-    private static final Method detachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "detachCurrentThread", sig(Boolean.TYPE), sig());
-    private static final Method asResolvedJavaType = methodOrNull(HotSpotJVMCIRuntime.class, "asResolvedJavaType", sig(Long.TYPE));
-    private static final Method getJObjectValue = methodIf(asResolvedJavaType, HotSpotJVMCIRuntime.class, "getJObjectValue", sig(HotSpotObjectConstant.class));
 
     /**
      * Determines if libgraal is available for use.
@@ -122,28 +113,14 @@ public final class LibGraal {
      * @see HotSpotJVMCIRuntime#getJObjectValue(HotSpotObjectConstant)
      */
     public static <T extends PointerBase> T getJObjectValue(HotSpotObjectConstant constant) {
-        if (getJObjectValue == null) {
-            return WordFactory.nullPointer();
-        }
-        try {
-            return WordFactory.pointer((long) getJObjectValue.invoke(runtime(), constant));
-        } catch (Throwable throwable) {
-            throw new InternalError(throwable);
-        }
+        return WordFactory.pointer(runtime().getJObjectValue(constant));
     }
 
     /**
      * @see HotSpotJVMCIRuntime#asResolvedJavaType(long)
      */
     public static HotSpotResolvedJavaType asResolvedJavaType(PointerBase pointer) {
-        if (asResolvedJavaType == null) {
-            return null;
-        }
-        try {
-            return (HotSpotResolvedJavaType) asResolvedJavaType.invoke(runtime(), pointer.rawValue());
-        } catch (Throwable throwable) {
-            throw new InternalError(throwable);
-        }
+        return runtime().asResolvedJavaType(pointer.rawValue());
     }
 
     private static long initializeLibgraal() {
@@ -159,23 +136,12 @@ public final class LibGraal {
      *         thread was already attached
      */
     public static boolean attachCurrentThread(boolean isDaemon, long[] isolate) {
-        try {
-            if (attachCurrentThread.getParameterCount() == 2) {
-                long[] javaVMInfo = isolate != null ? new long[4] : null;
-                boolean res = (boolean) attachCurrentThread.invoke(runtime(), isDaemon, javaVMInfo);
-                if (isolate != null) {
-                    isolate[0] = javaVMInfo[1];
-                }
-                return res;
-            } else {
-                if (isolate != null) {
-                    isolate[0] = initialIsolate;
-                }
-                return (boolean) attachCurrentThread.invoke(runtime(), isDaemon);
-            }
-        } catch (Throwable throwable) {
-            throw new InternalError(throwable);
+        long[] javaVMInfo = isolate != null ? new long[4] : null;
+        boolean res = runtime().attachCurrentThread(isDaemon, javaVMInfo);
+        if (isolate != null) {
+            isolate[0] = javaVMInfo[1];
         }
+        return res;
     }
 
     /**
@@ -189,87 +155,6 @@ public final class LibGraal {
      *         as a result of this call
      */
     public static boolean detachCurrentThread(boolean release) {
-        try {
-            if (detachCurrentThread.getParameterCount() == 1) {
-                return (Boolean) detachCurrentThread.invoke(runtime(), release);
-            } else {
-                detachCurrentThread.invoke(runtime());
-                return false;
-            }
-        } catch (Throwable throwable) {
-            throw new InternalError(throwable);
-        }
+        return runtime().detachCurrentThread(release);
     }
-
-    /**
-     * Convenience function for wrapping varargs into an array for use in calls to
-     * {@link #method(Class, String, Class[][])}.
-     */
-    private static Class<?>[] sig(Class<?>... types) {
-        return types;
-    }
-
-    /**
-     * Gets the method in {@code declaringClass} with the unique name {@code name}.
-     *
-     * @param sigs the signatures the method may have
-     */
-    private static Method method(Class<?> declaringClass, String name, Class<?>[]... sigs) {
-        if (sigs.length == 1 || sigs.length == 0) {
-            try {
-                Class<?>[] sig = sigs.length == 1 ? sigs[0] : new Class<?>[0];
-                return declaringClass.getDeclaredMethod(name, sig);
-            } catch (NoSuchMethodException | SecurityException e) {
-                throw (NoSuchMethodError) new NoSuchMethodError(name).initCause(e);
-            }
-        }
-        Method match = null;
-        for (Method m : declaringClass.getDeclaredMethods()) {
-            if (m.getName().equals(name)) {
-                if (match != null) {
-                    throw new InternalError(String.format("Expected single method named %s, found %s and %s",
-                                    name, match, m));
-                }
-                match = m;
-            }
-        }
-        if (match == null) {
-            throw new NoSuchMethodError("Cannot find method " + name + " in " + declaringClass.getName());
-        }
-        Class<?>[] parameterTypes = match.getParameterTypes();
-        for (Class<?>[] sig : sigs) {
-            if (Arrays.equals(parameterTypes, sig)) {
-                return match;
-            }
-        }
-        throw new NoSuchMethodError(String.format("Unexpected signature for %s: %s", name, Arrays.toString(parameterTypes)));
-    }
-
-    /**
-     * Gets the method in {@code declaringClass} with the unique name {@code name} or {@code null}
-     * if not found.
-     *
-     * @param sigs the signatures the method may have
-     */
-    private static Method methodOrNull(Class<?> declaringClass, String name, Class<?>[]... sigs) {
-        try {
-            return method(declaringClass, name, sigs);
-        } catch (NoSuchMethodError e) {
-            return null;
-        }
-    }
-
-    /**
-     * Gets the method in {@code declaringClass} with the unique name {@code name} or {@code null}
-     * if {@code guard == null}.
-     *
-     * @param sigs the signatures the method may have
-     */
-    private static Method methodIf(Object guard, Class<?> declaringClass, String name, Class<?>[]... sigs) {
-        if (guard == null) {
-            return null;
-        }
-        return method(declaringClass, name, sigs);
-    }
-
 }

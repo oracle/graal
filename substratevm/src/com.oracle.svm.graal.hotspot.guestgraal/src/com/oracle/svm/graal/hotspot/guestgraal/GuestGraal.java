@@ -29,11 +29,23 @@ import java.io.PrintStream;
 import java.lang.invoke.MethodHandle;
 import java.lang.management.ManagementFactory;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.debug.GraalError;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.core.option.XOptions;
+import com.oracle.svm.core.util.VMError;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionDescriptorsMap;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsParser;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JClass;
@@ -70,6 +82,8 @@ final class GuestGraal {
     private final MethodHandle getSavedProperty;
     private final MethodHandle ttyPrintf;
     private final MethodHandle compileMethod;
+    private final MethodHandle attachCurrentThread;
+    private final MethodHandle detachCurrentThread;
 
     /**
      * Returns the {@link GuestGraal} instance registered in the {@link ImageSingletons}.
@@ -83,6 +97,8 @@ final class GuestGraal {
         this.getSavedProperty = handles.get("getSavedProperty");
         this.ttyPrintf = handles.get("ttyPrintf");
         this.compileMethod = handles.get("compileMethod");
+        this.attachCurrentThread = handles.get("attachCurrentThread");
+        this.detachCurrentThread = handles.get("detachCurrentThread");
     }
 
     /**
@@ -95,7 +111,7 @@ final class GuestGraal {
         } catch (RuntimeException | Error e) {
             throw e;
         } catch (Throwable e) {
-            throw new GraalError(e);
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -108,7 +124,27 @@ final class GuestGraal {
         } catch (RuntimeException | Error e) {
             throw e;
         } catch (Throwable e) {
-            throw new GraalError(e);
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    static boolean attachCurrentThread(boolean daemon, long[] isolate) {
+        try {
+            return (boolean) singleton().attachCurrentThread.invoke(daemon, isolate);
+        } catch (RuntimeException | Error e) {
+            throw e;
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    static boolean detachCurrentThread(boolean release) {
+        try {
+            return (boolean) singleton().detachCurrentThread.invoke(release);
+        } catch (RuntimeException | Error e) {
+            throw e;
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -121,7 +157,7 @@ final class GuestGraal {
         } catch (RuntimeException | Error e) {
             throw e;
         } catch (Throwable e) {
-            throw new GraalError(e);
+            throw VMError.shouldNotReachHere(e);
         }
     }
 
@@ -232,6 +268,47 @@ final class GuestGraal {
         synchronized (GuestGraalJVMCISubstitutions.Target_jdk_vm_ci_hotspot_Cleaner.class) {
             GuestGraalJVMCISubstitutions.Target_jdk_vm_ci_hotspot_Cleaner.clean();
         }
+    }
+
+    /**
+     * Options configuring the VM in which libgraal is running.
+     */
+    @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl") //
+    static EconomicMap<String, OptionDescriptor> vmOptionDescriptors = EconomicMap.create();
+
+    static void initializeOptions(Map<String, String> settings) {
+        EconomicMap<String, String> nonXSettings = processXOptions(settings);
+        EconomicMap<OptionKey<?>, Object> vmOptionValues = OptionValues.newOptionMap();
+        Iterable<OptionDescriptors> vmOptionLoader = List.of(new OptionDescriptorsMap(vmOptionDescriptors));
+        OptionsParser.parseOptions(nonXSettings, vmOptionValues, vmOptionLoader);
+        RuntimeOptionValues.singleton().update(vmOptionValues);
+    }
+
+    /**
+     * Extracts and processes the {@link XOptions} in {@code settings}.
+     *
+     * @return the entries in {@code settings} that do not correspond to {@link XOptions}
+     */
+    private static EconomicMap<String, String> processXOptions(Map<String, String> settings) {
+        EconomicMap<String, String> nonXSettings = EconomicMap.create(settings.size());
+        for (var e : settings.entrySet()) {
+            String key = e.getKey();
+            String value = e.getValue();
+            if (key.startsWith("X") && value.isEmpty()) {
+                String xarg = key.substring(1);
+                if (XOptions.setOption(xarg)) {
+                    continue;
+                }
+            }
+            nonXSettings.put(key, value);
+        }
+        return nonXSettings;
+    }
+
+    static void printOptions(PrintStream out, String prefix) {
+        RuntimeOptionValues vmOptions = RuntimeOptionValues.singleton();
+        Iterable<OptionDescriptors> vmOptionLoader = Collections.singletonList(new OptionDescriptorsMap(vmOptionDescriptors));
+        vmOptions.printHelp(vmOptionLoader, out, prefix, true);
     }
 }
 

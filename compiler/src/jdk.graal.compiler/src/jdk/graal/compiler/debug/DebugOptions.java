@@ -33,8 +33,6 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import org.graalvm.collections.EconomicMap;
-
 import jdk.graal.compiler.options.EnumMultiOptionKey;
 import jdk.graal.compiler.options.EnumOptionKey;
 import jdk.graal.compiler.options.Option;
@@ -176,23 +174,6 @@ public class DebugOptions {
     @Option(help = "Dump a graph even if it has not changed since it was last dumped.  " +
             "Change detection is based on adding and deleting nodes or changing inputs.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintUnmodifiedGraphs = new OptionKey<>(true);
-
-    @Option(help = "Setting to true sets PrintGraph=file, setting to false sets PrintGraph=network", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<>(true) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            PrintGraphTarget v = PrintGraph.getValueOrDefault(values);
-            if (newValue.booleanValue()) {
-                if (v != PrintGraphTarget.File) {
-                    PrintGraph.update(values, PrintGraphTarget.File);
-                }
-            } else {
-                if (v != PrintGraphTarget.Network) {
-                    PrintGraph.update(values, PrintGraphTarget.Network);
-                }
-            }
-        }
-    };
 
     @Option(help = "Host part of the address to which graphs are dumped.", type = OptionType.Debug)
     public static final OptionKey<String> PrintGraphHost = new OptionKey<>("127.0.0.1");
