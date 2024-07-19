@@ -2463,12 +2463,6 @@ public class SnippetTemplate {
                 anchorDuplicate = replaceeGraph.add(new MemoryAnchorNode(info.privateLocations));
                 replacements.put(memoryAnchor, anchorDuplicate);
             }
-            List<Node> floatingNodes = new ArrayList<>(nodes.size() - 2);
-            for (Node n : nodes) {
-                if (n != entryPointNode && n != returnNode) {
-                    floatingNodes.add(n);
-                }
-            }
             UnmodifiableEconomicMap<Node, Node> duplicates = inlineSnippet(replacee, debug, replaceeGraph, replacements);
 
             // floating nodes are not state-splits not need to re-wire frame states
@@ -2481,6 +2475,10 @@ public class SnippetTemplate {
             // Replace all usages of the replacee with the value returned by the snippet
             ValueNode returnValue = (ValueNode) duplicates.get(returnNode.result());
             replacer.replace(replacee, returnValue);
+            Node returnNodeDuplicate = duplicates.get(returnNode);
+            if (returnNodeDuplicate.isAlive()) {
+                returnNodeDuplicate.safeDelete();
+            }
 
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
         } catch (Throwable e) {

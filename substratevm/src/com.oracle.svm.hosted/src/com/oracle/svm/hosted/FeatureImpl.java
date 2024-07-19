@@ -55,6 +55,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -630,6 +631,10 @@ public class FeatureImpl {
 
         public Collection<? extends SharedMethod> getMethods() {
             return hUniverse.getMethods();
+        }
+
+        public ImageHeapScanner getHeapScanner() {
+            return aUniverse.getHeapScanner();
         }
     }
 
