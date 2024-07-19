@@ -29,8 +29,6 @@ import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,6 +40,8 @@ import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.util.VMError;
+
+import sun.net.www.ParseUtil;
 
 public class ResourcesUtils {
 
@@ -87,7 +87,7 @@ public class ResourcesUtils {
                 }
 
                 /* we are using decoded path to be resilient to spaces */
-                String decodedString = URLDecoder.decode(fullResourcePath, StandardCharsets.UTF_8);
+                String decodedString = ParseUtil.decode(fullResourcePath);
                 return jf.getEntry(decodedString).isDirectory();
             }
         } else {
