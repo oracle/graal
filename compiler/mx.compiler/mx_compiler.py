@@ -307,14 +307,15 @@ def ctw(args, extraVMarguments=None):
         # To be able to load all classes in the JRT with Class.forName,
         # all JDK modules need to be made root modules.
         limitmods = frozenset(args.limitmods.split(',')) if args.limitmods else None
-        nonBootJDKModules = [m.name for m in jdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
+        graaljdk = get_graaljdk()
+        nonBootJDKModules = [m.name for m in graaljdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
         if nonBootJDKModules:
             vmargs.append('--add-modules=' + ','.join(nonBootJDKModules))
         if args.limitmods:
             vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
         if cp is not None:
             vmargs.append('-DCompileTheWorld.Classpath=' + cp)
-        cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=jdk))
+        cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=graaljdk))
         vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
         mainClassAndArgs = ['jdk.graal.compiler.hotspot.test.CompileTheWorld']
 
