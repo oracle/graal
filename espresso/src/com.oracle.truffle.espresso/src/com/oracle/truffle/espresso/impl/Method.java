@@ -29,10 +29,13 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FORCE_INLINE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SCOPED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNTHETIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
@@ -60,7 +63,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.analysis.frame.FrameAnalysis;
@@ -99,6 +101,7 @@ import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.AbstractLookupNode;
+import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode.MethodHandleInvoker;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -128,9 +131,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private final Method proxy;
     private String genericSignature;
 
-    // always null unless the raw signature exposed for this method should be
-    // different from the one in the linkedKlass
     private final Symbol<Signature> rawSignature;
+    private final int rawFlags;
 
     // the parts of the method that can change when it's redefined
     // are encapsulated within the methodVersion
@@ -148,6 +150,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private Method(Method method, CodeAttribute split) {
         this.rawSignature = method.rawSignature;
+        this.rawFlags = method.rawFlags;
         this.declaringKlass = method.declaringKlass;
         this.methodVersion = new MethodVersion(method.getMethodVersion().klassVersion, method.getRuntimeConstantPool(), method.getLinkedMethod(),
                         method.getMethodVersion().poisonPill, split);
@@ -166,12 +169,13 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     Method(ObjectKlass.KlassVersion klassVersion, LinkedMethod linkedMethod, RuntimeConstantPool pool) {
-        this(klassVersion, linkedMethod, linkedMethod.getRawSignature(), pool);
+        this(klassVersion, linkedMethod, linkedMethod.getRawSignature(), pool, linkedMethod.getFlags());
     }
 
-    Method(ObjectKlass.KlassVersion klassVersion, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
+    Method(ObjectKlass.KlassVersion klassVersion, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool, int rawFlags) {
         this.declaringKlass = klassVersion.getKlass();
         this.rawSignature = rawSignature;
+        this.rawFlags = rawFlags;
         this.methodVersion = new MethodVersion(klassVersion, pool, linkedMethod, false, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
 
         try {
@@ -522,7 +526,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @Override
     public int getModifiers() {
-        return getMethodVersion().getModifiers();
+        return rawFlags;
     }
 
     public boolean isCallerSensitive() {
@@ -813,12 +817,23 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // Spawns a placeholder method for MH intrinsics
     public Method createIntrinsic(Symbol<Signature> polymorphicRawSignature) {
         assert isPolySignatureIntrinsic();
-        return new Method(declaringKlass.getKlassVersion(), getLinkedMethod(), polymorphicRawSignature, getRuntimeConstantPool());
+        int flags;
+        MethodHandleIntrinsics.PolySigIntrinsics iid = MethodHandleIntrinsics.getId(this);
+        if (iid == MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric) {
+            flags = getModifiers() & ~ACC_VARARGS;
+        } else {
+            flags = ACC_NATIVE | ACC_SYNTHETIC | ACC_FINAL;
+            if (iid.isStaticPolymorphicSignature()) {
+                flags |= ACC_STATIC;
+            }
+        }
+        assert Modifier.isNative(flags);
+        return new Method(declaringKlass.getKlassVersion(), getLinkedMethod(), polymorphicRawSignature, getRuntimeConstantPool(), flags);
     }
 
-    public MethodHandleIntrinsicNode spawnIntrinsicNode(EspressoLanguage language, Meta meta, ObjectKlass accessingKlass, Symbol<Name> mname, Symbol<Signature> signature) {
+    public MethodHandleIntrinsicNode spawnIntrinsicNode(MethodHandleInvoker invoker) {
         assert isPolySignatureIntrinsic();
-        return MethodHandleIntrinsics.createIntrinsicNode(language, meta, this, accessingKlass, mname, signature);
+        return MethodHandleIntrinsics.createIntrinsicNode(getMeta(), this, invoker);
     }
 
     public Method forceSplit() {
@@ -1543,7 +1558,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public int getModifiers() {
-            return linkedMethod.getFlags();
+            return getMethod().getModifiers();
         }
 
         @Override
