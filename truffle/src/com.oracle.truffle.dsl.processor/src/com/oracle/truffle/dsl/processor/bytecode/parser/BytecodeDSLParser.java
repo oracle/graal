@@ -373,6 +373,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         // Detect method implementations that will be overridden by the generated class.
         List<ExecutableElement> overrides = List.of(
                         ElementUtils.findMethod(types.RootNode, "execute"),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "getBytecodeNode"),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "getRootNodes"),
                         ElementUtils.findMethod(types.BytecodeOSRNode, "executeOSR"),
                         ElementUtils.findMethod(types.BytecodeOSRNode, "getOSRMetadata"),
                         ElementUtils.findMethod(types.BytecodeOSRNode, "setOSRMetadata"),

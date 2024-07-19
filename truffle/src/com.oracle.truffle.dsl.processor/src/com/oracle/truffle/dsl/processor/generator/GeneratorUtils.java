@@ -415,18 +415,11 @@ public class GeneratorUtils {
     }
 
     public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName) {
-        return overrideImplement(type, methodName, -1);
+        return overrideImplement(type, methodName, (TypeMirror[]) null);
     }
 
-    public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName, int parameterCount) {
-        TypeElement typeElement = (TypeElement) type.asElement();
-
-        ExecutableElement method;
-        if (parameterCount >= 0) {
-            method = ElementUtils.findMethod(type, methodName, parameterCount);
-        } else {
-            method = ElementUtils.findInstanceMethod(typeElement, methodName);
-        }
+    public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName, TypeMirror... parameterTypes) {
+        ExecutableElement method = ElementUtils.findInstanceMethod((TypeElement) type.asElement(), methodName, parameterTypes);
         if (method == null) {
             return null;
         }

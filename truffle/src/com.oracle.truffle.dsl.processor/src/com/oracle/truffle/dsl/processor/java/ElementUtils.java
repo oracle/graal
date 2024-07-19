@@ -133,6 +133,30 @@ public class ElementUtils {
         return null;
     }
 
+    public static ExecutableElement findInstanceMethod(TypeElement typeElement, String methodName, TypeMirror... parameterTypes) {
+        outer: for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
+            if (!method.getSimpleName().toString().equals(methodName)) {
+                continue;
+            }
+            if (method.getModifiers().contains(STATIC)) {
+                continue;
+            }
+            if (parameterTypes != null) {
+                List<? extends VariableElement> params = method.getParameters();
+                if (parameterTypes.length != params.size()) {
+                    continue;
+                }
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    if (!ElementUtils.typeEquals(parameterTypes[i], params.get(i).asType())) {
+                        continue outer;
+                    }
+                }
+            }
+            return method;
+        }
+        return null;
+    }
+
     public static List<ExecutableElement> findAllPublicMethods(DeclaredType type, String methodName) {
         ProcessorContext context = ProcessorContext.getInstance();
         List<ExecutableElement> methods = new ArrayList<>();

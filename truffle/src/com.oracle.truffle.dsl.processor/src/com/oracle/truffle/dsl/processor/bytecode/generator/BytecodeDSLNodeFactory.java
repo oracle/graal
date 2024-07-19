@@ -476,8 +476,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private Element createIsCaptureFramesForTrace() {
-        ExecutableElement method = ElementUtils.getDeclaredMethod(ElementUtils.castTypeElement(types.RootNode), "isCaptureFramesForTrace", new TypeMirror[]{type(boolean.class)});
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(method);
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "isCaptureFramesForTrace", type(boolean.class));
         ex.renameArguments("compiled");
         CodeTreeBuilder b = ex.createBuilder();
         if (model.storeBciInFrame) {
@@ -489,7 +488,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private Element createFindBytecodeIndex() {
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "findBytecodeIndex", 2);
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "findBytecodeIndex", types.Node, types.Frame);
         ex.renameArguments("node", "frame");
         mergeSuppressWarnings(ex, "hiding");
         CodeTreeBuilder b = ex.createBuilder();
@@ -524,7 +523,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createResolveInstrumentableCallNode() {
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "resolveInstrumentableCallNode", 1);
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "resolveInstrumentableCallNode", types.FrameInstance);
         ex.renameArguments("frame");
         ex.getModifiers().remove(Modifier.ABSTRACT);
         ex.getModifiers().add(Modifier.FINAL);
@@ -902,7 +901,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createExecute() {
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "execute");
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "execute");
         ex.renameArguments("frame");
 
         CodeTreeBuilder b = ex.createBuilder();
@@ -922,12 +921,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createTranslateStackTraceElement() {
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) model.getTemplateType().asType(), "translateStackTraceElement");
-        if (ex == null) {
-            ex = GeneratorUtils.overrideImplement(types.RootNode, "translateStackTraceElement");
-        }
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "translateStackTraceElement");
         if (ex.getModifiers().contains(Modifier.FINAL)) {
-            // already overriden by the root node.
+            // already overridden by the root node.
             return null;
         }
         ex.renameArguments("stackTraceElement");
@@ -1545,7 +1541,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createIsInstrumentable() {
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "isInstrumentable");
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "isInstrumentable");
         CodeTreeBuilder b = ex.createBuilder();
         if (model.enableTagInstrumentation) {
             b.statement("return true");
@@ -1559,7 +1555,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         if (!model.enableTagInstrumentation) {
             return null;
         }
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "prepareForInstrumentation");
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "prepareForInstrumentation");
         ex.renameArguments("materializedTags");
         GeneratorUtils.mergeSuppressWarnings(ex, "unchecked");
         CodeTreeBuilder b = ex.createBuilder();
@@ -1601,17 +1597,61 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return ex;
     }
 
+    /**
+     * The template class may directly (or indirectly, through a parent) widen the visibility of a
+     * RootNode method. Our override must be at least as visible.
+     *
+     * BytecodeRootNode methods are not an issue, because interface methods are all public.)
+     */
+    private static CodeExecutableElement overrideImplementRootNodeMethod(BytecodeDSLModel model, String name, TypeMirror... parameterTypes) {
+        TruffleTypes types = model.getContext().getTypes();
+
+        CodeExecutableElement result = GeneratorUtils.overrideImplement(types.RootNode, name, parameterTypes);
+
+        // If the RootNode method is already public, nothing to do.
+        if (ElementUtils.getVisibility(result.getModifiers()) == Modifier.PUBLIC) {
+            return result;
+        }
+
+        // Otherwise, in order to override it in user code, it must be protected. The only widening
+        // we need to worry about is from protected -> public.
+        assert ElementUtils.getVisibility(result.getModifiers()) == Modifier.PROTECTED;
+
+        ExecutableElement override = ElementUtils.findInstanceMethod(model.templateType, name, parameterTypes);
+        if (override != null && ElementUtils.getVisibility(override.getModifiers()) == Modifier.PUBLIC) {
+            result.setVisibility(Modifier.PUBLIC);
+            return result;
+        }
+
+        for (TypeElement parent : ElementUtils.getSuperTypes(model.templateType)) {
+            override = ElementUtils.findInstanceMethod(parent, name, parameterTypes);
+            if (override == null) {
+                continue;
+            }
+            if (ElementUtils.getVisibility(override.getModifiers()) == Modifier.PUBLIC) {
+                result.setVisibility(Modifier.PUBLIC);
+                return result;
+            }
+        }
+
+        return result;
+    }
+
+    private static CodeExecutableElement overrideImplementRootNodeMethod(BytecodeDSLModel model, String name) {
+        return overrideImplementRootNodeMethod(model, name, (TypeMirror[]) null);
+    }
+
+    /**
+     * In order to compile properly, SerializationRootNode must implement any abstract methods of
+     * the template class. Assuming the generated root node compiles properly, it must implement
+     * these same methods, and we can ensure SerializationRootNode will compile by creating stubs
+     * for each of the generated root node's public/protected instance methods.
+     *
+     * (Typically, the only abstract method is BytecodeRootNode#execute, but the template class
+     * *could* declare other abstract methods that are coincidentally implemented by the generated
+     * root node, like getSourceSection).
+     */
     private void addMethodStubsToSerializationRootNode() {
-        /**
-         * In order to compile properly, SerializationRootNode must implement any abstract methods
-         * of the template class. Assuming the generated root node compiles properly, it must
-         * implement these same methods, and we can ensure SerializationRootNode will compile by
-         * creating stubs for each of the generated root node's public/protected instance methods.
-         *
-         * (Typically, the only abstract method is BytecodeRootNode#execute, but the template class
-         * *could* declare other abstract methods that are coincidentally implemented by the
-         * generated root node, like getSourceSection).
-         */
         for (ExecutableElement method : ElementUtils.getOverridableMethods(bytecodeNodeGen)) {
             CodeExecutableElement stub = CodeExecutableElement.cloneNoAnnotations(method);
             addOverride(stub);
@@ -4502,8 +4542,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     String index = operation.getOperationBeginArgumentName(0);
                     String length = operation.getOperationBeginArgumentName(1);
 
-                    b.startAssert().string("(", index, " == -1 && ", length, " == -1) || (", index, " >= 0 && ", length, ">= 0 && ", index, " + ", length,
-                                    " <= sources.get(foundSourceIndex).getLength())").end();
+                    // Negative values are only permitted for the combination (-1, -1).
+                    b.startAssert().string("(", index, " == -1 && ", length, " == -1) || (", index, " >= 0 && ", length, " >= 0)").end();
 
                     b.declaration(type(int.class), "startBci");
                     b.startIf().string("rootOperationSp == -1").end().startBlock();
@@ -7840,7 +7880,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createGet() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "get", 1);
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "get", type(int.class));
             ex.setReturnType(types.ExceptionHandler);
             ex.renameArguments("index");
             CodeTreeBuilder b = ex.createBuilder();
@@ -7926,7 +7966,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createGet() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "get", 1);
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "get", type(int.class));
             ex.setReturnType(types.SourceInformation);
             ex.renameArguments("index");
             CodeTreeBuilder b = ex.createBuilder();
@@ -8219,7 +8259,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createGet() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "get", 1);
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "get", type(int.class));
             ex.setReturnType(types.LocalVariable);
             ex.renameArguments("index");
             CodeTreeBuilder b = ex.createBuilder();
@@ -9956,7 +9996,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createFindBytecodeIndex2() {
             // override to make method visible
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findBytecodeIndex", 2);
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findBytecodeIndex", types.Frame, types.Node);
             ex.getModifiers().add(ABSTRACT);
             return ex;
         }
@@ -10473,7 +10513,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createFindSourceLocation() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocation", 1);
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocation", type(int.class));
             ex.getModifiers().add(FINAL);
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
@@ -10495,7 +10535,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createFindSourceLocations() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocations", 1);
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocations", type(int.class));
             ex.getModifiers().add(FINAL);
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
@@ -10748,7 +10788,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createFindBytecodeIndex1() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findBytecodeIndex", 1);
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findBytecodeIndex", types.FrameInstance);
             ex.renameArguments("frameInstance");
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -10799,7 +10839,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createFindBytecodeIndex2() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findBytecodeIndex", 2);
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findBytecodeIndex", types.Frame, types.Node);
             ex.renameArguments("frame", "node");
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -14689,7 +14729,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createExecute() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "execute");
+            CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "execute");
             CodeTreeBuilder b = ex.createBuilder();
             emitThrowNotImplemented(b);
             return ex;
@@ -14762,6 +14802,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private final class BuilderFactory {
             private CodeTypeElement create() {
                 builder.setEnclosingElement(bytecodeNodeGen);
+                builder.setSuperClass(types.BytecodeBuilder);
                 mergeSuppressWarnings(builder, "all");
 
                 builder.add(createMethodStub("createLocal", types.BytecodeLocal));
