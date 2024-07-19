@@ -1833,7 +1833,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         result.recordMark(asm.position(), PROLOGUE_END);
         byte[] instructions = asm.close(true);
         result.setTargetCode(instructions, instructions.length);
-        result.setTotalFrameSize(getTarget().stackAlignment); // not really, but 0 not allowed
+        result.setTotalFrameSize(FrameAccess.returnAddressSize());
         return result;
     }
 
