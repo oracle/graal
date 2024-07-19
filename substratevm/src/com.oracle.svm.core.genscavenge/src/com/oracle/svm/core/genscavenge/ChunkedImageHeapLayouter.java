@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.AlignedChunk;
@@ -84,7 +85,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         this.partitions[READ_ONLY_RELOCATABLE] = new ChunkedImageHeapPartition("readOnlyRelocatable", false, false, alignment, alignment);
         this.partitions[WRITABLE_REGULAR] = new ChunkedImageHeapPartition("writable", true, false, alignment, alignment);
         this.partitions[WRITABLE_HUGE] = new ChunkedImageHeapPartition("writableHuge", true, true, alignment, alignment);
-        this.partitions[READ_ONLY_HUGE] = new ChunkedImageHeapPartition("readOnlyHuge", false, true, alignment, alignment);
+        this.partitions[READ_ONLY_HUGE] = new ChunkedImageHeapPartition("readOnlyHuge", false, true, alignment, SubstrateOptions.getPageSize());
 
         this.heapInfo = heapInfo;
         this.startOffset = startOffset;
@@ -140,6 +141,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
             assert partition.getStartOffset() % partition.getStartAlignment() == 0 : partition;
             assert (partition.getStartOffset() + partition.getSize()) % partition.getEndAlignment() == 0 : partition;
         }
+        assert layoutInfo.getImageHeapSize() % pageSize == 0 : "Image heap size is not a multiple of page size";
         return layoutInfo;
     }
 
