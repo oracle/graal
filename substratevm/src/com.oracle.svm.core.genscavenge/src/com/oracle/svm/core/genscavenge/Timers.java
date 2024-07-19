@@ -144,8 +144,6 @@ final class Timers {
     }
 
     void resetAllExceptMutator() {
-        Log trace = Log.noopLog();
-        trace.string("[Timers.resetAllExceptMutator:");
         verifyBefore.reset();
         collection.reset();
         rootScan.reset();
@@ -176,7 +174,6 @@ final class Timers {
         releaseSpaces.reset();
         verifyAfter.reset();
         /* The mutator timer is *not* reset here. */
-        trace.string("]").newline();
     }
 
     void logAfterCollection(Log log) {
