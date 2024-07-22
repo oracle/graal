@@ -240,12 +240,12 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     /**
      * Signature of an unsafe {@link System#arraycopy} stub.
      *
-     * The signature is equivalent to {@link sun.misc.Unsafe#copyMemory(long, long, long)}. For the
-     * semantics refer to {@link sun.misc.Unsafe#copyMemory(Object, long, Object, long, long)}.
+     * The signature is equivalent to {@link jdk.internal.misc.Unsafe#copyMemory(long, long, long)}.
+     * For the semantics refer to
+     * {@link jdk.internal.misc.Unsafe#copyMemory(Object, long, Object, long, long)}.
      *
-     * @see sun.misc.Unsafe#copyMemory
+     * @see jdk.internal.misc.Unsafe#copyMemory
      */
-    @SuppressWarnings("javadoc") //
     public static final ForeignCallSignature UNSAFE_ARRAYCOPY = new ForeignCallSignature("unsafe_arraycopy", void.class, Word.class, Word.class, Word.class);
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -162,7 +162,7 @@ public class SubWordArrayStoreTest extends CustomizedBytecodePatternTest {
             snippet.visitFieldInsn(GETSTATIC, internalClassName, fieldName, fieldDescriptor);
             snippet.visitLdcInsn(arrayBaseOffset(kind));
             snippet.visitLdcInsn(value);
-            snippet.visitMethodInsn(INVOKEVIRTUAL, "sun/misc/Unsafe", "put" + SubWordTestUtil.getUnsafePutMethodName(kind), "(Ljava/lang/Object;J" + kind.getTypeChar() + ")V", false);
+            snippet.visitMethodInsn(INVOKEVIRTUAL, "jdk/internal/misc/Unsafe", "put" + SubWordTestUtil.getUnsafePutMethodName(kind), "(Ljava/lang/Object;J" + kind.getTypeChar() + ")V", false);
         } else {
             snippet.visitFieldInsn(GETSTATIC, internalClassName, fieldName, fieldDescriptor);
             snippet.visitInsn(ICONST_0);
@@ -174,7 +174,7 @@ public class SubWordArrayStoreTest extends CustomizedBytecodePatternTest {
             SubWordTestUtil.getUnsafe(snippet);
             snippet.visitFieldInsn(GETSTATIC, internalClassName, fieldName, fieldDescriptor);
             snippet.visitLdcInsn(arrayBaseOffset(kind));
-            snippet.visitMethodInsn(INVOKEVIRTUAL, "sun/misc/Unsafe", "get" + SubWordTestUtil.getUnsafePutMethodName(kind), "(Ljava/lang/Object;J)" + kind.getTypeChar(), false);
+            snippet.visitMethodInsn(INVOKEVIRTUAL, "jdk/internal/misc/Unsafe", "get" + SubWordTestUtil.getUnsafePutMethodName(kind), "(Ljava/lang/Object;J)" + kind.getTypeChar(), false);
         } else {
             snippet.visitFieldInsn(GETSTATIC, internalClassName, fieldName, fieldDescriptor);
             snippet.visitInsn(ICONST_0);

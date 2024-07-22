@@ -56,8 +56,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.FieldIntrospection;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Support for deep copying an object across processes by {@linkplain #encode encoding} it to a
@@ -398,7 +397,7 @@ public class ObjectCopier {
         }
     }
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     final Map<Class<?>, ClassInfo> classInfos = new HashMap<>();
     final Map<Class<?>, Builtin> builtinClasses = new HashMap<>();

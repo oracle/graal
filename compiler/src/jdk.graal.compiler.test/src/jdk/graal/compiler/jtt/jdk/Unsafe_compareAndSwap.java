@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.jtt.jdk;
 
-import jdk.graal.compiler.jtt.JTTTest;
 import org.junit.Test;
 
+import jdk.graal.compiler.jtt.JTTTest;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class Unsafe_compareAndSwap extends JTTTest {
@@ -34,7 +34,7 @@ public class Unsafe_compareAndSwap extends JTTTest {
     static final long valueOffset;
     static {
         try {
-            valueOffset = getObjectFieldOffset(Unsafe_compareAndSwap.class.getDeclaredField("value"));
+            valueOffset = UNSAFE.objectFieldOffset(Unsafe_compareAndSwap.class.getDeclaredField("value"));
         } catch (Exception ex) {
             throw new Error(ex);
         }
@@ -42,9 +42,9 @@ public class Unsafe_compareAndSwap extends JTTTest {
 
     public static String test(Unsafe_compareAndSwap u, Object o, String expected, String newValue) {
         // First arg is not an array - can use a field write barrier
-        UNSAFE.compareAndSwapObject(u, valueOffset, expected, newValue);
+        UNSAFE.compareAndSetReference(u, valueOffset, expected, newValue);
         // Not known if first arg is an array - different write barrier may be used
-        UNSAFE.compareAndSwapObject(o, valueOffset, expected, newValue);
+        UNSAFE.compareAndSetReference(o, valueOffset, expected, newValue);
 
         return instance.value;
     }

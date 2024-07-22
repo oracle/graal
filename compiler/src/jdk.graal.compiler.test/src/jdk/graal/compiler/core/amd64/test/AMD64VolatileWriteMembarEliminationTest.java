@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,13 +26,13 @@ package jdk.graal.compiler.core.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
 
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.memory.WriteNode;
-import org.junit.Before;
-import org.junit.Test;
-
 import jdk.vm.ci.amd64.AMD64;
 
 public class AMD64VolatileWriteMembarEliminationTest extends GraalCompilerTest {
@@ -55,9 +55,9 @@ public class AMD64VolatileWriteMembarEliminationTest extends GraalCompilerTest {
 
     public static void testMethod1() {
         Object[] array = objectArray;
-        UNSAFE.putObjectVolatile(array, objectArrayBaseOffset, array);
-        UNSAFE.putObjectVolatile(array, objectArrayBaseOffset + (1 * objectArrayIndexScale), array);
-        UNSAFE.putObjectVolatile(array, objectArrayBaseOffset + (2 * objectArrayIndexScale), array);
+        UNSAFE.putReferenceVolatile(array, objectArrayBaseOffset, array);
+        UNSAFE.putReferenceVolatile(array, objectArrayBaseOffset + (1 * objectArrayIndexScale), array);
+        UNSAFE.putReferenceVolatile(array, objectArrayBaseOffset + (2 * objectArrayIndexScale), array);
     }
 
     static int expectedVolatiles;
@@ -77,10 +77,10 @@ public class AMD64VolatileWriteMembarEliminationTest extends GraalCompilerTest {
     public static int testMethod2() {
         int result = 0;
         Object[] array = objectArray;
-        UNSAFE.putObjectVolatile(array, objectArrayBaseOffset, array);
+        UNSAFE.putReferenceVolatile(array, objectArrayBaseOffset, array);
         result += field1;
-        UNSAFE.putObjectVolatile(array, objectArrayBaseOffset + (1 * objectArrayIndexScale), array);
-        UNSAFE.putObjectVolatile(array, objectArrayBaseOffset + (2 * objectArrayIndexScale), array);
+        UNSAFE.putReferenceVolatile(array, objectArrayBaseOffset + (1 * objectArrayIndexScale), array);
+        UNSAFE.putReferenceVolatile(array, objectArrayBaseOffset + (2 * objectArrayIndexScale), array);
         return result;
     }
 
@@ -93,11 +93,11 @@ public class AMD64VolatileWriteMembarEliminationTest extends GraalCompilerTest {
     public static int testMethod3() {
         int result = 0;
         Object[] array = objectArray;
-        UNSAFE.putObjectVolatile(array, objectArrayBaseOffset, array);
+        UNSAFE.putReferenceVolatile(array, objectArrayBaseOffset, array);
         field1 = 1;
         field2 = 2;
-        UNSAFE.putObjectVolatile(array, objectArrayBaseOffset + (1 * objectArrayIndexScale), array);
-        UNSAFE.putObjectVolatile(array, objectArrayBaseOffset + (2 * objectArrayIndexScale), array);
+        UNSAFE.putReferenceVolatile(array, objectArrayBaseOffset + (1 * objectArrayIndexScale), array);
+        UNSAFE.putReferenceVolatile(array, objectArrayBaseOffset + (2 * objectArrayIndexScale), array);
         return result;
     }
 

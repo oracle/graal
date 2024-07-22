@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,10 @@ import static jdk.internal.misc.Unsafe.ARRAY_SHORT_BASE_OFFSET;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -49,11 +53,6 @@ import jdk.graal.compiler.nodes.extended.RawLoadNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.test.AddExports;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
@@ -63,7 +62,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Exercise the constant folding of {@link RawLoadNode} and it's lowered form to ensure that it
  * always succeeds when it's possible.
  */
-@AddExports("java.base/jdk.internal.misc")
 public class ReadConstantFoldingTest extends GraalCompilerTest {
     static final Unsafe U = Unsafe.getUnsafe();
     private static final List<Object> StableArrays = new ArrayList<>();
