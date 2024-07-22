@@ -26,6 +26,8 @@ package com.oracle.svm.core.graal.amd64;
 
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
+import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_PUSH_RBP;
+import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_SET_FRAME_POINTER;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -62,6 +64,7 @@ import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
+import com.oracle.svm.core.graal.code.SharedCompilationResult;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
@@ -1244,6 +1247,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             SubstrateAMD64FrameMap frameMap = (SubstrateAMD64FrameMap) crb.frameMap;
             if (frameMap.preserveFramePointer() || isCalleeSaved(rbp, frameMap.getRegisterConfig(), method)) {
                 asm.push(rbp);
+                crb.recordMark(PROLOGUE_PUSH_RBP);
             }
             if (frameMap.preserveFramePointer() && !frameMap.needsFramePointer()) {
                 /* We won't be using rbp as a frame pointer, so we form a frame chain here. */
@@ -1272,6 +1276,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                     /* Set the frame pointer to [rsp]. */
                     asm.movq(rbp, rsp);
                 }
+                crb.recordMark(PROLOGUE_SET_FRAME_POINTER);
             }
         }
 
@@ -1296,11 +1301,12 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             } else {
                 asm.incrementq(rsp, frameMap.frameSize());
             }
+            crb.recordMark(SubstrateMarkId.EPILOGUE_INCD_RSP);
+
             if (frameMap.preserveFramePointer() || isCalleeSaved(rbp, frameMap.getRegisterConfig(), method)) {
                 asm.pop(rbp);
+                crb.recordMark(SubstrateMarkId.EPILOGUE_POP_RBP);
             }
-
-            crb.recordMark(SubstrateMarkId.EPILOGUE_INCD_RSP);
         }
 
         @Override
@@ -1748,10 +1754,15 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         FrameContext frameContext = createFrameContext(method, stubType, callingConvention);
         DebugContext debug = lir.getDebug();
         Register uncompressedNullRegister = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister() : Register.None;
-        CompilationResultBuilder tasm = factory.createBuilder(getProviders(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
-                        uncompressedNullRegister, lir);
-        tasm.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
-        return tasm;
+        CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister, lir);
+        crb.setTotalFrameSize(frameMap.totalFrameSize());
+        var sharedCompilationResult = (SharedCompilationResult) compilationResult;
+        var substrateAMD64FrameMap = (SubstrateAMD64FrameMap) frameMap;
+        sharedCompilationResult.setFrameSize(substrateAMD64FrameMap.frameSize());
+        if (substrateAMD64FrameMap.needsFramePointer()) {
+            sharedCompilationResult.setFramePointerSaveAreaOffset(substrateAMD64FrameMap.getFramePointerSaveAreaOffset());
+        }
+        return crb;
     }
 
     protected AMD64MacroAssembler createAssembler(OptionValues options) {
