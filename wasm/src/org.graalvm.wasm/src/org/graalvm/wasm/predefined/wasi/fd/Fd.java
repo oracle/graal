@@ -44,6 +44,7 @@ package org.graalvm.wasm.predefined.wasi.fd;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.wasi.types.Advice;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 import org.graalvm.wasm.predefined.wasi.types.Fdflags;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
@@ -255,6 +256,14 @@ public abstract class Fd implements Closeable {
             return Errno.Notcapable;
         }
         return Errno.Acces;
+    }
+
+    @SuppressWarnings("unused")
+    public Errno advise(long offset, long length, Advice advice) {
+        if (!isSet(fsRightsBase, Rights.FdAdvise)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Success;
     }
 
     /**
