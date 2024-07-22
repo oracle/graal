@@ -60,6 +60,7 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -296,6 +297,8 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_threadObj");
 
+    public static final LocationIdentity JAVA_THREAD_LOCK_ID_LOCATION = NamedLocationIdentity.mutable("JavaThread::_lock_id");
+
     public static final LocationIdentity JAVA_THREAD_OSTHREAD_LOCATION = NamedLocationIdentity.mutable("JavaThread::_osthread");
 
     public static final LocationIdentity JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_held_monitor_count");
@@ -352,6 +355,11 @@ public class HotSpotReplacementsUtil {
             return read;
         }
     };
+
+    @Fold
+    public static boolean isJDK21() {
+        return JavaVersionUtil.JAVA_SPEC == 21;
+    }
 
     @Fold
     public static int allocatePrefetchStyle(@InjectedParameter GraalHotSpotVMConfig config) {
@@ -491,6 +499,11 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
+    public static int unusedMark(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.unusedMark;
+    }
+
+    @Fold
     public static int objectMonitorOwnerOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.objectMonitorOwner;
     }
@@ -518,6 +531,11 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int objectMonitorSuccOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.objectMonitorSucc;
+    }
+
+    @Fold
+    public static int objectMonitorStackLockerOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.objectMonitorStackLocker;
     }
 
     /**
@@ -665,6 +683,8 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity OBJECT_MONITOR_SUCC_LOCATION = NamedLocationIdentity.mutable("ObjectMonitor::_succ");
 
+    public static final LocationIdentity OBJECT_MONITOR_STACK_LOCKER_LOCATION = NamedLocationIdentity.mutable("ObjectMonitor::_stack_locker");
+
     @Fold
     public static int lockDisplacedMarkOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.basicLockDisplacedHeaderOffset;
@@ -673,6 +693,11 @@ public class HotSpotReplacementsUtil {
     @Fold
     static int heldMonitorCountOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.threadHeldMonitorCountOffset;
+    }
+
+    @Fold
+    static int javaThreadLockIDOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.javaThreadLockIDOffset;
     }
 
     @Fold
