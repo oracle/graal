@@ -85,6 +85,6 @@ public class WasiFdAdviseNode extends WasmBuiltinRootNode {
 
     @Override
     public String builtinNodeName() {
-        return "___wasi_fd_advise";
+        return "__wasi_fd_advise";
     }
 }
