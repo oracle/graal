@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import static com.oracle.truffle.nfi.test.NFITest.NFITestRootNode.getInterop;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -66,7 +69,6 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
-import static com.oracle.truffle.nfi.test.NFITest.NFITestRootNode.getInterop;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 
@@ -180,7 +182,7 @@ public class RegisterPackageNFITest extends NFITest {
     @Test
     public void testPythagoras(@Inject(RegisterPackageTestNode.class) CallTarget callTarget) {
         Object ret = callTarget.call(3.0, 4.0);
-        Assert.assertThat("return value", ret, is(instanceOf(Double.class)));
+        MatcherAssert.assertThat("return value", ret, is(instanceOf(Double.class)));
         Assert.assertEquals("return value", 5.0, ret);
     }
 }

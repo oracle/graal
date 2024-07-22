@@ -40,16 +40,18 @@
  */
 package com.oracle.truffle.nfi.test.parser;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertThrows;
+
+import org.hamcrest.Description;
+import org.hamcrest.TypeSafeDiagnosingMatcher;
+import org.junit.Test;
+
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
-import org.hamcrest.Description;
-import org.hamcrest.TypeSafeDiagnosingMatcher;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 public class ErrorParseSignatureTest extends ParseSignatureTest {
 
@@ -57,8 +59,6 @@ public class ErrorParseSignatureTest extends ParseSignatureTest {
         Source source = Source.newBuilder("nfi", signature, "signature").build();
         runWithPolyglot.getTruffleTestEnv().parseInternal(source);
     }
-
-    @Rule public ExpectedException exception = ExpectedException.none();
 
     static class ParserExceptionMatcher extends TypeSafeDiagnosingMatcher<AbstractTruffleException> {
 
@@ -104,49 +104,49 @@ public class ErrorParseSignatureTest extends ParseSignatureTest {
 
     @Test
     public void parseEmpty() {
-        exception.expect(ParserExceptionMatcher.INCOMPLETE);
-        tryParseSignature("");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> tryParseSignature(""));
+        assertThat(truffleException, ParserExceptionMatcher.INCOMPLETE);
     }
 
     @Test
     public void parseUnknownToken() {
-        exception.expect(ParserExceptionMatcher.PARSER);
-        tryParseSignature("..");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> tryParseSignature(".."));
+        assertThat(truffleException, ParserExceptionMatcher.PARSER);
     }
 
     @Test
     public void parseMissingParen() {
-        exception.expect(ParserExceptionMatcher.PARSER);
-        tryParseSignature("(sint32 : void");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> tryParseSignature("(sint32 : void"));
+        assertThat(truffleException, ParserExceptionMatcher.PARSER);
     }
 
     @Test
     public void parseMissingComma() {
-        exception.expect(ParserExceptionMatcher.PARSER);
-        tryParseSignature("(sint32 float) : void");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> tryParseSignature("(sint32 float) : void"));
+        assertThat(truffleException, ParserExceptionMatcher.PARSER);
     }
 
     @Test
     public void parseMissingColon() {
-        exception.expect(ParserExceptionMatcher.PARSER);
-        tryParseSignature("(sint32) void");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> tryParseSignature("(sint32) void"));
+        assertThat(truffleException, ParserExceptionMatcher.PARSER);
     }
 
     @Test
     public void parseMissingRetType() {
-        exception.expect(ParserExceptionMatcher.INCOMPLETE);
-        tryParseSignature("() : ");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> tryParseSignature("() : "));
+        assertThat(truffleException, ParserExceptionMatcher.INCOMPLETE);
     }
 
     @Test
     public void parseMissingVararg() {
-        exception.expect(ParserExceptionMatcher.PARSER);
-        tryParseSignature("(float, ...) : void");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> tryParseSignature("(float, ...) : void"));
+        assertThat(truffleException, ParserExceptionMatcher.PARSER);
     }
 
     @Test
     public void parseMissingVararg2() {
-        exception.expect(ParserExceptionMatcher.PARSER);
-        tryParseSignature("(...) : void");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> tryParseSignature("(...) : void"));
+        assertThat(truffleException, ParserExceptionMatcher.PARSER);
     }
 }

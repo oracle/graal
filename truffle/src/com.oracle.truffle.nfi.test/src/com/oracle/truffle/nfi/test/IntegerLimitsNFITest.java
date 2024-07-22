@@ -40,16 +40,17 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertThrows;
+
 import java.util.ArrayList;
 import java.util.Collection;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
 import org.hamcrest.Matcher;
+import org.hamcrest.core.IsInstanceOf;
 import org.junit.Assert;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -136,7 +137,7 @@ public class IntegerLimitsNFITest extends NFITest {
     public void testIncZero(@Inject(IncrementNode.class) CallTarget increment) {
         Object ret = increment.call(0);
         // no overflow
-        Assert.assertThat("return value", ret, is(number(1)));
+        assertThat("return value", ret, is(number(1)));
     }
 
     @Test
@@ -144,10 +145,10 @@ public class IntegerLimitsNFITest extends NFITest {
         Object ret = increment.call(minSigned);
         if (signed) {
             // no overflow
-            Assert.assertThat("return value", ret, is(number(minSigned + 1)));
+            assertThat("return value", ret, is(number(minSigned + 1)));
         } else {
             // unsigned: minSigned overflows to maxSigned + 1
-            Assert.assertThat("return value", ret, is(number(maxSigned + 2)));
+            assertThat("return value", ret, is(number(maxSigned + 2)));
         }
     }
 
@@ -156,10 +157,10 @@ public class IntegerLimitsNFITest extends NFITest {
         Object ret = increment.call(maxSigned);
         if (signed) {
             // signed: maxSigned overflows to minSigned - 1
-            Assert.assertThat("return value", ret, is(number(minSigned)));
+            assertThat("return value", ret, is(number(minSigned)));
         } else {
             // no overflow
-            Assert.assertThat("return value", ret, is(number(maxSigned + 1)));
+            assertThat("return value", ret, is(number(maxSigned + 1)));
         }
     }
 
@@ -167,7 +168,7 @@ public class IntegerLimitsNFITest extends NFITest {
     public void testIncMaxUnsigned(@Inject(IncrementNode.class) CallTarget increment) {
         Object ret = increment.call(maxUnsigned);
         // regardless of sign, always overflows to zero
-        Assert.assertThat("return value", ret, is(number(0)));
+        assertThat("return value", ret, is(number(0)));
     }
 
     // decrement
@@ -177,10 +178,10 @@ public class IntegerLimitsNFITest extends NFITest {
         Object ret = decrement.call(0);
         if (signed) {
             // no overflow
-            Assert.assertThat("return value", ret, is(number(-1)));
+            assertThat("return value", ret, is(number(-1)));
         } else {
             // overflow to maxUnsigned
-            Assert.assertThat("return value", ret, is(number(maxUnsigned)));
+            assertThat("return value", ret, is(number(maxUnsigned)));
         }
     }
 
@@ -189,14 +190,14 @@ public class IntegerLimitsNFITest extends NFITest {
         Object ret = decrement.call(minSigned);
         // signed: minSigned-1 overflows to maxSigned
         // unsigned: minSigned overflows to maxSigned + 1
-        Assert.assertThat("return value", ret, is(number(maxSigned)));
+        assertThat("return value", ret, is(number(maxSigned)));
     }
 
     @Test
     public void testDecMaxSigned(@Inject(DecrementNode.class) CallTarget decrement) {
         Object ret = decrement.call(maxSigned);
         // no overflow
-        Assert.assertThat("return value", ret, is(number(maxSigned - 1)));
+        assertThat("return value", ret, is(number(maxSigned - 1)));
     }
 
     @Test
@@ -204,10 +205,10 @@ public class IntegerLimitsNFITest extends NFITest {
         Object ret = decrement.call(maxUnsigned);
         if (signed) {
             // maxUnsigned overflows to -1
-            Assert.assertThat("return value", ret, is(number(-2)));
+            assertThat("return value", ret, is(number(-2)));
         } else {
             // no overflow
-            Assert.assertThat("return value", ret, is(number(maxUnsigned - 1)));
+            assertThat("return value", ret, is(number(maxUnsigned - 1)));
         }
     }
 
@@ -218,10 +219,10 @@ public class IntegerLimitsNFITest extends NFITest {
         TestCallback c = new TestCallback(1, (args) -> {
             if (signed) {
                 // no overflow
-                Assert.assertThat("closure arg", args[0], is(number(minSigned)));
+                assertThat("closure arg", args[0], is(number(minSigned)));
             } else {
                 // unsigned: minSigned overflows to maxSigned+1
-                Assert.assertThat("closure arg", args[0], is(number(maxSigned + 1)));
+                assertThat("closure arg", args[0], is(number(maxSigned + 1)));
             }
             return 0;
         });
@@ -233,10 +234,10 @@ public class IntegerLimitsNFITest extends NFITest {
         TestCallback c = new TestCallback(1, (args) -> {
             if (signed) {
                 // signed: maxUnsigned overflows to -1
-                Assert.assertThat("closure arg", args[0], is(number(-1)));
+                assertThat("closure arg", args[0], is(number(-1)));
             } else {
                 // no overflow
-                Assert.assertThat("closure arg", args[0], is(number(maxUnsigned)));
+                assertThat("closure arg", args[0], is(number(maxUnsigned)));
             }
             return 0;
         });
@@ -245,31 +246,37 @@ public class IntegerLimitsNFITest extends NFITest {
 
     // errors
 
-    @Rule public ExpectedException expectedException = ExpectedException.none();
-
     @Test
     public void testLowerBound(@Inject(IncrementNode.class) CallTarget increment) {
-        expectedException.expectCause(instanceOf(UnsupportedTypeException.class));
-        increment.call(minSigned - 1);
+        AssertionError error = assertThrows(AssertionError.class, () -> {
+            increment.call(minSigned - 1);
+        });
+        assertThat(error.getCause(), IsInstanceOf.instanceOf(UnsupportedTypeException.class));
     }
 
     @Test
     public void testLowerBoundClosureRet(@Inject(CallClosureNode.class) CallTarget callClosure) {
-        expectedException.expectCause(instanceOf(UnsupportedTypeException.class));
-        TestCallback c = new TestCallback(1, (args) -> minSigned - 1);
-        callClosure.call(c, 0);
+        AssertionError error = assertThrows(AssertionError.class, () -> {
+            TestCallback c = new TestCallback(1, (args) -> minSigned - 1);
+            callClosure.call(c, 0);
+        });
+        assertThat(error.getCause(), IsInstanceOf.instanceOf(UnsupportedTypeException.class));
     }
 
     @Test
     public void testUpperBound(@Inject(IncrementNode.class) CallTarget increment) {
-        expectedException.expectCause(instanceOf(UnsupportedTypeException.class));
-        increment.call(maxUnsigned + 1);
+        AssertionError error = assertThrows(AssertionError.class, () -> {
+            increment.call(maxUnsigned + 1);
+        });
+        assertThat(error.getCause(), IsInstanceOf.instanceOf(UnsupportedTypeException.class));
     }
 
     @Test
     public void testUpperBoundClosureRet(@Inject(CallClosureNode.class) CallTarget callClosure) {
-        expectedException.expectCause(instanceOf(UnsupportedTypeException.class));
-        TestCallback c = new TestCallback(1, (args) -> maxUnsigned + 1);
-        callClosure.call(c, 0);
+        AssertionError error = assertThrows(AssertionError.class, () -> {
+            TestCallback c = new TestCallback(1, (args) -> maxUnsigned + 1);
+            callClosure.call(c, 0);
+        });
+        assertThat(error.getCause(), IsInstanceOf.instanceOf(UnsupportedTypeException.class));
     }
 }

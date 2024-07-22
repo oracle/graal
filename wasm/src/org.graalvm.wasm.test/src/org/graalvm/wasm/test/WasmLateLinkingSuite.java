@@ -42,6 +42,7 @@ package org.graalvm.wasm.test;
 
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.IOException;
 import java.util.function.Consumer;
@@ -163,7 +164,7 @@ public class WasmLateLinkingSuite {
                 // We can later refine these semantics, and avoid a failure here.
                 // To do this, we should only lazily link exactly the required modules, instead of
                 // linking all of them.
-                Assert.assertThat("Should fail due to unresolved import in the other module.", e.getMessage(),
+                assertThat("Should fail due to unresolved import in the other module.", e.getMessage(),
                                 containsString("module 'non_existing', referenced by the import 'f' in the module 'module1', does not exist"));
             }
 
@@ -198,7 +199,7 @@ public class WasmLateLinkingSuite {
                 // We can later refine these semantics, and avoid a failure here.
                 // To do this, we should only lazily link exactly the required modules, instead of
                 // linking all of them.
-                Assert.assertThat("Should fail due to unresolved import in the other module.", e.getMessage(),
+                assertThat("Should fail due to unresolved import in the other module.", e.getMessage(),
                                 containsString("module 'non_existing', referenced by the import 'f' in the module 'module1', does not exist"));
             }
 
@@ -227,7 +228,7 @@ public class WasmLateLinkingSuite {
                 g.execute();
                 Assert.fail("Should not reach here.");
             } catch (Throwable e) {
-                Assert.assertThat("Should fail due to unresolved import in the other module.", e.getMessage(),
+                assertThat("Should fail due to unresolved import in the other module.", e.getMessage(),
                                 containsString("module 'non_existing', referenced by the import 'f' in the module 'module1', does not exist"));
             }
 
@@ -236,7 +237,7 @@ public class WasmLateLinkingSuite {
                 g2.execute();
                 Assert.fail("Should not reach here.");
             } catch (Throwable e) {
-                Assert.assertThat("Should fail due to both modules being in a failed linking state.", e.getMessage(),
+                assertThat("Should fail due to both modules being in a failed linking state.", e.getMessage(),
                                 containsString("Linking of module wasm-module(module2) previously failed"));
             }
         }

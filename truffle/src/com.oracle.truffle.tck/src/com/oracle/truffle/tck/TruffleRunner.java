@@ -312,7 +312,7 @@ public class TruffleRunner extends BlockJUnit4ClassRunner {
     private static final class ParameterizedRunner extends BlockJUnit4ClassRunnerWithParameters {
 
         ParameterizedRunner(TestWithParameters test) throws InitializationError {
-            super(test);
+            super(new TestWithParameters(test.getName(), new TruffleTestClass(test.getTestClass().getJavaClass()), test.getParameters()));
         }
 
         @Override
@@ -328,16 +328,6 @@ public class TruffleRunner extends BlockJUnit4ClassRunner {
         protected void validateTestMethods(List<Throwable> errors) {
             TruffleTestInvoker.validateTestMethods(getTestClass(), errors);
         }
-
-        /**
-         * Internal method used by the JUnit framework. Do not call directly.
-         *
-         * @since 0.27
-         */
-        @Override
-        protected TestClass createTestClass(Class<?> testClass) {
-            return new TruffleTestClass(testClass);
-        }
     }
 
     /**
@@ -349,7 +339,19 @@ public class TruffleRunner extends BlockJUnit4ClassRunner {
      * @since 0.25
      */
     public TruffleRunner(Class<?> klass) throws InitializationError {
-        super(klass);
+        super(new TruffleTestClass(klass));
+    }
+
+    /**
+     * Should not be called directly. To use this class, annotate your test class with
+     * {@code @RunWith(TruffleRunner.class)}.
+     *
+     * @see TruffleRunner
+     *
+     * @since 24.2
+     */
+    public TruffleRunner(TestClass testClass) throws InitializationError {
+        super(new TruffleTestClass(testClass.getJavaClass()));
     }
 
     /**
@@ -374,16 +376,6 @@ public class TruffleRunner extends BlockJUnit4ClassRunner {
     @Override
     protected final void validateTestMethods(List<Throwable> errors) {
         TruffleTestInvoker.validateTestMethods(getTestClass(), errors);
-    }
-
-    /**
-     * Internal method used by the JUnit framework. Do not call directly.
-     *
-     * @since 0.27
-     */
-    @Override
-    protected final TestClass createTestClass(Class<?> testClass) {
-        return new TruffleTestClass(testClass);
     }
 }
 
