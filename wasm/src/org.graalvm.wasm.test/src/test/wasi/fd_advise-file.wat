@@ -43,21 +43,37 @@
     (import "wasi_snapshot_preview1" "path_open" (func $path_open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
     (import "wasi_snapshot_preview1" "fd_advise" (func $fd_advise (param i32 i64 i64 i32) (result i32)))
     (import "wasi_snapshot_preview1" "fd_close" (func $fd_close (param i32) (result i32)))
+
     (memory 1)
+
     (data (i32.const 0) "file.txt")
+
     (export "memory" (memory 0))
+
+    ;; Pre-opened temporary directory fd
     (global $directory_fd i32 (i32.const 3))
+
+    ;; Memory location of file path
     (global $file_path_address i32 (i32.const 0))
     (global $file_path_length i32 (i32.const 8))
+
+    ;; Address of opened file fd
     (global $file_fd_address i32 (i32.const 12))
+
+    ;; Rights for path_open
     (global $all_rights i64 (i64.const 536870911))
     (global $advise_right i64 (i64.const 128))
+
+    ;; Advice for fd_advise
     (global $sequential_access_advice i32 (i32.const 1))
+
+    ;; Errno codes
     (global $errno_inval i32 (i32.const 28))
     (global $errno_badf i32 (i32.const 8))
     (global $errno_notcapable i32 (i32.const 76))
+
     (func (export "_main") (result i32) (local $ret i32)
-        ;; Open file "file.txt" in pre-opened directory 3
+        ;; Open file "file.txt" in pre-opened directory
         (local.set $ret
             (call $path_open
                 (global.get $directory_fd)      ;; pre-opened "test" directory fd
