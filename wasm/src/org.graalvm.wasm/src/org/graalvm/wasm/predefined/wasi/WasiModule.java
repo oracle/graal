@@ -149,7 +149,7 @@ public final class WasiModule extends BuiltinModule {
         defineFunction(context, module, "clock_res_get", types(CLOCKID_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_clock_res_get"));
         defineFunction(context, module, "clock_time_get", types(CLOCKID_TYPE, TIMESTAMP_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiClockTimeGetNode(language, module));
         defineFunction(context, module, "fd_advise", types(FD_TYPE, FILESIZE_TYPE, FILESIZE_TYPE, ADVICE_TYPE), types(ERRNO_TYPE),
-                        new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_advise"));
+                        new WasiFdAdviseNode(language, module));
         defineFunction(context, module, "fd_allocate", types(FD_TYPE, FILESIZE_TYPE, FILESIZE_TYPE), types(ERRNO_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_allocate"));
         defineFunction(context, module, "fd_close", types(FD_TYPE), types(ERRNO_TYPE), new WasiFdCloseNode(language, module));
         defineFunction(context, module, "fd_datasync", types(FD_TYPE), types(ERRNO_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_datasync"));
