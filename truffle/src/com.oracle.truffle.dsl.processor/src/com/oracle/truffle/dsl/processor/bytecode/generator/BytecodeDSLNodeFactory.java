@@ -9424,6 +9424,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 b.declaration(type(byte[].class), "localTags", "getLocalTags()");
                 b.startIf().string("localTags == null").end().startBlock();
+                b.lineComment("bytecode not yet cached.");
                 b.startReturn().staticReference(types.FrameSlotKind, "Object").end();
                 b.end().startElseBlock();
                 b.declaration(type(int.class), "localIndex", "locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_LOCAL_INDEX]");
@@ -9449,8 +9450,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
                 b.startAssert().string("locals[localIndexToTableIndex(bci, localIndex) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
                 b.declaration(type(byte[].class), "localTags", "getLocalTags()");
-                b.startAssert().string("localTags != null").end();
+                b.startIf().string("localTags == null").end().startBlock();
+                b.lineComment("bytecode not yet cached.");
+                b.startReturn().staticReference(types.FrameSlotKind, "Object").end();
+                b.end().startElseBlock();
                 b.startReturn().startStaticCall(types.FrameSlotKind, "fromTag").string("localTags[localIndex]").end().end();
+                b.end();
             } else {
                 b.statement("return getRoot().getFrameDescriptor().getSlotKind(frameIndex)");
             }
@@ -9469,7 +9474,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 b.declaration(type(byte[].class), "localTags", "getLocalTags()");
                 b.startIf().string("localTags == null").end().startBlock();
-                b.lineComment("Method not yet cached.");
+                b.lineComment("bytecode not yet cached.");
                 b.statement("return");
                 b.end().startElseBlock();
                 b.declaration(type(int.class), "localIndex", "locals[localOffsetToTableIndex(bci, localOffset) + LOCALS_OFFSET_LOCAL_INDEX]");

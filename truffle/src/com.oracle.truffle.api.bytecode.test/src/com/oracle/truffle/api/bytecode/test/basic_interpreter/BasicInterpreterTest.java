@@ -59,9 +59,11 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instruction.Argument;
@@ -1033,6 +1035,138 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         });
 
         assertEquals(1L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testLocalsNonlocalReadBoxingElimination() {
+        /*
+         * With BE, cached load.mat uses metadata from the outer root (e.g., tags array) to resolve
+         * the type. If the outer root is uncached, this info can be unavailable, in which case a
+         * cached inner root should should gracefully fall back to object loads.
+         */
+        assumeTrue(run.hasBoxingElimination() && run.hasUncachedInterpreter());
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
+            // x = 1
+            // return (lambda: x)()
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal xLoc = b.createLocal();
+
+            b.beginStoreLocal(xLoc);
+            b.emitLoadConstant(1L);
+            b.endStoreLocal();
+
+            b.beginReturn();
+
+            b.beginInvoke();
+
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.beginLoadLocalMaterialized(xLoc);
+            b.emitLoadArgument(0);
+            b.endLoadLocalMaterialized();
+            b.endReturn();
+            BasicInterpreter inner = b.endRoot();
+
+            b.beginCreateClosure();
+            b.emitLoadConstant(inner);
+            b.endCreateClosure();
+
+            b.endInvoke();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        BasicInterpreter outer = nodes.getNode(0);
+        BasicInterpreter inner = nodes.getNode(1);
+
+        inner.getBytecodeNode().setUncachedThreshold(0);
+
+        assertEquals(1L, outer.getCallTarget().call());
+    }
+
+    @Test
+    public void testLocalsNonlocalWriteBoxingElimination() {
+        /*
+         * With BE, uncached store.mat always stores locals as objects. If the outer root is cached,
+         * it may quicken local reads, but if an uncached inner root uses store.mat, the outer
+         * should gracefully unquicken local loads to generic.
+         */
+        assumeTrue(run.hasBoxingElimination() && run.hasUncachedInterpreter());
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
+            // x = 1
+            // if (arg0) (lambda: x = 41)()
+            // return x + 1
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal xLoc = b.createLocal();
+
+            b.beginStoreLocal(xLoc);
+            b.emitLoadConstant(1L);
+            b.endStoreLocal();
+
+            b.beginRoot(LANGUAGE);
+            b.beginStoreLocalMaterialized(xLoc);
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(41L);
+            b.endStoreLocalMaterialized();
+            BasicInterpreter inner = b.endRoot();
+
+            b.beginIfThen();
+            b.emitLoadArgument(0);
+            b.beginInvoke();
+            b.beginCreateClosure();
+            b.emitLoadConstant(inner);
+            b.endCreateClosure();
+            b.endInvoke();
+            b.endIfThen();
+
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitLoadLocal(xLoc);
+            b.emitLoadConstant(1L);
+            b.endAddOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+        BasicInterpreter outer = nodes.getNode(0);
+        outer.getBytecodeNode().setUncachedThreshold(0);
+
+        assertEquals(2L, outer.getCallTarget().call(false));
+
+        AbstractInstructionTest.assertInstructions(outer,
+                        "load.constant$Long",
+                        "store.local$Long$unboxed",
+                        "load.argument$Boolean",
+                        "branch.false$Boolean",
+                        "load.constant",
+                        "c.CreateClosure",
+                        "load.variadic_0",
+                        "c.Invoke",
+                        "pop",
+                        "load.local$Long$unboxed", // load BE'd
+                        "load.constant$Long",
+                        "c.AddOperation$AddLongs",
+                        "return");
+
+        assertEquals(42L, outer.getCallTarget().call(true));
+
+        AbstractInstructionTest.assertInstructions(outer,
+                        "load.constant$Long",
+                        "store.local$Long$unboxed",
+                        "load.argument$Boolean",
+                        "branch.false$Boolean",
+                        "load.constant",
+                        "c.CreateClosure",
+                        "load.variadic_0",
+                        "c.Invoke",
+                        "pop$generic",
+                        "load.local$generic", // load becomes generic
+                        "load.constant",
+                        "c.AddOperation",
+                        "return");
     }
 
     @Test
