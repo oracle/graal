@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,27 +24,19 @@
  */
 package jdk.graal.compiler.core.test;
 
-import static java.lang.reflect.Modifier.isProtected;
-import static java.lang.reflect.Modifier.isPublic;
-
 import java.lang.reflect.Field;
 
-import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.VerifyPhase;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
-
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.misc.Unsafe;
 
 /**
- * Checks that the {@link Unsafe} singleton instance is only accessed via well known classes such as
- * {@link GraalUnsafeAccess}.
+ * Checks that {@code sun.misc.Unsafe} is never used.
  */
 public class VerifyUnsafeAccess extends VerifyPhase<CoreProviders> {
 
@@ -54,52 +46,17 @@ public class VerifyUnsafeAccess extends VerifyPhase<CoreProviders> {
         final ResolvedJavaType unsafeType = metaAccess.lookupJavaType(Unsafe.class);
 
         ResolvedJavaMethod caller = graph.method();
-        String holderQualified = caller.format("%H");
-        String holderUnqualified = caller.format("%h");
-        String packageName = holderQualified.equals(holderUnqualified) ? "" : holderQualified.substring(0, holderQualified.length() - holderUnqualified.length() - 1);
-        if ((holderQualified.equals(GraalUnsafeAccess.class.getName()) ||
-                        holderQualified.equals("jdk.vm.ci.hotspot.UnsafeAccess")) &&
-                        caller.getName().equals("initUnsafe")) {
-            // This is the blessed way access Unsafe in Graal and JVMCI
-            return;
-        } else if (packageName.startsWith("com.oracle.truffle") || packageName.startsWith("com.oracle.truffle.runtime")) {
-            // Truffle and OptimizedTruffleRuntime do not depend on Graal and so cannot use
-            // GraalUnsafeAccess
-            return;
-        }
 
         if (caller.getSignature().getReturnType(caller.getDeclaringClass()).equals(unsafeType)) {
-            if (caller.isPublic()) {
-                if (holderQualified.equals(GraalUnsafeAccess.class.getName()) && caller.getName().equals("getUnsafe")) {
-                    // pass
-                } else {
-                    throw new VerificationError("Cannot leak Unsafe from public method %s",
-                                    caller.format("%H.%n(%p)"));
-                }
-            }
+            throw new VerificationError("Returning sun.misc.Unsafe at callsite %s is prohibited.", caller.format("%H.%n(%p)"));
         }
 
-        for (InstanceOfNode node : graph.getNodes().filter(InstanceOfNode.class)) {
-            TypeReference typeRef = node.type();
-            if (typeRef != null) {
-                if (unsafeType.isAssignableFrom(typeRef.getType())) {
-                    throw new VerificationError("Cast to %s in %s is prohibited as it implies accessing Unsafe.theUnsafe via reflection. Use %s.getUnsafe() instead.",
-                                    unsafeType.toJavaName(),
-                                    caller.format("%H.%n(%p)"),
-                                    GraalUnsafeAccess.class.getName());
-
-                }
-            }
-        }
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
             if (callee.getDeclaringClass().equals(unsafeType)) {
-                if (callee.getName().equals("getUnsafe")) {
-                    throw new VerificationError("Call to %s at callsite %s is prohibited. Use %s.getUnsafe() instead.",
-                                    callee.format("%H.%n(%p)"),
-                                    caller.format("%H.%n(%p)"),
-                                    GraalUnsafeAccess.class.getName());
-                }
+                throw new VerificationError("Call to %s at callsite %s is prohibited.",
+                                callee.format("%H.%n(%p)"),
+                                caller.format("%H.%n(%p)"));
             }
         }
     }
@@ -107,9 +64,8 @@ public class VerifyUnsafeAccess extends VerifyPhase<CoreProviders> {
     @Override
     public void verifyClass(Class<?> c, MetaAccessProvider metaAccess) {
         for (Field field : c.getDeclaredFields()) {
-            int modifiers = field.getModifiers();
-            if (field.getType() == Unsafe.class && (isPublic(modifiers) || isProtected(modifiers))) {
-                throw new VerificationError("Field of type %s must be private or package-private: %s", Unsafe.class.getName(), field);
+            if (field.getType() == Unsafe.class) {
+                throw new VerificationError("Field of type sun.misc.Unsafe at callsite %s is prohibited.", field);
             }
         }
     }

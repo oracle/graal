@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,6 @@ import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
-import jdk.graal.compiler.truffle.test.PartialEvaluationTest;
-import jdk.graal.compiler.truffle.test.tregex.TRegexTStringVirtualizationTestFactory.MatchBooleanManagedNodeGen;
-import jdk.graal.compiler.truffle.test.tregex.TRegexTStringVirtualizationTestFactory.MatchBooleanNativeNodeGen;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
@@ -58,7 +53,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 
-import sun.misc.Unsafe;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
+import jdk.graal.compiler.truffle.test.PartialEvaluationTest;
+import jdk.graal.compiler.truffle.test.tregex.TRegexTStringVirtualizationTestFactory.MatchBooleanManagedNodeGen;
+import jdk.graal.compiler.truffle.test.tregex.TRegexTStringVirtualizationTestFactory.MatchBooleanNativeNodeGen;
+import jdk.internal.misc.Unsafe;
 
 @SuppressWarnings("truffle-inlining")
 public class TRegexTStringVirtualizationTest extends PartialEvaluationTest {
@@ -81,7 +81,7 @@ public class TRegexTStringVirtualizationTest extends PartialEvaluationTest {
             } catch (NoSuchFieldException e) {
                 throw new RuntimeException("exception while trying to get Buffer.address via reflection:", e);
             }
-            byteBufferAddressOffset = getObjectFieldOffset(addressField);
+            byteBufferAddressOffset = UNSAFE.objectFieldOffset(addressField);
         }
 
         private final ByteBuffer buffer;

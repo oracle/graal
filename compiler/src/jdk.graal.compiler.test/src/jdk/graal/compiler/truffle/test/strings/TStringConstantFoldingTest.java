@@ -59,7 +59,7 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
     static {
         try {
             Field compactStringsField = String.class.getDeclaredField("COMPACT_STRINGS");
-            COMPACT_STRINGS_ENABLED = UNSAFE.getBoolean(getStaticFieldBase(compactStringsField), getStaticFieldOffset(compactStringsField));
+            COMPACT_STRINGS_ENABLED = UNSAFE.getBoolean(UNSAFE.staticFieldBase(compactStringsField), UNSAFE.staticFieldOffset(compactStringsField));
         } catch (NoSuchFieldException e) {
             throw new RuntimeException("failed to get COMPACT_STRINGS field offset", e);
         }

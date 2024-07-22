@@ -44,14 +44,13 @@ import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
 import jdk.graal.compiler.util.OptionsEncoder;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * This class provides implementations for {@code @CEntryPoint}s that libgraal has to provide as a
@@ -60,7 +59,7 @@ import sun.misc.Unsafe;
  */
 public class RunTime {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     private record CachedOptions(OptionValues options, long hash) {
     }

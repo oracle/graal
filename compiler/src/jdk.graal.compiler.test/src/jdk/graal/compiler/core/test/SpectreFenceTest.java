@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,10 @@ import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.Specu
 import static org.junit.Assume.assumeTrue;
 
 import org.graalvm.collections.EconomicMap;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.core.common.SpectrePHTMitigations;
@@ -40,14 +44,10 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.runtime.RuntimeProvider;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
-import sun.misc.Unsafe;
 
 public class SpectreFenceTest extends GraalCompilerTest {
 

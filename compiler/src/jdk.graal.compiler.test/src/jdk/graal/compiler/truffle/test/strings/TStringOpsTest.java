@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,11 +38,11 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.Unsafe;
 
 public abstract class TStringOpsTest<T extends Node> extends TStringTest {
 
@@ -60,7 +60,7 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
         } catch (NoSuchFieldException e) {
             throw new RuntimeException("exception while trying to get Buffer.address via reflection:", e);
         }
-        byteBufferAddressOffset = getObjectFieldOffset(addressField);
+        byteBufferAddressOffset = UNSAFE.objectFieldOffset(addressField);
         try {
             T_STRING_OPS_CLASS = Class.forName("com.oracle.truffle.api.strings.TStringOps");
             T_STRING_NATIVE_POINTER_CONSTRUCTOR = Class.forName("com.oracle.truffle.api.strings.AbstractTruffleString$NativePointer").getDeclaredConstructor(Object.class, long.class);
