@@ -195,8 +195,9 @@ final class PECoff {
          * Relocation types
          */
         static final int IMAGE_REL_AMD64_ABSOLUTE = 0x0;
-        static final int IMAGE_REL_AMD64_ADDR32   = 0x2;
         static final int IMAGE_REL_AMD64_ADDR64   = 0x1;
+        static final int IMAGE_REL_AMD64_ADDR32   = 0x2;
+        static final int IMAGE_REL_AMD64_ADDR32NB = 0x3;
         static final int IMAGE_REL_AMD64_REL32    = 0x4;
         static final int IMAGE_REL_AMD64_REL32_1  = 0x5;
         static final int IMAGE_REL_AMD64_REL32_2  = 0x6;

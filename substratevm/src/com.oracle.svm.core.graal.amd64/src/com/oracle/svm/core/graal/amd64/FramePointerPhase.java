@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.amd64;
 import java.util.ArrayList;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
 
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
@@ -86,14 +87,13 @@ class FramePointerPhase extends PreAllocationOptimizationPhase {
                  */
                 buffer.init(instructions);
                 if (block.isExceptionEntry()) {
+                    buffer.append(lirGenRes.getFirstInsertPosition(), new SpillFramePointerOp(true));
                     buffer.append(lirGenRes.getFirstInsertPosition(), new ReloadFramePointerOp());
                 }
                 for (int i = 0; i < instructions.size(); i++) {
                     if (instructions.get(i) instanceof AMD64Call.CallOp callOp) {
                         buffer.append(i, new SpillFramePointerOp());
-                        if (callOp.destroysCallerSavedRegisters()) {
-                            buffer.append(i + 1, new ReloadFramePointerOp());
-                        }
+                        buffer.append(i + 1, new ReloadFramePointerOp(!callOp.destroysCallerSavedRegisters()));
                     }
                 }
                 buffer.finish();
@@ -121,14 +121,24 @@ class FramePointerPhase extends PreAllocationOptimizationPhase {
     public static class SpillFramePointerOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<SpillFramePointerOp> TYPE = LIRInstructionClass.create(SpillFramePointerOp.class);
 
+        private final boolean recordMarkOnly;
+
         SpillFramePointerOp() {
+            this(false);
+        }
+
+        SpillFramePointerOp(boolean recordMarkOnly) {
             super(TYPE);
+            this.recordMarkOnly = recordMarkOnly;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            var frameMap = (SubstrateAMD64Backend.SubstrateAMD64FrameMap) crb.frameMap;
-            masm.movq(masm.makeAddress(AMD64.rsp, frameMap.getFramePointerSaveAreaOffset()), AMD64.rbp);
+            if (!recordMarkOnly) {
+                var frameMap = (SubstrateAMD64Backend.SubstrateAMD64FrameMap) crb.frameMap;
+                masm.movq(masm.makeAddress(AMD64.rsp, frameMap.getFramePointerSaveAreaOffset()), AMD64.rbp);
+            }
+            crb.recordMark(SubstrateMarkId.FRAME_POINTER_SPILLED);
         }
     }
 
@@ -136,14 +146,24 @@ class FramePointerPhase extends PreAllocationOptimizationPhase {
     public static class ReloadFramePointerOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<ReloadFramePointerOp> TYPE = LIRInstructionClass.create(ReloadFramePointerOp.class);
 
+        private final boolean recordMarkOnly;
+
         ReloadFramePointerOp() {
+            this(false);
+        }
+
+        ReloadFramePointerOp(boolean recordMarkOnly) {
             super(TYPE);
+            this.recordMarkOnly = recordMarkOnly;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            var frameMap = (SubstrateAMD64Backend.SubstrateAMD64FrameMap) crb.frameMap;
-            masm.movq(AMD64.rbp, masm.makeAddress(AMD64.rsp, frameMap.getFramePointerSaveAreaOffset()));
+            if (!recordMarkOnly) {
+                var frameMap = (SubstrateAMD64Backend.SubstrateAMD64FrameMap) crb.frameMap;
+                masm.movq(AMD64.rbp, masm.makeAddress(AMD64.rsp, frameMap.getFramePointerSaveAreaOffset()));
+            }
+            crb.recordMark(SubstrateMarkId.FRAME_POINTER_RELOADED);
         }
     }
 }
