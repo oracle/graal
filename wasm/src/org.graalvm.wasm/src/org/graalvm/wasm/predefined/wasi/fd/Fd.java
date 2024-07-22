@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -480,11 +480,13 @@ public abstract class Fd implements Closeable {
      * @param pathLength length of the path to get, in bytes, including the trailing null character
      * @param buf the buffer to which to write the contents of the symbolic link
      * @param bufLen the length of the buffer
+     * @param sizeAddress {@code size*}: address at which to write the number of bytes written to
+     *            {@code buf}
      * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
      * @throws WasmException if an error happens while writing or reading to {@code memory}
      * @see <a href="#preopened">Pre-opened directories</a>
      */
-    public int pathReadLink(Node node, WasmMemory memory, int pathAddress, int pathLength, int buf, int bufLen) {
+    public int pathReadLink(Node node, WasmMemory memory, int pathAddress, int pathLength, int buf, int bufLen, int sizeAddress) {
         if (!isSet(fsRightsBase, Rights.PathReadlink)) {
             return Errno.Notcapable.ordinal();
         }
