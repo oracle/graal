@@ -144,16 +144,16 @@ public class CompilationInfo {
         return isTrivialMethod;
     }
 
-    public void setTrivialMethod(boolean trivial) {
-        isTrivialMethod = trivial;
+    public void setTrivialMethod() {
+        isTrivialMethod = true;
     }
 
     public boolean isTrivialInliningDisabled() {
         return trivialInliningDisabled;
     }
 
-    public void setTrivialInliningDisabled(boolean trivialInliningDisabled) {
-        this.trivialInliningDisabled = trivialInliningDisabled;
+    public void setTrivialInliningDisabled() {
+        trivialInliningDisabled = true;
     }
 
     public void setCustomParseFunction(ParseFunction parseFunction) {
