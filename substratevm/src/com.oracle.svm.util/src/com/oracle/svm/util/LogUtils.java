@@ -27,13 +27,22 @@ package com.oracle.svm.util;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import java.io.PrintStream;
+
 // Checkstyle: Allow raw info or warning printing - begin
 public class LogUtils {
     /**
      * Print an info message.
      */
     public static void info(String message) {
-        System.out.println("Info: " + message);
+        info("Info", message);
+    }
+
+    /**
+     * Print an info message with the given prefix.
+     */
+    public static void info(String prefix, String message) {
+        System.out.println(prefix + ": " + message);
     }
 
     /**
@@ -53,7 +62,15 @@ public class LogUtils {
      * Print a warning.
      */
     public static void warning(String message) {
-        System.out.println("Warning: " + message);
+        warning("Warning", message, false);
+    }
+
+    /**
+     * Print a warning message with the given prefix, optionally to stderr.
+     */
+    public static void warning(String prefix, String message, boolean stderr) {
+        PrintStream out = stderr ? System.err : System.out;
+        out.println(prefix + ": " + message);
     }
 
     /**
