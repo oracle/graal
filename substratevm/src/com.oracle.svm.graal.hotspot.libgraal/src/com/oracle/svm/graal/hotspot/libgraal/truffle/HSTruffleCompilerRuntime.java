@@ -92,6 +92,17 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 @FromLibGraalEntryPointsResolver(value = TruffleFromLibGraal.Id.class, entryPointsClassName = "com.oracle.truffle.runtime.hotspot.libgraal.TruffleFromLibGraalEntryPoints")
 final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompilerRuntime {
 
+    private static final Class<?> TRANSLATED_EXCEPTION;
+    static {
+        Class<?> clz;
+        try {
+            clz = Class.forName("jdk.internal.vm.TranslatedException");
+        } catch (ClassNotFoundException cnf) {
+            clz = null;
+        }
+        TRANSLATED_EXCEPTION = clz;
+    }
+
     private final ResolvedJavaType classLoaderDelegate;
     final TruffleFromLibGraalCalls calls;
 
@@ -209,7 +220,27 @@ final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompiler
     @Override
     public ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required) {
         String internalName = getInternalName(className);
-        JavaType jt = runtime().lookupType(internalName, (HotSpotResolvedObjectType) classLoaderDelegate, required);
+        JavaType jt;
+        try {
+            jt = runtime().lookupType(internalName, (HotSpotResolvedObjectType) classLoaderDelegate, required);
+        } catch (Exception e) {
+            if (TRANSLATED_EXCEPTION != null && TRANSLATED_EXCEPTION.isInstance(e)) {
+                /*
+                 * As of JDK 24 (JDK-8335553), a translated exception is boxed in a
+                 * TranslatedException. Unbox a translated unchecked exception as they are the only
+                 * ones that can be expected by callers since this method is not declared in checked
+                 * exceptions.
+                 */
+                Throwable cause = e.getCause();
+                if (cause instanceof Error) {
+                    throw (Error) cause;
+                }
+                if (cause instanceof RuntimeException) {
+                    throw (RuntimeException) cause;
+                }
+            }
+            throw e;
+        }
         if (jt instanceof UnresolvedJavaType) {
             if (required) {
                 throw new NoClassDefFoundError(internalName);
