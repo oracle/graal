@@ -298,7 +298,7 @@ public abstract class ConfigurationParser {
 
     private static ProxyConfigurationTypeDescriptor getProxyDescriptor(Object proxyObject) {
         List<Object> proxyInterfaces = asList(proxyObject, "proxy interface content should be an interface list");
-        String[] proxyInterfaceNames = proxyInterfaces.stream().map(obj -> asString(obj, "proxy")).toArray(String[]::new);
+        List<String> proxyInterfaceNames = proxyInterfaces.stream().map(obj -> asString(obj, "proxy")).toList();
         return new ProxyConfigurationTypeDescriptor(proxyInterfaceNames);
     }
 }

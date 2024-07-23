@@ -78,12 +78,16 @@ class ReflectionProcessor extends AbstractProcessor {
                 expectSize(args, 2);
                 String module = (String) args.get(0);
                 String resource = (String) args.get(1);
-                resourceConfiguration.addGlobPattern(condition, resource, module);
+                if (!AccessAdvisor.shouldIgnoreResourceLookup(lazyValue(resource))) {
+                    resourceConfiguration.addGlobPattern(condition, resource, module);
+                }
                 return;
             }
             case "getResource", "getSystemResource", "getSystemResourceAsStream", "getResources", "getSystemResources" -> {
                 String literal = singleElement(args);
-                resourceConfiguration.addGlobPattern(condition, literal, null);
+                if (!AccessAdvisor.shouldIgnoreResourceLookup(lazyValue(literal))) {
+                    resourceConfiguration.addGlobPattern(condition, literal, null);
+                }
                 return;
             }
         }
@@ -284,7 +288,7 @@ class ReflectionProcessor extends AbstractProcessor {
     @SuppressWarnings("unchecked")
     private static ConfigurationTypeDescriptor descriptorForClass(Object clazz) {
         if (clazz instanceof List<?>) {
-            return new ProxyConfigurationTypeDescriptor(((List<String>) clazz).toArray(String[]::new));
+            return new ProxyConfigurationTypeDescriptor((List<String>) clazz);
         } else {
             return new NamedConfigurationTypeDescriptor((String) clazz);
         }

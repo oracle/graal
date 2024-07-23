@@ -29,11 +29,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 
 import org.graalvm.collections.EconomicMap;
 
+import jdk.graal.compiler.phases.common.LazyValue;
 import jdk.graal.compiler.util.json.JsonParserException;
 
 public class PredefinedClassesConfigurationParser extends ConfigurationParser {
@@ -120,5 +123,15 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
         String hash = asString(data.get("hash"), "hash");
         String nameInfo = asNullableString(data.get("nameInfo"), "nameInfo");
         registry.add(nameInfo, hash, baseUri);
+    }
+
+    public static LazyValue<Path> directorySupplier(Path root) {
+        return new LazyValue<>(() -> {
+            try {
+                return Files.createDirectories(root.resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 }
