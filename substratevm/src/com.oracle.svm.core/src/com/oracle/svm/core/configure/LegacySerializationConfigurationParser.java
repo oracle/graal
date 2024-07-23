@@ -111,7 +111,7 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
             if (targetSerializationClass instanceof NamedConfigurationTypeDescriptor namedClass) {
                 serializationSupport.registerWithTargetConstructorClass(condition.get(), namedClass.name(), customTargetConstructorClass);
             } else if (targetSerializationClass instanceof ProxyConfigurationTypeDescriptor proxyClass) {
-                serializationSupport.registerProxyClass(condition.get(), Arrays.asList(proxyClass.interfaceNames()));
+                serializationSupport.registerProxyClass(condition.get(), proxyClass.interfaceNames());
             } else {
                 throw new JsonParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
             }
