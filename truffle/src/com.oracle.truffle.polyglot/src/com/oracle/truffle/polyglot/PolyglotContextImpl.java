@@ -3527,6 +3527,10 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         } finally {
             engine.leave(prev, this);
         }
+        PolyglotSharingLayer.Shared s = layer.shared;
+        if (s != null) {
+            s.sourceCache.patch(TracingSourceCacheListener.createOrNull(engine));
+        }
         return true;
     }
 

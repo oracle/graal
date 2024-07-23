@@ -783,6 +783,8 @@ public abstract class Accessor {
         public abstract void setIsolatePolyglot(AbstractPolyglotImpl instance);
 
         public abstract Object getEngineData(Object polyglotEngine);
+
+        public abstract long getEngineId(Object polyglotEngine);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1125,6 +1127,8 @@ public abstract class Accessor {
         }
 
         public abstract RootCallTarget newCallTarget(CallTarget source, RootNode rootNode);
+
+        public abstract long getCallTargetId(CallTarget target);
 
         public abstract boolean isLoaded(CallTarget callTarget);
 
