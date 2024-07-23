@@ -39,7 +39,9 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Configuration used by Graal at runtime to compile and install code in the same runtime.
+ * Configuration used by Graal at runtime to compile and install code in the same runtime. A
+ * {@code RuntimeConfiguration} is also used at build-time to carry the configuration of the AOT
+ * compiler.
  */
 public final class RuntimeConfiguration {
 

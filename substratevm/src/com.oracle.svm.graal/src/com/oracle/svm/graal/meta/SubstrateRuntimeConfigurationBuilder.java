@@ -67,9 +67,9 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
     private final AnalysisUniverse aUniverse;
 
     public SubstrateRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, UniverseMetaAccess metaAccess,
-                    Function<Providers, SubstrateBackend> backendProvider, ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider,
-                    SubstratePlatformConfigurationProvider platformConfig, SnippetReflectionProvider snippetReflection) {
-        super(options, hostVM, metaAccess, backendProvider, classInitializationSupport, loopsDataProvider, platformConfig, snippetReflection);
+                    Function<Providers, SubstrateBackend> backendProvider, ClassInitializationSupport classInitializationSupport, SubstratePlatformConfigurationProvider platformConfig,
+                    SnippetReflectionProvider snippetReflection) {
+        super(options, hostVM, metaAccess, backendProvider, classInitializationSupport, platformConfig, snippetReflection);
         this.aUniverse = aUniverse;
     }
 
