@@ -40,6 +40,7 @@ import jdk.graal.compiler.core.common.calc.ReinterpretUtils;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -1051,6 +1052,42 @@ public class FloatStamp extends PrimitiveStamp {
 
                     null, // UMax
                     null, // UMin
+
+                    new ArithmeticOpTable.TernaryOp.FMA() {
+                        @Override
+                        public JavaConstant foldConstant(Constant a, Constant b, Constant c) {
+                            PrimitiveConstant pa = (PrimitiveConstant) a;
+                            PrimitiveConstant pb = (PrimitiveConstant) b;
+                            PrimitiveConstant pc = (PrimitiveConstant) c;
+                            GraalError.guarantee(pa.getJavaKind() == pb.getJavaKind() && pa.getJavaKind() == pc.getJavaKind(), "Must have same kind: a %s, b %s, c %s", pa, pb, pc);
+                            return switch (pa.getJavaKind()) {
+                                case Float -> JavaConstant.forFloat(GraalServices.fma(pa.asFloat(), pb.asFloat(), pc.asFloat()));
+                                case Double -> JavaConstant.forDouble(GraalServices.fma(pa.asDouble(), pb.asDouble(), pc.asDouble()));
+                                default -> throw GraalError.shouldNotReachHereUnexpectedValue(pa.getJavaKind());
+                            };
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b, Stamp c) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+                            if (b.isEmpty()) {
+                                return b;
+                            }
+                            if (c.isEmpty()) {
+                                return c;
+                            }
+                            JavaConstant constantA = ((FloatStamp) a).asConstant();
+                            JavaConstant constantB = ((FloatStamp) b).asConstant();
+                            JavaConstant constantC = ((FloatStamp) c).asConstant();
+                            if (constantA != null && constantB != null && constantC != null) {
+                                return StampFactory.forConstant(foldConstant(constantA, constantB, constantC));
+                            }
+
+                            return a.unrestricted();
+                        }
+                    },
 
                     new ArithmeticOpTable.ReinterpretOp() {
 

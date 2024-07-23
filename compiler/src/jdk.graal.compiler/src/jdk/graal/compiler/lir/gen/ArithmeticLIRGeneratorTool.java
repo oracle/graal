@@ -129,10 +129,10 @@ public interface ArithmeticLIRGeneratorTool {
 
     void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder);
 
-    @SuppressWarnings("unused")
-    default Value emitFusedMultiplyAdd(Value a, Value b, Value c) {
-        throw GraalError.unimplemented("No specialized implementation available"); // ExcludeFromJacocoGeneratedReport
-    }
+    /**
+     * Generate an fma instruction to calculate the value of a * b + c.
+     */
+    Value emitFusedMultiplyAdd(Value a, Value b, Value c);
 
     @SuppressWarnings("unused")
     default Value emitMathLog(Value input, boolean base10) {

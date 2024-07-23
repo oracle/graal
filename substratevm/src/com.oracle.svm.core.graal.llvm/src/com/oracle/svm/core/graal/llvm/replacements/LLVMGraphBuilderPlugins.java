@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.util.Arrays;
 
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.FusedMultiplyAddNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -40,7 +41,6 @@ import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import jdk.graal.compiler.replacements.nodes.BitCountNode;
-import jdk.graal.compiler.replacements.nodes.FusedMultiplyAddNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
