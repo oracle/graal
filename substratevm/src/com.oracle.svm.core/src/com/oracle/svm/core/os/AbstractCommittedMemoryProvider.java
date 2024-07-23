@@ -39,7 +39,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.util.UnsignedUtils;
 
@@ -82,23 +81,12 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, false);
-    }
-
-    @Override
-    public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
-        return allocate(nbytes, getAlignmentForUnalignedChunks(), false);
-    }
-
-    @Override
     public Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment) {
         return allocate(nbytes, alignment, true);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
+    protected Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
         Pointer reserved = WordFactory.nullPointer();
         if (!UnsignedUtils.isAMultiple(getGranularity(), alignment)) {
             reserved = VirtualMemoryProvider.get().reserve(size, alignment, executable);
@@ -123,43 +111,16 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     }
 
     @Override
-    public boolean areUnalignedChunksZeroed() {
-        return false;
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
-        free(start, nbytes);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void freeUnalignedChunk(PointerBase start, UnsignedWord nbytes) {
-        free(start, nbytes);
-    }
-
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void freeExecutableMemory(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
         free(start, nbytes);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void free(PointerBase start, UnsignedWord nbytes) {
+    protected void free(PointerBase start, UnsignedWord nbytes) {
         if (VirtualMemoryProvider.get().free(start, nbytes) == 0) {
             tracker.untrack(nbytes);
         }
-    }
-
-    /**
-     * Unaligned chunks also need some minimal alignment - otherwise, the data in the chunk header
-     * or the Java heap object within the unaligned chunk would be misaligned.
-     */
-    @Fold
-    protected static UnsignedWord getAlignmentForUnalignedChunks() {
-        int alignment = Math.max(ConfigurationValues.getTarget().wordSize, ConfigurationValues.getObjectLayout().getAlignment());
-        return WordFactory.unsigned(alignment);
     }
 
     private final VirtualMemoryTracker tracker = new VirtualMemoryTracker();
