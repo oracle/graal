@@ -84,7 +84,7 @@ import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrame;
@@ -252,6 +252,7 @@ public final class GCImpl implements GC {
         accounting.updateCollectionCountAndTime(completeCollection, collectionTimer.getMeasuredNanos());
         HeapImpl.getAccounting().notifyAfterCollection();
         GenScavengeMemoryPoolMXBeans.singleton().notifyAfterCollection();
+        ChunkBasedCommittedMemoryProvider.get().afterGarbageCollection();
 
         printGCAfter(cause);
         JfrGCHeapSummaryEvent.emit(JfrGCWhen.AFTER_GC);
@@ -284,7 +285,7 @@ public final class GCImpl implements GC {
     private boolean doCollectImpl(GCCause cause, long requestingNanoTime, boolean forceFullGC, boolean forceNoIncremental) {
         checkSanityBeforeCollection();
 
-        CommittedMemoryProvider.get().beforeGarbageCollection();
+        ChunkBasedCommittedMemoryProvider.get().beforeGarbageCollection();
 
         boolean incremental = !forceNoIncremental && !policy.shouldCollectCompletely(false);
         boolean outOfMemory = false;
@@ -299,7 +300,7 @@ public final class GCImpl implements GC {
         }
         if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(incremental)) {
             if (incremental) { // uncommit unaligned chunks
-                CommittedMemoryProvider.get().afterGarbageCollection();
+                ChunkBasedCommittedMemoryProvider.get().uncommitUnusedMemory();
             }
             long startTicks = JfrGCEvents.startGCPhasePause();
             try {
@@ -310,7 +311,7 @@ public final class GCImpl implements GC {
         }
 
         HeapImpl.getChunkProvider().freeExcessAlignedChunks();
-        CommittedMemoryProvider.get().afterGarbageCollection();
+        ChunkBasedCommittedMemoryProvider.get().uncommitUnusedMemory();
 
         checkSanityAfterCollection();
         return outOfMemory;
