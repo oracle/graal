@@ -61,9 +61,9 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     private final HostedProviders analysisProviders;
 
     public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess,
-                    HostedProviders analysisProviders, ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
-                    SubstratePlatformConfigurationProvider platformConfig, SnippetReflectionProvider snippetReflection) {
-        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, classInitializationSupport, originalLoopsDataProvider, platformConfig, snippetReflection);
+                    HostedProviders analysisProviders, ClassInitializationSupport classInitializationSupport, SubstratePlatformConfigurationProvider platformConfig,
+                    SnippetReflectionProvider snippetReflection) {
+        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, classInitializationSupport, platformConfig, snippetReflection);
         this.universe = universe;
         this.analysisProviders = analysisProviders;
     }

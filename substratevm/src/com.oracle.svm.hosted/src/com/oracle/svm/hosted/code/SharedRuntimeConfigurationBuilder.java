@@ -73,19 +73,16 @@ public abstract class SharedRuntimeConfigurationBuilder {
     protected final UniverseMetaAccess metaAccess;
     protected final Function<Providers, SubstrateBackend> backendProvider;
     protected final ClassInitializationSupport classInitializationSupport;
-    protected final LoopsDataProvider originalLoopsDataProvider;
     protected final SubstratePlatformConfigurationProvider platformConfig;
     protected final SnippetReflectionProvider snippetReflection;
 
     public SharedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, UniverseMetaAccess metaAccess, Function<Providers, SubstrateBackend> backendProvider,
-                    ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
-                    SubstratePlatformConfigurationProvider platformConfig, SnippetReflectionProvider snippetReflection) {
+                    ClassInitializationSupport classInitializationSupport, SubstratePlatformConfigurationProvider platformConfig, SnippetReflectionProvider snippetReflection) {
         this.options = options;
         this.hostVM = hostVM;
         this.metaAccess = metaAccess;
         this.backendProvider = backendProvider;
         this.classInitializationSupport = classInitializationSupport;
-        this.originalLoopsDataProvider = originalLoopsDataProvider;
         this.platformConfig = platformConfig;
         this.snippetReflection = snippetReflection;
     }
@@ -116,7 +113,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
         LoweringProvider lowerer = createLoweringProvider(foreignCalls, metaAccessExtensionProvider);
 
-        LoopsDataProvider loopsDataProvider = originalLoopsDataProvider;
+        LoopsDataProvider loopsDataProvider = GraalConfiguration.runtimeInstance().createLoopsDataProvider();
 
         /*
          * To simplify future merging of IdentityHashCodeProvider into ConstantReflectionProvider,
