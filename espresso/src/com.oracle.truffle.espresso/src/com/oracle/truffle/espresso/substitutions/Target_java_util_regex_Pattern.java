@@ -64,7 +64,7 @@ public final class Target_java_util_regex_Pattern {
             return true;
         }
         Object unsupported = meta.java_util_regex_Pattern_HIDDEN_unsupported.getHiddenObject(parentPattern);
-        return unsupported == null || (boolean) unsupported;
+        return (!(unsupported instanceof Boolean)) || (boolean) unsupported;
     }
 
     @Substitution(hasReceiver = true, methodName = "<init>")
@@ -142,7 +142,7 @@ public final class Target_java_util_regex_Pattern {
                         @Bind("getContext()") EspressoContext context,
                         @Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original,
                         @Cached("create(context.getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode initOriginal) {
-            if (context.getMeta().java_util_regex_Pattern_namedGroups_field.getObject(self) == StaticObject.NULL) {
+            if (StaticObject.isNull(context.getMeta().java_util_regex_Pattern_namedGroups_field.getObject(self))) {
                 StaticObject pattern = context.getMeta().java_util_regex_Pattern_pattern.getObject(self);
                 Object flags = context.getMeta().java_util_regex_Pattern_flags.getValue(self);
                 initOriginal.call(self, pattern, flags);
