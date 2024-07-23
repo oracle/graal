@@ -87,6 +87,15 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
+        public long getCallTargetId(CallTarget target) {
+            if (target instanceof DefaultCallTarget) {
+                return ((DefaultCallTarget) target).id;
+            } else {
+                return 0;
+            }
+        }
+
+        @Override
         public boolean isLegacyCompilerOption(String key) {
             return false;
         }

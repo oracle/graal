@@ -42,6 +42,8 @@ package com.oracle.truffle.api.impl;
 
 import static com.oracle.truffle.api.impl.DefaultTruffleRuntime.getRuntime;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -61,9 +63,14 @@ public final class DefaultCallTarget implements RootCallTarget {
     private volatile boolean initialized;
     private volatile boolean loaded;
 
+    public final long id;
+
+    private static final AtomicLong ID_COUNTER = new AtomicLong(0);
+
     DefaultCallTarget(RootNode function) {
         this.rootNode = function;
         this.rootNode.adoptChildren();
+        this.id = ID_COUNTER.incrementAndGet();
     }
 
     @Override

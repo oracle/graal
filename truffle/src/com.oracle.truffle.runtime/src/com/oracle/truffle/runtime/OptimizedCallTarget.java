@@ -355,7 +355,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = NO_CALL;
     volatile List<OptimizedCallTarget> blockCompilations;
     public final long id;
-    private static final AtomicLong idCounter = new AtomicLong(0);
+    private static final AtomicLong ID_COUNTER = new AtomicLong(0);
 
     @SuppressWarnings("this-escape")
     protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
@@ -368,7 +368,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
         // node(s).
         this.uninitializedNodeCount = uninitializedNodeCount(rootNode);
-        id = idCounter.getAndIncrement();
+        id = ID_COUNTER.getAndIncrement();
     }
 
     protected OptimizedCallTarget(EngineData engine) {
@@ -380,7 +380,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         this.sourceCallTarget = null;
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
         // node(s).
-        id = idCounter.getAndIncrement();
+        id = ID_COUNTER.getAndIncrement();
     }
 
     private int uninitializedNodeCount(RootNode rootNode) {
