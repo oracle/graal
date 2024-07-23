@@ -49,6 +49,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
@@ -57,10 +58,16 @@ final class PolyglotSourceCache {
 
     private final Cache strongCache;
     private final Cache weakCache;
+    private SourceCacheListener sourceCacheListener;
 
-    PolyglotSourceCache() {
+    PolyglotSourceCache(SourceCacheListener sourceCacheListener) {
+        this.sourceCacheListener = sourceCacheListener;
         this.weakCache = new WeakCache();
         this.strongCache = new StrongCache();
+    }
+
+    void patch(SourceCacheListener listener) {
+        this.sourceCacheListener = listener;
     }
 
     CallTarget parseCached(PolyglotLanguageContext context, Source source, String[] argumentNames) {
@@ -79,7 +86,14 @@ final class PolyglotSourceCache {
             }
             target = weakCache.lookup(context, source, argumentNames, true);
         } else {
+            long parseStart = 0;
+            if (sourceCacheListener != null) {
+                parseStart = System.currentTimeMillis();
+            }
             target = parseImpl(context, argumentNames, source);
+            if (sourceCacheListener != null) {
+                sourceCacheListener.onCacheMiss(source, target, SourceCacheListener.CacheType.UNCACHED, parseStart);
+            }
         }
         return target;
     }
@@ -173,22 +187,56 @@ final class PolyglotSourceCache {
         abstract void listSources(PolyglotImpl polyglot, Collection<Object> source);
     }
 
-    private static final class StrongCache extends Cache {
+    static class StrongCacheValue {
 
-        private final ConcurrentHashMap<SourceKey, CallTarget> sourceCache = new ConcurrentHashMap<>();
+        final CallTarget target;
+        final AtomicLong hits = new AtomicLong();
+
+        StrongCacheValue(CallTarget target) {
+            this.target = target;
+        }
+
+    }
+
+    private final class StrongCache extends Cache {
+
+        private final ConcurrentHashMap<SourceKey, StrongCacheValue> sourceCache = new ConcurrentHashMap<>();
 
         @Override
         CallTarget lookup(PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse) {
             SourceKey key = new SourceKey(source, argumentNames);
-            CallTarget target = sourceCache.get(key);
-            if (target == null && parse) {
-                target = parseImpl(context, argumentNames, source);
-                CallTarget prevTarget = sourceCache.putIfAbsent(key, target);
-                if (prevTarget != null) {
-                    target = prevTarget;
+            StrongCacheValue value = sourceCache.get(key);
+            if (value == null) {
+                if (parse) {
+                    long parseStart = 0;
+                    if (sourceCacheListener != null) {
+                        parseStart = System.currentTimeMillis();
+                    }
+                    try {
+                        value = new StrongCacheValue(parseImpl(context, argumentNames, source));
+                        StrongCacheValue prevValue = sourceCache.putIfAbsent(key, value);
+                        if (prevValue != null) {
+                            value = prevValue;
+                        }
+                        if (sourceCacheListener != null) {
+                            sourceCacheListener.onCacheMiss(source, value.target, SourceCacheListener.CacheType.STRONG, parseStart);
+                        }
+                    } catch (Throwable t) {
+                        if (sourceCacheListener != null) {
+                            sourceCacheListener.onCacheFail(context.context.layer, source, SourceCacheListener.CacheType.STRONG, parseStart, t);
+                        }
+                        throw t;
+                    }
+                } else {
+                    return null;
+                }
+            } else {
+                value.hits.incrementAndGet();
+                if (sourceCacheListener != null) {
+                    sourceCacheListener.onCacheHit(source, value.target, SourceCacheListener.CacheType.STRONG, value.hits.get());
                 }
             }
-            return target;
+            return value.target;
         }
 
         @Override
@@ -205,7 +253,7 @@ final class PolyglotSourceCache {
 
     }
 
-    private static final class WeakCache extends Cache {
+    private final class WeakCache extends Cache {
 
         private final ConcurrentHashMap<WeakSourceKey, WeakCacheValue> sourceCache = new ConcurrentHashMap<>();
         private final ReferenceQueue<Source> deadSources = new ReferenceQueue<>();
@@ -219,16 +267,35 @@ final class PolyglotSourceCache {
             WeakCacheValue value = sourceCache.get(ref);
             if (value == null) {
                 if (parse) {
-                    value = new WeakCacheValue(parseImpl(context, argumentNames, sourceValue), sourceValue);
-                    WeakCacheValue prev = sourceCache.putIfAbsent(ref, value);
-                    if (prev != null) {
-                        /*
-                         * Parsed twice -> discard the one not in the cache.
-                         */
-                        value = prev;
+                    long parseStart = 0;
+                    if (sourceCacheListener != null) {
+                        parseStart = System.currentTimeMillis();
+                    }
+                    try {
+                        value = new WeakCacheValue(parseImpl(context, argumentNames, sourceValue), sourceValue);
+                        WeakCacheValue prev = sourceCache.putIfAbsent(ref, value);
+                        if (prev != null) {
+                            /*
+                             * Parsed twice -> discard the one not in the cache.
+                             */
+                            value = prev;
+                        }
+                        if (sourceCacheListener != null) {
+                            sourceCacheListener.onCacheMiss(source, value.target, SourceCacheListener.CacheType.WEAK, parseStart);
+                        }
+                    } catch (Throwable t) {
+                        if (sourceCacheListener != null) {
+                            sourceCacheListener.onCacheFail(context.context.layer, source, SourceCacheListener.CacheType.WEAK, parseStart, t);
+                        }
+                        throw t;
                     }
                 } else {
                     return null;
+                }
+            } else {
+                value.hits.incrementAndGet();
+                if (sourceCacheListener != null) {
+                    sourceCacheListener.onCacheHit(source, value.target, SourceCacheListener.CacheType.WEAK, value.hits.get());
                 }
             }
             return value.target;
@@ -248,9 +315,12 @@ final class PolyglotSourceCache {
         }
 
         private void cleanupStaleEntries() {
-            WeakSourceKey sourceRef = null;
+            WeakSourceKey sourceRef;
             while ((sourceRef = (WeakSourceKey) deadSources.poll()) != null) {
-                sourceCache.remove(sourceRef);
+                WeakCacheValue value = sourceCache.remove(sourceRef);
+                if (value != null && sourceCacheListener != null) {
+                    sourceCacheListener.onCacheEvict(value.source, value.target, SourceCacheListener.CacheType.WEAK, value.hits.get());
+                }
             }
         }
 
@@ -260,6 +330,7 @@ final class PolyglotSourceCache {
 
         final CallTarget target;
         final Source source;
+        final AtomicLong hits = new AtomicLong();
 
         WeakCacheValue(CallTarget target, Source source) {
             this.target = target;

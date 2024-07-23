@@ -52,6 +52,8 @@ They are useful to users and language and tool implementers.
 - `--engine.RelaxStaticObjectSafetyChecks` : On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts
 - `--engine.SynchronousThreadLocalActionMaxWait=[0, inf)` : How long to wait for other threads to reach a synchronous ThreadLocalAction before cancelling it, in seconds. 0 means no limit.
 - `--engine.SynchronousThreadLocalActionPrintStackTraces` : Print thread stacktraces when a synchronous ThreadLocalAction is waiting for more than SynchronousThreadLocalActionMaxWait seconds.
+- `--engine.TraceSourceCache` : Print information for source cache misses/evictions/failures.
+- `--engine.TraceSourceCacheDetails` : Print information for all source cache events including hits and uncached misses.
 - `--engine.TraceStackTraceInterval=[1, inf)` : Prints the stack trace for all threads for a time interval. By default 0, which disables the output.
 - `--engine.DebugCacheCompileUseLastTier=true|false` : If true uses the last tier instead of the first tier compiler. By default the last tier compiler is used (default: true).
 - `--engine.BackgroundCompilation=true|false` : Enable asynchronous truffle compilation in background threads (default: true)

@@ -17,6 +17,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-40931 Using virtual threads in a native-image will now emulate virtual threads using platform threads until Loom support for Truffle languages in native-image is implemented.
 * GR-48481: It is now possible to depend on platform-specific Maven artifacts when using polyglot isolates. The `-isolate` Maven artifacts remain platform-independent. However, if platform specific builds are required, consider adding a platform specific suffix to the Maven artifact name, such as `-isolate-linux-amd64`. The reduced binary size of platform specific dependencies can improve build times and reduce the distribution size of your application. For more details, see [Embedding Languages](https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates).
 * GR-48481: The Python language is now available as a polyglot isolate.
+* GR-54674: Added the options `engine.TraceSourceCache` and `engine.TraceSourceCacheDetails` to allow tracing of source cache hits, misses, failures and evictions. 
 
 ## Version 24.0.0
 * (GR-49334) Deprecated the `FileSystems#allowLanguageHomeAccess()` method and introduced `FileSystem#allowInternalResourceAccess()` as a replacement. To ensure compatibility, both methods now provide support for language homes and internal resources.
