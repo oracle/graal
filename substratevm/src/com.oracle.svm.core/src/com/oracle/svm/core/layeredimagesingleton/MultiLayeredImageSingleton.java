@@ -28,6 +28,10 @@ import com.oracle.svm.core.util.VMError;
 
 public interface MultiLayeredImageSingleton extends LayeredImageSingleton {
 
+    /**
+     * Returns an array containing the image singletons installed for {@code key} within all layers.
+     * See {@link LayeredImageSingleton} for full explanation.
+     */
     @SuppressWarnings("unused")
     static <T extends MultiLayeredImageSingleton> T[] getAllLayers(Class<T> key) {
         throw VMError.shouldNotReachHere("This can only be called during runtime");

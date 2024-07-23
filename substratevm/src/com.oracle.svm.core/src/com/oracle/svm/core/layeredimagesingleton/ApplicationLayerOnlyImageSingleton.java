@@ -24,5 +24,9 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
+/**
+ * Identifies a singleton for which all lookups refer to a single singleton which will be created in
+ * the application layer. See {@link LayeredImageSingleton} for full explanation.
+ */
 public interface ApplicationLayerOnlyImageSingleton extends LayeredImageSingleton {
 }
