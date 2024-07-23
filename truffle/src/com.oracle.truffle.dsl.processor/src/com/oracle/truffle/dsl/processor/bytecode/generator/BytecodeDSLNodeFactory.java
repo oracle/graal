@@ -13897,15 +13897,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (evaluatedArg != null) {
                 b.string(evaluatedArg);
             } else if (tier.isUncached()) {
+                List<InstructionImmediate> constants = instr.getImmediates(ImmediateKind.CONSTANT);
                 for (int i = 0; i < instr.signature.constantOperandsBeforeCount; i++) {
                     TypeMirror constantOperandType = instr.operation.constantOperands.before().get(i).type();
                     b.startGroup();
                     if (!ElementUtils.isObject(constantOperandType)) {
                         b.cast(constantOperandType);
                     }
-                    List<InstructionImmediate> imms = instr.getImmediates(ImmediateKind.CONSTANT);
-                    InstructionImmediate imm = imms.get(i);
-                    b.string(readConst(readBc("bci + " + imm.offset())));
+                    b.string(readConst(readBc("bci + " + constants.get(i).offset())));
                     b.end();
                 }
 
@@ -13925,9 +13924,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (!ElementUtils.isObject(constantOperandType)) {
                         b.cast(constantOperandType);
                     }
-                    List<InstructionImmediate> imms = instr.getImmediates(ImmediateKind.CONSTANT);
-                    InstructionImmediate imm = imms.get(i);
-                    b.string(readConst(readBc("bci + " + imm.offset())));
+                    b.string(readConst(readBc("bci + " + constants.get(i + instr.signature.constantOperandsBeforeCount).offset())));
                     b.end();
                 }
             }

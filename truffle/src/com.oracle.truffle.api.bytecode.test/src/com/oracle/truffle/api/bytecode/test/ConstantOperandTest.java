@@ -41,13 +41,20 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
+import static com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -56,11 +63,13 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.LocalSetter;
 import com.oracle.truffle.api.bytecode.Operation;
@@ -76,11 +85,48 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
+@RunWith(Parameterized.class)
 public class ConstantOperandTest {
     private static final BytecodeDSLTestLanguage LANGUAGE = null;
 
-    private static ConstantOperandTestRootNode parse(BytecodeParser<ConstantOperandTestRootNodeGen.Builder> parser) {
-        return ConstantOperandTestRootNodeGen.create(BytecodeConfig.DEFAULT, parser).getNode(0);
+    @Parameters(name = "{0}")
+    public static List<Class<? extends ConstantOperandTestRootNode>> getParameters() {
+        return List.of(ConstantOperandTestRootNodeCached.class, ConstantOperandTestRootNodeUncached.class);
+    }
+
+    @Parameter(0) public Class<? extends ConstantOperandTestRootNode> interpreterClass;
+
+    @SuppressWarnings("unchecked")
+    private <T extends ConstantOperandTestRootNodeBuilder> ConstantOperandTestRootNode parse(BytecodeParser<? extends T> parser) {
+        try {
+            Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
+            return ((BytecodeRootNodes<ConstantOperandTestRootNode>) create.invoke(null, BytecodeConfig.DEFAULT, parser)).getNode(0);
+        } catch (InvocationTargetException e) {
+            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
+            // get caught by the test harness.
+            if (e.getCause() instanceof RuntimeException) {
+                throw (RuntimeException) e.getCause();
+            } else if (e.getCause() instanceof Error) {
+                throw (Error) e.getCause();
+            } else {
+                throw new AssertionError(e);
+            }
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    public static BytecodeConfig.Builder invokeNewConfigBuilder(Class<? extends ConstantOperandTestRootNode> interpreterClass) {
+        try {
+            Method newConfigBuilder = interpreterClass.getMethod("newConfigBuilder");
+            return (BytecodeConfig.Builder) newConfigBuilder.invoke(null);
+        } catch (InvocationTargetException e) {
+            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
+            // get caught by the test harness.
+            throw new IllegalStateException(e.getCause());
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Test
@@ -155,7 +201,7 @@ public class ConstantOperandTest {
         });
         assertEquals(123, root.getCallTarget().call(123));
 
-        root.getRootNodes().update(ConstantOperandTestRootNodeGen.newConfigBuilder().addInstrumentation(ReplaceValue.class).build());
+        root.getRootNodes().update(invokeNewConfigBuilder(interpreterClass).addInstrumentation(ReplaceValue.class).build());
         assertEquals(42, root.getCallTarget().call(123));
     }
 
@@ -178,7 +224,7 @@ public class ConstantOperandTest {
         ContinuationResult cont = (ContinuationResult) root.getCallTarget().call();
         assertEquals(42, cont.getResult());
 
-        root.getRootNodes().update(ConstantOperandTestRootNodeGen.newConfigBuilder().addInstrumentation(ReplaceValue.class).build());
+        root.getRootNodes().update(invokeNewConfigBuilder(interpreterClass).addInstrumentation(ReplaceValue.class).build());
         cont = (ContinuationResult) root.getCallTarget().call();
         assertEquals(123, cont.getResult());
     }
@@ -269,7 +315,11 @@ public class ConstantOperandTest {
 
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true)
+@GenerateBytecodeTestVariants({
+                @Variant(suffix = "Cached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = false)),
+                @Variant(suffix = "Uncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true))
+})
+
 abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeRootNode {
 
     protected ConstantOperandTestRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
