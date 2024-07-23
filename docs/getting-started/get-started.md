@@ -3,7 +3,7 @@ layout: docs
 toc_group: getting-started
 link_title: Getting Started
 permalink: /getting-started/
-redirect_from: /docs/getting-started/macos/
+redirect_from: /docs/getting-started/
 ---
 
 # Getting Started with Oracle GraalVM
