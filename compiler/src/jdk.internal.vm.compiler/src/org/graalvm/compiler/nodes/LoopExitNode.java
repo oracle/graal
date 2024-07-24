@@ -133,8 +133,9 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
         Node prev = this.predecessor();
         while (tool.allUsagesAvailable() && prev instanceof BeginNode && prev.hasNoUsages()) {
             AbstractBeginNode begin = (AbstractBeginNode) prev;
-            // Keep a single BeginNode in between LoopExitNodes and InvokeWithExceptionNodes
-            if (!(prev.predecessor() instanceof InvokeWithExceptionNode)) {
+            // Keep a single BeginNode in between LoopExitNodes and WithExceptionNodes that can
+            // potentially be used as value inputs for proxies of this exit (transitively)
+            if (!(prev.predecessor() instanceof WithExceptionNode)) {
                 this.setNodeSourcePosition(begin.getNodeSourcePosition());
                 graph().removeFixed(begin);
                 prev = prev.predecessor();
@@ -143,6 +144,8 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
             }
         }
     }
+
+    public static final String ErrorMessagePredecessorSplit = "Predecessor must not be a control split node that can be used as value node as that could mean scheduling of proxy nodes goes wrong";
 
     @Override
     public boolean verify() {
@@ -157,7 +160,7 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
         // Because the scheduler doesn't schedule ProxyNodes, the inputs to the ProxyNode can end up
         // in the wrong place in the earliest local schedule. Ensuring there's a BeginNode before
         // the LoopExitNode creates an earlier location where those nodes can be scheduled.
-        assert !(predecessor() instanceof InvokeWithExceptionNode);
+        assert !(predecessor() instanceof InvokeWithExceptionNode) : String.format("%s '%s'", ErrorMessagePredecessorSplit, predecessor());
         return super.verify();
     }
 }
