@@ -1181,10 +1181,7 @@ public final class JDWP {
                                 writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
-                                // Checkstyle: stop allow error output
-                                System.err.println("Internal Espresso error: " + t.getMessage());
-                                t.printStackTrace();
-                                // Checkstyle: resume allow error output
+                                controller.throwing(INVOKE_METHOD.class.getName(), "createReply", t);
                             } finally {
                                 connection.handleReply(packet, commandResult);
                             }
@@ -1373,10 +1370,7 @@ public final class JDWP {
                                 writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
-                                // Checkstyle: stop allow error output
-                                System.err.println("Internal Espresso error: " + t.getMessage());
-                                t.printStackTrace();
-                                // Checkstyle: resume allow error output
+                                controller.throwing(INVOKE_METHOD.class.getName(), "createReply", t);
                             } finally {
                                 connection.handleReply(packet, commandResult);
                             }
@@ -1833,10 +1827,7 @@ public final class JDWP {
                                 writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
-                                // Checkstyle: stop allow error output
-                                System.err.println("Internal Espresso error: " + t.getMessage());
-                                t.printStackTrace();
-                                // Checkstyle: resume allow error output
+                                controller.throwing(INVOKE_METHOD.class.getName(), "createReply", t);
                             } finally {
                                 connection.handleReply(packet, commandResult);
                             }
@@ -2694,7 +2685,7 @@ public final class JDWP {
         static class GET_VALUES {
             public static final int ID = 1;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -2730,7 +2721,7 @@ public final class JDWP {
                         writeValue(sigbyte, value, reply, true, context);
                     }
                 } catch (ArrayIndexOutOfBoundsException | InteropException ex) {
-                    ex.printStackTrace();
+                    controller.throwing(GET_VALUES.class.getName(), "createReply", ex);
                     // invalid slot provided
                     reply.errorCode(ErrorCodes.INVALID_SLOT);
                     return new CommandResult(reply);

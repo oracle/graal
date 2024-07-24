@@ -1064,6 +1064,10 @@ public final class DebuggerController implements ContextsListener {
         jdwpLogger.log(Level.SEVERE, message, error);
     }
 
+    public <T extends Throwable> void throwing(String sourceClass, String methodName, T thrown) {
+        jdwpLogger.throwing(sourceClass, methodName, thrown);
+    }
+
     @Override
     public void onContextCreated(@SuppressWarnings("unused") TruffleContext con) {
 
