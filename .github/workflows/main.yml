@@ -77,7 +77,6 @@ concurrency:
 
 env:
   JAVA_HOME: ${{ github.workspace }}/jdk
-  JDT: builtin
   LANG: en_US.UTF-8
   MX_GIT_CACHE: refcache
   MX_PATH: ${{ github.workspace }}/mx
@@ -158,6 +157,7 @@ jobs:
               NATIVE_IMAGES: "lib:jvmcicompiler,native-image,lib:native-image-agent,lib:native-image-diagnostics-agent,polyglot"
               WITHOUT_VCS: true
     env:
+      JDT: builtin # Compile with ECJ (and javac) as part of gate runs tagged with 'fullbuild'
       MX_RUNS_DEBUG: ${{ contains(matrix.env.GATE_TAGS, 'debug') || matrix.env.GATE_TAGS == '' }}
       MX_RUNS_STYLE: ${{ contains(matrix.env.GATE_TAGS, 'style') || matrix.env.GATE_TAGS == '' }}
     steps:
