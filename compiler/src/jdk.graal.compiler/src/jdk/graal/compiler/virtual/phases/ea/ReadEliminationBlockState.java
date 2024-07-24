@@ -30,13 +30,9 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * This class maintains a set of known values, identified by base object, locations and offset.
@@ -202,36 +198,8 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
      * array access. This method must implement Java semantic for regular fields, array accesses,
      * volatile operations etc.
      */
-    public void killReadCache(Node kill, LocationIdentity identity, ValueNode index, ValueNode array) {
+    public void killReadCache(@SuppressWarnings("unused") Node kill, LocationIdentity identity, ValueNode index, ValueNode array) {
         if (identity.isAny()) {
-            if (kill instanceof LoadFieldNode af && af.ordersMemoryAccesses()) {
-                ResolvedJavaField field = af.field();
-                if (field.isVolatile()) {
-                    /**
-                     * See <a href="https://gee.cs.oswego.edu/dl/jmm/cookbook.html"> JSR-133
-                     * Cookbook</a> for details
-                     *
-                     * Normal load operations can be reordered with volatile load operations.
-                     */
-                    Iterator<CacheEntry<?>> iterator = readCache.getKeys().iterator();
-                    while (iterator.hasNext()) {
-                        CacheEntry<?> entry = iterator.next();
-                        LocationIdentity location = entry.getIdentity();
-                        if (location instanceof FieldLocationIdentity fl && fl.getField().isFinal()) {
-                            assert !fl.getField().equals(field) : Assertions.errorMessage("Field cannot be final and volatile at the same time", fl, fl.getField(), identity, af);
-                            /**
-                             * Access to a different final field - this does not overlap with the
-                             * volatile memory effect.
-                             */
-                        } else {
-                            if (entry.getIdentity().isMutable()) {
-                                iterator.remove();
-                            }
-                        }
-                    }
-                    return;
-                }
-            }
             /**
              * Kill all mutable locations.
              */
