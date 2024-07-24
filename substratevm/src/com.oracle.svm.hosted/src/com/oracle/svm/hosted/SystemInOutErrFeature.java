@@ -38,7 +38,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
 
 /**
@@ -80,16 +79,13 @@ public class SystemInOutErrFeature implements InternalFeature, FeatureSingleton 
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {
                 var registry = CrossLayerConstantRegistry.singletonOrNull();
-                registry.registerConstantCandidate(SYSTEM_IN_KEY_NAME, runtime.in());
-                registry.registerConstantCandidate(SYSTEM_OUT_KEY_NAME, runtime.out());
-                registry.registerConstantCandidate(SYSTEM_ERR_KEY_NAME, runtime.err());
+                registry.registerHeapConstant(SYSTEM_IN_KEY_NAME, runtime.in());
+                registry.registerHeapConstant(SYSTEM_OUT_KEY_NAME, runtime.out());
+                registry.registerHeapConstant(SYSTEM_ERR_KEY_NAME, runtime.err());
             }
             access.registerObjectReplacer(this::replaceStreamsWithRuntimeObject);
         } else {
             var registry = CrossLayerConstantRegistry.singletonOrNull();
-            VMError.guarantee(registry.constantExists(SYSTEM_IN_KEY_NAME), "Missing Constant %s", SYSTEM_IN_KEY_NAME);
-            VMError.guarantee(registry.constantExists(SYSTEM_OUT_KEY_NAME), "Missing Constant %s", SYSTEM_OUT_KEY_NAME);
-            VMError.guarantee(registry.constantExists(SYSTEM_ERR_KEY_NAME), "Missing Constant %s", SYSTEM_ERR_KEY_NAME);
             ((FeatureImpl.DuringSetupAccessImpl) access).registerObjectToConstantReplacer(obj -> replaceStreamsWithLayerConstant(registry, obj));
         }
     }
@@ -111,13 +107,13 @@ public class SystemInOutErrFeature implements InternalFeature, FeatureSingleton 
         }
     }
 
-    ImageHeapConstant replaceStreamsWithLayerConstant(CrossLayerConstantRegistry idTracking, Object object) {
+    ImageHeapConstant replaceStreamsWithLayerConstant(CrossLayerConstantRegistry registry, Object object) {
         if (object == hostedIn) {
-            return idTracking.getConstant(SYSTEM_IN_KEY_NAME);
+            return registry.getConstant(SYSTEM_IN_KEY_NAME);
         } else if (object == hostedOut) {
-            return idTracking.getConstant(SYSTEM_OUT_KEY_NAME);
+            return registry.getConstant(SYSTEM_OUT_KEY_NAME);
         } else if (object == hostedErr) {
-            return idTracking.getConstant(SYSTEM_ERR_KEY_NAME);
+            return registry.getConstant(SYSTEM_ERR_KEY_NAME);
         } else {
             return null;
         }
