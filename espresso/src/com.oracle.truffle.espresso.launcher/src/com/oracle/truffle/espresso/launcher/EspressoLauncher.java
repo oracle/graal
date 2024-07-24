@@ -22,8 +22,12 @@
  */
 package com.oracle.truffle.espresso.launcher;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -176,7 +180,9 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         ArrayList<String> unrecognized = new ArrayList<>();
         boolean isRelaxStaticObjectSafetyChecksSet = false;
 
-        Arguments args = new Arguments(arguments);
+        List<String> expandedArguments = expandAtFiles(arguments);
+
+        Arguments args = new Arguments(expandedArguments);
         while (args.next()) {
             String arg = args.getKey();
             switch (arg) {
@@ -347,7 +353,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
 
                     mainClassName = getMainClassName(jarFileName);
                 }
-                buildJvmArgs(arguments, args.getNumberOfProcessedArgs());
+                buildJvmArgs(expandedArguments, args.getNumberOfProcessedArgs());
                 args.pushLeftoversArgs();
                 break;
             }
@@ -361,14 +367,12 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             if (classpath == null) {
                 // (3) the environment variable CLASSPATH
                 classpath = System.getenv("CLASSPATH");
-                if (classpath == null) {
-                    // (4) the current working directory only
-                    classpath = ".";
-                }
             }
         }
 
-        espressoOptions.put("java.Classpath", classpath);
+        if (classpath != null) {
+            espressoOptions.put("java.Classpath", classpath);
+        }
 
         if (!isRelaxStaticObjectSafetyChecksSet) {
             // Since Espresso has a verifier, the Static Object Model does not need to perform shape
@@ -378,6 +382,32 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         }
 
         return unrecognized;
+    }
+
+    private List<String> expandAtFiles(List<String> arguments) {
+        List<String> expanded = null;
+        for (int i = 0; i < arguments.size(); i++) {
+            String arg = arguments.get(i);
+            if (arg.startsWith("@")) {
+                if (expanded == null) {
+                    expanded = new ArrayList<>(arguments.subList(0, i));
+                }
+                parseArgFile(arg.substring(1, arg.length()), expanded);
+            } else if (expanded != null) {
+                expanded.add(arg);
+            }
+        }
+        return expanded == null ? arguments : expanded;
+    }
+
+    private void parseArgFile(String pathArg, List<String> expanded) {
+        Path argFilePath = Paths.get(pathArg);
+        try {
+            BufferedReader reader = Files.newBufferedReader(argFilePath);
+            new ArgFileParser(reader).parse(expanded::add);
+        } catch (IOException e) {
+            throw abort(new RuntimeException("Cannot open @argfile", e), 1);
+        }
     }
 
     private void handleXXArg(String fullArg, ArrayList<String> unrecognized) {
