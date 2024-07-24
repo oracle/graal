@@ -75,6 +75,7 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
         initializeAtRunTime(a, "sun.nio.ch.FileDispatcherImpl", "sun.nio.ch.FileChannelImpl$Unmapper");
 
         if (isPosix()) {
+            initializeAtRunTime(a, "sun.nio.ch.InheritedChannel");
             initializeAtRunTime(a, "sun.nio.ch.SimpleAsynchronousFileChannelImpl", "sun.nio.ch.SimpleAsynchronousFileChannelImpl$DefaultExecutorHolder",
                             "sun.nio.ch.SinkChannelImpl", "sun.nio.ch.SourceChannelImpl");
             initializeAtRunTime(a, "sun.nio.fs.UnixNativeDispatcher", "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl");
