@@ -70,7 +70,6 @@ import com.oracle.truffle.nfi.backend.panama.PanamaClosure.PolymorphicClosureInf
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
-import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
@@ -147,12 +146,16 @@ final class PanamaSignature {
     }
 
     @TruffleBoundary
-    @SuppressWarnings({"preview", "restricted"})
-    MemorySegment bind(MethodHandle cachedHandle, Object receiver) {
+    @SuppressWarnings({"preview"})
+    MemorySegment bind(MethodHandle cachedHandle, Object receiver, Node location) {
         MethodHandle bound = cachedHandle.bindTo(receiver);
         @SuppressWarnings("preview")
         Arena arena = PanamaNFIContext.get(null).getContextArena();
-        return Linker.nativeLinker().upcallStub(bound, functionDescriptor, arena);
+        try {
+            return (MemorySegment) NFIPanamaAccessor.FOREIGN.upcallStub(bound, functionDescriptor, arena);
+        } catch (IllegalCallerException ic) {
+            throw NFIError.illegalNativeAccess(location);
+        }
     }
 
     @ExportMessage
@@ -161,6 +164,7 @@ final class PanamaSignature {
 
         @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()", limit = "3")
         static PanamaClosure doCachedExecutable(PanamaSignature signature, Object executable,
+                        @Bind("$node") Node node,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @Cached("executable") Object cachedExecutable,
                         @Cached("create(cachedSignatureInfo, cachedExecutable)") MonomorphicClosureInfo cachedClosureInfo) {
@@ -170,29 +174,31 @@ final class PanamaSignature {
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
 
             @SuppressWarnings("preview")
-            MemorySegment ret = signature.bind(cachedHandle, cachedExecutable);
+            MemorySegment ret = signature.bind(cachedHandle, cachedExecutable, node);
 
             return new PanamaClosure(ret);
         }
 
         @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo", limit = "3")
         static PanamaClosure doCachedSignature(PanamaSignature signature, Object executable,
+                        @Bind("$node") Node node,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @Cached("create(cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
             assert signature.signatureInfo == cachedSignatureInfo;
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
             @SuppressWarnings("preview")
-            MemorySegment ret = signature.bind(cachedHandle, executable);
+            MemorySegment ret = signature.bind(cachedHandle, executable, node);
             return new PanamaClosure(ret);
         }
 
         @TruffleBoundary
         @Specialization(replaces = "doCachedSignature")
-        static PanamaClosure createClosure(PanamaSignature signature, Object executable) {
+        static PanamaClosure createClosure(PanamaSignature signature, Object executable,
+                        @Bind("$node") Node node) {
             PolymorphicClosureInfo cachedClosureInfo = PolymorphicClosureInfo.create(signature.signatureInfo);
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
             @SuppressWarnings("preview")
-            MemorySegment ret = signature.bind(cachedHandle, executable);
+            MemorySegment ret = signature.bind(cachedHandle, executable, node);
             return new PanamaClosure(ret);
         }
     }
@@ -262,17 +268,19 @@ final class PanamaSignature {
 
             @Specialization(guards = {"builder.argsState == cachedState", "builder.retType == cachedRetType"}, limit = "3")
             static Object doCached(PanamaSignatureBuilder builder,
+                            @Bind("$node") Node node,
                             @Cached("builder.retType") @SuppressWarnings("unused") PanamaType cachedRetType,
                             @Cached("builder.argsState") @SuppressWarnings("unused") ArgsState cachedState,
                             @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self,
-                            @Cached("prepareSignatureInfo(cachedRetType, cachedState)") CachedSignatureInfo cachedSignatureInfo) {
+                            @Cached("prepareSignatureInfo(cachedRetType, cachedState, node)") CachedSignatureInfo cachedSignatureInfo) {
                 return create(PanamaNFIContext.get(self), cachedSignatureInfo, builder.upcallType);
             }
 
             @Specialization(replaces = "doCached")
             static Object doGeneric(PanamaSignatureBuilder builder,
+                            @Bind("$node") Node node,
                             @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self) {
-                CachedSignatureInfo sigInfo = prepareSignatureInfo(builder.retType, builder.argsState);
+                CachedSignatureInfo sigInfo = prepareSignatureInfo(builder.retType, builder.argsState, node);
 
                 return create(PanamaNFIContext.get(self), sigInfo, builder.upcallType);
             }
@@ -281,7 +289,7 @@ final class PanamaSignature {
 
     @TruffleBoundary
     @SuppressWarnings("unused")
-    public static CachedSignatureInfo prepareSignatureInfo(PanamaType retType, ArgsState state) {
+    public static CachedSignatureInfo prepareSignatureInfo(PanamaType retType, ArgsState state, Node location) {
         PanamaType[] argTypes = new PanamaType[state.argCount];
         ArgsState curState = state;
         for (int i = state.argCount - 1; i >= 0; i--) {
@@ -290,7 +298,7 @@ final class PanamaSignature {
         }
         @SuppressWarnings("preview")
         FunctionDescriptor descriptor = createDescriptor(argTypes, retType);
-        MethodHandle downcallHandle = createDowncallHandle(descriptor);
+        MethodHandle downcallHandle = createDowncallHandle(descriptor, location);
         return new CachedSignatureInfo(PanamaNFILanguage.get(null), retType, argTypes, descriptor, downcallHandle);
     }
 
@@ -308,12 +316,16 @@ final class PanamaSignature {
         return descriptor;
     }
 
-    static MethodHandle createDowncallHandle(@SuppressWarnings("preview") FunctionDescriptor descriptor) {
+    static MethodHandle createDowncallHandle(@SuppressWarnings("preview") FunctionDescriptor descriptor, Node location) {
         int parameterCount = descriptor.argumentLayouts().size();
-        @SuppressWarnings({"preview", "restricted"})
-        MethodHandle handle = Linker.nativeLinker().downcallHandle(descriptor).asSpreader(Object[].class, parameterCount).asType(
-                        MethodType.methodType(Object.class, new Class<?>[]{MemorySegment.class, Object[].class}));
-        return handle;
+        try {
+            @SuppressWarnings({"preview"})
+            MethodHandle handle = NFIPanamaAccessor.FOREIGN.downcallHandle(descriptor).asSpreader(Object[].class, parameterCount).asType(
+                            MethodType.methodType(Object.class, new Class<?>[]{MemorySegment.class, Object[].class}));
+            return handle;
+        } catch (IllegalCallerException ic) {
+            throw NFIError.illegalNativeAccess(location);
+        }
     }
 
     static final class ArgsState {

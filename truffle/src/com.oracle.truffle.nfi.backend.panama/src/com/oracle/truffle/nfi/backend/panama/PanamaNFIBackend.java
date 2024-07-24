@@ -110,13 +110,15 @@ final class PanamaNFIBackend implements NFIBackend {
         }
 
         @TruffleBoundary
-        @SuppressWarnings({"preview", "restricted"})
+        @SuppressWarnings({"preview"})
         private SymbolLookup doLoad() {
             PanamaNFIContext ctx = PanamaNFIContext.get(this);
             try {
-                return SymbolLookup.libraryLookup(name, ctx.getContextArena());
+                return (SymbolLookup) NFIPanamaAccessor.FOREIGN.libraryLookup(name, ctx.getContextArena());
             } catch (IllegalArgumentException ex) {
                 throw new NFIError("Library lookup returned null. Library likely does not exist on the provided location.", this);
+            } catch (IllegalCallerException ic) {
+                throw NFIError.illegalNativeAccess(this);
             }
         }
 
