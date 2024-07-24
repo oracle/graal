@@ -2408,7 +2408,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // instruction throws an IncompatibleClassChangeError.
                 if (!resolved.isStatic()) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError, "Expected static method '%s.%s%s'",
+                                    resolved.getDeclaringKlass().getName(),
+                                    resolved.getName(),
+                                    resolved.getRawSignature());
                 }
                 break;
             case INVOKEINTERFACE:
@@ -2417,7 +2420,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 if (resolved.isStatic() ||
                                 (getMethod().getContext().getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError, "Expected instance method '%s.%s%s'",
+                                    resolved.getDeclaringKlass().getName(),
+                                    resolved.getName(),
+                                    resolved.getRawSignature());
                 }
                 if (resolved.getITableIndex() < 0) {
                     if (resolved.isPrivate()) {
@@ -2435,7 +2441,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
+                                    resolved.getDeclaringKlass().getName(),
+                                    resolved.getName(),
+                                    resolved.getRawSignature());
                 }
                 if (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate()) {
                     resolvedOpCode = INVOKESPECIAL;
@@ -2450,16 +2459,19 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         enterLinkageExceptionProfile();
                         throw throwBoundary(getMethod().getMeta().java_lang_NoSuchMethodError,
                                         "%s.%s%s",
-                                        resolved.getDeclaringKlass().getNameAsString(),
-                                        resolved.getNameAsString(),
-                                        resolved.getSignatureAsString());
+                                        resolved.getDeclaringKlass().getName(),
+                                        resolved.getName(),
+                                        resolved.getRawSignature());
                     }
                 }
                 // Otherwise, if the resolved method is a class (static) method, the invokespecial
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
+                                    resolved.getDeclaringKlass().getName(),
+                                    resolved.getName(),
+                                    resolved.getRawSignature());
                 }
                 // If all of the following are true, let C be the direct superclass of the current
                 // class:
@@ -2536,8 +2548,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     @TruffleBoundary
-    private RuntimeException throwBoundary(ObjectKlass exceptionKlass, String messageFormat, String... args) {
-        throw getMeta().throwExceptionWithMessage(exceptionKlass, String.format(Locale.ENGLISH, messageFormat, (Object[]) args));
+    private RuntimeException throwBoundary(ObjectKlass exceptionKlass, String messageFormat, Object... args) {
+        throw getMeta().throwExceptionWithMessage(exceptionKlass, String.format(Locale.ENGLISH, messageFormat, args));
     }
 
     private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opcode) {
@@ -2794,8 +2806,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError,
                             "Expected %s field %s.%s",
                             (opcode == PUTSTATIC) ? "static" : "non-static",
-                            field.getDeclaringKlass().getNameAsString(),
-                            field.getNameAsString());
+                            field.getDeclaringKlass().getName(),
+                            field.getName());
         }
 
         /*
@@ -2813,9 +2825,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 throw throwBoundary(getMethod().getMeta().java_lang_IllegalAccessError,
                                 "Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
                                 (opcode == PUTSTATIC) ? "static" : "non-static",
-                                field.getDeclaringKlass().getNameAsString(),
-                                field.getNameAsString(),
-                                getDeclaringKlass().getNameAsString());
+                                field.getDeclaringKlass().getName(),
+                                field.getName(),
+                                getDeclaringKlass().getName());
             }
 
             boolean enforceInitializerCheck = (getLanguage().getSpecComplianceMode() == STRICT) ||
@@ -2829,9 +2841,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 throw throwBoundary(getMethod().getMeta().java_lang_IllegalAccessError,
                                 "Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
                                 (opcode == PUTSTATIC) ? "static" : "non-static",
-                                field.getDeclaringKlass().getNameAsString(),
-                                field.getNameAsString(),
-                                getMethod().getNameAsString(),
+                                field.getDeclaringKlass().getName(),
+                                field.getName(),
+                                getMethod().getName(),
                                 (opcode == PUTSTATIC) ? "<clinit>" : "<init>");
             }
         }
