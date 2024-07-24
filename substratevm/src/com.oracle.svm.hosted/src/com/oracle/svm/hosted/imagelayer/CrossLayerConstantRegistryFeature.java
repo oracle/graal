@@ -29,6 +29,7 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -42,8 +43,11 @@ import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 
 @AutomaticallyRegisteredFeature
 public class CrossLayerConstantRegistryFeature implements InternalFeature, FeatureSingleton, CrossLayerConstantRegistry {
@@ -52,7 +56,8 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
     boolean sealed = false;
     ImageLayerLoader loader;
 
-    Map<String, Object> constantCandidates;
+    ConcurrentMap<String, Object> constantCandidates;
+    ConcurrentMap<String, Object> requiredConstants;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -70,6 +75,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
 
         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
             constantCandidates = new ConcurrentHashMap<>();
+            requiredConstants = ObservableImageHeapMapProvider.create();
         }
         ImageSingletons.add(CrossLayerConstantRegistry.class, this);
     }
@@ -77,6 +83,18 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
     @Override
     public void duringSetup(DuringSetupAccess access) {
         loader = ((FeatureImpl.DuringSetupAccessImpl) access).getUniverse().getImageLayerLoader();
+        if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+            LayeredImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
+        }
+    }
+
+    private void addInitialObjects(NativeImageHeap heap, HostedUniverse hUniverse) {
+        String addReason = "Registered as a required heap constant within the CrossLayerConstantRegistry";
+
+        for (Object constant : requiredConstants.values()) {
+            ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(constant);
+            heap.addConstant(singletonConstant, false, addReason);
+        }
     }
 
     @Override
@@ -103,7 +121,22 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
                     }
                 }
             }
+
+            assert verifyConstantsInstalled(config);
         }
+    }
+
+    private boolean verifyConstantsInstalled(FeatureImpl.BeforeImageWriteAccessImpl config) {
+        var snippetReflection = config.getHostedUniverse().getSnippetReflection();
+        var heap = config.getImage().getHeap();
+
+        for (var requiredConstant : requiredConstants.values()) {
+            var constant = (ImageHeapConstant) snippetReflection.forObject(requiredConstant);
+            var objectInfo = heap.getConstantInfo(constant);
+            assert objectInfo != null && objectInfo.getOffset() >= 0 : "Constant is required to be in heap " + requiredConstant;
+        }
+
+        return true;
     }
 
     private void checkSealed() {
@@ -116,6 +149,14 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
         VMError.guarantee(ImageLayerBuildingSupport.buildingSharedLayer(), "This only applies to shared layers");
         var previous = constantCandidates.putIfAbsent(keyName, obj);
         VMError.guarantee(previous == null && !constantExists(keyName), "This key has been registered before: %s", keyName);
+    }
+
+    @Override
+    public void registerHeapConstant(String keyName, Object obj) {
+        VMError.guarantee(obj != null, "CrossLayer constants are expected to be non-null.");
+        registerConstantCandidate(keyName, obj);
+        var previous = requiredConstants.putIfAbsent(keyName, obj);
+        VMError.guarantee(previous == null, "This key has been registered before: %s", keyName);
     }
 
     @Override

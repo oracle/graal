@@ -24,22 +24,51 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.svm.core.feature.InternalFeature;
+import java.util.concurrent.ConcurrentHashMap;
+
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
+import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.internal.loader.ClassLoaders;
 
 @AutomaticallyRegisteredFeature
 public class ClassLoaderFeature implements InternalFeature {
 
+    private static final String APP_KEY_NAME = "ClassLoader#App";
+    private static final String PLATFORM_KEY_NAME = "ClassLoader#Platform";
+    private static final String BOOT_KEY_NAME = "ClassLoader#Boot";
+
     private static final NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
 
+    private static final ClassLoader bootClassLoader;
+    private static final ClassLoader platformClassLoader;
+
+    static {
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            platformClassLoader = ClassLoaders.platformClassLoader();
+            bootClassLoader = BootLoaderSupport.getBootLoader();
+        } else {
+            platformClassLoader = null;
+            bootClassLoader = null;
+        }
+    }
+
     public static ClassLoader getRuntimeClassLoader(ClassLoader original) {
-        if (needsReplacement(original)) {
+        if (replaceWithAppClassLoader(original)) {
             return nativeImageSystemClassLoader.defaultSystemClassLoader;
         }
+
         return original;
     }
 
-    private static boolean needsReplacement(ClassLoader loader) {
+    private static boolean replaceWithAppClassLoader(ClassLoader loader) {
         if (loader == nativeImageSystemClassLoader) {
             return true;
         }
@@ -50,14 +79,79 @@ public class ClassLoaderFeature implements InternalFeature {
     }
 
     private Object runtimeClassLoaderObjectReplacer(Object replaceCandidate) {
-        if (replaceCandidate instanceof ClassLoader) {
-            return getRuntimeClassLoader((ClassLoader) replaceCandidate);
+        if (replaceCandidate instanceof ClassLoader loader) {
+            return getRuntimeClassLoader(loader);
         }
         return replaceCandidate;
     }
 
+    ImageHeapConstant replaceClassLoadersWithLayerConstant(CrossLayerConstantRegistry registry, Object object) {
+        if (object instanceof ClassLoader loader) {
+            if (replaceWithAppClassLoader(loader) || loader == nativeImageSystemClassLoader.defaultSystemClassLoader) {
+                return registry.getConstant(APP_KEY_NAME);
+            } else if (loader == platformClassLoader) {
+                return registry.getConstant(PLATFORM_KEY_NAME);
+            } else if (loader == bootClassLoader) {
+                return registry.getConstant(BOOT_KEY_NAME);
+            } else {
+                throw VMError.shouldNotReachHere("Currently unhandled class loader seen in extension layer: %s", loader);
+            }
+        }
+
+        return null;
+    }
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(this::runtimeClassLoaderObjectReplacer);
+        var packageManager = HostedClassLoaderPackageManagement.singleton();
+        var registry = CrossLayerConstantRegistry.singletonOrNull();
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            packageManager.initialize(nativeImageSystemClassLoader.defaultSystemClassLoader, registry);
+        }
+
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            access.registerObjectReplacer(this::runtimeClassLoaderObjectReplacer);
+        } else {
+            var config = (FeatureImpl.DuringSetupAccessImpl) access;
+            config.registerObjectToConstantReplacer(obj -> replaceClassLoadersWithLayerConstant(registry, obj));
+            // relink packages defined in the prior layers
+            config.registerObjectToConstantReplacer(packageManager::replaceWithPriorLayerPackage);
+        }
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        var packagesField = ReflectionUtil.lookupField(ClassLoader.class, "packages");
+        access.registerFieldValueTransformer(packagesField, new FieldValueTransformerWithAvailability() {
+
+            @Override
+            public ValueAvailability valueAvailability() {
+                return ValueAvailability.AfterAnalysis;
+            }
+
+            @Override
+            public Object transform(Object receiver, Object originalValue) {
+                assert receiver instanceof ClassLoader : receiver;
+                assert originalValue instanceof ConcurrentHashMap : "Underlying representation has changed: " + originalValue;
+
+                /* Retrieving initial package state for this class loader. */
+                ConcurrentHashMap<String, Package> packages = HostedClassLoaderPackageManagement.singleton().getRegisteredPackages((ClassLoader) receiver);
+                /* If no package state is available then we must create a clean state. */
+                return packages == null ? new ConcurrentHashMap<>() : packages;
+            }
+        });
+
+        if (ImageLayerBuildingSupport.buildingInitialLayer()) {
+            /*
+             * Note we cannot register these heap constants until the field value transformer has
+             * been registered. Otherwise there is a race between this feature and
+             * ObservableImageHeapMapProviderImpl#beforeAnalysis, as during heap scanning all
+             * fieldValueInterceptors will be computed for the scanned objects.
+             */
+            var registry = CrossLayerConstantRegistry.singletonOrNull();
+            registry.registerHeapConstant(APP_KEY_NAME, nativeImageSystemClassLoader.defaultSystemClassLoader);
+            registry.registerHeapConstant(PLATFORM_KEY_NAME, platformClassLoader);
+            registry.registerHeapConstant(BOOT_KEY_NAME, bootClassLoader);
+        }
     }
 }

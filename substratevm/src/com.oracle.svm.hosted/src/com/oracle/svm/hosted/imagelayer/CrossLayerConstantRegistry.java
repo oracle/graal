@@ -58,4 +58,10 @@ public interface CrossLayerConstantRegistry {
      * {@link #constantExists}.
      */
     void registerConstantCandidate(String keyName, Object obj);
+
+    /**
+     * Registers a value which must be stored in this layer's heap. Later layers can access it via
+     * {@link #getConstant}.
+     */
+    void registerHeapConstant(String keyName, Object obj);
 }
