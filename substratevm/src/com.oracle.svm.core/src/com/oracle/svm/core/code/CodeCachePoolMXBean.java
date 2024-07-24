@@ -28,7 +28,6 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
-import java.util.List;
 
 import javax.management.ObjectName;
 
@@ -136,11 +135,7 @@ public abstract class CodeCachePoolMXBean extends AbstractMXBean implements Memo
         return Util.newObjectName(ManagementFactory.MEMORY_POOL_MXBEAN_DOMAIN_TYPE, getName());
     }
 
-    public static List<MemoryPoolMXBean> getMemoryPools() {
-        return List.of(new CodeAndDataPool(), new NativeMetadataPool());
-    }
-
-    static final class CodeAndDataPool extends CodeCachePoolMXBean {
+    public static final class CodeAndDataPool extends CodeCachePoolMXBean {
         @Override
         protected long getCurrentSize() {
             RuntimeCodeInfoMemory.SizeCounters counters = RuntimeCodeInfoMemory.singleton().getSizeCounters();
@@ -164,7 +159,7 @@ public abstract class CodeCachePoolMXBean extends AbstractMXBean implements Memo
         }
     }
 
-    static final class NativeMetadataPool extends CodeCachePoolMXBean {
+    public static final class NativeMetadataPool extends CodeCachePoolMXBean {
         @Override
         protected long getCurrentSize() {
             RuntimeCodeInfoMemory.SizeCounters counters = RuntimeCodeInfoMemory.singleton().getSizeCounters();

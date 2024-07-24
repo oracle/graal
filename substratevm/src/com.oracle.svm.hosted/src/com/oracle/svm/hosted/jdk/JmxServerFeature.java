@@ -109,7 +109,6 @@ public class JmxServerFeature implements InternalFeature {
     private static void configureReflection(BeforeAnalysisAccess access) {
         Set<PlatformManagedObject> platformManagedObjects = ManagementSupport.getSingleton().getPlatformManagedObjects();
         for (PlatformManagedObject p : platformManagedObjects) {
-
             // The platformManagedObjects list contains some PlatformManagedObjectSupplier objects
             // that are meant to help initialize some MXBeans at runtime. Skip them here.
             if (p instanceof ManagementSupport.PlatformManagedObjectSupplier) {
@@ -119,7 +118,8 @@ public class JmxServerFeature implements InternalFeature {
             RuntimeReflection.register(clazz);
         }
 
-        RuntimeReflection.register(access.findClassByName("com.sun.jmx.remote.protocol.rmi.ServerProvider"));
-        RuntimeReflection.register(access.findClassByName("com.sun.jmx.remote.protocol.rmi.ServerProvider").getConstructors());
+        Class<?> serviceProviderClass = access.findClassByName("com.sun.jmx.remote.protocol.rmi.ServerProvider");
+        RuntimeReflection.register(serviceProviderClass);
+        RuntimeReflection.register(serviceProviderClass.getConstructors());
     }
 }
