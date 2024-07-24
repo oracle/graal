@@ -138,4 +138,4 @@ Congratulations! You have installed Oracle GraalVM on the Compute instance with 
 ### Related Documentation
 
 - [Oracle GraalVM in OCI DevOps Build Pipelines](installation-devops-build-pipeline.md)
-- [Oracle GraalVM in OCI Cloud Shell](cloud-bash.md)
+- [Oracle GraalVM in OCI Cloud Shell](cloud-shell.md)
