@@ -630,7 +630,7 @@ def emscripten_init(args):
 @mx.command(_suite.name, "wasm")
 def wasm(args, **kwargs):
     """Run a WebAssembly program."""
-    vmArgs, wasmArgs = mx.extract_VM_args(args, useDoubleDash=False, defaultAllVMArgs=False)
+    vmArgs, wasmArgs = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
     path_args = mx.get_runtime_jvm_args([
         "TRUFFLE_API",
         "org.graalvm.wasm",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,8 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import java.io.IOException;
-
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
@@ -49,42 +49,42 @@ import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
+import org.graalvm.wasm.predefined.wasi.types.Advice;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+public class WasiFdAdviseNode extends WasmBuiltinRootNode {
 
-public final class WasiFdCloseNode extends WasmBuiltinRootNode {
-
-    public WasiFdCloseNode(WasmLanguage language, WasmModule module) {
+    public WasiFdAdviseNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return fdClose(context, (int) WasmArguments.getArgument(args, 0));
+        return fdAdvise(context, (int) WasmArguments.getArgument(args, 0),
+                        (long) WasmArguments.getArgument(args, 1),
+                        (long) WasmArguments.getArgument(args, 2),
+                        (int) WasmArguments.getArgument(args, 3));
     }
 
     @TruffleBoundary
-    private static int fdClose(WasmContext context, int fd) {
+    private static int fdAdvise(WasmContext context, int fd, long offset, long length, int adviceValue) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        try {
-            handle.close();
-            return Errno.Success.ordinal();
-        } catch (IOException e) {
-            return Errno.Io.ordinal();
-        } finally {
-            context.fdManager().remove(fd);
+        if (adviceValue < 0 || adviceValue >= Advice.values().length) {
+            return Errno.Inval.ordinal();
         }
+        final Advice advice = Advice.values()[adviceValue];
+        if (length < 0) {
+            return Errno.Inval.ordinal();
+        }
+        return handle.advise(offset, length, advice).ordinal();
     }
 
     @Override
     public String builtinNodeName() {
-        return "__wasi_fd_close";
+        return "__wasi_fd_advise";
     }
-
 }
