@@ -171,12 +171,11 @@ public abstract class NativeImageDebugInfoProviderBase {
     }
 
     protected static ResolvedJavaType getOriginal(HostedType hostedType) {
-        /* partially unwrap then traverse through substitutions to the original */
+        /* partially unwrap then traverse through substitutions to the original
++        * We don't want to get the original type of LambdaSubstitutionType to keep the stable name */
         ResolvedJavaType javaType = hostedType.getWrapped().getWrapped();
         if (javaType instanceof SubstitutionType) {
             return ((SubstitutionType) javaType).getOriginal();
-        } else if (javaType instanceof LambdaSubstitutionType) {
-            return ((LambdaSubstitutionType) javaType).getOriginal();
         } else if (javaType instanceof InjectedFieldsType) {
             return ((InjectedFieldsType) javaType).getOriginal();
         }
