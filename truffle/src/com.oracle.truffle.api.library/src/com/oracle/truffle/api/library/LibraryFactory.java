@@ -148,7 +148,6 @@ public abstract class LibraryFactory<T extends Library> {
         }
         removeClassesLoadedDuringImageBuild(LIBRARIES, imageClassLoader);
         removeClassesLoadedDuringImageBuild(ResolvedDispatch.CACHE, imageClassLoader);
-        removeClassesLoadedDuringImageBuild(ResolvedDispatch.REGISTRY, imageClassLoader);
         removeClassesLoadedDuringImageBuild(ResolvedDispatch.LIBRARY_TO_EXPORT, imageClassLoader);
     }
 
