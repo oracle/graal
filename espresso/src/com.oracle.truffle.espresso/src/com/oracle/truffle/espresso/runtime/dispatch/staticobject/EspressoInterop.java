@@ -878,7 +878,9 @@ public class EspressoInterop extends BaseInterop {
             StaticObject instant;
             Meta meta = receiver.getKlass().getMeta();
             if (instanceOf(receiver, meta.java_time_ZonedDateTime)) {
-                instant = (StaticObject) meta.java_time_ZonedDateTime_toInstant.invokeDirectSpecial(receiver);
+                // ZonedDateTime_toInstant is actually default method ChronoZonedDateTime.toInstant
+                // this is a "final miranda" but asserts in invokeDirectSpecial can't see that
+                instant = (StaticObject) meta.java_time_ZonedDateTime_toInstant.invokeDirect(receiver);
             } else if (instanceOf(receiver, meta.java_util_Date)) {
                 instant = (StaticObject) meta.java_util_Date_toInstant.invokeDirectVirtual(receiver);
             } else {
