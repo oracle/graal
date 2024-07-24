@@ -32,6 +32,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
@@ -39,6 +41,9 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.hotspot.LibGraalJNIMethodScope;
+import com.oracle.svm.util.ClassUtil;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionDescriptorsMap;
@@ -53,6 +58,7 @@ import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JObjectArray;
 import org.graalvm.jniutils.JNI.JString;
+import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -69,6 +75,8 @@ import com.oracle.svm.core.heap.Heap;
 import com.sun.management.ThreadMXBean;
 
 import jdk.internal.misc.Unsafe;
+
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.RegisterRuntime;
 
 /**
  * Encapsulates {@link CEntryPoint} implementations as well as method handles for invoking guest
@@ -214,6 +222,7 @@ final class GuestGraal {
                     int stackTraceCapacity,
                     long timeAndMemBufferAddress,
                     long profilePathBufferAddress) {
+        // Todo fixme: Use LibGraalJNIMethodScope. Do call to guest and to find out if we have Java frame anchor
         try (JNIMethodScope jniScope = new JNIMethodScope("compileMethod", jniEnv)) {
             if (methodHandle == 0L) {
                 return 0L;
@@ -331,15 +340,105 @@ final class GuestGraalLibGraalScope {
 }
 
 final class GuestGraalTruffleToLibGraalEntryPoints {
+
+    private final MethodHandle initializeIsolate;
+    private final MethodHandle registerRuntime;
+    private final MethodHandle initializeRuntime;
+    private final MethodHandle newCompiler;
+    private final MethodHandle initializeCompiler;
+    private final MethodHandle getCompilerConfigurationFactoryName;
+    private final MethodHandle doCompile;
+    private final MethodHandle shutdown;
+    private final MethodHandle installTruffleCallBoundaryMethod;
+    private final MethodHandle installTruffleReservedOopMethod;
+    private final MethodHandle pendingTransferToInterpreterOffset;
+    private final MethodHandle getString;
+    private final MethodHandle getNodeCount;
+    private final MethodHandle getNodeTypes;
+    private final MethodHandle getTargetCodeSize;
+    private final MethodHandle getTotalFrameSize;
+    private final MethodHandle getExceptionHandlersCount;
+    private final MethodHandle getInfopointsCount;
+    private final MethodHandle getInfopoints;
+    private final MethodHandle listCompilerOptions;
+    private final MethodHandle existsCompilerOption;
+    private final MethodHandle validateCompilerOption;
+    private final MethodHandle getMarksCount;
+    private final MethodHandle getDataPatchesCount;
+    private final MethodHandle purgePartialEvaluationCaches;
+    private final MethodHandle getCompilerVersion;
+
+
+
+    GuestGraalTruffleToLibGraalEntryPoints(Map<String,MethodHandle> handles) {
+        this.initializeIsolate = getOrFail(handles, Id.InitializeIsolate);
+        this.registerRuntime = getOrFail(handles, Id.RegisterRuntime);
+        this.initializeRuntime = getOrFail(handles, Id.InitializeRuntime);
+        this.newCompiler = getOrFail(handles, Id.NewCompiler);
+        this.initializeCompiler = getOrFail(handles, Id.InitializeCompiler);
+        this.getCompilerConfigurationFactoryName = getOrFail(handles, Id.GetCompilerConfigurationFactoryName);
+        this.doCompile = getOrFail(handles, Id.DoCompile);
+        this.shutdown = getOrFail(handles, Id.Shutdown);
+        this.installTruffleCallBoundaryMethod = getOrFail(handles, Id.InstallTruffleCallBoundaryMethod);
+        this.installTruffleReservedOopMethod = getOrFail(handles, Id.InstallTruffleReservedOopMethod);
+        this.pendingTransferToInterpreterOffset = getOrFail(handles, Id.PendingTransferToInterpreterOffset);
+        this.getString = getOrFail(handles, Id.GetSuppliedString);
+        this.getNodeCount = getOrFail(handles, Id.GetNodeCount);
+        this.getNodeTypes = getOrFail(handles, Id.GetNodeTypes);
+        this.getTargetCodeSize = getOrFail(handles, Id.GetTargetCodeSize);
+        this.getTotalFrameSize = getOrFail(handles, Id.GetTotalFrameSize);
+        this.getExceptionHandlersCount = getOrFail(handles, Id.GetExceptionHandlersCount);
+        this.getInfopointsCount = getOrFail(handles, Id.GetInfopointsCount);
+        this.getInfopoints = getOrFail(handles, Id.GetInfopoints);
+        this.listCompilerOptions = getOrFail(handles, Id.ListCompilerOptions);
+        this.existsCompilerOption = getOrFail(handles, Id.CompilerOptionExists);
+        this.validateCompilerOption = getOrFail(handles, Id.ValidateCompilerOption);
+        this.getMarksCount = getOrFail(handles, Id.GetMarksCount);
+        this.getDataPatchesCount = getOrFail(handles, Id.GetDataPatchesCount);
+        this.purgePartialEvaluationCaches = getOrFail(handles, Id.PurgePartialEvaluationCaches);
+        this.getCompilerVersion = getOrFail(handles, Id.GetCompilerVersion);
+
+    }
+
+    private static MethodHandle getOrFail(Map<String,MethodHandle> handles, Id id) {
+        MethodHandle handle = handles.get(id.name());
+        if (handle != null) {
+            return handle;
+        } else {
+            throw new NoSuchElementException(id.name());
+        }
+    }
+
+    public static JNIMethodScope openScope(Class<?> entryPointClass, Enum<?> id, JNIEnv env) {
+        Objects.requireNonNull(id, "Id must be non null.");
+        String scopeName = ClassUtil.getUnqualifiedName(entryPointClass) + "::" + id;
+        // Todo fixme: Do call to guest and to find out if we have Java frame anchor
+        return LibGraalJNIMethodScope.open(scopeName, env, true);
+    }
+
+    private static GuestGraalTruffleToLibGraalEntryPoints singleton() {
+        return ImageSingletons.lookup(GuestGraalTruffleToLibGraalEntryPoints.class);
+    }
+
     @SuppressWarnings({"unused", "try"})
     @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_initializeIsolate")
     public static void initializeIsolate(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JClass runtimeClass) {
+        try (JNIMethodScope s = openScope(GuestGraalTruffleToLibGraalEntryPoints.class, Id.InitializeIsolate, env)) {
+            singleton().initializeIsolate.invoke();
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+        }
     }
 
     @SuppressWarnings({"unused", "try"})
     @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_registerRuntime")
     public static boolean registerRuntime(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JObject truffleRuntime) {
-        return false;
+        try (JNIMethodScope s = openScope(GuestGraalTruffleToLibGraalEntryPoints.class, RegisterRuntime, env)) {
+            return (boolean) singleton().registerRuntime.invoke();
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            return false;
+        }
     }
 
     @SuppressWarnings({"unused", "try"})

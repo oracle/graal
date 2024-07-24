@@ -186,7 +186,6 @@ public final class GuestGraalFeature implements Feature {
         // Target_jdk_graal_compiler_serviceprovider_VMSupport.getIsolateID needs access to
         // org.graalvm.nativeimage.impl.IsolateSupport
         accessModulesToClass(ModuleSupport.Access.EXPORT, GuestGraalFeature.class, "org.graalvm.nativeimage");
-
         loader = new GuestGraalClassLoader(Options.GuestJavaHome.getValue().resolve(Path.of("lib", "modules")));
 
         buildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.guestgraal.BuildTime");
@@ -415,7 +414,10 @@ public final class GuestGraalFeature implements Feature {
                             hostedGraalSetFoldNodePluginClasses,
                             configResult.encodedConfig());
 
-            initRuntimeHandles(mhl.findStatic(buildTimeClass, "getRuntimeHandles", methodType(Map.class)));
+            Class<?> truffleBuildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.guestgraal.TruffleBuildTime");
+            MethodHandle getRuntimeHandles = mhl.findStatic(buildTimeClass, "getRuntimeHandles", methodType(Map.class));
+            MethodHandle getTruffleRuntimeHandles = mhl.findStatic(truffleBuildTimeClass, "getRuntimeHandles", methodType(Map.class));
+            initRuntimeHandles(getRuntimeHandles, getTruffleRuntimeHandles);
 
         } catch (Throwable e) {
             throw VMError.shouldNotReachHere(e);
@@ -423,8 +425,9 @@ public final class GuestGraalFeature implements Feature {
     }
 
     @SuppressWarnings("unchecked")
-    private static void initRuntimeHandles(MethodHandle getRuntimeHandles) throws Throwable {
+    private static void initRuntimeHandles(MethodHandle getRuntimeHandles, MethodHandle getTruffleRuntimeHandles) throws Throwable {
         ImageSingletons.add(GuestGraal.class, new GuestGraal((Map<String, MethodHandle>) getRuntimeHandles.invoke()));
+        ImageSingletons.add(GuestGraalTruffleToLibGraalEntryPoints.class, new GuestGraalTruffleToLibGraalEntryPoints((Map<String, MethodHandle>) getTruffleRuntimeHandles.invoke()));
     }
 
     @SuppressWarnings("try")
