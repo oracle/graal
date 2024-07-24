@@ -7,7 +7,8 @@ permalink: /getting-started/oci/code-editor/
 
 This guide shows you how to get started with Oracle GraalVM in Oracle Cloud Infrastructure (OCI) Code Editor. 
 
-[OCI Code Editor](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/code_editor_intro.htm) provides a rich, in-console editing environment that enables you to edit code without having to switch between the Oracle Cloud Console and your local development environment. The Code Editor enables you to edit and deploy code for OCI services directly from the OCI Console.
+[OCI Code Editor](https://docs.oracle.com/iaas/Content/API/Concepts/code_editor_intro.htm) provides a rich, in-console editing environment that enables you to edit code without having to switch between the Oracle Cloud Console and your local development environment. 
+The Code Editor enables you to edit and deploy code for OCI services directly from the OCI Console.
 
 Oracle GraalVM for JDK 17 is preinstalled in Cloud Shell, so you do not have to install and configure a development machine. Code Editor's integration with Cloud Shell gives you direct access to it.
 
@@ -23,70 +24,64 @@ Oracle GraalVM for JDK 17 is preinstalled in Cloud Shell, so you do not have to 
 ### Step 2: Select GraalVM JDK as the Default JDK
 
 1. List the installed JDKs using the `csruntimectl java list` command.
-
-    ```shell
+    ```bash
     csruntimectl java list
     ```
     The output lists the JDKs preinstalled in Cloud Shell: Oracle GraalVM for JDK 17, Oracle JDK 11, and Oracle JDK 8. The JDK marked with an asterisk is the current JDK.
 
 2. Select Oracle GraalVM for JDK 17 as the current JDK:
-
-    ```shell
+    ```bash
     csruntimectl java set graalvmjdk-17
     ```
     You will see the confirmation message printed: "The current managed java version is set to graalvmjdk-17".
 
 3. Now confirm the values of the environment variables `PATH` and `JAVA_HOME`, and the versions of `java` and the `native-image` tool:
-
-    ```shell
+    ```bash
     echo $JAVA_HOME
     ```
-    ```shell
+    ```bash
     echo $PATH
     ```
-    ```shell
+    ```bash
     java -version
     ```
-    ```shell
+    ```bash
     native-image --version
     ```
 
 ## Step 3: Setup a Java Project and Run
 
 1. Clone a demo repository and open it in OCI Code Editor. To achieve this, run the following commands one by one:
-
-    ```shell
+    ```bash
     git init graalvmee-java-hello-world
     ```
-    ```shell
+    ```bash
     cd graalvmee-java-hello-world
     ```
-    ```shell
+    ```bash
     git remote add origin https://github.com/oracle-devrel/oci-code-editor-samples.git
     ```
-    ```shell
+    ```bash
     git config core.sparsecheckout true
     ```
-    ```shell
+    ```bash
     echo "java-samples/graalvmee-java-hello-world/*">>.git/info/sparse-checkout
     ```
-    ```shell
+    ```bash
     git pull --depth=1 origin main
     ```
-    ```shell
+    ```bash
     cd java-samples/graalvmee-java-hello-world/
     ```
-    
     You can now view/edit the sample code in Code Editor.
 
 2. Package the sample application into a runnable JAR file:
-
-    ```shell
+    ```bash
     mvn clean package
     ```
-3. Run the JAR file:
 
-    ```shell
+3. Run the JAR file:
+    ```bash
     java -jar target/my-app-1.0-SNAPSHOT.jar
     ```
     It prints out “Hello World!”.
@@ -98,42 +93,36 @@ This Java application incorporates the [Maven plugin for GraalVM Native Image](h
 ### Quick Build Mode Enabled
 
 1. To enable the quick build mode, uncomment this line in _pom.xml_, as follows:
- 
     ```xml
     <quickBuild>true</quickBuild>
     ```
     
 2. Build a native executable using the `native` Maven profile:
-
-    ```shell
+    ```bash
     mvn clean -Pnative -DskipTests package
     ```
     This will generate a native executable for Linux in the _target_ directory, named _my-app_.
 
 3. Run the app native executable in the background:
-
-    ```shell
+    ```bash
     ./target/my-app
     ```
 
 ### Quick Build Mode Disabled
 
 1. To disable the quick build mode, comment out this line in _pom.xml_, as follows:
- 
     ```xml
     <!-- <quickBuild>true</quickBuild> -->
     ```
     
 2. Build a native executable again:
-
-    ```shell
+    ```bash
     mvn clean -Pnative -DskipTests package
     ```
     This will generate a native executable, _my-app_, in the _target_ directory, replacing the previous one. You have probably noticed how the quick build mode reduced the time required to generate a native executable, making it easier to use Native Image in a typical development cycle (compile, test, and debug). However, the size of a generated executable is larger and peak performance is worse. The quick build mode is recommended for development purposes only. 
 
 3. Run the native executable:
-
-    ```shell
+    ```bash
     ./target/my-app
     ```
 
@@ -146,4 +135,4 @@ The Code Editor allows you to accomplish quick coding tasks and run applications
 - [Micronaut Hello World REST App with Oracle GraalVM in OCI Code Editor](https://github.com/oracle-devrel/oci-code-editor-samples/tree/main/java-samples/graalvmee-java-micronaut-hello-rest)
 - [Spring Boot Microservice with Oracle GraalVM in OCI Code Editor](https://github.com/graalvm/graalvm-demos/blob/master/spring-native-image/README-Code-Editor.md)
 - [Working with Code Editor](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/code_editor_intro.htm)
-- [Oracle GraalVM in OCI Cloud Shell](cloud-shell.md)
+- [Oracle GraalVM in OCI Cloud Shell](cloud-bash.md)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.config;
+package com.oracle.svm.core.heap;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.CONDITIONAL_KEY;
-import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
-import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
-
-import java.io.IOException;
-
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
-
-import jdk.graal.compiler.util.json.JsonWriter;
-
-final class ConfigurationConditionPrintable {
-    static void printConditionAttribute(UnresolvedConfigurationCondition condition, JsonWriter writer) throws IOException {
-        if (!condition.isAlwaysTrue()) {
-            writer.quote(CONDITIONAL_KEY).append(":{");
-            writer.quote(condition.isRuntimeChecked() ? TYPE_REACHED_KEY : TYPE_REACHABLE_KEY).append(':').quote(condition.getTypeName());
-            writer.append("},").newline();
-        }
+/**
+ * The smallest possible object. Very similar to {@link FillerObject}, except that instances of this
+ * class may be allocated at run-time.
+ */
+public final class SmallestPossibleObject {
+    public SmallestPossibleObject() {
     }
 }

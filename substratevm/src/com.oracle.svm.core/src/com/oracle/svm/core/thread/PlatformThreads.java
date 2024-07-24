@@ -89,7 +89,6 @@ import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.memory.NativeMemory;
@@ -110,7 +109,6 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.internal.event.ThreadSleepEvent;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -983,37 +981,20 @@ public abstract class PlatformThreads {
     }
 
     /**
-     * Sleeps for the given number of nanoseconds, dealing with JFR events, wakups and
-     * interruptions.
+     * Sleeps for the given number of nanoseconds, dealing with early wake-ups and interruptions.
      */
     static void sleep(long nanos) throws InterruptedException {
         assert !isCurrentThreadVirtual();
-        if (HasJfrSupport.get() && ThreadSleepEvent.isTurnedOn()) {
-            ThreadSleepEvent event = new ThreadSleepEvent();
-            try {
-                event.time = nanos;
-                event.begin();
-                sleep0(nanos);
-            } finally {
-                event.commit();
-            }
-        } else {
-            sleep0(nanos);
-        }
-    }
-
-    /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
-    static void sleep0(long nanos) throws InterruptedException {
         if (nanos < 0) {
             throw new IllegalArgumentException("Timeout value is negative");
         }
-        sleep1(nanos);
+        sleep0(nanos);
         if (Thread.interrupted()) { // clears the interrupted flag as required of Thread.sleep()
             throw new InterruptedException();
         }
     }
 
-    private static void sleep1(long durationNanos) {
+    private static void sleep0(long durationNanos) {
         VMOperationControl.guaranteeOkayToBlock("[PlatformThreads.sleep(long): Should not sleep when it is not okay to block.]");
         Thread thread = currentThread.get();
         Parker sleepEvent = getCurrentThreadData().ensureSleepParker();
