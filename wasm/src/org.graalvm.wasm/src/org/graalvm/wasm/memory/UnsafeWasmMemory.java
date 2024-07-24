@@ -119,6 +119,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @Override
+    @TruffleBoundary
     public void reset() {
         size = declaredMinSize;
         buffer = allocateBuffer(byteSize());
