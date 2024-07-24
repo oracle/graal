@@ -113,17 +113,6 @@ public final class ClassForNameSupport {
             ConditionalRuntimeValue<Object> exisingEntry = knownClasses.get(entry);
             Object currentValue = exisingEntry == null ? null : exisingEntry.getValueUnconditionally();
 
-            /* TODO: Remove workaround once GR-53985 is implemented */
-            if (currentValue instanceof Class<?> currentClazz && clazz.getClassLoader() != currentClazz.getClassLoader()) {
-                /* Ensure runtime lookup of GuestGraalClassLoader classes */
-                if (isGuestGraalClass(currentClazz)) {
-                    return;
-                }
-                if (isGuestGraalClass(clazz)) {
-                    currentValue = null;
-                }
-            }
-
             if (currentValue == null || // never seen
                             currentValue == NEGATIVE_QUERY ||
                             currentValue == clazz) {
@@ -147,14 +136,6 @@ public final class ClassForNameSupport {
                                 """, name, currentValue);
             }
         }
-    }
-
-    private static boolean isGuestGraalClass(Class<?> clazz) {
-        var loader = clazz.getClassLoader();
-        if (loader == null) {
-            return false;
-        }
-        return "GuestGraalClassLoader".equals(loader.getName());
     }
 
     public static ConditionalRuntimeValue<Object> updateConditionalValue(ConditionalRuntimeValue<Object> existingConditionalValue, Object newValue,
