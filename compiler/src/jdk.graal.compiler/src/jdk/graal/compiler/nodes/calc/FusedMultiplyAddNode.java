@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.replacements.nodes;
+package jdk.graal.compiler.nodes.calc;
 
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
+import static jdk.graal.compiler.nodes.calc.BinaryArithmeticNode.getArithmeticOpTable;
 
-import jdk.graal.compiler.core.common.type.FloatStamp;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.TernaryOp.FMA;
 import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -37,64 +38,41 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.TernaryNode;
-import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * This node represents the operation x * y + z.
+ */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public final class FusedMultiplyAddNode extends TernaryNode implements ArithmeticLIRLowerable {
+public final class FusedMultiplyAddNode extends TernaryArithmeticNode<FMA> {
 
     public static final NodeClass<FusedMultiplyAddNode> TYPE = NodeClass.create(FusedMultiplyAddNode.class);
 
     public FusedMultiplyAddNode(ValueNode x, ValueNode y, ValueNode z) {
-        super(TYPE, computeStamp(x.stamp(NodeView.DEFAULT), y.stamp(NodeView.DEFAULT), z.stamp(NodeView.DEFAULT)), x, y, z);
-        assert x.getStackKind().isNumericFloat();
-        assert y.getStackKind().isNumericFloat();
-        assert z.getStackKind().isNumericFloat();
+        super(TYPE, getArithmeticOpTable(x).getFMA(), x, y, z);
+        assert x.stamp(NodeView.DEFAULT).isFloatStamp();
+        assert y.stamp(NodeView.DEFAULT).isFloatStamp();
+        assert z.stamp(NodeView.DEFAULT).isFloatStamp();
+    }
+
+    public static ValueNode create(ValueNode x, ValueNode y, ValueNode z, NodeView view) {
+        ArithmeticOpTable.TernaryOp<ArithmeticOpTable.TernaryOp.FMA> op = ArithmeticOpTable.forStamp(x.stamp(view)).getFMA();
+        Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view), z.stamp(view));
+        ConstantNode tryConstantFold = tryConstantFold(op, x, y, z, stamp);
+        if (tryConstantFold != null) {
+            return tryConstantFold;
+        }
+
+        return new FusedMultiplyAddNode(x, y, z);
     }
 
     @Override
-    public Stamp foldStamp(Stamp stampX, Stamp stampY, Stamp stampZ) {
-        return computeStamp(stampX, stampY, stampZ);
-    }
-
-    private static Stamp computeStamp(Stamp stampX, Stamp stampY, Stamp stampZ) {
-        if (stampX.isEmpty()) {
-            return stampX;
-        }
-        if (stampY.isEmpty()) {
-            return stampY;
-        }
-        if (stampZ.isEmpty()) {
-            return stampZ;
-        }
-        JavaConstant constantX = ((FloatStamp) stampX).asConstant();
-        JavaConstant constantY = ((FloatStamp) stampY).asConstant();
-        JavaConstant constantZ = ((FloatStamp) stampZ).asConstant();
-        if (constantX != null && constantY != null && constantZ != null) {
-            if (stampX.getStackKind() == JavaKind.Float) {
-                float result = GraalServices.fma(constantX.asFloat(), constantY.asFloat(), constantZ.asFloat());
-                if (Float.isNaN(result)) {
-                    return StampFactory.forFloat(JavaKind.Float, Double.NaN, Double.NaN, false);
-                } else {
-                    return StampFactory.forFloat(JavaKind.Float, result, result, true);
-                }
-            } else {
-                double result = GraalServices.fma(constantX.asDouble(), constantY.asDouble(), constantZ.asDouble());
-                assert stampX.getStackKind() == JavaKind.Double : Assertions.errorMessage(stampX, stampY, stampZ);
-                if (Double.isNaN(result)) {
-                    return StampFactory.forFloat(JavaKind.Double, Double.NaN, Double.NaN, false);
-                } else {
-                    return StampFactory.forFloat(JavaKind.Double, result, result, true);
-                }
-            }
-        }
-
-        return stampX.unrestricted();
+    protected ArithmeticOpTable.TernaryOp<FMA> getOp(ArithmeticOpTable table) {
+        return table.getFMA();
     }
 
     @Override
