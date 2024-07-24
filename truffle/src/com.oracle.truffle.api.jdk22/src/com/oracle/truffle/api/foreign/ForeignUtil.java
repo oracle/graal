@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,45 +38,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.backend.panama;
+package com.oracle.truffle.api.foreign;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.impl.Accessor.ForeignSupport;
-import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
-import com.oracle.truffle.api.nodes.Node;
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SymbolLookup;
+import java.lang.invoke.MethodHandle;
 
-@SuppressWarnings("serial")
-final class NFIError extends AbstractTruffleException {
+final class ForeignUtil {
 
-    NFIError(String message) {
-        this(message, null);
+    private ForeignUtil() {
     }
 
-    NFIError(String message, Node location) {
-        super(message, resolveLocation(location));
+    @SuppressWarnings("restricted")
+    public static Object libraryLookup(String libraryName, Object arena) {
+        return SymbolLookup.libraryLookup(libraryName, (Arena) arena);
     }
 
-    private static Node resolveLocation(Node node) {
-        if (node == null || node.isAdoptable()) {
-            return node;
-        } else {
-            return EncapsulatingNodeReference.getCurrent().get();
-        }
+    @SuppressWarnings("restricted")
+    public static MethodHandle downcallHandle(String symbolName, Object functionDescriptor) {
+        Linker linker = Linker.nativeLinker();
+        MemorySegment addr = linker.defaultLookup().findOrThrow(symbolName);
+        return linker.downcallHandle(addr, (FunctionDescriptor) functionDescriptor);
     }
 
-    static NFIError illegalNativeAccess(Node location) {
-        Module truffleModule = ForeignSupport.class.getModule();
-        String targetModule;
-        String error;
-        if (truffleModule.isNamed()) {
-            targetModule = truffleModule.getName();
-            error = String.format("Illegal native access from module %s.", targetModule);
-        } else {
-            targetModule = "ALL-UNNAMED";
-            error = "Illegal native access from an unnamed module.";
-        }
-        return new NFIError(String.format("%s To enable the native access required by the NFI Panama backend, please add '--enable-native-access=%s' to the JVM command line options.",
-                        error, targetModule), location);
+    @SuppressWarnings("restricted")
+    public static MethodHandle downcallHandle(Object functionDescriptor) {
+        return Linker.nativeLinker().downcallHandle((FunctionDescriptor) functionDescriptor);
     }
 
+    @SuppressWarnings("restricted")
+    public static Object upcallStub(MethodHandle methodHandle, Object functionDescriptor, Object arena) {
+        return Linker.nativeLinker().upcallStub(methodHandle, (FunctionDescriptor) functionDescriptor, (Arena) arena);
+    }
+
+    @SuppressWarnings("restricted")
+    public static Object reinterpret(Object memorySegment, long newSize) {
+        return ((MemorySegment) memorySegment).reinterpret(newSize);
+    }
 }
