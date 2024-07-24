@@ -2221,7 +2221,7 @@ if is_musl_supported():
         run_helloworld_command(final_args, config, 'muslhelloworld')
 
 
-def _get_libcontainer_files():
+def _get_libcontainer_files(skip_svm_specific=False):
     paths = []
     libcontainer_project = mx.project("com.oracle.svm.native.libcontainer")
     libcontainer_dir = libcontainer_project.dir
@@ -2232,6 +2232,8 @@ def _get_libcontainer_files():
                 rel_path = abs_path.relative_to(libcontainer_dir)
                 src_svm = pathlib.PurePath("src", "svm")
                 if src_svm in rel_path.parents:
+                    if skip_svm_specific:
+                        continue
                     # replace "svm" with "hotspot"
                     stripped_path = rel_path.relative_to(src_svm)
                     if not stripped_path.as_posix().startswith("svm_container"):
@@ -2275,7 +2277,7 @@ def reimport_libcontainer_files(args):
     parser.add_argument("--jdk-repo", required=True, help="Path to the OpenJDK repo to import the files from.")
     parsed_args = parser.parse_args(args)
 
-    libcontainer_dir, paths = _get_libcontainer_files()
+    libcontainer_dir, paths = _get_libcontainer_files(skip_svm_specific=True)
 
     libcontainer_path = pathlib.Path(libcontainer_dir)
     jdk_path = pathlib.Path(parsed_args.jdk_repo)
