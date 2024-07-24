@@ -9665,8 +9665,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             for (InstructionModel instr : model.getInstructions()) {
                 b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
 
-                // instruction data array
-
+                boolean rootNodeAvailable = false;
                 for (InstructionImmediate immediate : instr.getImmediates()) {
                     // argument data array
                     String readImmediate = "bc[bci + " + immediate.offset() + "]";
@@ -9696,26 +9695,27 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.end();
                             break;
                         case LOCAL_OFFSET: {
-                            InstructionImmediate root = instr.getImmediate(ImmediateKind.LOCAL_ROOT);
-                            if (root == null) {
-                                b.startAssign("root").string("this.getRoot()").end();
-                            } else {
-                                b.startAssign("root").string("this.getRoot().getBytecodeRootNodeImpl(", readBc("bci + " + root.offset()), ")").end();
+                            if (!rootNodeAvailable) {
+                                rootNodeAvailable = tryEmitRootNodeForLocalInstruction(b, instr);
                             }
-                            b.startIf().string(localName).string(" - USER_LOCALS_START_IDX").string(" < 0 || ").string(localName).string(" - USER_LOCALS_START_IDX").string(
-                                            " >= root.maxLocals").end().startBlock();
+                            b.startIf().string(localName).string(" < USER_LOCALS_START_IDX");
+                            if (rootNodeAvailable) {
+                                b.string(" || ").string(localName).string(" >= root.maxLocals");
+                            }
+                            b.end().startBlock();
                             b.tree(createValidationErrorWithBci("local offset is out of bounds"));
                             b.end();
                             break;
                         }
                         case LOCAL_INDEX: {
-                            InstructionImmediate root = instr.getImmediate(ImmediateKind.LOCAL_ROOT);
-                            if (root == null) {
-                                b.startAssign("root").string("this.getRoot()").end();
-                            } else {
-                                b.startAssign("root").string("this.getRoot().getBytecodeRootNodeImpl(", readBc("bci + " + root.offset()), ")").end();
+                            if (!rootNodeAvailable) {
+                                rootNodeAvailable = tryEmitRootNodeForLocalInstruction(b, instr);
                             }
-                            b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= root.numLocals").end().startBlock();
+                            b.startIf().string(localName).string(" < 0");
+                            if (rootNodeAvailable) {
+                                b.string(" || ").string(localName).string(" >= root.numLocals");
+                            }
+                            b.end().startBlock();
                             b.tree(createValidationErrorWithBci("local index is out of bounds"));
                             b.end();
                             break;
@@ -9866,6 +9866,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startReturn().string("true").end();
 
             return validate;
+        }
+
+        private boolean tryEmitRootNodeForLocalInstruction(CodeTreeBuilder b, InstructionModel instr) {
+            switch (instr.kind) {
+                case LOAD_LOCAL, STORE_LOCAL, CLEAR_LOCAL: {
+                    b.startAssign("root").string("this.getRoot()").end();
+                    return true;
+                }
+                case LOAD_LOCAL_MATERIALIZED, STORE_LOCAL_MATERIALIZED: {
+                    InstructionImmediate rootImmediate = instr.getImmediate(ImmediateKind.LOCAL_ROOT);
+                    if (rootImmediate != null) {
+                        b.startAssign("root").startCall("this.getRoot().getBytecodeRootNodeImpl").tree(readImmediate("bc", "bci", rootImmediate)).end(2);
+                        return true;
+                    }
+                    break;
+                }
+                default:
+                    throw new AssertionError("Unexpected instruction: " + instr);
+            }
+            return false;
         }
 
         /**

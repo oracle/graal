@@ -1216,6 +1216,55 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testLocalsNonlocalDifferentFrameSizes() {
+        /*
+         * When validating/executing a materialized local access, the frame/root of the materialized
+         * local should be used, not the frame/root of the instruction.
+         */
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
+            // x = 1
+            // (lambda: x = x + 41)()
+            // return x
+            b.beginRoot(LANGUAGE);
+
+            for (int i = 0; i < 100; i++) {
+                b.createLocal();
+            }
+            BytecodeLocal xLoc = b.createLocal();
+
+            b.beginStoreLocal(xLoc);
+            b.emitLoadConstant(1L);
+            b.endStoreLocal();
+
+            b.beginRoot(LANGUAGE);
+            b.beginStoreLocalMaterialized(xLoc);
+            b.emitLoadArgument(0);
+            b.beginAddConstantOperation(41L);
+            b.beginLoadLocalMaterialized(xLoc);
+            b.emitLoadArgument(0);
+            b.endLoadLocalMaterialized();
+            b.endAddConstantOperation();
+            b.endStoreLocalMaterialized();
+            BasicInterpreter inner = b.endRoot();
+
+            b.beginInvoke();
+            b.beginCreateClosure();
+            b.emitLoadConstant(inner);
+            b.endCreateClosure();
+            b.endInvoke();
+
+            b.beginReturn();
+            b.emitLoadLocal(xLoc);
+            b.endReturn();
+
+            b.endRoot();
+        });
+        BasicInterpreter outer = nodes.getNode(0);
+
+        assertEquals(42L, outer.getCallTarget().call());
+    }
+
+    @Test
     public void testVariadicZeroVarargs() {
         // return veryComplex(7);
 
