@@ -1777,10 +1777,12 @@ public class NativeImage {
         return mrefs;
     }
 
-    private Set<String> getImplicitlyRequiredSystemModules(Collection<Path> modulePath) {
-        if (!config.modulePathBuild || modulePath.isEmpty()) {
+    private Set<String> getImplicitlyRequiredSystemModules(Collection<Path> finalModulePath) {
+        if (!config.modulePathBuild || finalModulePath.isEmpty()) {
             return Set.of();
         }
+
+        List<Path> modulePath = finalModulePath.stream().filter(p -> !p.endsWith("lib/svm/library-support.jar")).toList();
 
         ModuleFinder finder = ModuleFinder.of(modulePath.toArray(Path[]::new));
         Set<String> modules = finder.findAll().stream()
