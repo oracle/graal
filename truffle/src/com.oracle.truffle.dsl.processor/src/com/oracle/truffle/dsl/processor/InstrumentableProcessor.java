@@ -80,8 +80,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
 
-@SupportedAnnotationTypes({
-                TruffleTypes.GenerateWrapper_Name})
+@SupportedAnnotationTypes({TruffleTypes.GenerateWrapper_Name})
 public final class InstrumentableProcessor extends AbstractProcessor {
 
     // configuration
@@ -112,7 +111,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
-            return false;
+            return true;
         }
         try (ProcessorContext context = ProcessorContext.enter(processingEnv)) {
             TruffleTypes types = context.getTypes();
