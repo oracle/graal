@@ -78,6 +78,11 @@ def gdb_output(var: str, output_format: str = None) -> str:
     return gdb_execute('output{} {}'.format("" if output_format is None else "/" + output_format, var))
 
 
+def gdb_print_type(t: str) -> str:
+    logger.info(f'Print type {t}')
+    return gdb_execute(f'ptype {t}')
+
+
 def gdb_print(var: str, output_format: str = None) -> str:
     logger.info(f'Print variable {var}')
     return gdb_execute('print{} {}'.format("" if output_format is None else "/" + output_format, var))
