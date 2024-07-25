@@ -624,34 +624,57 @@ public final class Management extends NativeEnv {
     @TruffleBoundary // Lots of SVM + Windows methods blocked for PE.
     public long GetLongAttribute(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject obj,
                     /* jmmLongAttribute */ int att) {
-        switch (att) {
-            case JMM_JVM_INIT_DONE_TIME_MS:
-                return TimeUnit.NANOSECONDS.toMillis(getContext().initDoneTimeNanos);
-            case JMM_CLASS_LOADED_COUNT:
-                return getRegistries().getLoadedClassesCount();
-            case JMM_CLASS_UNLOADED_COUNT:
-                return 0L;
-            case JMM_JVM_UPTIME_MS:
-                long elapsedNanos = System.nanoTime() - getContext().initDoneTimeNanos;
-                return TimeUnit.NANOSECONDS.toMillis(elapsedNanos);
-            case JMM_OS_PROCESS_ID:
-                return ProcessHandle.current().pid();
-            case JMM_THREAD_DAEMON_COUNT:
-                int daemonCount = 0;
-                ThreadsAccess threadAccess = getContext().getThreadAccess();
-                for (StaticObject t : getContext().getActiveThreads()) {
-                    if (threadAccess.isDaemon(t)) {
-                        ++daemonCount;
+        if (StaticObject.isNull(obj)) {
+            switch (att) {
+                case JMM_JVM_INIT_DONE_TIME_MS:
+                    return TimeUnit.NANOSECONDS.toMillis(getContext().initDoneTimeNanos);
+                case JMM_CLASS_LOADED_COUNT:
+                    return getRegistries().getLoadedClassesCount();
+                case JMM_CLASS_UNLOADED_COUNT:
+                    return 0L;
+                case JMM_JVM_UPTIME_MS:
+                    long elapsedNanos = System.nanoTime() - getContext().initDoneTimeNanos;
+                    return TimeUnit.NANOSECONDS.toMillis(elapsedNanos);
+                case JMM_OS_PROCESS_ID:
+                    return ProcessHandle.current().pid();
+                case JMM_THREAD_DAEMON_COUNT:
+                    int daemonCount = 0;
+                    ThreadsAccess threadAccess = getContext().getThreadAccess();
+                    for (StaticObject t : getContext().getActiveThreads()) {
+                        if (threadAccess.isDaemon(t)) {
+                            ++daemonCount;
+                        }
                     }
+                    return daemonCount;
+                case JMM_THREAD_PEAK_COUNT:
+                    return getContext().getPeakThreadCount();
+                case JMM_THREAD_LIVE_COUNT:
+                    return getContext().getActiveThreads().length;
+                case JMM_THREAD_TOTAL_COUNT:
+                    return getContext().getCreatedThreadCount();
+            }
+        } else {
+            MemoryManagerMXBean hostBean = reverseMemoryManagers.get(obj);
+            if (hostBean == null) {
+                LOGGER.warning(() -> "Unknown guest memory manager for object of type " + obj.getKlass());
+                return -1L;
+            }
+            switch (att) {
+                case JMM_GC_TIME_MS: {
+                    if (!(hostBean instanceof GarbageCollectorMXBean hostGCBean)) {
+                        LOGGER.warning(() -> "Not a GC bean, got a " + hostBean.getClass());
+                        return -1L;
+                    }
+                    return hostGCBean.getCollectionTime();
                 }
-                return daemonCount;
-
-            case JMM_THREAD_PEAK_COUNT:
-                return getContext().getPeakThreadCount();
-            case JMM_THREAD_LIVE_COUNT:
-                return getContext().getActiveThreads().length;
-            case JMM_THREAD_TOTAL_COUNT:
-                return getContext().getCreatedThreadCount();
+                case JMM_GC_COUNT: {
+                    if (!(hostBean instanceof GarbageCollectorMXBean hostGCBean)) {
+                        LOGGER.warning(() -> "Not a GC bean, got a " + hostBean.getClass());
+                        return -1L;
+                    }
+                    return hostGCBean.getCollectionCount();
+                }
+            }
         }
         getLogger().warning(() -> "Unknown long attribute: " + att);
         return -1L;
