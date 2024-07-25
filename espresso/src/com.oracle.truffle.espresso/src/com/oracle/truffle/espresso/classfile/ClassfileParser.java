@@ -632,6 +632,18 @@ public final class ClassfileParser {
         }
     }
 
+    private enum AnnotationLocation {
+        Method,
+        Field,
+        Class
+    }
+
+    private record RuntimeVisibleAnnotationsAttribute(Attribute attribute, int flags) {
+        private RuntimeVisibleAnnotationsAttribute {
+            Objects.requireNonNull(attribute);
+        }
+    }
+
     private class CommonAttributeParser {
 
         final InfoType infoType;
@@ -695,6 +707,54 @@ public final class ClassfileParser {
                 return signature = parseSignatureAttribute(attributeName);
             }
             return null;
+        }
+
+        RuntimeVisibleAnnotationsAttribute parseRuntimeVisibleAnnotations(int attributeSize, AnnotationLocation location) {
+            assert infoType.supports(RUNTIME_VISIBLE_ANNOTATIONS);
+            if (runtimeVisibleAnnotations != null) {
+                throw ConstantPool.classFormatError("Duplicate RuntimeVisibleAnnotations attribute");
+            }
+
+            // Check for special internal annotations
+            byte[] data = stream.readByteArray(attributeSize);
+            ClassfileStream subStream = new ClassfileStream(data, classfile);
+            int flags = 0;
+            if (location == AnnotationLocation.Method) {
+                flags = parseMethodVMAnnotations(subStream);
+            }
+
+            Attribute attribute = new Attribute(Name.RuntimeVisibleAnnotations, data);
+            runtimeVisibleAnnotations = attribute;
+            return new RuntimeVisibleAnnotationsAttribute(attribute, flags);
+        }
+
+        private int parseMethodVMAnnotations(ClassfileStream subStream) {
+            int flags = 0;
+            int count = subStream.readU2();
+            for (int j = 0; j < count; j++) {
+                int typeIndex = parseAnnotation(subStream);
+                Utf8Constant constant = pool.utf8At(typeIndex, "annotation type");
+                // Validation of the type is done at runtime by guest java code.
+                Symbol<Type> annotType = constant.value();
+                if (Type.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
+                    flags |= ACC_LAMBDA_FORM_COMPILED;
+                } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType) ||
+                                Type.jdk_internal_vm_annotation_Hidden.equals(annotType)) {
+                    flags |= ACC_HIDDEN;
+                } else if (Type.sun_reflect_CallerSensitive.equals(annotType) ||
+                                Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
+                    flags |= ACC_CALLER_SENSITIVE;
+                } else if (Type.java_lang_invoke_ForceInline.equals(annotType) ||
+                                Type.jdk_internal_vm_annotation_ForceInline.equals(annotType)) {
+                    flags |= ACC_FORCE_INLINE;
+                } else if (Type.java_lang_invoke_DontInline.equals(annotType) ||
+                                Type.jdk_internal_vm_annotation_DontInline.equals(annotType)) {
+                    flags |= ACC_DONT_INLINE;
+                } else if (Type.jdk_internal_misc_ScopedMemoryAccess$Scoped.equals(annotType)) {
+                    flags |= ACC_SCOPED;
+                }
+            }
+            return flags;
         }
     }
 
@@ -788,7 +848,6 @@ public final class ClassfileParser {
         CodeAttribute codeAttribute = null;
         Attribute checkedExceptions = null;
 
-        Attribute runtimeVisibleAnnotations = null;
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Method);
 
         MethodParametersAttribute methodParameters = null;
@@ -815,37 +874,9 @@ public final class ClassfileParser {
                 methodAttributes[i] = checkedExceptions = new Attribute(attributeName, null);
             } else if (majorVersion >= JAVA_1_5_VERSION) {
                 if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
-                    if (runtimeVisibleAnnotations != null) {
-                        throw ConstantPool.classFormatError("Duplicate RuntimeVisibleAnnotations attribute");
-                    }
-                    // Check if java.lang.invoke.LambdaForm.Compiled is present here.
-                    byte[] data = stream.readByteArray(attributeSize);
-                    ClassfileStream subStream = new ClassfileStream(data, this.classfile);
-                    int count = subStream.readU2();
-                    for (int j = 0; j < count; j++) {
-                        int typeIndex = parseAnnotation(subStream);
-                        Utf8Constant constant = pool.utf8At(typeIndex, "annotation type");
-                        // Validation of the type is done at runtime by guest java code.
-                        Symbol<Type> annotType = constant.value();
-                        if (Type.java_lang_invoke_LambdaForm$Compiled.equals(annotType)) {
-                            methodFlags |= ACC_LAMBDA_FORM_COMPILED;
-                        } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType) ||
-                                        Type.jdk_internal_vm_annotation_Hidden.equals(annotType)) {
-                            methodFlags |= ACC_HIDDEN;
-                        } else if (Type.sun_reflect_CallerSensitive.equals(annotType) ||
-                                        Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
-                            methodFlags |= ACC_CALLER_SENSITIVE;
-                        } else if (Type.java_lang_invoke_ForceInline.equals(annotType) ||
-                                        Type.jdk_internal_vm_annotation_ForceInline.equals(annotType)) {
-                            methodFlags |= ACC_FORCE_INLINE;
-                        } else if (Type.java_lang_invoke_DontInline.equals(annotType) ||
-                                        Type.jdk_internal_vm_annotation_DontInline.equals(annotType)) {
-                            methodFlags |= ACC_DONT_INLINE;
-                        } else if (Type.jdk_internal_misc_ScopedMemoryAccess$Scoped.equals(annotType)) {
-                            methodFlags |= ACC_SCOPED;
-                        }
-                    }
-                    methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, data);
+                    RuntimeVisibleAnnotationsAttribute annotations = commonAttributeParser.parseRuntimeVisibleAnnotations(attributeSize, AnnotationLocation.Method);
+                    methodFlags |= annotations.flags;
+                    methodAttributes[i] = annotations.attribute;
                 } else if (attributeName.equals(Name.MethodParameters)) {
                     if (methodParameters != null) {
                         throw ConstantPool.classFormatError("Duplicate MethodParameters attribute");
@@ -853,12 +884,10 @@ public final class ClassfileParser {
                     methodAttributes[i] = methodParameters = parseMethodParameters(attributeName);
                 } else {
                     Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
-                    // stream.skip(attributeSize);
                     methodAttributes[i] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
 
                 }
             } else {
-                // stream.skip(attributeSize);
                 methodAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
             }
 
