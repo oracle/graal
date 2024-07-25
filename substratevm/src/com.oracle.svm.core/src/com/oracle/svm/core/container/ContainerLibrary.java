@@ -72,7 +72,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/memory/allocation.inline.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/memory/allStatic.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/nmt/memflags.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+6/src/hotspot/share/runtime/os.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+7/src/hotspot/share/runtime/os.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/runtime/os.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/runtime/os.inline.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/checkedCast.hpp")
