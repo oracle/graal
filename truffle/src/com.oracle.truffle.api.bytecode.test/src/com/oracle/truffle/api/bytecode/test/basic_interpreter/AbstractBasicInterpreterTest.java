@@ -348,7 +348,7 @@ public abstract class AbstractBasicInterpreterTest {
 
             try {
                 assertEquals(expectedNode.name, actualNode.name);
-                assertArrayEquals((short[]) readField(expectedBytecode, "bytecodes"), (short[]) readField(actualBytecode, "bytecodes"));
+                assertArrayEquals((byte[]) readField(expectedBytecode, "bytecodes"), (byte[]) readField(actualBytecode, "bytecodes"));
                 assertConstantsEqual((Object[]) readField(expectedBytecode, "constants"), (Object[]) readField(actualBytecode, "constants"));
                 assertArrayEquals((int[]) readField(expectedBytecode, "handlers"), (int[]) readField(actualBytecode, "handlers"));
                 assertArrayEquals((int[]) readField(expectedBytecode, "locals"), (int[]) readField(actualBytecode, "locals"));

@@ -103,6 +103,7 @@ public class OperationModel implements PrettyPrintable {
          */
         public enum Encoding {
             LANGUAGE,
+            SHORT,
             INTEGER,
             OBJECT,
             LOCAL,

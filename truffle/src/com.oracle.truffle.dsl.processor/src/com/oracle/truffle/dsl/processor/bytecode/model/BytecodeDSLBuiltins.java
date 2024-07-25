@@ -177,7 +177,7 @@ public class BytecodeDSLBuiltins {
                         .setVoid(true) //
                         .setVariadic(true) //
                         .setDynamicOperands(transparentOperationChild()) //
-                        .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "finallyOperationSp",
+                        .setOperationBeginArguments(new OperationArgument(context.getType(short.class), Encoding.SHORT, "finallyOperationSp",
                                         "the operation stack pointer for the finally operation that created the FinallyHandler")) //
                         .setInternal();
         m.operation(OperationKind.LABEL, "Label", """
@@ -203,7 +203,7 @@ public class BytecodeDSLBuiltins {
         m.operation(OperationKind.LOAD_ARGUMENT, "LoadArgument", """
                         LoadArgument reads the argument at {@code index} from the frame.
                         """) //
-                        .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index", "the index of the argument to load")) //
+                        .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index", "the index of the argument to load (must fit into a short)")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_ARGUMENT, "load.argument", m.signature(Object.class))//
                                         .addImmediate(ImmediateKind.INTEGER, "index"));
         m.operation(OperationKind.LOAD_EXCEPTION, "LoadException", """
@@ -311,10 +311,10 @@ public class BytecodeDSLBuiltins {
             }
         }
 
-        m.popVariadicInstruction = new InstructionModel[9];
+        m.loadVariadicInstruction = new InstructionModel[9];
         for (int i = 0; i <= 8; i++) {
-            m.popVariadicInstruction[i] = m.instruction(InstructionKind.LOAD_VARIADIC, "load.variadic_" + i, m.signature(void.class, Object.class));
-            m.popVariadicInstruction[i].variadicPopCount = i;
+            m.loadVariadicInstruction[i] = m.instruction(InstructionKind.LOAD_VARIADIC, "load.variadic_" + i, m.signature(void.class, Object.class));
+            m.loadVariadicInstruction[i].variadicPopCount = i;
         }
         m.mergeVariadicInstruction = m.instruction(InstructionKind.MERGE_VARIADIC, "merge.variadic", m.signature(Object.class, Object.class));
         m.storeNullInstruction = m.instruction(InstructionKind.STORE_NULL, "constant_null", m.signature(Object.class));

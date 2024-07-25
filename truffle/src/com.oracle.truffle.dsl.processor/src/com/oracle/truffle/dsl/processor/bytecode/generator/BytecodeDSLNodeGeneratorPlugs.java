@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
-import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory.readBc;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory.readConst;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory.readImmediate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -105,7 +105,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         }
         result.addAll(List.of(
                         new CodeVariableElement(nodeType, "$bytecode"),
-                        new CodeVariableElement(context.getType(short[].class), "$bc"),
+                        new CodeVariableElement(context.getType(byte[].class), "$bc"),
                         new CodeVariableElement(context.getType(int.class), "$bci"),
                         new CodeVariableElement(context.getType(int.class), "$sp")));
         return result;
@@ -139,7 +139,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             }
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
             InstructionImmediate imm = imms.get(index);
-            b.string(readConst(readBc("$bc", "$bci + " + imm.offset()), "$bytecode.constants"));
+            b.tree(readConst(readImmediate("$bc", "$bci", imm), "$bytecode.constants"));
             return false;
         }
 
@@ -190,7 +190,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             }
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
             InstructionImmediate imm = imms.get(instruction.signature.constantOperandsBeforeCount + index);
-            b.string(readConst(readBc("$bc", "$bci + " + imm.offset()), "$bytecode.constants"));
+            b.tree(readConst(readImmediate("$bc", "$bci", imm), "$bytecode.constants"));
             return false;
         }
 
@@ -252,7 +252,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         if (model.specializationDebugListener) {
             method.addParameter(new CodeVariableElement(bytecodeFactory.getAbstractBytecodeNode().asType(), "$bytecode"));
         }
-        method.addParameter(new CodeVariableElement(context.getType(short[].class), "$bc"));
+        method.addParameter(new CodeVariableElement(context.getType(byte[].class), "$bc"));
         method.addParameter(new CodeVariableElement(context.getType(int.class), "$bci"));
 
         CodeTreeBuilder b = method.createBuilder();
@@ -276,7 +276,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             b.startStatement();
             b.string("int oldOperandIndex" + valueIndex);
             b.string(" = ");
-            b.string("ACCESS.shortArrayRead($bc, $bci + " + immediate.offset() + ")");
+            b.string("ACCESS.readShort($bc, $bci + " + immediate.offset() + ")");
             b.end();
 
             if (instruction.isShortCircuitConverter() || instruction.isEpilogReturn()) {
@@ -286,7 +286,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 b.startStatement();
                 b.string("oldOperand" + valueIndex);
                 b.string(" = ");
-                b.string("ACCESS.shortArrayRead($bc, oldOperandIndex" + valueIndex + ")");
+                b.string("ACCESS.readShort($bc, oldOperandIndex" + valueIndex + ")");
                 b.end(); // statement
                 b.end().startElseBlock();
                 b.startStatement();
@@ -299,7 +299,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 b.startStatement();
                 b.string("short oldOperand" + valueIndex);
                 b.string(" = ");
-                b.string("ACCESS.shortArrayRead($bc, oldOperandIndex" + valueIndex + ")");
+                b.string("ACCESS.readShort($bc, oldOperandIndex" + valueIndex + ")");
                 b.end(); // statement
             }
 

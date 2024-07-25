@@ -299,6 +299,15 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
 
     private Context context;
 
+    private static byte[] toByteArray(short[] arr) {
+        byte[] result = new byte[arr.length * 2];
+        for (int i = 0; i < arr.length; i++) {
+            result[i * 2] = (byte) (arr[i] >>> 8);
+            result[i * 2 + 1] = (byte) arr[i];
+        }
+        return result;
+    }
+
     /**
      * The code is equivalent to:
      *
@@ -351,31 +360,31 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
         BenchmarkLanguage.registerName(NAME_MANUAL_BCI, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
-            ManualBytecodeInterpreter node = new ManualBytecodeInterpreter(lang, b.build(), BYTECODE);
+            ManualBytecodeInterpreter node = new ManualBytecodeInterpreter(lang, b.build(), toByteArray(BYTECODE));
             return node.getCallTarget();
         });
         BenchmarkLanguage.registerName(NAME_MANUAL_BCI_NO_BE, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
-            ManualBytecodeInterpreterWithoutBE node = new ManualBytecodeInterpreterWithoutBE(lang, b.build(), BYTECODE);
+            ManualBytecodeInterpreterWithoutBE node = new ManualBytecodeInterpreterWithoutBE(lang, b.build(), toByteArray(BYTECODE));
             return node.getCallTarget();
         });
         BenchmarkLanguage.registerName(NAME_MANUAL_BCI_UNSAFE, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
-            ManualUnsafeBytecodeInterpreter node = new ManualUnsafeBytecodeInterpreter(lang, b.build(), BYTECODE);
+            ManualUnsafeBytecodeInterpreter node = new ManualUnsafeBytecodeInterpreter(lang, b.build(), toByteArray(BYTECODE));
             return node.getCallTarget();
         });
         BenchmarkLanguage.registerName(NAME_MANUAL_NODED_UNSAFE, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
-            ManualUnsafeNodedInterpreter node = new ManualUnsafeNodedInterpreter(lang, b.build(), BC_SHORT, OBJ_SHORT, NODE_SHORT);
+            ManualUnsafeNodedInterpreter node = new ManualUnsafeNodedInterpreter(lang, b.build(), toByteArray(BC_SHORT), OBJ_SHORT, NODE_SHORT);
             return node.getCallTarget();
         });
         BenchmarkLanguage.registerName(NAME_MANUAL_NODED_UNSAFE_NO_BE, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
-            ManualUnsafeNodedInterpreterWithoutBE node = new ManualUnsafeNodedInterpreterWithoutBE(lang, b.build(), BC_SHORT, OBJ_SHORT, NODE_SHORT);
+            ManualUnsafeNodedInterpreterWithoutBE node = new ManualUnsafeNodedInterpreterWithoutBE(lang, b.build(), toByteArray(BC_SHORT), OBJ_SHORT, NODE_SHORT);
             return node.getCallTarget();
         });
         BenchmarkLanguage.registerName(NAME_AST, lang -> {

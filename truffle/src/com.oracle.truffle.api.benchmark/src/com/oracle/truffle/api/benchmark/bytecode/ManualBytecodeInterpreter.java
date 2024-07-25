@@ -65,7 +65,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class ManualBytecodeInterpreter extends BaseBytecodeNode {
-    protected ManualBytecodeInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
+    protected ManualBytecodeInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, byte[] bc) {
         super(language, frameDescriptor, bc);
     }
 
@@ -73,7 +73,7 @@ public class ManualBytecodeInterpreter extends BaseBytecodeNode {
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
-        short[] localBc = bc;
+        byte[] localBc = bc;
         int[] localBranchProfiles = branchProfiles;
         int bci = startBci;
         int sp = startSp;
@@ -181,7 +181,7 @@ public class ManualBytecodeInterpreter extends BaseBytecodeNode {
 }
 
 class ManualUnsafeBytecodeInterpreter extends BaseBytecodeNode {
-    protected ManualUnsafeBytecodeInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
+    protected ManualUnsafeBytecodeInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, byte[] bc) {
         super(language, frameDescriptor, bc);
     }
 
@@ -191,7 +191,7 @@ class ManualUnsafeBytecodeInterpreter extends BaseBytecodeNode {
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
-        short[] localBc = bc;
+        byte[] localBc = bc;
         int[] localBranchProfiles = branchProfiles;
         int bci = startBci;
         int sp = startSp;
@@ -201,12 +201,12 @@ class ManualUnsafeBytecodeInterpreter extends BaseBytecodeNode {
         frame.getArguments();
 
         loop: while (true) {
-            short opcode = UFA.shortArrayRead(localBc, bci);
+            short opcode = UFA.readShort(localBc, bci);
             CompilerAsserts.partialEvaluationConstant(opcode);
             switch (opcode) {
                 // ( -- )
                 case OP_JUMP: {
-                    int nextBci = UFA.shortArrayRead(localBc, bci + 1);
+                    int nextBci = UFA.readShort(localBc, bci + 1);
                     CompilerAsserts.partialEvaluationConstant(nextBci);
                     if (nextBci <= bci) {
                         Object result = backwardsJumpCheck(frame, sp, loopCounter, nextBci);
@@ -237,7 +237,7 @@ class ManualUnsafeBytecodeInterpreter extends BaseBytecodeNode {
                 }
                 // ( -- i)
                 case OP_CONST: {
-                    UFA.setInt(frame, sp, (UFA.shortArrayRead(localBc, bci + 1) << 16) | (UFA.shortArrayRead(localBc, bci + 2) & 0xffff));
+                    UFA.setInt(frame, sp, (UFA.readShort(localBc, bci + 1) << 16) | (UFA.readShort(localBc, bci + 2) & 0xffff));
                     sp += 1;
                     bci += 3;
                     continue loop;
@@ -245,11 +245,11 @@ class ManualUnsafeBytecodeInterpreter extends BaseBytecodeNode {
                 // (b -- )
                 case OP_JUMP_FALSE: {
                     boolean cond = UFA.getBoolean(frame, sp - 1);
-                    int profileIdx = UFA.shortArrayRead(localBc, bci + 2);
+                    int profileIdx = UFA.readShort(localBc, bci + 2);
                     UFA.clear(frame, sp - 1);
                     sp -= 1;
                     if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
-                        bci = UFA.shortArrayRead(localBc, bci + 1);
+                        bci = UFA.readShort(localBc, bci + 1);
                         continue loop;
                     } else {
                         bci += 3;
@@ -271,14 +271,14 @@ class ManualUnsafeBytecodeInterpreter extends BaseBytecodeNode {
                 }
                 // (i -- )
                 case OP_ST_LOC: {
-                    UFA.copyPrimitive(frame, sp - 1, UFA.shortArrayRead(localBc, bci + 1));
+                    UFA.copyPrimitive(frame, sp - 1, UFA.readShort(localBc, bci + 1));
                     sp -= 1;
                     bci += 2;
                     continue loop;
                 }
                 // ( -- i)
                 case OP_LD_LOC: {
-                    UFA.copyPrimitive(frame, UFA.shortArrayRead(localBc, bci + 1), sp);
+                    UFA.copyPrimitive(frame, UFA.readShort(localBc, bci + 1), sp);
                     sp += 1;
                     bci += 2;
                     continue loop;
@@ -292,7 +292,7 @@ class ManualUnsafeBytecodeInterpreter extends BaseBytecodeNode {
 
 abstract class BaseBytecodeNode extends RootNode implements BytecodeOSRNode {
 
-    protected BaseBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
+    protected BaseBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, byte[] bc) {
         super(language, frameDescriptor);
         this.bc = bc;
         /**
@@ -303,7 +303,7 @@ abstract class BaseBytecodeNode extends RootNode implements BytecodeOSRNode {
         this.branchProfiles = BytecodeSupport.allocateBranchProfiles(SimpleBytecodeBenchmark.numBytecodeProfiles);
     }
 
-    @CompilationFinal(dimensions = 1) protected short[] bc;
+    @CompilationFinal(dimensions = 1) protected byte[] bc;
     @CompilationFinal(dimensions = 1) protected int[] branchProfiles;
 
     static final short OP_JUMP = 1;
@@ -362,7 +362,7 @@ abstract class BaseBytecodeNode extends RootNode implements BytecodeOSRNode {
 
 class ManualBytecodeInterpreterWithoutBE extends BaseBytecodeNode {
 
-    protected ManualBytecodeInterpreterWithoutBE(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
+    protected ManualBytecodeInterpreterWithoutBE(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, byte[] bc) {
         super(language, frameDescriptor, bc);
     }
 
@@ -370,7 +370,7 @@ class ManualBytecodeInterpreterWithoutBE extends BaseBytecodeNode {
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
-        short[] localBc = bc;
+        byte[] localBc = bc;
         int[] localBranchProfiles = branchProfiles;
         int bci = startBci;
         int sp = startSp;
@@ -478,7 +478,7 @@ class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
     @CompilationFinal(dimensions = 1) private final Object[] objs;
     @CompilationFinal(dimensions = 1) private final Node[] nodes;
 
-    protected ManualUnsafeNodedInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc, Object[] objs, Node[] nodes) {
+    protected ManualUnsafeNodedInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, byte[] bc, Object[] objs, Node[] nodes) {
         super(language, frameDescriptor, bc);
         this.objs = objs;
         this.nodes = nodes;
@@ -516,7 +516,7 @@ class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
-        short[] localBc = bc;
+        byte[] localBc = bc;
         Object[] localObjs = objs;
         int[] localBranchProfiles = branchProfiles;
         Node[] localNodes = nodes;
@@ -528,12 +528,12 @@ class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
         frame.getArguments();
 
         loop: while (true) {
-            short opcode = UFA.shortArrayRead(localBc, bci);
+            short opcode = UFA.readShort(localBc, bci);
             CompilerAsserts.partialEvaluationConstant(opcode);
             switch (opcode) {
                 // ( -- )
                 case OP_JUMP: {
-                    int nextBci = UFA.shortArrayRead(localBc, bci + 1);
+                    int nextBci = UFA.readShort(localBc, bci + 1);
                     CompilerAsserts.partialEvaluationConstant(nextBci);
                     if (nextBci <= bci) {
                         Object result = backwardsJumpCheck(frame, sp, loopCounter, nextBci);
@@ -548,7 +548,7 @@ class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
                 case OP_ADD: {
                     int lhs = UFA.getInt(frame, sp - 2);
                     int rhs = UFA.getInt(frame, sp - 1);
-                    UFA.setInt(frame, sp - 2, UFA.cast(UFA.objectArrayRead(localNodes, UFA.shortArrayRead(localBc, bci + 1)), AddNode.class).execute(lhs, rhs));
+                    UFA.setInt(frame, sp - 2, UFA.cast(UFA.readObject(localNodes, UFA.readShort(localBc, bci + 1)), AddNode.class).execute(lhs, rhs));
                     sp -= 1;
                     bci += 2;
                     continue loop;
@@ -557,14 +557,14 @@ class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
                 case OP_MOD: {
                     int lhs = UFA.getInt(frame, sp - 2);
                     int rhs = UFA.getInt(frame, sp - 1);
-                    UFA.setInt(frame, sp - 2, UFA.cast(UFA.objectArrayRead(localNodes, UFA.shortArrayRead(localBc, bci + 1)), ModNode.class).execute(lhs, rhs));
+                    UFA.setInt(frame, sp - 2, UFA.cast(UFA.readObject(localNodes, UFA.readShort(localBc, bci + 1)), ModNode.class).execute(lhs, rhs));
                     sp -= 1;
                     bci += 2;
                     continue loop;
                 }
                 // ( -- i)
                 case OP_CONST: {
-                    UFA.setInt(frame, sp, UFA.cast(UFA.objectArrayRead(localObjs, UFA.shortArrayRead(localBc, bci + 1)), Integer.class));
+                    UFA.setInt(frame, sp, UFA.cast(UFA.readObject(localObjs, UFA.readShort(localBc, bci + 1)), Integer.class));
                     sp += 1;
                     bci += 2;
                     continue loop;
@@ -572,11 +572,11 @@ class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
                 // (b -- )
                 case OP_JUMP_FALSE: {
                     boolean cond = UFA.getBoolean(frame, sp - 1);
-                    int profileIdx = UFA.shortArrayRead(bc, bci + 2);
+                    int profileIdx = UFA.readShort(bc, bci + 2);
                     UFA.clear(frame, sp - 1);
                     sp -= 1;
                     if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
-                        bci = UFA.shortArrayRead(localBc, bci + 1);
+                        bci = UFA.readShort(localBc, bci + 1);
                         continue loop;
                     } else {
                         bci += 3;
@@ -598,14 +598,14 @@ class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
                 }
                 // (i -- )
                 case OP_ST_LOC: {
-                    UFA.copyPrimitive(frame, sp - 1, UFA.shortArrayRead(localBc, bci + 1));
+                    UFA.copyPrimitive(frame, sp - 1, UFA.readShort(localBc, bci + 1));
                     sp -= 1;
                     bci += 2;
                     continue loop;
                 }
                 // ( -- i)
                 case OP_LD_LOC: {
-                    UFA.copyPrimitive(frame, UFA.shortArrayRead(localBc, bci + 1), sp);
+                    UFA.copyPrimitive(frame, UFA.readShort(localBc, bci + 1), sp);
                     sp += 1;
                     bci += 2;
                     continue loop;
@@ -624,7 +624,7 @@ class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
     @CompilationFinal(dimensions = 1) private final Object[] objs;
     @CompilationFinal(dimensions = 1) private final Node[] nodes;
 
-    protected ManualUnsafeNodedInterpreterWithoutBE(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc, Object[] objs, Node[] nodes) {
+    protected ManualUnsafeNodedInterpreterWithoutBE(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, byte[] bc, Object[] objs, Node[] nodes) {
         super(language, frameDescriptor, bc);
         this.objs = objs;
         this.nodes = nodes;
@@ -636,7 +636,7 @@ class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
-        short[] localBc = bc;
+        byte[] localBc = bc;
         int[] localBranchProfiles = branchProfiles;
         Object[] localObjs = objs;
         Node[] localNodes = nodes;
@@ -648,12 +648,12 @@ class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
         frame.getArguments();
 
         loop: while (true) {
-            short opcode = UFA.shortArrayRead(localBc, bci);
+            short opcode = UFA.readShort(localBc, bci);
             CompilerAsserts.partialEvaluationConstant(opcode);
             switch (opcode) {
                 // ( -- )
                 case OP_JUMP: {
-                    int nextBci = UFA.shortArrayRead(localBc, bci + 1);
+                    int nextBci = UFA.readShort(localBc, bci + 1);
                     CompilerAsserts.partialEvaluationConstant(nextBci);
                     if (nextBci <= bci) {
                         Object result = backwardsJumpCheck(frame, sp, loopCounter, nextBci);
@@ -668,7 +668,7 @@ class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
                 case OP_ADD: {
                     int lhs = (int) UFA.getObject(frame, sp - 2);
                     int rhs = (int) UFA.getObject(frame, sp - 1);
-                    UFA.setObject(frame, sp - 2, UFA.cast(UFA.objectArrayRead(localNodes, UFA.shortArrayRead(localBc, bci + 1)), ManualUnsafeNodedInterpreter.AddNode.class).execute(lhs, rhs));
+                    UFA.setObject(frame, sp - 2, UFA.cast(UFA.readObject(localNodes, UFA.readShort(localBc, bci + 1)), ManualUnsafeNodedInterpreter.AddNode.class).execute(lhs, rhs));
                     sp -= 1;
                     bci += 2;
                     continue loop;
@@ -677,14 +677,14 @@ class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
                 case OP_MOD: {
                     int lhs = (int) UFA.getObject(frame, sp - 2);
                     int rhs = (int) UFA.getObject(frame, sp - 1);
-                    UFA.setObject(frame, sp - 2, UFA.cast(UFA.objectArrayRead(localNodes, UFA.shortArrayRead(localBc, bci + 1)), ManualUnsafeNodedInterpreter.ModNode.class).execute(lhs, rhs));
+                    UFA.setObject(frame, sp - 2, UFA.cast(UFA.readObject(localNodes, UFA.readShort(localBc, bci + 1)), ManualUnsafeNodedInterpreter.ModNode.class).execute(lhs, rhs));
                     sp -= 1;
                     bci += 2;
                     continue loop;
                 }
                 // ( -- i)
                 case OP_CONST: {
-                    UFA.setObject(frame, sp, UFA.cast(UFA.objectArrayRead(localObjs, UFA.shortArrayRead(localBc, bci + 1)), Integer.class));
+                    UFA.setObject(frame, sp, UFA.cast(UFA.readObject(localObjs, UFA.readShort(localBc, bci + 1)), Integer.class));
                     sp += 1;
                     bci += 2;
                     continue loop;
@@ -692,11 +692,11 @@ class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
                 // (b -- )
                 case OP_JUMP_FALSE: {
                     boolean cond = UFA.getObject(frame, sp - 1) == Boolean.TRUE;
-                    int profileIdx = UFA.shortArrayRead(localBc, bci + 2);
+                    int profileIdx = UFA.readShort(localBc, bci + 2);
                     UFA.clear(frame, sp - 1);
                     sp -= 1;
                     if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
-                        bci = UFA.shortArrayRead(localBc, bci + 1);
+                        bci = UFA.readShort(localBc, bci + 1);
                         continue loop;
                     } else {
                         bci += 3;
@@ -718,14 +718,14 @@ class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
                 }
                 // (i -- )
                 case OP_ST_LOC: {
-                    UFA.copyObject(frame, sp - 1, UFA.shortArrayRead(localBc, bci + 1));
+                    UFA.copyObject(frame, sp - 1, UFA.readShort(localBc, bci + 1));
                     sp -= 1;
                     bci += 2;
                     continue loop;
                 }
                 // ( -- i)
                 case OP_LD_LOC: {
-                    UFA.copyObject(frame, UFA.shortArrayRead(localBc, bci + 1), sp);
+                    UFA.copyObject(frame, UFA.readShort(localBc, bci + 1), sp);
                     sp += 1;
                     bci += 2;
                     continue loop;

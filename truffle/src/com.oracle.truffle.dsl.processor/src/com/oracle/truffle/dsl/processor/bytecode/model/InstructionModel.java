@@ -41,10 +41,12 @@
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
@@ -52,6 +54,8 @@ import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
 public final class InstructionModel implements PrettyPrintable {
+    public static final int OPCODE_WIDTH = 2; // short
+
     public enum InstructionKind {
         BRANCH,
         BRANCH_BACKWARD,
@@ -88,33 +92,65 @@ public final class InstructionModel implements PrettyPrintable {
         SUPERINSTRUCTION,
     }
 
+    public enum ImmediateWidth {
+        BYTE(1),
+        SHORT(2),
+        INT(4);
+
+        public final int byteSize;
+
+        ImmediateWidth(int byteSize) {
+            this.byteSize = byteSize;
+        }
+
+        public TypeMirror toType(ProcessorContext context) {
+            return switch (this) {
+                case BYTE -> context.getType(byte.class);
+                case SHORT -> context.getType(short.class);
+                case INT -> context.getType(int.class);
+            };
+        }
+
+        @Override
+        public String toString() {
+            return name().toLowerCase();
+        }
+    }
+
     public enum ImmediateKind {
         /**
          * Relative local offset into the frame. Without boxing elimination or local scoping
          * localOffset == localIndex.
          */
-        LOCAL_OFFSET("localOffset"),
+        LOCAL_OFFSET("localOffset", ImmediateWidth.SHORT),
         /**
          * Local index into the locals table. Without boxing elimination or local scoping
          * localOffset == localIndex.
          */
-        LOCAL_INDEX("localIndex"),
+        LOCAL_INDEX("localIndex", ImmediateWidth.SHORT),
         /**
          * Index into BytecodeRootNodes.nodes. Necessary for boxing elimination.
          */
-        LOCAL_ROOT("localRoot"),
-        INTEGER("int"),
-        BYTECODE_INDEX("bci"),
-        STACK_POINTER("sp"),
-        CONSTANT("const"),
-        NODE_PROFILE("node"),
-        TAG_NODE("tag"),
-        BRANCH_PROFILE("profile");
+        LOCAL_ROOT("localRoot", ImmediateWidth.SHORT),
+        INTEGER("int", ImmediateWidth.SHORT),
+        BYTE("byte", ImmediateWidth.BYTE),
+        BYTECODE_INDEX("bci", ImmediateWidth.INT),
+        STACK_POINTER("sp", ImmediateWidth.SHORT),
+        CONSTANT("const", ImmediateWidth.SHORT),
+        NODE_PROFILE("node", ImmediateWidth.INT),
+        TAG_NODE("tag", ImmediateWidth.INT),
+        BRANCH_PROFILE("branch_profile", ImmediateWidth.INT);
 
-        final String shortName;
+        public final String shortName;
+        public final ImmediateWidth width;
 
-        ImmediateKind(String shortName) {
+        ImmediateKind(String shortName, ImmediateWidth width) {
             this.shortName = shortName;
+            this.width = width;
+        }
+
+        public TypeMirror toType(ProcessorContext context) {
+            return width.toType(context);
         }
     }
 
@@ -122,7 +158,62 @@ public final class InstructionModel implements PrettyPrintable {
 
     }
 
-    private int id = -1;
+    public static final class InstructionEncoding implements Comparable<InstructionEncoding> {
+        public final ImmediateWidth[] immediates;
+        public final int length;
+
+        public InstructionEncoding(ImmediateWidth[] immediates, int length) {
+            this.immediates = immediates;
+            this.length = length;
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(immediates);
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (!(other instanceof InstructionEncoding otherEncoding)) {
+                return false;
+            }
+            if (immediates.length != otherEncoding.immediates.length) {
+                return false;
+            }
+            for (int i = 0; i < immediates.length; i++) {
+                if (immediates[i] != otherEncoding.immediates[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public int compareTo(InstructionEncoding other) {
+            // First, order by byte length.
+            int diff = length - other.length;
+            if (diff != 0) {
+                return diff;
+            }
+
+            // Then, order by number of immediates.
+            diff = immediates.length - other.immediates.length;
+            if (diff != 0) {
+                return diff;
+            }
+
+            // If both match, order by each pairwise immediate's byte width.
+            for (int i = 0; i < immediates.length; i++) {
+                if (immediates[i] != other.immediates[i]) {
+                    return immediates[i].byteSize - other.immediates[i].byteSize;
+                }
+            }
+
+            return 0;
+        }
+    }
+
+    private short id = -1;
+    private int byteLength = OPCODE_WIDTH;
     public final InstructionKind kind;
     public final String name;
     public final String quickeningName;
@@ -194,14 +285,14 @@ public final class InstructionModel implements PrettyPrintable {
         return epilogExceptional.operation.instruction == this;
     }
 
-    public int getId() {
+    public short getId() {
         if (id == -1) {
             throw new IllegalStateException("Id not yet assigned");
         }
         return id;
     }
 
-    void setId(int id) {
+    void setId(short id) {
         if (id < 0) {
             throw new IllegalArgumentException("Invalid id.");
         }
@@ -333,7 +424,8 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public InstructionModel addImmediate(ImmediateKind immediateKind, String immediateName) {
-        immediates.add(new InstructionImmediate(1 + immediates.size(), immediateKind, immediateName));
+        immediates.add(new InstructionImmediate(byteLength, immediateKind, immediateName));
+        byteLength += immediateKind.width.byteSize;
         return this;
     }
 
@@ -369,7 +461,15 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public int getInstructionLength() {
-        return 1 + immediates.size();
+        return byteLength;
+    }
+
+    public InstructionEncoding getInstructionEncoding() {
+        ImmediateWidth[] immediateWidths = new ImmediateWidth[immediates.size()];
+        for (int i = 0; i < immediateWidths.length; i++) {
+            immediateWidths[i] = immediates.get(i).kind.width;
+        }
+        return new InstructionEncoding(immediateWidths, byteLength);
     }
 
     public String getInternalName() {
@@ -414,12 +514,17 @@ public final class InstructionModel implements PrettyPrintable {
     public String prettyPrintEncoding() {
         StringBuilder b = new StringBuilder("[");
         b.append(getId());
+        b.append(" : short");
         for (InstructionImmediate imm : immediates) {
             b.append(", ");
-            b.append(imm.kind.shortName);
-            b.append(" (");
             b.append(imm.name);
-            b.append(")");
+            if (!imm.name.equals(imm.kind.shortName)) {
+                b.append(" (");
+                b.append(imm.kind.shortName);
+                b.append(")");
+            }
+            b.append(" : ");
+            b.append(imm.kind.width);
         }
         b.append("]");
         return b.toString();

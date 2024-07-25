@@ -42,6 +42,7 @@ package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isPrimitive;
+import static com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.OPCODE_WIDTH;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -62,6 +63,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -108,6 +110,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     private final List<CustomOperationModel> customShortCircuitOperations = new ArrayList<>();
     private final HashMap<OperationModel, CustomOperationModel> operationsToCustomOperations = new HashMap<>();
     private LinkedHashMap<String, InstructionModel> instructions = new LinkedHashMap<>();
+    // index i stores invalidate instruction with i bytes for immediates.
     private InstructionModel[] invalidateInstructions;
 
     public DeclaredType languageClass;
@@ -172,7 +175,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel throwInstruction;
     public InstructionModel loadConstantInstruction;
     public InstructionModel yieldInstruction;
-    public InstructionModel[] popVariadicInstruction;
+    public InstructionModel[] loadVariadicInstruction;
     public InstructionModel mergeVariadicInstruction;
     public InstructionModel storeNullInstruction;
     public InstructionModel tagEnterInstruction;
@@ -249,7 +252,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (invalidateInstructions == null) {
             return null;
         }
-        return invalidateInstructions[length - 1];
+        return invalidateInstructions[length - OPCODE_WIDTH];
     }
 
     public InstructionModel[] getInvalidateInstructions() {
@@ -257,16 +260,16 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     private void addInvalidateInstructions() {
-        int maxLength = 0;
-        for (var entry : instructions.entrySet()) {
-            InstructionModel instruction = entry.getValue();
+        int maxLength = OPCODE_WIDTH;
+        for (InstructionModel instruction : instructions.values()) {
             maxLength = Math.max(maxLength, instruction.getInstructionLength());
         }
-        invalidateInstructions = new InstructionModel[maxLength];
-        for (int i = 0; i < maxLength; i++) {
+        // Allocate instructions with [0, 1, ..., maxLength - OPCODE_WIDTH] bytes for immediates.
+        invalidateInstructions = new InstructionModel[maxLength - OPCODE_WIDTH + 1];
+        for (int i = 0; i < invalidateInstructions.length; i++) {
             InstructionModel model = instruction(InstructionKind.INVALIDATE, "invalidate" + i, signature(void.class));
             for (int j = 0; j < i; j++) {
-                model.addImmediate(ImmediateKind.INTEGER, "invalidated" + j);
+                model.addImmediate(ImmediateKind.BYTE, "invalidated" + j);
             }
             invalidateInstructions[i] = model;
         }
@@ -351,8 +354,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     public InstructionModel quickenInstruction(InstructionModel base, Signature signature, String specializationName) {
         InstructionModel model = instruction(base.kind, base.name + "$" + specializationName, signature, specializationName);
-        model.getImmediates().clear();
-        model.getImmediates().addAll(base.getImmediates());
+        for (InstructionImmediate imm : base.getImmediates()) {
+            model.addImmediate(imm.kind(), imm.name());
+        }
         model.filteredSpecializations = base.filteredSpecializations;
         model.nodeData = base.nodeData;
         model.nodeType = base.nodeType;
@@ -416,7 +420,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             }
         }
 
-        int currentId = 1;
+        short currentId = 1;
         for (InstructionModel m : newInstructions.values()) {
             m.setId(currentId++);
 

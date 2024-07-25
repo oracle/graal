@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.bytecode;
 
 import java.lang.reflect.Field;
+import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
@@ -104,60 +105,60 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
     }
 
     /**
-     * Reads from a short array.
+     * Reads a byte from the array.
      *
      * @since 24.2
      */
-    public abstract short shortArrayRead(short[] arr, int index);
+    public abstract byte readByte(byte[] arr, int index);
 
     /**
-     * Writes to a short array.
+     * Reads a short from the array.
      *
      * @since 24.2
      */
-    public abstract void shortArrayWrite(short[] arr, int index, short value);
+    public abstract short readShort(byte[] arr, int index);
 
     /**
-     * Reads from a byte array.
+     * Reads an int from the array.
      *
      * @since 24.2
      */
-    public abstract byte byteArrayRead(byte[] arr, int index);
+    public abstract int readInt(byte[] arr, int index);
 
     /**
-     * Writes to a byte array.
+     * Writes a byte to the array.
      *
      * @since 24.2
      */
-    public abstract void byteArrayWrite(byte[] arr, int index, byte value);
+    public abstract void writeByte(byte[] arr, int index, byte value);
 
     /**
-     * Reads from an int array.
+     * Writes a short to the array.
      *
      * @since 24.2
      */
-    public abstract int intArrayRead(int[] arr, int index);
+    public abstract void writeShort(byte[] arr, int index, short value);
 
     /**
-     * Writes to an int array.
+     * Writes an int to the array.
      *
      * @since 24.2
      */
-    public abstract void intArrayWrite(int[] arr, int index, int value);
+    public abstract void writeInt(byte[] arr, int index, int value);
 
     /**
      * Reads from an Object array.
      *
      * @since 24.2
      */
-    public abstract <T> T objectArrayRead(T[] arr, int index);
+    public abstract <T> T readObject(T[] arr, int index);
 
     /**
      * Writes to an Object array.
      *
      * @since 24.2
      */
-    public abstract <T> void objectArrayWrite(T[] arr, int index, T value);
+    public abstract <T> void writeObject(T[] arr, int index, T value);
 
     /**
      * Casts a value to the given class.
@@ -427,6 +428,9 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
      */
     public abstract void clear(Frame frame, int slot);
 
+    /**
+     * Implementation of BytecodeDSLAccess that uses Unsafe.
+     */
     static final class UnsafeImpl extends BytecodeDSLAccess {
 
         static final Unsafe UNSAFE = initUnsafe();
@@ -448,50 +452,50 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
         }
 
         @Override
-        public short shortArrayRead(short[] arr, int index) {
-            assert index >= 0 && index < arr.length;
-            return UNSAFE.getShort(arr, Unsafe.ARRAY_SHORT_BASE_OFFSET + index * Unsafe.ARRAY_SHORT_INDEX_SCALE);
-        }
-
-        @Override
-        public void shortArrayWrite(short[] arr, int index, short value) {
-            assert index >= 0 && index < arr.length;
-            UNSAFE.putShort(arr, Unsafe.ARRAY_SHORT_BASE_OFFSET + index * Unsafe.ARRAY_SHORT_INDEX_SCALE, value);
-        }
-
-        @Override
-        public byte byteArrayRead(byte[] arr, int index) {
+        public byte readByte(byte[] arr, int index) {
             assert index >= 0 && index < arr.length;
             return UNSAFE.getByte(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
         }
 
         @Override
-        public void byteArrayWrite(byte[] arr, int index, byte value) {
+        public short readShort(byte[] arr, int index) {
+            assert index >= 0 && index < arr.length;
+            return UNSAFE.getShort(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
+        }
+
+        @Override
+        public int readInt(byte[] arr, int index) {
+            assert index >= 0 && index < arr.length;
+            return UNSAFE.getInt(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
+        }
+
+        @Override
+        public void writeByte(byte[] arr, int index, byte value) {
             assert index >= 0 && index < arr.length;
             UNSAFE.putByte(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE, value);
         }
 
         @Override
-        public int intArrayRead(int[] arr, int index) {
+        public void writeShort(byte[] arr, int index, short value) {
             assert index >= 0 && index < arr.length;
-            return UNSAFE.getInt(arr, Unsafe.ARRAY_INT_BASE_OFFSET + index * Unsafe.ARRAY_INT_INDEX_SCALE);
+            UNSAFE.putShort(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE, value);
         }
 
         @Override
-        public void intArrayWrite(int[] arr, int index, int value) {
+        public void writeInt(byte[] arr, int index, int value) {
             assert index >= 0 && index < arr.length;
-            UNSAFE.putInt(arr, Unsafe.ARRAY_INT_BASE_OFFSET + index * Unsafe.ARRAY_INT_INDEX_SCALE, value);
+            UNSAFE.putInt(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE, value);
         }
 
         @Override
         @SuppressWarnings("unchecked")
-        public <T> T objectArrayRead(T[] arr, int index) {
+        public <T> T readObject(T[] arr, int index) {
             assert index >= 0 && index < arr.length;
             return (T) UNSAFE.getObject(arr, Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
         }
 
         @Override
-        public <T> void objectArrayWrite(T[] arr, int index, T value) {
+        public <T> void writeObject(T[] arr, int index, T value) {
             assert index >= 0 && index < arr.length;
             UNSAFE.putObject(arr, Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE, value);
         }
@@ -499,7 +503,6 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
         @Override
         @SuppressWarnings("unchecked")
         public <T> T cast(Object obj, Class<T> clazz) {
-            // TODO make this unsafer
             return (T) obj;
         }
 
@@ -670,52 +673,72 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
 
     }
 
-    static final class SafeImpl extends BytecodeDSLAccess {
+    /**
+     * Implementation of BytecodeDSLAccess that does not use Unsafe.
+     */
+    public static final class SafeImpl extends BytecodeDSLAccess {
+        /**
+         * The byte order used by {@link UnsafeImpl} depends on the platform. {@link SafeImpl} must
+         * use this same order (it cannot choose its own order), because it is used by unsafe
+         * interpreters to safely read data that may be malformed (e.g., dumping bytecode on
+         * validation errors).
+         */
+        private static final boolean isBigEndian = ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
+
+        private SafeImpl() {
+        }
 
         @Override
-        public short shortArrayRead(short[] arr, int index) {
+        public byte readByte(byte[] arr, int index) {
             return arr[index];
         }
 
         @Override
-        public void shortArrayWrite(short[] arr, int index, short value) {
+        public short readShort(byte[] arr, int index) {
+            return isBigEndian ? readShortBigEndian(arr, index) : readShortLittleEndian(arr, index);
+        }
+
+        @Override
+        public int readInt(byte[] arr, int index) {
+            return isBigEndian ? readIntBigEndian(arr, index) : readIntLittleEndian(arr, index);
+        }
+
+        @Override
+        public void writeByte(byte[] arr, int index, byte value) {
             arr[index] = value;
         }
 
         @Override
-        public byte byteArrayRead(byte[] arr, int index) {
+        public void writeShort(byte[] arr, int index, short value) {
+            if (isBigEndian) {
+                writeShortBigEndian(arr, index, value);
+            } else {
+                writeShortLittleEndian(arr, index, value);
+            }
+        }
+
+        @Override
+        public void writeInt(byte[] arr, int index, int value) {
+            if (isBigEndian) {
+                writeIntBigEndian(arr, index, value);
+            } else {
+                writeIntLittleEndian(arr, index, value);
+            }
+        }
+
+        @Override
+        public <T> T readObject(T[] arr, int index) {
             return arr[index];
         }
 
         @Override
-        public void byteArrayWrite(byte[] arr, int index, byte value) {
+        public <T> void writeObject(T[] arr, int index, T value) {
             arr[index] = value;
         }
 
         @Override
-        public int intArrayRead(int[] arr, int index) {
-            return arr[index];
-        }
-
-        @Override
-        public void intArrayWrite(int[] arr, int index, int value) {
-            arr[index] = value;
-        }
-
-        @Override
-        public <T> T objectArrayRead(T[] arr, int index) {
-            return arr[index];
-        }
-
-        @Override
-        public <T> void objectArrayWrite(T[] arr, int index, T value) {
-            arr[index] = value;
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
         public <T> T cast(Object obj, Class<T> clazz) {
-            return (T) obj;
+            return clazz.cast(obj);
         }
 
         @Override
@@ -881,6 +904,48 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
         @Override
         public void uncheckedSetObject(Frame frame, int slot, Object value) {
             frame.setObject(slot, value);
+        }
+
+        // Exposed for testing.
+
+        public static short readShortBigEndian(byte[] arr, int index) {
+            return (short) (((arr[index] & 0xFF) << 8) | (arr[index + 1] & 0xFF));
+        }
+
+        public static short readShortLittleEndian(byte[] arr, int index) {
+            return (short) ((arr[index] & 0xFF) | ((arr[index + 1] & 0xFF) << 8));
+        }
+
+        public static int readIntBigEndian(byte[] arr, int index) {
+            return ((arr[index] & 0xFF) << 24) | ((arr[index + 1] & 0xFF) << 16) | ((arr[index + 2] & 0xFF) << 8) | (arr[index + 3] & 0xFF);
+        }
+
+        public static int readIntLittleEndian(byte[] arr, int index) {
+            return (arr[index] & 0xFF) | ((arr[index + 1] & 0xFF) << 8) | ((arr[index + 2] & 0xFF) << 16) | ((arr[index + 3] & 0xFF) << 24);
+        }
+
+        public static void writeShortBigEndian(byte[] arr, int index, short value) {
+            arr[index] = (byte) (value >> 8);
+            arr[index + 1] = (byte) value;
+        }
+
+        public static void writeShortLittleEndian(byte[] arr, int index, short value) {
+            arr[index] = (byte) value;
+            arr[index + 1] = (byte) (value >> 8);
+        }
+
+        public static void writeIntBigEndian(byte[] arr, int index, int value) {
+            arr[index] = (byte) (value >> 24);
+            arr[index + 1] = (byte) (value >> 16);
+            arr[index + 2] = (byte) (value >> 8);
+            arr[index + 3] = (byte) value;
+        }
+
+        public static void writeIntLittleEndian(byte[] arr, int index, int value) {
+            arr[index] = (byte) (value);
+            arr[index + 1] = (byte) (value >> 8);
+            arr[index + 2] = (byte) (value >>> 16);
+            arr[index + 3] = (byte) (value >> 24);
         }
 
     }

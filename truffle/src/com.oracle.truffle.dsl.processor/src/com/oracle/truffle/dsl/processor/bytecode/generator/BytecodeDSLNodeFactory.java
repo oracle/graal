@@ -55,6 +55,7 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUppe
 import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
+import static javax.lang.model.element.Modifier.PROTECTED;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.SEALED;
 import static javax.lang.model.element.Modifier.STATIC;
@@ -109,6 +110,8 @@ import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.DynamicOperandModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateWidth;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionEncoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
@@ -144,6 +147,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     public static final String COROUTINE_FRAME_IDX = "COROUTINE_FRAME_IDX";
     public static final String EPILOG_EXCEPTION_IDX = "EPILOG_EXCEPTION_IDX";
     public static final String EMPTY_INT_ARRAY = "EMPTY_INT_ARRAY";
+    public static final String EMPTY_SHORT_ARRAY = "EMPTY_SHORT_ARRAY";
 
     // Bytecode version encoding: [tags][instrumentations][source bit]
     public static final int MAX_TAGS = 32;
@@ -214,6 +218,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         parserType = generic(types.BytecodeParser, bytecodeBuilderType);
 
         addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), int[].class, EMPTY_INT_ARRAY, "new int[0]");
+        addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), short[].class, EMPTY_SHORT_ARRAY, "new short[0]");
 
         if (model.enableYield) {
             continuationRootNodeImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationRootNodeImpl");
@@ -225,7 +230,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         emptyObjectArray = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
         fastAccess = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), types.BytecodeDSLAccess, "ACCESS");
-        fastAccess.setInit(createFastAccessFieldInitializer());
+        fastAccess.setInit(createFastAccessFieldInitializer(model.allowUnsafe));
     }
 
     public CodeTypeElement create() {
@@ -464,7 +469,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         if (model.isBytecodeUpdatable()) {
             // we add this last so we do not pick up this field for constructors
-            abstractBytecodeNode.add(new CodeVariableElement(Set.of(VOLATILE), arrayOf(type(short.class)), "oldBytecodes"));
+            abstractBytecodeNode.add(new CodeVariableElement(Set.of(VOLATILE), arrayOf(type(byte.class)), "oldBytecodes"));
         }
 
         // this should be at the end after all methods have been added.
@@ -756,9 +761,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return result;
     }
 
-    private CodeTree createFastAccessFieldInitializer() {
+    private CodeTree createFastAccessFieldInitializer(boolean allowUnsafe) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startStaticCall(types.BytecodeDSLAccess, "lookup").string("BytecodeRootNodesImpl.VISIBLE_TOKEN").string(Boolean.toString(model.allowUnsafe)).end();
+        b.startStaticCall(types.BytecodeDSLAccess, "lookup").string("BytecodeRootNodesImpl.VISIBLE_TOKEN").string(Boolean.toString(allowUnsafe)).end();
         return b.build();
     }
 
@@ -1677,7 +1682,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
         }
 
-        b.startStatement().startCall("ACCESS.shortArrayWrite");
+        b.startStatement().startCall("ACCESS.writeShort");
         b.string(bc).string(bci).tree(newInstruction);
         b.end().end();
 
@@ -1708,7 +1713,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
         }
 
-        b.startStatement().startCall("ACCESS.shortArrayWrite");
+        b.startStatement().startCall("ACCESS.writeShort");
         b.string(bc).string(bci).tree(newInstruction);
         b.end().end();
 
@@ -1749,7 +1754,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
         }
 
-        b.startStatement().startCall("ACCESS.shortArrayWrite");
+        b.startStatement().startCall("ACCESS.writeShort");
         b.string(bc).string(operandBci).string(newInstruction);
         b.end().end();
 
@@ -1798,7 +1803,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     class BuilderFactory {
         public static final String UNINIT = "UNINITIALIZED";
-        CodeVariableElement uninitialized = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(short.class), UNINIT);
+        CodeVariableElement uninitialized = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(byte.class), UNINIT);
         CodeTypeElement savedState = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "SavedState");
         CodeTypeElement operationStackEntry = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "OperationStackEntry");
         CodeTypeElement constantPool = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "ConstantPool");
@@ -1809,7 +1814,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         TypeMirror unresolvedLabelsType = generic(HashMap.class, types.BytecodeLabel, generic(context.getDeclaredType(ArrayList.class), context.getDeclaredType(Integer.class)));
 
-        Map<Integer, CodeExecutableElement> doEmitInstructionMethods = new TreeMap<>();
+        Map<InstructionEncoding, CodeExecutableElement> doEmitInstructionMethods = new TreeMap<>();
 
         final Map<OperationModel, CodeTypeElement> dataClasses = new HashMap<>();
 
@@ -1827,7 +1832,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numNodes"),
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numHandlers"),
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numConditionalBranches"),
-                            new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc"),
+                            new CodeVariableElement(Set.of(PRIVATE), context.getType(byte[].class), "bc"),
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "bci"),
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "currentStackHeight"),
                             new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "maxStackHeight"),
@@ -1944,7 +1949,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         fields = new ArrayList<>(5);
                         fields.addAll(List.of(//
                                         field(types.TruffleLanguage, "language").asFinal(),
-                                        field(type(int.class), "index").asFinal(),
+                                        field(type(short.class), "index").asFinal(),
                                         field(type(boolean.class), "producedValue").withInitializer("false"),
                                         field(type(int.class), "childBci").withInitializer(UNINIT),
                                         field(type(boolean.class), "reachable").withInitializer("true")));
@@ -2056,7 +2061,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         name = "TryCatchData";
                         fields = List.of(//
                                         field(context.getType(int.class), "handlerId").asFinal(),
-                                        field(context.getType(int.class), "stackHeight").asFinal(),
+                                        field(context.getType(short.class), "stackHeight").asFinal(),
                                         field(context.getType(int.class), "tryStartBci"),
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
                                         field(context.getType(boolean.class), "tryReachable"),
@@ -2069,7 +2074,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         name = "FinallyTryData";
                         fields = List.of(//
                                         field(context.getType(int.class), "handlerId").asFinal(),
-                                        field(context.getType(int.class), "stackHeight").asFinal(),
+                                        field(context.getType(short.class), "stackHeight").asFinal(),
                                         field(context.getDeclaredType(Runnable.class), "finallyParser").asFinal(),
                                         field(context.getType(int.class), "tryStartBci"),
                                         field(context.getType(boolean.class), "operationReachable").asFinal(),
@@ -2105,7 +2110,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             name = "CustomOperationData";
                             fields = List.of(//
                                             field(arrayOf(context.getType(int.class)), "childBcis").asFinal(),
-                                            field(arrayOf(context.getType(int.class)), "constants").asFinal(),
+                                            field(arrayOf(context.getType(short.class)), "constants").asFinal(),
                                             field(arrayOf(context.getDeclaredType(Object.class)), "locals").asFinal().asVarArgs());
                         }
                         break;
@@ -2388,7 +2393,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             private CodeTypeElement create() {
                 List<CodeVariableElement> fields = List.of(
                                 new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, context.getType(Object.class)), "constants"),
-                                new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(HashMap.class, context.getType(Object.class), context.getDeclaredType(Integer.class)), "map"));
+                                new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(HashMap.class, context.getType(Object.class), context.getDeclaredType(Short.class)), "map"));
 
                 constantPool.addAll(fields);
 
@@ -2407,7 +2412,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             private CodeExecutableElement createAddConstant() {
-                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class),
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(short.class),
                                 "addConstant");
                 ex.addParameter(new CodeVariableElement(context.getType(Object.class), "constant"));
 
@@ -2417,7 +2422,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startReturn().string("map.get(constant)").end();
                 b.end();
 
-                b.statement("int index = constants.size()");
+                b.statement("short index = safeCastShort(constants.size())");
                 b.statement("constants.add(constant)");
                 b.statement("map.put(constant, index)");
                 b.startReturn().string("index").end();
@@ -2426,7 +2431,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             private CodeExecutableElement createAllocateSlot() {
-                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class),
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(short.class),
                                 "allocateSlot");
                 CodeTreeBuilder doc = ex.createDocBuilder();
                 doc.startJavadoc();
@@ -2436,7 +2441,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 CodeTreeBuilder b = ex.createBuilder();
 
-                b.statement("int index = constants.size()");
+                b.statement("short index = safeCastShort(constants.size())");
                 b.statement("constants.add(null)");
                 b.startReturn().string("index").end();
 
@@ -2467,10 +2472,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             private CodeTypeElement create() {
                 bytecodeLocalImpl.setSuperClass(types.BytecodeLocal);
 
-                bytecodeLocalImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "frameIndex"));
-                bytecodeLocalImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "localIndex"));
+                bytecodeLocalImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(short.class), "frameIndex"));
+                bytecodeLocalImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(short.class), "localIndex"));
                 if (model.usesBoxingElimination()) {
-                    bytecodeLocalImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "rootIndex"));
+                    bytecodeLocalImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(short.class), "rootIndex"));
                 }
 
                 if (model.enableLocalScoping) {
@@ -2951,6 +2956,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(createEmitOperationBegin());
             builder.add(createBeforeChild());
             builder.add(createAfterChild());
+            builder.add(createSafeCastByte());
+            builder.add(createSafeCastShort());
             builder.add(createEnsureBytecodeCapacity());
             builder.add(createDoEmitVariadic());
             builder.add(createDoEmitFinallyHandler());
@@ -3582,6 +3589,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case TAGS:
                     serializationElements.writeInt(after, "encodedTags");
                     break;
+                case SHORT:
+                    serializationElements.writeShort(after, argumentName);
+                    break;
                 case INTEGER:
                     serializationElements.writeInt(after, argumentName);
                     break;
@@ -3620,6 +3630,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
                 case TAGS:
                     b.declaration(argType, argumentName, "TAG_MASK_TO_TAGS.computeIfAbsent(buffer.readInt(), (v) -> mapTagMaskToTagsArray(v))");
+                    break;
+                case SHORT:
+                    b.declaration(argType, argumentName, "buffer.readShort()");
                     break;
                 case INTEGER:
                     b.declaration(argType, argumentName, "buffer.readInt()");
@@ -3728,12 +3741,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.enableLocalScoping) {
                 TypeMirror scopeType = scopeDataType.asType();
                 b.declaration(scopeType, "scope", "getCurrentScope()");
-                b.declaration(type(int.class), "localIndex", "numLocals++ /* unique global index */");
-                b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_IDX + scope.frameOffset + scope.numLocals /* location in frame */");
+                b.declaration(type(short.class), "localIndex", "safeCastShort(numLocals++) /* unique global index */");
+                b.declaration(type(short.class), "frameIndex", "safeCastShort(USER_LOCALS_START_IDX + scope.frameOffset + scope.numLocals) /* location in frame */");
                 b.declaration(type(int.class), "tableIndex", "doEmitLocal(localIndex, frameIndex, name, info) /* index in global table */");
                 b.statement("scope.registerLocal(tableIndex)");
             } else {
-                b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_IDX + numLocals++ /* location in frame */");
+                b.declaration(type(short.class), "frameIndex", "safeCastShort(USER_LOCALS_START_IDX + numLocals++) /* location in frame */");
                 b.statement("doEmitLocal(name, info)");
             }
 
@@ -3747,7 +3760,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.string("frameIndex");
             }
             if (model.usesBoxingElimination()) {
-                b.string("((RootData)operationStack[this.rootOperationSp].data).index");
+                b.string("((RootData) operationStack[this.rootOperationSp].data).index");
             }
             if (model.enableLocalScoping) {
                 b.string("scope");
@@ -3872,7 +3885,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("sites != null").end().startBlock();
             b.startFor().startGroup().type(context.getDeclaredType(Integer.class)).string(" site : sites").end(2).startBlock();
 
-            b.statement(writeBc("site", "(short) impl.bci"));
+            b.statement(writeInt("bc", "site", "impl.bci"));
             b.end(2);
 
             return ex;
@@ -4306,7 +4319,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("numConditionalBranches = 0");
             b.statement("constantPool = new ConstantPool()");
 
-            b.statement("bc = new short[32]");
+            b.statement("bc = new byte[32]");
             b.statement("bci = 0");
             b.statement("currentStackHeight = 0");
             b.statement("maxStackHeight = 0");
@@ -4327,7 +4340,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             b.startStatement().string("RootData operationData = ");
-            b.tree(createOperationData("RootData", "language", "numRoots++"));
+            b.tree(createOperationData("RootData", "language", "safeCastShort(numRoots++)"));
             b.end();
             b.startIf().string("reparseReason == null").end().startBlock();
             b.statement("builtNodes.add(null)");
@@ -4462,10 +4475,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case IF_THEN_ELSE -> createOperationData(className, "this.reachable", "this.reachable");
                 case CONDITIONAL -> createOperationData(className, "this.reachable", "this.reachable");
                 case WHILE -> createOperationData(className, "bci", "this.reachable");
-                case TRY_CATCH -> createOperationData(className, "++numHandlers", "currentStackHeight", "bci", "this.reachable", "this.reachable", "this.reachable");
-                case FINALLY_TRY -> createOperationData(className, "++numHandlers", "currentStackHeight", operation.getOperationBeginArgumentName(0), "bci", "this.reachable", "this.reachable",
+                case TRY_CATCH -> createOperationData(className, "++numHandlers", "safeCastShort(currentStackHeight)", "bci", "this.reachable", "this.reachable", "this.reachable");
+                case FINALLY_TRY -> createOperationData(className, "++numHandlers", "safeCastShort(currentStackHeight)", operation.getOperationBeginArgumentName(0), "bci", "this.reachable",
+                                "this.reachable",
                                 "false");
-                case FINALLY_TRY_CATCH -> createOperationData(className, "++numHandlers", "currentStackHeight", operation.getOperationBeginArgumentName(0), "bci", "this.reachable", "this.reachable",
+                case FINALLY_TRY_CATCH -> createOperationData(className, "++numHandlers", "safeCastShort(currentStackHeight)", operation.getOperationBeginArgumentName(0), "bci", "this.reachable",
+                                "this.reachable",
                                 "this.reachable");
                 case FINALLY_HANDLER -> createOperationData(className, "finallyOperationSp");
                 case CUSTOM, CUSTOM_INSTRUMENTATION -> {
@@ -4490,9 +4505,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                         CodeTreeBuilder constantsArrayBuilder = CodeTreeBuilder.createBuilder();
                         if (constantOperandIndices == null || constantOperandIndices.size() == 0) {
-                            args[1] = EMPTY_INT_ARRAY;
+                            args[1] = EMPTY_SHORT_ARRAY;
                         } else {
-                            constantsArrayBuilder.startNewArray(arrayOf(context.getType(int.class)), null);
+                            constantsArrayBuilder.startNewArray(arrayOf(context.getType(short.class)), null);
                             for (String constantIndex : constantOperandIndices) {
                                 constantsArrayBuilder.string(constantIndex);
                             }
@@ -4723,7 +4738,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                     // Go through the work list and fill in the branch target for each branch.
                     b.startFor().string("int site : operationData.branchFixupBcis").end().startBlock();
-                    b.statement(writeBc("site", "(short) bci"));
+                    b.statement(writeInt("bc", "site", "bci"));
                     b.end();
                     break;
                 case SOURCE_SECTION:
@@ -4954,7 +4969,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startFor().string("int index = 0; index < operationData.numLocals; index++").end().startBlock();
             b.statement("locals[operationData.locals[index] + LOCALS_OFFSET_END_BCI] = bci");
             if (!isRoot) {
-                buildEmitInstruction(b, model.clearLocalInstruction, "locals[operationData.locals[index] + LOCALS_OFFSET_FRAME_INDEX]");
+                buildEmitInstruction(b, model.clearLocalInstruction, "safeCastShort(locals[operationData.locals[index] + LOCALS_OFFSET_FRAME_INDEX])");
             }
             b.end(); // for
             b.end(); // block
@@ -5017,7 +5032,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     int endConstantsOffset = prologOperation.constantOperands.before().size();
                     for (int i = 0; i < prologOperation.operationEndArguments.length; i++) {
                         InstructionImmediate immediate = constantOperands.get(endConstantsOffset + i);
-                        b.statement(writeBc("operationData.prologBci + " + immediate.offset(), "(short) constantPool.addConstant(" + prologOperation.operationEndArguments[i].name() + ")"));
+                        b.statement(writeImmediate("bc", "operationData.prologBci", "constantPool.addConstant(" + prologOperation.operationEndArguments[i].name() + ")", immediate));
                     }
                 }
 
@@ -5127,7 +5142,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.cast(continuationRootNodeImpl.asType()).string("oldBytecodeNode.constants[constantPoolIndex]");
                 b.end();
 
-                b.startStatement().startCall("ACCESS.objectArrayWrite");
+                b.startStatement().startCall("ACCESS.writeObject");
                 b.string("constants_");
                 b.string("constantPoolIndex");
                 b.string("continuationRootNode");
@@ -5196,7 +5211,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startCall("bytecodeNode.getBytecodeLocation").string("continuationLocation.bci").end();
                 b.end(2);
 
-                b.startStatement().startCall("ACCESS.objectArrayWrite");
+                b.startStatement().startCall("ACCESS.writeObject");
                 b.string("constants_");
                 b.string("constantPoolIndex");
                 b.string("continuationRootNode");
@@ -5389,7 +5404,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("operationData.tryReachable = operationData.tryReachable && this.reachable");
 
             b.startIf().string("this.reachable").end().startBlock();
-            b.statement("operationData.endBranchFixupBci = bci + 1");
+            b.statement("operationData.endBranchFixupBci = bci + " + model.branchInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target").offset());
             buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
             b.end();
 
@@ -5425,7 +5440,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private void emitFixFinallyBranchBci(CodeTreeBuilder b) {
             // The regular handler branches over the exceptional handler. Patch its bci.
             b.startIf().string("operationData.endBranchFixupBci != ", UNINIT).end().startBlock();
-            b.statement(writeBc("operationData.endBranchFixupBci", "(short) bci"));
+            b.statement(writeInt("bc", "operationData.endBranchFixupBci", "bci"));
             b.end();
         }
 
@@ -5487,10 +5502,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                 }
                 case RETURN -> new String[]{};
-                case LOAD_ARGUMENT -> new String[]{operation.getOperationBeginArgumentName(0)};
+                case LOAD_ARGUMENT -> new String[]{"safeCastShort(" + operation.getOperationBeginArgumentName(0) + ")"};
                 case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(" + operation.getOperationBeginArgumentName(0) + ")"};
                 case YIELD -> {
-                    b.declaration(context.getType(int.class), "constantPoolIndex", "allocateContinuationConstant()");
+                    b.declaration(context.getType(short.class), "constantPoolIndex", "allocateContinuationConstant()");
                     b.startStatement().startCall("continuationLocations.add");
                     b.startNew(continuationLocation.asType()).string("constantPoolIndex").string("bci + " + operation.instruction.getInstructionLength()).string("currentStackHeight").end();
                     b.end(2); // statement + call
@@ -5600,15 +5615,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(2);
             b.end(); // if reachable
 
-            b.startStatement().startCall("doEmitInstruction");
-            b.tree(createInstructionConstant(model.branchInstruction));
-            b.string("0"); // stack effect
-            b.string(UNINIT); // branch target
-            b.end(2);
+            buildEmitInstruction(b, model.branchInstruction, UNINIT);
         }
 
         private void buildEmitLoadException(CodeTreeBuilder b, OperationModel operation) {
-            b.declaration(type(int.class), "exceptionStackHeight", UNINIT);
+            b.declaration(type(short.class), "exceptionStackHeight", UNINIT);
             b.string("loop: ");
             buildOperationStackWalk(b, () -> {
                 b.startSwitch().string("operationStack[i].operation").end().startBlock();
@@ -5767,7 +5778,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                  * it's a disabled instrumentation), we need the constant pool to be stable.
                  */
                 String constantPoolIndex = operation.getConstantOperandBeforeName(i) + "Index";
-                b.startDeclaration(type(int.class), constantPoolIndex);
+                b.startDeclaration(type(short.class), constantPoolIndex);
                 buildAddArgumentConstant(b, operation.operationBeginArguments[i]);
                 b.end();
                 result.add(constantPoolIndex);
@@ -5801,7 +5812,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             for (int i = 0; i < numConstantOperandsBefore; i++) {
                 if (inEmit) {
                     String variable = operation.getConstantOperandBeforeName(i) + "Index";
-                    b.startDeclaration(type(int.class), variable);
+                    b.startDeclaration(type(short.class), variable);
                     buildAddArgumentConstant(b, operation.operationBeginArguments[i]);
                     b.end();
                     result.add(variable);
@@ -5818,7 +5829,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     result.add(UNINIT);
                 } else {
                     String variable = operation.getConstantOperandAfterName(i) + "Index";
-                    b.startDeclaration(type(int.class), variable);
+                    b.startDeclaration(type(short.class), variable);
                     buildAddArgumentConstant(b, operation.operationEndArguments[i]);
                     b.end();
                     result.add(variable);
@@ -5881,7 +5892,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case CONSTANT -> constantOperandIndices.get(constantIndex++);
                     case NODE_PROFILE -> "allocateNode()";
                     case TAG_NODE -> "node";
-                    case LOCAL_OFFSET, LOCAL_INDEX, LOCAL_ROOT, INTEGER, BRANCH_PROFILE, STACK_POINTER -> throw new AssertionError(
+                    case LOCAL_OFFSET, LOCAL_INDEX, LOCAL_ROOT, INTEGER, BYTE, BRANCH_PROFILE, STACK_POINTER -> throw new AssertionError(
                                     "Operation " + operation.name + " takes an immediate " + immediate.name() + " with unexpected kind " + immediate.kind() +
                                                     ". This is a bug in the Bytecode DSL processor.");
                 };
@@ -6168,23 +6179,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 switch (op.kind) {
                     case ROOT:
                         break;
-                    case IF_THEN:
-                        emitCastOperationData(b, op, "operationSp - 1");
-                        b.startIf().string("childIndex == 0").end().startBlock();
-                        b.startIf().string("reachable").end().startBlock();
-                        b.statement("operationData.falseBranchFixupBci = bci + " + model.branchFalseInstruction.getImmediates(ImmediateKind.BYTECODE_INDEX).get(0).offset());
-                        b.end();
-                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
-                        b.end().startElseBlock();
-                        b.statement("int toUpdate = operationData.falseBranchFixupBci");
-                        b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
-                        b.statement(writeBc("toUpdate", "(short) bci"));
-                        b.end();
-                        b.end();
-                        if (model.enableTracing) {
-                            b.statement("basicBlockBoundary[bci] = true");
-                        }
-                        break;
                     case TAG:
                         emitCastOperationData(b, op, "operationSp - 1");
                         b.statement("operationData.producedValue = producedValue");
@@ -6195,26 +6189,43 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("operationData.producedValue = producedValue");
                         b.statement("operationData.childBci = childBci");
                         break;
+                    case IF_THEN:
+                        emitCastOperationData(b, op, "operationSp - 1");
+                        b.startIf().string("childIndex == 0").end().startBlock();
+                        b.startIf().string("reachable").end().startBlock();
+                        b.statement("operationData.falseBranchFixupBci = bci + " + model.branchFalseInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target").offset());
+                        b.end();
+                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
+                        b.end().startElseBlock();
+                        b.statement("int toUpdate = operationData.falseBranchFixupBci");
+                        b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
+                        b.statement(writeInt("bc", "toUpdate", "bci"));
+                        b.end();
+                        b.end();
+                        if (model.enableTracing) {
+                            b.statement("basicBlockBoundary[bci] = true");
+                        }
+                        break;
                     case IF_THEN_ELSE:
                         emitCastOperationData(b, op, "operationSp - 1");
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.startIf().string("reachable").end().startBlock();
-                        b.statement("operationData.falseBranchFixupBci = bci + 1");
+                        b.statement("operationData.falseBranchFixupBci = bci + " + model.branchFalseInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target").offset());
                         b.end();
                         buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
                         b.startIf().string("reachable").end().startBlock();
-                        b.statement("operationData.endBranchFixupBci = bci + 1");
+                        b.statement("operationData.endBranchFixupBci = bci + " + model.branchInstruction.getImmediate(ImmediateKind.BYTECODE_INDEX).offset());
                         b.end();
                         buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
                         b.statement("int toUpdate = operationData.falseBranchFixupBci");
                         b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
-                        b.statement(writeBc("toUpdate", "(short) bci"));
+                        b.statement(writeInt("bc", "toUpdate", "bci"));
                         b.end();
                         b.end().startElseBlock();
                         b.statement("int toUpdate = operationData.endBranchFixupBci");
                         b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
-                        b.statement(writeBc("toUpdate", "(short) bci"));
+                        b.statement(writeInt("bc", "toUpdate", "bci"));
                         b.end();
                         b.end();
                         if (model.enableTracing) {
@@ -6228,7 +6239,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             buildEmitInstruction(b, model.dupInstruction);
                         }
                         b.startIf().string("reachable").end().startBlock();
-                        b.statement("operationData.falseBranchFixupBci = bci + 1");
+                        b.statement("operationData.falseBranchFixupBci = bci + " + model.branchFalseInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target").offset());
                         b.end();
                         buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
 
@@ -6237,7 +6248,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.statement("operationData.child0Bci = childBci");
                         }
                         b.startIf().string("reachable").end().startBlock();
-                        b.statement("operationData.endBranchFixupBci = bci + 1");
+                        b.statement("operationData.endBranchFixupBci = bci + " + model.branchInstruction.getImmediate(ImmediateKind.BYTECODE_INDEX).offset());
                         buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
                         // we have to adjust the stack for the third child
                         b.end();
@@ -6245,7 +6256,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                         b.statement("int toUpdate = operationData.falseBranchFixupBci");
                         b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
-                        b.statement(writeBc("toUpdate", "(short) bci"));
+                        b.statement(writeInt("bc", "toUpdate", "bci"));
                         b.end();
                         b.end().startElseBlock();
                         if (model.usesBoxingElimination()) {
@@ -6253,7 +6264,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         }
                         b.statement("int toUpdate = operationData.endBranchFixupBci");
                         b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
-                        b.statement(writeBc("toUpdate", "(short) bci"));
+                        b.statement(writeInt("bc", "toUpdate", "bci"));
                         b.end();
                         b.end();
                         if (model.enableTracing) {
@@ -6264,14 +6275,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         emitCastOperationData(b, op, "operationSp - 1");
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.startIf().string("reachable").end().startBlock();
-                        b.statement("operationData.endBranchFixupBci = bci + 1");
+                        b.statement("operationData.endBranchFixupBci = bci + " + model.branchFalseInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target").offset());
                         b.end();
                         buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
                         b.end().startElseBlock();
                         buildEmitInstruction(b, model.branchBackwardInstruction, new String[]{"(short) operationData.whileStartBci"});
                         b.statement("int toUpdate = operationData.endBranchFixupBci");
                         b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
-                        b.statement(writeBc("toUpdate", "(short) bci"));
+                        b.statement(writeInt("bc", "toUpdate", "bci"));
                         b.end();
                         b.end();
                         if (model.enableTracing) {
@@ -6285,7 +6296,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.declaration(type(int.class), "tryEndBci", "bci");
 
                         b.startIf().string("operationData.tryReachable").end().startBlock();
-                        b.statement("operationData.endBranchFixupBci = bci + 1");
+                        b.statement("operationData.endBranchFixupBci = bci + " + model.branchInstruction.getImmediate(ImmediateKind.BYTECODE_INDEX).offset());
                         buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
                         b.end(); // if tryReachable
 
@@ -6513,16 +6524,27 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement ensureDoEmitInstructionCreated(int argumentLength) {
-            return doEmitInstructionMethods.computeIfAbsent(argumentLength, (length) -> createDoEmitInstruction(length));
+        private CodeExecutableElement ensureDoEmitInstructionCreated(InstructionModel instruction) {
+            InstructionEncoding encoding = instruction.getInstructionEncoding();
+            return doEmitInstructionMethods.computeIfAbsent(encoding, (length) -> createDoEmitInstruction(instruction));
         }
 
-        private CodeExecutableElement createDoEmitInstruction(int argumentLength) {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(boolean.class), "doEmitInstruction");
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "instruction"));
+        private CodeExecutableElement createDoEmitInstruction(InstructionModel representativeInstruction) {
+            // Give each method a unique name so that we don't accidentally use the wrong overload.
+            StringBuilder methodName = new StringBuilder("doEmitInstruction");
+            for (InstructionImmediate immediate : representativeInstruction.immediates) {
+                methodName.append(switch (immediate.kind().width) {
+                    case BYTE -> "B";
+                    case SHORT -> "S";
+                    case INT -> "I";
+                });
+            }
+
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(boolean.class), methodName.toString());
+            ex.addParameter(new CodeVariableElement(context.getType(short.class), "instruction"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "stackEffect"));
-            for (int i = 0; i < argumentLength; i++) {
-                ex.addParameter(new CodeVariableElement(type(int.class), "data" + i));
+            for (int i = 0; i < representativeInstruction.immediates.size(); i++) {
+                ex.addParameter(new CodeVariableElement(representativeInstruction.immediates.get(i).kind().width.toType(context), "data" + i));
             }
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -6539,7 +6561,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("return false");
             b.end();
 
-            b.declaration(type(int.class), "newSize", "bci + " + (argumentLength + 1));
+            b.declaration(type(int.class), "newSize", "bci + " + representativeInstruction.getInstructionLength());
             b.startIf().string("newSize > bc.length").end().startBlock();
             b.statement("ensureBytecodeCapacity(newSize)");
             b.end();
@@ -6556,14 +6578,37 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.end();
 
-            b.statement(writeBc("bci + 0", "(short) instruction"));
-            for (int i = 0; i < argumentLength; i++) {
-                b.statement(writeBc("bci + " + (i + 1), "(short) data" + i));
+            b.statement(writeShort("bc", "bci + 0", "instruction"));
+            for (int i = 0; i < representativeInstruction.immediates.size(); i++) {
+                InstructionImmediate immediate = representativeInstruction.immediates.get(i);
+                b.statement(writeImmediate("bc", "bci", "data" + i, immediate));
             }
 
-            b.statement("bci = bci + " + (argumentLength + 1));
+            b.statement("bci = bci + " + representativeInstruction.getInstructionLength());
             b.statement("return true");
 
+            return ex;
+        }
+
+        private CodeExecutableElement createSafeCastByte() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(byte.class), "safeCastByte");
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "num"));
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("Byte.MIN_VALUE <= num && num <= Byte.MAX_VALUE").end().startBlock();
+            b.startReturn().string("(byte) num").end();
+            b.end();
+            emitThrow(b, IllegalArgumentException.class, "\"Value \" + num + \" cannot be encoded as a byte.\"");
+            return ex;
+        }
+
+        private CodeExecutableElement createSafeCastShort() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(short.class), "safeCastShort");
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "num"));
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("Short.MIN_VALUE <= num && num <= Short.MAX_VALUE").end().startBlock();
+            b.startReturn().string("(short) num").end();
+            b.end();
+            emitThrow(b, IllegalArgumentException.class, "\"Value \" + num + \" cannot be encoded as a short.\"");
             return ex;
         }
 
@@ -6590,27 +6635,40 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("return");
             b.end();
 
-            int variadicCount = model.popVariadicInstruction.length - 1;
+            int variadicCount = model.loadVariadicInstruction.length - 1;
 
             b.startIf().string("count <= ").string(variadicCount).end().startBlock();
-            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + count, 0)").end();
+
+            InstructionEncoding loadVariadicEncoding = model.loadVariadicInstruction[0].getInstructionEncoding();
+            for (int i = 1; i < model.loadVariadicInstruction.length; i++) {
+                assert loadVariadicEncoding.equals(model.loadVariadicInstruction[i].getInstructionEncoding());
+            }
+
+            b.startStatement().startCall(ensureDoEmitInstructionCreated(model.loadVariadicInstruction[0]).getSimpleName().toString());
+            b.startCall("safeCastShort").startGroup().tree(createInstructionConstant(model.loadVariadicInstruction[0])).string(" + count").end(2);
+            b.string("0");
+            b.end(2);
             b.end().startElseBlock();
 
             b.startIf().string("currentStackHeight + count > maxStackHeight").end().startBlock();
             b.statement("maxStackHeight = currentStackHeight + count");
             b.end();
             b.statement("int elementCount = count + 1");
-            b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.storeNullInstruction)).string("0").end(2);
+            buildEmitInstruction(b, model.storeNullInstruction);
 
             b.startWhile().string("elementCount > 8").end().startBlock();
-            b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.popVariadicInstruction[variadicCount])).string("0").end(2);
+            buildEmitInstruction(b, model.loadVariadicInstruction[variadicCount]);
             b.statement("elementCount -= 7");
             b.end();
 
             b.startIf().string("elementCount > 0").end().startBlock();
-            b.startStatement().startCall("doEmitInstruction").startGroup().tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + elementCount").end().string("0").end(2);
+
+            b.startStatement().startCall(ensureDoEmitInstructionCreated(model.loadVariadicInstruction[0]).getSimpleName().toString());
+            b.startCall("safeCastShort").startGroup().tree(createInstructionConstant(model.loadVariadicInstruction[0])).string(" + elementCount").end(2);
+            b.string("0");
+            b.end(2);
             b.end();
-            b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.mergeVariadicInstruction)).string("0").end(2);
+            buildEmitInstruction(b, model.mergeVariadicInstruction);
             b.end();
 
             b.startIf().string("count == 0 && currentStackHeight > maxStackHeight").end().startBlock();
@@ -6621,32 +6679,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private void buildEmitInstruction(CodeTreeBuilder b, InstructionModel instr, String... arguments) {
-            int stackEffect = 0;
-            switch (instr.kind) {
-                case BRANCH:
-                case BRANCH_BACKWARD:
-                case TAG_ENTER:
-                case TAG_LEAVE:
-                case TAG_LEAVE_VOID:
-                case TAG_RESUME:
-                case TAG_YIELD:
-                case LOAD_LOCAL_MATERIALIZED:
-                case YIELD:
-                case CLEAR_LOCAL:
-                    break;
-                case RETURN:
-                case THROW:
-                case BRANCH_FALSE:
-                case POP:
-                case STORE_LOCAL:
-                case MERGE_CONDITIONAL:
-                    stackEffect = -1;
-                    break;
-                case CUSTOM:
-                    int delta = (instr.signature.isVoid ? 0 : 1) - instr.signature.dynamicOperandCount;
-                    stackEffect = delta;
-                    break;
-                case CUSTOM_SHORT_CIRCUIT:
+            int stackEffect = switch (instr.kind) {
+                case BRANCH, BRANCH_BACKWARD, //
+                                TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, //
+                                LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, YIELD -> 0;
+                case STORE_NULL, LOAD_VARIADIC, MERGE_VARIADIC -> {
+                    /*
+                     * NB: These instructions *do* have stack effects. However, they are only used
+                     * by doEmitVariadic, which does stack height computations itself. Use 0 so we
+                     * don't update the stack height when emitting their instructions.
+                     */
+                    yield 0;
+                }
+                case DUP, LOAD_ARGUMENT, LOAD_CONSTANT, LOAD_LOCAL, LOAD_EXCEPTION -> 1;
+                case RETURN, THROW, BRANCH_FALSE, POP, STORE_LOCAL, MERGE_CONDITIONAL -> -1;
+                case STORE_LOCAL_MATERIALIZED -> -2;
+                case CUSTOM -> (instr.signature.isVoid ? 0 : 1) - instr.signature.dynamicOperandCount;
+                case CUSTOM_SHORT_CIRCUIT -> {
                     /*
                      * NB: This code is a little confusing, because the stack height actually
                      * depends on whether the short circuit operation continues.
@@ -6659,30 +6708,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     ShortCircuitInstructionModel shortCircuitInstruction = instr.shortCircuitModel;
                     if (shortCircuitInstruction.returnConvertedBoolean()) {
                         // Stack: [..., convertedValue]
-                        stackEffect = -1;
+                        yield -1;
                     } else {
                         // Stack: [..., value, convertedValue]
-                        stackEffect = -2;
+                        yield -2;
                     }
-                    break;
-                case DUP:
-                case LOAD_ARGUMENT:
-                case LOAD_CONSTANT:
-                case LOAD_LOCAL:
-                case LOAD_EXCEPTION:
-                    stackEffect = 1;
-                    break;
-                case STORE_LOCAL_MATERIALIZED:
-                    stackEffect = -2;
-                    break;
-                case STORE_NULL:
-                    stackEffect = 1;
-                    break;
-                default:
-                    throw new UnsupportedOperationException();
-            }
+                }
+                default -> throw new UnsupportedOperationException();
+            };
 
-            b.startStatement().startCall("doEmitInstruction");
+            CodeExecutableElement doEmitInstruction = ensureDoEmitInstructionCreated(instr);
+            b.startStatement().startCall(doEmitInstruction.getSimpleName().toString());
             b.tree(createInstructionConstant(instr));
             b.string(stackEffect);
             int argumentsLength = arguments != null ? arguments.length : 0;
@@ -6692,12 +6728,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (arguments != null) {
-                ensureDoEmitInstructionCreated(arguments.length);
                 for (String argument : arguments) {
                     b.string(argument);
                 }
-            } else {
-                ensureDoEmitInstructionCreated(0);
             }
             b.end(2);
         }
@@ -6775,7 +6808,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssert().string("finallyTryData.finallyHandlerSp == ", UNINIT).end();
             b.startTryBlock();
             b.statement("finallyTryData.finallyHandlerSp = operationSp");
-            buildBegin(b, model.finallyHandlerOperation, "finallyOperationSp");
+            buildBegin(b, model.finallyHandlerOperation, "safeCastShort(finallyOperationSp)");
             b.statement("finallyTryData.finallyParser.run()");
             buildEnd(b, model.finallyHandlerOperation);
             b.end().startFinallyBlock();
@@ -7231,7 +7264,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startFor().string("int j = 0; j < operationData.numLocals; j++").end().startBlock();
                     b.statement("locals[operationData.locals[j] + LOCALS_OFFSET_END_BCI] = bci");
                     if (operationKind == OperationKind.BRANCH) {
-                        buildEmitInstruction(b, model.clearLocalInstruction, "locals[operationData.locals[j] + LOCALS_OFFSET_FRAME_INDEX]");
+                        buildEmitInstruction(b, model.clearLocalInstruction, "safeCastShort(locals[operationData.locals[j] + LOCALS_OFFSET_FRAME_INDEX])");
                     }
                     b.statement("needsRewind = true");
                     b.end(); // for
@@ -7380,7 +7413,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createAllocateContinuationConstant() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "allocateContinuationConstant");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(short.class), "allocateContinuationConstant");
             CodeTreeBuilder b = ex.createBuilder();
 
             /**
@@ -7394,10 +7427,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             return ex;
-        }
-
-        private static String writeBc(String index, String value) {
-            return String.format("ACCESS.shortArrayWrite(bc, %s, %s)", index, value);
         }
 
         private CodeExecutableElement createReparseConstructor() {
@@ -8177,7 +8206,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("infoId == -1").end().startBlock();
             b.returnNull();
             b.end().startElseBlock();
-            b.startReturn().string(readConst("infoId", "bytecode.constants")).end();
+            b.startReturn().tree(readConst("infoId", "bytecode.constants")).end();
             b.end();
             return ex;
         }
@@ -8190,7 +8219,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("nameId == -1").end().startBlock();
             b.returnNull();
             b.end().startElseBlock();
-            b.startReturn().string(readConst("nameId", "bytecode.constants")).end();
+            b.startReturn().tree(readConst("nameId", "bytecode.constants")).end();
             b.end();
             return ex;
         }
@@ -8340,7 +8369,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createNext() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "next");
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(type(int.class), "nextBci", "bci + getLength()");
+            b.declaration(type(int.class), "nextBci", "getNextBytecodeIndex()");
             b.startIf().string("nextBci >= bytecode.bytecodes.length").end().startBlock();
             b.returnNull();
             b.end();
@@ -8399,7 +8428,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createGetLength() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(int.class), "getLength");
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "getLength");
             CodeTreeBuilder b = ex.createBuilder();
             b.startSwitch().string("opcode").end().startBlock();
             // Pop any value produced by a transparent operation's child.
@@ -8438,6 +8467,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.string("bytecode");
                     b.doubleQuote(immediate.name());
                     b.string("bci + " + immediate.offset());
+                    for (String arg : getImmediateArgumentArgs(immediate.kind())) {
+                        b.string(arg);
+                    }
                     b.end();
                     b.end();
                     b.end();
@@ -8477,6 +8509,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case LOCAL_OFFSET:
                     return "LocalOffsetArgument";
                 case INTEGER:
+                case BYTE:
                 case LOCAL_INDEX:
                 case LOCAL_ROOT:
                 case STACK_POINTER:
@@ -8487,6 +8520,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     return "TagNodeArgument";
             }
             throw new AssertionError("invalid kind");
+        }
+
+        private static List<Element> getArgumentFields(ImmediateKind kind) {
+            return switch (kind) {
+                case INTEGER, BYTE, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> List.of(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "width"));
+                default -> List.of();
+            };
+        }
+
+        private static List<String> getImmediateArgumentArgs(ImmediateKind kind) {
+            return switch (kind) {
+                case INTEGER, BYTE, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> List.of(Integer.toString(kind.width.byteSize));
+                default -> List.of();
+            };
         }
 
         class AbstractArgumentFactory {
@@ -8508,6 +8555,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 CodeTreeBuilder b = constructor.createBuilder();
                 b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
                 b.tree(tree);
+
+                type.add(new CodeVariableElement(Set.of(PROTECTED, STATIC, FINAL), types.BytecodeDSLAccess, "SAFE_ACCESS")) //
+                                .createInitBuilder().tree(createFastAccessFieldInitializer(false));
 
                 type.add(createGetName());
 
@@ -8537,6 +8587,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL),
                                 ElementKind.CLASS, null, getImmediateClassName(immediateKind));
                 type.setSuperClass(abstractArgument.asType());
+                type.addAll(getArgumentFields(immediateKind));
                 type.add(createConstructorUsingFields(Set.of(), type));
                 type.add(createGetKind());
 
@@ -8544,6 +8595,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case BYTECODE_INDEX:
                         type.add(createAsBytecodeIndex());
                         break;
+                    case BYTE:
                     case INTEGER:
                     case LOCAL_INDEX:
                     case LOCAL_ROOT:
@@ -8572,13 +8624,30 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 return type;
             }
 
+            private static String readByteSafe(String array, String index) {
+                return String.format("SAFE_ACCESS.readByte(%s, %s)", array, index);
+            }
+
+            private static String readShortSafe(String array, String index) {
+                return String.format("SAFE_ACCESS.readShort(%s, %s)", array, index);
+            }
+
+            private static String readIntSafe(String array, String index) {
+                return String.format("SAFE_ACCESS.readInt(%s, %s)", array, index);
+            }
+
+            private static String readConstSafe(String index) {
+                return String.format("SAFE_ACCESS.readObject(constants, %s)", index);
+            }
+
             private CodeExecutableElement createAsBytecodeIndex() {
                 CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asBytecodeIndex");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
-                b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
+                b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
                 b.startReturn();
-                b.string("bc[bci]");
+
+                b.string(readIntSafe("bc", "bci"));
                 b.end();
                 return ex;
             }
@@ -8587,10 +8656,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asInteger");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
-                b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
-                b.startReturn();
-                b.string("bc[bci]");
+                b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
+                b.startSwitch().string("width").end().startBlock();
+                b.startCase().string("1").end();
+                b.startCaseBlock().startReturn().string(readByteSafe("bc", "bci")).end(2);
+                b.startCase().string("2").end();
+                b.startCaseBlock().startReturn().string(readShortSafe("bc", "bci")).end(2);
+                b.startCase().string("4").end();
+                b.startCaseBlock().startReturn().string(readIntSafe("bc", "bci")).end(2);
+                b.caseDefault().startCaseBlock();
+                emitThrowAssertionError(b, "\"Unexpected integer width \" + width");
                 b.end();
+                b.end(); // switch
                 return ex;
             }
 
@@ -8598,9 +8675,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asLocalOffset");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
-                b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
+                b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
                 b.startReturn();
-                b.string("bc[bci]").string(" - USER_LOCALS_START_IDX");
+                assert ImmediateKind.LOCAL_OFFSET.width == ImmediateWidth.SHORT;
+                b.string(readShortSafe("bc", "bci")).string(" - USER_LOCALS_START_IDX");
                 b.end();
                 return ex;
             }
@@ -8609,10 +8687,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asConstant");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
-                b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
+                b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
                 b.declaration(type(Object[].class), "constants", "this.bytecode.constants");
                 b.startReturn();
-                b.string("constants[bc[bci]]");
+                assert ImmediateKind.CONSTANT.width == ImmediateWidth.SHORT;
+                b.string(readConstSafe(readShortSafe("bc", "bci")));
                 b.end();
                 return ex;
             }
@@ -8625,9 +8704,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startIf().string("cachedNodes == null").end().startBlock();
                 b.statement("return null");
                 b.end();
-                b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
+                b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
                 b.startReturn();
-                b.tree(CodeTreeBuilder.singleString("cachedNodes[bc[bci]]"));
+                assert ImmediateKind.NODE_PROFILE.width == ImmediateWidth.INT;
+                b.string("cachedNodes[", readIntSafe("bc", "bci"), "]");
                 b.end();
                 return ex;
             }
@@ -8636,13 +8716,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asTagNode");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
-                b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
+                b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
                 b.declaration(tagRootNode.asType(), "tagRoot", "this.bytecode.tagRoot");
                 b.startIf().string("tagRoot == null").end().startBlock();
                 b.statement("return null");
                 b.end();
                 b.startReturn();
-                b.tree(readTagNodeSafe(CodeTreeBuilder.singleString("bc[bci]")));
+                assert ImmediateKind.TAG_NODE.width == ImmediateWidth.INT;
+                b.tree(readTagNodeSafe(CodeTreeBuilder.singleString(readIntSafe("bc", "bci"))));
                 b.end();
                 return ex;
             }
@@ -8651,8 +8732,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asBranchProfile");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
-                b.declaration(type(short[].class), "bc", "this.bytecode.bytecodes");
-                b.declaration(type(int.class), "index", "bc[bci]");
+                b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
+                assert ImmediateKind.BRANCH_PROFILE.width == ImmediateWidth.INT;
+                b.declaration(type(int.class), "index", readIntSafe("bc", "bci"));
                 b.declaration(type(int[].class), "profiles", "this.bytecode.getBranchProfiles()");
                 b.startIf().string("profiles == null").end().startBlock();
 
@@ -8685,7 +8767,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case BYTECODE_INDEX -> "BYTECODE_INDEX";
                     case CONSTANT -> "CONSTANT";
                     case LOCAL_OFFSET -> "LOCAL_OFFSET";
-                    case INTEGER, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> "INTEGER";
+                    case INTEGER, BYTE, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> "INTEGER";
                     case NODE_PROFILE -> "NODE_PROFILE";
                     case TAG_NODE -> "TAG_NODE";
                 };
@@ -9031,7 +9113,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type = new CodeTypeElement(Set.of(PRIVATE, STATIC, ABSTRACT, SEALED),
                             ElementKind.CLASS, null, "AbstractBytecodeNode");
             type.setSuperClass(types.BytecodeNode);
-            type.add(compFinal(1, new CodeVariableElement(Set.of(FINAL), arrayOf(type(short.class)), "bytecodes")));
+            type.add(compFinal(1, new CodeVariableElement(Set.of(FINAL), arrayOf(type(byte.class)), "bytecodes")));
             type.add(compFinal(1, new CodeVariableElement(Set.of(FINAL), arrayOf(type(Object.class)), "constants")));
             type.add(compFinal(1, new CodeVariableElement(Set.of(FINAL), arrayOf(type(int.class)), "handlers")));
             if (model.enableTracing) {
@@ -9559,7 +9641,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("nameId == -1").end().startBlock();
             b.returnNull();
             b.end().startElseBlock();
-            b.startReturn().string(readConst("nameId")).end();
+            b.startReturn().tree(readConst("nameId")).end();
             b.end();
             return ex;
         }
@@ -9622,7 +9704,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("infoId == -1").end().startBlock();
             b.returnNull();
             b.end().startElseBlock();
-            b.startReturn().string(readConst("infoId")).end();
+            b.startReturn().tree(readConst("infoId")).end();
             b.end();
 
             return ex;
@@ -9640,7 +9722,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = validate.createBuilder();
 
             b.declaration(bytecodeNodeGen.asType(), "root");
-            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
+            b.declaration(arrayOf(type(byte.class)), "bc", "this.bytecodes");
             b.startIf().string("bc == null").end().startBlock();
             b.lineComment("bc is null for serialization root nodes.");
             b.statement("return true");
@@ -9660,7 +9742,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             // Bytecode validation
             b.startWhile().string("bci < bc.length").end().startBlock();
             b.startTryBlock();
-            b.startSwitch().string("bc[bci]").end().startBlock();
+            b.startSwitch().tree(readInstruction("bc", "bci")).end().startBlock();
 
             for (InstructionModel instr : model.getInstructions()) {
                 b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
@@ -9668,9 +9750,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 boolean rootNodeAvailable = false;
                 for (InstructionImmediate immediate : instr.getImmediates()) {
                     // argument data array
-                    String readImmediate = "bc[bci + " + immediate.offset() + "]";
                     String localName = immediate.name();
-                    b.declaration(type(int.class), localName, readImmediate);
+                    b.startDeclaration(immediate.kind().toType(context), localName);
+                    b.tree(readImmediate("bc", "bci", immediate));
+                    b.end();
 
                     switch (immediate.kind()) {
                         case BYTECODE_INDEX:
@@ -9685,7 +9768,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.tree(createValidationErrorWithBci("bytecode index is out of bounds"));
                             b.end();
                             break;
-                        case INTEGER:
+                        case INTEGER, BYTE:
                             break;
                         case STACK_POINTER:
                             b.startAssign("root").string("this.getRoot()").end();
@@ -10030,11 +10113,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement method = new CodeExecutableElement(
                             Set.of(FINAL),
                             type(int.class), "readValidBytecode",
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"));
             CodeTreeBuilder b = method.createBuilder();
             if (model.isBytecodeUpdatable()) {
-                b.declaration(type(int.class), "op", readBc("bci"));
+                b.declaration(type(int.class), "op", readInstruction("bc", "bci"));
                 b.startSwitch().string("op").end().startBlock();
                 for (InstructionModel instruction : model.getInvalidateInstructions()) {
                     b.startCase().tree(createInstructionConstant(instruction)).end();
@@ -10051,7 +10134,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end(); // switch
             } else {
                 b.lineComment("The bytecode is not updatable so the bytecode is always valid.");
-                b.startReturn().string(readBc("bci")).end();
+                b.startReturn().tree(readInstruction("bc", "bci")).end();
             }
             return method;
         }
@@ -10073,8 +10156,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             CodeTreeBuilder b = invalidate.createBuilder();
 
-            b.declaration(arrayOf(type(short.class)), "oldBc", "this.oldBytecodes");
-            b.declaration(arrayOf(type(short.class)), "newBc", "newBytecode.bytecodes");
+            b.declaration(arrayOf(type(byte.class)), "oldBc", "this.oldBytecodes");
+            b.declaration(arrayOf(type(byte.class)), "newBc", "newBytecode.bytecodes");
 
             if (model.enableYield) {
                 /**
@@ -10174,10 +10257,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             CodeExecutableElement invalidate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "transitionInstrumentationIndex");
-            invalidate.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "oldBc"));
+            invalidate.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "oldBc"));
             invalidate.addParameter(new CodeVariableElement(type(int.class), "oldBciBase"));
             invalidate.addParameter(new CodeVariableElement(type(int.class), "oldBciTarget"));
-            invalidate.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "newBc"));
+            invalidate.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "newBc"));
             invalidate.addParameter(new CodeVariableElement(type(int.class), "newBciBase"));
             if (model.enableTagInstrumentation) {
                 invalidate.addParameter(new CodeVariableElement(arrayOf(tagNode.asType()), "oldTagNodes"));
@@ -10192,7 +10275,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             b.startWhile().string("oldBci < oldBciTarget").end().startBlock();
-            b.declaration(type(short.class), "op", "ACCESS.shortArrayRead(oldBc, oldBci)");
+            b.declaration(type(short.class), "op", "ACCESS.readShort(oldBc, oldBci)");
             b.statement("searchOp = op");
             b.startSwitch().string("op").end().startBlock();
             for (var groupEntry : groupInstructionsSortedBy(InstructionGroup::new)) {
@@ -10233,7 +10316,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration(type(int.class), "opCounter", "0");
 
             b.startWhile().string("oldBci < oldBciTarget").end().startBlock();
-            b.declaration(type(short.class), "op", "ACCESS.shortArrayRead(oldBc, oldBci)");
+            b.declaration(type(short.class), "op", "ACCESS.readShort(oldBc, oldBci)");
             b.startSwitch().string("op").end().startBlock();
             for (var groupEntry : groupInstructionsSortedBy(InstructionGroup::new)) {
                 InstructionGroup group = groupEntry.getKey();
@@ -10274,7 +10357,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssert().string("opCounter > 0").end();
 
             b.startWhile().string("opCounter > 0").end().startBlock();
-            b.declaration(type(short.class), "op", "ACCESS.shortArrayRead(newBc, newBci)");
+            b.declaration(type(short.class), "op", "ACCESS.readShort(newBc, newBci)");
             b.startSwitch().string("op").end().startBlock();
             for (var groupEntry : groupInstructionsSortedBy(InstructionGroup::new)) {
                 InstructionGroup group = groupEntry.getKey();
@@ -10320,8 +10403,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createComputeNewBci() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL, STATIC), type(int.class), "computeNewBci");
             ex.addParameter(new CodeVariableElement(type(int.class), "oldBci"));
-            ex.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "oldBc"));
-            ex.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "newBc"));
+            ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "oldBc"));
+            ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "newBc"));
             if (model.enableTagInstrumentation) {
                 ex.addParameter(new CodeVariableElement(arrayOf(tagNode.asType()), "oldTagNodes"));
                 ex.addParameter(new CodeVariableElement(arrayOf(tagNode.asType()), "newTagNodes"));
@@ -10396,7 +10479,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             b.startWhile().string(searchVariable, " != ", targetVariable, " && bci < bc.length").end().startBlock();
-            b.startSwitch().string(readBc("bci")).end().startBlock();
+            b.startSwitch().tree(readInstruction("bc", "bci")).end().startBlock();
 
             for (var groupEntry : groupInstructionsSortedBy(InstructionGroup::new)) {
                 InstructionGroup group = groupEntry.getKey();
@@ -10439,7 +10522,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createToStableBytecodeIndex() {
             CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "toStableBytecodeIndex");
-            translate.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "bc"));
+            translate.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "bc"));
             translate.addParameter(new CodeVariableElement(type(int.class), "searchBci"));
             emitStableBytecodeSearch(translate.createBuilder(), "searchBci", "stableBci", true);
             return translate;
@@ -10447,7 +10530,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createFromStableBytecodeIndex() {
             CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "fromStableBytecodeIndex");
-            translate.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "bc"));
+            translate.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "bc"));
             translate.addParameter(new CodeVariableElement(type(int.class), "stableSearchBci"));
             emitStableBytecodeSearch(translate.createBuilder(), "stableSearchBci", "stableBci", false);
             return translate;
@@ -10459,7 +10542,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             invalidate.addParameter(new CodeVariableElement(type(CharSequence.class), "reason"));
             CodeTreeBuilder b = invalidate.createBuilder();
 
-            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
+            b.declaration(arrayOf(type(byte.class)), "bc", "this.bytecodes");
             b.declaration(type(int.class), "bci", "0");
             if (model.enableYield) {
                 b.declaration(type(int.class), "continuationIndex", "0");
@@ -10470,7 +10553,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startStatement().startStaticCall(type(VarHandle.class), "loadLoadFence").end().end();
 
             b.startWhile().string("bci < bc.length").end().startBlock();
-            b.declaration(type(short.class), "op", "bc[bci]");
+            b.declaration(type(short.class), "op", readInstruction("bc", "bci"));
             b.startSwitch().string("op").end().startBlock();
 
             for (List<InstructionModel> instructions : groupInstructionsByLength(model.getInstructions())) {
@@ -10969,11 +11052,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createUnquickenBytecode() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), arrayOf(type(short.class)), "unquickenBytecode");
-            ex.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "original"));
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), arrayOf(type(byte.class)), "unquickenBytecode");
+            ex.addParameter(new CodeVariableElement(arrayOf(type(byte.class)), "original"));
 
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(arrayOf(type(short.class)), "copy", "Arrays.copyOf(original, original.length)");
+            b.declaration(arrayOf(type(byte.class)), "copy", "Arrays.copyOf(original, original.length)");
 
             Map<Boolean, List<InstructionModel>> partitionedByIsQuickening = model.getInstructions().stream() //
                             .collect(Collectors.partitioningBy(InstructionModel::isQuickening));
@@ -10990,7 +11073,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration(type(int.class), "bci", "0");
 
             b.startWhile().string("bci < copy.length").end().startBlock();
-            b.startSwitch().string(readBc("copy", "bci")).end().startBlock();
+            b.startSwitch().tree(readInstruction("copy", "bci")).end().startBlock();
 
             for (var quickenedGroup : quickenedGroupedByQuickeningRoot) {
                 InstructionModel quickeningRoot = quickenedGroup.getKey();
@@ -11002,7 +11085,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
                 b.startCaseBlock();
 
-                b.startStatement().startCall("ACCESS.shortArrayWrite").string("copy").string("bci").tree(createInstructionConstant(quickeningRoot)).end(2);
+                b.startStatement().startCall("ACCESS.writeShort").string("copy").string("bci").tree(createInstructionConstant(quickeningRoot)).end(2);
                 b.startStatement().string("bci += ").string(instructionLength).end();
                 b.statement("break");
                 b.end();
@@ -11214,12 +11297,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startAssert().string("operationNode.getParent() == this : ").doubleQuote("Passed node must be an operation node of the same bytecode node.").end();
             b.declaration(arrayOf(types.Node), "localNodes", "this.cachedNodes_");
-            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
+            b.declaration(arrayOf(type(byte.class)), "bc", "this.bytecodes");
             b.statement("int bci = 0");
             b.string("loop: ").startWhile().string("bci < bc.length").end().startBlock();
             b.declaration(context.getType(int.class), "currentBci", "bci");
             b.declaration(context.getType(int.class), "nodeIndex");
-            b.startSwitch().string(readBc("bci")).end().startBlock();
+            b.startSwitch().tree(readInstruction("bc", "bci")).end().startBlock();
 
             Map<Boolean, List<InstructionModel>> instructionsGroupedByHasNode = model.getInstructions().stream().collect(Collectors.partitioningBy(InstructionModel::hasNodeImmediate));
             Map<Integer, List<InstructionModel>> nodelessGroupedByLength = instructionsGroupedByHasNode.get(false).stream().collect(Collectors.groupingBy(InstructionModel::getInstructionLength));
@@ -11320,11 +11403,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.tree(createNeverPartOfCompilation());
             b.declaration(nodeArrayType, "result", "new Node[this.numNodes]");
-            b.statement("short[] bc = bytecodes");
+            b.statement("byte[] bc = bytecodes");
             b.statement("int bci = 0");
             b.statement("int numConditionalBranches = 0");
             b.string("loop: ").startWhile().string("bci < bc.length").end().startBlock();
-            b.startSwitch().string(readBc("bci")).end().startBlock();
+            b.startSwitch().tree(readInstruction("bc", "bci")).end().startBlock();
 
             Map<CachedInitializationKey, List<InstructionModel>> grouped = model.getInstructions().stream()//
                             .filter((i -> !i.isQuickening())) //
@@ -11442,7 +11525,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             }
 
-            b.declaration(new ArrayCodeTypeMirror(type(short.class)), "bc", "this.bytecodes");
+            b.declaration(new ArrayCodeTypeMirror(type(byte.class)), "bc", "this.bytecodes");
 
             if (tier.isCached()) {
                 b.declaration(new ArrayCodeTypeMirror(types.Node), "cachedNodes", "this.cachedNodes_");
@@ -11478,9 +11561,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startTryBlock();
 
-            b.startSwitch().string(readBc("bci")).end().startBlock();
+            b.startSwitch().tree(readInstruction("bc", "bci")).end().startBlock();
 
-            for (InstructionModel instr : model.getInstructions()) {
+            Map<Boolean, List<InstructionModel>> instructionsByInvalidate = model.getInstructions().stream() //
+                            .collect(Collectors.groupingBy(instr -> instr.kind == InstructionKind.INVALIDATE));
+
+            for (InstructionModel instr : instructionsByInvalidate.get(false)) {
                 if (instr.isQuickening() && tier.isUncached()) {
                     continue;
                 }
@@ -11634,7 +11720,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.statement(clearFrame("frame", "sp - 1"));
                             b.statement("sp -= 1");
                         }
-                        b.statement("bci = " + readBc("bci + 1"));
+                        b.startAssign("bci").tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX))).end();
                         b.statement("continue loop");
                         b.end().startElseBlock();
                         if (shortCircuitInstruction.returnConvertedBoolean()) {
@@ -11710,6 +11796,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end();
                         break;
                     case LOAD_ARGUMENT:
+                        InstructionImmediate argIndex = instr.getImmediate(ImmediateKind.INTEGER);
                         if (instr.isReturnTypeQuickening()) {
                             TypeMirror returnType = instr.signature.returnType;
                             b.startTryBlock();
@@ -11717,7 +11804,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             startSetFrame(b, returnType).string("frame").string("sp");
                             b.startGroup();
                             b.startStaticCall(lookupExpectMethod(context.getType(Object.class), returnType));
-                            b.string(localFrame() + ".getArguments()[" + readBc("bci + 1") + "]");
+                            b.string(localFrame() + ".getArguments()[" + readImmediate("bc", "bci", argIndex).toString() + "]");
                             b.end(); // expect
                             b.end(); // argument group
                             b.end(); // set frame
@@ -11736,7 +11823,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.startStatement();
                             startSetFrame(b, context.getType(Object.class)).string("frame").string("sp");
                             b.startGroup();
-                            b.string(localFrame() + ".getArguments()[" + readBc("bci + 1") + "]");
+                            b.string(localFrame() + ".getArguments()[" + readImmediate("bc", "bci", argIndex).toString() + "]");
                             b.end(); // argument group
                             b.end(); // set frame
                             b.end(); // statement
@@ -11745,6 +11832,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("sp += 1");
                         break;
                     case LOAD_CONSTANT:
+                        InstructionImmediate constIndex = instr.getImmediate(ImmediateKind.CONSTANT);
                         TypeMirror returnType = instr.signature.returnType;
                         if (tier.isUncached() || (model.usesBoxingElimination() && !ElementUtils.isObject(returnType))) {
                             b.startStatement();
@@ -11753,7 +11841,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             if (!ElementUtils.isObject(returnType)) {
                                 b.cast(returnType);
                             }
-                            b.string(readConst(readBc("bci + 1")));
+                            b.tree(readConst(readImmediate("bc", "bci", constIndex)));
                             b.end();
                             b.end();
                             b.end();
@@ -11761,15 +11849,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end(2).startBlock();
                             b.statement("loadConstantCompiled(frame, bc, bci, sp, constants)");
                             b.end().startElseBlock();
-                            b.statement(setFrameObject("sp", readConst(readBc("bci + 1"))));
+                            b.statement(setFrameObject("sp", readConst(readImmediate("bc", "bci", constIndex)).toString()));
                             b.end();
                         }
                         b.statement("sp += 1");
                         break;
                     case LOAD_EXCEPTION:
+                        InstructionImmediate exceptionSp = instr.getImmediate(ImmediateKind.STACK_POINTER);
                         b.startStatement();
                         startSetFrame(b, context.getType(Object.class)).string("frame").string("sp");
-                        startGetFrameUnsafe(b, "frame", type(Object.class)).string("$root.maxLocals + ", readBc("bci + 1")).end();
+                        startGetFrameUnsafe(b, "frame", type(Object.class)).startGroup().string("$root.maxLocals + ").tree(readImmediate("bc", "bci", exceptionSp)).end(2);
                         b.end(); // set frame
                         b.end(); // statement
                         b.statement("sp += 1");
@@ -11941,6 +12030,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("throw sneakyThrow((Throwable) " + getFrameObject("frame", "sp - 1") + ")");
                         break;
                     case YIELD:
+                        InstructionImmediate continuationIndex = instr.getImmediate(ImmediateKind.CONSTANT);
                         storeBciInFrameIfNecessary(b);
                         emitBeforeReturnProfiling(b);
                         b.statement("int maxLocals = $root.maxLocals");
@@ -11948,7 +12038,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                         b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
                         b.cast(continuationRootNodeImpl.asType());
-                        b.string(readConst(readBc("bci + 1")));
+                        b.tree(readConst(readImmediate("bc", "bci", continuationIndex)));
                         b.end();
 
                         b.startDeclaration(types.ContinuationResult, "continuationResult");
@@ -11988,9 +12078,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case MERGE_VARIADIC:
                         b.statement(setFrameObject("sp - 1", "mergeVariadic((Object[]) " + getFrameObject("sp - 1") + ")"));
                         break;
-                    case INVALIDATE:
-                        emitInvalidate(b);
-                        break;
                     case CUSTOM:
                         results.add(buildCustomInstructionExecute(b, instr));
                         break;
@@ -12000,11 +12087,21 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     default:
                         throw new UnsupportedOperationException("not implemented: " + instr.kind);
                 }
-                if (!instr.isControlFlow() && instr.kind != InstructionKind.INVALIDATE) {
+                if (!instr.isControlFlow()) {
                     b.statement("bci += " + instr.getInstructionLength());
                     b.statement("continue loop");
                 }
                 b.end();
+            }
+
+            // Group invalidate instructions together.
+            if (instructionsByInvalidate.containsKey(true)) {
+                for (InstructionModel instr : instructionsByInvalidate.get(true)) {
+                    b.startCase().tree(createInstructionConstant(instr)).end();
+                }
+                b.startBlock();
+                emitInvalidate(b);
+                b.end(); // case invalidate
             }
 
             b.end(); // switch
@@ -12324,7 +12421,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.enableYield) {
                 method.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
             }
-            method.addParameter(new CodeVariableElement(type(short[].class), "bc"));
+            method.addParameter(new CodeVariableElement(type(byte[].class), "bc"));
             method.addParameter(new CodeVariableElement(type(int.class), "bci"));
             method.addParameter(new CodeVariableElement(type(int.class), "sp"));
             method.addParameter(new CodeVariableElement(types.AbstractTruffleException, "exception"));
@@ -12350,7 +12447,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             type(int.class), "doTagExceptional",
                             new CodeVariableElement(bytecodeNodeGen.asType(), "$root"),
                             new CodeVariableElement(types.VirtualFrame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(Throwable.class), "exception"),
                             new CodeVariableElement(type(int.class), "nodeId"),
@@ -12477,7 +12574,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.VirtualFrame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -12486,7 +12583,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = method.createBuilder();
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
             b.startDeclaration(tagNode.asType(), "tagNode");
-            b.tree(readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.tree(readTagNode(tagNode.asType(), readImmediate("bc", "bci", imm)));
             b.end();
             b.statement("tagNode.findProbe().onResume(frame)");
 
@@ -12504,7 +12601,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.VirtualFrame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -12521,7 +12618,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
             b.startDeclaration(tagNode.asType(), "tagNode");
-            b.tree(readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.tree(readTagNode(tagNode.asType(), readImmediate("bc", "bci", imm)));
             b.end();
             b.statement("tagNode.findProbe().onYield(frame, returnValue)");
 
@@ -12539,7 +12636,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.VirtualFrame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -12548,7 +12645,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = method.createBuilder();
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
             b.startDeclaration(tagNode.asType(), "tagNode");
-            b.tree(readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.tree(readTagNode(tagNode.asType(), readImmediate("bc", "bci", imm)));
             b.end();
             b.statement("tagNode.findProbe().onEnter(frame)");
 
@@ -12566,7 +12663,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.VirtualFrame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -12575,7 +12672,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = method.createBuilder();
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
             b.startDeclaration(tagNode.asType(), "tagNode");
-            b.tree(readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.tree(readTagNode(tagNode.asType(), readImmediate("bc", "bci", imm)));
             b.end();
             b.statement("tagNode.findProbe().onReturnValue(frame, null)");
 
@@ -12594,7 +12691,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.VirtualFrame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -12643,7 +12740,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
             b.startDeclaration(tagNode.asType(), "tagNode");
-            b.tree(readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.tree(readTagNode(tagNode.asType(), readImmediate("bc", "bci", imm)));
             b.end();
             b.statement("tagNode.findProbe().onReturnValue(frame, returnValue)");
 
@@ -12667,7 +12764,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.VirtualFrame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -12723,7 +12820,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
             b.startDeclaration(tagNode.asType(), "tagNode");
-            b.tree(readTagNode(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.tree(readTagNode(tagNode.asType(), readImmediate("bc", "bci", imm)));
             b.end();
             b.statement("tagNode.findProbe().onReturnValue(frame, value)");
 
@@ -12741,7 +12838,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE, STATIC),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.Frame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -12799,7 +12896,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE, STATIC),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.Frame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -12876,7 +12973,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE, STATIC),
                             type(boolean.class), instructionMethodName(instr),
                             new CodeVariableElement(types.Frame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -12928,7 +13025,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE, STATIC),
                             type(boolean.class), instructionMethodName(instr),
                             new CodeVariableElement(types.Frame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -12967,8 +13064,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.declaration(type(short.class), "newInstruction");
             b.declaration(type(short.class), "newOperand");
-            b.declaration(type(int.class), "operandIndex", "ACCESS.shortArrayRead(bc, bci + 3)");
-            b.declaration(type(short.class), "operand", "ACCESS.shortArrayRead(bc, operandIndex)");
+            b.declaration(type(int.class), "operandIndex", readImmediate("bc", "bci", instr.findImmediate(ImmediateKind.BYTECODE_INDEX, "child0")));
+            b.declaration(type(short.class), "operand", "ACCESS.readShort(bc, operandIndex)");
 
             b.startIf().string("(newOperand = ").startCall(createApplyQuickeningName(boxingType)).string("operand").end().string(") != -1").end().startBlock();
             b.startStatement().string("newInstruction = ").tree(createInstructionConstant(unboxedInstruction)).end();
@@ -12998,7 +13095,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.Frame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -13071,7 +13168,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.Frame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -13199,7 +13296,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE, STATIC),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.Frame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -13257,7 +13354,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE, STATIC),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.Frame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"),
                             new CodeVariableElement(type(Object.class), "local"));
@@ -13289,8 +13386,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssign("operandIndex").tree(readImmediate("bc", "bci", operand1)).end();
             b.startAssign("otherOperandIndex").tree(readImmediate("bc", "bci", operand0)).end();
             b.end();
-            b.declaration(type(short.class), "operand", "ACCESS.shortArrayRead(bc, operandIndex)");
-            b.declaration(type(short.class), "otherOperand", "ACCESS.shortArrayRead(bc, otherOperandIndex)");
+            b.declaration(type(short.class), "operand", "ACCESS.readShort(bc, operandIndex)");
+            b.declaration(type(short.class), "otherOperand", "ACCESS.readShort(bc, otherOperandIndex)");
 
             Map<TypeMirror, InstructionModel> typeToSpecialization = new HashMap<>();
             List<InstructionModel> specializations = instr.quickenedInstructions;
@@ -13313,7 +13410,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 InstructionModel boxedInstruction = typeToSpecialization.get(boxingType);
                 InstructionModel unboxedInstruction = boxedInstruction.quickenedInstructions.get(0);
-                b.startSwitch().string(readBc("bci")).end().startBlock();
+                b.startSwitch().tree(readInstruction("bc", "bci")).end().startBlock();
                 b.startCase().tree(createInstructionConstant(boxedInstruction.getQuickeningRoot())).end();
                 b.startCase().tree(createInstructionConstant(boxedInstruction)).end();
                 b.startCaseBlock();
@@ -13366,7 +13463,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.Frame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"));
 
@@ -13515,7 +13612,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             Set.of(PRIVATE),
                             type(void.class), instructionMethodName(instr),
                             new CodeVariableElement(types.Frame, "frame"),
-                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "sp"),
                             new CodeVariableElement(type(Object.class), "local"));
@@ -13552,7 +13649,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             // Store local may not have a valid child bci.
             b.startIf().string("operandIndex != -1").end().startBlock();
             b.declaration(type(short.class), "newOperand");
-            b.declaration(type(short.class), "operand", "ACCESS.shortArrayRead(bc, operandIndex)");
+            b.declaration(type(short.class), "operand", "ACCESS.readShort(bc, operandIndex)");
 
             b.startDeclaration(types.FrameSlotKind, "oldKind");
             b.startCall(bytecodeNode, "getCachedLocalKindInternal");
@@ -13692,13 +13789,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createLoadConstantCompiled() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(void.class), "loadConstantCompiled");
             ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
-            ex.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
+            ex.addParameter(new CodeVariableElement(context.getType(byte[].class), "bc"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "bci"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "sp"));
             ex.addParameter(new CodeVariableElement(arrayOf(context.getDeclaredType(Object.class)), "constants"));
 
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(context.getDeclaredType(Object.class), "constant", readConst(readBc("bci + 1")));
+            InstructionImmediate constant = model.loadConstantInstruction.getImmediate(ImmediateKind.CONSTANT);
+            b.declaration(context.getDeclaredType(Object.class), "constant", readConst(readImmediate("bc", "bci", constant)));
             Class<?>[] boxedTypes = new Class<?>[]{Boolean.class, Byte.class, Character.class, Float.class, Integer.class, Long.class, Short.class, Double.class};
             String[] getterMethods = new String[]{"booleanValue", "byteValue", "charValue", "floatValue", "intValue", "longValue", "shortValue", "doubleValue"};
             for (int i = 0; i < boxedTypes.length; i++) {
@@ -13888,7 +13986,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private List<CodeVariableElement> createExtraParameters() {
             List<CodeVariableElement> extraParams = new ArrayList<>();
             extraParams.addAll(List.of(
-                            new CodeVariableElement(context.getType(short[].class), "bc"),
+                            new CodeVariableElement(context.getType(byte[].class), "bc"),
                             new CodeVariableElement(context.getType(int.class), "bci"),
                             new CodeVariableElement(context.getType(int.class), "sp")));
             return extraParams;
@@ -13924,7 +14022,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (!ElementUtils.isObject(constantOperandType)) {
                         b.cast(constantOperandType);
                     }
-                    b.string(readConst(readBc("bci + " + constants.get(i).offset())));
+                    b.tree(readConst(readImmediate("bc", "bci", constants.get(i))));
                     b.end();
                 }
 
@@ -13944,7 +14042,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (!ElementUtils.isObject(constantOperandType)) {
                         b.cast(constantOperandType);
                     }
-                    b.string(readConst(readBc("bci + " + constants.get(i + instr.signature.constantOperandsBeforeCount).offset())));
+                    b.tree(readConst(readImmediate("bc", "bci", constants.get(i + instr.signature.constantOperandsBeforeCount))));
                     b.end();
                 }
             }
@@ -14437,20 +14535,79 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     // Helpers to generate common strings
-    private static String readBc(String index) {
-        return readBc("bc", index);
+    private static CodeTree readInstruction(String bc, String bci) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startCall("ACCESS", "readShort");
+        b.string(bc);
+        b.startGroup();
+        b.string(bci);
+        b.end();
+        b.end();
+        return b.build();
     }
 
-    public static String readBc(String bc, String index) {
-        return String.format("ACCESS.shortArrayRead(%s, %s)", bc, index);
+    public static CodeTree readImmediate(String bc, String bci, InstructionImmediate immediate) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        String accessor = switch (immediate.kind().width) {
+            case BYTE -> "readByte";
+            case SHORT -> "readShort";
+            case INT -> "readInt";
+        };
+        b.startCall("ACCESS", accessor);
+        b.string(bc);
+        b.startGroup();
+        b.string(bci).string(" + ").string(immediate.offset()).string(" ");
+        b.startComment().string(" imm ", immediate.name(), " ").end();
+        b.end();
+        b.end();
+        return b.build();
     }
 
-    private static String readConst(String index) {
+    private static CodeTree writeImmediate(String bc, String bci, String value, InstructionImmediate immediate) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        String accessor = switch (immediate.kind().width) {
+            case BYTE -> "writeByte";
+            case SHORT -> "writeShort";
+            case INT -> "writeInt";
+        };
+        b.startCall("ACCESS", accessor);
+        b.string(bc);
+        b.startGroup();
+        b.string(bci).string(" + ").string(immediate.offset()).string(" ");
+        b.startComment().string(" imm ", immediate.name(), " ").end();
+        b.end();
+        b.string(value);
+        b.end();
+        return b.build();
+    }
+
+    private static String writeShort(String array, String index, String value) {
+        return String.format("ACCESS.writeShort(%s, %s, %s)", array, index, value);
+    }
+
+    private static String writeInt(String array, String index, String value) {
+        return String.format("ACCESS.writeInt(%s, %s, %s)", array, index, value);
+    }
+
+    private static CodeTree readConst(String index) {
+        return readConst(CodeTreeBuilder.singleString(index));
+    }
+
+    private static CodeTree readConst(CodeTree index) {
         return readConst(index, "constants");
     }
 
-    public static String readConst(String index, String constants) {
-        return String.format("ACCESS.objectArrayRead(%s, %s)", constants, index);
+    public static CodeTree readConst(String index, String constants) {
+        return readConst(CodeTreeBuilder.singleString(index), constants);
+    }
+
+    public static CodeTree readConst(CodeTree index, String constants) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startCall("ACCESS.readObject");
+        b.string(constants);
+        b.tree(index);
+        b.end();
+        return b.build();
     }
 
     private static CodeTree readTagNode(TypeMirror expectedType, CodeTree index) {
@@ -14460,7 +14617,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     private static CodeTree readTagNode(TypeMirror expectedType, String tagNodes, CodeTree index) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startCall("ACCESS.cast");
-        b.startCall("ACCESS.objectArrayRead");
+        b.startCall("ACCESS.readObject");
         b.string(tagNodes);
         b.tree(index);
         b.end();
@@ -14480,7 +14637,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     private static CodeTree readNodeProfile(TypeMirror expectedType, CodeTree index) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startCall("ACCESS.cast");
-        b.startCall("ACCESS.objectArrayRead");
+        b.startCall("ACCESS.readObject");
         b.string("cachedNodes");
         b.tree(index);
         b.end();
@@ -14689,29 +14846,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private static String childString(int numChildren) {
         return numChildren + ((numChildren == 1) ? " child" : " children");
-    }
-
-    private static CodeTree readInstruction(String bc, String bci) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startCall("ACCESS", "shortArrayRead");
-        b.string(bc);
-        b.startGroup();
-        b.string(bci);
-        b.end();
-        b.end();
-        return b.build();
-    }
-
-    private static CodeTree readImmediate(String bc, String bci, InstructionImmediate immediate) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startCall("ACCESS", "shortArrayRead");
-        b.string(bc);
-        b.startGroup();
-        b.string(bci).string(" + ").string(immediate.offset()).string(" ");
-        b.startComment().string(" imm ", immediate.name(), " ").end();
-        b.end();
-        b.end();
-        return b.build();
     }
 
     /**

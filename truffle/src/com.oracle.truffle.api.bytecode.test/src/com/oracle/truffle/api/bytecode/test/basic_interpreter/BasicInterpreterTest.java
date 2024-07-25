@@ -1936,14 +1936,14 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertEquals(0, s1.getStartBytecodeIndex());
         assertEquals(instructions.get(1).getBytecodeIndex(), s1.getEndBytecodeIndex());
 
-        assertEquals(2, instructions.get(1).getBytecodeIndex());
+        assertEquals(4, s2.getStartBytecodeIndex());
         assertEquals(instructions.get(2).getBytecodeIndex(), s2.getEndBytecodeIndex());
 
         assertEquals(0, s3.getStartBytecodeIndex());
         assertEquals(instructions.get(3).getBytecodeIndex(), s3.getEndBytecodeIndex());
 
         assertEquals(0, s4.getStartBytecodeIndex());
-        assertEquals(instructions.get(3).getBytecodeIndex() + 1, s4.getEndBytecodeIndex());
+        assertEquals(instructions.get(3).getNextBytecodeIndex(), s4.getEndBytecodeIndex());
     }
 
     @Test

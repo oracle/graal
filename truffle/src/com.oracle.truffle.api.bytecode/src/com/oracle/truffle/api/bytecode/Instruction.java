@@ -74,6 +74,8 @@ public abstract class Instruction {
 
     public abstract int getBytecodeIndex();
 
+    public abstract int getLength();
+
     public final BytecodeLocation getLocation() {
         return getBytecodeNode().getBytecodeLocation(getBytecodeIndex());
     }
@@ -105,7 +107,7 @@ public abstract class Instruction {
     }
 
     public final int getNextBytecodeIndex() {
-        return getBytecodeIndex() + getArguments().size() + 1;
+        return getBytecodeIndex() + getLength();
     }
 
     protected abstract Instruction next();
