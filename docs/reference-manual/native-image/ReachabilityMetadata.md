@@ -459,8 +459,8 @@ This mode can be activated with the `-H:ThrowMissingRegistrationErrors=` option 
 
 ### Reflection
 
-* If a reflectively-accessed element (`Class`, `Field`, `Method`, etc.) is not present on the image class- or module-path, it still needs to be registered to ensure the correct exception (`ClassNotFoundException` or similar) is thrown.
-  If an element is queried at runtime without having been registered, regardless of whether it is present on the class- or module-path, this query will throw a `MissingReflectionRegistrationError`.
+* If a reflectively-accessed element (`Class`, `Field`, `Method`, etc.) is not present on the image class or module path, it still needs to be registered to ensure the correct exception (`ClassNotFoundException` or similar) is thrown.
+  If an element is queried at runtime without having been registered, regardless of whether it is present on the class path or module path, this query will throw a `MissingReflectionRegistrationError`.
   This change ensures that the error is not ambiguous between a non-existent element and one that was not registered for reflection in the image;
 * This rationale also requires that any query that returns a collection of class members (`Class.getMethods()` or similar) has to be registered in full (with `"queryAllPublicMethods"` in this case) to succeed at runtime.
   This additionally ensures that any of the registered elements can be queried individually, and non-existent elements of that type will throw the correct exception without having to be registered.
@@ -468,8 +468,8 @@ This mode can be activated with the `-H:ThrowMissingRegistrationErrors=` option 
 
 ### Resources
 
-* If a resource or resource bundle is not present on the image class- or module-path, it still needs to be registered to ensure the correct return value (`null`).
-  If a resource is queried at runtime without having been registered, regardless of whether it is present on the class- or module-path, this query will throw a `MissingResourceRegistrationError`.
+* If a resource or resource bundle is not present on the image class path or module path, it still needs to be registered to ensure the correct return value (`null`).
+  If a resource is queried at runtime without having been registered, regardless of whether it is present on the class path or module path, this query will throw a `MissingResourceRegistrationError`.
   This change ensures that the program behavior is not ambiguous between a non-existent resource and one that was not registered for runtime access;
 
 The Native Image agent does not support custom implementations of `ResourceBundle$Control` or `Bundles$Strategy` and requires manual registrations for the reflection and resource queries that they will perform.
