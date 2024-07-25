@@ -557,21 +557,36 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     @Operation
     public static final class EnableIncrementValueInstrumentation {
         @Specialization
-        public static void doEnable(@Bind BasicInterpreter root) {
+        public static void doEnable(
+                        @Bind BasicInterpreter root,
+                        @Cached(value = "getConfig(root)", allowUncached = true, neverDefault = true) BytecodeConfig config) {
+            root.getRootNodes().update(config);
+        }
+
+        @TruffleBoundary
+        protected static BytecodeConfig getConfig(BasicInterpreter root) {
             BytecodeConfig.Builder configBuilder = AbstractBasicInterpreterTest.invokeNewConfigBuilder(root.getClass());
             configBuilder.addInstrumentation(IncrementValue.class);
-            root.getRootNodes().update(configBuilder.build());
+            return configBuilder.build();
         }
     }
 
     @Operation
     public static final class EnableDoubleValueInstrumentation {
         @Specialization
-        public static void doEnable(@Bind BasicInterpreter root) {
+        public static void doEnable(
+                        @Bind BasicInterpreter root,
+                        @Cached(value = "getConfig(root)", allowUncached = true, neverDefault = true) BytecodeConfig config) {
+            root.getRootNodes().update(config);
+        }
+
+        @TruffleBoundary
+        protected static BytecodeConfig getConfig(BasicInterpreter root) {
             BytecodeConfig.Builder configBuilder = AbstractBasicInterpreterTest.invokeNewConfigBuilder(root.getClass());
             configBuilder.addInstrumentation(DoubleValue.class);
-            root.getRootNodes().update(configBuilder.build());
+            return configBuilder.build();
         }
+
     }
 
     record Bindings(

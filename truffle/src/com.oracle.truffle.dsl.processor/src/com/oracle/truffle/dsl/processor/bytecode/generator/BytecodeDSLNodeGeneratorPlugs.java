@@ -42,6 +42,7 @@ package com.oracle.truffle.dsl.processor.bytecode.generator;
 
 import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory.readConst;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory.readImmediate;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory.readInstruction;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -307,7 +308,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             b.startStatement();
             b.string("int oldOperandIndex" + valueIndex);
             b.string(" = ");
-            b.string("ACCESS.readShort($bc, $bci + " + immediate.offset() + ")");
+            b.tree(readImmediate("$bc", "$bci", immediate));
             b.end();
 
             if (instruction.isShortCircuitConverter() || instruction.isEpilogReturn()) {
@@ -317,7 +318,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 b.startStatement();
                 b.string("oldOperand" + valueIndex);
                 b.string(" = ");
-                b.string("ACCESS.readShort($bc, oldOperandIndex" + valueIndex + ")");
+                b.tree(readInstruction("$bc", "oldOperandIndex" + valueIndex));
                 b.end(); // statement
                 b.end().startElseBlock();
                 b.startStatement();
@@ -330,7 +331,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 b.startStatement();
                 b.string("short oldOperand" + valueIndex);
                 b.string(" = ");
-                b.string("ACCESS.readShort($bc, oldOperandIndex" + valueIndex + ")");
+                b.tree(readInstruction("$bc", "oldOperandIndex" + valueIndex));
                 b.end(); // statement
             }
 

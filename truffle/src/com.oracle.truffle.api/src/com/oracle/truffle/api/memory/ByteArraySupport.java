@@ -107,6 +107,15 @@ public abstract class ByteArraySupport {
         return ByteArraySupports.BIG_ENDIAN;
     }
 
+    // TODO add documentation, maybe guard these using idiom like BytecodeRootNodes#TOKEN?
+    public static ByteArraySupport nativeUnsafe() {
+        return ByteArraySupports.NATIVE_UNSAFE;
+    }
+
+    public static ByteArraySupport nativeChecked() {
+        return ByteArraySupports.NATIVE_CHECKED;
+    }
+
     /**
      * Checks if an access is in bounds of the given buffer.
      * <p>

@@ -41,10 +41,10 @@
 package com.oracle.truffle.api.bytecode;
 
 import java.lang.reflect.Field;
-import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 import sun.misc.Unsafe;
@@ -105,46 +105,11 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
     }
 
     /**
-     * Reads a byte from the array.
+     * Returns a {@link ByteArraySupport} to use for byte array accesses.
      *
      * @since 24.2
      */
-    public abstract byte readByte(byte[] arr, int index);
-
-    /**
-     * Reads a short from the array.
-     *
-     * @since 24.2
-     */
-    public abstract short readShort(byte[] arr, int index);
-
-    /**
-     * Reads an int from the array.
-     *
-     * @since 24.2
-     */
-    public abstract int readInt(byte[] arr, int index);
-
-    /**
-     * Writes a byte to the array.
-     *
-     * @since 24.2
-     */
-    public abstract void writeByte(byte[] arr, int index, byte value);
-
-    /**
-     * Writes a short to the array.
-     *
-     * @since 24.2
-     */
-    public abstract void writeShort(byte[] arr, int index, short value);
-
-    /**
-     * Writes an int to the array.
-     *
-     * @since 24.2
-     */
-    public abstract void writeInt(byte[] arr, int index, int value);
+    public abstract ByteArraySupport getByteArraySupport();
 
     /**
      * Reads from an Object array.
@@ -433,6 +398,8 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
      */
     static final class UnsafeImpl extends BytecodeDSLAccess {
 
+        static final ByteArraySupport ARRAY_SUPPORT = ByteArraySupport.nativeUnsafe();
+
         static final Unsafe UNSAFE = initUnsafe();
 
         private static Unsafe initUnsafe() {
@@ -452,39 +419,8 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
         }
 
         @Override
-        public byte readByte(byte[] arr, int index) {
-            assert index >= 0 && index < arr.length;
-            return UNSAFE.getByte(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
-        }
-
-        @Override
-        public short readShort(byte[] arr, int index) {
-            assert index >= 0 && index < arr.length;
-            return UNSAFE.getShort(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
-        }
-
-        @Override
-        public int readInt(byte[] arr, int index) {
-            assert index >= 0 && index < arr.length;
-            return UNSAFE.getInt(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE);
-        }
-
-        @Override
-        public void writeByte(byte[] arr, int index, byte value) {
-            assert index >= 0 && index < arr.length;
-            UNSAFE.putByte(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE, value);
-        }
-
-        @Override
-        public void writeShort(byte[] arr, int index, short value) {
-            assert index >= 0 && index < arr.length;
-            UNSAFE.putShort(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE, value);
-        }
-
-        @Override
-        public void writeInt(byte[] arr, int index, int value) {
-            assert index >= 0 && index < arr.length;
-            UNSAFE.putInt(arr, Unsafe.ARRAY_BYTE_BASE_OFFSET + index * Unsafe.ARRAY_BYTE_INDEX_SCALE, value);
+        public ByteArraySupport getByteArraySupport() {
+            return ARRAY_SUPPORT;
         }
 
         @Override
@@ -677,53 +613,14 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
      * Implementation of BytecodeDSLAccess that does not use Unsafe.
      */
     public static final class SafeImpl extends BytecodeDSLAccess {
-        /**
-         * The byte order used by {@link UnsafeImpl} depends on the platform. {@link SafeImpl} must
-         * use this same order (it cannot choose its own order), because it is used by unsafe
-         * interpreters to safely read data that may be malformed (e.g., dumping bytecode on
-         * validation errors).
-         */
-        private static final boolean isBigEndian = ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
+        static final ByteArraySupport ARRAY_SUPPORT = ByteArraySupport.nativeChecked();
 
         private SafeImpl() {
         }
 
         @Override
-        public byte readByte(byte[] arr, int index) {
-            return arr[index];
-        }
-
-        @Override
-        public short readShort(byte[] arr, int index) {
-            return isBigEndian ? readShortBigEndian(arr, index) : readShortLittleEndian(arr, index);
-        }
-
-        @Override
-        public int readInt(byte[] arr, int index) {
-            return isBigEndian ? readIntBigEndian(arr, index) : readIntLittleEndian(arr, index);
-        }
-
-        @Override
-        public void writeByte(byte[] arr, int index, byte value) {
-            arr[index] = value;
-        }
-
-        @Override
-        public void writeShort(byte[] arr, int index, short value) {
-            if (isBigEndian) {
-                writeShortBigEndian(arr, index, value);
-            } else {
-                writeShortLittleEndian(arr, index, value);
-            }
-        }
-
-        @Override
-        public void writeInt(byte[] arr, int index, int value) {
-            if (isBigEndian) {
-                writeIntBigEndian(arr, index, value);
-            } else {
-                writeIntLittleEndian(arr, index, value);
-            }
+        public ByteArraySupport getByteArraySupport() {
+            return ARRAY_SUPPORT;
         }
 
         @Override
