@@ -857,7 +857,7 @@ public class NativeImage {
         List<String> defaultNativeImageArgs = new ArrayList<>();
         String propertyOptions = userConfigProperties.get("NativeImageArgs");
         if (propertyOptions != null) {
-            Collections.addAll(defaultNativeImageArgs, propertyOptions.split(" "));
+            Collections.addAll(defaultNativeImageArgs, propertyOptions.split(" +"));
         }
         final String envVarName = SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR;
         String nativeImageOptionsValue = System.getenv(envVarName);
