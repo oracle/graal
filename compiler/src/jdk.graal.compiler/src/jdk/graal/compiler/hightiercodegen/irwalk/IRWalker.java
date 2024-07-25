@@ -30,6 +30,7 @@ import java.util.List;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Scope;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.hightiercodegen.CodeGenTool;
@@ -73,7 +74,7 @@ public abstract class IRWalker {
             lower(debugContext);
             verifier.verify(cfg.graph, codeGenTool, reconstructionData);
         } catch (Throwable t) {
-            throw debugContext.handle(t);
+            throw debugContext.handle(new GraalError(t).addContext("graph", cfg.graph));
         }
     }
 
