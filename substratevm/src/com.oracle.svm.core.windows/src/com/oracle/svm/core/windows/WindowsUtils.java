@@ -28,7 +28,6 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 
 import java.io.FileDescriptor;
 
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CPointerTo;

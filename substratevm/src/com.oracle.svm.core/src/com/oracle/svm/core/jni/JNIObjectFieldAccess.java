@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.jni;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.jni.access.JNIAccessibleField;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.internal.misc.Unsafe;
 
 public class JNIObjectFieldAccess {

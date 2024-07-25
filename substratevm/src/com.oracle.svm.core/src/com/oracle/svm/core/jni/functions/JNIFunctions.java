@@ -1116,8 +1116,6 @@ public final class JNIFunctions {
         return JNIObjectHandles.createLocal(clazz);
     }
 
-    }
-
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static PointerBase GetBooleanArrayElements(JNIEnvironment env, JNIObjectHandle array, CCharPointer isCopy) {
@@ -1611,6 +1609,8 @@ public final class JNIFunctions {
     static void SetStaticDoubleField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, double value) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
         U.putDouble(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+    }
+
     // Checkstyle: resume
 
     /**
@@ -1867,16 +1867,14 @@ public final class JNIFunctions {
                 throw new IllegalArgumentException("Argument is not an array");
             }
 
-            /* Create a view for the non-null array object. */
-            PrimitiveArrayView ref = JNIThreadLocalPrimitiveArrayViews.createArrayView(obj);
             if (isCopy.isNonNull()) {
-                isCopy.write(ref.isCopy() ? (byte) 1 : (byte) 0);
+                isCopy.write((byte) 0);
             }
-            return ref.addressOfArrayElement(0);
+            return JNIThreadLocalPinnedObjects.pinArrayAndGetAddress(obj);
         }
 
         static void destroyNewestArrayViewByAddress(PointerBase address, int mode) {
-            JNIThreadLocalPrimitiveArrayViews.destroyNewestArrayViewByAddress(address, mode);
+            JNIThreadLocalPinnedObjects.unpinArrayByAddress(address);
         }
 
         static void getPrimitiveArrayRegion(JavaKind elementKind, JNIObjectHandle handle, int start, int count, PointerBase buffer) {
