@@ -30,6 +30,8 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import java.util.Map;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -37,8 +39,6 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.MemoryBarriers;
 
 /**
@@ -47,14 +47,59 @@ import jdk.vm.ci.code.MemoryBarriers;
 @NodeInfo(nameTemplate = "Membar#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_2)
 public final class MembarNode extends FixedWithNextNode implements LIRLowerable, SingleMemoryKill {
 
+    /**
+     * Describes how in the generated code ordering must be constrained. Note compiler optimization
+     * passes currently do not look at a Membar's {@link FenceKind}; instead, optimization
+     * constraints are enforced solely according to this node's {@link #location}.
+     *
+     * For the purposes of this documentation, memory accesses are divided into stores and loads. A
+     * memory access which does both (e.g., compare-and-swap) is considered both a load and store.
+     */
     public enum FenceKind {
+        /**
+         * No ordering constraints are imposed on the generated code. This fence is only exists at
+         * the compilation optimization level.
+         */
         NONE(0),
+        /*
+         * All stores before this fence are guaranteed to have completed <b>before</b> any
+         * subsequent load may execute.
+         */
         STORE_LOAD(MemoryBarriers.STORE_LOAD),
+        /*
+         * All stores before this fence are guaranteed to have completed <b>before</b> any
+         * subsequent store may execute.
+         */
         STORE_STORE(MemoryBarriers.STORE_STORE),
+        /*
+         * All loads before this fence are guaranteed to have completed <b>before</b> any subsequent
+         * memory access may execute.
+         */
         LOAD_ACQUIRE(MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE),
+        /*
+         * All memory accesses before this fence are guaranteed to have completed <b>before</b> any
+         * subsequent store may execute.
+         */
         STORE_RELEASE(MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE),
+        /**
+         * We must ensure all allocation initializations before this fence have completed before the
+         * object can become visible to a different thread.
+         *
+         * Currently within generated code this is equivalent to a {@link #STORE_STORE} fence.
+         */
         ALLOCATION_INIT(MemoryBarriers.STORE_STORE),
+        /**
+         * Note this fence can only be placed at a constructor exit. We must ensure all writes to
+         * values reachable by final fields (of the object currently being constructed) before this
+         * fence have completed before the final field can be visible to a different thread.
+         *
+         * Currently within generated code this is equivalent to a {@link #STORE_STORE} fence.
+         */
         CONSTRUCTOR_FREEZE(MemoryBarriers.STORE_STORE),
+        /*
+         * All memory accesses before this fence are guaranteed to have completed <b>before</b> any
+         * subsequent memory access may execute.
+         */
         FULL(MemoryBarriers.LOAD_LOAD | MemoryBarriers.STORE_LOAD | MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE);
 
         private final int barriers;
