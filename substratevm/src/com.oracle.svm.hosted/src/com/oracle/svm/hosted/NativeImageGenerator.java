@@ -99,7 +99,6 @@ import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
-import com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisFactory;
@@ -126,7 +125,6 @@ import com.oracle.graal.reachability.ReachabilityObjectScanner;
 import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.BuildArtifacts;
-import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
@@ -546,12 +544,12 @@ public class NativeImageGenerator {
         try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl()) {
             ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
             if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                setupImageLayerArtifact(imageName);
+                HostedImageLayerBuildingSupport.setupImageLayerArtifact(imageName);
             }
             doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions);
             if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                 ImageSingletonsSupportImpl.HostedManagement.persist();
-                HostedImageLayerBuildingSupport.singleton().getWriter().dumpFile();
+                HostedImageLayerBuildingSupport.singleton().archiveLayer(imageName);
             }
         } finally {
             reporter.ensureCreationStageEndCompleted();
@@ -794,15 +792,6 @@ public class NativeImageGenerator {
         codeCache.addConstantsToHeap();
         // Finish building the model of the native image heap.
         heap.addTrailingObjects();
-    }
-
-    private static void setupImageLayerArtifact(String imageName) {
-        int imageNameStart = imageName.lastIndexOf('/') + 1;
-        String fileName = ImageLayerSnapshotUtil.FILE_NAME_PREFIX + imageName.substring(imageNameStart);
-        String filePath = imageName.substring(0, imageNameStart) + fileName;
-        Path layerSnapshotPath = generatedFiles(HostedOptionValues.singleton()).resolve(filePath + ImageLayerSnapshotUtil.FILE_EXTENSION);
-        HostedImageLayerBuildingSupport.singleton().getWriter().setFileInfo(layerSnapshotPath, fileName, ImageLayerSnapshotUtil.FILE_EXTENSION);
-        BuildArtifacts.singleton().add(ArtifactType.LAYER_SNAPSHOT, layerSnapshotPath);
     }
 
     protected void createAbstractImage(NativeImageKind k, List<HostedMethod> hostedEntryPoints, NativeImageHeap heap, HostedMetaAccess hMetaAccess, NativeImageCodeCache codeCache) {
@@ -1301,23 +1290,7 @@ public class NativeImageGenerator {
                 throw new InterruptImageBuilding("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(CAnnotationProcessorCache.Options.ExitAfterCAPCache, "+"));
             }
             if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-                for (Path layerPath : HostedImageLayerBuildingSupport.singleton().getLoader().getLoadPaths()) {
-                    Path snapshotFileName = layerPath.getFileName();
-                    if (snapshotFileName != null) {
-                        String layerName = snapshotFileName.toString().split(ImageLayerSnapshotUtil.FILE_NAME_PREFIX)[1].split(ImageLayerSnapshotUtil.FILE_EXTENSION)[0].trim();
-                        /*
-                         * This currently assumes lib{layer}.so is in the same dir as the layer
-                         * snapshot. GR-53663 will create a proper bundle that contains both files.
-                         */
-                        Path layerPathDir = layerPath.getParent();
-                        if (layerPathDir != null && layerName.startsWith("lib") && Files.exists(layerPathDir.resolve(layerName + ".so"))) {
-                            nativeLibs.getLibraryPaths().add(layerPathDir.toString());
-                            nativeLibs.addDynamicNonJniLibrary(layerName.split("lib")[1]);
-                        } else {
-                            throw VMError.shouldNotReachHere("Missing " + layerName + ".so. It must be placed in the same dir as the layer snapshot.");
-                        }
-                    }
-                }
+                HostedImageLayerBuildingSupport.setupSharedLayerLibrary(nativeLibs);
             }
             return nativeLibs;
         }
@@ -2002,6 +1975,10 @@ public class NativeImageGenerator {
             result.append(Short.toUnsignedInt(slot)).append(" ");
         }
         return result.toString();
+    }
+
+    public static Path getOutputDirectory() {
+        return NativeImageGenerator.generatedFiles(HostedOptionValues.singleton());
     }
 
     public static Path generatedFiles(OptionValues optionValues) {

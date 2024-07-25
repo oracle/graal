@@ -83,8 +83,8 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
@@ -92,6 +92,7 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
@@ -268,6 +269,13 @@ public class NativeImageClassLoaderSupport {
     public void setupHostedOptionParser(List<String> arguments) {
         hostedOptionParser = new HostedOptionParser(getClassLoader(), arguments);
         remainingArguments = Collections.unmodifiableList((hostedOptionParser.parse()));
+        /*
+         * The image layer support needs to be configured early to correctly set the
+         * class-path/module-path options. Note that parsedHostedOptions is a copy-by-value of
+         * hostedOptionParser.getHostedValues(), so we want to affect the options map before it is
+         * copied.
+         */
+        HostedImageLayerBuildingSupport.processLayerOptions(hostedOptionParser.getHostedValues());
         parsedHostedOptions = new OptionValues(hostedOptionParser.getHostedValues());
     }
 
