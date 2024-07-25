@@ -221,12 +221,14 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RET;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN_VALUE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SASTORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SIPUSH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SLIM_QUICK;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.THROW_VALUE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.clear;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.createFrameDescriptor;
@@ -266,6 +268,7 @@ import static com.oracle.truffle.espresso.nodes.EspressoFrame.setLocalObjectOrRe
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.startingStackOffset;
 import static com.oracle.truffle.espresso.nodes.EspressoFrame.swapSingle;
 
+import java.io.Serial;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -333,6 +336,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastQuickNode;
@@ -380,7 +384,6 @@ import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 /**
  * Bytecode interpreter loop.
  *
- *
  * Calling convention uses strict Java primitive types although internally the VM basic types are
  * used with conversions at the boundaries.
  *
@@ -392,7 +395,6 @@ import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
 public final class BytecodeNode extends AbstractInstrumentableBytecodeNode implements BytecodeOSRNode, GuestAllocator.AllocationProfiler {
-
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
     private static final DebugCounter QUICKENED_INVOKES = DebugCounter.create("Quickened invokes (excluding INDY)");
@@ -410,8 +412,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     // Nodes for bytecodes that were replaced with QUICK, indexed by the constant pool index
     // referenced by the bytecode.
     // Must not be of type QuickNode as it might be wrapped by instrumentation
-    @Children private BaseQuickNode[] nodes = QuickNode.EMPTY_ARRAY;
-    @Children private BaseQuickNode[] sparseNodes = QuickNode.EMPTY_ARRAY;
+    @Children private BaseQuickNode[] nodes = BaseQuickNode.EMPTY_ARRAY;
+    @Children private BaseQuickNode[] sparseNodes = BaseQuickNode.EMPTY_ARRAY;
 
     /**
      * Ideally, we would want one such node per AASTORE bytecode. Unfortunately, the AASTORE
@@ -455,13 +457,19 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private final MethodVersion methodVersion;
 
     @CompilationFinal(dimensions = 1) private final byte[] code;
+    private final int returnValueBci;
+    private final int throwValueBci;
 
     public BytecodeNode(MethodVersion methodVersion) {
         CompilerAsserts.neverPartOfCompilation();
         Method method = methodVersion.getMethod();
         assert method.hasBytecodes();
         this.methodVersion = methodVersion;
-        this.code = method.getOriginalCode().clone();
+        byte[] originalCode = method.getOriginalCode();
+        byte[] customCode = Arrays.copyOf(originalCode, originalCode.length + 2);
+        customCode[returnValueBci = originalCode.length] = (byte) Bytecodes.RETURN_VALUE;
+        customCode[throwValueBci = originalCode.length + 1] = (byte) THROW_VALUE;
+        this.code = customCode;
         this.bs = new BytecodeStream(code);
         this.stackOverflowErrorInfo = method.getSOEHandlerInfo();
         this.frameDescriptor = createFrameDescriptor(methodVersion.getMaxLocals(), methodVersion.getMaxStackSize());
@@ -472,7 +480,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
          * The "triviality" is partially computed here since isTrivial is called from a compiler
          * thread where the context is not accessible.
          */
-        this.trivialBytecodesCache = method.getOriginalCode().length <= method.getContext().getEspressoEnv().TrivialMethodSize
+        this.trivialBytecodesCache = originalCode.length <= method.getContext().getEspressoEnv().TrivialMethodSize
                         ? TRIVIAL_UNINITIALIZED
                         : TRIVIAL_NO;
     }
@@ -568,7 +576,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 return;
             } else {
                 InstrumentationSupport instrument = instrumentation;
-                int statementIndex = instrument == null ? 0 : instrument.hookBCIToNodeIndex.lookup(0, 0, bs.endBCI());
+                int statementIndex = instrument == null ? 0 : instrument.getStatementIndexAfterJump(0, 0, bs.endBCI());
                 quickenInvoke(top, bci, opcode, statementIndex);
                 // continue loop, will execute at most once more.
             }
@@ -591,7 +599,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         // set up local state.
         InstrumentationSupport instrument = instrumentation;
-        int statementIndex = instrument == null ? 0 : instrument.hookBCIToNodeIndex.lookup(0, 0, bs.endBCI());
+        int statementIndex = instrument == null ? 0 : instrument.getStatementIndexAfterJump(0, 0, bs.endBCI());
         assert bs.opcode(bci) == QUICK && nodes[bs.readCPI2(bci)] instanceof InvokeContinuableNode;
 
         return executeBodyFromBCI(frame, bci, top, statementIndex, true, true);
@@ -1282,7 +1290,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         if (instrument != null) {
                             instrument.exitAt(frame, statementIndex, returnValue);
                         }
-                        return returnValue;
+
+                        // This branch must not be a loop exit.
+                        // Let the next loop iteration return this
+                        top = startingStackOffset(getMethodVersion().getMaxLocals());
+                        frame.setObjectStatic(top, returnValue);
+                        top++;
+                        curBCI = returnValueBci;
+                        continue loop;
                     }
                     // @formatter:off
                     // TODO(peterssen): Order shuffled.
@@ -1313,7 +1328,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     case ARRAYLENGTH : arrayLength(frame, top, curBCI); break;
 
                     case ATHROW      :
-                        throw getMeta().throwException(nullCheck(popObject(frame, top - 1)));
+                        throw getMethod().getMeta().throwException(nullCheck(popObject(frame, top - 1)));
 
                     case CHECKCAST   : {
                         StaticObject receiver = peekObject(frame, top - 1);
@@ -1483,6 +1498,24 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     case SLIM_QUICK:
                         top += sparseNodes[curBCI].execute(frame, false);
                         break;
+                    case RETURN_VALUE:
+                        /*
+                         * Synthetic bytecode used to avoid merging interpreter loop exits too early
+                         * (and thus lose partial-evaluation constants too early). When reached, the
+                         * object at stack slot 0 should be returned.
+                         */
+                        assert top == startingStackOffset(getMethodVersion().getMaxLocals()) + 1;
+                        assert curBCI == returnValueBci;
+                        return frame.getObjectStatic(top - 1);
+                    case THROW_VALUE:
+                        /*
+                         * Synthetic bytecode used to avoid merging interpreter loop exits too early
+                         * (and thus lose partial-evaluation constants too early). When reached, the
+                         * object at stack slot 0 should be thrown.
+                         */
+                        assert top == startingStackOffset(getMethodVersion().getMaxLocals()) + 1;
+                        assert curBCI == throwValueBci;
+                        throw new ThrowOutOfInterpreterLoop((RuntimeException) frame.getObjectStatic(top - 1));
 
                     default:
                         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1495,7 +1528,18 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                  */
                 // Get the frame from the stack into the VM heap.
                 copyFrameToUnwindRequest(frame, unwindContinuationExceptionRequest, curBCI, top);
-                throw unwindContinuationExceptionRequest;
+                // Truffle requires paired probes, so we need to notify the probe for the current
+                // statement if applicable.
+                if (instrument != null) {
+                    instrument.notifyExceptionAt(frame, unwindContinuationExceptionRequest, statementIndex);
+                }
+
+                // This branch must not be a loop exit. Let the next loop iteration throw this
+                top = startingStackOffset(getMethodVersion().getMaxLocals());
+                frame.setObjectStatic(top, unwindContinuationExceptionRequest);
+                top++;
+                curBCI = throwValueBci;
+                continue loop;
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 // Handle both guest and host StackOverflowError.
@@ -1535,6 +1579,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
                         LoopNode.reportLoopCount(this, loopCount.value);
                     }
+                    // this branch is not compiled, it can be a loop exit
                     throw wrappedStackOverflowError;
 
                 } else /* EspressoException or AbstractTruffleException or OutOfMemoryError */ {
@@ -1546,12 +1591,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             CompilerDirectives.transferToInterpreter();
                             getRoot().abortMonitor(frame);
                             // Tearing down the VM, no need to report loop count.
+                            // this branch is not compiled, it can be a loop exit
                             throw e;
                         }
                         assert getContext().getEspressoEnv().Polyglot;
-                        getMeta().polyglot.ForeignException.safeInitialize(); // should fold
+                        Meta meta = getMethod().getMeta();
+                        meta.polyglot.ForeignException.safeInitialize(); // should fold
                         wrappedException = EspressoException.wrap(
-                                        getAllocator().createForeignException(getContext(), e, InteropLibrary.getUncached(e)), getMeta());
+                                        getAllocator().createForeignException(getContext(), e, InteropLibrary.getUncached(e)), meta);
                     } else {
                         assert e instanceof OutOfMemoryError;
                         CompilerDirectives.transferToInterpreter();
@@ -1594,7 +1641,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
                             LoopNode.reportLoopCount(this, loopCount.value);
                         }
-                        throw e;
+
+                        // This branch must not be a loop exit.
+                        // Let the next loop iteration throw this
+                        top = startingStackOffset(getMethodVersion().getMaxLocals());
+                        frame.setObjectStatic(top, wrappedException);
+                        top++;
+                        curBCI = throwValueBci;
+                        continue loop;
                     }
                 }
             } catch (EspressoOSRReturnException e) {
@@ -1605,7 +1659,15 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 if (instrument != null) {
                     instrument.notifyReturn(frame, statementIndex, returnValue);
                 }
-                return returnValue;
+
+                // This branch must not be a loop exit. Let the next loop iteration return this
+                top = startingStackOffset(getMethodVersion().getMaxLocals());
+                frame.setObjectStatic(top, returnValue);
+                top++;
+                curBCI = returnValueBci;
+                continue loop;
+            } catch (ThrowOutOfInterpreterLoop e) {
+                throw e.reThrow();
             }
             assert curOpcode != WIDE && curOpcode != LOOKUPSWITCH && curOpcode != TABLESWITCH;
 
@@ -1616,6 +1678,19 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             }
             top += Bytecodes.stackEffectOf(curOpcode);
             curBCI = targetBCI;
+        }
+    }
+
+    private static final class ThrowOutOfInterpreterLoop extends ControlFlowException {
+        @Serial private static final long serialVersionUID = 774753014650104744L;
+        private final RuntimeException exception;
+
+        private ThrowOutOfInterpreterLoop(RuntimeException exception) {
+            this.exception = exception;
+        }
+
+        RuntimeException reThrow() {
+            throw exception;
         }
     }
 
@@ -1641,23 +1716,24 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     private StaticObject newReferenceObject(Klass klass) {
         assert !klass.isPrimitive() : "Verifier guarantee";
-        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(getMeta(), klass, true, this);
+        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(getMethod().getMeta(), klass, true, this);
         return getAllocator().createNew((ObjectKlass) klass);
     }
 
     private StaticObject newPrimitiveArray(byte jvmPrimitiveType, int length) {
-        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length, this);
-        return getAllocator().createNewPrimitiveArray(getMeta(), jvmPrimitiveType, length);
+        Meta meta = getMethod().getMeta();
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(meta, length, this);
+        return getAllocator().createNewPrimitiveArray(meta, jvmPrimitiveType, length);
     }
 
     private StaticObject newReferenceArray(Klass componentType, int length) {
-        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length, this);
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMethod().getMeta(), length, this);
         return getAllocator().createNewReferenceArray(componentType, length);
     }
 
     private BaseQuickNode getBaseQuickNode(int curBCI, int top, int statementIndex, BaseQuickNode quickNode) {
         // block while class redefinition is ongoing
-        quickNode.getContext().getClassRedefinition().check();
+        getMethod().getContext().getClassRedefinition().check();
         BaseQuickNode result = quickNode;
         result = atomic(() -> {
             // re-check if node was already replaced by another thread
@@ -1671,7 +1747,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 char cpi = original.readCPI(curBCI);
                 int nodeOpcode = original.currentBC(curBCI);
                 Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
-                BaseQuickNode toInsert = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining));
+                BaseQuickNode toInsert = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getMethod().getContext().getEspressoEnv().bytecodeLevelInlining));
                 nodes[readCPI(curBCI)] = toInsert;
                 return toInsert;
             }
@@ -1918,7 +1994,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 }
             });
         }
-        refArrayStoreNode.arrayStore(getLanguage(), getContext().getMeta(), popObject(frame, top - 1), index, array);
+        refArrayStoreNode.arrayStore(getLanguage(), getMethod().getMeta(), popObject(frame, top - 1), index, array);
     }
 
     private int beforeJumpChecks(VirtualFrame frame, int curBCI, int targetBCI, int top, int statementIndex, InstrumentationSupport instrument, Counter loopCount, boolean skipLivenessActions) {
@@ -2149,7 +2225,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
             char cpi = readCPI(curBCI);
             Method resolutionSeed = resolveMethod(opcode, cpi);
-            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining);
+            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getMethod().getContext().getEspressoEnv().bytecodeLevelInlining);
         });
         return quick;
     }
@@ -2322,16 +2398,16 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // instruction throws an IncompatibleClassChangeError.
                 if (!resolved.isStatic()) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 break;
             case INVOKEINTERFACE:
                 // Otherwise, if the resolved method is static or (jdk8 or earlier) private, the
                 // invokeinterface instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic() ||
-                                (getContext().getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
+                                (getMethod().getContext().getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 if (resolved.getITableIndex() < 0) {
                     if (resolved.isPrivate()) {
@@ -2349,7 +2425,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 if (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate()) {
                     resolvedOpCode = INVOKESPECIAL;
@@ -2362,7 +2438,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 if (resolved.isConstructor()) {
                     if (resolved.getDeclaringKlass().getName() != getConstantPool().methodAt(cpi).getHolderKlassName(getConstantPool())) {
                         enterLinkageExceptionProfile();
-                        throw throwBoundary(getMeta().java_lang_NoSuchMethodError,
+                        throw throwBoundary(getMethod().getMeta().java_lang_NoSuchMethodError,
                                         "%s.%s%s",
                                         resolved.getDeclaringKlass().getNameAsString(),
                                         resolved.getNameAsString(),
@@ -2373,7 +2449,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
                     enterLinkageExceptionProfile();
-                    throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                    throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError);
                 }
                 // If all of the following are true, let C be the direct superclass of the current
                 // class:
@@ -2481,7 +2557,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // someone beat us to it, just trust him.
                 return nodes[readCPI(curBCI)];
             } else {
-                return injectQuick(curBCI, new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMeta(), top, curBCI), QUICK);
+                return injectQuick(curBCI, new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMethod().getMeta(), top, curBCI), QUICK);
             }
         });
         return quick.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
@@ -2533,7 +2609,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             dimensions[i] = popInt(frame, top - allocatedDimensions + i);
         }
         Klass component = ((ArrayKlass) klass).getComponentType();
-        GuestAllocator.AllocationChecks.checkCanAllocateMultiArray(getMeta(), component, dimensions, this);
+        GuestAllocator.AllocationChecks.checkCanAllocateMultiArray(getMethod().getMeta(), component, dimensions, this);
         StaticObject value = getAllocator().createNewMultiArray(component, dimensions);
         putObject(frame, top - allocatedDimensions, value);
         return -allocatedDimensions; // Does not include the created (pushed) array.
@@ -2653,7 +2729,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return value;
         }
         enterImplicitExceptionProfile();
-        throw getMeta().throwNullPointerException();
+        throw getMethod().getMeta().throwNullPointerException();
     }
 
     private int checkNonZero(int value) {
@@ -2661,7 +2737,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return value;
         }
         enterImplicitExceptionProfile();
-        throw throwBoundary(getMeta().java_lang_ArithmeticException, "/ by zero");
+        throw throwBoundary(getMethod().getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
     private long checkNonZero(long value) {
@@ -2669,7 +2745,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return value;
         }
         enterImplicitExceptionProfile();
-        throw throwBoundary(getMeta().java_lang_ArithmeticException, "/ by zero");
+        throw throwBoundary(getMethod().getMeta().java_lang_ArithmeticException, "/ by zero");
     }
 
     // endregion Misc. checks
@@ -2700,7 +2776,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
          */
         if (field.isStatic() != (opcode == PUTSTATIC)) {
             enterLinkageExceptionProfile();
-            throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError,
+            throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError,
                             "Expected %s field %s.%s",
                             (opcode == PUTSTATIC) ? "static" : "non-static",
                             field.getDeclaringKlass().getNameAsString(),
@@ -2719,7 +2795,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         if (field.isFinalFlagSet()) {
             if (field.getDeclaringKlass() != getDeclaringKlass()) {
                 enterLinkageExceptionProfile();
-                throw throwBoundary(getMeta().java_lang_IllegalAccessError,
+                throw throwBoundary(getMethod().getMeta().java_lang_IllegalAccessError,
                                 "Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
                                 (opcode == PUTSTATIC) ? "static" : "non-static",
                                 field.getDeclaringKlass().getNameAsString(),
@@ -2735,7 +2811,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             ((opcode == PUTFIELD && !getMethod().isConstructor()) ||
                                             (opcode == PUTSTATIC && !getMethod().isClassInitializer()))) {
                 enterLinkageExceptionProfile();
-                throw throwBoundary(getMeta().java_lang_IllegalAccessError,
+                throw throwBoundary(getMethod().getMeta().java_lang_IllegalAccessError,
                                 "Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
                                 (opcode == PUTSTATIC) ? "static" : "non-static",
                                 field.getDeclaringKlass().getNameAsString(),
@@ -2866,7 +2942,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
          */
         if (field.isStatic() != (opcode == GETSTATIC)) {
             enterLinkageExceptionProfile();
-            throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError,
+            throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError,
                             "Expected %s field %s.%s",
                             (opcode == GETSTATIC) ? "static" : "non-static",
                             field.getDeclaringKlass().getNameAsString(),

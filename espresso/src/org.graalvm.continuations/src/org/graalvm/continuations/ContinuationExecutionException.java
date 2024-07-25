@@ -41,17 +41,19 @@
 
 package org.graalvm.continuations;
 
-import org.graalvm.continuations.Continuation.SuspendCapability;
+import java.io.Serial;
 
 /**
- * A functional interface to delimit the starting point of the continuation. A Continuation can only
- * be suspended if {@link #start(SuspendCapability)} is on the calling stack.
+ * An exception that indicates an exception has escaped through a {@link Continuation}. The original
+ * exception can be obtained through {@link #getCause()}.
+ * <p>
+ * It is similar in usage to {@link java.lang.reflect.InvocationTargetException}, but is an
+ * unchecked exception.
  */
-@FunctionalInterface
-public interface EntryPoint {
-    /**
-     * The starting point of a continuation. The {@code suspendCapability} should only be invoked on
-     * this thread.
-     */
-    void start(SuspendCapability suspendCapability);
+public final class ContinuationExecutionException extends RuntimeException {
+    @Serial private static final long serialVersionUID = -936881631683575124L;
+
+    ContinuationExecutionException(Throwable executionException) {
+        super("An exception escaped the continuation.", executionException);
+    }
 }

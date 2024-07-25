@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 
 /**
  * Exposes accessors to the Espresso frame e.g. operand stack, locals and current BCI.
@@ -58,7 +59,8 @@ public final class EspressoFrame {
     private static final int VALUES_START = 1;
 
     public static FrameDescriptor createFrameDescriptor(int locals, int stack) {
-        int slotCount = locals + stack;
+        // at least one stack slot for the return / exception value
+        int slotCount = locals + Math.max(stack, 1);
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder(slotCount + VALUES_START);
         int bciSlot = builder.addSlot(FrameSlotKind.Static, null, null); // BCI
         assert bciSlot == BCI_SLOT;
@@ -310,11 +312,19 @@ public final class EspressoFrame {
     // endregion Local accessors
 
     static void setBCI(Frame frame, int bci) {
-        frame.setIntStatic(BCI_SLOT, bci + 1);
+        frame.setIntStatic(BCI_SLOT, encodeBCI(bci));
     }
 
     static int getBCI(Frame frame) {
-        return frame.getIntStatic(BCI_SLOT) - 1;
+        return decodeBCI(frame.getIntStatic(BCI_SLOT));
+    }
+
+    public static int encodeBCI(int bci) {
+        return bci + 1;
+    }
+
+    public static int decodeBCI(int encodedBCI) {
+        return encodedBCI - 1;
     }
 
     public static int startingStackOffset(int maxLocals) {
@@ -495,5 +505,29 @@ public final class EspressoFrame {
         }
         // @formatter:on
         return Types.slotCount(type);
+    }
+
+    /**
+     * Mark this frame as being accessed outside its owner.
+     */
+    public static void taint(Frame frame) {
+        if (isTainted(frame)) {
+            return;
+        }
+        Object[] args = frame.getArguments();
+        if (args.length > 0 && args[0] instanceof HostFrameRecord hfr) {
+            hfr.taint();
+        }
+    }
+
+    /**
+     * Returns whether this frame might have been written to outside our control.
+     */
+    public static boolean isTainted(Frame frame) {
+        Object[] args = frame.getArguments();
+        if (args.length > 0 && args[0] instanceof HostFrameRecord hfr) {
+            return hfr.isTainted();
+        }
+        return false;
     }
 }

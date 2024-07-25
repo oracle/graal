@@ -93,6 +93,7 @@ public class EspressoFrameDescriptor {
         assert objects != null && primitives != null;
         assert slotTypes.length == objects.length && slotTypes.length == primitives.length;
         Arrays.fill(objects, StaticObject.NULL);
+        Arrays.fill(primitives, 0);
         for (int slot = 0; slot < slotTypes.length; slot++) {
             importSlot(frame, slot, objects, primitives);
         }
@@ -297,7 +298,7 @@ public class EspressoFrameDescriptor {
 
         public void push(FrameType ft, boolean handle2Slots) {
             JavaKind k = ft.kind();
-            assert k != JavaKind.Illegal;
+            assert k != JavaKind.Illegal || !handle2Slots;
             if (k == JavaKind.Void) {
                 return;
             }
@@ -440,6 +441,7 @@ public class EspressoFrameDescriptor {
         }
 
         private int stackIdx(int slot) {
+            assert slot >= 0;
             return 1 + maxLocals + slot;
         }
 

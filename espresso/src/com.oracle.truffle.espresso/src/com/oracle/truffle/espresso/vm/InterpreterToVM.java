@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -45,6 +46,7 @@ import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
@@ -627,35 +629,43 @@ public final class InterpreterToVM extends ContextAccessImpl {
         if (maxDepth == 0) {
             return frames;
         }
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
-            int count;
+        try {
+            Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
+                int count;
 
-            @Override
-            public Object visitFrame(FrameInstance frameInstance) {
-                if (count >= maxDepth) {
-                    return this; // stop iteration
-                }
-                CallTarget callTarget = frameInstance.getCallTarget();
-                if (callTarget instanceof RootCallTarget) {
-                    RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
-                    if (rootNode instanceof EspressoRootNode) {
-                        EspressoRootNode espressoNode = (EspressoRootNode) rootNode;
-                        Method method = espressoNode.getMethod();
+                @Override
+                public Object visitFrame(FrameInstance frameInstance) {
+                    if (count >= maxDepth) {
+                        return this; // stop iteration
+                    }
+                    CallTarget callTarget = frameInstance.getCallTarget();
+                    if (callTarget instanceof RootCallTarget) {
+                        RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
+                        if (rootNode instanceof EspressoRootNode) {
+                            EspressoRootNode espressoNode = (EspressoRootNode) rootNode;
+                            Method method = espressoNode.getMethod();
 
-                        if (filter.include(method)) {
-                            int bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
-                            frames.add(new VM.EspressoStackElement(method, bci));
-                            count++;
-                        } else {
-                            if (count == 0 && !DefaultHiddenFramesFilter.INSTANCE.include(method)) {
-                                frames.markTopFrameHidden();
+                            if (filter.include(method)) {
+                                int bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
+                                frames.add(new VM.EspressoStackElement(method, bci));
+                                count++;
+                            } else {
+                                if (count == 0 && !DefaultHiddenFramesFilter.INSTANCE.include(method)) {
+                                    frames.markTopFrameHidden();
+                                }
                             }
                         }
                     }
+                    return null;
                 }
-                return null;
-            }
-        });
+            });
+        } catch (VirtualMachineError e) {
+            throw e;
+        } catch (Throwable t) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // Avoid untyped exceptions from iterateFrames during PE
+            throw EspressoError.shouldNotReachHere(t);
+        }
         return frames;
     }
 

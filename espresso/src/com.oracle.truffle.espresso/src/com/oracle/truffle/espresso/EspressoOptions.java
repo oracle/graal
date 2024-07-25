@@ -692,6 +692,11 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> Continuum = new OptionKey<>(false);
 
+    @Option(help = "Forces frame analysis to run for all loaded classes. Used for testing.", //
+                    category = OptionCategory.INTERNAL, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") public static final OptionKey<Boolean> EagerFrameAnalysis = new OptionKey<>(false);
+
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
     public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);

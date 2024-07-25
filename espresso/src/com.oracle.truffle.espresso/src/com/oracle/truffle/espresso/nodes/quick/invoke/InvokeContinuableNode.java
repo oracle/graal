@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.analysis.frame.EspressoFrameDescriptor;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.ContinuableMethodWithBytecode;
 import com.oracle.truffle.espresso.nodes.ContinuableMethodWithBytecodeFactory;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
@@ -76,8 +77,12 @@ public class InvokeContinuableNode extends InvokeQuickNode {
             // Keep rewinding, then push the result.
             return pushResult(frame, resumeNext.execute(next));
         } catch (UnwindContinuationException unwind) {
-            // Small optimization: we can re-use the previously computed frame.
-            // TODO(GR-54336): maybe re-import frame, if something modified its contents
+            // Small optimization: we can re-use the previously computed frame, unless the frame
+            // is tainted.
+            if (EspressoFrame.isTainted(frame)) {
+                fd.importFromFrame(frame, hfr.objects, hfr.primitives);
+                hfr.untaint();
+            }
             hfr.next = unwind.head;
             unwind.head = hfr;
             // Hijack the early return mechanism of OSR to prevent processing of this unwind in the
