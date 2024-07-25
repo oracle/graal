@@ -41,12 +41,76 @@
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.model.SpecializationData;
+
 public class OptimizationDecisionsModel implements PrettyPrintable {
 
-    public record QuickenDecision(String operation, Set<String> specializations) {
+    /**
+     * A quicken model that is designed to be persistable and comparable, so internally uses
+     * strings.
+     */
+    public record QuickenDecision(String operation, Set<String> specializations, List<String> types) {
+
+        public QuickenDecision(OperationModel operationModel, Collection<SpecializationData> specializations) {
+            this(operationModel, specializations, null);
+        }
+
+        public QuickenDecision(OperationModel operationModel, Collection<SpecializationData> specializations, List<TypeMirror> types) {
+            this(operationModel.name, translateSpecializations(specializations), translateTypes(types));
+        }
+
+        private static List<String> translateTypes(List<TypeMirror> types) {
+            if (types == null) {
+                // auto infer types on resolve
+                return null;
+            }
+            return types.stream().map((e) -> ElementUtils.getQualifiedName(e)).toList();
+        }
+
+        private static Set<String> translateSpecializations(Collection<SpecializationData> specializations) {
+            List<String> allIds = specializations.stream().filter((s) -> s.getMethod() != null).map((s) -> s.getMethodName()).toList();
+            Set<String> allIdsSet = new HashSet<>(allIds);
+            return allIdsSet;
+        }
+
+        public ResolvedQuickenDecision resolve(BytecodeDSLModel model) {
+            OperationModel operationModel = model.getOperationByName(operation);
+            List<SpecializationData> specializationModels = operationModel.instruction.nodeData.findSpecializationsByName(this.specializations);
+            ProcessorContext c = ProcessorContext.getInstance();
+            List<TypeMirror> parameterTypes;
+            if (this.types == null) {
+                parameterTypes = null;
+                for (SpecializationData specializationData : specializationModels) {
+                    List<TypeMirror> specializationTypes = operationModel.getSpecializationSignature(specializationData).signature().getDynamicOperandTypes();
+                    if (parameterTypes == null) {
+                        parameterTypes = new ArrayList<>(specializationTypes);
+                    } else {
+                        for (int i = 0; i < specializationTypes.size(); i++) {
+                            TypeMirror type1 = specializationTypes.get(i);
+                            TypeMirror type2 = parameterTypes.get(i);
+                            if (!ElementUtils.typeEquals(type1, type2)) {
+                                parameterTypes.set(i, c.getType(Object.class));
+                            }
+                        }
+                    }
+                }
+            } else {
+                parameterTypes = this.types.stream().map((typeName) -> ElementUtils.fromQualifiedName(typeName)).toList();
+            }
+            return new ResolvedQuickenDecision(operationModel, specializationModels, parameterTypes);
+        }
+    }
+
+    public record ResolvedQuickenDecision(OperationModel operation, List<SpecializationData> specializations, List<TypeMirror> types) {
     }
 
     public static class SuperInstructionDecision {

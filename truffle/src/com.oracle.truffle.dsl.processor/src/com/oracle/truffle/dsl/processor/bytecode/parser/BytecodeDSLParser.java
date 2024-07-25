@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.parser;
 
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.getAnnotationValue;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 import static javax.lang.model.element.Modifier.FINAL;
@@ -93,6 +92,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationK
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.CommonInstructionDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.QuickenDecision;
+import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.ResolvedQuickenDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.SuperInstructionDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
@@ -103,6 +103,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
 import com.oracle.truffle.dsl.processor.library.ExportsLibrary;
 import com.oracle.truffle.dsl.processor.library.ExportsParser;
+import com.oracle.truffle.dsl.processor.model.ImplicitCastData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
@@ -611,9 +612,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 boolean genericReturnBoxingEliminated = model.isBoxingEliminated(operation.instruction.signature.returnType);
                 /*
                  * First we group specializations by boxing eliminated signature. Every
-                 * specialization has at most one boxing signature, so at most we will get one
-                 * boxing signature for each specialization out of this (assuming no implicit
-                 * casts).
+                 * specialization has at most one boxing signature without implicit casts. With
+                 * implict casts one specialization can have multiple.
                  */
                 Map<List<TypeMirror>, List<SpecializationData>> boxingGroups = new LinkedHashMap<>();
                 for (SpecializationData specialization : operation.instruction.nodeData.getReachableSpecializations()) {
@@ -621,49 +621,36 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         continue;
                     }
 
-                    List<TypeMirror> signatureTypes;
-                    if (genericReturnBoxingEliminated) {
+                    List<TypeMirror> baseSignature = operation.getSpecializationSignature(specialization).signature().getDynamicOperandTypes();
+
+                    List<List<TypeMirror>> expandedSignatures = expandBoxingEliminatedImplicitCasts(model, operation.instruction.nodeData.getTypeSystem(), baseSignature);
+
+                    TypeMirror boxingReturnType;
+                    if (specialization.hasUnexpectedResultRewrite()) {
+                        /*
+                         * Unexpected result specializations effectively have an Object return type.
+                         */
+                        boxingReturnType = context.getType(Object.class);
+                    } else if (genericReturnBoxingEliminated) {
                         /*
                          * If the generic instruction already supports boxing elimination with its
                          * return type we do not need to generate boxing elimination signatures for
                          * return types at all.
                          */
-                        signatureTypes = specialization.getSignatureParameters().stream().map((p) -> p.getType()).toList();
+                        boxingReturnType = context.getType(Object.class);
                     } else {
-                        signatureTypes = new ArrayList<>();
-                        for (TypeMirror type : specialization.getTypeSignature()) {
-                            signatureTypes.add(type);
-                        }
+                        boxingReturnType = specialization.getReturnType().getType();
                     }
 
-                    List<TypeMirror> signature = new ArrayList<>();
-
-                    // Omit end constants
-                    int endIndex = signatureTypes.size() - operation.constantOperands.after().size();
-                    for (int i = 0; i < endIndex; i++) {
-                        if (i > 0 && i <= operation.constantOperands.before().size()) {
-                            // Omit begin constants
-                            continue;
-                        }
-
-                        TypeMirror actualType = signatureTypes.get(i);
-                        TypeMirror boxingType;
-                        if (model.isBoxingEliminated(actualType)) {
-                            boxingType = actualType;
-                        } else {
-                            boxingType = context.getType(Object.class);
-                        }
-                        signature.add(boxingType);
+                    for (List<TypeMirror> signature : expandedSignatures) {
+                        signature.add(0, boxingReturnType);
                     }
 
-                    if (specialization.hasUnexpectedResultRewrite()) {
-                        /*
-                         * Unexpected result specializations effectively have an Object return type.
-                         */
-                        signature.set(0, context.getType(Object.class));
+                    for (List<TypeMirror> sig : expandedSignatures.stream().//
+                                    filter((e) -> e.stream().anyMatch(model::isBoxingEliminated)).toList()) {
+                        boxingGroups.computeIfAbsent(sig, (s) -> new ArrayList<>()).add(specialization);
                     }
 
-                    boxingGroups.computeIfAbsent(signature, (s) -> new ArrayList<>()).add(specialization);
                 }
 
                 for (List<TypeMirror> boxingGroup : boxingGroups.keySet().stream().//
@@ -671,45 +658,69 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                 // Sort by number of boxing eliminated types.
                                 sorted((s0, s1) -> {
                                     return Long.compare(countBoxingEliminatedTypes(model, s0), countBoxingEliminatedTypes(model, s1));
-
                                 }).toList()) {
                     List<SpecializationData> specializations = boxingGroups.get(boxingGroup);
-                    List<String> allIds = specializations.stream().filter((s) -> s.getMethod() != null).map((s) -> s.getMethodName()).toList();
-                    quickenings.add(new QuickenDecision(operation.name, new HashSet<>(allIds)));
+                    // filter return type
+                    List<TypeMirror> parameterTypes = boxingGroup.subList(1, boxingGroup.size());
+
+                    quickenings.add(new QuickenDecision(operation, specializations, parameterTypes));
                 }
             }
         }
 
-        Map<String, List<QuickenDecision>> quickeningsByOperation = quickenings.stream().distinct().collect(Collectors.groupingBy(QuickenDecision::operation));
-        for (var groupedDecision : quickeningsByOperation.entrySet()) {
-            String operationName = groupedDecision.getKey();
-            List<QuickenDecision> decisions = groupedDecision.getValue();
-            OperationModel operation = model.getOperationByName(operationName);
-            List<List<SpecializationData>> resolvedQuickenings = decisions.stream().map((d) -> operation.instruction.nodeData.findSpecializationsByName(d.specializations())).sorted(
-                            (s0, s1) -> {
-                                if (s0.size() != s1.size()) {
-                                    // sort by size we want to check single specializations first
-                                    return Integer.compare(s0.size(), s1.size());
-                                }
-                                return 0;
-                            }).toList();
+        List<ResolvedQuickenDecision> resolvedQuickenings = quickenings.stream().sorted((e1, e2) -> {
+            // sort by size we want to check single specializations first
+            return Integer.compare(e1.specializations().size(), e2.specializations().size());
+        }).map((e) -> e.resolve(model)).distinct().toList();
 
-            for (List<SpecializationData> includedSpecializations : resolvedQuickenings) {
+        Map<List<SpecializationData>, List<ResolvedQuickenDecision>> decisionsBySpecializations = //
+                        resolvedQuickenings.stream().collect(Collectors.groupingBy((e) -> e.specializations(),
+                                        LinkedHashMap::new,
+                                        Collectors.toList()));
+
+        for (var entry : decisionsBySpecializations.entrySet()) {
+            List<SpecializationData> includedSpecializations = entry.getKey();
+            List<ResolvedQuickenDecision> decisions = entry.getValue();
+
+            for (ResolvedQuickenDecision quickening : decisions) {
                 assert !includedSpecializations.isEmpty();
-                MessageContainer customOperation = includedSpecializations.get(0).getNode();
+                NodeData node = quickening.operation().instruction.nodeData;
 
                 String name;
-                if (includedSpecializations.size() == operation.instruction.nodeData.getSpecializations().size()) {
+                if (includedSpecializations.size() == quickening.operation().instruction.nodeData.getSpecializations().size()) {
                     // all specializations included
                     name = "#";
                 } else {
                     name = String.join("#", includedSpecializations.stream().map((s) -> s.getId()).toList());
                 }
+
+                if (decisions.size() > 1) {
+                    // more than one decisions for this combination of specializations
+                    for (TypeMirror type : quickening.types()) {
+                        if (model.isBoxingEliminated(type)) {
+                            name += "$" + ElementUtils.getSimpleName(type);
+                        } else {
+                            name += "$Object";
+                        }
+                    }
+                }
+
                 List<ExecutableElement> includedSpecializationElements = includedSpecializations.stream().map(s -> s.getMethod()).toList();
-                List<SpecializationSignature> includedSpecializationSignatures = CustomOperationParser.parseSignatures(includedSpecializationElements, customOperation, operation.constantOperands);
-                assert !customOperation.hasErrors();
-                Signature signature = SpecializationSignatureParser.createPolymorphicSignature(includedSpecializationSignatures, includedSpecializationElements, customOperation);
-                InstructionModel baseInstruction = operation.instruction;
+                List<SpecializationSignature> includedSpecializationSignatures = CustomOperationParser.parseSignatures(includedSpecializationElements, node,
+                                quickening.operation().constantOperands);
+
+                Signature signature = SpecializationSignatureParser.createPolymorphicSignature(includedSpecializationSignatures,
+                                includedSpecializationElements, node);
+
+                // inject custom signatures.
+                for (int i = 0; i < quickening.types().size(); i++) {
+                    TypeMirror type = quickening.types().get(i);
+                    if (model.isBoxingEliminated(type)) {
+                        signature = signature.specializeOperandType(i, type);
+                    }
+                }
+
+                InstructionModel baseInstruction = quickening.operation().instruction;
                 InstructionModel quickenedInstruction = model.quickenInstruction(baseInstruction, signature, ElementUtils.firstLetterUpperCase(name));
                 quickenedInstruction.filteredSpecializations = includedSpecializations;
             }
@@ -877,11 +888,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             specializedInstruction.specializedType = boxedType;
 
                             InstructionModel argumentQuickening = model.quickenInstruction(specializedInstruction,
-                                            new Signature(context.getType(void.class), List.of(boxedType)),
-                                            "unboxed");
-                            argumentQuickening.returnTypeQuickening = true;
+                                            instruction.signature.specializeOperandType(0, boxedType),
+                                            ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxedType)));
+                            argumentQuickening.returnTypeQuickening = false;
                             argumentQuickening.specializedType = boxedType;
-
                         }
 
                         genericQuickening = model.quickenInstruction(instruction,
@@ -934,10 +944,43 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         return;
     }
 
+    private List<List<TypeMirror>> expandBoxingEliminatedImplicitCasts(BytecodeDSLModel model, TypeSystemData typeSystem, List<TypeMirror> signatureTypes) {
+        List<List<TypeMirror>> expandedSignatures = new ArrayList<>();
+        expandedSignatures.add(new ArrayList<>());
+
+        for (TypeMirror actualType : signatureTypes) {
+            TypeMirror boxingType;
+            if (model.isBoxingEliminated(actualType)) {
+                boxingType = actualType;
+            } else {
+                boxingType = context.getType(Object.class);
+            }
+            List<ImplicitCastData> implicitCasts = typeSystem.lookupByTargetType(actualType);
+            List<List<TypeMirror>> newSignatures = new ArrayList<>();
+            for (ImplicitCastData cast : implicitCasts) {
+                if (model.isBoxingEliminated(cast.getTargetType())) {
+                    for (List<TypeMirror> existingSignature : expandedSignatures) {
+                        List<TypeMirror> appended = new ArrayList<>(existingSignature);
+                        appended.add(cast.getSourceType());
+                        newSignatures.add(appended);
+                    }
+                    break;
+                }
+            }
+            for (List<TypeMirror> s : expandedSignatures) {
+                List<TypeMirror> appended = new ArrayList<>(s);
+                appended.add(boxingType);
+                newSignatures.add(appended);
+            }
+            expandedSignatures = newSignatures;
+        }
+        return expandedSignatures;
+    }
+
     private TypeSystemData parseTypeSystemReference(TypeElement typeElement) {
         AnnotationMirror typeSystemRefMirror = ElementUtils.findAnnotationMirror(typeElement, types.TypeSystemReference);
         if (typeSystemRefMirror != null) {
-            TypeMirror typeSystemType = getAnnotationValue(TypeMirror.class, typeSystemRefMirror, "value");
+            TypeMirror typeSystemType = ElementUtils.getAnnotationValue(TypeMirror.class, typeSystemRefMirror, "value");
             if (typeSystemType instanceof DeclaredType) {
                 return context.parseIfAbsent((TypeElement) ((DeclaredType) typeSystemType).asElement(), TypeSystemParser.class, (e) -> {
                     TypeSystemParser parser = new TypeSystemParser();
@@ -1065,7 +1108,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             Set<Element> processedElements = new HashSet<>();
             if (node != null) {
                 // order map for determinism
-                Map<String, Set<String>> grouping = new LinkedHashMap<>();
+                Map<String, Set<SpecializationData>> grouping = new LinkedHashMap<>();
                 for (SpecializationData specialization : node.getSpecializations()) {
                     if (specialization.getMethod() == null) {
                         continue;
@@ -1091,7 +1134,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         }
 
                         seenNames.computeIfAbsent(name, (v) -> new ArrayList<>()).add(specialization);
-                        grouping.computeIfAbsent(name, (v) -> new LinkedHashSet<>()).add(specialization.getMethodName());
+                        grouping.computeIfAbsent(name, (v) -> new LinkedHashSet<>()).add(specialization);
                     }
 
                     for (var entry : seenNames.entrySet()) {
@@ -1104,19 +1147,19 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
                 for (var entry : grouping.entrySet()) {
                     if (entry.getKey().equals("")) {
-                        for (String specialization : entry.getValue()) {
-                            decisions.add(new QuickenDecision(operation.name, Set.of(specialization)));
+                        for (SpecializationData specialization : entry.getValue()) {
+                            decisions.add(new QuickenDecision(operation, Set.of(specialization)));
                         }
                     } else {
-                        if (entry.getValue().size() <= 1) {
-                            SpecializationData s = node.findSpecializationsByName(entry.getValue()).iterator().next();
+                        if (entry.getValue().size() == 1) {
+                            SpecializationData s = entry.getValue().iterator().next();
                             model.addError(s.getMethod(), "@%s with name '%s' does only match a single quickening, but must match more than one. " +
                                             "Specify additional quickenings with the same name or remove the value from the annotation to resolve this.",
                                             ElementUtils.getSimpleName(types.ForceQuickening),
                                             entry.getKey());
                             continue;
                         }
-                        decisions.add(new QuickenDecision(operation.name, entry.getValue()));
+                        decisions.add(new QuickenDecision(operation, entry.getValue()));
                     }
                 }
             }
@@ -1218,7 +1261,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 break;
             }
             case "Quicken": {
-                result.quickenDecisions.add(new QuickenDecision(decision.getString("operation"), Set.of(jsonGetStringArray(decision, "specializations"))));
+                result.quickenDecisions.add(new QuickenDecision(decision.getString("operation"), Set.of(jsonGetStringArray(decision, "specializations")), null));
                 break;
             }
             default:

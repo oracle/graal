@@ -72,7 +72,7 @@ public class SpecializationSignatureParser {
      * to the regular signature information, this record includes the operand names declared by the
      * specialization.
      */
-    record SpecializationSignature(Signature signature, List<String> operandNames) {
+    public record SpecializationSignature(Signature signature, List<String> operandNames) {
     }
 
     final ProcessorContext context;

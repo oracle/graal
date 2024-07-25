@@ -260,7 +260,7 @@ public class TagTest extends AbstractInstructionTest {
 
         assertInstructions(node,
                         "load.constant$Int",
-                        "store.local$Int$unboxed",
+                        "store.local$Int$Int",
                         "load.local$Int",
                         "return");
 
@@ -287,7 +287,7 @@ public class TagTest extends AbstractInstructionTest {
         assertInstructions(node,
                         "tag.enter",
                         "load.constant$Int",
-                        "store.local$Int$unboxed",
+                        "store.local$Int$Int",
                         "tag.leaveVoid",
                         "tag.enter",
                         "load.local$Int$unboxed",
@@ -640,7 +640,7 @@ public class TagTest extends AbstractInstructionTest {
 
         assertInstructions(node,
                         "load.constant$Int",
-                        "store.local$Int$unboxed",
+                        "store.local$Int$Int",
                         "load.local$Int",
                         "return");
 
@@ -666,7 +666,7 @@ public class TagTest extends AbstractInstructionTest {
                         "tag.enter",
                         "load.constant$Int",
                         "tag.leave$Int$unboxed",
-                        "store.local$Int$unboxed",
+                        "store.local$Int$Int",
                         "tag.leaveVoid",
                         "tag.enter",
                         "tag.enter",

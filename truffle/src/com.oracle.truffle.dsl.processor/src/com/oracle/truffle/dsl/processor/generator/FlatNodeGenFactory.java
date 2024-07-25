@@ -8222,6 +8222,28 @@ public class FlatNodeGenFactory {
                         StateQuery.create(SpecializationActive.class, node.getReachableSpecializations()));
     }
 
+    public CodeTree createIsImplicitTypeStateCheck(FrameState frameState, TypeMirror targetType, TypeMirror specializationType, int signatureIndex) {
+        List<ImplicitCastData> casts = typeSystem.lookupByTargetType(specializationType);
+        if (casts.isEmpty()) {
+            return null;
+        }
+
+        long mask = 1;
+        if (!ElementUtils.typeEquals(targetType, specializationType)) {
+            for (ImplicitCastData cast : casts) {
+                mask = mask << 1;
+                if (ElementUtils.typeEquals(cast.getSourceType(), targetType)) {
+                    break;
+                }
+            }
+        }
+        CodeTreeBuilder b = new CodeTreeBuilder(null);
+        b.tree(multiState.createExtractInteger(frameState, StateQuery.create(ImplicitCastState.class, new TypeGuard(typeSystem, specializationType, signatureIndex))));
+        b.string(" == ");
+        b.string(BitSet.formatMask(mask, casts.size() + 1));
+        return b.build();
+    }
+
     public void addSpecializationStateParametersTo(CodeExecutableElement method, FrameState frameState) {
         StateQuery query = StateQuery.create(SpecializationActive.class, node.getReachableSpecializations());
         for (BitSet set : multiState.getSets()) {

@@ -42,9 +42,13 @@ package com.oracle.truffle.dsl.processor.bytecode.model;
 
 import java.util.List;
 
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.bytecode.parser.CustomOperationParser;
+import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
 public class OperationModel implements PrettyPrintable {
     public enum OperationKind {
@@ -204,6 +208,18 @@ public class OperationModel implements PrettyPrintable {
 
     public void setInstrumentationIndex(int instrumentationIndex) {
         this.instrumentationIndex = instrumentationIndex;
+    }
+
+    public SpecializationSignature getSpecializationSignature(SpecializationData specialization) {
+        return getSpecializationSignature(List.of(specialization));
+    }
+
+    public SpecializationSignature getSpecializationSignature(List<SpecializationData> specializations) {
+        List<ExecutableElement> methods = specializations.stream().map(s -> s.getMethod()).toList();
+        SpecializationSignature includedSpecializationSignatures = CustomOperationParser.parseSignatures(methods,
+                        specializations.get(0).getNode(),
+                        constantOperands).get(0);
+        return includedSpecializationSignatures;
     }
 
     public OperationModel setTransparent(boolean isTransparent) {

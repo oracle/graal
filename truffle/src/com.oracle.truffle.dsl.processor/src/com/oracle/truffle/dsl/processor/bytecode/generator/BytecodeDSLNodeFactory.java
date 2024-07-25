@@ -11059,13 +11059,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration(arrayOf(type(byte.class)), "copy", "Arrays.copyOf(original, original.length)");
 
             Map<Boolean, List<InstructionModel>> partitionedByIsQuickening = model.getInstructions().stream() //
-                            .collect(Collectors.partitioningBy(InstructionModel::isQuickening));
+                            .sorted((e1, e2) -> e1.name.compareTo(e2.name)).collect(Collectors.partitioningBy(InstructionModel::isQuickening));
+
             List<Entry<Integer, List<InstructionModel>>> regularGroupedByLength = partitionedByIsQuickening.get(false).stream() //
                             .collect(Collectors.groupingBy(InstructionModel::getInstructionLength)).entrySet() //
                             .stream().sorted(Comparator.comparing(entry -> entry.getKey())) //
                             .toList();
+
             List<Entry<InstructionModel, List<InstructionModel>>> quickenedGroupedByQuickeningRoot = partitionedByIsQuickening.get(true).stream() //
-                            .collect(Collectors.groupingBy(InstructionModel::getQuickeningRoot)).entrySet() //
+                            .collect(Collectors.groupingBy(InstructionModel::getQuickeningRoot, LinkedHashMap::new, Collectors.toList())).entrySet() //
                             .stream().sorted(Comparator.comparing((Entry<InstructionModel, List<InstructionModel>> entry) -> entry.getKey().isCustomInstruction()) //
                                             .thenComparing(entry -> entry.getKey().getInstructionLength())) //
                             .toList();
@@ -13679,7 +13681,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 elseIf = b.startIf(elseIf);
                 b.string("local").instanceOf(ElementUtils.boxType(boxingType)).end().startBlock();
 
+                // instruction for unsuccessful operand quickening
                 InstructionModel boxedInstruction = typeToSpecialization.get(boxingType);
+                // instruction for successful operand quickening
                 InstructionModel unboxedInstruction = boxedInstruction.quickenedInstructions.get(0);
 
                 b.startSwitch().string("oldKind").end().startBlock();

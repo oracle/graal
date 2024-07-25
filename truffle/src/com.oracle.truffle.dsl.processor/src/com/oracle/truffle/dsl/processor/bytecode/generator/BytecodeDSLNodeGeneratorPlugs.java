@@ -58,6 +58,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.parser.BytecodeDSLParser;
+import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecutionResult;
@@ -69,6 +70,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.model.ImplicitCastData;
 import com.oracle.truffle.dsl.processor.model.NodeChildData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
@@ -129,47 +131,77 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         return model.isBoxingEliminated(type);
     }
 
-    private boolean buildChildExecution(CodeTreeBuilder b, FrameState frameState, String frame, int idx) {
-        int index = idx;
-
-        if (index < instruction.signature.constantOperandsBeforeCount) {
-            TypeMirror constantOperandType = instruction.operation.constantOperands.before().get(index).type();
+    private boolean buildChildExecution(CodeTreeBuilder b, FrameState frameState, String frame, int specializationIndex) {
+        if (specializationIndex < instruction.signature.constantOperandsBeforeCount) {
+            TypeMirror constantOperandType = instruction.operation.constantOperands.before().get(specializationIndex).type();
             if (!ElementUtils.isObject(constantOperandType)) {
                 b.cast(constantOperandType);
             }
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
-            InstructionImmediate imm = imms.get(index);
+            InstructionImmediate imm = imms.get(specializationIndex);
             b.tree(readConst(readImmediate("$bc", "$bci", imm), "$bytecode.constants"));
             return false;
         }
 
-        index -= instruction.signature.constantOperandsBeforeCount;
-        if (index < instruction.signature.dynamicOperandCount) {
-            TypeMirror targetType = instruction.signature.getSpecializedType(index);
-            TypeMirror genericType = instruction.signature.getGenericType(index);
-            TypeMirror expectedType = instruction.isQuickening() ? targetType : genericType;
-            String stackIndex = "$sp - " + (instruction.signature.dynamicOperandCount - index);
-            if (instruction.getQuickeningRoot().needsBoxingElimination(model, index)) {
+        int operandIndex = specializationIndex - instruction.signature.constantOperandsBeforeCount;
+        int operandCount = instruction.signature.dynamicOperandCount;
+        if (operandIndex < operandCount) {
+            TypeMirror specializedType = instruction.signature.getSpecializedType(operandIndex);
+            TypeMirror genericType = instruction.signature.getGenericType(operandIndex);
+            TypeMirror specializationTargetType;
+            TypeMirror expectedType = instruction.isQuickening() ? specializedType : genericType;
+
+            if (instruction.isQuickening()) {
+                if (instruction.filteredSpecializations != null) {
+                    specializationTargetType = instruction.getSpecializationSignature().signature().getDynamicOperandTypes().get(operandIndex);
+                } else {
+                    specializationTargetType = specializedType;
+                }
+                expectedType = specializedType;
+            } else {
+                specializationTargetType = genericType;
+                expectedType = genericType;
+            }
+
+            String stackIndex = "$sp - " + (operandCount - operandIndex);
+            ImplicitCastData cast = instruction.nodeData.getTypeSystem().lookupCast(expectedType, specializationTargetType);
+
+            if (instruction.getQuickeningRoot().needsBoxingElimination(model, operandIndex)) {
                 if (frameState.getMode().isFastPath()) {
                     b.startStatement();
-                    if (ElementUtils.needsCastTo(expectedType, targetType)) {
-                        b.startStaticCall(bytecodeFactory.lookupExpectMethod(expectedType, targetType));
+                    if (!ElementUtils.typeEquals(expectedType, specializedType)) {
+                        b.startStaticCall(bytecodeFactory.lookupExpectMethod(expectedType, specializedType));
                     }
+                    if (cast != null) {
+                        b.startStaticCall(cast.getMethod());
+                    }
+
                     BytecodeDSLNodeFactory.startExpectFrameUnsafe(b, frame, expectedType);
                     b.string(stackIndex);
                     b.end();
-                    if (ElementUtils.needsCastTo(expectedType, targetType)) {
+
+                    if (cast != null) {
+                        b.end();
+                    }
+
+                    if (!ElementUtils.typeEquals(expectedType, specializedType)) {
                         b.end();
                     }
                     b.end();
                     return true;
                 } else {
+                    if (cast != null) {
+                        b.startStaticCall(cast.getMethod());
+                    }
                     if (!ElementUtils.isObject(genericType)) {
-                        b.cast(targetType);
+                        b.cast(specializedType);
                     }
                     BytecodeDSLNodeFactory.startGetFrameUnsafe(b, frame, null);
                     b.string(stackIndex);
                     b.end();
+                    if (cast != null) {
+                        b.end();
+                    }
                     return false;
                 }
             } else {
@@ -179,23 +211,22 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 b.string("ACCESS.uncheckedGetObject(" + frame + ", " + stackIndex + ")");
                 return false;
             }
-
         }
 
-        index -= instruction.signature.dynamicOperandCount;
-        if (index < instruction.signature.constantOperandsAfterCount) {
-            TypeMirror constantOperandType = instruction.operation.constantOperands.after().get(index).type();
+        int constantOperandAfterIndex = specializationIndex - instruction.signature.constantOperandsBeforeCount - instruction.signature.dynamicOperandCount;
+        int constantOperandAfterCount = instruction.signature.constantOperandsAfterCount;
+        if (constantOperandAfterIndex < constantOperandAfterCount) {
+            TypeMirror constantOperandType = instruction.operation.constantOperands.after().get(constantOperandAfterIndex).type();
             if (!ElementUtils.isObject(constantOperandType)) {
                 b.cast(constantOperandType);
             }
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
-            InstructionImmediate imm = imms.get(instruction.signature.constantOperandsBeforeCount + index);
+            InstructionImmediate imm = imms.get(instruction.signature.constantOperandsBeforeCount + constantOperandAfterIndex);
             b.tree(readConst(readImmediate("$bc", "$bci", imm), "$bytecode.constants"));
             return false;
         }
 
-        index -= instruction.signature.constantOperandsAfterCount;
-        throw new AssertionError("index=" + index + ", signature=" + instruction.signature);
+        throw new AssertionError("index=" + specializationIndex + ", signature=" + instruction.signature);
     }
 
     public CodeExecutableElement getQuickenMethod() {
@@ -316,6 +347,23 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             CodeTree activeCheck = factory.createOnlyActive(frameState, quickening.filteredSpecializations);
             b.tree(factory.createOnlyActive(frameState, quickening.filteredSpecializations));
             String sep = activeCheck.isEmpty() ? "" : " && ";
+
+            SpecializationSignature specializationSignature = quickening.operation.getSpecializationSignature(quickening.filteredSpecializations);
+            List<TypeMirror> dynamicOperandTypes = specializationSignature.signature().getDynamicOperandTypes();
+
+            for (int valueIndex : boxingEliminated) {
+                TypeMirror specializedType = quickening.signature.getSpecializedType(valueIndex);
+                TypeMirror specializationTargetType = dynamicOperandTypes.get(valueIndex);
+                CodeTree check = factory.createIsImplicitTypeStateCheck(frameState, specializedType, specializationTargetType,
+                                valueIndex + specializationSignature.signature().constantOperandsBeforeCount);
+                if (check == null) {
+                    continue;
+                }
+                b.newLine().string("  ", sep, "(");
+                sep = " && ";
+                b.tree(check);
+                b.string(")");
+            }
 
             for (int valueIndex : boxingEliminated) {
                 TypeMirror specializedType = quickening.signature.getSpecializedType(valueIndex);

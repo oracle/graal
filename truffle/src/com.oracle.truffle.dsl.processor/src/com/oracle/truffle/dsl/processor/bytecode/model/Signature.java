@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -74,9 +75,43 @@ public final class Signature {
         this.constantOperandsAfterCount = constantOperandsAfterCount;
     }
 
-    public TypeMirror getGenericType(int i) {
-        assert i >= 0 && i < dynamicOperandCount;
-        if (isVariadicParameter(i)) {
+    private Signature(Signature copy, List<TypeMirror> operandTypes) {
+        if (operandTypes.size() != copy.operandTypes.size()) {
+            throw new IllegalArgumentException();
+        }
+        this.returnType = copy.returnType;
+        this.operandTypes = operandTypes;
+        this.isVariadic = copy.isVariadic;
+        this.isVoid = copy.isVoid;
+        this.constantOperandsBeforeCount = copy.constantOperandsBeforeCount;
+        this.dynamicOperandCount = copy.dynamicOperandCount;
+        this.constantOperandsAfterCount = copy.constantOperandsAfterCount;
+    }
+
+    public List<TypeMirror> getDynamicOperandTypes() {
+        return operandTypes.subList(constantOperandsBeforeCount, constantOperandsBeforeCount + dynamicOperandCount);
+    }
+
+    public Signature specializeOperandType(int dynamicOperandIndex, TypeMirror newType) {
+        if (dynamicOperandIndex < 0 || dynamicOperandIndex >= dynamicOperandCount) {
+            throw new IllegalArgumentException("Invalid operand index " + dynamicOperandIndex);
+        }
+
+        TypeMirror type = getSpecializedType(dynamicOperandIndex);
+        if (ElementUtils.typeEquals(type, newType)) {
+            return this;
+        }
+
+        List<TypeMirror> newOperandTypes = new ArrayList<>(operandTypes);
+        newOperandTypes.set(dynamicOperandIndex, newType);
+        return new Signature(this, newOperandTypes);
+    }
+
+    public TypeMirror getGenericType(int dynamicOperandIndex) {
+        if (dynamicOperandIndex < 0 || dynamicOperandIndex >= dynamicOperandCount) {
+            throw new IllegalArgumentException("Invalid operand index " + dynamicOperandIndex);
+        }
+        if (isVariadicParameter(dynamicOperandIndex)) {
             return context.getType(Object[].class);
         }
         return context.getType(Object.class);
@@ -90,12 +125,14 @@ public final class Signature {
         }
     }
 
-    public TypeMirror getSpecializedType(int i) {
-        assert i > 0 && i < dynamicOperandCount;
-        if (isVariadicParameter(i)) {
+    public TypeMirror getSpecializedType(int dynamicOperandIndex) {
+        if (dynamicOperandIndex < 0 && dynamicOperandIndex >= dynamicOperandCount) {
+            throw new IllegalArgumentException("Invalid operand index " + dynamicOperandIndex);
+        }
+        if (isVariadicParameter(dynamicOperandIndex)) {
             return context.getType(Object[].class);
         }
-        return operandTypes.get(constantOperandsBeforeCount + i);
+        return operandTypes.get(constantOperandsBeforeCount + dynamicOperandIndex);
     }
 
     public boolean isVariadicParameter(int i) {

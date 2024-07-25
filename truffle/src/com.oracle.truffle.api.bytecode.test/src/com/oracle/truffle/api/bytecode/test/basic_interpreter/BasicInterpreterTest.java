@@ -1138,7 +1138,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         AbstractInstructionTest.assertInstructions(outer,
                         "load.constant$Long",
-                        "store.local$Long$unboxed",
+                        "store.local$Long$Long",
                         "load.argument$Boolean",
                         "branch.false$Boolean",
                         "load.constant",
@@ -1155,7 +1155,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         AbstractInstructionTest.assertInstructions(outer,
                         "load.constant$Long",
-                        "store.local$Long$unboxed",
+                        "store.local$Long$Long",
                         "load.argument$Boolean",
                         "branch.false$Boolean",
                         "load.constant",

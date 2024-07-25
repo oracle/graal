@@ -56,6 +56,7 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.LocalSetter;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
@@ -417,7 +418,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
         assertInstructions(node,
                         "load.constant$Long",
-                        "store.local$Long$unboxed",
+                        "store.local$Long$Long",
                         "load.local$Long$unboxed",
                         "c.Abs$GreaterZero",
                         "return");
@@ -426,7 +427,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
         assertInstructions(node,
                         "load.constant$Long",
-                        "store.local$Long$unboxed",
+                        "store.local$Long$Long",
                         "load.local$Long$unboxed",
                         "c.Abs$GreaterZero",
                         "return");
@@ -465,7 +466,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
         assertInstructions(node,
                         "load.argument$Long",
-                        "store.local$Long$unboxed",
+                        "store.local$Long$Long",
                         "load.local$Long$unboxed",
                         "c.Abs$LessThanZero",
                         "return");
@@ -519,7 +520,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
         assertInstructions(node,
                         "load.argument$Boolean",
-                        "store.local$Boolean$unboxed",
+                        "store.local$Boolean$Boolean",
                         "load.argument",
                         "store.local$generic",
                         "load.local$generic",
@@ -583,7 +584,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "load.argument$Boolean",
                         "branch.false$Boolean",
                         "load.constant$Int",
-                        "store.local$Int$unboxed",
+                        "store.local$Int$Int",
                         "branch",
                         "load.local",
                         "pop",
@@ -602,7 +603,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "load.argument$Boolean",
                         "branch.false$Boolean",
                         "load.constant$Int",
-                        "store.local$Int$unboxed",
+                        "store.local$Int$Int",
                         "branch",
                         "load.local$generic",
                         "pop$generic",
@@ -656,11 +657,11 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
         assertInstructions(node,
                         "load.argument$Long",
-                        "store.local$Long$unboxed",
+                        "store.local$Long$Long",
                         "load.argument$Int",
-                        "store.local$Int$unboxed",
+                        "store.local$Int$Int",
                         "load.argument$Boolean",
-                        "store.local$Boolean$unboxed",
+                        "store.local$Boolean$Boolean",
                         "c.GetLocals",
                         "return");
 
@@ -670,7 +671,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "load.argument",
                         "store.local$generic",
                         "load.argument$Int",
-                        "store.local$Int$unboxed",
+                        "store.local$Int$Int",
                         "load.argument",
                         "store.local$generic",
                         "c.GetLocals",
@@ -715,9 +716,9 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
         assertInstructions(node,
                         "load.argument$Long",
-                        "store.local$Long$unboxed",
+                        "store.local$Long$Long",
                         "load.argument$Int",
-                        "store.local$Int$unboxed",
+                        "store.local$Int$Int",
                         "load.argument$Int",
                         "c.GetLocal$Perform",
                         "return");
@@ -728,7 +729,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "load.argument",
                         "store.local$generic",
                         "load.argument$Int",
-                        "store.local$Int$unboxed",
+                        "store.local$Int$Int",
                         "load.argument$Int",
                         "c.GetLocal$Perform",
                         "return");

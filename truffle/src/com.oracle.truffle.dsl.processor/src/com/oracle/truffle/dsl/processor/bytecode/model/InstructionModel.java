@@ -48,6 +48,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
@@ -272,6 +273,10 @@ public final class InstructionModel implements PrettyPrintable {
             return false;
         }
         return epilogReturn.operation.instruction == this;
+    }
+
+    public SpecializationSignature getSpecializationSignature() {
+        return operation.getSpecializationSignature(filteredSpecializations);
     }
 
     public boolean isEpilogExceptional() {

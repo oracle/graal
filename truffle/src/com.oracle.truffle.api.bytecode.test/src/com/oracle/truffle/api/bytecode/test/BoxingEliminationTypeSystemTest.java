@@ -48,20 +48,25 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ConstantOperand;
+import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.LocalSetter;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.test.TypeSystemTest.EmptyTypeSystem;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-// TODO this test should be rewritten once we have something working for boxing elimination.
-@Ignore
 public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
 
     private static final BytecodeDSLTestLanguage LANGUAGE = null;
@@ -72,50 +77,175 @@ public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
     }
 
     @Test
+    @Ignore // TODO not yet properly supported. currently goes generic but should specialize to long
+    public void testLocals() {
+        BoxingEliminationTypeSystemRootNode node = (BoxingEliminationTypeSystemRootNode) parse(b -> {
+            b.beginRoot(LANGUAGE);
+            BytecodeLocal l0 = b.createLocal();
+
+            b.beginStoreLocal(l0);
+            b.emitLoadArgument(0);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(l0);
+            b.endReturn();
+
+            b.endRoot();
+        }).getRootNode();
+        node.getBytecodeNode().setUncachedThreshold(0);
+
+        assertInstructions(node,
+                        "load.argument",
+                        "store.local",
+                        "load.local",
+                        "return");
+        assertQuickenings(node, 0, 0);
+
+        assertEquals(42, node.getCallTarget().call(42));
+        assertQuickenings(node, 3, 2);
+
+        assertInstructions(node,
+                        "load.argument$Int",
+                        "store.local$Int$Int",
+                        "load.local$Int",
+                        "return");
+
+        assertEquals(42L, node.getCallTarget().call(42L));
+
+        assertInstructions(node,
+                        "load.argument",
+                        "store.local$Long",
+                        "load.local$Long",
+                        "return");
+
+        assertQuickenings(node, 2, 1);
+
+        assertInstructions(node,
+                        "load.argument$Int",
+                        "c.LongConsumer$Long$int",
+                        "return");
+
+        assertEquals(42L, node.getCallTarget().call(42L));
+        var stable = assertQuickenings(node, 5, 2);
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.LongConsumer",
+                        "return");
+
+        assertStable(stable, node, 42L);
+        assertStable(stable, node, -42);
+    }
+
+    @Test
+    public void testCustomLocals() {
+        BoxingEliminationTypeSystemRootNode node = (BoxingEliminationTypeSystemRootNode) parse(b -> {
+            b.beginRoot(LANGUAGE);
+            BytecodeLocal l0 = b.createLocal();
+
+            b.beginStoreLocalCustom(l0);
+            b.emitLoadArgument(0);
+            b.endStoreLocalCustom();
+
+            b.beginReturn();
+            b.beginLongConsumer();
+            b.emitLoadLocal(l0);
+            b.endLongConsumer();
+            b.endReturn();
+
+            b.endRoot();
+        }).getRootNode();
+        node.getBytecodeNode().setUncachedThreshold(0);
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.StoreLocalCustom",
+                        "load.local",
+                        "c.LongConsumer",
+                        "return");
+        assertQuickenings(node, 0, 0);
+
+        assertEquals(BoxingEliminationTypeSystem.INT_AS_LONG_VALUE, node.getCallTarget().call(42));
+        assertQuickenings(node, 5, 3);
+
+        assertInstructions(node,
+                        "load.argument$Int",
+                        "c.StoreLocalCustom$Int",
+                        "load.local$Int$unboxed",
+                        "c.LongConsumer$Long$int",
+                        "return");
+
+        assertEquals(42L, node.getCallTarget().call(42L));
+
+        assertInstructions(node,
+                        "load.argument$Long",
+                        "c.StoreLocalCustom$Long",
+                        "load.local$Long",
+                        "c.LongConsumer",
+                        "return");
+
+        assertEquals(BoxingEliminationTypeSystem.INT_AS_LONG_VALUE, node.getCallTarget().call(42));
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.StoreLocalCustom$Int#Long",
+                        "load.local$Long",
+                        "c.LongConsumer",
+                        "return");
+
+        assertEquals(42L, node.getCallTarget().call(42L));
+        var stable = assertQuickenings(node, 14, 7);
+
+        assertStable(stable, node, 42L);
+        assertStable(stable, node, 42);
+    }
+
+    @Test
     public void testCastConstantIntToLong() {
         BoxingEliminationTypeSystemRootNode node = (BoxingEliminationTypeSystemRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
             b.beginReturn();
             b.beginLongConsumer();
-            b.emitLoadConstant(42);
+            b.emitLoadArgument(0);
             b.endLongConsumer();
             b.endReturn();
             b.endRoot();
         }).getRootNode();
+        node.getBytecodeNode().setUncachedThreshold(0);
 
         assertInstructions(node,
-                        "load.constant",
+                        "load.argument",
                         "c.LongConsumer",
                         "return");
         assertQuickenings(node, 0, 0);
 
-        assertEquals(BoxingEliminationTypeSystem.INT_AS_LONG_VALUE, node.getCallTarget().call());
+        assertEquals(BoxingEliminationTypeSystem.INT_AS_LONG_VALUE, node.getCallTarget().call(42));
         assertQuickenings(node, 2, 1);
 
         assertInstructions(node,
-                        "load.constant$Int",
-                        "c.LongConsumer$Default",
+                        "load.argument$Int",
+                        "c.LongConsumer$Long$int",
                         "return");
 
-        assertEquals(BoxingEliminationTypeSystem.INT_AS_LONG_VALUE, node.getCallTarget().call());
-        assertQuickenings(node, 4, 2);
+        assertEquals(BoxingEliminationTypeSystem.INT_AS_LONG_VALUE, node.getCallTarget().call(41));
+        assertQuickenings(node, 2, 1);
 
         assertInstructions(node,
-                        "load.argument$Long",
-                        "c.Abs$GreaterZero#LessThanZero",
+                        "load.argument$Int",
+                        "c.LongConsumer$Long$int",
                         "return");
 
-        assertEquals("42", node.getCallTarget().call("42"));
-        var stable = assertQuickenings(node, 7, 3);
+        assertEquals(42L, node.getCallTarget().call(42L));
+        var stable = assertQuickenings(node, 5, 2);
 
         assertInstructions(node,
                         "load.argument",
-                        "c.Abs",
+                        "c.LongConsumer",
                         "return");
 
         assertStable(stable, node, 42L);
-        assertStable(stable, node, "42");
-        assertStable(stable, node, -42L);
+        assertStable(stable, node, -42);
     }
 
     @GenerateBytecode(//
@@ -140,9 +270,15 @@ public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
         @Operation
         public static final class LongConsumer {
             @Specialization
-            public static long doDefault(long v) {
+            public static long doLong(long v) {
                 return v;
             }
+
+            @Specialization
+            public static long doByte(byte v) {
+                return v;
+            }
+
         }
 
         @Operation
@@ -166,6 +302,35 @@ public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
             }
         }
 
+        @Operation
+        @ConstantOperand(type = LocalSetter.class)
+        static final class StoreLocalCustom {
+
+            @Specialization
+            @ForceQuickening
+            static void doInt(VirtualFrame frame, LocalSetter s, int value,
+                            @Bind BytecodeNode bytecode,
+                            @Bind("$bytecodeIndex") int bci) {
+                s.setInt(bytecode, bci, frame, value);
+            }
+
+            @Specialization(replaces = "doInt")
+            @ForceQuickening
+            static void doLong(VirtualFrame frame, LocalSetter s, long value,
+                            @Bind BytecodeNode bytecode,
+                            @Bind("$bytecodeIndex") int bci) {
+                s.setLong(bytecode, bci, frame, value);
+            }
+
+            @Specialization(replaces = {"doInt", "doLong"})
+            static void doGeneric(VirtualFrame frame, LocalSetter s, Object value,
+                            @Bind BytecodeNode bytecode,
+                            @Bind("$bytecodeIndex") int bci) {
+                s.setObject(bytecode, bci, frame, value);
+            }
+
+        }
+
     }
 
     @TypeSystem
@@ -176,11 +341,6 @@ public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
 
         @ImplicitCast
         static long castLong(int i) {
-            return INT_AS_LONG_VALUE;
-        }
-
-        @ImplicitCast
-        static long castByte(byte i) {
             return INT_AS_LONG_VALUE;
         }
 

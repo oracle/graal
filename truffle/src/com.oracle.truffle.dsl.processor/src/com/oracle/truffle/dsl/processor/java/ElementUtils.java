@@ -798,6 +798,47 @@ public class ElementUtils {
         return qualifiedName;
     }
 
+    public static TypeMirror fromQualifiedName(String name) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        TypeKind primitiveType;
+        switch (name) {
+            case "boolean":
+                primitiveType = TypeKind.BOOLEAN;
+                break;
+            case "byte":
+                primitiveType = TypeKind.BYTE;
+                break;
+            case "char":
+                primitiveType = TypeKind.CHAR;
+                break;
+            case "double":
+                primitiveType = TypeKind.DOUBLE;
+                break;
+            case "short":
+                primitiveType = TypeKind.SHORT;
+                break;
+            case "float":
+                primitiveType = TypeKind.FLOAT;
+                break;
+            case "int":
+                primitiveType = TypeKind.INT;
+                break;
+            case "long":
+                primitiveType = TypeKind.LONG;
+                break;
+            case "void":
+                primitiveType = TypeKind.VOID;
+                break;
+            case "null":
+                primitiveType = TypeKind.NULL;
+                break;
+            default:
+                return context.getDeclaredType(name);
+        }
+        return context.getEnvironment().getTypeUtils().getPrimitiveType(primitiveType);
+
+    }
+
     public static String getQualifiedName(TypeMirror mirror) {
         switch (mirror.getKind()) {
             case BOOLEAN:
