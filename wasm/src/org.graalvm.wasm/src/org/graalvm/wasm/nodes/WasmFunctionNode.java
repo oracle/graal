@@ -183,8 +183,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         this.notifyFunction = notifyFunction;
     }
 
-    private WasmMemory memory(WasmInstance instance) {
-        return memory(instance, 0);
+    private WasmMemory memory0(WasmInstance instance) {
+        return memory(instance, 0).checkSize(module.memoryInitialSize(0));
     }
 
     private WasmMemory memory(WasmInstance instance, int index) {
@@ -270,7 +270,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int line = startLine;
 
         // Note: The module may not have any memories.
-        final WasmMemory zeroMemory = module.memoryCount() == 0 ? null : memory(instance);
+        final WasmMemory zeroMemory = module.memoryCount() == 0 ? null : memory0(instance);
 
         check(bytecode.length, (1 << 31) - 1);
 
