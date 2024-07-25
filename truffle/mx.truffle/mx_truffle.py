@@ -408,28 +408,38 @@ def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_e
     mx.run([native_image_path] + native_image_args)
     return target_path
 
+class TruffleGateTags:
+    style = ['style']
+    javadoc = ['javadoc']
+    sigtest = ['sigtest', 'test', 'fulltest']
+    truffle_test = ['truffle-test', 'test', 'fulltest']
+    panama_test = ['panama-test', 'test', 'fulltest']
+    string_test = ['string-test', 'test', 'fulltest']
+    dsl_max_state_bit_test = ['dsl-max-state-bit-test', 'fulltest']
+    parser_test = ['parser-test', 'test', 'fulltest']
+
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
     if jdk.javaCompliance < '9':
-        with Task('Truffle Javadoc', tasks) as t:
+        with Task('Truffle Javadoc', tasks, tags=TruffleGateTags.javadoc) as t:
             if t: javadoc([])
-    with Task('File name length check', tasks) as t:
+    with Task('File name length check', tasks, tags=TruffleGateTags.style) as t:
         if t: check_filename_length([])
-    with Task('Truffle Signature Tests', tasks) as t:
+    with Task('Truffle Signature Tests', tasks, tags=TruffleGateTags.sigtest) as t:
         if t: sigtest(['--check', 'binary'])
-    with Task('Truffle UnitTests', tasks) as t:
+    with Task('Truffle UnitTests', tasks, tags=TruffleGateTags.truffle_test) as t:
         if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25']))
     if jdk.javaCompliance >= '22':
-        with Task('Truffle NFI tests with Panama Backend', tasks) as t:
+        with Task('Truffle NFI tests with Panama Backend', tasks, tags=TruffleGateTags.panama_test) as t:
             if t:
                 unittest(['com.oracle.truffle.nfi.test', '--enable-timing', '--verbose', '--nfi-config=panama'])
-    with Task('TruffleString UnitTests without Java String Compaction', tasks) as t:
+    with Task('TruffleString UnitTests without Java String Compaction', tasks, tags=TruffleGateTags.string_test) as t:
         if t: unittest(list(['-XX:-CompactStrings', '--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25', 'com.oracle.truffle.api.strings.test']))
     if os.getenv('DISABLE_DSL_STATE_BITS_TESTS', 'false').lower() != 'true':
-        with Task('Truffle DSL max state bit tests', tasks) as t:
+        with Task('Truffle DSL max state bit tests', tasks, tags=TruffleGateTags.dsl_max_state_bit_test) as t:
             if t:
                 _truffle_gate_state_bitwidth_tests()
-    with Task('Validate parsers', tasks) as t:
+    with Task('Validate parsers', tasks, tags=TruffleGateTags.parser_test) as t:
         if t: validate_parsers()
 
 
