@@ -16,7 +16,7 @@ import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
+import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.memory.AddressableMemoryAccess;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
@@ -86,10 +86,10 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private void processPublish(FixedValueAnchorNode anchor, Data currentState) {
-            if (anchor.getOriginalNode() instanceof AbstractNewObjectNode newObject) {
+        private void processPublish(PublishWritesNode publish, Data currentState) {
+            if (publish.allocation() instanceof AbstractNewObjectNode newObject) {
                 AllocData data = currentState.allocData.get(newObject);
-                assert data != null : "trying to publish non registered alloc: " + newObject;
+                assert data != null : "trying to publish non registered alloc: " + publish;
                 data.publish();
             }
         }
@@ -122,13 +122,13 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
         protected Data processNode(FixedNode node, Data currentState) {
             if (node instanceof AbstractNewObjectNode newObjectNode) {
                 currentState.allocData.put(newObjectNode, new AllocData());
-            } else if (node instanceof SingleMemoryKill singleMemoryKill) {
-                processCheckpoint(singleMemoryKill, currentState);
-            } else if (node instanceof MultiMemoryKill multiMemoryKill) {
-                processCheckpoint(multiMemoryKill, currentState);
+            } else if (MemoryKill.isSingleMemoryKill(node)) {
+                processCheckpoint(MemoryKill.asSingleMemoryKill(node), currentState);
+            } else if (MemoryKill.isMultiMemoryKill(node)) {
+                processCheckpoint(MemoryKill.asMultiMemoryKill(node), currentState);
             } else if (node instanceof AddressableMemoryAccess access) {
                 processNonKillAccess(access, currentState);
-            } else if (node instanceof FixedValueAnchorNode anchorNode) {
+            } else if (node instanceof PublishWritesNode anchorNode) {
                 processPublish(anchorNode, currentState);
             } else if (node instanceof ReturnNode) {
                 assert checkNoLiveKills(currentState);

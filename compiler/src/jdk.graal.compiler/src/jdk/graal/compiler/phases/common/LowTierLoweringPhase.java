@@ -50,8 +50,6 @@ public class LowTierLoweringPhase extends LoweringPhase {
                         NotApplicable.ifApplied(this, StageFlag.LOW_TIER_LOWERING, graphState));
     }
 
-    int a = 3;
-
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
         new InitMemoryVerificationPhase().apply(graph, context);
