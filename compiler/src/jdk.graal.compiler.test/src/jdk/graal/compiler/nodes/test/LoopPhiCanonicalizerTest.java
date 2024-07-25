@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,25 @@
  */
 package jdk.graal.compiler.nodes.test;
 
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.graph.iterators.NodePredicate;
+import jdk.graal.compiler.nodes.GuardPhiNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
+import jdk.graal.compiler.nodes.ValuePhiNode;
+import jdk.graal.compiler.nodes.debug.BlackholeNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.util.GraphOrder;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
 
 public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
 
@@ -260,5 +266,53 @@ public class LoopPhiCanonicalizerTest extends GraalCompilerTest {
          */
         GraphOrder.assertSchedulableGraph(g);
         Assert.assertEquals(loopPhisAfter, g.getNodes().filter(PhiNode.class).filter(x -> ((PhiNode) x).isLoopPhi()).count());
+    }
+
+    public static int loopSnippet06() {
+        int sum = 0;
+        for (int x : array) {
+            sum += x;
+        }
+        return sum;
+    }
+
+    @Test
+    public void test06() {
+        StructuredGraph g = parseEager(getResolvedJavaMethod("loopSnippet06"), AllowAssumptions.NO);
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+        canonicalizer.apply(g, getDefaultHighTierContext());
+
+        /*
+         * JDK-8335915 regression test: Guard phi that has a loop begin node both as its merge and
+         * as one of its guard inputs.
+         */
+        LoopBeginNode loopBegin = g.getNodes(LoopBeginNode.TYPE).first();
+        GuardPhiNode guardPhi = g.addWithoutUnique(new GuardPhiNode(loopBegin, g.start(), loopBegin));
+        BlackholeNode blackhole = g.add(new BlackholeNode(guardPhi));
+        g.addAfterFixed(loopBegin, blackhole);
+
+        /* The guard phi is counted twice in the loop begin's usages, but only once in its phis. */
+        assertValueAndGuardPhiCounts(loopBegin.usages(), 2, 2);
+        assertValueAndGuardPhiCounts(loopBegin.phis(), 2, 1);
+
+        canonicalizer.apply(g, getDefaultHighTierContext());
+
+        assertValueAndGuardPhiCounts(loopBegin.usages(), 2, 2);
+        assertValueAndGuardPhiCounts(loopBegin.phis(), 2, 1);
+    }
+
+    private static void assertValueAndGuardPhiCounts(NodeIterable<? extends Node> nodes, int expectedValuePhis, int expectedGuardPhis) {
+        int actualValuePhis = 0;
+        int actualGuardPhis = 0;
+        for (Node n : nodes) {
+            if (n instanceof ValuePhiNode) {
+                actualValuePhis++;
+            }
+            if (n instanceof GuardPhiNode) {
+                actualGuardPhis++;
+            }
+        }
+        Assert.assertEquals("value phis", expectedValuePhis, actualValuePhis);
+        Assert.assertEquals("guard phis", expectedGuardPhis, actualGuardPhis);
     }
 }
