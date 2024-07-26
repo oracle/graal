@@ -270,7 +270,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int line = startLine;
 
         // Note: The module may not have any memories.
-        final WasmMemory zeroMemory = module.memoryCount() == 0 ? null : memory0(instance);
+        final WasmMemory zeroMemory = !codeEntry.usesMemoryZero() ? null : memory0(instance);
 
         check(bytecode.length, (1 << 31) - 1);
 

@@ -1033,7 +1033,7 @@ public class BinaryParser extends BinaryStreamParser {
             // Do not override the code entry offset when rereading the function.
             module.setCodeEntryOffset(codeEntryIndex, bytecodeEndOffset);
         }
-        return new CodeEntry(functionIndex, state.maxStackSize(), locals, resultTypes, callNodes, bytecodeStartOffset, bytecodeEndOffset);
+        return new CodeEntry(functionIndex, state.maxStackSize(), locals, resultTypes, callNodes, bytecodeStartOffset, bytecodeEndOffset, state.usesMemoryZero());
     }
 
     private void readNumericInstructions(ParserState state, int opcode) {
