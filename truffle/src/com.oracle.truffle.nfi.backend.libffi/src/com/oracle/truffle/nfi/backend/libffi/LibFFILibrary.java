@@ -113,7 +113,7 @@ final class LibFFILibrary implements TruffleObject {
     @ExportMessage
     Object readMember(String symbol,
                     @Cached InlinedBranchProfile exception,
-                    @Bind("$node") Node node) throws UnknownIdentifierException {
+                    @Bind Node node) throws UnknownIdentifierException {
         try {
             return LibFFIContext.get(node).lookupSymbol(this, symbol);
         } catch (NFIUnsatisfiedLinkError ex) {

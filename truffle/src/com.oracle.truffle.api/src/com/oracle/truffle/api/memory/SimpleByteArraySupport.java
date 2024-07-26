@@ -205,6 +205,16 @@ final class SimpleByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public int getIntUnaligned(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return getInt(buffer, byteOffset);
+    }
+
+    @Override
+    public int getIntUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return getInt(buffer, byteOffset);
+    }
+
+    @Override
     public byte getByteVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
         synchronized (lock) {
             return getByte(buffer, byteOffset);

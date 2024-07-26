@@ -165,12 +165,32 @@ public final class DebugStackTraceElement {
      * @since 19.0
      */
     public SourceSection getSourceSection() {
+        try {
+            return getSourceSectionImpl();
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            RootNode root = findCurrentRoot();
+            LanguageInfo languageInfo = root != null ? root.getLanguageInfo() : null;
+            throw DebugException.create(session, ex, languageInfo);
+        }
+    }
+
+    private final SourceSection getSourceSectionImpl() {
         if (isHost()) {
             return null;
         }
-        Node node = traceElement.getLocation();
-        if (node != null) {
-            return session.resolveSection(node);
+        Object guestObject = traceElement.getGuestObject();
+        SourceSection sc = null;
+        if (guestObject != null && InteropLibrary.getUncached().hasSourceLocation(guestObject)) {
+            try {
+                sc = InteropLibrary.getUncached().getSourceLocation(guestObject);
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+        if (sc != null) {
+            return session.resolveSection(sc);
         }
         return null;
     }
@@ -243,9 +263,10 @@ public final class DebugStackTraceElement {
                 LanguageInfo language = getLanguage();
                 String declaringClass = language != null ? "<" + language.getId() + ">" : "<unknown>";
                 String methodName;
+                SourceSection sourceLocation = null;
                 try {
                     Object guestObject = traceElement.getGuestObject();
-                    if (InteropLibrary.getUncached().hasExecutableName(guestObject)) {
+                    if (guestObject != null && InteropLibrary.getUncached().hasExecutableName(guestObject)) {
                         try {
                             methodName = InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getExecutableName(guestObject));
                         } catch (UnsupportedMessageException ex) {
@@ -254,6 +275,7 @@ public final class DebugStackTraceElement {
                     } else {
                         methodName = "";
                     }
+                    sourceLocation = getSourceSectionImpl();
                 } catch (ThreadDeath | AssertionError td) {
                     throw td;
                 } catch (Throwable ex) {
@@ -265,7 +287,6 @@ public final class DebugStackTraceElement {
                         throw ex;
                     }
                 }
-                SourceSection sourceLocation = getSourceSection();
                 String fileName = sourceLocation != null ? sourceLocation.getSource().getName() : "Unknown";
                 int startLine = sourceLocation != null ? sourceLocation.getStartLine() : -1;
                 stackTraceElement = new StackTraceElement(declaringClass, methodName, fileName, startLine);

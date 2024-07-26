@@ -103,5 +103,4 @@ public interface CallTarget {
     default Object call(Node location, Object... arguments) {
         throw CompilerDirectives.shouldNotReachHere("callDirect not supported for this runtime");
     }
-
 }

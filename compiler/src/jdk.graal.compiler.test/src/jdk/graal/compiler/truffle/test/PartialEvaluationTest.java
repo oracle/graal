@@ -133,7 +133,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         };
     }
 
-    protected OptimizedCallTarget assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments) {
+    protected OptimizedCallTarget assertPartialEvalEquals(RootNode expected, RootNode actual, Object... arguments) {
         return assertPartialEvalEquals(expected, actual, arguments, true);
     }
 

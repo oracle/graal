@@ -52,6 +52,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.impl.Accessor;
 
 final class NodeAccessor extends Accessor {
@@ -133,6 +134,11 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
+        public void prepareForInstrumentation(RootNode root, Set<Class<?>> tags) {
+            root.prepareForInstrumentation(tags);
+        }
+
+        @Override
         public int getRootNodeBits(RootNode root) {
             return root.instrumentationBits;
         }
@@ -206,6 +212,11 @@ final class NodeAccessor extends Accessor {
         @Override
         public boolean isCaptureFramesForTrace(RootNode rootNode, boolean compiled) {
             return rootNode.isCaptureFramesForTrace(compiled);
+        }
+
+        @Override
+        public Node resolveInstrumentableCallNode(RootNode root, FrameInstance frameInstance) {
+            return root.resolveInstrumentableCallNode(frameInstance);
         }
     }
 

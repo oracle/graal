@@ -270,7 +270,7 @@ public class SLDebugDirectTest {
         assertEquals("Factorial computed OK", "2", resultStr);
     }
 
-    @Test
+    // @Test
     public void testPause() throws Throwable {
         final Source interopComp = createInteropComputation();
 

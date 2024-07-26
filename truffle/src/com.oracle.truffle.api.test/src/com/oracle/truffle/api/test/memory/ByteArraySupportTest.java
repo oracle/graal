@@ -334,6 +334,30 @@ public class ByteArraySupportTest {
     }
 
     @Test
+    public void getIntUnalignedBigEndian() {
+        byte[] buffer = hexToBytes("000042414039");
+        Assert.assertEquals(0x42414039, ByteArraySupport.bigEndian().getInt(buffer, 2));
+    }
+
+    @Test
+    public void getIntUnalignedBigEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("000042414039");
+        Assert.assertEquals(0x42414039, ByteArraySupport.bigEndian().getInt(buffer, 2L));
+    }
+
+    @Test
+    public void getIntUnalignedLittleEndian() {
+        byte[] buffer = hexToBytes("000039404142");
+        Assert.assertEquals(0x42414039, ByteArraySupport.littleEndian().getInt(buffer, 2));
+    }
+
+    @Test
+    public void getIntUnalignedLittleEndianWithLongAddress() {
+        byte[] buffer = hexToBytes("000039404142");
+        Assert.assertEquals(0x42414039, ByteArraySupport.littleEndian().getInt(buffer, 2L));
+    }
+
+    @Test
     public void putLongBigEndian() {
         byte[] buffer = new byte[10];
         ByteArraySupport.bigEndian().putLong(buffer, 1, 0x4241403938373635L);
@@ -1268,6 +1292,42 @@ public class ByteArraySupportTest {
 
         int finalValue = ByteArraySupport.littleEndian().getIntVolatile(buffer, 0);
         Assert.assertEquals(20000000, finalValue);
+    }
+
+    @Test
+    public void makeIntFromShortsBigEndian() {
+        byte[] buffer = hexToBytes("42414039");
+        short a = ByteArraySupport.bigEndian().getShort(buffer, 0);
+        short b = ByteArraySupport.bigEndian().getShort(buffer, 2);
+        Assert.assertEquals(0x42414039, ByteArraySupport.makeIntBigEndian(a, b));
+    }
+
+    @Test
+    public void makeIntFromShortsLittleEndian() {
+        byte[] buffer = hexToBytes("39404142");
+        short a = ByteArraySupport.littleEndian().getShort(buffer, 0);
+        short b = ByteArraySupport.littleEndian().getShort(buffer, 2);
+        Assert.assertEquals(0x42414039, ByteArraySupport.makeIntLittleEndian(a, b));
+    }
+
+    @Test
+    public void makeIntFromBytesBigEndian() {
+        byte[] buffer = hexToBytes("42414039");
+        byte a = ByteArraySupport.bigEndian().getByte(buffer, 0);
+        byte b = ByteArraySupport.bigEndian().getByte(buffer, 1);
+        byte c = ByteArraySupport.bigEndian().getByte(buffer, 2);
+        byte d = ByteArraySupport.bigEndian().getByte(buffer, 3);
+        Assert.assertEquals(0x42414039, ByteArraySupport.makeIntBigEndian(a, b, c, d));
+    }
+
+    @Test
+    public void makeIntFromBytesLittleEndian() {
+        byte[] buffer = hexToBytes("39404142");
+        byte a = ByteArraySupport.littleEndian().getByte(buffer, 0);
+        byte b = ByteArraySupport.littleEndian().getByte(buffer, 1);
+        byte c = ByteArraySupport.littleEndian().getByte(buffer, 2);
+        byte d = ByteArraySupport.littleEndian().getByte(buffer, 3);
+        Assert.assertEquals(0x42414039, ByteArraySupport.makeIntLittleEndian(a, b, c, d));
     }
 
     private static void assertBytesEqual(byte[] actual, String expected) {

@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.dsl.processor.java.transform;
 
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.elementEquals;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.findNearestEnclosingType;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getDeclaredTypes;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getPackageName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSuperTypes;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.elementEquals;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -78,7 +78,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeImport;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeKind;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 
 public final class OrganizedImports {
 
@@ -188,7 +188,7 @@ public final class OrganizedImports {
                 b.append("?");
             }
 
-            if (i < typeArguments.size() - 1) {
+            if (i < parameters.size() - 1) {
                 b.append(", ");
             }
         }
@@ -216,7 +216,7 @@ public final class OrganizedImports {
                         (anyEqualEnclosingTypes(enclosed, ElementUtils.castTypeElement(importType)) ||
                                         importFromEnclosingScope(enclosedType, ElementUtils.castTypeElement(importType)))) {
             return false; // same enclosing element -> no import
-        } else if (importType instanceof GeneratedTypeMirror && importPackagName.isEmpty()) {
+        } else if (importType instanceof DeclaredCodeTypeMirror && importPackagName.isEmpty()) {
             return false;
         } else if (ElementUtils.isDeprecated(importType)) {
             return false;

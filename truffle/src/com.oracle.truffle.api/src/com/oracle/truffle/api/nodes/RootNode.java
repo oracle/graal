@@ -42,6 +42,7 @@ package com.oracle.truffle.api.nodes;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -124,6 +125,7 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * @since 0.8 or earlier
  */
+// @DefaultSymbol("$rootNode")
 public abstract class RootNode extends ExecutableNode {
 
     private static final AtomicReferenceFieldUpdater<RootNode, ReentrantLock> LOCK_UPDATER = AtomicReferenceFieldUpdater.newUpdater(RootNode.class, ReentrantLock.class, "lock");
@@ -517,6 +519,28 @@ public abstract class RootNode extends ExecutableNode {
      */
     protected boolean isTrivial() {
         return false;
+    }
+
+    /**
+     * Prepares a root node for use with the Truffle instrumentation framework. This is similar to
+     * materialization of syntax nodes in an InstrumentableNode, but this method should be preferred
+     * if the root node is updated as a whole and the individual materialization of nodes is not
+     * needed. Another advantage of this method is that this method is always invoked before
+     * {@link #getSourceSection()} is invoked the first time for a root node. This allows to perform
+     * the materialization of sources and tags in one operation.
+     * <p>
+     * This method is invoked repeatedly and should not perform any operation if a set of tags was
+     * already prepared before. In other words, this method should stabilize and eventually not
+     * perform any operation.
+     *
+     * @since 24.2
+     */
+    protected void prepareForInstrumentation(@SuppressWarnings("unused") Set<Class<?>> tags) {
+        // no default implementation
+    }
+
+    protected Node resolveInstrumentableCallNode(FrameInstance instance) {
+        return instance.getCallNode();
     }
 
     /**

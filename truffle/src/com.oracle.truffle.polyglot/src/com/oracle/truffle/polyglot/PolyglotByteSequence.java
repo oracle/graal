@@ -214,7 +214,7 @@ class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
             @Specialization(limit = "LIMIT")
             @SuppressWarnings({"unused"})
             static Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Cached InlinedBranchProfile error) {
                 Object key = args[ARGUMENT_OFFSET];
@@ -247,7 +247,7 @@ class PolyglotByteSequence implements ByteSequence, PolyglotWrapper {
             @Specialization(limit = "LIMIT")
             @SuppressWarnings({"unused"})
             static Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Cached InlinedBranchProfile error) {
                 long size;

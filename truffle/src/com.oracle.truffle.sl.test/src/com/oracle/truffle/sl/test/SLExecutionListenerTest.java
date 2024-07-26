@@ -57,7 +57,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class SLExecutionListenerTest {
+public class SLExecutionListenerTest extends AbstractSLTest {
 
     private Context context;
     private final Deque<ExecutionEvent> events = new ArrayDeque<>();

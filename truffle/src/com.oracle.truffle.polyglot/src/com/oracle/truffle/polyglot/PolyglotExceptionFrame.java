@@ -42,10 +42,12 @@ package com.oracle.truffle.polyglot;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -142,7 +144,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         return b.toString();
     }
 
-    static PolyglotExceptionFrame createGuest(PolyglotExceptionImpl exception, TruffleStackTraceElement frame, boolean first) {
+    static PolyglotExceptionFrame createGuest(PolyglotExceptionImpl exception, TruffleStackTraceElement frame) {
         if (frame == null) {
             return null;
         }
@@ -162,18 +164,24 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         String rootName = targetRoot.getName();
         if (engine != null) {
             language = engine.idToLanguage.get(info.getId());
-
-            Node callNode = frame.getLocation();
-            if (callNode != null) {
-                com.oracle.truffle.api.source.SourceSection section = callNode.getEncapsulatingSourceSection();
-                if (section != null) {
-                    Object source = engine.getAPIAccess().newSource(exception.polyglot.getSourceDispatch(), section.getSource());
-                    location = engine.getAPIAccess().newSourceSection(source, exception.polyglot.getSourceSectionDispatch(), section);
-                } else {
-                    location = null;
+            Object o = frame.getGuestObject();
+            if (o == null) {
+                // filter exception frame for null guest objects
+                return null;
+            }
+            com.oracle.truffle.api.source.SourceSection section = null;
+            if (InteropLibrary.getUncached().hasSourceLocation(o)) {
+                try {
+                    section = InteropLibrary.getUncached().getSourceLocation(o);
+                } catch (UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
                 }
+            }
+            if (section != null) {
+                Object source = engine.getAPIAccess().newSource(exception.polyglot.getSourceDispatch(), section.getSource());
+                location = engine.getAPIAccess().newSourceSection(source, exception.polyglot.getSourceSectionDispatch(), section);
             } else {
-                location = first ? exception.getSourceLocation() : null;
+                location = null;
             }
         }
         return new PolyglotExceptionFrame(exception, language, location, rootName, false, null, frame.getBytecodeIndex());

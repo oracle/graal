@@ -48,13 +48,15 @@ import java.nio.ByteOrder;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 /**
  * Implementation of {@link ByteArraySupport} using {@link Unsafe}.
  * <p>
  * Bytes ordering is native endianness ({@link ByteOrder#nativeOrder}).
  */
 final class UnsafeByteArraySupport extends ByteArraySupport {
-    private static final Unsafe UNSAFE = AccessController.doPrivileged(new PrivilegedAction<Unsafe>() {
+    @SuppressWarnings("deprecation") private static final Unsafe UNSAFE = AccessController.doPrivileged(new PrivilegedAction<Unsafe>() {
         @Override
         public Unsafe run() {
             assert Unsafe.ARRAY_BYTE_INDEX_SCALE == 1 : "cannot use Unsafe for ByteArrayAccess if ARRAY_BYTE_INDEX_SCALE != 1";
@@ -186,6 +188,26 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
     @Override
     public void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException {
         UNSAFE.putDouble(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + byteOffset, value);
+    }
+
+    @Override
+    public int getIntUnaligned(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return getIntUnaligned(buffer, Integer.toUnsignedLong(byteOffset));
+    }
+
+    @Override
+    public int getIntUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        if (CompilerDirectives.inCompiledCode()) {
+            if (byteOffset % Integer.BYTES == 0) {
+                return getInt(buffer, byteOffset);
+            } else if (byteOffset % Short.BYTES == 0) {
+                return makeInt(getShort(buffer, byteOffset), getShort(buffer, byteOffset + Short.BYTES));
+            } else {
+                return makeInt(getByte(buffer, byteOffset), getByte(buffer, byteOffset + 1), getByte(buffer, byteOffset + 2), getByte(buffer, byteOffset + 3));
+            }
+        } else {
+            return getInt(buffer, byteOffset);
+        }
     }
 
     @Override
@@ -467,5 +489,21 @@ final class UnsafeByteArraySupport extends ByteArraySupport {
             }
         } while (!UNSAFE.compareAndSwapLong(buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET + wordOffset, fullWord, x));
         return expected;
+    }
+
+    private static int makeInt(short a, short b) {
+        if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+            return makeIntBigEndian(a, b);
+        } else {
+            return makeIntLittleEndian(a, b);
+        }
+    }
+
+    private static int makeInt(byte a, byte b, byte c, byte d) {
+        if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+            return makeIntBigEndian(a, b, c, d);
+        } else {
+            return makeIntLittleEndian(a, b, c, d);
+        }
     }
 }

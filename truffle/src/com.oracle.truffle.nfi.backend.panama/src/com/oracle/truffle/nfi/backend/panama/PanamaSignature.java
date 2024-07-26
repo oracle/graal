@@ -109,7 +109,7 @@ final class PanamaSignature {
         @GenerateAOT.Exclude
         static Object callGeneric(PanamaSignature self, Object functionPointer, Object[] args,
                         @CachedLibrary("functionPointer") InteropLibrary interop,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile isExecutable,
                         @Cached InlinedBranchProfile toNative,
                         @Cached InlinedBranchProfile error,

@@ -84,4 +84,5 @@ public enum FrameSlotKind {
     public static FrameSlotKind fromTag(byte tag) {
         return VALUES[tag];
     }
+
 }

@@ -1,2 +1,2 @@
 Error(s) parsing script:
--- line 16 col 9: mismatched input '=' expecting {';', '||', '&&', '<', '<=', '>', '>=', '==', '!=', '+', '-', '*', '/'}
+-- line 16 col 11: extraneous input '-' expecting {'(', IDENTIFIER, STRING_LITERAL, NUMERIC_LITERAL}
