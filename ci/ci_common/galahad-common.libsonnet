@@ -23,11 +23,8 @@ local utils = import "common-utils.libsonnet";
   local convert_gate_to_ondemand(b) =
     assert is_gate_or_postmerge(b) : "Not a gate or postmerge job: " + b.name;
     b + {
-      name: "non-galahad-" + b.name,
       # replace gate or postmerge targets with ondemand
       targets: std.set(std.setDiff(b.targets, gate_or_postmerge_targets) + ["ondemand"]),
-      # remove runAfter
-      runAfter: [],
     }
   ,
   local has_labsjdk_latest(b) =
