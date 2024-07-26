@@ -51,6 +51,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -59,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -530,7 +532,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         }
 
         // parse force quickenings
-        List<QuickenDecision> quickenings = parseForceQuickenings(model);
+        List<QuickenDecision> manualQuickenings = parseForceQuickenings(model);
         boolean enableDecisionsFile = (decisionsFileValue != null || decisionsOverrideFilesValue != null) && !model.enableTracing;
 
         // apply optimization decisions
@@ -556,7 +558,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                     model.addError("Error parsing optimization decisions: %s.", e.getMessage());
                     continue;
                 }
-                quickenings.add(decision);
+                manualQuickenings.add(decision);
             }
 
             for (SuperInstructionDecision decision : model.optimizationDecisions.superInstructionDecisions) {
@@ -590,6 +592,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
          * types we generate quickening decisions for each operation and specialization in order to
          * enable boxing elimination.
          */
+        List<ResolvedQuickenDecision> boxingEliminationQuickenings = new ArrayList<>();
         if (model.usesBoxingElimination()) {
 
             if (model.enableLocalScoping) {
@@ -650,7 +653,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                     filter((e) -> e.stream().anyMatch(model::isBoxingEliminated)).toList()) {
                         boxingGroups.computeIfAbsent(sig, (s) -> new ArrayList<>()).add(specialization);
                     }
-
                 }
 
                 for (List<TypeMirror> boxingGroup : boxingGroups.keySet().stream().//
@@ -663,15 +665,16 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                     // filter return type
                     List<TypeMirror> parameterTypes = boxingGroup.subList(1, boxingGroup.size());
 
-                    quickenings.add(new QuickenDecision(operation, specializations, parameterTypes));
+                    boxingEliminationQuickenings.add(new ResolvedQuickenDecision(operation, specializations, parameterTypes));
                 }
             }
         }
 
-        List<ResolvedQuickenDecision> resolvedQuickenings = quickenings.stream().sorted((e1, e2) -> {
-            // sort by size we want to check single specializations first
-            return Integer.compare(e1.specializations().size(), e2.specializations().size());
-        }).map((e) -> e.resolve(model)).distinct().toList();
+        List<ResolvedQuickenDecision> resolvedQuickenings = Stream.concat(boxingEliminationQuickenings.stream(),
+                        manualQuickenings.stream().map((e) -> e.resolve(model))).//
+                        distinct().//
+                        sorted(Comparator.comparingInt(e -> e.specializations().size())).//
+                        toList();
 
         Map<List<SpecializationData>, List<ResolvedQuickenDecision>> decisionsBySpecializations = //
                         resolvedQuickenings.stream().collect(Collectors.groupingBy((e) -> e.specializations(),

@@ -1290,6 +1290,45 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         assertStable(quickenings, node, 42);
     }
 
+    @Test
+    public void testSameNameSpecializationBoxing() {
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.beginAddSameName();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endAddSameName();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertQuickenings(node, 0, 0);
+        assertInstructions(node,
+                        "load.argument",
+                        "load.argument",
+                        "c.AddSameName",
+                        "return");
+        assertEquals(42, node.getCallTarget().call(20, 22));
+        assertInstructions(node,
+                        "load.argument$Int",
+                        "load.argument$Int",
+                        "c.AddSameName$SameName3",
+                        "return");
+
+        assertEquals(42L, node.getCallTarget().call(20, 22L));
+
+        assertInstructions(node,
+                        "load.argument",
+                        "load.argument",
+                        "c.AddSameName",
+                        "return");
+
+        var quickenings = assertQuickenings(node, 7, 2);
+        assertStable(quickenings, node, 42, 42L);
+        assertStable(quickenings, node, 42, 42);
+    }
+
     private static BoxingEliminationTestRootNode parse(BytecodeParser<BoxingEliminationTestRootNodeGen.Builder> builder) {
         BytecodeRootNodes<BoxingEliminationTestRootNode> nodes = BoxingEliminationTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
@@ -1327,6 +1366,38 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                 return v != 0;
             }
 
+        }
+
+        /*
+         * Tests that the boxing elimination is not confused by same name specializations.
+         */
+        @Operation
+        static final class AddSameName {
+            @Specialization
+            public static long sameName(long lhs, long rhs) {
+                return lhs + rhs;
+            }
+
+            @Specialization
+            public static long sameName(int lhs, long rhs) {
+                return lhs + rhs;
+            }
+
+            @Specialization
+            public static long sameName(long lhs, int rhs) {
+                return lhs + rhs;
+            }
+
+            @Specialization
+            public static int sameName(int lhs, int rhs) {
+                return lhs + rhs;
+            }
+
+            @TruffleBoundary
+            @Specialization
+            public static String sameName(String lhs, String rhs) {
+                return lhs + rhs;
+            }
         }
 
         @Operation
