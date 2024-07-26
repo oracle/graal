@@ -28,19 +28,10 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
-import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
-import com.oracle.graal.pointsto.util.GraalAccess;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.java.LambdaUtils;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -55,15 +46,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
 
-    private final BigBang bb;
-
     private final ConcurrentHashMap<ResolvedJavaType, LambdaSubstitutionType> typeSubstitutions;
     private final Set<String> uniqueLambdaProxyNames;
 
-    LambdaProxyRenamingSubstitutionProcessor(BigBang bb) {
+    LambdaProxyRenamingSubstitutionProcessor() {
         this.typeSubstitutions = new ConcurrentHashMap<>();
         this.uniqueLambdaProxyNames = new HashSet<>();
-        this.bb = bb;
     }
 
     @Override
@@ -77,12 +65,7 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
 
     private LambdaSubstitutionType getSubstitution(ResolvedJavaType original) {
         return typeSubstitutions.computeIfAbsent(original, (key) -> {
-            OptionValues options = bb.getOptions();
-            DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
-
-            Providers providers = GraalAccess.getOriginalProviders();
-            String lambdaTargetName = LambdaUtils.findStableLambdaName(new NoClassInitializationPlugin(), providers, key, options, debug, this,
-                            config -> new LambdaSubstrateGraphBuilderPhase.LambdaSubstrateGraphBuilderInstance(providers, config, OptimisticOptimizations.NONE, null));
+            String lambdaTargetName = LambdaUtils.findStableLambdaName(key);
             return new LambdaSubstitutionType(key, findUniqueLambdaProxyName(lambdaTargetName));
         });
     }
