@@ -31,6 +31,8 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
+import com.oracle.svm.hosted.c.NativeLibraries;
 
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
 @AutomaticallyRegisteredFeature
@@ -47,9 +49,15 @@ class JNIRegistrationsJavaZip extends JNIRegistrationUtil implements InternalFea
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         a.registerReachabilityHandler(JNIRegistrationsJavaZip::registerInflaterInitIDs, method(a, "java.util.zip.Inflater", "initIDs"));
+        a.registerReachabilityHandler(JNIRegistrationsJavaZip::registerAndLinkZip, method(a, "java.util.zip.ZipUtils", "loadLibrary"));
     }
 
     private static void registerInflaterInitIDs(DuringAnalysisAccess a) {
         RuntimeJNIAccess.register(fields(a, "java.util.zip.Inflater", "inputConsumed", "outputConsumed"));
+    }
+
+    private static void registerAndLinkZip(@SuppressWarnings("unused") DuringAnalysisAccess a) {
+        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("zip");
+        NativeLibraries.singleton().addStaticJniLibrary("zip");
     }
 }
