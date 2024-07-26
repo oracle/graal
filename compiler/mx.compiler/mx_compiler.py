@@ -417,13 +417,11 @@ def _compiler_error_options(default_compilation_failure_action='ExitVM', vmargs=
             res.append(prefix + 'ShowDumpFiles=true')
     return res
 
-def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, set_start_heap_size=True, threads=None):
+def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, threads=None):
     if iterations == -1:
         return
     vmargs = ['-XX:+UseSerialGC'] if force_serial_gc else []
-    if set_start_heap_size:
-        vmargs += ['-Xms2g']
-    vmargs += ['-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=force_serial_gc)
+    vmargs += ['-Xmx8g', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=force_serial_gc)
     args = ['-n', str(iterations), '--preserve']
     if threads is not None:
         args += ['-t', str(threads)]
@@ -437,7 +435,7 @@ def jdk_includes_corba(jdk):
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     if iterations == -1:
         return
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=True)
+    vmargs = ['-Xmx8g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=True)
     args = ['-n', str(iterations), '--preserve']
     return _run_benchmark('scala-dacapo', name, args, vmargs)
 
@@ -445,12 +443,14 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
 def _gate_renaissance(name, iterations, extraVMarguments=None):
     if iterations == -1:
         return
-    vmargs = ['-Xms2g', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
+    vmargs = ['-Xmx8g', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
     args = ['-r', str(iterations)]
     return _run_benchmark('renaissance', name, args, vmargs)
 
 
 def _run_benchmark(suite, name, args, vmargs):
+    if not [vmarg for vmarg in vmargs if vmarg.startswith('-Xmx')]:
+        vmargs += ['-Xmx8g']
     out = mx.TeeOutputCapture(mx.OutputCapture())
     exit_code, suite, results = mx_benchmark.gate_mx_benchmark(["{}:{}".format(suite, name), "--tracker=none", "--"] + vmargs + ["--"] + args, out=out, err=out, nonZeroIsFatal=False)
     if exit_code != 0:
@@ -692,11 +692,11 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
 
     # ensure -XX:+PreserveFramePointer  still works
     with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=task_report_component) as t:
-        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False)
 
     # stress entry barrier deopt
     with Task(prefix + 'DaCapo_pmd:DeoptimizeNMethodBarriersALot', tasks, tags=GraalTags.test, report=task_report_component) as t:
-        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+UnlockDiagnosticVMOptions', '-XX:+DeoptimizeNMethodBarriersALot'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+UnlockDiagnosticVMOptions', '-XX:+DeoptimizeNMethodBarriersALot'], threads=4, force_serial_gc=False)
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.unittest + GraalTags.coverage),
