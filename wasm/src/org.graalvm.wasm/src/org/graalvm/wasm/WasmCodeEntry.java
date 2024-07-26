@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,14 +52,16 @@ public final class WasmCodeEntry {
     private final BranchProfile errorBranch = BranchProfile.create();
     private final int numLocals;
     private final int resultCount;
+    private final boolean usesMemoryZero;
 
-    public WasmCodeEntry(WasmFunction function, byte[] bytecode, byte[] localTypes, byte[] resultTypes) {
+    public WasmCodeEntry(WasmFunction function, byte[] bytecode, byte[] localTypes, byte[] resultTypes, boolean usesMemoryZero) {
         this.function = function;
         this.bytecode = bytecode;
         this.localTypes = localTypes;
         this.numLocals = localTypes.length;
         this.resultTypes = resultTypes;
         this.resultCount = resultTypes.length;
+        this.usesMemoryZero = usesMemoryZero;
     }
 
     public WasmFunction function() {
@@ -92,6 +94,10 @@ public final class WasmCodeEntry {
 
     public void errorBranch() {
         errorBranch.enter();
+    }
+
+    public boolean usesMemoryZero() {
+        return usesMemoryZero;
     }
 
     @Override

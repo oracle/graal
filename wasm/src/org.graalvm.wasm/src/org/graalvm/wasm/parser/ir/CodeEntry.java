@@ -54,8 +54,9 @@ public final class CodeEntry {
     private final List<CallNode> callNodes;
     private final int bytecodeStartOffset;
     private final int bytecodeEndOffset;
+    private final boolean usesMemoryZero;
 
-    public CodeEntry(int functionIndex, int maxStackSize, byte[] localTypes, byte[] resultTypes, List<CallNode> callNodes, int startOffset, int endOffset) {
+    public CodeEntry(int functionIndex, int maxStackSize, byte[] localTypes, byte[] resultTypes, List<CallNode> callNodes, int startOffset, int endOffset, boolean usesMemoryZero) {
         this.functionIndex = functionIndex;
         this.maxStackSize = maxStackSize;
         this.localTypes = localTypes;
@@ -63,6 +64,7 @@ public final class CodeEntry {
         this.callNodes = callNodes;
         this.bytecodeStartOffset = startOffset;
         this.bytecodeEndOffset = endOffset;
+        this.usesMemoryZero = usesMemoryZero;
     }
 
     public int maxStackSize() {
@@ -91,5 +93,9 @@ public final class CodeEntry {
 
     public int bytecodeEndOffset() {
         return bytecodeEndOffset;
+    }
+
+    public boolean usesMemoryZero() {
+        return usesMemoryZero;
     }
 }
