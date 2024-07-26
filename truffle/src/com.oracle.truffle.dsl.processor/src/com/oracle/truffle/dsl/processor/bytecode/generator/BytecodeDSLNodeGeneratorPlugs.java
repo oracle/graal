@@ -236,7 +236,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     @Override
     public void notifySpecialize(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState, SpecializationData specialization) {
         if (model.specializationDebugListener) {
-            bytecodeFactory.emitOnSpecialize(builder, "$bytecode", "$bci", "$bc[$bci]", specialization.getNode().getNodeId() + "$" + specialization.getId());
+            bytecodeFactory.emitOnSpecialize(builder, "$bytecode", "$bci", BytecodeDSLNodeFactory.readInstruction("$bc", "$bci"), specialization.getNode().getNodeId() + "$" + specialization.getId());
         }
 
         if (instruction.hasQuickenings()) {

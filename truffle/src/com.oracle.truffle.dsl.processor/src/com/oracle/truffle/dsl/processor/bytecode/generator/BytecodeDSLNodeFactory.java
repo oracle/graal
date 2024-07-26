@@ -1677,8 +1677,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         if (model.specializationDebugListener && oldInstruction == null) {
             b.startBlock();
             b.startDeclaration(instructionImpl.asType(), "oldInstruction");
-            String old = bc + "[" + bci + "]";
-            emitParseInstruction(b, node, bci, CodeTreeBuilder.singleString(old));
+            emitParseInstruction(b, node, bci, readInstruction(bc, bci));
             b.end();
         }
 
@@ -1708,8 +1707,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         if (model.specializationDebugListener && oldInstruction == null) {
             b.startBlock();
             b.startDeclaration(instructionImpl.asType(), "oldInstruction");
-            String old = bc + "[" + bci + "]";
-            emitParseInstruction(b, node, bci, CodeTreeBuilder.singleString(old));
+            emitParseInstruction(b, node, bci, readInstruction(bc, bci));
             b.end();
         }
 
@@ -1749,8 +1747,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         if (model.specializationDebugListener && oldInstruction == null) {
             b.startBlock();
             b.startDeclaration(instructionImpl.asType(), "oldInstruction");
-            String old = bc + "[" + operandBci + "]";
-            emitParseInstruction(b, node, operandBci, CodeTreeBuilder.singleString(old));
+            emitParseInstruction(b, node, operandBci, readInstruction(bc, operandBci));
             b.end();
         }
 
@@ -1779,10 +1776,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     }
 
-    void emitOnSpecialize(CodeTreeBuilder b, String node, String bci, String instruction, String specializationName) {
+    void emitOnSpecialize(CodeTreeBuilder b, String node, String bci, CodeTree operand, String specializationName) {
         if (model.specializationDebugListener) {
             b.startStatement().startCall(node, "getRoot().onSpecialize");
-            emitParseInstruction(b, node, bci, CodeTreeBuilder.singleString(instruction));
+            emitParseInstruction(b, node, bci, operand);
             b.doubleQuote(specializationName);
             b.end().end();
         }
@@ -10211,8 +10208,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.specializationDebugListener) {
                 b.startStatement();
                 b.startCall("getRoot().onBytecodeStackTransition");
-                emitParseInstruction(b, "this", "oldBci", CodeTreeBuilder.singleString("oldBc[oldBci]"));
-                emitParseInstruction(b, "newBytecode", "newBci", CodeTreeBuilder.singleString("newBc[newBci]"));
+                emitParseInstruction(b, "this", "oldBci", readInstruction("oldBc", "oldBci"));
+                emitParseInstruction(b, "newBytecode", "newBci", readInstruction("newBc", "newBci"));
                 b.end().end();
             }
 
@@ -13071,11 +13068,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startIf().string("(newOperand = ").startCall(createApplyQuickeningName(boxingType)).string("operand").end().string(") != -1").end().startBlock();
             b.startStatement().string("newInstruction = ").tree(createInstructionConstant(unboxedInstruction)).end();
-            emitOnSpecialize(b, "$this", "bci", "bc[bci]", "BranchFalse$" + unboxedInstruction.getQuickeningName());
+            emitOnSpecialize(b, "$this", "bci", readInstruction("bc", "bci"), "BranchFalse$" + unboxedInstruction.getQuickeningName());
             b.end().startElseBlock();
             b.startStatement().string("newInstruction = ").tree(createInstructionConstant(boxedInstruction)).end();
             b.startStatement().string("newOperand = operand").end();
-            emitOnSpecialize(b, "$this", "bci", "bc[bci]", "BranchFalse$" + boxedInstruction.getQuickeningName());
+            emitOnSpecialize(b, "$this", "bci", readInstruction("bc", "bci"), "BranchFalse$" + boxedInstruction.getQuickeningName());
             b.end(); // else block
 
             emitQuickeningOperand(b, "$this", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
@@ -13236,7 +13233,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startCase().string(ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxingType))).end();
                 b.startCaseBlock();
                 b.startStatement().string("newInstruction = ").tree(createInstructionConstant(boxedInstruction)).end();
-                emitOnSpecialize(b, "$this", "bci", "bc[bci]", "LoadLocal$" + boxedInstruction.getQuickeningName());
+                emitOnSpecialize(b, "$this", "bci", readInstruction("bc", "bci"), "LoadLocal$" + boxedInstruction.getQuickeningName());
                 b.startStatement();
                 b.string("value = ");
                 startExpectFrameUnsafe(b, "frame", boxingType).string("slot").end();
@@ -13249,7 +13246,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startCase().string("Illegal").end();
             b.startCaseBlock();
             b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
-            emitOnSpecialize(b, "$this", "bci", "bc[bci]", "LoadLocal$" + genericInstruction.getQuickeningName());
+            emitOnSpecialize(b, "$this", "bci", readInstruction("bc", "bci"), "LoadLocal$" + genericInstruction.getQuickeningName());
             b.startStatement();
             b.string("value = ");
             startExpectFrameUnsafe(b, "frame", type(Object.class)).string("slot").end();
@@ -13267,7 +13264,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             // If a FrameSlotException occurs, specialize to the generic version.
             b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
-            emitOnSpecialize(b, "$this", "bci", "bc[bci]", "LoadLocal$" + genericInstruction.getQuickeningName());
+            emitOnSpecialize(b, "$this", "bci", readInstruction("bc", "bci"), "LoadLocal$" + genericInstruction.getQuickeningName());
             b.startStatement();
             b.string("value = ex.getResult()");
             b.end();
@@ -13699,7 +13696,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startStatement().string("newInstruction = ").tree(createInstructionConstant(boxedInstruction)).end();
                 b.startStatement().string("newOperand = operand").end();
                 b.end(); // else block
-                emitOnSpecialize(b, "this", "bci", "bc[bci]", "StoreLocal$" + kindName);
+                emitOnSpecialize(b, "this", "bci", readInstruction("bc", "bci"), "StoreLocal$" + kindName);
                 b.startStatement().string("newKind = ").staticReference(types.FrameSlotKind, kindName).end();
                 b.startStatement();
                 startSetFrame(b, boxingType).string("frame").string("slot").startGroup().cast(boxingType).string("local").end().end();
@@ -13719,7 +13716,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
                 b.startStatement().string("newOperand = ").startCall("undoQuickening").string("operand").end().end();
                 b.startStatement().string("newKind = ").staticReference(types.FrameSlotKind, "Object").end();
-                emitOnSpecialize(b, "this", "bci", "bc[bci]", "StoreLocal$" + genericInstruction.getQualifiedQuickeningName());
+                emitOnSpecialize(b, "this", "bci", readInstruction("bc", "bci"), "StoreLocal$" + genericInstruction.getQualifiedQuickeningName());
                 b.startStatement();
                 startSetFrame(b, type(Object.class)).string("frame").string("slot").string("local").end();
                 b.end();
@@ -13738,7 +13735,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
             b.startStatement().string("newOperand = ").startCall("undoQuickening").string("operand").end().end();
             b.startStatement().string("newKind = ").staticReference(types.FrameSlotKind, "Object").end();
-            emitOnSpecialize(b, "this", "bci", "bc[bci]", "StoreLocal$" + genericInstruction.getQualifiedQuickeningName());
+            emitOnSpecialize(b, "this", "bci", readInstruction("bc", "bci"), "StoreLocal$" + genericInstruction.getQualifiedQuickeningName());
             b.startStatement();
             startSetFrame(b, type(Object.class)).string("frame").string("slot").string("local").end();
             b.end();
@@ -14539,7 +14536,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     // Helpers to generate common strings
-    private static CodeTree readInstruction(String bc, String bci) {
+    public static CodeTree readInstruction(String bc, String bci) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startCall("ACCESS", "readShort");
         b.string(bc);
