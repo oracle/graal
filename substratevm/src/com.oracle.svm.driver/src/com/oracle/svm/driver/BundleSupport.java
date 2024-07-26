@@ -696,9 +696,10 @@ final class BundleSupport {
             nativeImage.deleteAllFiles(metaInfDir);
         }
 
-        Path bundleLauncherFile = Paths.get("/").resolve(BundleLauncher.class.getName().replace(".", "/") + ".class");
-        try (FileSystem fs = FileSystems.newFileSystem(BundleSupport.class.getResource(bundleLauncherFile.toString()).toURI(), new HashMap<>());
-                        Stream<Path> walk = Files.walk(fs.getPath(bundleLauncherFile.getParent().toString()))) {
+        String bundleLauncherClassResource = "/" + BundleLauncher.class.getName().replace(".", "/") + ".class";
+        String bundleLauncherPackageResource = "/" + BundleLauncher.class.getPackageName().replace(".", "/");
+        try (FileSystem fs = FileSystems.newFileSystem(BundleSupport.class.getResource(bundleLauncherClassResource).toURI(), new HashMap<>());
+                        Stream<Path> walk = Files.walk(fs.getPath(bundleLauncherPackageResource))) {
             walk.filter(Predicate.not(Files::isDirectory))
                             .map(Path::toString)
                             .forEach(sourcePath -> {
@@ -714,7 +715,7 @@ final class BundleSupport {
                                 }
                             });
         } catch (Exception e) {
-            throw NativeImage.showError("Failed to read bundle launcher resources '" + bundleLauncherFile.getParent() + "'", e);
+            throw NativeImage.showError("Failed to read bundle launcher resources '" + bundleLauncherPackageResource + "'", e);
         }
 
         Path pathCanonicalizationsFile = stageDir.resolve("path_canonicalizations.json");
