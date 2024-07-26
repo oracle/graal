@@ -452,6 +452,8 @@ abstract class JavaMonitorQueuedSynchronizer {
                 ConditionNode next = first.nextWaiter;
                 if ((firstWaiter = next) == null) {
                     lastWaiter = null;
+                } else {
+                    first.nextWaiter = null; // GC assistance
                 }
                 if ((first.getAndUnsetStatus(COND) & COND) != 0) {
                     first.notifierJfrTid = SubstrateJVM.getCurrentThreadId();
