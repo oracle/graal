@@ -25,10 +25,10 @@
 package com.oracle.svm.core.snippets;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.reflect.GenericSignatureFormatError;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.core.jdk.InternalVMMethod;

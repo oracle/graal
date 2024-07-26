@@ -1133,7 +1133,6 @@ public final class JNIFunctions {
         Class<?> clazz = PredefinedClassesSupport.loadClass(classLoader, name, data, 0, data.length, null);
         return JNIObjectHandles.createLocal(clazz);
     }
-    }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
@@ -1628,6 +1627,7 @@ public final class JNIFunctions {
     static void SetStaticDoubleField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId fieldId, double value) {
         long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
         U.putDouble(StaticFieldsSupport.getStaticPrimitiveFields(), offset, value);
+    }
 
     // Checkstyle: resume
 

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import org.graalvm.compiler.word.BarrieredAccess;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -31,9 +33,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.Word;
 
 /**
  * The methods in this class are mainly used to fill or copy Java heap memory. All methods guarantee

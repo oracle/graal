@@ -26,7 +26,7 @@ package com.oracle.svm.core.util;
 
 import java.lang.reflect.Array;
 
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 
 public class ArrayUtil {
     public static boolean isOutOfBounds(Object array, int start, int count) {
