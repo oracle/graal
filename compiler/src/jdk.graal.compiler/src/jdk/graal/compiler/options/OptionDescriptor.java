@@ -203,7 +203,7 @@ public final class OptionDescriptor {
      */
     public boolean isServiceLoaded() {
         OptionGroup group = getDeclaringClass().getAnnotation(OptionGroup.class);
-        return group == null || !group.registerAsService();
+        return group == null || group.registerAsService();
     }
 
     /**
