@@ -204,8 +204,8 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
-        public boolean isCaptureFramesForTrace(RootNode rootNode, Node callNode) {
-            return rootNode.isCaptureFramesForTrace(callNode);
+        public boolean isCaptureFramesForTrace(RootNode rootNode, boolean compiled) {
+            return rootNode.isCaptureFramesForTrace(compiled);
         }
     }
 

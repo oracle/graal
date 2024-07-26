@@ -217,7 +217,7 @@ public abstract class Accessor {
 
         public abstract int findBytecodeIndex(RootNode rootNode, Node callNode, Frame frame);
 
-        public abstract boolean isCaptureFramesForTrace(RootNode rootNode, Node callNode);
+        public abstract boolean isCaptureFramesForTrace(RootNode rootNode, boolean compiled);
     }
 
     public abstract static class SourceSupport extends Support {
