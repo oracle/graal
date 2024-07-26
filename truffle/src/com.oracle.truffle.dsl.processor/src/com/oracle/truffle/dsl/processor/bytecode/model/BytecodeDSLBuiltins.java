@@ -205,7 +205,7 @@ public class BytecodeDSLBuiltins {
                         """) //
                         .setOperationBeginArguments(new OperationArgument(context.getType(int.class), Encoding.INTEGER, "index", "the index of the argument to load (must fit into a short)")) //
                         .setInstruction(m.instruction(InstructionKind.LOAD_ARGUMENT, "load.argument", m.signature(Object.class))//
-                                        .addImmediate(ImmediateKind.INTEGER, "index"));
+                                        .addImmediate(ImmediateKind.SHORT, "index"));
         m.operation(OperationKind.LOAD_EXCEPTION, "LoadException", """
                         LoadException reads the current exception from the frame.
                         This operation is only permitted inside the {@code catch} operation of TryCatch and FinallyTryCatch operations.

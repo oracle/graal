@@ -110,7 +110,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     private final List<CustomOperationModel> customShortCircuitOperations = new ArrayList<>();
     private final HashMap<OperationModel, CustomOperationModel> operationsToCustomOperations = new HashMap<>();
     private LinkedHashMap<String, InstructionModel> instructions = new LinkedHashMap<>();
-    // index i stores invalidate instruction with i bytes for immediates.
+    // instructions indexed by # of short immediates (i.e., their lengths are [2, 4, 6, ...]).
     private InstructionModel[] invalidateInstructions;
 
     public DeclaredType languageClass;
@@ -252,7 +252,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (invalidateInstructions == null) {
             return null;
         }
-        return invalidateInstructions[length - OPCODE_WIDTH];
+        assert length % 2 == 0;
+        return invalidateInstructions[(length - OPCODE_WIDTH) / 2];
     }
 
     public InstructionModel[] getInvalidateInstructions() {
@@ -264,12 +265,13 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         for (InstructionModel instruction : instructions.values()) {
             maxLength = Math.max(maxLength, instruction.getInstructionLength());
         }
-        // Allocate instructions with [0, 1, ..., maxLength - OPCODE_WIDTH] bytes for immediates.
-        invalidateInstructions = new InstructionModel[maxLength - OPCODE_WIDTH + 1];
-        for (int i = 0; i < invalidateInstructions.length; i++) {
+        // Allocate instructions with [0, 1, ..., maxLength - OPCODE_WIDTH] short immediates.
+        int numShortImmediates = (maxLength - OPCODE_WIDTH) / 2;
+        invalidateInstructions = new InstructionModel[numShortImmediates + 1];
+        for (int i = 0; i < numShortImmediates + 1; i++) {
             InstructionModel model = instruction(InstructionKind.INVALIDATE, "invalidate" + i, signature(void.class));
             for (int j = 0; j < i; j++) {
-                model.addImmediate(ImmediateKind.BYTE, "invalidated" + j);
+                model.addImmediate(ImmediateKind.SHORT, "invalidated" + j);
             }
             invalidateInstructions[i] = model;
         }
@@ -423,11 +425,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         short currentId = 1;
         for (InstructionModel m : newInstructions.values()) {
             m.setId(currentId++);
-
+            m.validateAlignment();
             /*
              * Make sure the instruction format for quickening is valid.
              */
-
             if (m.isQuickening()) {
                 InstructionModel root = m.getQuickeningRoot();
                 if (root.getInstructionLength() != m.getInstructionLength()) {
@@ -436,7 +437,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                                                     "Invalid instruction length %s for instruction %s. Expected length %s from root %s.",
                                     m.getInstructionLength(), m.name, root.getInstructionLength(), root.name));
                 }
-
             }
         }
 

@@ -133,8 +133,7 @@ public final class InstructionModel implements PrettyPrintable {
          * Index into BytecodeRootNodes.nodes. Necessary for boxing elimination.
          */
         LOCAL_ROOT("localRoot", ImmediateWidth.SHORT),
-        INTEGER("int", ImmediateWidth.SHORT),
-        BYTE("byte", ImmediateWidth.BYTE),
+        SHORT("short", ImmediateWidth.SHORT),
         BYTECODE_INDEX("bci", ImmediateWidth.INT),
         STACK_POINTER("sp", ImmediateWidth.SHORT),
         CONSTANT("const", ImmediateWidth.SHORT),
@@ -551,5 +550,31 @@ public final class InstructionModel implements PrettyPrintable {
             }
         }
         return false;
+    }
+
+    public void validateAlignment() {
+        /*
+         * Unaligned accesses are not atomic. For correctness, since we overwrite opcodes for
+         * quickening/invalidation, our instructions *must* be short-aligned.
+         *
+         * Additionally, byte array reads are only PE-constant when they are aligned. Thus, for
+         * performance, it is crucial that opcodes and immediates are aligned. We enforce short
+         * immediate alignment below.
+         *
+         * Uniquely, int immediates do *not* need to be int-aligned. Bytecode DSL interpreters use
+         * special PE-able methods for int reads that split unaligned reads into multiple aligned
+         * reads in compiled code. Since immediates are never modified, atomicity is not important.
+         */
+        if (getInstructionLength() % 2 != 0) {
+            throw new AssertionError(String.format("All instructions should be short-aligned, but instruction %s has length %s.",
+                            name, getInstructionLength()));
+        }
+
+        for (InstructionImmediate immediate : immediates) {
+            if (immediate.kind == ImmediateKind.SHORT && immediate.offset % 2 != 0) {
+                throw new AssertionError(String.format("Immediate %s of instruction %s should be short-aligned, but it appears at offset %s.",
+                                immediate.name, name, immediate.offset));
+            }
+        }
     }
 }

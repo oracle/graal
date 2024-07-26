@@ -5886,7 +5886,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case CONSTANT -> constantOperandIndices.get(constantIndex++);
                     case NODE_PROFILE -> "allocateNode()";
                     case TAG_NODE -> "node";
-                    case LOCAL_OFFSET, LOCAL_INDEX, LOCAL_ROOT, INTEGER, BYTE, BRANCH_PROFILE, STACK_POINTER -> throw new AssertionError(
+                    case LOCAL_OFFSET, LOCAL_INDEX, LOCAL_ROOT, SHORT, BRANCH_PROFILE, STACK_POINTER -> throw new AssertionError(
                                     "Operation " + operation.name + " takes an immediate " + immediate.name() + " with unexpected kind " + immediate.kind() +
                                                     ". This is a bug in the Bytecode DSL processor.");
                 };
@@ -8502,8 +8502,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     return "ConstantArgument";
                 case LOCAL_OFFSET:
                     return "LocalOffsetArgument";
-                case INTEGER:
-                case BYTE:
+                case SHORT:
                 case LOCAL_INDEX:
                 case LOCAL_ROOT:
                 case STACK_POINTER:
@@ -8518,14 +8517,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private static List<Element> getArgumentFields(ImmediateKind kind) {
             return switch (kind) {
-                case INTEGER, BYTE, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> List.of(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "width"));
+                case SHORT, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> List.of(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "width"));
                 default -> List.of();
             };
         }
 
         private static List<String> getImmediateArgumentArgs(ImmediateKind kind) {
             return switch (kind) {
-                case INTEGER, BYTE, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> List.of(Integer.toString(kind.width.byteSize));
+                case SHORT, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> List.of(Integer.toString(kind.width.byteSize));
                 default -> List.of();
             };
         }
@@ -8590,8 +8589,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case BYTECODE_INDEX:
                         type.add(createAsBytecodeIndex());
                         break;
-                    case BYTE:
-                    case INTEGER:
+                    case SHORT:
                     case LOCAL_INDEX:
                     case LOCAL_ROOT:
                     case STACK_POINTER:
@@ -8762,7 +8760,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case BYTECODE_INDEX -> "BYTECODE_INDEX";
                     case CONSTANT -> "CONSTANT";
                     case LOCAL_OFFSET -> "LOCAL_OFFSET";
-                    case INTEGER, BYTE, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> "INTEGER";
+                    case SHORT, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> "INTEGER";
                     case NODE_PROFILE -> "NODE_PROFILE";
                     case TAG_NODE -> "TAG_NODE";
                 };
@@ -9763,7 +9761,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.tree(createValidationErrorWithBci("bytecode index is out of bounds"));
                             b.end();
                             break;
-                        case INTEGER, BYTE:
+                        case SHORT:
                             break;
                         case STACK_POINTER:
                             b.startAssign("root").string("this.getRoot()").end();
@@ -11793,7 +11791,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end();
                         break;
                     case LOAD_ARGUMENT:
-                        InstructionImmediate argIndex = instr.getImmediate(ImmediateKind.INTEGER);
+                        InstructionImmediate argIndex = instr.getImmediate(ImmediateKind.SHORT);
                         if (instr.isReturnTypeQuickening()) {
                             TypeMirror returnType = instr.signature.returnType;
                             b.startTryBlock();
@@ -14562,7 +14560,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         String accessor = switch (immediate.kind().width) {
             case BYTE -> "getByte";
             case SHORT -> "getShort";
-            case INT -> "getInt";
+            case INT -> "getIntUnaligned";
         };
         b.startCall("BYTE_ARRAY_SUPPORT", accessor);
         b.string(bc);
