@@ -174,6 +174,16 @@ final class ReversedByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public int getIntUnaligned(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        return access.getIntUnaligned(buffer, byteOffset);
+    }
+
+    @Override
+    public int getIntUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        return access.getIntUnaligned(buffer, byteOffset);
+    }
+
+    @Override
     public byte getByteVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
         return access.getByte(buffer, byteOffset);
     }
