@@ -397,13 +397,13 @@ public class NativeImageGeneratorRunner {
                 NativeImageKind imageKind = null;
                 boolean isStaticExecutable = SubstrateOptions.StaticExecutable.getValue(parsedHostedOptions);
                 boolean isSharedLibrary = SubstrateOptions.SharedLibrary.getValue(parsedHostedOptions);
-                boolean isImageLayer = SubstrateOptions.ImageLayer.getValue(parsedHostedOptions);
+                boolean isImageLayer = SubstrateOptions.LayerCreate.hasBeenSet(parsedHostedOptions);
                 if (isStaticExecutable && isSharedLibrary) {
                     reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.StaticExecutable);
                 } else if (isStaticExecutable && isImageLayer) {
-                    reportConflictingOptions(SubstrateOptions.StaticExecutable, SubstrateOptions.ImageLayer);
+                    reportConflictingOptions(SubstrateOptions.StaticExecutable, SubstrateOptions.LayerCreate);
                 } else if (isSharedLibrary && isImageLayer) {
-                    reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.ImageLayer);
+                    reportConflictingOptions(SubstrateOptions.SharedLibrary, SubstrateOptions.LayerCreate);
                 } else if (isSharedLibrary) {
                     imageKind = NativeImageKind.SHARED_LIBRARY;
                 } else if (isImageLayer) {
@@ -587,7 +587,7 @@ public class NativeImageGeneratorRunner {
         return ExitStatus.OK.getValue();
     }
 
-    private static void reportConflictingOptions(HostedOptionKey<Boolean> o1, HostedOptionKey<Boolean> o2) {
+    private static void reportConflictingOptions(HostedOptionKey<Boolean> o1, HostedOptionKey<?> o2) {
         throw UserError.abort("Cannot pass both options: %s and %s", SubstrateOptionsParser.commandArgument(o1, "+"), SubstrateOptionsParser.commandArgument(o2, "+"));
     }
 

@@ -107,21 +107,6 @@ public class SubstrateOptions {
     @Option(help = "Build shared library")//
     public static final HostedOptionKey<Boolean> SharedLibrary = new HostedOptionKey<>(false);
 
-    @Option(help = "Build a Native Image layer.")//
-    public static final HostedOptionKey<Boolean> ImageLayer = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            LayeredBaseImageAnalysis.update(values, newValue);
-            ClosedTypeWorld.update(values, !newValue);
-            StripDebugInfo.update(values, !newValue);
-            AOTTrivialInline.update(values, !newValue);
-            if (imageLayerEnabledHandler != null) {
-                imageLayerEnabledHandler.onOptionEnabled(values);
-            }
-            UseContainerSupport.update(values, !newValue);
-        }
-    };
-
     @APIOption(name = "static")//
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false, key -> {
@@ -133,6 +118,14 @@ public class SubstrateOptions {
                             "Building static executable images is only supported with musl libc. Remove the '--static' option or add the '--libc=musl' option.");
         }
     });
+
+    // @APIOption(name = "layer-create")//
+    @Option(help = "Experimental: Build a Native Image layer.")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LayerCreate = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+
+    // @APIOption(name = "layer-use")//
+    @Option(help = "Experimental: Build an image based on a Native Image layer.")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @APIOption(name = "libc")//
     @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
@@ -195,7 +188,7 @@ public class SubstrateOptions {
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String KEEP_ALIVE_PREFIX = "-keepalive";
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
-    private static OptionEnabledHandler<Boolean> imageLayerEnabledHandler;
+    public static OptionEnabledHandler<Boolean> imageLayerEnabledHandler;
 
     @Fold
     public static boolean getSourceLevelDebug() {
@@ -1269,22 +1262,6 @@ public class SubstrateOptions {
 
     @Option(help = "Enables logging of failed hash code injection", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> LoggingHashCodeInjection = new HostedOptionKey<>(false);
-
-    @Option(help = "Names of layer snapshots produced by PersistImageLayer", type = OptionType.Debug) //
-    @BundleMember(role = BundleMember.Role.Input)//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> LoadImageLayer = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build()) {
-        @Override
-        public void update(EconomicMap<OptionKey<?>, Object> values, Object boxedValue) {
-            super.update(values, boxedValue);
-            ClosedTypeWorld.update(values, false);
-            /* Ignore any potential undefined references caused by inlining in base layer. */
-            IgnoreUndefinedReferences.update(values, true);
-            AOTTrivialInline.update(values, false);
-            if (imageLayerEnabledHandler != null) {
-                imageLayerEnabledHandler.onOptionEnabled(values);
-            }
-        }
-    };
 
     public static class TruffleStableOptions {
 
