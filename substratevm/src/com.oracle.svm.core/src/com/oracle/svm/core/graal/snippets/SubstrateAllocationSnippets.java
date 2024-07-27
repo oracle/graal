@@ -122,9 +122,10 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     public static final LocationIdentity[] GC_LOCATIONS = new LocationIdentity[]{TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION};
 
     private static final SubstrateForeignCallDescriptor NEW_MULTI_ARRAY = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "newMultiArrayStub", NO_SIDE_EFFECT);
-    private static final SubstrateForeignCallDescriptor INSTANCE_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "instanceHubErrorStub", NO_SIDE_EFFECT);
+    private static final SubstrateForeignCallDescriptor SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class,
+                    "slowPathHubOrUnsafeInstantiationError", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor ARRAY_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "arrayHubErrorStub", NO_SIDE_EFFECT);
-    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{NEW_MULTI_ARRAY, INSTANCE_HUB_ERROR, ARRAY_HUB_ERROR};
+    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{NEW_MULTI_ARRAY, SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR, ARRAY_HUB_ERROR};
 
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(FOREIGN_CALLS);
@@ -272,12 +273,12 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     public DynamicHub validateNewInstanceClass(DynamicHub hub) {
         if (probability(EXTREMELY_FAST_PATH_PROBABILITY, hub != null)) {
             DynamicHub nonNullHub = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
-            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullHub.canUnsafeInstantiateAsInstance())) {
+            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullHub.canUnsafeInstantiateAsInstanceFastPath())) {
                 return nonNullHub;
             }
         }
-        callInstanceHubErrorWithExceptionStub(INSTANCE_HUB_ERROR, DynamicHub.toClass(hub));
-        throw UnreachableNode.unreachable();
+        DynamicHub slowPathStub = slowPathHubOrUnsafeInstantiationErrorStub(SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR, DynamicHub.toClass(hub));
+        return (DynamicHub) PiNode.piCastNonNull(slowPathStub, SnippetAnchorNode.anchor());
     }
 
     /** Foreign call: {@link #NEW_MULTI_ARRAY}. */
@@ -308,25 +309,28 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
-    private static native void callInstanceHubErrorWithExceptionStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> hub);
+    private static native DynamicHub slowPathHubOrUnsafeInstantiationErrorStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> hub);
 
-    /** Foreign call: {@link #INSTANCE_HUB_ERROR}. */
+    /** Foreign call: {@link #SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
-    private static void instanceHubErrorStub(DynamicHub hub) throws InstantiationException {
+    private static DynamicHub slowPathHubOrUnsafeInstantiationError(DynamicHub hub) throws InstantiationException {
         if (hub == null) {
             throw new NullPointerException("Allocation type is null.");
         } else if (!hub.isInstanceClass() || LayoutEncoding.isSpecial(hub.getLayoutEncoding())) {
-            throw new InstantiationException("Can only allocate instance objects for concrete classes.");
-        } else if (!hub.canUnsafeInstantiateAsInstance()) {
-            if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                MissingReflectionRegistrationUtils.forClass(hub.getTypeName());
-            }
-            throw new IllegalArgumentException("Type " + DynamicHub.toClass(hub).getTypeName() + " is instantiated reflectively but was never registered." +
-                            " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
+            throw new InstantiationException("Can only allocate instance objects for concrete classes: " + DynamicHub.toClass(hub).getTypeName());
         } else if (LayoutEncoding.isHybrid(hub.getLayoutEncoding())) {
-            throw new InstantiationException("Cannot allocate objects of special hybrid types.");
+            throw new InstantiationException("Cannot allocate objects of special hybrid types: " + DynamicHub.toClass(hub).getTypeName());
         } else {
-            throw VMError.shouldNotReachHereUnexpectedInput(hub); // ExcludeFromJacocoGeneratedReport
+            if (hub.canUnsafeInstantiateAsInstanceSlowPath()) {
+                hub.getCompanion().setUnsafeAllocate();
+                return hub;
+            } else {
+                if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+                    MissingReflectionRegistrationUtils.forUnsafeAllocation(hub.getTypeName());
+                }
+                throw new IllegalArgumentException("Type " + DynamicHub.toClass(hub).getTypeName() + " is instantiated reflectively but was never registered." +
+                                " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
+            }
         }
     }
 
