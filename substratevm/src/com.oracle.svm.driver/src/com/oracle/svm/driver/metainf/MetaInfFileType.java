@@ -31,6 +31,7 @@ import com.oracle.svm.core.configure.ConfigurationFiles;
 
 public enum MetaInfFileType {
     Properties(null, NativeImageMetaInfWalker.nativeImagePropertiesFilename),
+    ReachabilityMetadata(ConfigurationFiles.Options.ReachabilityMetadataResources, ConfigurationFile.REACHABILITY_METADATA.getFileName()),
     JniConfiguration(ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName()),
     ForeignConfiguration(ConfigurationFiles.Options.ForeignResources, ConfigurationFile.FOREIGN.getFileName()),
     ReflectConfiguration(ConfigurationFiles.Options.ReflectionConfigurationResources, ConfigurationFile.REFLECTION.getFileName()),
