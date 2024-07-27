@@ -88,6 +88,10 @@ public class ImageLayerSnapshotUtil {
     public static final String IMAGE_SINGLETON_KEYS = "image singleton keys";
     public static final String IMAGE_SINGLETON_OBJECTS = "image singleton objects";
 
+    public static String snapshotFileName(String imageName) {
+        return FILE_NAME_PREFIX + imageName + FILE_EXTENSION;
+    }
+
     public String getTypeIdentifier(AnalysisType type) {
         String javaName = type.toJavaName(true);
         return addModuleName(javaName, type.getJavaClass().getModule().getName());
