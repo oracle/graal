@@ -164,10 +164,15 @@ public final class HeapParameters {
         Word.ensureInitialized();
     }
 
-    private static final UnsignedWord producedHeapChunkZapInt = WordFactory.unsigned(0xbaadbabe);
+    /** Freshly committed but still uninitialized Java heap memory. */
+    private static final int UNINITIALIZED_JAVA_HEAP = 0xbaadbabe;
+    /** Unused but still committed Java heap memory. */
+    private static final int UNUSED_JAVA_HEAP = 0xdeadbeef;
+
+    private static final UnsignedWord producedHeapChunkZapInt = WordFactory.unsigned(UNINITIALIZED_JAVA_HEAP);
     private static final UnsignedWord producedHeapChunkZapWord = producedHeapChunkZapInt.shiftLeft(32).or(producedHeapChunkZapInt);
 
-    private static final UnsignedWord consumedHeapChunkZapInt = WordFactory.unsigned(0xdeadbeef);
+    private static final UnsignedWord consumedHeapChunkZapInt = WordFactory.unsigned(UNUSED_JAVA_HEAP);
     private static final UnsignedWord consumedHeapChunkZapWord = consumedHeapChunkZapInt.shiftLeft(32).or(consumedHeapChunkZapInt);
 
     public static final class TestingBackDoor {

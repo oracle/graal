@@ -729,6 +729,16 @@ public class SubstrateOptions {
         }
     }
 
+    @Option(help = "Fill unused and freed native memory with sentinel values. Needs NMT.", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> ZapNativeMemory = new HostedOptionKey<>(false, SubstrateOptions::validateZapNativeMemory);
+
+    private static void validateZapNativeMemory(HostedOptionKey<Boolean> optionKey) {
+        boolean value = optionKey.getValue();
+        if (value && !VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            throw UserError.abort("The option '" + optionKey.getName() + "' can only be enabled if NMT is enabled as well ('--enable-monitoring=nmt').");
+        }
+    }
+
     /*
      * Isolate tear down options.
      */
