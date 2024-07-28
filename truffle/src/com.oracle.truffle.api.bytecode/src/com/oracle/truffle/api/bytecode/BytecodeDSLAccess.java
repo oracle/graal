@@ -58,18 +58,8 @@ import sun.misc.Unsafe;
  */
 public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImpl, BytecodeDSLAccess.UnsafeImpl {
 
-    /**
-     * Safe accessor.
-     *
-     * @since 24.2
-     */
-    public static volatile BytecodeDSLAccess safeSingleton;
-    /**
-     * Unsafe accessor.
-     *
-     * @since 24.2
-     */
-    public static volatile BytecodeDSLAccess unsafeSingleton;
+    private static volatile BytecodeDSLAccess safeSingleton;
+    private static volatile BytecodeDSLAccess unsafeSingleton;
 
     /**
      * Obtains an accessor. Used by generated code; do not use directly.
@@ -398,8 +388,6 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
      */
     static final class UnsafeImpl extends BytecodeDSLAccess {
 
-        static final ByteArraySupport ARRAY_SUPPORT = ByteArraySupport.nativeUnsafe();
-
         static final Unsafe UNSAFE = initUnsafe();
 
         private static Unsafe initUnsafe() {
@@ -420,7 +408,7 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
 
         @Override
         public ByteArraySupport getByteArraySupport() {
-            return ARRAY_SUPPORT;
+            return BytecodeAccessor.MEMORY.getNativeUnsafe();
         }
 
         @Override
@@ -613,14 +601,13 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
      * Implementation of BytecodeDSLAccess that does not use Unsafe.
      */
     public static final class SafeImpl extends BytecodeDSLAccess {
-        static final ByteArraySupport ARRAY_SUPPORT = ByteArraySupport.nativeChecked();
 
         private SafeImpl() {
         }
 
         @Override
         public ByteArraySupport getByteArraySupport() {
-            return ARRAY_SUPPORT;
+            return BytecodeAccessor.MEMORY.getNativeChecked();
         }
 
         @Override

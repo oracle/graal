@@ -114,6 +114,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
@@ -1328,6 +1329,20 @@ public abstract class Accessor {
 
     }
 
+    public abstract static class MemorySupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.memory.MemoryAccessor$MemorySupportImpl";
+
+        protected MemorySupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract ByteArraySupport getNativeUnsafe();
+
+        public abstract ByteArraySupport getNativeChecked();
+
+    }
+
     public final void transferOSRFrameStaticSlot(FrameWithoutBoxing sourceFrame, FrameWithoutBoxing targetFrame, int slot) {
         sourceFrame.transferOSRStaticSlot(targetFrame, slot);
     }
@@ -1354,6 +1369,7 @@ public abstract class Accessor {
         private static final Accessor.LanguageProviderSupport LANGUAGE_PROVIDER;
         private static final Accessor.InstrumentProviderSupport INSTRUMENT_PROVIDER;
         private static final DynamicObjectSupport DYNAMIC_OBJECT;
+        private static final Accessor.MemorySupport MEMORY_SUPPORT;
 
         static {
             // Eager load all accessors so the above fields are all set and all methods are
@@ -1372,6 +1388,7 @@ public abstract class Accessor {
             LANGUAGE_PROVIDER = loadSupport(LanguageProviderSupport.IMPL_CLASS_NAME);
             INSTRUMENT_PROVIDER = loadSupport(InstrumentProviderSupport.IMPL_CLASS_NAME);
             DYNAMIC_OBJECT = loadSupport(DynamicObjectSupport.IMPL_CLASS_NAME);
+            MEMORY_SUPPORT = loadSupport(MemorySupport.IMPL_CLASS_NAME);
         }
 
         @SuppressWarnings("unchecked")
@@ -1389,38 +1406,39 @@ public abstract class Accessor {
 
     protected Accessor() {
         String thisClassName = this.getClass().getName();
-        if ("com.oracle.truffle.api.LanguageAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.TruffleAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.nodes.NodeAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.instrumentation.InstrumentAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.source.SourceAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.interop.InteropAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.exception.ExceptionAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.io.IOAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.frame.FrameAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.host.HostAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.polyglot.EngineAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.utilities.JSONHelper.DumpAccessor".equals(thisClassName)) {
-            // OK, classes initializing accessors
-        } else if ("com.oracle.truffle.api.debug.Debugger$AccessorDebug".equals(thisClassName) ||
-                        "com.oracle.truffle.tck.instrumentation.VerifierInstrument$TruffleTCKAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.test.TestAPIAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.impl.TVMCIAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.impl.DefaultRuntimeAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.runtime.OptimizedRuntimeAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.dsl.DSLAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.impl.ImplAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.memory.MemoryFenceAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.library.LibraryAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.polyglot.enterprise.EnterpriseEngineAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.polyglot.enterprise.test.EnterpriseDispatchTestAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.staticobject.SomAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.strings.TStringAccessor".equals(thisClassName)) {
-            // OK, classes allowed to use accessors
-        } else {
-            throw new IllegalStateException(thisClassName);
+        switch (thisClassName) {
+            case "com.oracle.truffle.api.LanguageAccessor":
+            case "com.oracle.truffle.api.nodes.NodeAccessor":
+            case "com.oracle.truffle.api.exception.ExceptionAccessor":
+            case "com.oracle.truffle.api.io.IOAccessor":
+            case "com.oracle.truffle.api.source.SourceAccessor":
+            case "com.oracle.truffle.api.frame.FrameAccessor":
+            case "com.oracle.truffle.api.interop.InteropAccessor":
+            case "com.oracle.truffle.api.instrumentation.InstrumentAccessor":
+            case "com.oracle.truffle.api.debug.Debugger$AccessorDebug":
+            case "com.oracle.truffle.api.dsl.DSLAccessor":
+            case "com.oracle.truffle.api.bytecode.BytecodeAccessor":
+            case "com.oracle.truffle.api.impl.DefaultRuntimeAccessor":
+            case "com.oracle.truffle.api.impl.ImplAccessor":
+            case "com.oracle.truffle.api.library.LibraryAccessor":
+            case "com.oracle.truffle.api.staticobject.SomAccessor":
+            case "com.oracle.truffle.api.strings.TStringAccessor":
+            case "com.oracle.truffle.runtime.OptimizedRuntimeAccessor":
+            case "com.oracle.truffle.host.HostAccessor":
+            case "com.oracle.truffle.polyglot.EngineAccessor":
+            case "com.oracle.truffle.polyglot.enterprise.EnterpriseEngineAccessor":
+                // test accessors
+            case "com.oracle.truffle.api.test.TestAPIAccessor":
+            case "com.oracle.truffle.polyglot.enterprise.test.EnterpriseDispatchTestAccessor":
+            case "com.oracle.truffle.tck.instrumentation.VerifierInstrument$TruffleTCKAccessor":
+            case "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor":
+                // OK, classes initializing accessors
+                // OK, classes allowed to use accessors
+                break;
+            default:
+                throw new IllegalStateException(thisClassName);
         }
+
     }
 
     public final NodeSupport nodeSupport() {
@@ -1477,6 +1495,10 @@ public abstract class Accessor {
 
     public final DynamicObjectSupport dynamicObjectSupport() {
         return Constants.DYNAMIC_OBJECT;
+    }
+
+    public final MemorySupport memorySupport() {
+        return Constants.MEMORY_SUPPORT;
     }
 
     /**

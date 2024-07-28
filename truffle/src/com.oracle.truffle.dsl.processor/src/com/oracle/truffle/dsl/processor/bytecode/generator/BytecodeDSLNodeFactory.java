@@ -232,7 +232,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         emptyObjectArray = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
         fastAccess = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), types.BytecodeDSLAccess, "ACCESS");
         fastAccess.setInit(createFastAccessFieldInitializer(model.allowUnsafe));
-        byteArraySupport = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), types.ByteArraySupport, "BYTE_ARRAY_SUPPORT");
+        byteArraySupport = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), types.ByteArraySupport, "BYTES");
         byteArraySupport.createInitBuilder().startCall("ACCESS.getByteArraySupport").end();
     }
 
@@ -8551,7 +8551,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 type.add(new CodeVariableElement(Set.of(PROTECTED, STATIC, FINAL), types.BytecodeDSLAccess, "SAFE_ACCESS")) //
                                 .createInitBuilder().tree(createFastAccessFieldInitializer(false));
-                type.add(new CodeVariableElement(Set.of(PROTECTED, STATIC, FINAL), types.ByteArraySupport, "SAFE_BYTE_ARRAY_SUPPORT")) //
+                type.add(new CodeVariableElement(Set.of(PROTECTED, STATIC, FINAL), types.ByteArraySupport, "SAFE_BYTES")) //
                                 .createInitBuilder().startCall("SAFE_ACCESS.getByteArraySupport").end();
                 type.add(createGetName());
 
@@ -8618,15 +8618,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             private static String readByteSafe(String array, String index) {
-                return String.format("SAFE_BYTE_ARRAY_SUPPORT.getByte(%s, %s)", array, index);
+                return String.format("SAFE_BYTES.getByte(%s, %s)", array, index);
             }
 
             private static String readShortSafe(String array, String index) {
-                return String.format("SAFE_BYTE_ARRAY_SUPPORT.getByte(%s, %s)", array, index);
+                return String.format("SAFE_BYTES.getByte(%s, %s)", array, index);
             }
 
             private static String readIntSafe(String array, String index) {
-                return String.format("SAFE_BYTE_ARRAY_SUPPORT.getByte(%s, %s)", array, index);
+                return String.format("SAFE_BYTES.getByte(%s, %s)", array, index);
             }
 
             private static String readConstSafe(String index) {
@@ -14534,7 +14534,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     // Helpers to generate common strings
     public static CodeTree readInstruction(String bc, String bci) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startCall("BYTE_ARRAY_SUPPORT", "getShort");
+        b.startCall("BYTES", "getShort");
         b.string(bc);
         b.string(bci);
         b.end();
@@ -14547,7 +14547,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private static CodeTree writeInstruction(String bc, String bci, CodeTree value) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startCall("BYTE_ARRAY_SUPPORT", "putShort");
+        b.startCall("BYTES", "putShort");
         b.string(bc);
         b.string(bci);
         b.tree(value);
@@ -14562,7 +14562,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             case SHORT -> "getShort";
             case INT -> "getIntUnaligned";
         };
-        b.startCall("BYTE_ARRAY_SUPPORT", accessor);
+        b.startCall("BYTES", accessor);
         b.string(bc);
         b.startGroup();
         b.string(bci).string(" + ").string(immediate.offset()).string(" ");
@@ -14579,7 +14579,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             case SHORT -> "putShort";
             case INT -> "putInt";
         };
-        b.startCall("BYTE_ARRAY_SUPPORT", accessor);
+        b.startCall("BYTES", accessor);
         b.string(bc);
         b.startGroup();
         b.string(bci).string(" + ").string(immediate.offset()).string(" ");
@@ -14591,7 +14591,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private static String writeInt(String array, String index, String value) {
-        return String.format("BYTE_ARRAY_SUPPORT.putInt(%s, %s, %s)", array, index, value);
+        return String.format("BYTES.putInt(%s, %s, %s)", array, index, value);
     }
 
     private static CodeTree readConst(String index) {
