@@ -92,20 +92,61 @@ import com.oracle.truffle.api.source.SourceSection;
  * test coverage.
  */
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableTagInstrumentation = true, allowUnsafe = false)),
-                @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableTagInstrumentation = true)),
-                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableTagInstrumentation = true, enableUncachedInterpreter = true)),
-                @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableTagInstrumentation = true, boxingEliminationTypes = {
-                                boolean.class, long.class}, decisionsFile = "basic_interpreter_quickening_only.json")),
-                @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableTagInstrumentation = true, //
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                enableYield = true, //
+                                enableSerialization = true, //
+                                enableTagInstrumentation = true, //
+                                allowUnsafe = false)),
+                @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                enableYield = true, //
+                                enableSerialization = true, //
+                                enableTagInstrumentation = true)),
+                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                enableYield = true, //
+                                enableSerialization = true, //
+                                enableTagInstrumentation = true, //
+                                enableUncachedInterpreter = true)),
+                @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                enableYield = true, //
+                                enableSerialization = true, //
+                                enableTagInstrumentation = true, //
+                                boxingEliminationTypes = {boolean.class, long.class}, //
+                                decisionsFile = "basic_interpreter_quickening_only.json")),
+                @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                enableYield = true, //
+                                enableSerialization = true, //
+                                enableTagInstrumentation = true, //
                                 decisionsFile = "basic_interpreter_decisions.json")),
-                @Variant(suffix = "WithGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableLocalScoping = false, enableTagInstrumentation = true)),
+                @Variant(suffix = "WithGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class,//
+                                enableYield = true, //
+                                enableSerialization = true, //
+                                enableLocalScoping = false, //
+                                enableTagInstrumentation = true)),
+                @Variant(suffix = "WithStoreBytecodeIndexInFrame", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                enableYield = true, //
+                                enableSerialization = true, //
+                                enableLocalScoping = true, //
+                                enableUncachedInterpreter = true, //
+                                boxingEliminationTypes = {boolean.class, long.class}, //
+                                storeBytecodeIndexInFrame = true, //
+                                enableTagInstrumentation = true)),
                 // A typical "production" configuration with all of the bells and whistles.
-                @Variant(suffix = "ProductionLocalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableLocalScoping = true, enableTagInstrumentation = true, //
-                                enableUncachedInterpreter = true, boxingEliminationTypes = {boolean.class, long.class}, decisionsFile = "basic_interpreter_decisions.json")),
-                @Variant(suffix = "ProductionGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableLocalScoping = false, //
-                                enableTagInstrumentation = true, enableUncachedInterpreter = true, boxingEliminationTypes = {boolean.class,
-                                                long.class}, decisionsFile = "basic_interpreter_decisions.json"))
+                @Variant(suffix = "ProductionLocalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                enableYield = true, //
+                                enableSerialization = true, //
+                                enableLocalScoping = true, //
+                                enableTagInstrumentation = true, //
+                                enableUncachedInterpreter = true, //
+                                boxingEliminationTypes = {boolean.class, long.class}, //
+                                decisionsFile = "basic_interpreter_decisions.json")),
+                @Variant(suffix = "ProductionGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                enableYield = true, //
+                                enableSerialization = true, //
+                                enableLocalScoping = false, //
+                                enableTagInstrumentation = true, //
+                                enableUncachedInterpreter = true, //
+                                boxingEliminationTypes = {boolean.class, long.class}, //
+                                decisionsFile = "basic_interpreter_decisions.json"))
 })
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE, javadoc = "ScOr returns the first truthy operand value.")
@@ -187,6 +228,19 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         public static String addStrings(String lhs, String rhs) {
             return lhs + rhs;
         }
+    }
+
+    @Operation
+    @ConstantOperand(type = BasicInterpreter.class)
+    static final class Call {
+
+        @Specialization
+        static Object call(BasicInterpreter interpreter,
+                        @Variadic Object[] arguments,
+                        @Bind Node location) {
+            return interpreter.getCallTarget().call(location, arguments);
+        }
+
     }
 
     @Operation

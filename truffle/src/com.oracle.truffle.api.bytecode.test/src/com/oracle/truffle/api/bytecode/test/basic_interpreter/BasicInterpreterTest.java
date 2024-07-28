@@ -63,6 +63,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.Instruction;
@@ -997,6 +998,94 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         });
 
         assertEquals(42L, root.call());
+    }
+
+    /*
+     * In this test we test that access to outer locals work and the validation code is triggered
+     * for the outer frame.
+     */
+    @Test
+    public void testMaterializedFrameAccesses2() {
+        // z = 38
+        // y = 39
+        // x = 40
+        // function f() {
+        // padding
+        // x = x + 1;
+        // return x + 1;
+        // }
+        // f(materialize());
+
+        BasicInterpreter node = parseNode("materializedFrameAccesses", b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal z = b.createLocal();
+            BytecodeLocal y = b.createLocal();
+            BytecodeLocal x = b.createLocal();
+
+            // z = 38
+            b.beginStoreLocal(z);
+            b.emitLoadConstant(38L);
+            b.endStoreLocal();
+
+            // y = 39
+            b.beginStoreLocal(y);
+            b.emitLoadConstant(39L);
+            b.endStoreLocal();
+
+            // x = 40
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(40L);
+            b.endStoreLocal();
+
+            b.beginRoot(LANGUAGE);
+
+            // add some dummy operations to make the bci
+            // of the inner method incompatible with the outer.
+            for (int i = 0; i < 100; i++) {
+                b.emitVoidOperation();
+            }
+
+            // x = x + 1;
+            b.beginStoreLocalMaterialized(x);
+            b.emitLoadArgument(0); // materializedFrame
+            b.beginAddOperation();
+            b.beginLoadLocalMaterialized(x);
+            b.emitLoadArgument(0); // materializedFrame
+            b.endLoadLocalMaterialized();
+            b.emitLoadConstant(1L);
+            b.endAddOperation();
+            b.endStoreLocalMaterialized();
+
+            // return x + 1;
+            b.beginReturn();
+            b.beginAddOperation();
+
+            b.emitLoadConstant(1L);
+
+            b.beginLoadLocalMaterialized(x);
+            b.emitLoadArgument(0); // materializedFrame
+            b.endLoadLocalMaterialized();
+
+            b.endAddOperation();
+            b.endReturn();
+
+            BasicInterpreter callTarget = b.endRoot();
+
+            b.beginReturn();
+            b.beginCall(callTarget);
+            b.emitMaterializeFrame();
+            b.endCall();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        for (BytecodeRootNode i : node.getRootNodes().getNodes()) {
+            i.getBytecodeNode().setUncachedThreshold(0);
+        }
+
+        assertEquals(42L, node.getCallTarget().call());
     }
 
     @Test
