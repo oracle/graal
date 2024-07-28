@@ -98,6 +98,7 @@ import sun.misc.Unsafe;
  * native-image shared library).
  */
 public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
+
     static final int JAVA_SPEC = Runtime.version().feature();
 
     static final sun.misc.Unsafe UNSAFE = getUnsafe();
@@ -109,6 +110,12 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         } catch (Exception e) {
             throw new InternalError(e);
         }
+    }
+
+    private static final Boolean TRACE_TRANSFER_TO_INTERPRETER;
+    static {
+        String property = System.getProperty("polyglot.engine.TraceTransferToInterpreter");
+        TRACE_TRANSFER_TO_INTERPRETER = property != null && property.equals("true");
     }
 
     private static Unsafe getUnsafe() {
@@ -318,6 +325,11 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
                 installReservedOopMethods(compiler);
 
                 truffleCompiler = compiler;
+
+                if (!TRACE_TRANSFER_TO_INTERPRETER && engine.traceTransferToInterpreter) {
+                    callTarget.engine.getEngineLogger().warning("The option engine.TraceTransferToInterpreter was set to true dynamically using the embedding API. This is not supported. " +
+                                    "Use the -Dpolyglot.engine.TraceTransferToInterpreter=true Java command line option instead to resovle this.");
+                }
                 traceTransferToInterpreter = engine.traceTransferToInterpreter;
                 truffleCompilerInitialized = true;
             } catch (Throwable e) {
@@ -528,7 +540,7 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
 
     @Override
     public void notifyTransferToInterpreter() {
-        if (CompilerDirectives.inInterpreter() && traceTransferToInterpreter) {
+        if (CompilerDirectives.inInterpreter() && TRACE_TRANSFER_TO_INTERPRETER && traceTransferToInterpreter) {
             traceTransferToInterpreter();
         }
     }
