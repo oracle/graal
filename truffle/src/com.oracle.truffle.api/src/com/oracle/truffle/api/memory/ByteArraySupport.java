@@ -107,12 +107,11 @@ public abstract class ByteArraySupport {
         return ByteArraySupports.BIG_ENDIAN;
     }
 
-    // TODO add documentation, maybe guard these using idiom like BytecodeRootNodes#TOKEN?
-    public static ByteArraySupport nativeUnsafe() {
+    static ByteArraySupport nativeUnsafe() {
         return ByteArraySupports.NATIVE_UNSAFE;
     }
 
-    public static ByteArraySupport nativeChecked() {
+    static ByteArraySupport nativeChecked() {
         return ByteArraySupports.NATIVE_CHECKED;
     }
 
