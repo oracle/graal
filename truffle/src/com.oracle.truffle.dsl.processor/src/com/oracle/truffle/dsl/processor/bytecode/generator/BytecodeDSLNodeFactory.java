@@ -9229,6 +9229,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(createGetCachedLocalKind());
                 type.add(createGetCachedLocalKindInternal());
 
+                if (model.storeBciInFrame) {
+                    type.add(createValidateGetCachedLocalKindInternal());
+                }
+
                 type.add(createSetCachedLocalKind());
                 type.add(createSetCachedLocalKindInternal());
             }
@@ -9521,9 +9525,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             CodeTreeBuilder b = ex.createBuilder();
             if (model.enableLocalScoping) {
-                ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
-                b.startAssert().string("locals[localIndexToTableIndex(bci, localIndex) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
                 b.declaration(type(byte[].class), "localTags", "getLocalTags()");
                 b.startIf().string("localTags == null").end().startBlock();
                 b.lineComment("bytecode not yet cached.");
@@ -9534,6 +9536,31 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             } else {
                 b.statement("return getRoot().getFrameDescriptor().getSlotKind(frameIndex)");
             }
+            return ex;
+        }
+
+        private CodeExecutableElement createValidateGetCachedLocalKindInternal() {
+            if (!model.usesBoxingElimination() && model.storeBciInFrame) {
+                throw new AssertionError("Not supported.");
+            }
+
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), type(boolean.class), "validateCachedLocalKindInternal");
+            ex.addParameter(new CodeVariableElement(types.Frame, "frame"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "frameIndex"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            if (model.storeBciInFrame) {
+                b.startDeclaration(type(int.class), "bci");
+                startGetFrame(b, "frame", type(int.class), false).string("BCI_IDX").end();
+                b.end();
+                b.startIf().string("locals[localIndexToTableIndex(bci, localIndex) + LOCALS_OFFSET_FRAME_INDEX] != frameIndex").end().startBlock();
+                b.tree(GeneratorUtils.createShouldNotReachHere("Inconsistent indices"));
+                b.end();
+            }
+
+            b.returnTrue();
+
             return ex;
         }
 
@@ -9568,9 +9595,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(types.FrameSlotKind, "kind"));
             CodeTreeBuilder b = ex.createBuilder();
             if (model.enableLocalScoping) {
-                ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
                 ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
-                b.startAssert().string("locals[localIndexToTableIndex(bci, localIndex) + LOCALS_OFFSET_FRAME_INDEX] == frameIndex : ").doubleQuote("Inconsistent indices.").end();
+
                 b.declaration(type(byte[].class), "localTags", "getLocalTags()");
                 b.startIf().string("localTags == null").end().startBlock();
                 b.lineComment("bytecode node not yet cached.");
@@ -13206,11 +13232,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             } else {
                 bytecodeNode = "this";
             }
+
+            if (materialized && model.enableLocalScoping && model.storeBciInFrame) {
+                b.startAssert().string(bytecodeNode, ".validateCachedLocalKindInternal(frame, slot, localIndex)").end();
+            }
+
             b.startDeclaration(types.FrameSlotKind, "kind");
             b.startCall(bytecodeNode, "getCachedLocalKindInternal");
             b.string("slot");
             if (model.enableLocalScoping) {
-                b.string("bci");
                 b.string("localIndex");
             }
             b.end(); // call
@@ -13533,11 +13563,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 } else {
                     bytecodeNode = "this";
                 }
+
+                if (materialized && model.enableLocalScoping && model.storeBciInFrame) {
+                    b.startAssert().string(bytecodeNode, ".validateCachedLocalKindInternal(frame, slot, localIndex)").end();
+                }
+
                 b.startDeclaration(types.FrameSlotKind, "kind");
                 b.startCall(bytecodeNode, "getCachedLocalKindInternal");
                 b.string("slot");
                 if (model.enableLocalScoping) {
-                    b.string("bci");
                     b.string("localIndex");
                 }
                 b.end(); // call
@@ -13646,11 +13680,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration(type(short.class), "newOperand");
             b.declaration(type(short.class), "operand", readInstruction("bc", "operandIndex"));
 
+            if (materialized && model.enableLocalScoping && model.storeBciInFrame) {
+                b.startAssert().string(bytecodeNode, ".validateCachedLocalKindInternal(frame, slot, localIndex)").end();
+            }
+
             b.startDeclaration(types.FrameSlotKind, "oldKind");
             b.startCall(bytecodeNode, "getCachedLocalKindInternal");
             b.string("slot");
             if (model.enableLocalScoping) {
-                b.string("bci");
                 b.string("localIndex");
             }
             b.end(); // call
@@ -13738,11 +13775,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.end();
 
+            if (materialized && model.enableLocalScoping && model.storeBciInFrame) {
+                b.startAssert().string(bytecodeNode, ".validateCachedLocalKindInternal(frame, slot, localIndex)").end();
+            }
+
             b.startStatement().startCall(bytecodeNode, "setCachedLocalKindInternal");
             b.string("slot");
             b.string("newKind");
             if (model.enableLocalScoping) {
-                b.string("bci");
                 b.string("localIndex");
             }
             b.end().end();
@@ -13753,11 +13793,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startElseBlock();
             b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
             b.statement(setFrameObject("slot", "local"));
+
+            if (materialized && model.enableLocalScoping && model.storeBciInFrame) {
+                b.startAssert().string(bytecodeNode, ".validateCachedLocalKindInternal(frame, slot, localIndex)").end();
+            }
             b.startStatement().startCall(bytecodeNode, "setCachedLocalKindInternal");
             b.string("slot");
             b.staticReference(types.FrameSlotKind, "Object");
             if (model.enableLocalScoping) {
-                b.string("bci");
                 b.string("localIndex");
             }
             b.end().end();

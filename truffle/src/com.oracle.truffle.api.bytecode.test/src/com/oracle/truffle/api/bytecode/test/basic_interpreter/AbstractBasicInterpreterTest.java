@@ -90,12 +90,14 @@ public abstract class AbstractBasicInterpreterTest {
 
         public boolean hasBoxingElimination() {
             return interpreterClass == BasicInterpreterWithBE.class ||
+                            interpreterClass == BasicInterpreterWithStoreBytecodeIndexInFrame.class ||
                             interpreterClass == BasicInterpreterProductionLocalScopes.class ||
                             interpreterClass == BasicInterpreterProductionGlobalScopes.class;
         }
 
         public boolean hasUncachedInterpreter() {
             return interpreterClass == BasicInterpreterWithUncached.class ||
+                            interpreterClass == BasicInterpreterWithStoreBytecodeIndexInFrame.class ||
                             interpreterClass == BasicInterpreterProductionLocalScopes.class ||
                             interpreterClass == BasicInterpreterProductionGlobalScopes.class;
         }
@@ -423,6 +425,7 @@ public abstract class AbstractBasicInterpreterTest {
 
     public static List<Class<? extends BasicInterpreter>> allInterpreters() {
         return List.of(BasicInterpreterBase.class, BasicInterpreterUnsafe.class, BasicInterpreterWithUncached.class, BasicInterpreterWithBE.class, BasicInterpreterWithOptimizations.class,
+                        BasicInterpreterWithStoreBytecodeIndexInFrame.class,
                         BasicInterpreterWithGlobalScopes.class, BasicInterpreterProductionGlobalScopes.class, BasicInterpreterProductionLocalScopes.class);
     }
 
