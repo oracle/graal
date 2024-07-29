@@ -18,7 +18,7 @@ You can find more information on how to correctly report polymorphic specializat
 
 ## Approach
 
-Detecting of suitable splitting candidates relies on the languages reporting polymorphic specializations.
+Detection of suitable splitting candidates relies on the languages reporting polymorphic specializations.
 Once the specialization is reported, you can assume that the polymorphism is coming from somewhere in the caller chain of the call target hosting the newly polymorphic node, and that by splitting the right call target (or call targets) you can return this node to a monomorphic state.
 
 You then identify the call targets for which the splitting could result in monomorphization and mark them as "needs split". During further execution, if the interpreter is about to execute a direct call to a call target that is marked as "needs split", that call target will be split (provided there are no outstanding factors preventing it such as the [root node not being allowed to be split](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#isCloningAllowed),
@@ -48,9 +48,9 @@ setNeedsSplit(callTarget)
 ```
 
 At the very beginning of the pseudo code you can have early termination conditions.
-If the call target is already marked as "needs split", there is need to continue.
-Also, if the call targets has no known callers (e.g., it is the "main" of the execution) splitting is not applicable since splitting is inherently tied to duplicating ASTs for a particular call site.
-Finally, if this is happening during the first execution of call target, splitting is pointless since the polymorphic nature of the node is inevitable (i.e., not coming from the callers, but rather an integral property of that call target).
+If the call target is already marked as "needs split", there is no need to continue.
+Also, if the call target has no known callers (e.g., it is the "main" of the execution) splitting is not applicable since splitting is inherently tied to duplicating ASTs for a particular call site.
+Finally, if this is happening during the first execution of a call target, splitting is pointless since the polymorphic nature of the node is inevitable (i.e., not coming from the callers, but rather an integral property of that call target).
 
 In the second part of the pseudo code two cases are differentiated:
 
@@ -117,10 +117,10 @@ function main() {
 }
 ```
 
-As you can see, the source of the polymorphism was split, but that did not solve the issue, since both slits still call the same `add` function and the polymorphism remains.
+As you can see, the source of the polymorphism was split, but that did not solve the issue, since both splits still call the same `add` function and the polymorphism remains.
 This is where the algorithms return value comes in to play.
-If the algorithm was successful in finding a target to mark than all the transitive callee's of that target need to be marked "needs split" as well.
-With this final step in place, the final run time result of our splitting approach for the previous example can be represent as the following source code:
+If the algorithm was successful in finding a target to mark then all the transitive callee's of that target need to be marked "needs split" as well.
+With this final step in place, the final run time result of our splitting approach for the previous example can be represented as the following source code:
 
 ```
 function add(arg1, arg2) {
@@ -175,4 +175,4 @@ function main() {
 ```
 
 Once the execution reaches the newly added line you do not want it to call the `add` function with the polymorphic `+` since the arguments here do not merit the polymorphism.
-Luckily, since add was already marked as "needs split", it will remain so during the entire execution, and this final call to `add` with cause another split of the `add` functions.
+Luckily, since `add` was already marked as "needs split", it will remain so during the entire execution, and this final call to `add` will cause another split of the `add` function.
