@@ -26,10 +26,6 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import jdk.graal.compiler.debug.DebugContext;
-
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.ARRAY;
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.ENUM;
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.FOREIGN;
@@ -38,11 +34,23 @@ import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.De
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.INTERFACE;
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.PRIMITIVE;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
+import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
+
+import jdk.graal.compiler.debug.DebugContext;
+
 public abstract class TypeEntry {
     /**
      * The name of this type.
      */
     protected final String typeName;
+
+    /**
+     * The type signature of this type.
+     */
+    protected long typeSignature;
+    protected long indirectTypeSignature;
 
     /**
      * The offset of the java.lang.Class instance for this class in the image heap or -1 if no such
@@ -59,6 +67,16 @@ public abstract class TypeEntry {
         this.typeName = typeName;
         this.size = size;
         this.classOffset = -1;
+        this.typeSignature = 0;
+        this.indirectTypeSignature = 0;
+    }
+
+    public long getTypeSignature() {
+        return typeSignature;
+    }
+
+    public long getIndirectTypeSignature() {
+        return indirectTypeSignature;
     }
 
     public long getClassOffset() {
@@ -127,5 +145,12 @@ public abstract class TypeEntry {
     public void addDebugInfo(@SuppressWarnings("unused") DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, @SuppressWarnings("unused") DebugContext debugContext) {
         /* Record the location of the Class instance in the heap if there is one */
         this.classOffset = debugTypeInfo.classOffset();
+        this.typeSignature = debugTypeInfo.typeSignature("");
+        // primitives, header and foreign types are never stored compressed
+        if (!debugInfoBase.useHeapBase() || this instanceof PrimitiveTypeEntry || this instanceof HeaderTypeEntry || this instanceof ForeignTypeEntry) {
+            this.indirectTypeSignature = typeSignature;
+        } else {
+            this.indirectTypeSignature = debugTypeInfo.typeSignature(DwarfDebugInfo.INDIRECT_PREFIX);
+        }
     }
 }
