@@ -81,16 +81,16 @@ public class StableProfileProvider implements ProfileProvider {
     }
 
     private static boolean isTranslatedNoClassDefFound(Throwable e) {
-        Throwable effectException = e;
+        Throwable effectiveException = e;
         if (TRANSLATED_EXCEPTION != null && TRANSLATED_EXCEPTION.isInstance(e)) {
             /*
              * As of JDK 24 (JDK-8335553), a translated exception is boxed in a TranslatedException.
              * Unbox a translated unchecked exception to get the real one.
              */
             Throwable cause = e.getCause();
-            effectException = cause;
+            effectiveException = cause;
         }
-        return effectException instanceof NoClassDefFoundError;
+        return effectiveException instanceof NoClassDefFoundError;
     }
 
     /**
