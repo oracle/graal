@@ -9241,7 +9241,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(createGetCachedLocalKind());
                 type.add(createGetCachedLocalKindInternal());
 
-                if (model.storeBciInFrame) {
+                if (model.enableLocalScoping && model.storeBciInFrame) {
                     type.add(createValidateGetCachedLocalKindInternal());
                 }
 
@@ -9552,7 +9552,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createValidateGetCachedLocalKindInternal() {
-            if (!model.usesBoxingElimination() && model.storeBciInFrame) {
+            if (!model.usesBoxingElimination() && (model.enableLocalScoping && model.storeBciInFrame)) {
                 throw new AssertionError("Not supported.");
             }
 
@@ -9562,7 +9562,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(type(int.class), "localIndex"));
 
             CodeTreeBuilder b = ex.createBuilder();
-            if (model.storeBciInFrame) {
+            if (model.enableLocalScoping && model.storeBciInFrame) {
                 b.startDeclaration(type(int.class), "bci");
                 startGetFrame(b, "frame", type(int.class), false).string("BCI_IDX").end();
                 b.end();
