@@ -943,6 +943,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeMethodLocationAbbrev(context, buffer, pos);
         pos = writeAbstractInlineMethodAbbrev(context, buffer, pos);
         pos = writeStaticFieldLocationAbbrev(context, buffer, pos);
+        pos = writeStaticFieldLocationTypeUnitRefAbbrev(context, buffer, pos);
         pos = writeSuperReferenceAbbrev(context, buffer, pos);
         pos = writeInterfaceImplementorAbbrev(context, buffer, pos);
 
@@ -1546,6 +1547,26 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_specification, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_ref4, buffer, pos);
+        // pos = writeAttrType(DwarfDebugInfo.DW_AT_linkage_name, buffer, pos);
+        // pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_location, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_expr_loc, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfAttribute.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeStaticFieldLocationTypeUnitRefAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        pos = writeAbbrevCode(AbbrevCode.STATIC_FIELD_LOCATION_TYPE_UNIT_REF, buffer, pos);
+        pos = writeTag(DwarfTag.DW_TAG_variable, buffer, pos);
+        pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfAttribute.DW_AT_specification, buffer, pos);
+        pos = writeAttrForm(DwarfForm.DW_FORM_ref_addr, buffer, pos);
         // pos = writeAttrType(DwarfDebugInfo.DW_AT_linkage_name, buffer, pos);
         // pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_location, buffer, pos);

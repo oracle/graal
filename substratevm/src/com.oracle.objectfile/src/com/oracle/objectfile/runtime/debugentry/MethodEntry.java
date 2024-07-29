@@ -24,24 +24,25 @@
  * questions.
  */
 
-package com.oracle.objectfile.debugentry;
+package com.oracle.objectfile.runtime.debugentry;
 
-import java.util.ArrayList;
-import java.util.ListIterator;
-
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
-
+import com.oracle.objectfile.runtime.RuntimeDebugInfoBase;
+import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugCodeInfo;
+import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugLocalInfo;
+import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugLocalValueInfo;
+import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugLocationInfo;
+import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider.DebugMethodInfo;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
 
 public class MethodEntry extends MemberEntry {
     private final TypeEntry[] paramTypes;
     private final DebugLocalInfo thisParam;
-    private final DebugLocalInfo[] paramInfos;
+    private final List<DebugLocalInfo> paramInfos;
     private final int firstLocalSlot;
     // local vars are accumulated as they are referenced sorted by slot, then name, then
     // type name. we don't currently deal handle references to locals with no slot.
@@ -56,9 +57,9 @@ public class MethodEntry extends MemberEntry {
     private final String symbolName;
 
     @SuppressWarnings("this-escape")
-    public MethodEntry(DebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo,
-                       FileEntry fileEntry, int line, String methodName, ClassEntry ownerType,
-                       TypeEntry valueType, TypeEntry[] paramTypes, DebugLocalInfo[] paramInfos, DebugLocalInfo thisParam) {
+    public MethodEntry(RuntimeDebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo,
+                       FileEntry fileEntry, int line, String methodName, TypedefEntry ownerType,
+                       TypeEntry valueType, TypeEntry[] paramTypes, List<DebugLocalInfo> paramInfos, DebugLocalInfo thisParam) {
         super(fileEntry, line, methodName, ownerType, valueType, debugMethodInfo.modifiers());
         this.paramTypes = paramTypes;
         this.paramInfos = paramInfos;
@@ -75,9 +76,9 @@ public class MethodEntry extends MemberEntry {
             setIsOverride();
         }
         vtableOffset = debugMethodInfo.vtableOffset();
-        int paramCount = paramInfos.length;
+        int paramCount = paramInfos.size();
         if (paramCount > 0) {
-            DebugLocalInfo lastParam = paramInfos[paramCount - 1];
+            DebugLocalInfo lastParam = paramInfos.get(paramCount - 1);
             firstLocalSlot = lastParam.slot() + lastParam.slotCount();
         } else {
             firstLocalSlot = (thisParam == null ? 0 : thisParam.slotCount());
@@ -91,17 +92,17 @@ public class MethodEntry extends MemberEntry {
     }
 
     @Override
-    public ClassEntry ownerType() {
-        assert ownerType instanceof ClassEntry;
-        return (ClassEntry) ownerType;
+    public TypedefEntry ownerType() {
+        assert ownerType instanceof TypedefEntry;
+        return (TypedefEntry) ownerType;
     }
 
     public int getParamCount() {
-        return paramInfos.length;
+        return paramInfos.size();
     }
 
     public TypeEntry getParamType(int idx) {
-        assert idx < paramInfos.length;
+        assert idx < paramInfos.size();
         return paramTypes[idx];
     }
 
@@ -115,20 +116,20 @@ public class MethodEntry extends MemberEntry {
     }
 
     public String getParamName(int idx) {
-        assert idx < paramInfos.length;
+        assert idx < paramInfos.size();
         /* N.b. param names may be null. */
-        return paramInfos[idx].name();
+        return paramInfos.get(idx).name();
     }
 
     public int getParamLine(int idx) {
-        assert idx < paramInfos.length;
+        assert idx < paramInfos.size();
         /* N.b. param names may be null. */
-        return paramInfos[idx].line();
+        return paramInfos.get(idx).line();
     }
 
     public DebugLocalInfo getParam(int i) {
-        assert i >= 0 && i < paramInfos.length : "bad param index";
-        return paramInfos[i];
+        assert i >= 0 && i < paramInfos.size() : "bad param index";
+        return paramInfos.get(i);
     }
 
     public DebugLocalInfo getThisParam() {
@@ -194,7 +195,7 @@ public class MethodEntry extends MemberEntry {
      * @param debugInfoBase
      * @param debugMethodInfo
      */
-    public void updateRangeInfo(DebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo) {
+    public void updateRangeInfo(RuntimeDebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo) {
         if (debugMethodInfo instanceof DebugLocationInfo) {
             DebugLocationInfo locationInfo = (DebugLocationInfo) debugMethodInfo;
             if (locationInfo.getCaller() != null) {
@@ -240,7 +241,7 @@ public class MethodEntry extends MemberEntry {
      * type equal those of the parameter. Values whose slot is in the local range will always
      * succeed,. either by matchign the slot and name of an existing local or by being recorded as a
      * new local variable.
-     *
+     * 
      * @param localValueInfo
      * @return the unique local variable with which this local value can be legitimately associated
      *         otherwise null.
@@ -264,8 +265,8 @@ public class MethodEntry extends MemberEntry {
                 return thisParam;
             }
         }
-        for (int i = 0; i < paramInfos.length; i++) {
-            DebugLocalInfo paramInfo = paramInfos[i];
+        for (int i = 0; i < paramInfos.size(); i++) {
+            DebugLocalInfo paramInfo = paramInfos.get(i);
             if (checkMatch(paramInfo, localValueInfo)) {
                 return paramInfo;
             }
@@ -335,7 +336,7 @@ public class MethodEntry extends MemberEntry {
                 int currentLine = next.line();
                 int newLine = localValueInfo.line();
                 if ((currentLine < 0 && newLine >= 0) ||
-                        (newLine >= 0 && newLine < currentLine)) {
+                                (newLine >= 0 && newLine < currentLine)) {
                     next.setLine(newLine);
                 }
                 return next;
@@ -354,8 +355,8 @@ public class MethodEntry extends MemberEntry {
 
     boolean checkMatch(DebugLocalInfo local, DebugLocalValueInfo value) {
         boolean isMatch = (local.slot() == value.slot() &&
-                local.name().equals(value.name()) &&
-                local.typeName().equals(value.typeName()));
+                        local.name().equals(value.name()) &&
+                        local.typeName().equals(value.typeName()));
         assert !isMatch || verifyMatch(local, value) : "failed to verify matched var and value";
         return isMatch;
     }

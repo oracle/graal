@@ -88,7 +88,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
         int fieldModifiers = debugFieldInfo.modifiers();
         if (debugContext.isLogEnabled()) {
             debugContext.log("typename %s adding %s field %s type %s%s size %s at offset 0x%x%n",
-                            typeName, memberModifiers(fieldModifiers), fieldName, valueTypeName, (fieldIsEmbedded ? "(embedded)" : ""), fieldSize, fieldoffset);
+                    typeName, memberModifiers(fieldModifiers), fieldName, valueTypeName, (fieldIsEmbedded ? "(embedded)" : ""), fieldSize, fieldoffset);
         }
         TypeEntry valueTypeEntry = debugInfoBase.lookupTypeEntry(valueType);
         /*

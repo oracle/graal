@@ -268,7 +268,7 @@ public class ClassEntry extends StructureTypeEntry {
         if (debugContext.isLogEnabled()) {
             String resultTypeName = resultType.toJavaName();
             debugContext.log("typename %s adding %s method %s %s(%s)%n",
-                            typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
+                    typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
         }
         TypeEntry resultTypeEntry = debugInfoBase.lookupTypeEntry(resultType);
         TypeEntry[] typeEntries = new TypeEntry[paramCount];
@@ -281,7 +281,7 @@ public class ClassEntry extends StructureTypeEntry {
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
         MethodEntry methodEntry = new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, line, methodName,
-                        this, resultTypeEntry, typeEntries, paramInfos, thisParam);
+                this, resultTypeEntry, typeEntries, paramInfos, thisParam);
         indexMethodEntry(methodEntry, debugMethodInfo.idMethod());
 
         return methodEntry;
@@ -372,7 +372,7 @@ public class ClassEntry extends StructureTypeEntry {
 
     /**
      * Add a file to the list of files referenced from info associated with this class.
-     * 
+     *
      * @param file The file to be added.
      */
     public void includeFile(FileEntry file) {
@@ -383,7 +383,7 @@ public class ClassEntry extends StructureTypeEntry {
 
     /**
      * Add a directory to the list of firectories referenced from info associated with this class.
-     * 
+     *
      * @param dirEntry The directory to be added.
      */
     public void includeDir(DirEntry dirEntry) {
@@ -421,7 +421,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Retrieve a stream of all files referenced from debug info for this class in line info file
      * table order, starting with the file at index 1.
-     * 
+     *
      * @return a stream of all referenced files
      */
     public Stream<FileEntry> fileStream() {

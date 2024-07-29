@@ -506,7 +506,7 @@ public abstract class DebugInfoBase {
         DebugLocationInfo callerLocationInfo = locationInfo.getCaller();
         boolean isTopLevel = callerLocationInfo == null;
         assert (!isTopLevel || (locationInfo.name().equals(primaryRange.getMethodName()) &&
-                        locationInfo.ownerType().toJavaName().equals(primaryRange.getClassName())));
+                locationInfo.ownerType().toJavaName().equals(primaryRange.getClassName())));
         Range caller = (isTopLevel ? primaryRange : subRangeIndex.get(callerLocationInfo));
         // the frame tree is walked topdown so inline ranges should always have a caller range
         assert caller != null;
@@ -528,7 +528,7 @@ public abstract class DebugInfoBase {
         subRangeIndex.put(locationInfo, subRange);
         if (debugContext.isLogEnabled(DebugContext.DETAILED_LEVEL)) {
             debugContext.log(DebugContext.DETAILED_LEVEL, "SubRange %s.%s %d %s:%d [0x%x, 0x%x] (%d, %d)",
-                            ownerType.toJavaName(), methodName, subRange.getDepth(), fullPath, line, lo, hi, loOff, hiOff);
+                    ownerType.toJavaName(), methodName, subRange.getDepth(), fullPath, line, lo, hi, loOff, hiOff);
         }
         assert (callerLocationInfo == null || (callerLocationInfo.addressLo() <= loOff && callerLocationInfo.addressHi() >= hiOff)) : "parent range should enclose subrange!";
         DebugLocalValueInfo[] localValueInfos = locationInfo.getLocalValueInfo();
@@ -560,7 +560,7 @@ public abstract class DebugInfoBase {
             PrimaryRange nextRange = next.getPrimary();
             if (lastRange.getHi() > nextRange.getLo()) {
                 assert false : "methods %s [0x%x, 0x%x] and %s [0x%x, 0x%x] presented out of order".formatted(lastRange.getFullMethodName(), lastRange.getLo(), lastRange.getHi(),
-                                nextRange.getFullMethodName(), nextRange.getLo(), nextRange.getHi());
+                        nextRange.getFullMethodName(), nextRange.getLo(), nextRange.getHi());
                 return false;
             }
         }
@@ -783,7 +783,7 @@ public abstract class DebugInfoBase {
     /**
      * Ensure the supplied file entry and associated directory entry are included, but only once, in
      * a class entry's file and dir list.
-     * 
+     *
      * @param classEntry the class entry whose file and dir list may need to be updated
      * @param fileEntry a file entry which may need to be added to the class entry's file list or
      *            whose dir may need adding to the class entry's dir list

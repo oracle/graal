@@ -31,6 +31,15 @@ import java.io.PrintStream;
 import java.util.EnumMap;
 import java.util.Map;
 
+import jdk.graal.compiler.phases.util.Providers;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.graal.isolated.IsolatedGraalUtils;
+import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
+import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.vm.ci.code.InstalledCode;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -79,6 +88,19 @@ public class SubstrateGraalUtils {
     /** Does the compilation of the method and returns the compilation result. */
     public static CompilationResult compile(DebugContext debug, final SubstrateMethod method) {
         return doCompile(debug, TruffleRuntimeCompilationSupport.getRuntimeConfig(), TruffleRuntimeCompilationSupport.getLIRSuites(), method);
+    }
+
+    public static InstalledCode compileAndInstall(SubstrateMethod method) {
+        if (SubstrateOptions.shouldCompileInIsolates()) {
+            return IsolatedGraalUtils.compileInNewIsolateAndInstall(method);
+        }
+        RuntimeConfiguration runtimeConfiguration = TruffleRuntimeCompilationSupport.getRuntimeConfig();
+        DebugContext debug = new DebugContext.Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfiguration.getProviders().getSnippetReflection())).build();
+        SubstrateInstalledCodeImpl installedCode = new SubstrateInstalledCodeImpl(method);
+        CompilationResult compilationResult = SubstrateGraalUtils.doCompile(debug, TruffleRuntimeCompilationSupport.getRuntimeConfig(), TruffleRuntimeCompilationSupport.getLIRSuites(), method);
+        RuntimeCodeInstaller.install(method, compilationResult, installedCode);
+        Log.log().string("Code for " + method.format("%H.%n(%p)") + ": " + compilationResult.getTargetCodeSize() + " bytes").newline();
+        return installedCode;
     }
 
     private static final Map<ExceptionAction, Integer> compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
