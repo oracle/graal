@@ -46,6 +46,7 @@ import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
+import com.oracle.objectfile.runtime.RuntimeDebugInfoProvider;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
@@ -1180,6 +1181,11 @@ public abstract class ObjectFile {
         // do nothing by default
     }
 
+
+    public void installRuntimeDebugInfo(@SuppressWarnings("unused") RuntimeDebugInfoProvider runtimeDebugInfoProvider) {
+        // do nothing by default
+    }
+
     protected static Iterable<LayoutDecision> allDecisions(final Map<Element, LayoutDecisionMap> decisions) {
         return () -> StreamSupport.stream(decisions.values().spliterator(), false)
                         .flatMap(layoutDecisionMap -> StreamSupport.stream(layoutDecisionMap.spliterator(), false)).iterator();
@@ -1828,7 +1834,7 @@ public abstract class ObjectFile {
      * Temporary storage for a debug context installed in a nested scope under a call. to
      * {@link #withDebugContext}
      */
-    private DebugContext debugContext = null;
+    private DebugContext debugContext = DebugContext.disabled(null);
 
     /**
      * Allows a task to be executed with a debug context in a named subscope bound to the object

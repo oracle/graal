@@ -36,6 +36,7 @@ import static org.graalvm.nativeimage.impl.InternalPlatform.PLATFORM_JNI;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -83,6 +84,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.amd64.AMD64;
+import org.graalvm.nativeimage.ProcessProperties;
 
 public class SubstrateOptions {
 
@@ -490,6 +492,21 @@ public class SubstrateOptions {
 
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
+
+    @Option(help = "Directory where Java source-files will be placed for the debugger")//
+    public static final RuntimeOptionKey<String> RuntimeSourceDestDir = new RuntimeOptionKey<>(null, RelevantForCompilationIsolates);
+
+
+    public static Path getRuntimeSourceDestDir() {
+        String sourceDestDir = RuntimeSourceDestDir.getValue();
+        if (sourceDestDir != null) {
+            return Paths.get(sourceDestDir);
+        }
+        return Paths.get(ProcessProperties.getExecutableName()).getParent().resolve("sources");
+    }
+
+    @Option(help = "Provide debuginfo for runtime-compiled code.")//
+    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(true);  // TODO: change to false
 
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//

@@ -71,6 +71,11 @@ public class ForeignTypeEntry extends ClassEntry {
     public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
         assert debugTypeInfo instanceof DebugForeignTypeInfo;
         super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
+
+        // foreign pointers are never stored compressed so don't need a separate indirect type
+        this.indirectTypeSignature = typeSignature;
+        this.indirectLayoutTypeSignature = layoutTypeSignature;
+
         DebugForeignTypeInfo debugForeignTypeInfo = (DebugForeignTypeInfo) debugTypeInfo;
         this.typedefName = debugForeignTypeInfo.typedefName();
         if (debugForeignTypeInfo.isWord()) {
