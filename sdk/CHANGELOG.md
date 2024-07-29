@@ -14,6 +14,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-48481: The Python language is now available as a polyglot isolate.
 * GR-40931 Added experimental support for virtual threads on HotSpot. Not all languages are currently supported for use with virtual threads, please check the language changelog for further information. Truffle debugging, CPU time limits and some memory limits are currently not supported on virtual threads.
 * GR-40931 Using virtual threads in a native-image will now emulate virtual threads using platform threads until Loom support for Truffle languages in native-image is implemented.
+* GR-54674: Added the options `engine.TraceSourceCache` and `engine.TraceSourceCacheDetails` to allow tracing of source cache hits, misses, failures and evictions. 
 
 ## Version 24.0.0
 * (GR-49334) Deprecated the `FileSystems#allowLanguageHomeAccess()` method and introduced `FileSystem#allowInternalResourceAccess()` as a replacement. To ensure compatibility, both methods now provide support for language homes and internal resources.

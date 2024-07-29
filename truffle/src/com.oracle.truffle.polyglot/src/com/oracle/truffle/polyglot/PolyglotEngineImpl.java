@@ -74,6 +74,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -144,6 +145,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     static final int HOST_LANGUAGE_INDEX = 0;
     static final String HOST_LANGUAGE_ID = "host";
 
+    private static final AtomicLong ENGINE_COUNTER = new AtomicLong();
     static final String ENGINE_ID = "engine";
     static final String OPTION_GROUP_ENGINE = ENGINE_ID;
     static final String OPTION_GROUP_COMPILER = "compiler";
@@ -248,6 +250,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     final InternalResourceRoots internalResourceRoots;
 
+    final long engineId;
+
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotImpl impl, SandboxPolicy sandboxPolicy, String[] permittedLanguages,
                     DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
@@ -256,6 +260,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     boolean allowExperimentalOptions, boolean boundEngine, boolean preInitialization,
                     MessageTransport messageInterceptor, LogHandler logHandler,
                     TruffleLanguage<Object> hostImpl, boolean hostLanguageOnly, AbstractPolyglotHostService polyglotHostService) {
+        this.engineId = ENGINE_COUNTER.incrementAndGet();
         this.apiAccess = impl.getAPIAccess();
         this.sandboxPolicy = sandboxPolicy;
         this.messageInterceptor = messageInterceptor;
@@ -496,6 +501,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotEngineImpl prototype) {
+        this.engineId = ENGINE_COUNTER.incrementAndGet();
         this.apiAccess = prototype.apiAccess;
         this.sandboxPolicy = prototype.sandboxPolicy;
         this.messageInterceptor = prototype.messageInterceptor;
