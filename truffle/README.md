@@ -3,8 +3,7 @@
 ## Introduction
 
 The Truffle language implementation framework (Truffle) is an open-source library for building programming language implementations as interpreters for self-modifying Abstract Syntax Trees.
-Together with the open-source [Graal compiler](https://github.com/oracle/graal/tree/master/compiler), Truffle represents a significant step
-forward in programming language implementation technology in the current era of dynamic languages.
+Together with the open-source [Graal compiler](https://github.com/oracle/graal/tree/master/compiler), Truffle represents a significant step forward in programming language implementation technology in the current era of dynamic languages.
 
 A growing body of shared implementation code and services reduces language implementation effort significantly, but leads to runtime performance that matches or exceeds the competition. 
 The value of the platform is further increased by support for low-overhead language interoperability, as well as a general instrumentation framework that supports multilanguage debugging and other external developer tools.
