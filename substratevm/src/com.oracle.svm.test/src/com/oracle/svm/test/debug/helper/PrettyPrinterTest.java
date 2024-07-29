@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.test.debug.helper;
 
-import com.oracle.svm.core.NeverInline;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+
+import com.oracle.svm.core.NeverInline;
 
 public class PrettyPrinterTest {
 
@@ -136,6 +136,7 @@ public class PrettyPrinterTest {
         System.out.print("");
     }
 
+    @SuppressWarnings("unused")
     @NeverInline("For testing purposes")
     static void testLambda(Function<String, String> lambda) {
         System.out.print("");
