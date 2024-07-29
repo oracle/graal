@@ -213,9 +213,17 @@ public class LibGraalCompilationDriver {
             public long getAddress() {
                 if (address == null) {
                     address = UNSAFE.allocateMemory(length());
+                    UNSAFE.setMemory(address, length(), (byte) 0);
                     initialize(address);
                 }
                 return address;
+            }
+
+            public boolean hasBeenWritten() {
+                GraalError.guarantee(address != null, "Must have allocated native buffer already to use this API");
+                int size = UNSAFE.getInt(address);
+                GraalError.guarantee(size >= 0, "Size cannot be negative but is %s", size);
+                return size > 0;
             }
 
             /**
@@ -548,9 +556,18 @@ public class LibGraalCompilationDriver {
 
             HotSpotInstalledCode installedCode = LibGraal.unhand(HotSpotInstalledCode.class, installedCodeHandle);
             if (installedCode == null) {
-                String stackTrace = stackTraceBuffer.readToString();
-                TTY.println("%s : Error compiling method: %s", compilation.testName(), compilation);
-                TTY.println(stackTrace);
+                /*
+                 * Most exceptions during compilation in libgraal are already handled by the
+                 * libgraal size. Only exceptions happening during setting up compile contexts etc
+                 * may be thrown out here. In general a compilation result of null means compilation
+                 * exception (handled or not), only if the exception buffer was written the
+                 * exception was not handled already on the libgraal side.
+                 */
+                if (stackTraceBuffer.hasBeenWritten()) {
+                    String stackTrace = stackTraceBuffer.readToString();
+                    TTY.println("%s : Error compiling method: %s", compilation.testName(), compilation);
+                    TTY.println(stackTrace);
+                }
                 return null;
             }
             return new CompilationResult(installedCode, memTimeBuffer.readTimeElapsed(), memTimeBuffer.readBytesAllocated());
