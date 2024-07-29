@@ -307,14 +307,15 @@ def ctw(args, extraVMarguments=None):
         # To be able to load all classes in the JRT with Class.forName,
         # all JDK modules need to be made root modules.
         limitmods = frozenset(args.limitmods.split(',')) if args.limitmods else None
-        nonBootJDKModules = [m.name for m in jdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
+        graaljdk = get_graaljdk()
+        nonBootJDKModules = [m.name for m in graaljdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
         if nonBootJDKModules:
             vmargs.append('--add-modules=' + ','.join(nonBootJDKModules))
         if args.limitmods:
             vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
         if cp is not None:
             vmargs.append('-DCompileTheWorld.Classpath=' + cp)
-        cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=jdk))
+        cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=graaljdk))
         vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
         mainClassAndArgs = ['jdk.graal.compiler.hotspot.test.CompileTheWorld']
 
@@ -710,6 +711,7 @@ _registers = {
 if mx.get_arch() not in _registers:
     mx.warn('No registers for register pressure tests are defined for architecture ' + mx.get_arch())
 
+_bootstrapFlags = ['-XX:-UseJVMCINativeLibrary']
 _defaultFlags = ['-Djdk.graal.CompilationWatchDogStartDelay=60']
 _assertionFlags = ['-esa', '-Djdk.graal.DetailedAsserts=true']
 _graalErrorFlags = _compiler_error_options()
@@ -722,14 +724,14 @@ _exceptionFlags = ['-Djdk.graal.StressInvokeWithExceptionNode=true']
 _registerPressureFlags = ['-Djdk.graal.RegisterPressure=' + _registers[mx.get_arch()]]
 
 graal_bootstrap_tests = [
-    BootstrapTest('BootstrapWithSystemAssertionsFullVerify', _defaultFlags + _assertionFlags + _verificationFlags + _graalErrorFlags, tags=GraalTags.bootstrapfullverify),
-    BootstrapTest('BootstrapWithSystemAssertions', _defaultFlags + _assertionFlags + _graalErrorFlags, tags=GraalTags.bootstraplite),
-    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', _defaultFlags + _assertionFlags + _coopFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
-    BootstrapTest('BootstrapWithGCVerification', _defaultFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapWithG1GCVerification', _defaultFlags + _g1VerificationFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapWithSystemAssertionsEconomy', _defaultFlags + _assertionFlags + _graalEconomyFlags + _graalErrorFlags, tags=GraalTags.bootstrapeconomy),
-    BootstrapTest('BootstrapWithSystemAssertionsExceptionEdges', _defaultFlags + _assertionFlags + _exceptionFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
-    BootstrapTest('BootstrapWithSystemAssertionsRegisterPressure', _defaultFlags + _assertionFlags + _registerPressureFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithSystemAssertionsFullVerify', _bootstrapFlags + _defaultFlags + _assertionFlags + _verificationFlags + _graalErrorFlags, tags=GraalTags.bootstrapfullverify),
+    BootstrapTest('BootstrapWithSystemAssertions', _bootstrapFlags + _defaultFlags + _assertionFlags + _graalErrorFlags, tags=GraalTags.bootstraplite),
+    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', _bootstrapFlags + _defaultFlags + _assertionFlags + _coopFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithGCVerification', _bootstrapFlags + _defaultFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapWithG1GCVerification', _bootstrapFlags + _defaultFlags + _g1VerificationFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapWithSystemAssertionsEconomy', _bootstrapFlags + _defaultFlags + _assertionFlags + _graalEconomyFlags + _graalErrorFlags, tags=GraalTags.bootstrapeconomy),
+    BootstrapTest('BootstrapWithSystemAssertionsExceptionEdges', _bootstrapFlags + _defaultFlags + _assertionFlags + _exceptionFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithSystemAssertionsRegisterPressure', _bootstrapFlags + _defaultFlags + _assertionFlags + _registerPressureFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
 ]
 
 def _graal_gate_runner(args, tasks):
@@ -825,6 +827,10 @@ class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
         # Always run unit tests without UseJVMCICompiler unless explicitly requested
         if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
             vmArgs.append('-XX:-UseJVMCICompiler')
+
+        # Always run unit tests without UseJVMCINativeLibrary unless explicitly requested
+        if _get_XX_option_value(vmArgs, 'UseJVMCINativeLibrary', None) is None:
+            vmArgs.append('-XX:-UseJVMCINativeLibrary')
 
         # The type-profile width 8 is the default when using the JVMCI compiler.
         # This value must be forced, because we do not used the JVMCI compiler
