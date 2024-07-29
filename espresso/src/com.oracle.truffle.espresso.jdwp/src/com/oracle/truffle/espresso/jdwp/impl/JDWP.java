@@ -1181,7 +1181,7 @@ public final class JDWP {
                                 writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
-                                controller.throwing(INVOKE_METHOD.class.getName(), "createReply", t);
+                                controller.severe(INVOKE_METHOD.class.getName() + ".createReply", t);
                             } finally {
                                 connection.handleReply(packet, commandResult);
                             }
@@ -1370,7 +1370,7 @@ public final class JDWP {
                                 writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
-                                controller.throwing(INVOKE_METHOD.class.getName(), "createReply", t);
+                                controller.severe(INVOKE_METHOD.class.getName() + "." + "createReply", t);
                             } finally {
                                 connection.handleReply(packet, commandResult);
                             }
@@ -1827,7 +1827,7 @@ public final class JDWP {
                                 writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
                                 reply.errorCode(ErrorCodes.INTERNAL);
-                                controller.throwing(INVOKE_METHOD.class.getName(), "createReply", t);
+                                controller.severe(INVOKE_METHOD.class.getName() + "." + "createReply", t);
                             } finally {
                                 connection.handleReply(packet, commandResult);
                             }
@@ -2721,7 +2721,7 @@ public final class JDWP {
                         writeValue(sigbyte, value, reply, true, context);
                     }
                 } catch (ArrayIndexOutOfBoundsException | InteropException ex) {
-                    controller.throwing(GET_VALUES.class.getName(), "createReply", ex);
+                    controller.severe(GET_VALUES.class.getName() + "." + "createReply", ex);
                     // invalid slot provided
                     reply.errorCode(ErrorCodes.INVALID_SLOT);
                     return new CommandResult(reply);
