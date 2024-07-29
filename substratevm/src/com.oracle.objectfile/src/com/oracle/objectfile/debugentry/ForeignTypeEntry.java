@@ -27,10 +27,11 @@
 package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugForeignTypeInfo;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
+
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class ForeignTypeEntry extends ClassEntry {
     private static final int FLAG_WORD = 1 << 0;
@@ -55,6 +56,10 @@ public class ForeignTypeEntry extends ClassEntry {
     @Override
     public DebugInfoProvider.DebugTypeInfo.DebugTypeKind typeKind() {
         return DebugInfoProvider.DebugTypeInfo.DebugTypeKind.FOREIGN;
+    }
+
+    public void setLayoutTypeSignature(long typeSignature) {
+        this.layoutTypeSignature = typeSignature;
     }
 
     @Override
