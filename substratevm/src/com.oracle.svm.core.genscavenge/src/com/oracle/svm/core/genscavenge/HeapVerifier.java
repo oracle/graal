@@ -141,25 +141,15 @@ public final class HeapVerifier {
          * After we are done with all other verifications, it is guaranteed that the heap is in a
          * reasonable state. Now, we can verify the remembered sets without having to worry about
          * basic heap consistency.
-         */
-        if (!SerialGCOptions.useRememberedSet()) {
-            return true;
-        }
-
-        /*
+         * 
          * It would be nice to assert that all cards in the image heap and old generation are clean
          * after a garbage collection. For the image heap, it is pretty much impossible to do that
          * as the GC itself dirties the card table. For the old generation, it is also not possible
          * at the moment because the reference handling may result in dirty cards.
          */
-
         boolean success = true;
         RememberedSet rememberedSet = RememberedSet.get();
         if (HeapImpl.usesImageHeapChunks()) {
-            /*
-             * For the image heap, we can't verify that all cards are clean after a GC because the
-             * GC itself may result in dirty cards.
-             */
             ImageHeapInfo info = HeapImpl.getImageHeapInfo();
             success &= rememberedSet.verify(info.getFirstWritableAlignedChunk());
             success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk());
@@ -266,13 +256,13 @@ public final class HeapVerifier {
             return false;
         }
 
-        if (!HeapImpl.getHeap().getObjectHeader().isEncodedObjectHeader(header)) {
-            Log.log().string("Object ").zhex(ptr).string(" does not have a valid hub: ").zhex(header).newline();
+        if (ObjectHeaderImpl.isForwardedHeader(header)) {
+            Log.log().string("Object ").zhex(ptr).string(" has a forwarded header: ").zhex(header).newline();
             return false;
         }
 
-        if (ObjectHeaderImpl.isForwardedHeader(header)) {
-            Log.log().string("Object ").zhex(ptr).string(" has a forwarded header: ").zhex(header).newline();
+        if (!HeapImpl.getHeap().getObjectHeader().isEncodedObjectHeader(header)) {
+            Log.log().string("Object ").zhex(ptr).string(" does not have a valid hub: ").zhex(header).newline();
             return false;
         }
 

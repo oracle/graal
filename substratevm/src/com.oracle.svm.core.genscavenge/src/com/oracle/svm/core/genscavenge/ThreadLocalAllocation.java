@@ -416,14 +416,15 @@ public final class ThreadLocalAllocation {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void guaranteeZeroed(Pointer memory, UnsignedWord size) {
-        VMError.guarantee(UnsignedUtils.isAMultiple(size, WordFactory.unsigned(ConfigurationValues.getTarget().wordSize)));
+        int wordSize = ConfigurationValues.getTarget().wordSize;
+        VMError.guarantee(UnsignedUtils.isAMultiple(size, WordFactory.unsigned(wordSize)));
 
         Pointer pos = memory;
         Pointer end = memory.add(size);
         while (pos.belowThan(end)) {
             Word v = pos.readWord(0);
             VMError.guarantee(v.equal(0));
-            pos = pos.add(ConfigurationValues.getTarget().wordSize);
+            pos = pos.add(wordSize);
         }
     }
 

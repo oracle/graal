@@ -89,8 +89,9 @@ public final class AlignedHeapChunk {
     }
 
     public static void reset(AlignedHeader chunk) {
-        assert HeapChunk.getEndOffset(chunk).rawValue() == SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue();
-        initialize(chunk, WordFactory.unsigned(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue()));
+        long alignedChunkSize = SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue();
+        assert HeapChunk.getEndOffset(chunk).rawValue() == alignedChunkSize;
+        initialize(chunk, WordFactory.unsigned(alignedChunkSize));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -183,9 +183,9 @@ public final class GCAccounting {
 
         if (!completeCollection) {
             /*
-             * Aggregating collection information is needed because any given collection policy may
-             * not be called for all collections, but may want to make decisions based on the
-             * aggregate values.
+             * Aggregating collection information is needed because a collection policy might not be
+             * called for all collections, but may want to make decisions based on the aggregate
+             * values.
              */
             lastIncrementalCollectionPromotedChunkBytes = oldChunkBytesAfter.subtract(oldChunkBytesBefore);
         }
