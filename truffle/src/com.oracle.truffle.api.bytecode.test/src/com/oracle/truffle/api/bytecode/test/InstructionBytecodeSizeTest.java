@@ -374,7 +374,7 @@ public class InstructionBytecodeSizeTest {
                     boxingEliminationTypes = {boolean.class, int.class, byte.class, long.class, float.class, double.class},//
                     enableUncachedInterpreter = true)
     @TypeSystemReference(CastEverythingToDoubleTypeSystem.class)
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "truffle"})
     static abstract class ManyInstructionNode extends RootNode implements BytecodeRootNode {
 
         protected ManyInstructionNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -474,7 +474,7 @@ public class InstructionBytecodeSizeTest {
 
     private static int calculateContinueAtSize(BytecodeNode bytecodeNode) throws IOException {
         byte[] classBytes = loadClassBytes(bytecodeNode.getClass());
-        int size = getMethodBytecodeSize(classBytes, "continueAt");
+        int size = getMaxMethodBytecodeSize(classBytes, "continueAt");
         return size;
     }
 
@@ -485,18 +485,15 @@ public class InstructionBytecodeSizeTest {
         }
     }
 
-    private static int getMethodBytecodeSize(byte[] classBytes, String pattern) {
+    private static int getMaxMethodBytecodeSize(byte[] classBytes, String pattern) {
         ClassReader reader = new ClassReader(classBytes);
         MethodSizeFinder finder = new MethodSizeFinder(Opcodes.ASM9, pattern);
         reader.accept(finder, 0);
         int maxSize = 0;
         for (var entry : finder.sizeVisitor.entrySet()) {
-            String methodName = entry.getKey();
             CodeSizeEvaluator evaluator = entry.getValue();
             maxSize = Math.max(maxSize, evaluator.getMaxSize());
-            System.out.println(methodName + " " + maxSize);
         }
-
         return maxSize;
     }
 

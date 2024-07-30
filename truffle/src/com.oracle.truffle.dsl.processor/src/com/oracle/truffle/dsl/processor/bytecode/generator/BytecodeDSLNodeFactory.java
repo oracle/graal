@@ -11653,7 +11653,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.statement("int bci = startState & 0xFFFF");
             b.statement("int sp = (startState >> 16) & 0xFFFF");
-            b.declaration(loopCounter.asType(), "loopCounter", CodeTreeBuilder.createBuilder().startNew(loopCounter.asType()).end());
+            b.statement("int op");
+            b.statement("int temp");
+
+            if (tier.isCached()) {
+                b.declaration(loopCounter.asType(), "loopCounter", CodeTreeBuilder.createBuilder().startNew(loopCounter.asType()).end());
+            }
             if (model.needsBciSlot() && !model.storeBciInFrame && !tier.isUncached()) {
                 // If a bci slot is allocated but not used for non-uncached interpreters, set it to
                 // an invalid value just in case it gets read during a stack walk.
@@ -11677,8 +11682,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            b.startTryBlock();
-
             // filtered instructions
             List<InstructionModel> instructions = model.getInstructions().stream().//
                             filter((i) -> !tier.isUncached() || !i.isQuickening()).//
@@ -11687,8 +11690,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             toList();
 
             InstructionPartitionResult instructionPartitions = partitionInstructions(instructions);
-            b.declaration(type(int.class), "op", readInstruction("bc", "bci"));
+            b.startAssign("op").tree(readInstruction("bc", "bci")).end();
 
+            b.startTryBlock();
             b.startSwitch().string("op").end().startBlock();
 
             for (InstructionModel instruction : instructionPartitions.topLevelInstructions()) {
@@ -11729,7 +11733,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // switch
             b.end(); // try
 
-            b.startCatchBlock(type(Throwable.class), "originalThrowable");
+            b.startCatchBlock(type(Throwable.class), "throwable");
             storeBciInFrameIfNecessary(b);
             /*
              * Three kinds of exceptions are supported: AbstractTruffleException,
@@ -11741,14 +11745,19 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
              * intercepted by a subsequent intercept method.
              */
             if (model.interceptControlFlowException != null) {
-                b.declaration(type(Throwable.class), "throwable", "originalThrowable");
-                b.startIf().string("throwable instanceof ").type(types.ControlFlowException).string(" cfe").end().startBlock();
+                b.startIf().string("throwable instanceof ").type(types.ControlFlowException).end().startBlock();
                 b.startTryBlock();
-                if (tier.isUncached()) {
-                    b.statement("return resolveControlFlowException($root, " + localFrame() + ", bci, cfe, loopCounter, uncachedExecuteCount)");
+                b.startReturn();
+                b.startCall("resolveControlFlowException");
+                b.string("$root").string(localFrame()).string("bci").startGroup().cast(types.ControlFlowException).string("throwable").end();
+
+                if (tier.isCached()) {
+                    b.string("loopCounter");
                 } else {
-                    b.statement("return resolveControlFlowException($root, " + localFrame() + ", bci, cfe, loopCounter)");
+                    b.string("uncachedExecuteCount");
                 }
+                b.end().end(); // call, return
+
                 b.end().startCatchBlock(types.ControlFlowException, "rethrownCfe");
                 b.startThrow().string("rethrownCfe").end();
                 b.end().startCatchBlock(types.AbstractTruffleException, "t");
@@ -11758,24 +11767,21 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("throwable = t");
                 b.end();
                 b.end(); // if
-                b.declaration(type(Throwable.class), "ex", "resolveThrowable($root, " + localFrame() + ", bci, throwable)");
+                b.startAssign("throwable").string("resolveThrowable($root, " + localFrame() + ", bci, throwable)").end();
             } else {
-                b.declaration(type(Throwable.class), "ex", "resolveThrowable($root, " + localFrame() + ", bci, originalThrowable)");
+                b.startAssign("throwable").string("resolveThrowable($root, " + localFrame() + ", bci, throwable)").end();
             }
-            b.declaration(type(int.class), "handler", "-EXCEPTION_HANDLER_LENGTH");
-            b.statement("int[] localHandlers = this.handlers");
-            b.startWhile().string("(handler = resolveHandler(bci, handler + EXCEPTION_HANDLER_LENGTH, localHandlers)) != -1").end().startBlock();
+            b.startAssign("op").string("-EXCEPTION_HANDLER_LENGTH").end();
+            b.startWhile().string("(op = resolveHandler(bci, op + EXCEPTION_HANDLER_LENGTH, this.handlers)) != -1").end().startBlock();
 
-            b.statement("int handlerKind = localHandlers[handler + EXCEPTION_HANDLER_OFFSET_KIND]");
-            b.statement("int targetSp");
             boolean hasSpecialHandler = model.enableTagInstrumentation || model.epilogExceptional != null;
 
             if (hasSpecialHandler) {
                 b.startTryBlock();
-                b.startSwitch().string("handlerKind").end().startBlock();
+                b.startSwitch().string("this.handlers[op + EXCEPTION_HANDLER_OFFSET_KIND]").end().startBlock();
                 if (model.epilogExceptional != null) {
                     b.startCase().string("HANDLER_EPILOG_EXCEPTIONAL").end().startCaseBlock();
-                    b.startIf().string("ex instanceof ").type(type(ThreadDeath.class)).end().startBlock();
+                    b.startIf().string("throwable instanceof ").type(type(ThreadDeath.class)).end().startBlock();
                     b.statement("continue");
                     b.end();
                     b.startStatement().startCall("doEpilogExceptional");
@@ -11785,21 +11791,21 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                     b.string("bc").string("bci").string("sp");
                     b.startGroup().cast(types.AbstractTruffleException);
-                    b.string("ex");
+                    b.string("throwable");
                     b.end();
-                    b.string("localHandlers[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
+                    b.string("this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
                     b.end().end();
-                    b.statement("throw sneakyThrow(ex)");
+                    b.statement("throw sneakyThrow(throwable)");
                     b.end();
                 }
                 if (model.enableTagInstrumentation) {
                     b.startCase().string("HANDLER_TAG_EXCEPTIONAL").end().startCaseBlock();
-                    b.statement("int result = doTagExceptional($root, frame, bc, bci, ex, localHandlers[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], localHandlers[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_SP])");
-                    b.statement("targetSp = result >> 16 & 0xFFFF");
+                    b.statement("int result = doTagExceptional($root, frame, bc, bci, throwable, this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI], this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP])");
+                    b.statement("temp = result >> 16 & 0xFFFF");
                     b.statement("bci = result & 0xFFFF");
-                    b.startIf().string("sp < targetSp + $root.maxLocals").end().startBlock();
+                    b.startIf().string("sp < temp + $root.maxLocals").end().startBlock();
                     b.lineComment("The instrumentation pushed a value on the stack.");
-                    b.statement("assert sp == targetSp + $root.maxLocals - 1");
+                    b.statement("assert sp == temp + $root.maxLocals - 1");
                     b.statement("sp++");
                     b.end();
                     b.statement("break");
@@ -11808,13 +11814,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 b.caseDefault().startCaseBlock();
             }
-            b.startIf().string("ex instanceof ").type(type(ThreadDeath.class)).end().startBlock();
+            b.startIf().string("throwable instanceof ").type(type(ThreadDeath.class)).end().startBlock();
             b.statement("continue");
             b.end();
-            b.startAssert().string("ex instanceof ").type(types.AbstractTruffleException).end();
-            b.statement("bci = localHandlers[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
-            b.statement("targetSp = localHandlers[handler + EXCEPTION_HANDLER_OFFSET_HANDLER_SP]");
-            b.statement(setFrameObject("targetSp - 1 + $root.maxLocals", "ex"));
+            b.startAssert().string("throwable instanceof ").type(types.AbstractTruffleException).end();
+            b.statement("bci = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_BCI]");
+            b.statement("temp = this.handlers[op + EXCEPTION_HANDLER_OFFSET_HANDLER_SP]");
+            b.statement(setFrameObject("temp - 1 + $root.maxLocals", "throwable"));
 
             if (hasSpecialHandler) {
                 b.statement("break");
@@ -11822,23 +11828,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end(); // switch
                 b.end(); // try
                 b.startCatchBlock(type(Throwable.class), "t");
-                b.startIf().string("t != ex").end().startBlock();
-                b.statement("ex = resolveThrowable($root, " + localFrame() + ", bci, t)");
+                b.startIf().string("t != throwable").end().startBlock();
+                b.statement("throwable = resolveThrowable($root, " + localFrame() + ", bci, t)");
                 b.end();
                 b.statement("continue");
                 b.end();
             }
 
-            b.statement("int handlerSp = targetSp + $root.maxLocals");
+            b.statement("temp = temp + $root.maxLocals");
             /**
              * handlerSp - 1 is the sp before pushing the exception. The current sp should be at or
              * above this height.
              */
-            b.statement("assert sp >= handlerSp - 1");
-            b.startWhile().string("sp > handlerSp").end().startBlock();
+            b.statement("assert sp >= temp - 1");
+            b.startWhile().string("sp > temp").end().startBlock();
             b.statement(clearFrame("frame", "--sp"));
             b.end();
-            b.statement("sp = handlerSp");
+            b.statement("sp = temp");
             b.statement("continue loop");
 
             b.end(); // while
@@ -11849,7 +11855,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
              * avoid complicating the generated code too much).
              */
             emitBeforeReturnProfiling(b);
-            b.statement("throw sneakyThrow(ex)");
+            b.statement("throw sneakyThrow(throwable)");
 
             b.end(); // catch
 
@@ -11937,60 +11943,28 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
                 case BRANCH_BACKWARD:
                     if (tier.isUncached()) {
+                        b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
                         b.startIf().string("--uncachedExecuteCount <= 0").end().startBlock();
                         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                         b.statement("$root.transitionToCached()");
-                        b.statement("return (sp << 16) | " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
+                        b.statement("return (sp << 16) | bci");
                         b.end();
                     } else {
-                        emitReportLoopCount(b, CodeTreeBuilder.createBuilder().string("++loopCounter.value >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE").build(), true);
-
-                        b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(1).string(" && ") //
-                                        .startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("this").end(2).startBlock();
-
+                        b.startAssign("temp");
+                        b.startCall(lookupBranchBackward(instr).getSimpleName().toString());
+                        b.string("frame");
                         if (model.enableYield) {
-                            /**
-                             * If this invocation was resumed, the locals are no longer in the stack
-                             * frame and we need to pass the local frame to executeOSR.
-                             *
-                             * If this invocation was not resumed, the locals are still in the stack
-                             * frame. We pass null to signal that executeOSR should use the stack
-                             * frame (which may be virtualized by Bytecode OSR code).
-                             */
-                            b.startDeclaration(type(Object.class), "interpreterState");
-                            b.string("frame == ", localFrame(), " ? null : ", localFrame());
-                            b.end();
+                            b.string("localFrame");
                         }
-
-                        b.startAssign("Object osrResult");
-                        b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
-                        b.string("this");
-                        b.string("(sp << 16) | " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX))); // target
-
-                        if (model.enableYield) {
-                            b.string("interpreterState");
-                        } else {
-                            b.string("null"); // interpreterState
-                        }
-                        b.string("null"); // beforeTransfer
-                        b.string("frame"); // parentFrame
-                        b.end(2);
-
-                        b.startIf().string("osrResult != null").end().startBlock();
-                        /**
-                         * executeOSR invokes BytecodeNode#continueAt, which returns an int encoding
-                         * the sp and bci when it returns/when the bytecode is rewritten. Returning
-                         * this value is correct in either case: If it's a return, we'll read the
-                         * result out of the frame (the OSR code copies the OSR frame contents back
-                         * into our frame first); if it's a rewrite, we'll transition and continue
-                         * executing.
-                         */
-                        b.startReturn().cast(type(int.class)).string("osrResult").end();
+                        b.string("bc").string("bci").string("sp").string("loopCounter");
+                        b.end();
                         b.end();
 
+                        b.startIf().string("temp != -1").end().startBlock();
+                        b.statement("return temp");
                         b.end();
+                        b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
                     }
-                    b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
                     b.statement("break");
                     break;
                 case BRANCH_FALSE:
@@ -12135,30 +12109,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end();
                     break;
                 case LOAD_ARGUMENT:
-                    InstructionImmediate argIndex = instr.getImmediate(ImmediateKind.SHORT);
                     if (instr.isReturnTypeQuickening()) {
-                        TypeMirror returnType = instr.signature.returnType;
-                        b.startTryBlock();
                         b.startStatement();
-                        startSetFrame(b, returnType).string("frame").string("sp");
-                        b.startGroup();
-                        b.startStaticCall(lookupExpectMethod(context.getType(Object.class), returnType));
-                        b.string(localFrame() + ".getArguments()[" + readImmediate("bc", "bci", argIndex).toString() + "]");
-                        b.end(); // expect
-                        b.end(); // argument group
-                        b.end(); // set frame
-                        b.end(); // statement
-                        b.end().startCatchBlock(types.UnexpectedResultException, "e"); // try
-                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                        emitQuickening(b, "this", "bc", "bci", null,
-                                        b.create().tree(createInstructionConstant(instr.getQuickeningRoot())).build());
-                        b.startStatement();
-                        startSetFrame(b, context.getType(Object.class)).string("frame").string("sp");
-                        b.string("e.getResult()");
-                        b.end(); // set frame
-                        b.end(); // statement
-                        b.end(); // catch block
+                        b.startCall(lookupLoadArgument(instr).getSimpleName().toString());
+                        b.string("frame");
+                        if (model.enableYield) {
+                            b.string("localFrame");
+                        }
+                        b.string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
                     } else {
+                        InstructionImmediate argIndex = instr.getImmediate(ImmediateKind.SHORT);
                         b.startStatement();
                         startSetFrame(b, context.getType(Object.class)).string("frame").string("sp");
                         b.startGroup();
@@ -12369,24 +12331,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("throw sneakyThrow((Throwable) " + getFrameObject("frame", "sp - 1") + ")");
                     break;
                 case YIELD:
-                    InstructionImmediate continuationIndex = instr.getImmediate(ImmediateKind.CONSTANT);
+
                     storeBciInFrameIfNecessary(b);
                     emitBeforeReturnProfiling(b);
-                    b.statement("int maxLocals = $root.maxLocals");
-                    b.statement(copyFrameTo("frame", "maxLocals", "localFrame", "maxLocals", "(sp - 1 - maxLocals)"));
 
-                    b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
-                    b.cast(continuationRootNodeImpl.asType());
-                    b.tree(readConst(readImmediate("bc", "bci", continuationIndex)));
+                    b.startStatement();
+                    b.startCall(lookupYield(instr).getSimpleName().toString());
+                    b.string("frame");
+                    if (model.enableYield) {
+                        b.string("localFrame");
+                    }
+                    b.string("bc").string("bci").string("sp").string("$root");
+                    b.end();
                     b.end();
 
-                    b.startDeclaration(types.ContinuationResult, "continuationResult");
-                    b.startCall("continuationRootNode.createContinuation");
-                    b.string(localFrame());
-                    b.string(getFrameObject("sp - 1"));
-                    b.end(2);
-
-                    b.statement(setFrameObject("sp - 1", "continuationResult"));
                     emitReturnTopOfStack(b);
                     break;
                 case STORE_NULL:
@@ -12513,10 +12471,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             new CodeVariableElement(bytecodeNodeGen.asType(), "$root"),
                             new CodeVariableElement(types.VirtualFrame, "frame"),
                             new CodeVariableElement(type(int.class), "bci"),
-                            new CodeVariableElement(types.ControlFlowException, "cfe"),
-                            new CodeVariableElement(loopCounter.asType(), "loopCounter"));
+                            new CodeVariableElement(types.ControlFlowException, "cfe"));
             if (tier.isUncached()) {
                 method.addParameter(new CodeVariableElement(type(int.class), "uncachedExecuteCount"));
+            } else {
+                method.addParameter(new CodeVariableElement(loopCounter.asType(), "loopCounter"));
             }
 
             method.getThrownTypes().add(type(Throwable.class));
@@ -12864,6 +12823,169 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.tree(readTagNode(tagNode.asType(), readImmediate("bc", "bci", imm)));
             b.end();
             b.statement("tagNode.findProbe().onYield(frame, returnValue)");
+
+            doInstructionMethods.put(instr, method);
+            return method;
+
+        }
+
+        private CodeExecutableElement lookupBranchBackward(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(int.class), instructionMethodName(instr));
+
+            method.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            if (model.enableYield) {
+                method.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+            }
+            method.addParameter(new CodeVariableElement(type(byte[].class), "bc"));
+            method.addParameter(new CodeVariableElement(type(int.class), "bci"));
+            method.addParameter(new CodeVariableElement(type(int.class), "sp"));
+            method.addParameter(new CodeVariableElement(loopCounter.asType(), "loopCounter"));
+
+            CodeTreeBuilder b = method.createBuilder();
+
+            emitReportLoopCount(b, CodeTreeBuilder.createBuilder().string("++loopCounter.value >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE").build(), true);
+
+            b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(1).string(" && ") //
+                            .startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("this").end(2).startBlock();
+
+            if (model.enableYield) {
+                /**
+                 * If this invocation was resumed, the locals are no longer in the stack frame and
+                 * we need to pass the local frame to executeOSR.
+                 *
+                 * If this invocation was not resumed, the locals are still in the stack frame. We
+                 * pass null to signal that executeOSR should use the stack frame (which may be
+                 * virtualized by Bytecode OSR code).
+                 */
+                b.startDeclaration(type(Object.class), "interpreterState");
+                b.string("frame == ", localFrame(), " ? null : ", localFrame());
+                b.end();
+            }
+
+            b.startAssign("Object osrResult");
+            b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
+            b.string("this");
+            b.string("(sp << 16) | " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX))); // target
+
+            if (model.enableYield) {
+                b.string("interpreterState");
+            } else {
+                b.string("null"); // interpreterState
+            }
+            b.string("null"); // beforeTransfer
+            b.string("frame"); // parentFrame
+            b.end(2);
+
+            b.startIf().string("osrResult != null").end().startBlock();
+            /**
+             * executeOSR invokes BytecodeNode#continueAt, which returns an int encoding the sp and
+             * bci when it returns/when the bytecode is rewritten. Returning this value is correct
+             * in either case: If it's a return, we'll read the result out of the frame (the OSR
+             * code copies the OSR frame contents back into our frame first); if it's a rewrite,
+             * we'll transition and continue executing.
+             */
+            b.startReturn().cast(type(int.class)).string("osrResult").end();
+            b.end();
+
+            b.end();
+
+            b.statement("return -1");
+
+            doInstructionMethods.put(instr, method);
+            return method;
+
+        }
+
+        private CodeExecutableElement lookupLoadArgument(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(void.class), instructionMethodName(instr));
+
+            method.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            if (model.enableYield) {
+                method.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+            }
+            method.addParameter(new CodeVariableElement(type(byte[].class), "bc"));
+            method.addParameter(new CodeVariableElement(type(int.class), "bci"));
+            method.addParameter(new CodeVariableElement(type(int.class), "sp"));
+
+            InstructionImmediate argIndex = instr.getImmediate(ImmediateKind.SHORT);
+
+            CodeTreeBuilder b = method.createBuilder();
+
+            TypeMirror returnType = instr.signature.returnType;
+            b.startTryBlock();
+            b.startStatement();
+            startSetFrame(b, returnType).string("frame").string("sp");
+            b.startGroup();
+            b.startStaticCall(lookupExpectMethod(context.getType(Object.class), returnType));
+            b.string(localFrame() + ".getArguments()[" + readImmediate("bc", "bci", argIndex).toString() + "]");
+            b.end(); // expect
+            b.end(); // argument group
+            b.end(); // set frame
+            b.end(); // statement
+            b.end().startCatchBlock(types.UnexpectedResultException, "e"); // try
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            emitQuickening(b, "this", "bc", "bci", null,
+                            b.create().tree(createInstructionConstant(instr.getQuickeningRoot())).build());
+            b.startStatement();
+            startSetFrame(b, context.getType(Object.class)).string("frame").string("sp");
+            b.string("e.getResult()");
+            b.end(); // set frame
+            b.end(); // statement
+            b.end(); // catch block
+
+            doInstructionMethods.put(instr, method);
+            return method;
+
+        }
+
+        private CodeExecutableElement lookupYield(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(void.class), instructionMethodName(instr));
+
+            method.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            if (model.enableYield) {
+                method.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+            }
+            method.addParameter(new CodeVariableElement(type(byte[].class), "bc"));
+            method.addParameter(new CodeVariableElement(type(int.class), "bci"));
+            method.addParameter(new CodeVariableElement(type(int.class), "sp"));
+            method.addParameter(new CodeVariableElement(bytecodeNodeGen.asType(), "$root"));
+
+            CodeTreeBuilder b = method.createBuilder();
+
+            InstructionImmediate continuationIndex = instr.getImmediate(ImmediateKind.CONSTANT);
+            b.statement("int maxLocals = $root.maxLocals");
+            b.statement(copyFrameTo("frame", "maxLocals", "localFrame", "maxLocals", "(sp - 1 - maxLocals)"));
+
+            b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
+            b.cast(continuationRootNodeImpl.asType());
+            b.tree(readConst(readImmediate("bc", "bci", continuationIndex)));
+            b.end();
+
+            b.startDeclaration(types.ContinuationResult, "continuationResult");
+            b.startCall("continuationRootNode.createContinuation");
+            b.string(localFrame());
+            b.string(getFrameObject("sp - 1"));
+            b.end(2);
+
+            b.statement(setFrameObject("sp - 1", "continuationResult"));
 
             doInstructionMethods.put(instr, method);
             return method;
