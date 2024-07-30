@@ -54,7 +54,9 @@ package com.oracle.truffle.api.memory;
  *
  * <h2>Alignment</h2>
  * <p>
- * Unaligned accesses are allowed.
+ * Unaligned accesses are allowed, but will not constant-fold during partial evaluation. If constant
+ * folding is desired, consider using the unaligned methods (e.g., {@link #getIntUnaligned}) to read
+ * immutable data from unaligned offsets.
  *
  * @since 20.3
  */
@@ -438,11 +440,43 @@ public abstract class ByteArraySupport {
     public abstract void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException;
 
     /**
+     * Reads the short at the given byte offset from the start of the buffer.
+     *
+     * Unlike {@link #getShort(byte[], int)}, the byte offset does not need to be short-aligned. The
+     * platform may not support atomic unaligned reads, so this method should not be used with
+     * shared mutable data.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the short will be read
+     * @return the short at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
+     * @since 24.2
+     */
+    public abstract short getShortUnaligned(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
+
+    /**
+     * Reads the short at the given byte offset from the start of the buffer.
+     *
+     * Unlike {@link #getShort(byte[], long)}, the byte offset does not need to be short-aligned.
+     * The platform may not support atomic unaligned reads, so this method should not be used with
+     * shared mutable data.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the short will be read
+     * @return the short at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
+     * @since 24.2
+     */
+    public abstract short getShortUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
      * Reads the int at the given byte offset from the start of the buffer.
      *
      * Unlike {@link #getInt(byte[], int)}, the byte offset does not need to be int-aligned. The
      * platform may not support atomic unaligned reads, so this method should not be used with
-     * mutable data.
+     * shared mutable data.
      *
      * @param buffer the byte array to read from
      * @param byteOffset the byte offset from which the int will be read
@@ -456,9 +490,9 @@ public abstract class ByteArraySupport {
     /**
      * Reads the int at the given byte offset from the start of the buffer.
      *
-     * Unlike {@link #getInt(byte[], int)}, the byte offset does not need to be int-aligned. The
+     * Unlike {@link #getInt(byte[], long)}, the byte offset does not need to be int-aligned. The
      * platform may not support atomic unaligned reads, so this method should not be used with
-     * mutable data.
+     * shared mutable data.
      *
      * @param buffer the byte array to read from
      * @param byteOffset the byte offset from which the int will be read
@@ -468,6 +502,38 @@ public abstract class ByteArraySupport {
      * @since 24.2
      */
     public abstract int getIntUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
+     * Reads the long at the given byte offset from the start of the buffer.
+     *
+     * Unlike {@link #getLong(byte[], int)}, the byte offset does not need to be long-aligned. The
+     * platform may not support atomic unaligned reads, so this method should not be used with
+     * shared mutable data.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the long will be read
+     * @return the long at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 24.2
+     */
+    public abstract long getLongUnaligned(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
+
+    /**
+     * Reads the long at the given byte offset from the start of the buffer.
+     *
+     * Unlike {@link #getLong(byte[], long)}, the byte offset does not need to be long-aligned. The
+     * platform may not support atomic unaligned reads, so this method should not be used with
+     * shared mutable data.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the long will be read
+     * @return the long at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 24.2
+     */
+    public abstract long getLongUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
 
     /**
      * Volatile version of {@link #getByte(byte[], long)}.
@@ -864,21 +930,4 @@ public abstract class ByteArraySupport {
      * @since 23.1
      */
     public abstract long compareAndExchangeLong(byte[] buffer, long byteOffset, long expected, long x) throws IndexOutOfBoundsException;
-
-    // TODO put these somewhere inaccessible but testable
-    public static int makeIntBigEndian(short a, short b) {
-        return ((a & 0xFFFF) << Short.SIZE) | (b & 0xFFFF);
-    }
-
-    public static int makeIntLittleEndian(short a, short b) {
-        return ((b & 0xFFFF) << Short.SIZE) | (a & 0xFFFF);
-    }
-
-    public static int makeIntBigEndian(byte a, byte b, byte c, byte d) {
-        return ((a & 0xFF) << Byte.SIZE * 3) | ((b & 0xFF) << Byte.SIZE * 2) | ((c & 0xFF) << Byte.SIZE) | (d & 0xFF);
-    }
-
-    public static int makeIntLittleEndian(byte a, byte b, byte c, byte d) {
-        return ((d & 0xFF) << Byte.SIZE * 3) | ((c & 0xFF) << Byte.SIZE * 2) | ((b & 0xFF) << Byte.SIZE) | (a & 0xFF);
-    }
 }
