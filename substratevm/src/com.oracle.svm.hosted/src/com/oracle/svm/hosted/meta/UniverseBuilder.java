@@ -865,7 +865,6 @@ public class UniverseBuilder {
             hUniverse.hostVM().recordActivity();
 
             int layoutHelper;
-            boolean canUnsafeInstantiateAsInstance = false;
             int monitorOffset = 0;
             int identityHashOffset = 0;
             if (type.isInstanceClass()) {
@@ -879,10 +878,8 @@ public class UniverseBuilder {
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
                     layoutHelper = LayoutEncoding.forHybrid(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
-                    canUnsafeInstantiateAsInstance = type.wrapped.isUnsafeAllocated() && HybridLayout.canInstantiateAsInstance(type);
                 } else {
                     layoutHelper = LayoutEncoding.forPureInstance(type, ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
-                    canUnsafeInstantiateAsInstance = type.wrapped.isUnsafeAllocated();
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
                 identityHashOffset = instanceClass.getIdentityHashOffset();
@@ -909,7 +906,7 @@ public class UniverseBuilder {
 
             DynamicHub hub = type.getHub();
             hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset,
-                            referenceMapIndex, type.isInstantiated(), canUnsafeInstantiateAsInstance);
+                            referenceMapIndex, type.isInstantiated());
 
             if (SubstrateOptions.closedTypeWorld()) {
                 CFunctionPointer[] vtable = new CFunctionPointer[type.closedTypeWorldVTable.length];

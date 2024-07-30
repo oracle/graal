@@ -1378,26 +1378,6 @@ truffle_runtime_svm = mx_sdk_vm.GraalVmTruffleLibrary(
 )
 mx_sdk_vm.register_graalvm_component(truffle_runtime_svm)
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-    suite=suite,
-    name='Polyglot Native API',
-    short_name='polynative',
-    dir_name='polyglot',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=[],
-    jar_distributions=['substratevm:POLYGLOT_NATIVE_API'],
-    support_distributions=[
-        "substratevm:POLYGLOT_NATIVE_API_HEADERS",
-    ],
-    polyglot_lib_jar_dependencies=[
-        "substratevm:POLYGLOT_NATIVE_API",
-    ],
-    has_polyglot_lib_entrypoints=True,
-    stability="earlyadopter",
-    jlink=False,
-))
-
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     suite=suite,
     name='Native Image JUnit',

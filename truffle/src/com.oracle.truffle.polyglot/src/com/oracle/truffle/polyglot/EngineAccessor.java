@@ -74,7 +74,6 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
-import com.oracle.truffle.api.impl.JDKAccessor;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
@@ -107,6 +106,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.JDKAccessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -2183,6 +2183,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getEngineData(Object polyglotEngine) {
             return ((PolyglotEngineImpl) polyglotEngine).runtimeData;
+        }
+
+        @Override
+        public long getEngineId(Object polyglotEngine) {
+            return ((PolyglotEngineImpl) polyglotEngine).engineId;
         }
     }
 

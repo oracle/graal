@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.util;
 
+import java.io.PrintStream;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
-import java.io.PrintStream;
 
 // Checkstyle: Allow raw info or warning printing - begin
 public class LogUtils {
@@ -56,6 +56,11 @@ public class LogUtils {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void info(String format, Object... args) {
         info(format.formatted(args));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void prefixInfo(String prefix, String format, Object... args) {
+        info(prefix, format.formatted(args));
     }
 
     /**

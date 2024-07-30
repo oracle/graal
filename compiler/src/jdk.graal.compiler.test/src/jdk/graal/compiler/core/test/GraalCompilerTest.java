@@ -86,7 +86,6 @@ import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.hotspot.HotSpotGraphBuilderPhase;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
-import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -511,7 +510,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                     boolean checkConstants,
                     boolean addGaphsToDebugContext) {
         DebugContext debug = actual.getDebug();
-        actual.getOptimizationLog().emit(new StableMethodNameFormatter(getDefaultGraphBuilderPhase(), getProviders(), debug));
+        actual.getOptimizationLog().emit();
 
         String expectedString = getCanonicalGraphString(expected, excludeVirtual, checkConstants);
         String actualString = getCanonicalGraphString(actual, excludeVirtual, checkConstants);
@@ -1271,7 +1270,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
                             graphToCompile.getProfilingInfo(), suites, createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, null, null, true);
             CompilationResult result = GraalCompiler.compile(request);
-            graphToCompile.getOptimizationLog().emit(new StableMethodNameFormatter(getDefaultGraphBuilderPhase(), getProviders(), graphToCompile.getDebug()));
+            graphToCompile.getOptimizationLog().emit();
             return result;
         } catch (Throwable e) {
             throw debug.handle(e);

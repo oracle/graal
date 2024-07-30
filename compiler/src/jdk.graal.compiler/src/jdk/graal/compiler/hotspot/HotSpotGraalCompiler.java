@@ -284,7 +284,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                         null,
                         this,
                         true));
-        graph.getOptimizationLog().emit(new HotSpotStableMethodNameFormatter(providers, graph.getDebug()));
+        graph.getOptimizationLog().emit();
         if (!isOSR) {
             profilingInfo.setCompilerIRSize(StructuredGraph.class, graph.getNodeCount());
         }

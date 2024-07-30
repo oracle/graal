@@ -49,7 +49,7 @@ public final class StableLambdaProxyNameFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        lSubst = new LambdaProxyRenamingSubstitutionProcessor(access.getBigBang());
+        lSubst = new LambdaProxyRenamingSubstitutionProcessor();
         access.registerSubstitutionProcessor(lSubst);
     }
 

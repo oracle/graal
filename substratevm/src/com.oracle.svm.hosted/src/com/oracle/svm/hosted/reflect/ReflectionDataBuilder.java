@@ -108,7 +108,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private AnalysisUniverse universe;
     private final SubstrateAnnotationExtractor annotationExtractor;
     private BeforeAnalysisAccessImpl analysisAccess;
-    private ClassForNameSupport classForNameSupport;
+    private final ClassForNameSupport classForNameSupport;
 
     private boolean sealed;
 
@@ -256,7 +256,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         AnalysisType type = metaAccess.lookupJavaType(clazz);
         type.registerAsReachable("Is registered for reflection.");
         if (unsafeInstantiated) {
-            type.registerAsUnsafeAllocated("Is registered for reflection.");
+            type.registerAsUnsafeAllocated("Is registered via reflection metadata.");
+            classForNameSupport.registerUnsafeAllocated(condition, clazz);
         }
 
         if (allowForName) {

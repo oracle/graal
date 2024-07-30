@@ -43,8 +43,7 @@ public abstract class PlatformNativeLibrarySupport {
     public static final String[] defaultBuiltInLibraries = {
                     "java",
                     "nio",
-                    "net",
-                    "zip"
+                    "net"
     };
 
     private static final String[] defaultBuiltInPkgNatives = {
@@ -208,7 +207,6 @@ class PlatformNativeLibrarySupportFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
             for (String libName : PlatformNativeLibrarySupport.defaultBuiltInLibraries) {
-                PlatformNativeLibrarySupport.singleton();
                 NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary(libName);
             }
         }

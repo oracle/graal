@@ -36,13 +36,13 @@ The analysis intercepts calls to `Class.forName(String)`, `Class.forName(String,
 
 If the arguments to these calls can be reduced to a constant, Native Image tries to resolve the target elements.
 If the target elements can be resolved, the calls are removed and instead the target elements are embedded in the code.
-If the target elements cannot be resolved, for example, a class is not on the classpath or it does not declare a field/method/constructor, then the calls are replaced with a snippet that throws the appropriate exception at run time.
+If the target elements cannot be resolved, for example, a class is not on the class path or it does not declare a field/method/constructor, then the calls are replaced with a snippet that throws the appropriate exception at run time.
 The benefits are twofold.
 First, at run time there are no calls to the Reflection API.
 Second, GraalVM can employ constant folding and optimize the code further.
 
 The calls are intercepted and processed only when it can be unequivocally determined that the parameters can be reduced to a constant.
-For example, the call `Class.forName(String)` will be replaced with a `Class` literal only if the `String` argument can be constant folded, assuming that the class is actually on the classpath.
+For example, the call `Class.forName(String)` will be replaced with a `Class` literal only if the `String` argument can be constant folded, assuming that the class is actually on the class path.
 Additionally, a call to `Class.getMethod(String, Class[])` will be processed only if the contents of the `Class[]` argument can be determined with certainty.
 This last restriction is due to the fact that Java does not have immutable arrays.
 Therefore, all the changes to the array between the time it is allocated and the time it is passed as an argument need to be tracked.

@@ -80,6 +80,10 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
         return doProcess(annotations, roundEnv);
     }
 
+    /**
+     * Implementations should claim their annotations by returning {@code true} to avoid extra
+     * annotation processing work.
+     */
     protected abstract boolean doProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv);
 
     private final Map<String, TypeElement> types = new HashMap<>();

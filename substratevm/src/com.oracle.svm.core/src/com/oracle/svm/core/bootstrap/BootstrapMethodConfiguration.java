@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.bootstrap;
 
-import java.lang.invoke.ConstantBootstraps;
 import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -70,7 +69,6 @@ public class BootstrapMethodConfiguration implements InternalFeature {
     private final ConcurrentMap<BootstrapMethodRecord, BootstrapMethodInfo> bootstrapMethodInfoCache = new ConcurrentHashMap<>();
     private final Set<Executable> indyBuildTimeAllowList;
     private final Set<Executable> condyBuildTimeAllowList;
-    private final Set<Executable> trustedCondy;
 
     public static BootstrapMethodConfiguration singleton() {
         return ImageSingletons.lookup(BootstrapMethodConfiguration.class);
@@ -117,21 +115,8 @@ public class BootstrapMethodConfiguration implements InternalFeature {
             indyBuildTimeAllowList = Set.of(metafactory, altMetafactory, makeConcat, makeConcatWithConstants, bootstrap, typeSwitch, enumSwitch);
         }
 
-        /* Bootstrap methods used for various dynamic constants. */
-        Method nullConstant = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "nullConstant", MethodHandles.Lookup.class, String.class, Class.class);
-        Method primitiveClass = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "primitiveClass", MethodHandles.Lookup.class, String.class, Class.class);
-        Method enumConstant = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "enumConstant", MethodHandles.Lookup.class, String.class, Class.class);
-        Method getStaticFinal = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "getStaticFinal", MethodHandles.Lookup.class, String.class, Class.class, Class.class);
-        Method invoke = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "invoke", MethodHandles.Lookup.class, String.class, Class.class, MethodHandle.class, Object[].class);
-        Method explicitCast = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "explicitCast", MethodHandles.Lookup.class, String.class, Class.class, Object.class);
-
-        /* Bootstrap methods used for dynamic constants representing class data. */
-        Method classData = ReflectionUtil.lookupMethod(MethodHandles.class, "classData", MethodHandles.Lookup.class, String.class, Class.class);
-        Method classDataAt = ReflectionUtil.lookupMethod(MethodHandles.class, "classDataAt", MethodHandles.Lookup.class, String.class, Class.class, int.class);
-
         /* Set of bootstrap methods for constant dynamic allowed at build time is empty for now */
         condyBuildTimeAllowList = Set.of();
-        trustedCondy = Set.of(nullConstant, primitiveClass, enumConstant, getStaticFinal, invoke, explicitCast, classData, classDataAt);
     }
 
     @Override
@@ -170,13 +155,6 @@ public class BootstrapMethodConfiguration implements InternalFeature {
      */
     private static boolean isProxyCondy(Executable method) {
         return Proxy.isProxyClass(method.getDeclaringClass()) && method.getName().equals("$getMethod");
-    }
-
-    /**
-     * Check if the provided method is defined in the JDK.
-     */
-    public boolean isCondyTrusted(Executable method) {
-        return method != null && trustedCondy.contains(method);
     }
 
     public ConcurrentMap<BootstrapMethodRecord, BootstrapMethodInfo> getBootstrapMethodInfoCache() {

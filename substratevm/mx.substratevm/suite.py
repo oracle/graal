@@ -1289,28 +1289,6 @@ suite = {
             "jacoco" : "exclude",
         },
 
-        "org.graalvm.polyglot.nativeapi" : {
-            "subDir": "src",
-            "sourceDirs" : [
-                "src",
-                "resources",
-            ],
-            "dependencies" : [
-                "sdk:POLYGLOT",
-                "sdk:NATIVEIMAGE",
-                "com.oracle.svm.hosted",
-            ],
-            "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "21+",
-            "annotationProcessors" : [
-                "compiler:GRAAL_PROCESSOR",
-                "SVM_PROCESSOR",
-            ],
-            "workingSets" : "SVM",
-            "spotbugs": "false",
-            "jacoco" : "exclude",
-        },
-
         "com.oracle.svm.graal.hotspot" : {
             "subDir": "src",
             "sourceDirs" : [
@@ -2258,39 +2236,6 @@ suite = {
                 "mx:JUNIT_TOOL",
             ],
             "testDistribution" : True,
-        },
-
-        "POLYGLOT_NATIVE_API" : {
-            "subDir": "src",
-            "dependencies": [
-                "org.graalvm.polyglot.nativeapi",
-            ],
-            "distDependencies": [
-                "sdk:NATIVEIMAGE",
-                "sdk:POLYGLOT",
-                "SVM",
-            ],
-            "moduleInfo" : {
-                "name" : "org.graalvm.polyglot.nativeapi",
-                "requires" : [
-                    "org.graalvm.polyglot",
-                    "org.graalvm.nativeimage",
-                    "org.graalvm.nativeimage.builder",
-                ],
-            },
-            "useModulePath": True,
-            "maven": False,
-        },
-
-        "POLYGLOT_NATIVE_API_HEADERS" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "polyglot.nativeapi header files for the GraalVM build process",
-            "layout" : {
-                "./" : [
-                    "extracted-dependency:POLYGLOT_NATIVE_API/*.h",
-                ],
-            },
         },
 
         "SVM_GRAALVM_SUPPORT" : {

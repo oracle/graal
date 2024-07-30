@@ -191,7 +191,7 @@ public class FieldsOffsetsFeature implements Feature {
 
             /* The partial evaluator allocates Node classes via Unsafe. */
             AnalysisType nodeType = config.getMetaAccess().lookupJavaType(nodeClass.getJavaClass());
-            nodeType.registerInstantiatedCallback(unused -> nodeType.registerAsUnsafeAllocated("Graal node class"));
+            nodeType.registerInstantiatedCallback(unused -> config.registerAsUnsafeAllocated(nodeType));
 
             Fields dataFields = nodeClass.getData();
             registerFields(dataFields, config, "Graal node data field");

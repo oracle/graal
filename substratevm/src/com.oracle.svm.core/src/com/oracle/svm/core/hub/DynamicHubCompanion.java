@@ -59,6 +59,7 @@ public final class DynamicHubCompanion {
     private Constructor<?> cachedConstructor;
     private Class<?> newInstanceCallerCache;
     private Object jfrEventConfiguration;
+    private boolean canUnsafeAllocate;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     DynamicHubCompanion(Class<?> hostedJavaClass, ClassLoader classLoader) {
@@ -140,5 +141,13 @@ public final class DynamicHubCompanion {
 
     public Object getJfrEventConfiguration() {
         return jfrEventConfiguration;
+    }
+
+    public boolean canUnsafeAllocate() {
+        return canUnsafeAllocate;
+    }
+
+    public void setUnsafeAllocate() {
+        canUnsafeAllocate = true;
     }
 }
