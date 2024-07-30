@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jni.access;
 
+import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 import static com.oracle.svm.core.SubstrateOptions.JNIVerboseLookupErrors;
 
 import java.io.PrintStream;
@@ -34,7 +35,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -47,13 +47,18 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jni.MissingJNIRegistrationUtils;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.Utf8.WrappedAsciiCString;
+import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.util.SignatureUtil;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.Signature;
 
 /**
@@ -82,6 +87,8 @@ public final class JNIReflectionDictionary {
             return o.hashCode();
         }
     };
+
+    private static final JNIAccessibleClass NEGATIVE_CLASS_LOOKUP = new JNIAccessibleClass();
 
     public static void create() {
         ImageSingletons.add(JNIReflectionDictionary.class, new JNIReflectionDictionary());
@@ -147,6 +154,12 @@ public final class JNIReflectionDictionary {
         return classesByClassObject.get(classObj);
     }
 
+    public void addNegativeClassLookupIfAbsent(String typeName) {
+        String internalName = MetaUtil.toInternalName(typeName);
+        String queryName = internalName.startsWith("L") ? internalName.substring(1, internalName.length() - 1) : internalName;
+        classesByName.putIfAbsent(queryName, NEGATIVE_CLASS_LOOKUP);
+    }
+
     @Platforms(HOSTED_ONLY.class)
     public void addLinkages(Map<JNINativeLinkage, JNINativeLinkage> linkages) {
         nativeLinkages.putAll(EconomicMap.wrapMap(linkages));
@@ -158,8 +171,18 @@ public final class JNIReflectionDictionary {
 
     public Class<?> getClassObjectByName(CharSequence name) {
         JNIAccessibleClass clazz = classesByName.get(name);
+        clazz = checkClass(clazz, name);
         dump(clazz == null, "getClassObjectByName");
         return (clazz != null) ? clazz.getClassObject() : null;
+    }
+
+    private static JNIAccessibleClass checkClass(JNIAccessibleClass clazz, CharSequence name) {
+        if (throwMissingRegistrationErrors() && clazz == null) {
+            MissingJNIRegistrationUtils.forClass(name.toString());
+        } else if (clazz != null && clazz.isNegative()) {
+            return null;
+        }
+        return clazz;
     }
 
     /**
@@ -232,6 +255,7 @@ public final class JNIReflectionDictionary {
 
     public JNIMethodId getMethodID(Class<?> classObject, CharSequence name, CharSequence signature, boolean isStatic) {
         JNIAccessibleMethod method = findMethod(classObject, new JNIAccessibleMethodDescriptor(name, signature), "getMethodID");
+        method = checkMethod(method, classObject, name, signature);
         boolean match = (method != null && method.isStatic() == isStatic && method.isDiscoverableIn(classObject));
         return toMethodID(match ? method : null);
     }
@@ -253,7 +277,22 @@ public final class JNIReflectionDictionary {
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             p = p.add((UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
         }
-        return p.toObject(JNIAccessibleMethod.class, false);
+        JNIAccessibleMethod jniMethod = p.toObject(JNIAccessibleMethod.class, false);
+        VMError.guarantee(jniMethod == null || !jniMethod.isNegative(), "Existing methods can't correspond to a negative query");
+        return jniMethod;
+    }
+
+    private static JNIAccessibleMethod checkMethod(JNIAccessibleMethod method, Class<?> clazz, CharSequence name, CharSequence signature) {
+        if (throwMissingRegistrationErrors() && method == null && SignatureUtil.isSignatureValid(signature.toString(), false)) {
+            /*
+             * A malformed signature never throws a missing registration error since it can't
+             * possibly match an existing method.
+             */
+            MissingJNIRegistrationUtils.forMethod(clazz, name.toString(), signature.toString());
+        } else if (method != null && method.isNegative()) {
+            return null;
+        }
+        return method;
     }
 
     private JNIAccessibleField getDeclaredField(Class<?> classObject, CharSequence name, boolean isStatic, String dumpLabel) {
@@ -261,7 +300,7 @@ public final class JNIReflectionDictionary {
         dump(clazz == null && dumpLabel != null, dumpLabel);
         if (clazz != null) {
             JNIAccessibleField field = clazz.getField(name);
-            if (field != null && field.isStatic() == isStatic) {
+            if (field != null && (field.isStatic() == isStatic || field.isNegative())) {
                 return field;
             }
         }
@@ -270,6 +309,7 @@ public final class JNIReflectionDictionary {
 
     public JNIFieldId getDeclaredFieldID(Class<?> classObject, String name, boolean isStatic) {
         JNIAccessibleField field = getDeclaredField(classObject, name, isStatic, "getDeclaredFieldID");
+        field = checkField(field, classObject, name);
         return (field != null) ? field.getId() : WordFactory.nullPointer();
     }
 
@@ -300,6 +340,7 @@ public final class JNIReflectionDictionary {
 
     public JNIFieldId getFieldID(Class<?> clazz, CharSequence name, boolean isStatic) {
         JNIAccessibleField field = findField(clazz, name, isStatic, "getFieldID");
+        field = checkField(field, clazz, name);
         return (field != null && field.isDiscoverableIn(clazz)) ? field.getId() : WordFactory.nullPointer();
     }
 
@@ -310,11 +351,21 @@ public final class JNIReflectionDictionary {
             while (fieldsCursor.advance()) {
                 JNIAccessibleField field = fieldsCursor.getValue();
                 if (id.equal(field.getId())) {
+                    VMError.guarantee(!field.isNegative(), "Existing fields can't correspond to a negative query");
                     return (String) fieldsCursor.getKey();
                 }
             }
         }
         return null;
+    }
+
+    private static JNIAccessibleField checkField(JNIAccessibleField field, Class<?> clazz, CharSequence name) {
+        if (throwMissingRegistrationErrors() && field == null) {
+            MissingJNIRegistrationUtils.forField(clazz, name.toString());
+        } else if (field != null && field.isNegative()) {
+            return null;
+        }
+        return field;
     }
 
     public static JNIAccessibleMethodDescriptor getMethodDescriptor(JNIAccessibleMethod method) {

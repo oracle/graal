@@ -45,7 +45,7 @@ import jdk.graal.compiler.nodes.loop.BasicInductionVariable;
 import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.DerivedInductionVariable;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -117,7 +117,7 @@ public class OptimizeOffsetAddressPhase extends PostRunCanonicalizationPhase<Cor
             LoopsData loopsData = context.getLoopsDataProvider().getLoopsData(graph);
             loopsData.detectCountedLoops();
 
-            for (LoopEx loop : loopsData.countedLoops()) {
+            for (Loop loop : loopsData.countedLoops()) {
                 for (OffsetAddressNode offsetAddressNode : loop.whole().nodes().filter(OffsetAddressNode.class)) {
                     tryOptimize(offsetAddressNode, loop);
                 }
@@ -125,7 +125,7 @@ public class OptimizeOffsetAddressPhase extends PostRunCanonicalizationPhase<Cor
         }
     }
 
-    private static void tryOptimize(OffsetAddressNode offsetAddressNode, LoopEx loop) {
+    private static void tryOptimize(OffsetAddressNode offsetAddressNode, Loop loop) {
         EconomicMap<Node, InductionVariable> ivs = loop.getInductionVariables();
         InductionVariable currentIV = ivs.get(offsetAddressNode.getOffset());
 
@@ -153,7 +153,7 @@ public class OptimizeOffsetAddressPhase extends PostRunCanonicalizationPhase<Cor
      * Match the node pattern described in the class javadoc and replace with the new
      * {@link ZeroExtendNode}.
      */
-    private static void tryOptimize(ZeroExtendNode zeroExtendNode, LoopEx loop) {
+    private static void tryOptimize(ZeroExtendNode zeroExtendNode, Loop loop) {
         if (zeroExtendNode.getInputBits() == INT_BITS && zeroExtendNode.getResultBits() == ADDRESS_BITS &&
                         ((IntegerStamp) zeroExtendNode.getValue().stamp(NodeView.DEFAULT)).isPositive()) {
             ValueNode input = GraphUtil.unproxify(zeroExtendNode.getValue());

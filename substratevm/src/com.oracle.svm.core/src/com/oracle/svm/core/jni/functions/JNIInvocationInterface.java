@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jni.functions;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
@@ -34,6 +35,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -77,8 +79,6 @@ import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.Utf8;
-
-import jdk.graal.compiler.serviceprovider.IsolateUtil;
 
 /**
  * Implementation of the JNI invocation API for interacting with a Java VM without having an
@@ -212,6 +212,10 @@ public final class JNIInvocationInterface {
          |                    | 0-terminated C string describing the error if a description is available,         |
          |                    | otherwise extraInfo is set to null.                                               |
          |--------------------|-----------------------------------------------------------------------------------|
+         | _javavm_id         | extraInfo is a "unsigned long*" value.                                            |
+         |                    | A non-zero identifier for the current isolate that is guaranteed to be unique for |
+         |                    | the first 2^64 - 1 isolates in the process is returned in *value.                 |
+         |--------------------|-----------------------------------------------------------------------------------|
          * </pre>
          *
          * @see LogHandler
@@ -231,7 +235,7 @@ public final class JNIInvocationInterface {
         @Uninterruptible(reason = "No Java context")
         static int JNI_GetDefaultJavaVMInitArgs(JNIJavaVMInitArgs vmArgs) {
             int version = vmArgs.getVersion();
-            if (JNIVersion.isSupported(vmArgs.getVersion()) && version != JNIVersion.JNI_VERSION_1_1()) {
+            if (JNIVersion.isSupported(vmArgs.getVersion(), false) && version != JNIVersion.JNI_VERSION_1_1()) {
                 return JNIErrors.JNI_OK();
             }
             if (version == JNIVersion.JNI_VERSION_1_1()) {
@@ -320,7 +324,7 @@ public final class JNIInvocationInterface {
                 if (vm.isNull() || env.isNull()) {
                     return JNIErrors.JNI_ERR();
                 }
-                if (!JNIVersion.isSupported(version)) {
+                if (!JNIVersion.isSupported(version, false)) {
                     env.write(WordFactory.nullPointer());
                     return JNIErrors.JNI_EVERSION();
                 }
@@ -392,7 +396,7 @@ public final class JNIInvocationInterface {
             JNIJavaVM javaVm = JNIFunctionTables.singleton().getGlobalJavaVM();
             JNIJavaVMList.addJavaVM(javaVm);
             if (javaVmIdPointer.isNonNull()) {
-                long javaVmId = IsolateUtil.getIsolateID();
+                long javaVmId = ImageSingletons.lookup(IsolateSupport.class).getIsolateID();
                 javaVmIdPointer.write(WordFactory.pointer(javaVmId));
             }
             RuntimeSupport.getRuntimeSupport().addTearDownHook(new RuntimeSupport.Hook() {

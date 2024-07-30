@@ -149,11 +149,12 @@ class WasmUnittestConfig(mx_unittest.MxUnittestConfig):
 
     def apply(self, config):
         (vmArgs, mainClass, mainClassArgs) = config
-        vmArgs = vmArgs + ['-Dpolyglot.engine.AllowExperimentalOptions=true']
         # Disable DefaultRuntime warning
-        vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
-        # Assert for enter/return parity of ProbeNode
-        vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
+        vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+        vmArgs += ['-Dpolyglot.engine.AllowExperimentalOptions=true']
+        # Assert for enter/return parity of ProbeNode (if assertions are enabled only)
+        if next((arg.startswith('-e') for arg in reversed(vmArgs) if arg in ['-ea', '-da', '-enableassertions', '-disableassertions']), False):
+            vmArgs += ['-Dpolyglot.engine.AssertProbes=true']
         # limit heap memory to 4G, unless otherwise specified
         if not any(a.startswith('-Xm') for a in vmArgs):
             vmArgs += ['-Xmx4g']
@@ -629,7 +630,7 @@ def emscripten_init(args):
 @mx.command(_suite.name, "wasm")
 def wasm(args, **kwargs):
     """Run a WebAssembly program."""
-    vmArgs, wasmArgs = mx.extract_VM_args(args, useDoubleDash=False, defaultAllVMArgs=False)
+    vmArgs, wasmArgs = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
     path_args = mx.get_runtime_jvm_args([
         "TRUFFLE_API",
         "org.graalvm.wasm",

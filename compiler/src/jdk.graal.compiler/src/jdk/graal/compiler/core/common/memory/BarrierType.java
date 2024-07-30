@@ -55,6 +55,12 @@ public enum BarrierType {
     UNKNOWN,
 
     /**
+     * A special value for writes to {@link org.graalvm.word.LocationIdentity#INIT_LOCATION} that
+     * might still require a full store barrier.
+     */
+    POST_INIT_WRITE,
+
+    /**
      * Read of {@link java.lang.ref.Reference}.referent. In the HotSpot world this corresponds to an
      * access decorated with {@code ON_WEAK_OOP_REF}. Depending on the particular garbage collector
      * this might do something different than {@link #READ}.

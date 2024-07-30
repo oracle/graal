@@ -66,6 +66,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:-UseJVMCINativeLibrary",
                         "-XX:JVMCIThreads=1",
                         "-Djdk.graal.CompilationFailureAction=ExitVM",
                         "-Djdk.graal.CrashAt=TestProgram.*",
@@ -183,6 +184,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         };
         testHelper(Arrays.asList(probes), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:-UseJVMCINativeLibrary",
                         "-XX:JVMCIThreads=1",
                         "-Djdk.graal.SystemicCompilationFailureRate=0",
                         "-Djdk.graal.CompilationFailureAction=Diagnose",
@@ -247,7 +249,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         vmArgs.remove("-ea");
         vmArgs.add("-Djdk.graal.DumpPath=" + dumpPath);
         // Force output to a file even if there's a running IGV instance available.
-        vmArgs.add("-Djdk.graal.PrintGraphFile=true");
+        vmArgs.add("-Djdk.graal.PrintGraph=File");
         vmArgs.addAll(extraVmArgs);
 
         Subprocess proc = SubprocessUtil.java(vmArgs, mainClassAndArgs);

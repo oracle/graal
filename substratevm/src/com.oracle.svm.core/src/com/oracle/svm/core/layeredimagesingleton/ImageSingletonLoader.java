@@ -31,5 +31,9 @@ public interface ImageSingletonLoader {
 
     List<Integer> readIntList(String keyName);
 
+    long readLong(String keyName);
+
     String readString(String keyName);
+
+    List<String> readStringList(String keyName);
 }

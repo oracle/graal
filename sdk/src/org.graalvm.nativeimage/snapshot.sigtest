@@ -233,6 +233,15 @@ meth public java.lang.String getElementName()
 supr java.lang.Error
 hfds declaringClass,elementName,elementType,parameterTypes,serialVersionUID
 
+CLSS public final org.graalvm.nativeimage.MissingJNIRegistrationError
+cons public init(java.lang.String,java.lang.Class<?>,java.lang.Class<?>,java.lang.String,java.lang.String)
+meth public java.lang.Class<?> getDeclaringClass()
+meth public java.lang.Class<?> getElementType()
+meth public java.lang.String getSignature()
+meth public java.lang.String getElementName()
+supr java.lang.Error
+hfds declaringClass,elementName,elementType,signature,serialVersionUID
+
 CLSS public abstract interface org.graalvm.nativeimage.ObjectHandle
 intf org.graalvm.word.ComparableWord
 

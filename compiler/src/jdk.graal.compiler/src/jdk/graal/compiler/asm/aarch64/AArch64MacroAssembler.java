@@ -482,6 +482,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * A fixed format movz to produce a uimm16.
+     */
+    public void movzPatchable(int size, Register dst, int uimm16) {
+        movz(size, dst, uimm16, 0);
+    }
+
+    /**
      * Generates a 64-bit immediate move code sequence.
      *
      * @param dst general purpose register. May not be null, stackpointer or zero-register.

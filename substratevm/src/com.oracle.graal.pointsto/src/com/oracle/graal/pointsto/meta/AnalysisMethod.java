@@ -34,6 +34,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -107,6 +108,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isInlinedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "isInlined");
 
+    static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> allImplementationsUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisMethod.class, Object.class, "allImplementations");
+
     public record Signature(String name, AnalysisType[] parameterTypes) {
     }
 
@@ -120,6 +124,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private final LocalVariableTable localVariableTable;
     private final String name;
     private final String qualifiedName;
+    private final int modifiers;
 
     protected final AnalysisType declaringClass;
     protected final ResolvedSignature<AnalysisType> signature;
@@ -164,10 +169,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private EncodedGraph analyzedGraph;
 
     /**
-     * All concrete methods that can actually be called when calling this method. This includes all
-     * overridden methods in subclasses, as well as this method if it is non-abstract.
+     * Concrete methods that could possibly be called when calling this method. This also includes
+     * methods that are not reachable yet, i.e., this set must be filtered before it can be used. It
+     * never includes the method itself to reduce the size. See
+     * {@link AnalysisMethod#collectMethodImplementations} for more details.
      */
-    protected AnalysisMethod[] implementations;
+    @SuppressWarnings("unused") private volatile Object allImplementations;
 
     /**
      * Indicates that this method returns all instantiated types. This is necessary when there are
@@ -189,6 +196,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
         name = createName(wrapped, multiMethodKey);
         qualifiedName = format("%H.%n(%P)");
+        modifiers = wrapped.getModifiers();
 
         if (universe.hostVM().useBaseLayer()) {
             int mid = universe.getImageLayerLoader().lookupHostedMethodInBaseLayer(this);
@@ -258,6 +266,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
         name = createName(wrapped, multiMethodKey);
         qualifiedName = format("%H.%n(%P)");
+        modifiers = original.modifiers;
 
         this.multiMethodKey = multiMethodKey;
         assert original.multiMethodMap != null;
@@ -385,7 +394,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public boolean registerAsImplementationInvoked(Object reason) {
         assert isValidReason(reason) : "Registering a method as implementation invoked needs to provide a valid reason, found: " + reason;
-        assert isImplementationInvokable() : this;
         assert !Modifier.isAbstract(getModifiers()) : this;
 
         /*
@@ -550,81 +558,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     @Override
     public void onReachable() {
         notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
-        processMethodOverrides();
-    }
-
-    private void processMethodOverrides() {
-        if (wrapped.canBeStaticallyBound() || isConstructor()) {
-            notifyMethodOverride(this);
-        } else if (declaringClass.isAnySubtypeInstantiated()) {
-            /*
-             * If neither the declaring class nor a subtype is instantiated then this method cannot
-             * be marked as invoked, so it cannot be an override.
-             */
-            declaringClass.forAllSuperTypes(superType -> {
-                /*
-                 * Iterate all the super types (including this type itself) looking for installed
-                 * override notifications. If this method is found in a super type, and it has an
-                 * override handler installed in that type, pass this method to the callback. It
-                 * doesn't matter if the superMethod is actually reachable, only if it has any
-                 * override handlers installed. Note that ResolvedJavaType.resolveMethod() cannot be
-                 * used here because it only resolves methods declared by the type itself or if the
-                 * method's declaring class is assignable from the type.
-                 */
-                AnalysisMethod superMethod = findInType(superType);
-                if (superMethod != null) {
-                    superMethod.notifyMethodOverride(AnalysisMethod.this);
-                }
-            });
-        }
-    }
-
-    /** Find if the type declares a method with the same name and signature as this method. */
-    private AnalysisMethod findInType(AnalysisType type) {
-        try {
-            return type.findMethod(wrapped.getName(), getSignature());
-        } catch (UnsupportedFeatureException | LinkageError e) {
-            /* Ignore linking errors and deleted methods. */
-            return null;
-        }
-    }
-
-    protected void notifyMethodOverride(AnalysisMethod override) {
-        declaringClass.getOverrideReachabilityNotifications(this).forEach(n -> n.notifyCallback(getUniverse(), override));
     }
 
     public void registerOverrideReachabilityNotification(MethodOverrideReachableNotification notification) {
-        declaringClass.registerOverrideReachabilityNotification(this, notification);
-    }
-
-    /**
-     * Resolves this method in the provided type, but only if the type or any of its subtypes is
-     * marked as instantiated.
-     */
-    protected AnalysisMethod resolveInType(AnalysisType holder) {
-        return resolveInType(holder, holder.isAnySubtypeInstantiated());
-    }
-
-    protected AnalysisMethod resolveInType(AnalysisType holder, boolean holderOrSubtypeInstantiated) {
-        /*
-         * If the holder and all subtypes are not instantiated, then we do not need to resolve the
-         * method. The method cannot be marked as invoked.
-         */
-        if (holderOrSubtypeInstantiated || isIntrinsicMethod()) {
-            AnalysisMethod resolved;
-            try {
-                resolved = holder.resolveConcreteMethod(this, null);
-            } catch (UnsupportedFeatureException e) {
-                /* An unsupported overriding method is not reachable. */
-                resolved = null;
-            }
-            /*
-             * resolved == null means that the method in the base class was called, but never with
-             * this holder.
-             */
-            return resolved;
-        }
-        return null;
+        getUniverse().registerOverrideReachabilityNotification(this, notification);
     }
 
     @Override
@@ -699,7 +636,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public int getModifiers() {
-        return wrapped.getModifiers();
+        return modifiers;
     }
 
     @Override
@@ -735,12 +672,46 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     }
 
-    public AnalysisMethod[] getImplementations() {
-        assert getUniverse().analysisDataValid : this;
-        if (implementations == null) {
-            return new AnalysisMethod[0];
+    /**
+     * Returns all methods that override (= implement) this method. If the
+     * {@code includeInlinedMethods} parameter is true, all reachable overrides are returned; if it
+     * is false, only invoked methods are returned (and methods that are already inlined at all call
+     * sites are excluded).
+     *
+     * In the parallel static analysis, it is difficult to have this information always available:
+     * when a method becomes reachable or invoked, it is not known which other methods it overrides.
+     * Therefore, we collect all possible implementations in {@link #allImplementations} without
+     * taking reachability into account, and then filter this too-large set of methods here on
+     * demand.
+     */
+    public Set<AnalysisMethod> collectMethodImplementations(boolean includeInlinedMethods) {
+        /*
+         * To keep the allImplementations set as small as possible (and empty for most methods), the
+         * set never includes this method itself. It is clear that every method is always an
+         * implementation of itself.
+         */
+        boolean includeOurselfs = (isStatic() || getDeclaringClass().isAnySubtypeInstantiated()) &&
+                        (includeInlinedMethods ? isReachable() : isImplementationInvoked());
+
+        int allImplementationsSize = ConcurrentLightHashSet.size(this, allImplementationsUpdater);
+        if (allImplementationsSize == 0) {
+            /* Fast-path that avoids allocation of a full HashSet. */
+            return includeOurselfs ? Set.of(this) : Set.of();
         }
-        return implementations;
+
+        Set<AnalysisMethod> result = new HashSet<>(allImplementationsSize + 1);
+        if (includeOurselfs) {
+            result.add(this);
+        }
+        ConcurrentLightHashSet.forEach(this, allImplementationsUpdater, (AnalysisMethod override) -> {
+            if (override.getDeclaringClass().isAnySubtypeInstantiated()) {
+                if (includeInlinedMethods ? override.isReachable() : override.isImplementationInvoked()) {
+                    result.add(override);
+                }
+            }
+        });
+
+        return result;
     }
 
     @Override
@@ -1060,6 +1031,4 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     protected abstract AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey);
-
-    public abstract boolean isImplementationInvokable();
 }

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @EspressoSubstitutions
 public final class Target_java_util_concurrent_locks_AbstractOwnableSynchronizer {
@@ -33,12 +34,22 @@ public final class Target_java_util_concurrent_locks_AbstractOwnableSynchronizer
 
     @Substitution(hasReceiver = true, isTrivial = true)
     public static void setExclusiveOwnerThread(StaticObject self, @JavaType(Thread.class) StaticObject thread, @Inject Meta meta) {
-        // We don't want to have continuations that "own" anything
-        EspressoLanguage language = meta.getLanguage();
-        if (StaticObject.isNull(thread)) {
-            language.getThreadLocalState().unblockContinuationSuspension();
-        } else if (language.getCurrentVirtualThread() == thread) {
-            language.getThreadLocalState().blockContinuationSuspension();
+        if (InterpreterToVM.instanceOf(self, meta.java_util_concurrent_locks_ReentrantLock_Sync) ||
+                        InterpreterToVM.instanceOf(self, meta.java_util_concurrent_locks_ReentrantReadWriteLock_Sync)) {
+            // We don't want to have continuations that "own" Locks
+            // We only handle ReentrantLock$Sync and ReentrantReadWriteLock$Sync which have well
+            // known semantics that follow the assertions below.
+            // There are other subclasses of AbstractOwnableSynchronizer in the JDK or in
+            // user-defined code, but we don't want to guess their semantics or rely on how they use
+            // this method for our own correctness.
+            EspressoLanguage language = meta.getLanguage();
+            if (StaticObject.isNull(thread)) {
+                assert StaticObject.notNull(meta.java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread.getObject(self));
+                language.getThreadLocalState().unblockContinuationSuspension();
+            } else if (language.getCurrentVirtualThread() == thread) {
+                assert meta.java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread.getObject(self) != thread;
+                language.getThreadLocalState().blockContinuationSuspension();
+            }
         }
         meta.java_util_concurrent_locks_AbstractOwnableSynchronizer_exclusiveOwnerThread.setObject(self, thread);
     }

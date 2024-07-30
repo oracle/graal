@@ -31,7 +31,6 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
@@ -2543,7 +2542,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * @since 21.1
      */
     @Substitution
-    @ReportPolymorphism
     abstract static class HasBufferElements extends SubstitutionNode {
         static final int LIMIT = 2;
 

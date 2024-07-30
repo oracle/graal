@@ -28,6 +28,7 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.report;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
+import java.lang.reflect.Proxy;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.nio.file.Files;
@@ -64,7 +65,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -113,7 +114,8 @@ public class PermissionsFeature implements Feature {
 
         @BundleMember(role = BundleMember.Role.Input)//
         @Option(help = "Comma separated list of exclude files.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> TruffleTCKPermissionsExcludeFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> TruffleTCKPermissionsExcludeFiles = new HostedOptionKey<>(
+                        AccumulatingLocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
         @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert)//
         public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxStackTraceDepth = new HostedOptionKey<>(-1);
@@ -357,6 +359,15 @@ public class PermissionsFeature implements Feature {
          * In this situation it is unnecessary to check for unsafe accesses.
          */
         if (inlinedUnsafeCall == null || isSystemOrSafeClass(mNode)) {
+            return;
+        }
+
+        if (Proxy.isProxyClass(mNode.getOwner().getJavaClass())) {
+            /*
+             * Starting JDK-23+26 Proxy generated code does unsafe compare and set. The generated
+             * proxy method calls the used invocation handler which is checked for possible unsafe
+             * access.
+             */
             return;
         }
 
@@ -932,10 +943,10 @@ public class PermissionsFeature implements Feature {
     /**
      * Options facade for a resource containing the JRE white list.
      */
-    private static final class ResourceAsOptionDecorator extends HostedOptionKey<LocatableMultiOptionValue.Strings> {
+    private static final class ResourceAsOptionDecorator extends HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> {
 
         ResourceAsOptionDecorator(String defaultValue) {
-            super(LocatableMultiOptionValue.Strings.buildWithDefaults(defaultValue));
+            super(AccumulatingLocatableMultiOptionValue.Strings.buildWithDefaults(defaultValue));
         }
     }
 

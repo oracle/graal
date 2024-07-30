@@ -26,10 +26,11 @@ package jdk.graal.compiler.core.match;
 
 import java.util.List;
 
+import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.gen.NodeLIRBuilder;
 import jdk.graal.compiler.core.gen.NodeMatchRules;
 
-public interface MatchStatementSet {
+public interface MatchStatementSet extends ArchitectureSpecific {
     /**
      * @return the {@link NodeLIRBuilder} subclass which defined this set of {@link MatchStatement}
      *         instances.

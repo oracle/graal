@@ -252,6 +252,10 @@ public class MethodTypeFlowBuilder {
                 NewInstanceNode node = (NewInstanceNode) n;
                 AnalysisType type = (AnalysisType) node.instanceClass();
                 type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+                for (var f : type.getInstanceFields(true)) {
+                    var field = (AnalysisField) f;
+                    field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(field.getStorageKind()));
+                }
 
             } else if (n instanceof NewInstanceWithExceptionNode) {
                 NewInstanceWithExceptionNode node = (NewInstanceWithExceptionNode) n;
@@ -1440,6 +1444,11 @@ public class MethodTypeFlowBuilder {
                     } else {
                         AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
                         processStoreField(commitAllocationNode, field, object, value, value.getStackKind(), state);
+                    }
+                } else {
+                    if (!type.isArray()) {
+                        AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
+                        field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(field.getStorageKind()));
                     }
                 }
             }

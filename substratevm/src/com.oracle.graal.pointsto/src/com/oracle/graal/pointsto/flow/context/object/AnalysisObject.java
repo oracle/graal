@@ -35,7 +35,6 @@ import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.flow.UnsafeWriteSinkTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -198,7 +197,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         return isStore ? arrayElementsTypeStore.writeFlow() : arrayElementsTypeStore.readFlow();
     }
 
-    /** Returns the filter field flow corresponding to an unsafe accessed filed. */
+    /** Returns the filter field flow corresponding to an unsafe accessed field. */
     public FieldFilterTypeFlow getInstanceFieldFilterFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed() : field;
 
@@ -206,13 +205,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         return fieldTypeStore.writeFlow().filterFlow(bb);
     }
 
-    public UnsafeWriteSinkTypeFlow getUnsafeWriteSinkFrozenFilterFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
-        assert !Modifier.isStatic(field.getModifiers()) && field.hasUnsafeFrozenTypeState() : field;
-        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
-        return fieldTypeStore.unsafeWriteSinkFlow(bb);
-    }
-
-    /** Returns the instance field flow corresponding to a filed of the object's type. */
+    /** Returns the instance field flow corresponding to a field of the object's type. */
     public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, AnalysisField field, boolean isStore) {
         return getInstanceFieldFlow(bb, null, null, field, isStore);
     }
@@ -269,9 +262,9 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     @SuppressWarnings("unused")
     protected void linkFieldFlows(PointsToAnalysis bb, AnalysisField field, FieldTypeStore fieldStore) {
         // link the initial instance field flow to the field write flow
-        field.getInitialInstanceFieldFlow().addUse(bb, fieldStore.writeFlow());
-        // link the field read flow to the context insensitive instance field flow
-        fieldStore.readFlow().addUse(bb, field.getInstanceFieldFlow());
+        field.getInitialFlow().addUse(bb, fieldStore.writeFlow());
+        // link the field read flow to the sink flow that accumulates all field types
+        fieldStore.readFlow().addUse(bb, field.getSinkFlow());
     }
 
     /**

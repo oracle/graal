@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,24 +29,26 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
-import com.oracle.truffle.api.CallTarget;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.StringContains;
+import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Arrays;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
@@ -96,8 +98,6 @@ public final class BufferInteropTest extends InteropTestBase {
 
     @Parameter(3) public byte[] valueAsBytes;
 
-    @Rule public ExpectedException exception = ExpectedException.none();
-
     public class ReadBufferNode extends SulongTestNode {
 
         public ReadBufferNode() {
@@ -125,15 +125,19 @@ public final class BufferInteropTest extends InteropTestBase {
 
     @Test
     public void testReadBuffer(@Inject(ReadBufferNode.class) CallTarget readBuffer) {
-        byte[] arr = createTestArray();
+        Runnable testRunnable = () -> {
+            byte[] arr = createTestArray();
 
-        if (offset < 0 || (offset + valueAsBytes.length) > BUFFER_SIZE) {
-            exception.expectMessage(String.format("Out-of-bounds buffer access (offset %d, length %d)", offset, valueAsBytes.length));
+            Object buffer = runWithPolyglot.getTruffleTestEnv().asGuestValue(ByteBuffer.wrap(arr));
+            Object ret = readBuffer.call(buffer, offset);
+            Assert.assertEquals("ret", value, ret);
+        };
+        if (offset >= 0 && (offset + valueAsBytes.length) <= BUFFER_SIZE) {
+            testRunnable.run();
+        } else {
+            AbstractTruffleException truffleException = Assert.assertThrows(AbstractTruffleException.class, testRunnable::run);
+            MatcherAssert.assertThat(truffleException.getMessage(), StringContains.containsString(String.format("Out-of-bounds buffer access (offset %d, length %d)", offset, valueAsBytes.length)));
         }
-
-        Object buffer = runWithPolyglot.getTruffleTestEnv().asGuestValue(ByteBuffer.wrap(arr));
-        Object ret = readBuffer.call(buffer, offset);
-        Assert.assertEquals("ret", value, ret);
     }
 
     public class WriteBufferNode extends SulongTestNode {
@@ -145,16 +149,20 @@ public final class BufferInteropTest extends InteropTestBase {
 
     @Test
     public void testWriteBuffer(@Inject(WriteBufferNode.class) CallTarget writeBuffer) {
-        byte[] arr = createEmptyArray();
+        Runnable testRunnable = () -> {
+            byte[] arr = createEmptyArray();
 
-        if (offset < 0 || (offset + valueAsBytes.length) > BUFFER_SIZE) {
-            exception.expectMessage(String.format("Out-of-bounds buffer access (offset %d, length %d)", offset, valueAsBytes.length));
+            Object buffer = runWithPolyglot.getTruffleTestEnv().asGuestValue(ByteBuffer.wrap(arr));
+            writeBuffer.call(buffer, offset, value);
+
+            byte[] expected = createTestArray();
+            Assert.assertArrayEquals(expected, arr);
+        };
+        if (offset >= 0 && (offset + valueAsBytes.length) <= BUFFER_SIZE) {
+            testRunnable.run();
+        } else {
+            AbstractTruffleException truffleException = Assert.assertThrows(AbstractTruffleException.class, testRunnable::run);
+            MatcherAssert.assertThat(truffleException.getMessage(), StringContains.containsString(String.format("Out-of-bounds buffer access (offset %d, length %d)", offset, valueAsBytes.length)));
         }
-
-        Object buffer = runWithPolyglot.getTruffleTestEnv().asGuestValue(ByteBuffer.wrap(arr));
-        writeBuffer.call(buffer, offset, value);
-
-        byte[] expected = createTestArray();
-        Assert.assertArrayEquals(expected, arr);
     }
 }

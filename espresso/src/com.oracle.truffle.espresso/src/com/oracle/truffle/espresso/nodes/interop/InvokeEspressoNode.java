@@ -47,7 +47,6 @@ import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @GenerateUncached
-@ReportPolymorphism
 public abstract class InvokeEspressoNode extends EspressoNode {
     static final int LIMIT = 4;
 

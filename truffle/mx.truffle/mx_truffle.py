@@ -224,6 +224,10 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
         mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sl/*=ALL-UNNAMED'])
         mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=org.graalvm.sl'])
         mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.shadowed.jcodings/*=ALL-UNNAMED'])
+
+        # Disable VirtualThread warning
+        vmArgs = vmArgs + ['-Dpolyglot.engine.WarnVirtualThreadSupport=false']
+
         return (vmArgs, mainClass, mainClassArgs)
 
 
@@ -366,10 +370,10 @@ def _sl_command(jdk, vm_args, sl_args, use_optimized_runtime=True, use_enterpris
 
 def slnative(args):
     """build a native image of an SL program"""
-    parser = ArgumentParser(prog='mx slnative', description='Builds and executes native SL image.', usage='mx slnative [--target-folder <folder>|SL args|@VM options]')
+    parser = ArgumentParser(prog='mx slnative', description='Builds and executes native SL image.', usage='mx slnative [--target-folder <folder>|@VM options|--|SL args]')
     parser.add_argument('--target-folder', help='Folder where the SL executable will be generated.', default=None)
     parsed_args, args = parser.parse_known_args(args)
-    vm_args, sl_args = mx.extract_VM_args(args)
+    vm_args, sl_args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
     target_dir = parsed_args.target_folder if parsed_args.target_folder else tempfile.mkdtemp()
     jdk = mx.get_jdk(tag='graalvm')
     image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, force_cp=False, hosted_assertions=False)
@@ -404,28 +408,38 @@ def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_e
     mx.run([native_image_path] + native_image_args)
     return target_path
 
+class TruffleGateTags:
+    style = ['style']
+    javadoc = ['javadoc']
+    sigtest = ['sigtest', 'test', 'fulltest']
+    truffle_test = ['truffle-test', 'test', 'fulltest']
+    panama_test = ['panama-test', 'test', 'fulltest']
+    string_test = ['string-test', 'test', 'fulltest']
+    dsl_max_state_bit_test = ['dsl-max-state-bit-test', 'fulltest']
+    parser_test = ['parser-test', 'test', 'fulltest']
+
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
     if jdk.javaCompliance < '9':
-        with Task('Truffle Javadoc', tasks) as t:
+        with Task('Truffle Javadoc', tasks, tags=TruffleGateTags.javadoc) as t:
             if t: javadoc([])
-    with Task('File name length check', tasks) as t:
+    with Task('File name length check', tasks, tags=TruffleGateTags.style) as t:
         if t: check_filename_length([])
-    with Task('Truffle Signature Tests', tasks) as t:
+    with Task('Truffle Signature Tests', tasks, tags=TruffleGateTags.sigtest) as t:
         if t: sigtest(['--check', 'binary'])
-    with Task('Truffle UnitTests', tasks) as t:
+    with Task('Truffle UnitTests', tasks, tags=TruffleGateTags.truffle_test) as t:
         if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25']))
     if jdk.javaCompliance >= '22':
-        with Task('Truffle NFI tests with Panama Backend', tasks) as t:
+        with Task('Truffle NFI tests with Panama Backend', tasks, tags=TruffleGateTags.panama_test) as t:
             if t:
                 unittest(['com.oracle.truffle.nfi.test', '--enable-timing', '--verbose', '--nfi-config=panama'])
-    with Task('TruffleString UnitTests without Java String Compaction', tasks) as t:
+    with Task('TruffleString UnitTests without Java String Compaction', tasks, tags=TruffleGateTags.string_test) as t:
         if t: unittest(list(['-XX:-CompactStrings', '--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25', 'com.oracle.truffle.api.strings.test']))
     if os.getenv('DISABLE_DSL_STATE_BITS_TESTS', 'false').lower() != 'true':
-        with Task('Truffle DSL max state bit tests', tasks) as t:
+        with Task('Truffle DSL max state bit tests', tasks, tags=TruffleGateTags.dsl_max_state_bit_test) as t:
             if t:
                 _truffle_gate_state_bitwidth_tests()
-    with Task('Validate parsers', tasks) as t:
+    with Task('Validate parsers', tasks, tags=TruffleGateTags.parser_test) as t:
         if t: validate_parsers()
 
 
@@ -623,6 +637,8 @@ def sl_jvm_gate_tests():
     _sl_jvm_gate_tests(mx.get_jdk(tag='default'), force_cp=False, supports_optimization=False)
     _sl_jvm_gate_tests(mx.get_jdk(tag='default'), force_cp=True, supports_optimization=False)
 
+    _sl_jvm_comiler_on_upgrade_module_path_gate_tests(mx.get_jdk(tag='default'))
+
 
 def _sl_jvm_gate_tests(jdk, force_cp=False, supports_optimization=True):
     default_args = []
@@ -669,6 +685,30 @@ def _sl_jvm_gate_tests(jdk, force_cp=False, supports_optimization=True):
 
         mx.log(f'Run SL JVM Optimized  Test No Truffle Enterprise JVMCI disabled on {jdk.home} force_cp={force_cp}')
         _run_sl_tests(run_jvm_no_enterprise_jvmci_disabled)
+
+
+def _sl_jvm_comiler_on_upgrade_module_path_gate_tests(jdk):
+    if _is_graalvm(jdk):
+        # Ignore tests for Truffle LTS gate using GraalVM as a base JDK
+        mx.log(f'Ignoring SL JVM Optimized with Compiler on Upgrade Module Path on {jdk.home} because JDK is GraalVM')
+        return
+    compiler = mx.distribution('compiler:GRAAL')
+    vm_args = [
+        '-XX:+UnlockExperimentalVMOptions',
+        '-XX:+EnableJVMCI',
+        f'--upgrade-module-path={compiler.classpath_repr()}',
+    ]
+
+    def run_jvm_optimized(test_file):
+        return _sl_command(jdk, vm_args, [test_file, '--disable-launcher-output'], use_optimized_runtime=True)
+
+    def run_jvm_optimized_immediately(test_file):
+        return _sl_command(jdk, vm_args, [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false'], use_optimized_runtime=True)
+
+    mx.log(f'Run SL JVM Optimized Test on {jdk.home} with Compiler on Upgrade Module Path')
+    _run_sl_tests(run_jvm_optimized)
+    mx.log(f'Run SL JVM Optimized Immediately Test on {jdk.home} with Compiler on Upgrade Module Path')
+    _run_sl_tests(run_jvm_optimized_immediately)
 
 
 # Run in VM suite with:
@@ -1521,10 +1561,10 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
         self.out_dir = self.get_output_root()
         if mx.get_os() == 'windows':
             self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
-                                                           os.path.join(self.out_dir, 'libffi-3.4.4'),
+                                                           os.path.join(self.out_dir, 'libffi-3.4.6'),
                                                            'static_lib',
                                                            deliverable='ffi',
-                                                           cflags=['-MD', '-O2', '-DFFI_BUILDING_DLL'])
+                                                           cflags=['-MD', '-O2', '-DFFI_STATIC_BUILD'])
             self.delegate._source = dict(tree=['include',
                                                'src',
                                                os.path.join('src', 'x86')],
@@ -1558,11 +1598,11 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                   'include/ffi.h',
                                                   'include/ffitarget.h'],
                                                  os.path.join(self.out_dir, 'libffi-build'),
-                                                 os.path.join(self.out_dir, 'libffi-3.4.4'))
+                                                 os.path.join(self.out_dir, 'libffi-3.4.6'))
             configure_args = ['--disable-dependency-tracking',
                               '--disable-shared',
                               '--with-pic',
-                              ' CFLAGS="{}"'.format(' '.join(['-g', '-O3'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
+                              ' CFLAGS="{}"'.format(' '.join(['-g', '-O3', '-fvisibility=hidden'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
                               'CPPFLAGS="-DNO_JAVA_RAW_API"',
                              ]
 
@@ -1756,7 +1796,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dir_name='icu4j',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=['Truffle', 'XZ'],
     truffle_jars=[
         'truffle:TRUFFLE_ICU4J',
     ],

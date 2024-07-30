@@ -57,6 +57,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
@@ -230,7 +231,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         Map<LayeredImageSingleton, SingletonPersistInfo> singletonInfoMap = new HashMap<>();
         int nextID = 1;
         for (var singletonInfo : layeredImageSingletons) {
-            LayeredImageSingleton singleton = (LayeredImageSingleton) singletonInfo.getValue();
+            LayeredImageSingleton singleton;
+            if (singletonInfo.getValue() instanceof RuntimeOnlyWrapper wrapper) {
+                singleton = wrapper.wrappedObject();
+            } else {
+                singleton = (LayeredImageSingleton) singletonInfo.getValue();
+            }
             String key = singletonInfo.getKey().getName();
             if (!singletonInfoMap.containsKey(singleton)) {
                 var writer = new ImageSingletonWriterImpl();
@@ -264,16 +270,31 @@ class ImageSingletonWriterImpl implements ImageSingletonWriter {
 
     @Override
     public void writeInt(String keyName, int value) {
-        keyValueStore.put(keyName, List.of("I", value));
+        var previous = keyValueStore.put(keyName, List.of("I", value));
+        assert previous == null : previous;
     }
 
     @Override
     public void writeIntList(String keyName, List<Integer> value) {
-        keyValueStore.put(keyName, List.of("I(", value));
+        var previous = keyValueStore.put(keyName, List.of("I(", value));
+        assert previous == null : previous;
+    }
+
+    @Override
+    public void writeLong(String keyName, long value) {
+        var previous = keyValueStore.put(keyName, List.of("L", value));
+        assert previous == null : previous;
     }
 
     @Override
     public void writeString(String keyName, String value) {
-        keyValueStore.put(keyName, List.of("S", value));
+        var previous = keyValueStore.put(keyName, List.of("S", value));
+        assert previous == null : previous;
+    }
+
+    @Override
+    public void writeStringList(String keyName, List<String> value) {
+        var previous = keyValueStore.put(keyName, List.of("S(", value));
+        assert previous == null : previous;
     }
 }

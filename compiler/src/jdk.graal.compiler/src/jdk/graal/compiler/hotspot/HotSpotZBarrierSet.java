@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,23 +24,24 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.gc.ZBarrierSet;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Specialization of {@link ZBarrierSet} that adds support for read barriers on handle locations.
  */
 public class HotSpotZBarrierSet extends ZBarrierSet {
-    public HotSpotZBarrierSet(ResolvedJavaField referentField) {
-        super(referentField);
+    public HotSpotZBarrierSet(ResolvedJavaType objectArrayType, ResolvedJavaField referentField) {
+        super(objectArrayType, referentField);
     }
 
     @Override
@@ -58,5 +59,13 @@ public class HotSpotZBarrierSet extends ZBarrierSet {
             return BarrierType.READ;
         }
         return super.readBarrierType(location, address, loadStamp);
+    }
+
+    @Override
+    public BarrierType writeBarrierType(LocationIdentity location) {
+        if (location instanceof HotSpotReplacementsUtil.OopHandleLocationIdentity) {
+            return BarrierType.FIELD;
+        }
+        return BarrierType.NONE;
     }
 }

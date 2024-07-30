@@ -185,7 +185,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                 createStubs(this, targetVM, (TypeElement) holder, classes);
             }
         }
-        return false;
+        return true;
     }
 
     private void extractStubs(TargetVM targetVM,

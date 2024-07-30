@@ -40,22 +40,24 @@
  */
 package com.oracle.truffle.nfi.test.parser;
 
+import static org.junit.Assert.assertThrows;
+
+import org.hamcrest.MatcherAssert;
+import org.junit.Assert;
+import org.junit.ClassRule;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.test.parser.ErrorParseSignatureTest.ParserExceptionMatcher;
 import com.oracle.truffle.nfi.test.parser.backend.TestLibrary;
 import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
-import org.junit.Assert;
-import org.junit.ClassRule;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 public class ParseLibraryDescriptorTest {
 
     @ClassRule public static RunWithPolyglotRule runWithPolyglot = new RunWithPolyglotRule();
-    @Rule public ExpectedException exception = ExpectedException.none();
 
     private static NativeLibraryDescriptor parseLibraryDescriptor(String descriptor) {
         Source source = Source.newBuilder("nfi", String.format("with test %s", descriptor), "ParseLibraryDescriptorTest").internal(true).build();
@@ -107,37 +109,37 @@ public class ParseLibraryDescriptorTest {
 
     @Test
     public void parseUnknownCommand() {
-        exception.expect(ParserExceptionMatcher.PARSER);
-        parseLibraryDescriptor("_unknown_command");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> parseLibraryDescriptor("_unknown_command"));
+        MatcherAssert.assertThat(truffleException, ParserExceptionMatcher.PARSER);
     }
 
     @Test
     public void parseUnknownToken() {
-        exception.expect(ParserExceptionMatcher.PARSER);
-        parseLibraryDescriptor("%");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> parseLibraryDescriptor("%"));
+        MatcherAssert.assertThat(truffleException, ParserExceptionMatcher.PARSER);
     }
 
     @Test
     public void parseEmpty() {
-        exception.expect(ParserExceptionMatcher.INCOMPLETE);
-        parseLibraryDescriptor("");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> parseLibraryDescriptor(""));
+        MatcherAssert.assertThat(truffleException, ParserExceptionMatcher.INCOMPLETE);
     }
 
     @Test
     public void parseEmptyFlags() {
-        exception.expect(ParserExceptionMatcher.PARSER);
-        parseLibraryDescriptor("load() testfile");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> parseLibraryDescriptor("load() testfile"));
+        MatcherAssert.assertThat(truffleException, ParserExceptionMatcher.PARSER);
     }
 
     @Test
     public void parseFlagsError() {
-        exception.expect(ParserExceptionMatcher.PARSER);
-        parseLibraryDescriptor("load(RTLD_NOW .) testfile");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> parseLibraryDescriptor("load(RTLD_NOW .) testfile"));
+        MatcherAssert.assertThat(truffleException, ParserExceptionMatcher.PARSER);
     }
 
     @Test
     public void parseStringError() {
-        exception.expect(ParserExceptionMatcher.PARSER);
-        parseLibraryDescriptor("load 'testfile");
+        AbstractTruffleException truffleException = assertThrows(AbstractTruffleException.class, () -> parseLibraryDescriptor("load 'testfile"));
+        MatcherAssert.assertThat(truffleException, ParserExceptionMatcher.PARSER);
     }
 }

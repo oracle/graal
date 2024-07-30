@@ -47,7 +47,7 @@ public class BasicInductionVariable extends InductionVariable {
     protected ValueNode rawStride;
     protected BinaryArithmeticNode<?> op;
 
-    public BasicInductionVariable(LoopEx loop, ValuePhiNode phi, ValueNode init, ValueNode rawStride, BinaryArithmeticNode<?> op) {
+    public BasicInductionVariable(Loop loop, ValuePhiNode phi, ValueNode init, ValueNode rawStride, BinaryArithmeticNode<?> op) {
         super(loop);
         this.phi = phi;
         this.init = init;
@@ -172,7 +172,10 @@ public class BasicInductionVariable extends InductionVariable {
         if (!effectiveTripCount.stamp(NodeView.DEFAULT).isCompatible(stamp)) {
             effectiveTripCount = IntegerConvertNode.convert(effectiveTripCount, stamp, graph(), NodeView.DEFAULT);
         }
-        return MathUtil.add(graph, MathUtil.mul(graph, stride, MathUtil.sub(graph, effectiveTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
+        ValueNode tripCountMinus1 = MathUtil.sub(graph, effectiveTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph));
+        ValueNode stripTimesTripCount = MathUtil.mul(graph, stride, tripCountMinus1);
+        ValueNode extremum = MathUtil.add(graph, stripTimesTripCount, initNode);
+        return extremum;
     }
 
     @Override

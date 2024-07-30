@@ -18,7 +18,7 @@
     main_suites:: unique_suites([$.specjvm2008] + self.open_suites),
     all_suites:: unique_suites(self.main_suites + self.spec_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites),
 
-    weekly_forks_suites:: self.main_suites,
+    weekly_forks_suites:: self.main_suites + self.microservice_suites,
     all_but_main_suites:: std.setDiff(self.all_suites, self.main_suites, keyF=_suite_key),
   },
 
@@ -30,8 +30,8 @@
       self.benchmark_cmd + ["awfy:*", "--"] + self.extra_vm_args
     ],
     timelimit: "30:00",
-    forks_batches:: 1,
-    forks_timelimit:: "2:00:00",
+    forks_batches:: null,
+    forks_timelimit:: null,
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
@@ -41,9 +41,10 @@
     run+: [
       self.benchmark_cmd + ["dacapo:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "45:00",
-    forks_batches:: 1,
-    forks_timelimit:: "04:00:00",
+    timelimit: "50:00",
+    forks_batches:: 2,
+    bench_forks_per_batch:: 3,
+    forks_timelimit:: "3:00:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
@@ -57,7 +58,7 @@
       self._bench_upload(),
       self.benchmark_cmd + ["dacapo-huge:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "09:00:00",
+    timelimit: "04:30:00",
     forks_batches:: null,
     forks_timelimit:: null,
     min_jdk_version:: 8,
@@ -69,9 +70,10 @@
     run+: [
       self.benchmark_cmd + ["scala-dacapo:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "01:30:00",
-    forks_batches:: 1,
-    forks_timelimit:: "04:30:00",
+    timelimit: "01:00:00",
+    forks_batches:: 2,
+    bench_forks_per_batch:: 3,
+    forks_timelimit:: "02:30:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
@@ -90,7 +92,7 @@
       //self._bench_upload(),
       //self.benchmark_cmd + ["scala-dacapo-gargantuan:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "08:00:00",
+    timelimit: "03:00:00",
     forks_batches:: null, # weekly forks disabled
     forks_timelimit:: null,
     min_jdk_version:: 8,
@@ -103,26 +105,27 @@
     run+: [
       self.benchmark_cmd + ["renaissance:*"] + suite_version_args + ["--"] + self.extra_vm_args
     ],
-    timelimit: "4:00:00",
+    timelimit: "2:00:00",
     forks_batches:: 4,
-    forks_timelimit:: "06:30:00",
+    bench_forks_per_batch:: 2,
+    forks_timelimit:: "4:00:00",
     min_jdk_version:: 8,
     max_jdk_version:: max_jdk_version
   },
 
   renaissance: self.renaissance_template(),
 
-  specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + bc.bench_max_threads + {
+  specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + bc.bench_no_thread_cap + {
     suite:: "specjbb2015",
     downloads+: {
-      "SPECJBB2015": { name: "specjbb2015", version: "1.03" }
+      "SPECJBB2015": { name: "specjbb2015", version: "1.04" }
     },
     run+: [
       self.benchmark_cmd + ["specjbb2015", "--"] + self.extra_vm_args
     ],
     timelimit: "3:00:00",
-    forks_batches:: 1,
-    forks_timelimit:: "20:00:00",
+    forks_batches:: null,
+    forks_timelimit:: null,
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
@@ -136,8 +139,9 @@
       self.benchmark_cmd + ["specjvm2008:*", "--"] + self.extra_vm_args + ["--", "-ikv", "-it", "30s", "-wt", "30s"]
     ],
     timelimit: "1:15:00",
-    forks_batches:: 5,
-    forks_timelimit:: "02:30:00",
+    forks_batches:: 3,
+    bench_forks_per_batch:: 1,
+    forks_timelimit:: "1:15:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
@@ -179,7 +183,10 @@
       self.benchmark_cmd + ["spring-helloworld-wrk:helloworld"]          + hwlocBind_1C_1T   + ["--"] + self.extra_vm_args + ["-Xms8m",    "-Xmx64m",   "-XX:ActiveProcessorCount=1", "-XX:MaxDirectMemorySize=256m"],
       bench_upload
     ],
-    timelimit: "4:00:00",
+    timelimit: "2:00:00",
+    forks_batches:: 3,
+    bench_forks_per_batch:: 1,
+    forks_timelimit:: "2:00:00",
     min_jdk_version:: 11,
     max_jdk_version:: null
   },

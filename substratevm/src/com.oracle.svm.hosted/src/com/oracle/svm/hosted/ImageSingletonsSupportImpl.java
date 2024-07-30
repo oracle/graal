@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Map;
@@ -33,11 +34,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.heap.SVMImageLayerLoader;
@@ -58,6 +62,16 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
     @Override
     public <T> T runtimeLookup(Class<T> key) {
         return HostedManagement.getAndAssertExists().doLookup(key, true);
+    }
+
+    @Override
+    public Collection<Class<?>> getMultiLayeredImageSingletonKeys() {
+        return HostedManagement.getAndAssertExists().getMultiLayeredImageSingletonKeys();
+    }
+
+    @Override
+    public void freezeMultiLayeredImageSingletons() {
+        HostedManagement.getAndAssertExists().freezeMultiLayeredImageSingletons();
     }
 
     @Override
@@ -111,6 +125,15 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         public static void install(HostedManagement vmConfig, HostedImageLayerBuildingSupport support) {
             UserError.guarantee(singletonDuringImageBuild == null, "Only one native image build can run at a time");
             singletonDuringImageBuild = vmConfig;
+
+            if (support != null) {
+                /*
+                 * Note we are intentionally adding this singleton early as build flags may depend
+                 * on it. We also intentionally do not mark this singleton as a LayerImageSingleton
+                 * to prevent circular dependency complications.
+                 */
+                singletonDuringImageBuild.doAddInternal(ImageLayerBuildingSupport.class, support);
+            }
             if (support != null && support.getLoader() != null) {
                 /*
                  * Note eventually this may need to be moved to a later point after the Options
@@ -142,13 +165,15 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         }
 
         public static void persist() {
-            var list = singletonDuringImageBuild.configObjects.entrySet().stream().filter(e -> e.getValue() instanceof LayeredImageSingleton).sorted(Comparator.comparing(e -> e.getKey().getName()))
+            var list = singletonDuringImageBuild.configObjects.entrySet().stream().filter(e -> e.getValue() instanceof LayeredImageSingleton || e.getValue() instanceof RuntimeOnlyWrapper)
+                            .sorted(Comparator.comparing(e -> e.getKey().getName()))
                             .toList();
             HostedImageLayerBuildingSupport.singleton().getWriter().writeImageSingletonInfo(list);
         }
 
         private final Map<Class<?>, Object> configObjects;
         private final boolean checkUnsupported;
+        private Set<Class<?>> multiLayeredImageSingletonKeys;
 
         public HostedManagement() {
             this(false);
@@ -156,6 +181,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
         public HostedManagement(boolean checkUnsupported) {
             this.configObjects = new ConcurrentHashMap<>();
+            this.multiLayeredImageSingletonKeys = ConcurrentHashMap.newKeySet();
             this.checkUnsupported = checkUnsupported;
         }
 
@@ -177,6 +203,25 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                     throw UserError.abort("Unsupported image singleton is being installed %s %s", key.getTypeName(), singleton);
                 }
 
+                if (singleton instanceof MultiLayeredImageSingleton || singleton instanceof ApplicationLayerOnlyImageSingleton) {
+
+                    if (!key.equals(singleton.getClass())) {
+                        throw UserError.abort("The implementation class must be the same as the key class. key: %s, singleton: %s", key, singleton);
+                    }
+
+                    if (singleton instanceof MultiLayeredImageSingleton && singleton instanceof ApplicationLayerOnlyImageSingleton) {
+                        throw UserError.abort("Singleton cannot implement both %s and %s. singleton: %s", MultiLayeredImageSingleton.class, ApplicationLayerOnlyImageSingleton.class, singleton);
+                    }
+
+                    if (singleton instanceof ApplicationLayerOnlyImageSingleton && !ImageLayerBuildingSupport.lastImageBuild()) {
+                        throw UserError.abort("Application layer only image singleton can only be installed in the final layer: %s", singleton);
+                    }
+
+                    if (singleton instanceof MultiLayeredImageSingleton) {
+                        multiLayeredImageSingletonKeys.add(key);
+                    }
+                }
+
                 if (!singleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS)) {
                     storedValue = new RuntimeOnlyWrapper(singleton);
                 }
@@ -187,6 +232,14 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             if (prevValue != null) {
                 throw UserError.abort("ImageSingletons.add must not overwrite existing key %s%nExisting value: %s%nNew value: %s", key.getTypeName(), prevValue, value);
             }
+        }
+
+        Collection<Class<?>> getMultiLayeredImageSingletonKeys() {
+            return multiLayeredImageSingletonKeys;
+        }
+
+        void freezeMultiLayeredImageSingletons() {
+            multiLayeredImageSingletonKeys = Set.copyOf(multiLayeredImageSingletonKeys);
         }
 
         <T> T doLookup(Class<T> key, boolean stripRuntimeOnly) {

@@ -32,6 +32,9 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -53,17 +56,20 @@ import com.oracle.svm.core.util.TimeUtils;
  */
 public final class LinuxSubstrateSigprofHandler extends PosixSubstrateSigprofHandler {
 
-    private static final int INITIAL_SAMPLER_TIMER_ID = -1;
-    private static final FastThreadLocalWord<LinuxTime.timer_t> samplerTimerId = FastThreadLocalFactory.createWord("LinuxSubstrateSigprofHandler.samplerTimerId");
+    /*
+     * The samplerTimerId thread-local variable is initialized by default to 0. Since
+     * LinuxTime.NoTransitions#timer_create can return 0 as a valid timer id, we introduced a
+     * MARKER. This marker sets the most significant bit, allowing us to distinguish between zero as
+     * not initialized and 0 as a valid timer value.
+     *
+     * The size of samplerTimerId could be either 4 bytes (i.e., an integer counter) or a word-sized
+     * value (i.e., pointer to timer structure) depending on the OS implementation.
+     */
+    private static final long MARKER = 1L << (Long.SIZE - 1);
+    private static final FastThreadLocalWord<UnsignedWord> samplerTimerId = FastThreadLocalFactory.createWord("LinuxSubstrateSigprofHandler.samplerTimerId");
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public LinuxSubstrateSigprofHandler() {
-    }
-
-    @Override
-    @Uninterruptible(reason = "Prevent VM operations that modify thread-local execution sampler state.")
-    public void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
-        setSamplerTimerId(isolateThread, WordFactory.signed(INITIAL_SAMPLER_TIMER_ID));
     }
 
     @Override
@@ -76,12 +82,14 @@ public final class LinuxSubstrateSigprofHandler extends PosixSubstrateSigprofHan
     @Override
     @Uninterruptible(reason = "Prevent VM operations that modify thread-local execution sampler state.")
     protected void install0(IsolateThread thread) {
-        assert !isSamplerTimerSet(thread);
+        assert !hasSamplerTimerId(thread);
+        assert SizeOf.get(LinuxTime.timer_t.class) == Integer.BYTES || SizeOf.get(LinuxTime.timer_t.class) == Long.BYTES;
 
         Signal.sigevent sigevent = StackValue.get(Signal.sigevent.class);
         sigevent.sigev_notify(Signal.SIGEV_SIGNAL());
         sigevent.sigev_signo(Signal.SIGPROF());
-        LinuxTime.timer_tPointer timerPointer = StackValue.get(LinuxTime.timer_tPointer.class);
+        WordPointer timerPointer = StackValue.get(WordPointer.class);
+        timerPointer.write(WordFactory.zero());
 
         int status = LinuxTime.NoTransitions.timer_create(LinuxTime.CLOCK_MONOTONIC(), sigevent, timerPointer);
         PosixUtils.checkStatusIs0(status, "timer_create(clockid, sevp, timerid): wrong arguments.");
@@ -92,16 +100,16 @@ public final class LinuxSubstrateSigprofHandler extends PosixSubstrateSigprofHan
     @Override
     @Uninterruptible(reason = "Prevent VM operations that modify thread-local execution sampler state.")
     protected void uninstall0(IsolateThread thread) {
-        assert isSamplerTimerSet(thread);
+        assert hasSamplerTimerId(thread);
 
         int status = LinuxTime.NoTransitions.timer_delete(getSamplerTimerId(thread));
         PosixUtils.checkStatusIs0(status, "timer_delete(clockid): wrong arguments.");
-        setSamplerTimerId(thread, WordFactory.signed(INITIAL_SAMPLER_TIMER_ID));
+        clearSamplerTimerId(thread);
     }
 
     @Uninterruptible(reason = "Prevent VM operations that modify thread-local execution sampler state.")
     private void updateInterval(IsolateThread thread) {
-        assert isSamplerTimerSet(thread);
+        assert hasSamplerTimerId(thread);
 
         long ns = TimeUtils.millisToNanos(newIntervalMillis);
         LinuxTime.itimerspec newTimerSpec = UnsafeStackValue.get(LinuxTime.itimerspec.class);
@@ -115,19 +123,26 @@ public final class LinuxSubstrateSigprofHandler extends PosixSubstrateSigprofHan
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean isSamplerTimerSet(IsolateThread thread) {
-        return getSamplerTimerId(thread).notEqual(WordFactory.signed(INITIAL_SAMPLER_TIMER_ID));
+    private static boolean hasSamplerTimerId(IsolateThread thread) {
+        assert CurrentIsolate.getCurrentThread() == thread || VMOperation.isInProgressAtSafepoint();
+        return samplerTimerId.get(thread).and(WordFactory.unsigned(MARKER)).notEqual(0);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static LinuxTime.timer_t getSamplerTimerId(IsolateThread thread) {
-        assert CurrentIsolate.getCurrentThread() == thread || VMOperation.isInProgressAtSafepoint();
-        return samplerTimerId.get(thread);
+    private static UnsignedWord getSamplerTimerId(IsolateThread thread) {
+        assert hasSamplerTimerId(thread);
+        return samplerTimerId.get(thread).and(WordFactory.unsigned(~MARKER));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static void setSamplerTimerId(IsolateThread thread, LinuxTime.timer_t timerId) {
-        assert CurrentIsolate.getCurrentThread() == thread || VMOperation.isInProgressAtSafepoint();
-        samplerTimerId.set(thread, timerId);
+    private static void setSamplerTimerId(IsolateThread thread, UnsignedWord timerId) {
+        assert !hasSamplerTimerId(thread) && timerId.and(WordFactory.unsigned(MARKER)).equal(0);
+        samplerTimerId.set(thread, timerId.or(WordFactory.unsigned(MARKER)));
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static void clearSamplerTimerId(IsolateThread thread) {
+        assert hasSamplerTimerId(thread);
+        samplerTimerId.set(thread, WordFactory.zero());
     }
 }

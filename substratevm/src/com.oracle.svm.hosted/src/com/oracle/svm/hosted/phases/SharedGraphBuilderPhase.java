@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.phases;
 import static com.oracle.svm.core.SubstrateUtil.toUnboxedClass;
 import static jdk.graal.compiler.bytecode.Bytecodes.LDC2_W;
 
+import java.lang.constant.ConstantDescs;
 import java.lang.invoke.LambdaConversionException;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -113,9 +114,9 @@ import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
-import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
@@ -132,6 +133,7 @@ import jdk.graal.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.internal.access.SharedSecrets;
 import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation;
 import jdk.vm.ci.meta.JavaConstant;
@@ -652,6 +654,33 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
+        protected int minLockDepthAtMonitorExit(boolean inEpilogue) {
+            /**
+             * The
+             * {@code javasoft.sqe.tests.vm.instr.monitorexit.monitorexit009.monitorexit00901m1.monitorexit00901m1}
+             * test implies that unlocking the method synchronized object can be structured locking:
+             *
+             * <pre>
+             * synchronized void foo() {
+             *   monitorexit this // valid unlock of method synchronize object
+             *   // do something
+             *   monitorenter this
+             *   return
+             * }
+             * </pre>
+             *
+             * To be JCK compliant, it is only required to always have at least one locked object
+             * before performing a monitorexit.
+             */
+            return 1;
+        }
+
+        @Override
+        protected void handleUnsupportedJsr(String msg) {
+            genThrowUnsupportedFeatureError(msg);
+        }
+
+        @Override
         protected void handleUnstructuredLocking(String msg, boolean isDeadEnd) {
             ValueNode methodSynchronizedObjectSnapshot = methodSynchronizedObject;
             if (getDispatchBlock(bci()) == blockMap.getUnwindBlock()) {
@@ -773,18 +802,16 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 MonitorIdNode id = frameState.peekMonitorId();
                 ValueNode lock = frameState.popLock();
                 frameState.pushLock(lock, id);
-                genMonitorExit(lock, null, bci(), false);
+                genMonitorExit(lock, null, bci(), includeMethodSynchronizeObject, false);
             }
         }
 
         private void genThrowUnsupportedFeatureError(String msg) {
-            FixedNode unreachableNode = graph.add(new LoweredDeadEndNode());
-
             ConstantNode messageNode = ConstantNode.forConstant(getConstantReflection().forString(msg), getMetaAccess(), getGraph());
             ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(SnippetRuntime.UNSUPPORTED_FEATURE, messageNode));
-            foreignCallNode.setNext(unreachableNode);
-            unreachableNode = foreignCallNode;
-            lastInstr.setNext(unreachableNode);
+            lastInstr.setNext(foreignCallNode);
+            foreignCallNode.setNext(graph.add(new LoweredDeadEndNode()));
+            lastInstr = null;
         }
 
         private void checkWordType(ValueNode value, JavaType expectedType, String reason) {
@@ -849,7 +876,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         protected final boolean isMethodDeoptTarget() {
-            return MultiMethod.isDeoptTarget(method);
+            return SubstrateCompilationDirectives.isDeoptTarget(method);
         }
 
         @Override
@@ -1038,6 +1065,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         public class BootstrapMethodHandler {
+            private static final Method CLASS_DATA_METHOD = ReflectionUtil.lookupMethod(MethodHandles.class, "classData", MethodHandles.Lookup.class, String.class, Class.class);
 
             private Object loadConstantDynamic(int cpi, int opcode) {
                 BootstrapMethodInvocation bootstrap;
@@ -1047,45 +1075,75 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                     handleBootstrapException(ex, "constant");
                     return ex;
                 }
-                if (bootstrap != null && !BootstrapMethodConfiguration.singleton().isCondyAllowedAtBuildTime(OriginalMethodProvider.getJavaMethod(bootstrap.getMethod()))) {
-                    int parameterLength = bootstrap.getMethod().getParameters().length;
-                    List<JavaConstant> staticArguments = bootstrap.getStaticArguments();
-                    boolean isVarargs = bootstrap.getMethod().isVarArgs();
-                    DynamicHub typeClass = getSnippetReflection().asObject(DynamicHub.class, bootstrap.getType());
-                    boolean isPrimitive = typeClass.isPrimitive();
 
-                    for (JavaConstant argument : staticArguments) {
-                        if (argument instanceof ImageHeapInstance imageHeapInstance) {
-                            Object arg = getSnippetReflection().asObject(Object.class, imageHeapInstance);
-                            if (arg instanceof UnresolvedJavaType) {
-                                return arg;
-                            }
+                if (bootstrap != null) {
+                    Executable bootstrapMethod = OriginalMethodProvider.getJavaMethod(bootstrap.getMethod());
+
+                    /*
+                     * MethodHandles.classData is used as a bootstrap method by, e.g, certain lambda
+                     * classes. It is pretty simple: it just reads the classData field from its
+                     * invoking class. Unfortunately, it also force-initializes the invoking class.
+                     * Therefore, we cannot just treat it as "safe at build time". The class
+                     * initialization is also completely useless because the invoking class must be
+                     * already initialized by the time the boostrap method is executed.
+                     * 
+                     * We replicate the implementation of the bootstrap method here without doing
+                     * the class initialization.
+                     */
+                    if (CLASS_DATA_METHOD.equals(bootstrapMethod) && ConstantDescs.DEFAULT_NAME.equals(bootstrap.getName()) && bootstrap.getStaticArguments().isEmpty()) {
+                        Class<?> invokingClass = OriginalClassProvider.getJavaClass(method.getDeclaringClass());
+                        Object classData = SharedSecrets.getJavaLangAccess().classData(invokingClass);
+                        if (classData == null) {
+                            return JavaConstant.NULL_POINTER;
+                        }
+                        JavaConstant classDataConstant = getSnippetReflection().forObject(classData);
+                        ResolvedJavaType bootstrapType = getConstantReflection().asJavaType(bootstrap.getType());
+                        /* Safety check that the classData has the requested type. */
+                        if (bootstrapType.isAssignableFrom(getMetaAccess().lookupJavaType(classDataConstant))) {
+                            return classDataConstant;
                         }
                     }
 
-                    if (isBootstrapInvocationInvalid(bootstrap, parameterLength, staticArguments, isVarargs, typeClass.getHostedJavaClass())) {
-                        /*
-                         * The number of provided arguments does not match the signature of the
-                         * bootstrap method or the provided type does not match the return type of
-                         * the bootstrap method. Calling lookupConstant with
-                         * allowBootstrapMethodInvocation set to true correctly throws the intended
-                         * BootstrapMethodError.
-                         */
-                        return SharedBytecodeParser.super.lookupConstant(cpi, opcode, true);
-                    }
+                    if (!BootstrapMethodConfiguration.singleton().isCondyAllowedAtBuildTime(bootstrapMethod)) {
+                        int parameterLength = bootstrap.getMethod().getParameters().length;
+                        List<JavaConstant> staticArguments = bootstrap.getStaticArguments();
+                        boolean isVarargs = bootstrap.getMethod().isVarArgs();
+                        DynamicHub typeClass = getSnippetReflection().asObject(DynamicHub.class, bootstrap.getType());
+                        boolean isPrimitive = typeClass.isPrimitive();
 
-                    Object resolvedObject = resolveLinkedObject(bci(), cpi, opcode, bootstrap, parameterLength, staticArguments, isVarargs, isPrimitive);
-                    if (resolvedObject instanceof Throwable) {
-                        return resolvedObject;
-                    }
-                    ValueNode resolvedObjectNode = (ValueNode) resolvedObject;
+                        for (JavaConstant argument : staticArguments) {
+                            if (argument instanceof ImageHeapInstance imageHeapInstance) {
+                                Object arg = getSnippetReflection().asObject(Object.class, imageHeapInstance);
+                                if (arg instanceof UnresolvedJavaType) {
+                                    return arg;
+                                }
+                            }
+                        }
 
-                    if (typeClass.isPrimitive()) {
-                        JavaKind constantKind = getMetaAccessExtensionProvider().getStorageKind(getMetaAccess().lookupJavaType(typeClass.getHostedJavaClass()));
-                        resolvedObjectNode = append(UnboxNode.create(getMetaAccess(), getConstantReflection(), resolvedObjectNode, constantKind));
-                    }
+                        if (isBootstrapInvocationInvalid(bootstrap, parameterLength, staticArguments, isVarargs, typeClass.getHostedJavaClass())) {
+                            /*
+                             * The number of provided arguments does not match the signature of the
+                             * bootstrap method or the provided type does not match the return type
+                             * of the bootstrap method. Calling lookupConstant with
+                             * allowBootstrapMethodInvocation set to true correctly throws the
+                             * intended BootstrapMethodError.
+                             */
+                            return SharedBytecodeParser.super.lookupConstant(cpi, opcode, true);
+                        }
 
-                    return resolvedObjectNode;
+                        Object resolvedObject = resolveLinkedObject(bci(), cpi, opcode, bootstrap, parameterLength, staticArguments, isVarargs, isPrimitive);
+                        if (resolvedObject instanceof Throwable) {
+                            return resolvedObject;
+                        }
+                        ValueNode resolvedObjectNode = (ValueNode) resolvedObject;
+
+                        if (typeClass.isPrimitive()) {
+                            JavaKind constantKind = getMetaAccessExtensionProvider().getStorageKind(getMetaAccess().lookupJavaType(typeClass.getHostedJavaClass()));
+                            resolvedObjectNode = append(UnboxNode.create(getMetaAccess(), getConstantReflection(), resolvedObjectNode, constantKind));
+                        }
+
+                        return resolvedObjectNode;
+                    }
                 }
                 return SharedBytecodeParser.super.lookupConstant(cpi, opcode, true);
             }

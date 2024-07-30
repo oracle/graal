@@ -44,6 +44,8 @@ package com.oracle.truffle.api.strings;
 import static com.oracle.truffle.api.strings.Encodings.isUTF16LowSurrogate;
 import static com.oracle.truffle.api.strings.Encodings.isUTF8ContinuationByte;
 
+import java.lang.ref.Reference;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
@@ -90,17 +92,21 @@ final class TStringOps {
     }
 
     static long readS3(Object array, int offset, int length) {
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNativePointer(array)) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+        try {
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNativePointer(array)) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegion(stubArray, offset, length, 3);
+            return TStringUnsafe.getLong(stubArray, stubOffset);
+        } finally {
+            Reference.reachabilityFence(array);
         }
-        validateRegion(stubArray, offset, length, 3);
-        return runReadS3Managed(stubArray, stubOffset);
     }
 
     static void writeS0(Object array, int offset, int length, int i, byte value) {
@@ -108,31 +114,39 @@ final class TStringOps {
     }
 
     static int readValue(Object array, int offset, int length, int stride, int i) {
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNativePointer(array)) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+        try {
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNativePointer(array)) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegionIndex(stubArray, offset, length, stride, i);
+            return readValue(stubArray, stubOffset, stride, i);
+        } finally {
+            Reference.reachabilityFence(array);
         }
-        validateRegionIndex(stubArray, offset, length, stride, i);
-        return readValue(stubArray, stubOffset, stride, i);
     }
 
     private static void writeValue(Object array, int offset, int length, int stride, int i, int value) {
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNativePointer(array)) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+        try {
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNativePointer(array)) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegionIndex(stubArray, offset, length, stride, i);
+            writeValue(stubArray, stubOffset, stride, i, value);
+        } finally {
+            Reference.reachabilityFence(array);
         }
-        validateRegionIndex(stubArray, offset, length, stride, i);
-        writeValue(stubArray, stubOffset, stride, i, value);
     }
 
     /**
@@ -162,11 +176,11 @@ final class TStringOps {
     private static int readValue(byte[] array, long offset, int stride, int i) {
         switch (stride) {
             case 0:
-                return runReadS0Managed(array, offset + i);
+                return uInt(TStringUnsafe.getByte(array, offset + i));
             case 1:
-                return runReadS1Managed(array, offset + ((long) i << 1));
+                return TStringUnsafe.getChar(array, offset + ((long) i << 1));
             default:
-                return runReadS2Managed(array, offset + ((long) i << 2));
+                return TStringUnsafe.getInt(array, offset + ((long) i << 2));
         }
     }
 
@@ -176,13 +190,13 @@ final class TStringOps {
     private static void writeValue(byte[] array, long offset, int stride, int i, int value) {
         switch (stride) {
             case 0:
-                runWriteS0Managed(array, offset + i, (byte) value);
+                TStringUnsafe.putByte(array, offset + i, (byte) value);
                 return;
             case 1:
-                runWriteS1Managed(array, offset + ((long) i << 1), (char) value);
+                TStringUnsafe.putChar(array, offset + ((long) i << 1), (char) value);
                 return;
             default:
-                runWriteS2Managed(array, offset + ((long) i << 2), value);
+                TStringUnsafe.putInt(array, offset + ((long) i << 2), value);
         }
     }
 
@@ -192,28 +206,32 @@ final class TStringOps {
     }
 
     private static int indexOfAnyByteIntl(Node location, Object array, int offset, int length, int fromIndex, byte[] values) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegionIndex(stubArray, offset, length, 0, fromIndex);
-        switch (values.length) {
-            case 1:
-                return runIndexOfAny1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]));
-            case 2:
-                return runIndexOfAny2(location, stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]), uInt(values[1]));
-            case 3:
-                return runIndexOfAny3(location, stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]), uInt(values[1]), uInt(values[2]));
-            case 4:
-                return runIndexOfAny4(location, stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]), uInt(values[1]), uInt(values[2]), uInt(values[3]));
-            default:
-                return runIndexOfAnyByte(location, stubArray, stubOffset, length, fromIndex, values);
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegionIndex(stubArray, offset, length, 0, fromIndex);
+            switch (values.length) {
+                case 1:
+                    return runIndexOfAny1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]));
+                case 2:
+                    return runIndexOfAny2(location, stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]), uInt(values[1]));
+                case 3:
+                    return runIndexOfAny3(location, stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]), uInt(values[1]), uInt(values[2]));
+                case 4:
+                    return runIndexOfAny4(location, stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]), uInt(values[1]), uInt(values[2]), uInt(values[3]));
+                default:
+                    return runIndexOfAnyByte(location, stubArray, stubOffset, length, fromIndex, values);
+            }
+        } finally {
+            Reference.reachabilityFence(array);
         }
     }
 
@@ -226,42 +244,46 @@ final class TStringOps {
      * This redundant method is used to simplify compiler tests for the intrinsic it is calling.
      */
     private static int indexOfAnyCharIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, char[] values) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegionIndex(stubArray, offset, length, stride, fromIndex);
-        if (stride == 0) {
-            switch (values.length) {
-                case 1:
-                    return runIndexOfAny1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0]);
-                case 2:
-                    return runIndexOfAny2(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1]);
-                case 3:
-                    return runIndexOfAny3(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2]);
-                case 4:
-                    return runIndexOfAny4(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2], values[3]);
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
             }
-        } else {
-            assert stride == 1;
-            switch (values.length) {
-                case 1:
-                    return runIndexOfAny1(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0]);
-                case 2:
-                    return runIndexOfAny2(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1]);
-                case 3:
-                    return runIndexOfAny3(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2]);
-                case 4:
-                    return runIndexOfAny4(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2], values[3]);
+            validateRegionIndex(stubArray, offset, length, stride, fromIndex);
+            if (stride == 0) {
+                switch (values.length) {
+                    case 1:
+                        return runIndexOfAny1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0]);
+                    case 2:
+                        return runIndexOfAny2(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1]);
+                    case 3:
+                        return runIndexOfAny3(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2]);
+                    case 4:
+                        return runIndexOfAny4(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2], values[3]);
+                }
+            } else {
+                assert stride == 1;
+                switch (values.length) {
+                    case 1:
+                        return runIndexOfAny1(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0]);
+                    case 2:
+                        return runIndexOfAny2(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1]);
+                    case 3:
+                        return runIndexOfAny3(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2]);
+                    case 4:
+                        return runIndexOfAny4(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2], values[3]);
+                }
             }
+            return runIndexOfAnyChar(location, stubArray, stubOffset, length, stride, fromIndex, values);
+        } finally {
+            Reference.reachabilityFence(array);
         }
-        return runIndexOfAnyChar(location, stubArray, stubOffset, length, stride, fromIndex, values);
     }
 
     static int indexOfAnyInt(Node location, AbstractTruffleString a, Object arrayA, int stride, int fromIndex, int toIndex, int[] values) {
@@ -276,53 +298,57 @@ final class TStringOps {
      * This redundant method is used to simplify compiler tests for the intrinsic it is calling.
      */
     private static int indexOfAnyIntIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, int[] values) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegionIndex(stubArray, offset, length, stride, fromIndex);
+            if (stride == 0) {
+                switch (values.length) {
+                    case 1:
+                        return runIndexOfAny1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0]);
+                    case 2:
+                        return runIndexOfAny2(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1]);
+                    case 3:
+                        return runIndexOfAny3(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2]);
+                    case 4:
+                        return runIndexOfAny4(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2], values[3]);
+                }
+            } else if (stride == 1) {
+                switch (values.length) {
+                    case 1:
+                        return runIndexOfAny1(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0]);
+                    case 2:
+                        return runIndexOfAny2(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1]);
+                    case 3:
+                        return runIndexOfAny3(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2]);
+                    case 4:
+                        return runIndexOfAny4(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2], values[3]);
+                }
+            } else {
+                assert stride == 2;
+                switch (values.length) {
+                    case 1:
+                        return runIndexOfAny1(location, stubArray, stubOffset, length, 2, isNative, fromIndex, values[0]);
+                    case 2:
+                        return runIndexOfAny2(location, stubArray, stubOffset, length, 2, isNative, fromIndex, values[0], values[1]);
+                    case 3:
+                        return runIndexOfAny3(location, stubArray, stubOffset, length, 2, isNative, fromIndex, values[0], values[1], values[2]);
+                    case 4:
+                        return runIndexOfAny4(location, stubArray, stubOffset, length, 2, isNative, fromIndex, values[0], values[1], values[2], values[3]);
+                }
+            }
+            return runIndexOfAnyInt(location, stubArray, stubOffset, length, stride, fromIndex, values);
+        } finally {
+            Reference.reachabilityFence(array);
         }
-        validateRegionIndex(stubArray, offset, length, stride, fromIndex);
-        if (stride == 0) {
-            switch (values.length) {
-                case 1:
-                    return runIndexOfAny1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0]);
-                case 2:
-                    return runIndexOfAny2(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1]);
-                case 3:
-                    return runIndexOfAny3(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2]);
-                case 4:
-                    return runIndexOfAny4(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2], values[3]);
-            }
-        } else if (stride == 1) {
-            switch (values.length) {
-                case 1:
-                    return runIndexOfAny1(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0]);
-                case 2:
-                    return runIndexOfAny2(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1]);
-                case 3:
-                    return runIndexOfAny3(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2]);
-                case 4:
-                    return runIndexOfAny4(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2], values[3]);
-            }
-        } else {
-            assert stride == 2;
-            switch (values.length) {
-                case 1:
-                    return runIndexOfAny1(location, stubArray, stubOffset, length, 2, isNative, fromIndex, values[0]);
-                case 2:
-                    return runIndexOfAny2(location, stubArray, stubOffset, length, 2, isNative, fromIndex, values[0], values[1]);
-                case 3:
-                    return runIndexOfAny3(location, stubArray, stubOffset, length, 2, isNative, fromIndex, values[0], values[1], values[2]);
-                case 4:
-                    return runIndexOfAny4(location, stubArray, stubOffset, length, 2, isNative, fromIndex, values[0], values[1], values[2], values[3]);
-            }
-        }
-        return runIndexOfAnyInt(location, stubArray, stubOffset, length, stride, fromIndex, values);
     }
 
     static int indexOfAnyIntRange(Node location, Object arrayA, int offsetA, int stride, int fromIndex, int toIndex, int[] ranges) {
@@ -330,38 +356,42 @@ final class TStringOps {
     }
 
     private static int indexOfAnyIntRangeIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, int[] ranges) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegionIndex(stubArray, offset, length, stride, fromIndex);
+            if (stride == 0) {
+                if (ranges.length == 2) {
+                    return runIndexOfRange1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, ranges[0], ranges[1]);
+                } else if (ranges.length == 4) {
+                    return runIndexOfRange2(location, stubArray, stubOffset, length, 0, isNative, fromIndex, ranges[0], ranges[1], ranges[2], ranges[3]);
+                }
+            } else if (stride == 1) {
+                if (ranges.length == 2) {
+                    return runIndexOfRange1(location, stubArray, stubOffset, length, 1, isNative, fromIndex, ranges[0], ranges[1]);
+                } else if (ranges.length == 4) {
+                    return runIndexOfRange2(location, stubArray, stubOffset, length, 1, isNative, fromIndex, ranges[0], ranges[1], ranges[2], ranges[3]);
+                }
+            } else {
+                assert stride == 2;
+                if (ranges.length == 2) {
+                    return runIndexOfRange1(location, stubArray, stubOffset, length, 2, isNative, fromIndex, ranges[0], ranges[1]);
+                } else if (ranges.length == 4) {
+                    return runIndexOfRange2(location, stubArray, stubOffset, length, 2, isNative, fromIndex, ranges[0], ranges[1], ranges[2], ranges[3]);
+                }
+            }
+            return runIndexOfAnyIntRange(location, stubArray, stubOffset, length, stride, fromIndex, ranges);
+        } finally {
+            Reference.reachabilityFence(array);
         }
-        validateRegionIndex(stubArray, offset, length, stride, fromIndex);
-        if (stride == 0) {
-            if (ranges.length == 2) {
-                return runIndexOfRange1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, ranges[0], ranges[1]);
-            } else if (ranges.length == 4) {
-                return runIndexOfRange2(location, stubArray, stubOffset, length, 0, isNative, fromIndex, ranges[0], ranges[1], ranges[2], ranges[3]);
-            }
-        } else if (stride == 1) {
-            if (ranges.length == 2) {
-                return runIndexOfRange1(location, stubArray, stubOffset, length, 1, isNative, fromIndex, ranges[0], ranges[1]);
-            } else if (ranges.length == 4) {
-                return runIndexOfRange2(location, stubArray, stubOffset, length, 1, isNative, fromIndex, ranges[0], ranges[1], ranges[2], ranges[3]);
-            }
-        } else {
-            assert stride == 2;
-            if (ranges.length == 2) {
-                return runIndexOfRange1(location, stubArray, stubOffset, length, 2, isNative, fromIndex, ranges[0], ranges[1]);
-            } else if (ranges.length == 4) {
-                return runIndexOfRange2(location, stubArray, stubOffset, length, 2, isNative, fromIndex, ranges[0], ranges[1], ranges[2], ranges[3]);
-            }
-        }
-        return runIndexOfAnyIntRange(location, stubArray, stubOffset, length, stride, fromIndex, ranges);
     }
 
     static int indexOfTable(Node location, Object arrayA, int offsetA, int stride, int fromIndex, int toIndex, byte[] tables) {
@@ -369,25 +399,29 @@ final class TStringOps {
     }
 
     private static int indexOfTableIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, byte[] tables) {
-        assert tables.length == 32;
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegionIndex(stubArray, offset, length, stride, fromIndex);
-        if (stride == 0) {
-            return runIndexOfTable(location, stubArray, stubOffset, length, 0, isNative, fromIndex, tables);
-        } else if (stride == 1) {
-            return runIndexOfTable(location, stubArray, stubOffset, length, 1, isNative, fromIndex, tables);
-        } else {
-            assert stride == 2;
-            return runIndexOfTable(location, stubArray, stubOffset, length, 2, isNative, fromIndex, tables);
+        try {
+            assert tables.length == 32;
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegionIndex(stubArray, offset, length, stride, fromIndex);
+            if (stride == 0) {
+                return runIndexOfTable(location, stubArray, stubOffset, length, 0, isNative, fromIndex, tables);
+            } else if (stride == 1) {
+                return runIndexOfTable(location, stubArray, stubOffset, length, 1, isNative, fromIndex, tables);
+            } else {
+                assert stride == 2;
+                return runIndexOfTable(location, stubArray, stubOffset, length, 2, isNative, fromIndex, tables);
+            }
+        } finally {
+            Reference.reachabilityFence(array);
         }
     }
 
@@ -396,25 +430,29 @@ final class TStringOps {
     }
 
     private static int indexOfCodePointWithStrideIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, int v1) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegionIndex(stubArray, offset, length, stride, fromIndex);
-        switch (stride) {
-            case 0:
-                return runIndexOfAny1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, v1);
-            case 1:
-                return runIndexOfAny1(location, stubArray, stubOffset, length, 1, isNative, fromIndex, v1);
-            default:
-                assert stride == 2;
-                return runIndexOfAny1(location, stubArray, stubOffset, length, 2, isNative, fromIndex, v1);
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegionIndex(stubArray, offset, length, stride, fromIndex);
+            switch (stride) {
+                case 0:
+                    return runIndexOfAny1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, v1);
+                case 1:
+                    return runIndexOfAny1(location, stubArray, stubOffset, length, 1, isNative, fromIndex, v1);
+                default:
+                    assert stride == 2;
+                    return runIndexOfAny1(location, stubArray, stubOffset, length, 2, isNative, fromIndex, v1);
+            }
+        } finally {
+            Reference.reachabilityFence(array);
         }
     }
 
@@ -423,25 +461,29 @@ final class TStringOps {
     }
 
     static int indexOfCodePointWithMaskWithStrideIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, int v1, int mask1) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegionIndex(stubArray, offset, length, stride, fromIndex);
-        switch (stride) {
-            case 0:
-                return (v1 ^ mask1) <= 0xff ? runIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, length, 0, isNative, fromIndex, v1, mask1) : -1;
-            case 1:
-                return (v1 ^ mask1) <= 0xffff ? runIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, length, 1, isNative, fromIndex, v1, mask1) : -1;
-            default:
-                assert stride == 2;
-                return runIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, length, 2, isNative, fromIndex, v1, mask1);
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegionIndex(stubArray, offset, length, stride, fromIndex);
+            switch (stride) {
+                case 0:
+                    return (v1 ^ mask1) <= 0xff ? runIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, length, 0, isNative, fromIndex, v1, mask1) : -1;
+                case 1:
+                    return (v1 ^ mask1) <= 0xffff ? runIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, length, 1, isNative, fromIndex, v1, mask1) : -1;
+                default:
+                    assert stride == 2;
+                    return runIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, length, 2, isNative, fromIndex, v1, mask1);
+            }
+        } finally {
+            Reference.reachabilityFence(array);
         }
     }
 
@@ -450,25 +492,29 @@ final class TStringOps {
     }
 
     private static int indexOf2ConsecutiveWithStrideIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, int v1, int v2) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegionIndex(stubArray, offset, length, stride, fromIndex);
-        switch (stride) {
-            case 0:
-                return (v1 | v2) <= 0xff ? runIndexOf2ConsecutiveWithStride(location, stubArray, stubOffset, length, 0, isNative, fromIndex, v1, v2) : -1;
-            case 1:
-                return (v1 | v2) <= 0xffff ? runIndexOf2ConsecutiveWithStride(location, stubArray, stubOffset, length, 1, isNative, fromIndex, v1, v2) : -1;
-            default:
-                assert stride == 2;
-                return runIndexOf2ConsecutiveWithStride(location, stubArray, stubOffset, length, 2, isNative, fromIndex, v1, v2);
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegionIndex(stubArray, offset, length, stride, fromIndex);
+            switch (stride) {
+                case 0:
+                    return (v1 | v2) <= 0xff ? runIndexOf2ConsecutiveWithStride(location, stubArray, stubOffset, length, 0, isNative, fromIndex, v1, v2) : -1;
+                case 1:
+                    return (v1 | v2) <= 0xffff ? runIndexOf2ConsecutiveWithStride(location, stubArray, stubOffset, length, 1, isNative, fromIndex, v1, v2) : -1;
+                default:
+                    assert stride == 2;
+                    return runIndexOf2ConsecutiveWithStride(location, stubArray, stubOffset, length, 2, isNative, fromIndex, v1, v2);
+            }
+        } finally {
+            Reference.reachabilityFence(array);
         }
     }
 
@@ -476,25 +522,31 @@ final class TStringOps {
      * This redundant method is used to simplify compiler tests for the intrinsic it is calling.
      */
     private static int indexOf2ConsecutiveWithOrMaskWithStrideIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, int v1, int v2, int mask1, int mask2) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegionIndex(stubArray, offset, length, stride, fromIndex);
-        switch (stride) {
-            case 0:
-                return ((v1 ^ mask1) | (v2 ^ mask2)) <= 0xff ? runIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, length, 0, isNative, fromIndex, v1, v2, mask1, mask2) : -1;
-            case 1:
-                return ((v1 ^ mask1) | (v2 ^ mask2)) <= 0xffff ? runIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, length, 1, isNative, fromIndex, v1, v2, mask1, mask2) : -1;
-            default:
-                assert stride == 2;
-                return runIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, length, 2, isNative, fromIndex, v1, v2, mask1, mask2);
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegionIndex(stubArray, offset, length, stride, fromIndex);
+            switch (stride) {
+                case 0:
+                    return ((v1 ^ mask1) | (v2 ^ mask2)) <= 0xff ? runIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, length, 0, isNative, fromIndex, v1, v2, mask1, mask2)
+                                    : -1;
+                case 1:
+                    return ((v1 ^ mask1) | (v2 ^ mask2)) <= 0xffff ? runIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, length, 1, isNative, fromIndex, v1, v2, mask1, mask2)
+                                    : -1;
+                default:
+                    assert stride == 2;
+                    return runIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, length, 2, isNative, fromIndex, v1, v2, mask1, mask2);
+            }
+        } finally {
+            Reference.reachabilityFence(array);
         }
     }
 
@@ -543,25 +595,29 @@ final class TStringOps {
     }
 
     private static int lastIndexOfCodePointWithOrMaskWithStrideIntl(Node location, Object array, int offset, int stride, int fromIndex, int toIndex, int codepoint, int mask) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegionIndex(stubArray, offset, fromIndex, stride, toIndex);
-        switch (stride) {
-            case 0:
-                return runLastIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, 0, fromIndex, toIndex, codepoint, mask);
-            case 1:
-                return runLastIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, 1, fromIndex, toIndex, codepoint, mask);
-            default:
-                assert stride == 2;
-                return runLastIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, 2, fromIndex, toIndex, codepoint, mask);
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegionIndex(stubArray, offset, fromIndex, stride, toIndex);
+            switch (stride) {
+                case 0:
+                    return runLastIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, 0, fromIndex, toIndex, codepoint, mask);
+                case 1:
+                    return runLastIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, 1, fromIndex, toIndex, codepoint, mask);
+                default:
+                    assert stride == 2;
+                    return runLastIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, 2, fromIndex, toIndex, codepoint, mask);
+            }
+        } finally {
+            Reference.reachabilityFence(array);
         }
     }
 
@@ -570,25 +626,29 @@ final class TStringOps {
     }
 
     private static int lastIndexOf2ConsecutiveWithOrMaskWithStrideIntl(Node location, Object array, int offset, int stride, int fromIndex, int toIndex, int v1, int v2, int mask1, int mask2) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegionIndex(stubArray, offset, fromIndex, stride, toIndex);
-        switch (stride) {
-            case 0:
-                return runLastIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, 0, fromIndex, toIndex, v1, v2, mask1, mask2);
-            case 1:
-                return runLastIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, 1, fromIndex, toIndex, v1, v2, mask1, mask2);
-            default:
-                assert stride == 2;
-                return runLastIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, 2, fromIndex, toIndex, v1, v2, mask1, mask2);
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegionIndex(stubArray, offset, fromIndex, stride, toIndex);
+            switch (stride) {
+                case 0:
+                    return runLastIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, 0, fromIndex, toIndex, v1, v2, mask1, mask2);
+                case 1:
+                    return runLastIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, 1, fromIndex, toIndex, v1, v2, mask1, mask2);
+                default:
+                    assert stride == 2;
+                    return runLastIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, 2, fromIndex, toIndex, v1, v2, mask1, mask2);
+            }
+        } finally {
+            Reference.reachabilityFence(array);
         }
     }
 
@@ -631,42 +691,47 @@ final class TStringOps {
     private static boolean regionEqualsWithOrMaskWithStrideIntl(Node location,
                     Object arrayA, int offsetA, int lengthA, int strideA, int fromIndexA,
                     Object arrayB, int offsetB, int lengthB, int strideB, int fromIndexB, byte[] maskB, int lengthCMP) {
-        if (!rangeInBounds(fromIndexA, lengthCMP, lengthA) || !rangeInBounds(fromIndexB, lengthCMP, lengthB)) {
-            return false;
-        }
-        final boolean isNativeA = isNativePointer(arrayA);
-        final byte[] stubArrayA;
-        final long stubOffsetA;
-        if (isNativeA) {
-            stubArrayA = null;
-            stubOffsetA = offsetA + nativePointer(arrayA) + (fromIndexA << strideA);
-        } else {
-            stubArrayA = (byte[]) arrayA;
-            stubOffsetA = offsetA + Unsafe.ARRAY_BYTE_BASE_OFFSET + (fromIndexA << strideA);
-        }
-        final boolean isNativeB = isNativePointer(arrayB);
-        final byte[] stubArrayB;
-        final long stubOffsetB;
-        if (isNativeB) {
-            stubArrayB = null;
-            stubOffsetB = offsetB + nativePointer(arrayB) + (fromIndexB << strideB);
-        } else {
-            stubArrayB = (byte[]) arrayB;
-            stubOffsetB = offsetB + Unsafe.ARRAY_BYTE_BASE_OFFSET + (fromIndexB << strideB);
-        }
-        validateRegion(stubArrayA, offsetA, lengthCMP, strideA);
-        validateRegion(stubArrayB, offsetB, lengthCMP, strideB);
-        final int stubStride = stubStride(strideA, strideB);
-        if (maskB == null) {
-            return runRegionEqualsWithStride(location,
-                            stubArrayA, stubOffsetA, isNativeA,
-                            stubArrayB, stubOffsetB, isNativeB, lengthCMP, stubStride);
+        try {
+            if (!rangeInBounds(fromIndexA, lengthCMP, lengthA) || !rangeInBounds(fromIndexB, lengthCMP, lengthB)) {
+                return false;
+            }
+            final boolean isNativeA = isNativePointer(arrayA);
+            final byte[] stubArrayA;
+            final long stubOffsetA;
+            if (isNativeA) {
+                stubArrayA = null;
+                stubOffsetA = offsetA + nativePointer(arrayA) + (fromIndexA << strideA);
+            } else {
+                stubArrayA = (byte[]) arrayA;
+                stubOffsetA = offsetA + Unsafe.ARRAY_BYTE_BASE_OFFSET + (fromIndexA << strideA);
+            }
+            final boolean isNativeB = isNativePointer(arrayB);
+            final byte[] stubArrayB;
+            final long stubOffsetB;
+            if (isNativeB) {
+                stubArrayB = null;
+                stubOffsetB = offsetB + nativePointer(arrayB) + (fromIndexB << strideB);
+            } else {
+                stubArrayB = (byte[]) arrayB;
+                stubOffsetB = offsetB + Unsafe.ARRAY_BYTE_BASE_OFFSET + (fromIndexB << strideB);
+            }
+            validateRegion(stubArrayA, offsetA, lengthCMP, strideA);
+            validateRegion(stubArrayB, offsetB, lengthCMP, strideB);
+            final int stubStride = stubStride(strideA, strideB);
+            if (maskB == null) {
+                return runRegionEqualsWithStride(location,
+                                stubArrayA, stubOffsetA, isNativeA,
+                                stubArrayB, stubOffsetB, isNativeB, lengthCMP, stubStride);
 
-        } else {
-            validateRegion(maskB, 0, lengthCMP, strideB);
-            return runRegionEqualsWithOrMaskWithStride(location,
-                            stubArrayA, stubOffsetA, isNativeA,
-                            stubArrayB, stubOffsetB, isNativeB, maskB, lengthCMP, stubStride);
+            } else {
+                validateRegion(maskB, 0, lengthCMP, strideB);
+                return runRegionEqualsWithOrMaskWithStride(location,
+                                stubArrayA, stubOffsetA, isNativeA,
+                                stubArrayB, stubOffsetB, isNativeB, maskB, lengthCMP, stubStride);
+            }
+        } finally {
+            Reference.reachabilityFence(arrayA);
+            Reference.reachabilityFence(arrayB);
         }
     }
 
@@ -679,34 +744,39 @@ final class TStringOps {
     private static int memcmpWithStrideIntl(Node location,
                     Object arrayA, int offsetA, int strideA,
                     Object arrayB, int offsetB, int strideB, int lengthCMP) {
-        if (lengthCMP == 0) {
-            return 0;
+        try {
+            if (lengthCMP == 0) {
+                return 0;
+            }
+            final boolean isNativeA = isNativePointer(arrayA);
+            final byte[] stubArrayA;
+            final long stubOffsetA;
+            if (isNativeA) {
+                stubArrayA = null;
+                stubOffsetA = offsetA + nativePointer(arrayA);
+            } else {
+                stubArrayA = (byte[]) arrayA;
+                stubOffsetA = offsetA + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            final boolean isNativeB = isNativePointer(arrayB);
+            final byte[] stubArrayB;
+            final long stubOffsetB;
+            if (isNativeB) {
+                stubArrayB = null;
+                stubOffsetB = offsetB + nativePointer(arrayB);
+            } else {
+                stubArrayB = (byte[]) arrayB;
+                stubOffsetB = offsetB + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegion(stubArrayA, offsetA, lengthCMP, strideA);
+            validateRegion(stubArrayB, offsetB, lengthCMP, strideB);
+            return runMemCmp(location,
+                            stubArrayA, stubOffsetA, isNativeA,
+                            stubArrayB, stubOffsetB, isNativeB, lengthCMP, stubStride(strideA, strideB));
+        } finally {
+            Reference.reachabilityFence(arrayA);
+            Reference.reachabilityFence(arrayB);
         }
-        final boolean isNativeA = isNativePointer(arrayA);
-        final byte[] stubArrayA;
-        final long stubOffsetA;
-        if (isNativeA) {
-            stubArrayA = null;
-            stubOffsetA = offsetA + nativePointer(arrayA);
-        } else {
-            stubArrayA = (byte[]) arrayA;
-            stubOffsetA = offsetA + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        final boolean isNativeB = isNativePointer(arrayB);
-        final byte[] stubArrayB;
-        final long stubOffsetB;
-        if (isNativeB) {
-            stubArrayB = null;
-            stubOffsetB = offsetB + nativePointer(arrayB);
-        } else {
-            stubArrayB = (byte[]) arrayB;
-            stubOffsetB = offsetB + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegion(stubArrayA, offsetA, lengthCMP, strideA);
-        validateRegion(stubArrayB, offsetB, lengthCMP, strideB);
-        return runMemCmp(location,
-                        stubArrayA, stubOffsetA, isNativeA,
-                        stubArrayB, stubOffsetB, isNativeB, lengthCMP, stubStride(strideA, strideB));
     }
 
     static int memcmpBytesWithStride(Node location, AbstractTruffleString a, Object arrayA, int strideA, AbstractTruffleString b, Object arrayB, int strideB, int lengthCMP) {
@@ -718,95 +788,100 @@ final class TStringOps {
     private static int memcmpBytesWithStrideIntl(
                     Node location, Object arrayA, int offsetA, int strideA,
                     Object arrayB, int offsetB, int strideB, int lengthCMP) {
-        if (lengthCMP == 0) {
-            return 0;
-        }
-        final boolean isNativeA = isNativePointer(arrayA);
-        final byte[] stubArrayA;
-        final long stubOffsetA;
-        if (isNativeA) {
-            stubArrayA = null;
-            stubOffsetA = offsetA + nativePointer(arrayA);
-        } else {
-            stubArrayA = (byte[]) arrayA;
-            stubOffsetA = offsetA + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        final boolean isNativeB = isNativePointer(arrayB);
-        final byte[] stubArrayB;
-        final long stubOffsetB;
-        if (isNativeB) {
-            stubArrayB = null;
-            stubOffsetB = offsetB + nativePointer(arrayB);
-        } else {
-            stubArrayB = (byte[]) arrayB;
-            stubOffsetB = offsetB + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegion(stubArrayA, offsetA, lengthCMP, strideA);
-        validateRegion(stubArrayB, offsetB, lengthCMP, strideB);
-        if (strideA == strideB) {
-            switch (strideA) {
-                case 0:
-                    return runMemCmp(location,
-                                    stubArrayA, stubOffsetA, isNativeA,
-                                    stubArrayB, stubOffsetB, isNativeB, lengthCMP, 0);
-                case 1:
-                    return runMemCmpBytes(location,
-                                    stubArrayA, stubOffsetA, 1, isNativeA,
-                                    stubArrayB, stubOffsetB, 1, isNativeB, lengthCMP);
-                default:
-                    assert strideA == 2;
-                    return runMemCmpBytes(location,
-                                    stubArrayA, stubOffsetA, 2, isNativeA,
-                                    stubArrayB, stubOffsetB, 2, isNativeB, lengthCMP);
+        try {
+            if (lengthCMP == 0) {
+                return 0;
             }
-        }
-        final int swappedStrideA;
-        final int swappedStrideB;
-        final byte[] swappedArrayA;
-        final byte[] swappedArrayB;
-        final long swappedOffsetA;
-        final long swappedOffsetB;
-        final boolean swappedIsNativeA;
-        final boolean swappedIsNativeB;
-        final int swappedResult;
-        if (strideA < strideB) {
-            swappedStrideA = strideB;
-            swappedStrideB = strideA;
-            swappedArrayA = stubArrayB;
-            swappedArrayB = stubArrayA;
-            swappedOffsetA = stubOffsetB;
-            swappedOffsetB = stubOffsetA;
-            swappedIsNativeA = isNativeB;
-            swappedIsNativeB = isNativeA;
-            swappedResult = -1;
-        } else {
-            swappedStrideA = strideA;
-            swappedStrideB = strideB;
-            swappedArrayA = stubArrayA;
-            swappedArrayB = stubArrayB;
-            swappedOffsetA = stubOffsetA;
-            swappedOffsetB = stubOffsetB;
-            swappedIsNativeA = isNativeA;
-            swappedIsNativeB = isNativeB;
-            swappedResult = 1;
-        }
-        if (swappedStrideA == 1) {
-            assert swappedStrideB == 0;
-            return swappedResult * runMemCmpBytes(location,
-                            swappedArrayA, swappedOffsetA, 1, swappedIsNativeA,
-                            swappedArrayB, swappedOffsetB, 0, swappedIsNativeB, lengthCMP);
-        } else {
-            assert swappedStrideA == 2;
-            if (swappedStrideB == 0) {
+            final boolean isNativeA = isNativePointer(arrayA);
+            final byte[] stubArrayA;
+            final long stubOffsetA;
+            if (isNativeA) {
+                stubArrayA = null;
+                stubOffsetA = offsetA + nativePointer(arrayA);
+            } else {
+                stubArrayA = (byte[]) arrayA;
+                stubOffsetA = offsetA + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            final boolean isNativeB = isNativePointer(arrayB);
+            final byte[] stubArrayB;
+            final long stubOffsetB;
+            if (isNativeB) {
+                stubArrayB = null;
+                stubOffsetB = offsetB + nativePointer(arrayB);
+            } else {
+                stubArrayB = (byte[]) arrayB;
+                stubOffsetB = offsetB + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegion(stubArrayA, offsetA, lengthCMP, strideA);
+            validateRegion(stubArrayB, offsetB, lengthCMP, strideB);
+            if (strideA == strideB) {
+                switch (strideA) {
+                    case 0:
+                        return runMemCmp(location,
+                                        stubArrayA, stubOffsetA, isNativeA,
+                                        stubArrayB, stubOffsetB, isNativeB, lengthCMP, 0);
+                    case 1:
+                        return runMemCmpBytes(location,
+                                        stubArrayA, stubOffsetA, 1, isNativeA,
+                                        stubArrayB, stubOffsetB, 1, isNativeB, lengthCMP);
+                    default:
+                        assert strideA == 2;
+                        return runMemCmpBytes(location,
+                                        stubArrayA, stubOffsetA, 2, isNativeA,
+                                        stubArrayB, stubOffsetB, 2, isNativeB, lengthCMP);
+                }
+            }
+            final int swappedStrideA;
+            final int swappedStrideB;
+            final byte[] swappedArrayA;
+            final byte[] swappedArrayB;
+            final long swappedOffsetA;
+            final long swappedOffsetB;
+            final boolean swappedIsNativeA;
+            final boolean swappedIsNativeB;
+            final int swappedResult;
+            if (strideA < strideB) {
+                swappedStrideA = strideB;
+                swappedStrideB = strideA;
+                swappedArrayA = stubArrayB;
+                swappedArrayB = stubArrayA;
+                swappedOffsetA = stubOffsetB;
+                swappedOffsetB = stubOffsetA;
+                swappedIsNativeA = isNativeB;
+                swappedIsNativeB = isNativeA;
+                swappedResult = -1;
+            } else {
+                swappedStrideA = strideA;
+                swappedStrideB = strideB;
+                swappedArrayA = stubArrayA;
+                swappedArrayB = stubArrayB;
+                swappedOffsetA = stubOffsetA;
+                swappedOffsetB = stubOffsetB;
+                swappedIsNativeA = isNativeA;
+                swappedIsNativeB = isNativeB;
+                swappedResult = 1;
+            }
+            if (swappedStrideA == 1) {
+                assert swappedStrideB == 0;
                 return swappedResult * runMemCmpBytes(location,
-                                swappedArrayA, swappedOffsetA, 2, swappedIsNativeA,
+                                swappedArrayA, swappedOffsetA, 1, swappedIsNativeA,
                                 swappedArrayB, swappedOffsetB, 0, swappedIsNativeB, lengthCMP);
             } else {
-                assert swappedStrideB == 1;
-                return swappedResult * runMemCmpBytes(location,
-                                swappedArrayA, swappedOffsetA, 2, swappedIsNativeA,
-                                swappedArrayB, swappedOffsetB, 1, swappedIsNativeB, lengthCMP);
+                assert swappedStrideA == 2;
+                if (swappedStrideB == 0) {
+                    return swappedResult * runMemCmpBytes(location,
+                                    swappedArrayA, swappedOffsetA, 2, swappedIsNativeA,
+                                    swappedArrayB, swappedOffsetB, 0, swappedIsNativeB, lengthCMP);
+                } else {
+                    assert swappedStrideB == 1;
+                    return swappedResult * runMemCmpBytes(location,
+                                    swappedArrayA, swappedOffsetA, 2, swappedIsNativeA,
+                                    swappedArrayB, swappedOffsetB, 1, swappedIsNativeB, lengthCMP);
+                }
             }
+        } finally {
+            Reference.reachabilityFence(arrayA);
+            Reference.reachabilityFence(arrayB);
         }
     }
 
@@ -817,25 +892,29 @@ final class TStringOps {
     }
 
     private static int hashCodeWithStrideIntl(Node location, Object array, int offset, int length, int stride) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegion(stubArray, offset, length, stride);
-        switch (stride) {
-            case 0:
-                return runHashCode(location, stubArray, stubOffset, length, 0, isNative);
-            case 1:
-                return runHashCode(location, stubArray, stubOffset, length, 1, isNative);
-            default:
-                assert stride == 2;
-                return runHashCode(location, stubArray, stubOffset, length, 2, isNative);
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegion(stubArray, offset, length, stride);
+            switch (stride) {
+                case 0:
+                    return runHashCode(location, stubArray, stubOffset, length, 0, isNative);
+                case 1:
+                    return runHashCode(location, stubArray, stubOffset, length, 1, isNative);
+                default:
+                    assert stride == 2;
+                    return runHashCode(location, stubArray, stubOffset, length, 2, isNative);
+            }
+        } finally {
+            Reference.reachabilityFence(array);
         }
     }
 
@@ -871,32 +950,37 @@ final class TStringOps {
     static Object arraycopyWithStride(Node location,
                     Object arrayA, int offsetA, int strideA, int fromIndexA,
                     Object arrayB, int offsetB, int strideB, int fromIndexB, int lengthCPY) {
-        final boolean isNativeA = isNativePointer(arrayA);
-        final byte[] stubArrayA;
-        final long stubOffsetA;
-        if (isNativeA) {
-            stubArrayA = null;
-            stubOffsetA = offsetA + nativePointer(arrayA) + (fromIndexA << strideA);
-        } else {
-            stubArrayA = (byte[]) arrayA;
-            stubOffsetA = offsetA + Unsafe.ARRAY_BYTE_BASE_OFFSET + (fromIndexA << strideA);
+        try {
+            final boolean isNativeA = isNativePointer(arrayA);
+            final byte[] stubArrayA;
+            final long stubOffsetA;
+            if (isNativeA) {
+                stubArrayA = null;
+                stubOffsetA = offsetA + nativePointer(arrayA) + (fromIndexA << strideA);
+            } else {
+                stubArrayA = (byte[]) arrayA;
+                stubOffsetA = offsetA + Unsafe.ARRAY_BYTE_BASE_OFFSET + (fromIndexA << strideA);
+            }
+            final boolean isNativeB = isNativePointer(arrayB);
+            final byte[] stubArrayB;
+            final long stubOffsetB;
+            if (isNativeB) {
+                stubArrayB = null;
+                stubOffsetB = offsetB + nativePointer(arrayB) + (fromIndexB << strideB);
+            } else {
+                stubArrayB = (byte[]) arrayB;
+                stubOffsetB = offsetB + Unsafe.ARRAY_BYTE_BASE_OFFSET + (fromIndexB << strideB);
+            }
+            validateRegion(stubArrayA, offsetA, lengthCPY, strideA);
+            validateRegion(stubArrayB, offsetB, lengthCPY, strideB);
+            runArrayCopy(location,
+                            stubArrayA, stubOffsetA, isNativeA,
+                            stubArrayB, stubOffsetB, isNativeB, lengthCPY, stubStride(strideA, strideB));
+            return stubArrayB;
+        } finally {
+            Reference.reachabilityFence(arrayA);
+            Reference.reachabilityFence(arrayB);
         }
-        final boolean isNativeB = isNativePointer(arrayB);
-        final byte[] stubArrayB;
-        final long stubOffsetB;
-        if (isNativeB) {
-            stubArrayB = null;
-            stubOffsetB = offsetB + nativePointer(arrayB) + (fromIndexB << strideB);
-        } else {
-            stubArrayB = (byte[]) arrayB;
-            stubOffsetB = offsetB + Unsafe.ARRAY_BYTE_BASE_OFFSET + (fromIndexB << strideB);
-        }
-        validateRegion(stubArrayA, offsetA, lengthCPY, strideA);
-        validateRegion(stubArrayB, offsetB, lengthCPY, strideB);
-        runArrayCopy(location,
-                        stubArrayA, stubOffsetA, isNativeA,
-                        stubArrayB, stubOffsetB, isNativeB, lengthCPY, stubStride(strideA, strideB));
-        return stubArrayB;
     }
 
     static byte[] arraycopyOfWithStride(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int lengthB, int strideB) {
@@ -906,60 +990,72 @@ final class TStringOps {
     }
 
     static int calcStringAttributesLatin1(Node location, Object array, int offset, int length) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegion(stubArray, offset, length, 0);
+            return runCalcStringAttributesLatin1(location, stubArray, stubOffset, length, isNative);
+        } finally {
+            Reference.reachabilityFence(array);
         }
-        validateRegion(stubArray, offset, length, 0);
-        return runCalcStringAttributesLatin1(location, stubArray, stubOffset, length, isNative);
     }
 
     static int calcStringAttributesBMP(Node location, Object array, int offset, int length) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegion(stubArray, offset, length, 1);
+            return runCalcStringAttributesBMP(location, stubArray, stubOffset, length, isNative);
+        } finally {
+            Reference.reachabilityFence(array);
         }
-        validateRegion(stubArray, offset, length, 1);
-        return runCalcStringAttributesBMP(location, stubArray, stubOffset, length, isNative);
     }
 
     static long calcStringAttributesUTF8(Node location, Object array, int offset, int length, boolean assumeValid, boolean isAtEnd, InlinedConditionProfile brokenProfile) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegion(stubArray, offset, length, 0);
-        if (assumeValid && !Encodings.isUTF8ContinuationByte(readS0(array, offset, length, 0)) && (isAtEnd || !Encodings.isUTF8ContinuationByte(readS0(array, offset, length + 1, length)))) {
-            return runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, true);
-        } else {
-            long attrs = runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, false);
-            if (brokenProfile.profile(location, TStringGuards.isBrokenMultiByte(StringAttributes.getCodeRange(attrs)))) {
-                int codePointLength = 0;
-                for (int i = 0; i < length; i += Encodings.utf8GetCodePointLength(array, offset, length, i, DecodingErrorHandler.DEFAULT)) {
-                    codePointLength++;
-                    TStringConstants.truffleSafePointPoll(location, codePointLength);
-                }
-                return StringAttributes.create(codePointLength, StringAttributes.getCodeRange(attrs));
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
             }
-            return attrs;
+            validateRegion(stubArray, offset, length, 0);
+            if (assumeValid && !Encodings.isUTF8ContinuationByte(readS0(array, offset, length, 0)) && (isAtEnd || !Encodings.isUTF8ContinuationByte(readS0(array, offset, length + 1, length)))) {
+                return runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, true);
+            } else {
+                long attrs = runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, false);
+                if (brokenProfile.profile(location, TStringGuards.isBrokenMultiByte(StringAttributes.getCodeRange(attrs)))) {
+                    int codePointLength = 0;
+                    for (int i = 0; i < length; i += Encodings.utf8GetCodePointLength(array, offset, length, i, DecodingErrorHandler.DEFAULT)) {
+                        codePointLength++;
+                        TStringConstants.truffleSafePointPoll(location, codePointLength);
+                    }
+                    return StringAttributes.create(codePointLength, StringAttributes.getCodeRange(attrs));
+                }
+                return attrs;
+            }
+        } finally {
+            Reference.reachabilityFence(array);
         }
     }
 
@@ -970,32 +1066,36 @@ final class TStringOps {
     }
 
     static long calcStringAttributesUTF16(Node location, Object array, int offset, int length, boolean assumeValid) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
-        }
-        validateRegion(stubArray, offset, length, 1);
-        long attrs;
-        if (assumeValid) {
-            attrs = runCalcStringAttributesUTF16(location, stubArray, stubOffset, length, isNative, true);
-        } else {
-            attrs = runCalcStringAttributesUTF16(location, stubArray, stubOffset, length, isNative, false);
-        }
-        if (assumeValid && length > 0) {
-            if (Encodings.isUTF16LowSurrogate(readS1(array, offset, length, 0))) {
-                attrs = StringAttributes.create(StringAttributes.getCodePointLength(attrs), TSCodeRange.getBrokenMultiByte());
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
             }
-            if (Encodings.isUTF16HighSurrogate(readS1(array, offset, length, length - 1))) {
-                attrs = StringAttributes.create(StringAttributes.getCodePointLength(attrs) + 1, TSCodeRange.getBrokenMultiByte());
+            validateRegion(stubArray, offset, length, 1);
+            long attrs;
+            if (assumeValid) {
+                attrs = runCalcStringAttributesUTF16(location, stubArray, stubOffset, length, isNative, true);
+            } else {
+                attrs = runCalcStringAttributesUTF16(location, stubArray, stubOffset, length, isNative, false);
             }
+            if (assumeValid && length > 0) {
+                if (Encodings.isUTF16LowSurrogate(readS1(array, offset, length, 0))) {
+                    attrs = StringAttributes.create(StringAttributes.getCodePointLength(attrs), TSCodeRange.getBrokenMultiByte());
+                }
+                if (Encodings.isUTF16HighSurrogate(readS1(array, offset, length, length - 1))) {
+                    attrs = StringAttributes.create(StringAttributes.getCodePointLength(attrs) + 1, TSCodeRange.getBrokenMultiByte());
+                }
+            }
+            return attrs;
+        } finally {
+            Reference.reachabilityFence(array);
         }
-        return attrs;
     }
 
     static int calcStringAttributesUTF32I(Node location, int[] array, int offset, int length) {
@@ -1005,76 +1105,60 @@ final class TStringOps {
     }
 
     static int calcStringAttributesUTF32(Node location, Object array, int offset, int length) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegion(stubArray, offset, length, 2);
+            return runCalcStringAttributesUTF32(location, stubArray, stubOffset, length, isNative);
+        } finally {
+            Reference.reachabilityFence(array);
         }
-        validateRegion(stubArray, offset, length, 2);
-        return runCalcStringAttributesUTF32(location, stubArray, stubOffset, length, isNative);
     }
 
     static int codePointIndexToByteIndexUTF8Valid(Node location, Object array, int offset, int length, int index) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegion(stubArray, offset, length, 0);
+            return runCodePointIndexToByteIndexUTF8Valid(location, stubArray, stubOffset, length, index, isNative);
+        } finally {
+            Reference.reachabilityFence(array);
         }
-        validateRegion(stubArray, offset, length, 0);
-        return runCodePointIndexToByteIndexUTF8Valid(location, stubArray, stubOffset, length, index, isNative);
     }
 
     static int codePointIndexToByteIndexUTF16Valid(Node location, Object array, int offset, int length, int index) {
-        final boolean isNative = isNativePointer(array);
-        final byte[] stubArray;
-        final long stubOffset;
-        if (isNative) {
-            stubArray = null;
-            stubOffset = offset + nativePointer(array);
-        } else {
-            stubArray = (byte[]) array;
-            stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegion(stubArray, offset, length, 1);
+            return runCodePointIndexToByteIndexUTF16Valid(location, stubArray, stubOffset, length, index, isNative);
+        } finally {
+            Reference.reachabilityFence(array);
         }
-        validateRegion(stubArray, offset, length, 1);
-        return runCodePointIndexToByteIndexUTF16Valid(location, stubArray, stubOffset, length, index, isNative);
-    }
-
-    private static int runReadS0Managed(byte[] array, long byteOffset) {
-        return uInt(TStringUnsafe.getByteManaged(array, byteOffset));
-    }
-
-    private static int runReadS1Managed(byte[] array, long byteOffset) {
-        return TStringUnsafe.getCharManaged(array, byteOffset);
-    }
-
-    private static int runReadS2Managed(byte[] array, long byteOffset) {
-        return TStringUnsafe.getIntManaged(array, byteOffset);
-    }
-
-    private static long runReadS3Managed(byte[] array, long byteOffset) {
-        return TStringUnsafe.getLongManaged(array, byteOffset);
-    }
-
-    private static void runWriteS0Managed(byte[] array, long byteOffset, byte value) {
-        TStringUnsafe.putByteManaged(array, byteOffset, value);
-    }
-
-    private static void runWriteS1Managed(byte[] array, long byteOffset, char value) {
-        TStringUnsafe.putCharManaged(array, byteOffset, value);
-    }
-
-    private static void runWriteS2Managed(byte[] array, long byteOffset, int value) {
-        TStringUnsafe.putIntManaged(array, byteOffset, value);
     }
 
     private static int runIndexOfAnyByte(Node location, byte[] array, long offset, int length, int fromIndex, byte... needle) {
@@ -1710,6 +1794,12 @@ final class TStringOps {
         return arrayB instanceof AbstractTruffleString.NativePointer;
     }
 
+    /**
+     * Get raw native pointer from NativePointer object.
+     * <p>
+     * NOTE: any use of this pointer must be guarded by a reachability fence on the NativePointer
+     * object!
+     */
     private static long nativePointer(Object array) {
         return ((AbstractTruffleString.NativePointer) array).pointer;
     }

@@ -712,7 +712,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/7bb59dc8da0c61c5da5c3aab5d56a6e4880001ce/src/hotspot/share/opto/library_call.cpp#L2877-L2932",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/aaaa86b57172d45d1126c50efc270c6e49aba7a5/src/hotspot/share/opto/library_call.cpp#L2906-L2961",
               sha1 = "5c117a305e90a48f0a6fe86ace2c15942393c0ab")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
@@ -1234,7 +1234,7 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerP256Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, "sun.security.util.math.intpoly.MontgomeryIntegerPolynomialP256", replacements);
-        r.registerConditional(config.intpolyMontgomeryMultP256 != 0L, new InvocationPlugin("mult", Receiver.class, long[].class, long[].class, long[].class) {
+        r.registerConditional(config.intpolyMontgomeryMultP256 != 0L, new InvocationPlugin("multImpl", Receiver.class, long[].class, long[].class, long[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode aIn, ValueNode bIn, ValueNode rOut) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
@@ -1246,8 +1246,7 @@ public class HotSpotGraphBuilderPlugins {
                     ValueNode bStart = helper.arrayStart(bNotNull, JavaKind.Long);
                     ValueNode rStart = helper.arrayStart(rNotNull, JavaKind.Long);
 
-                    ForeignCallNode call = new ForeignCallNode(INTPOLY_MONTGOMERYMULT_P256, aStart, bStart, rStart);
-                    b.addPush(JavaKind.Int, call);
+                    b.add(new ForeignCallNode(INTPOLY_MONTGOMERYMULT_P256, aStart, bStart, rStart));
                 }
                 return true;
             }

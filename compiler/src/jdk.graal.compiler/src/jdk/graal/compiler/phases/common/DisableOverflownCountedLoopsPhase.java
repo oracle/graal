@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.phases.common;
 
+import static jdk.graal.compiler.nodes.GraphState.StageFlag.LOOP_OVERFLOWS_CHECKED;
+
 import java.util.Optional;
 
 import jdk.graal.compiler.nodes.GraphState;
@@ -49,11 +51,30 @@ public class DisableOverflownCountedLoopsPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (LoopBeginNode lb : graph.getNodes(LoopBeginNode.TYPE)) {
-            if (lb.countedLoopDisabled()) {
-                continue;
+        if (graph.getSpeculationLog() != null) {
+            for (LoopBeginNode lb : graph.getNodes(LoopBeginNode.TYPE)) {
+                if (lb.countedLoopDisabled()) {
+                    continue;
+                }
+                lb.checkDisableCountedBySpeculation(lb.stateAfter().bci, graph);
             }
-            lb.checkDisableCountedBySpeculation(lb.stateAfter().bci, graph);
         }
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        /*
+         * This phase can run multiple times which is fine as long as we run it before all loop
+         * phases.
+         */
+        if (graphState.isBeforeStage(LOOP_OVERFLOWS_CHECKED)) {
+            graphState.setAfterStage(LOOP_OVERFLOWS_CHECKED);
+        }
+    }
+
+    @Override
+    public boolean mustApply(GraphState graphState) {
+        return graphState.requiresFutureStage(LOOP_OVERFLOWS_CHECKED) || super.mustApply(graphState);
     }
 }

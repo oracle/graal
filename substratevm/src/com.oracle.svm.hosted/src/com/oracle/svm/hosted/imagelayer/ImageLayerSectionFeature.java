@@ -27,8 +27,10 @@ package com.oracle.svm.hosted.imagelayer;
 import static org.graalvm.word.WordFactory.signed;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -53,10 +55,13 @@ import com.oracle.svm.core.imagelayer.ImageLayerSection;
 import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
-import com.oracle.svm.hosted.code.ObjectFileTransformer;
 
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Creates a section with image information specific to the current layer.
@@ -74,11 +79,13 @@ import jdk.vm.ci.code.Architecture;
  *  |  40          | heap writable begin                   |
  *  |  48          | heap writable end                     |
  *  |  56          | next layer section (0 if final layer) |
+ *  |  64          | cross-layer singleton table start     |
  *  --------------------------------------------------------
  * </pre>
  */
 @AutomaticallyRegisteredFeature
-public final class ImageLayerSectionFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton, ObjectFileTransformer {
+public final class ImageLayerSectionFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
+
     private static final SectionName SVM_LAYER_SECTION = new SectionName.ProgbitsSectionName("svm_layer");
 
     private static final int HEAP_BEGIN_OFFSET = 0;
@@ -89,7 +96,7 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
     private static final int HEAP_WRITABLE_BEGIN_OFFSET = 40;
     private static final int HEAP_WRITABLE_END_OFFSET = 48;
     private static final int NEXT_SECTION_OFFSET = 56;
-    private static final int SECTION_SIZE = 64;
+    private static final int STATIC_SECTION_SIZE = 64;
 
     private static final String CACHED_IMAGE_FDS_NAME = "__svm_layer_cached_image_fds";
     private static final String CACHED_IMAGE_HEAP_OFFSETS_NAME = "__svm_layer_cached_image_heap_offsets";
@@ -103,13 +110,12 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(HostedDynamicLayerInfoFeature.class);
+        return List.of(HostedDynamicLayerInfoFeature.class, LoadImageSingletonFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(ImageLayerSection.class, createImageLayerSection());
-        ImageSingletons.add(ObjectFileTransformer.class, this);
     }
 
     private static byte[] createWords(int count, WordBase initialValue) {
@@ -154,6 +160,7 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
     }
 
     private ObjectFile.ProgbitsSectionImpl layeredSectionData;
+    private ByteBuffer layeredSectionDataByteBuffer;
 
     /**
      * Creates the SVM layer section and define all symbols within the section. Note it is necessary
@@ -161,9 +168,12 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
      * referring to them are able to pick up this symbol and not refer to an undefined symbol.
      */
     @Override
-    public void afterAbstractImageCreation(ObjectFile objectFile) {
-        byte[] sectionBytes = new byte[SECTION_SIZE];
-        layeredSectionData = new BasicProgbitsSectionImpl(sectionBytes);
+    public void afterAbstractImageCreation(AfterAbstractImageCreationAccess access) {
+        ObjectFile objectFile = ((FeatureImpl.AfterAbstractImageCreationAccessImpl) access).getImage().getObjectFile();
+
+        int numSingletonSlots = ImageSingletons.lookup(LoadImageSingletonFeature.class).getConstantToTableSlotMap().size();
+        layeredSectionDataByteBuffer = ByteBuffer.wrap(new byte[STATIC_SECTION_SIZE + (ConfigurationValues.getObjectLayout().getReferenceSize() * numSingletonSlots)]).order(ByteOrder.LITTLE_ENDIAN);
+        layeredSectionData = new BasicProgbitsSectionImpl(layeredSectionDataByteBuffer.array());
 
         // since relocations are present the section it is considered writable
         ObjectFile.Section layeredImageSection = objectFile.newProgbitsSection(SVM_LAYER_SECTION.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), true, false,
@@ -184,6 +194,11 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
 
         // this symbol must be global when it will be read by the prior section
         objectFile.createDefinedSymbol(getLayerName(DynamicImageLayerInfo.singleton().layerNumber), layeredImageSection, 0, 0, false, ImageLayerBuildingSupport.buildingExtensionLayer());
+
+        if (numSingletonSlots != 0) {
+            assert ImageLayerBuildingSupport.buildingApplicationLayer() : "Currently only application layer is supported";
+            objectFile.createDefinedSymbol(LoadImageSingletonFeature.CROSS_LAYER_SINGLETON_TABLE_SYMBOL, layeredImageSection, STATIC_SECTION_SIZE, 0, false, true);
+        }
     }
 
     @Override
@@ -199,6 +214,28 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
         layeredSectionData.markRelocationSite(HEAP_ANY_RELOCATABLE_POINTER_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, 0);
         layeredSectionData.markRelocationSite(HEAP_WRITABLE_BEGIN_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, 0);
         layeredSectionData.markRelocationSite(HEAP_WRITABLE_END_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, 0);
+
+        var config = (FeatureImpl.BeforeImageWriteAccessImpl) access;
+
+        Map<JavaConstant, Integer> singletonToSlotMap = ImageSingletons.lookup(LoadImageSingletonFeature.class).getConstantToTableSlotMap();
+        long[] singletonTableInfo = new long[singletonToSlotMap.size()];
+        int shift = ImageSingletons.lookup(CompressEncoding.class).getShift();
+        for (var entry : singletonToSlotMap.entrySet()) {
+            var objectInfo = config.getImage().getHeap().getConstantInfo(entry.getKey());
+            singletonTableInfo[entry.getValue()] = objectInfo.getOffset() >>> shift;
+        }
+
+        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        int singletonTableOffset = STATIC_SECTION_SIZE;
+        for (long imageSingletonOffset : singletonTableInfo) {
+            if (referenceSize == 4) {
+                layeredSectionDataByteBuffer.putInt(singletonTableOffset, NumUtil.safeToInt(imageSingletonOffset));
+            } else {
+                assert referenceSize == 8 : referenceSize;
+                layeredSectionDataByteBuffer.putLong(singletonTableOffset, imageSingletonOffset);
+            }
+            singletonTableOffset += referenceSize;
+        }
     }
 
     private static class ImageLayerSectionImpl extends ImageLayerSection implements UnsavedSingleton {

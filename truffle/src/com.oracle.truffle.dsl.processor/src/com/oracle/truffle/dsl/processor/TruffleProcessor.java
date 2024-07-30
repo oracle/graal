@@ -144,7 +144,7 @@ public final class TruffleProcessor extends AbstractProcessor {
                 }
             }
         }
-        return false;
+        return true;
     }
 
     private static void processElement(AnnotationProcessor<?> generator, Element e) {

@@ -51,7 +51,7 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.util.UnsignedLong;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -109,7 +109,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     @Override
-    public boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, CoreProviders providers, int peelingIteration) {
+    public boolean shouldPeel(Loop loop, ControlFlowGraph cfg, CoreProviders providers, int peelingIteration) {
         if (peelingIteration > 0) {
             // Do not do iterative peeling by default.
             return false;
@@ -177,7 +177,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
      * returns some other member of {@link FullUnrollability} describing why the loop cannot or
      * should not be fully unrolled.
      */
-    public FullUnrollability canFullUnroll(LoopEx loop) {
+    public FullUnrollability canFullUnroll(Loop loop) {
         DebugContext debug = loop.loopBegin().graph().getDebug();
         if (!loop.isCounted() || !loop.counted().isConstantMaxTripCount() || !loop.counted().counterNeverOverflows()) {
             debug.log(DebugContext.INFO_LEVEL, "Loop %s not fully unrolled, because it is not counted", loop);
@@ -236,12 +236,12 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     @Override
-    public boolean shouldFullUnroll(LoopEx loop) {
+    public boolean shouldFullUnroll(Loop loop) {
         return canFullUnroll(loop) == FullUnrollability.SHOULD_FULL_UNROLL;
     }
 
     @Override
-    public boolean shouldPartiallyUnroll(LoopEx loop, CoreProviders providers) {
+    public boolean shouldPartiallyUnroll(Loop loop, CoreProviders providers) {
         LoopBeginNode loopBegin = loop.loopBegin();
         if (!loop.isCounted()) {
             loopBegin.getDebug().log(DebugContext.VERBOSE_LEVEL, "shouldPartiallyUnroll %s isn't counted", loopBegin);
@@ -286,7 +286,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     @Override
-    public boolean shouldTryUnswitch(LoopEx loop) {
+    public boolean shouldTryUnswitch(Loop loop) {
         LoopBeginNode loopBegin = loop.loopBegin();
         double loopFrequency = loop.localLoopFrequency();
         if (loopFrequency <= 1.0) {
@@ -304,7 +304,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
      * @param controlSplits the control split nodes to consider.
      * @return the approximate code size change in nodes.
      */
-    private static int approxCodeSizeChange(LoopEx loop, List<ControlSplitNode> controlSplits) {
+    private static int approxCodeSizeChange(Loop loop, List<ControlSplitNode> controlSplits) {
         StructuredGraph graph = loop.loopBegin().graph();
         NodeBitMap branchNodes = graph.createNodeBitMap();
         for (ControlSplitNode controlSplit : controlSplits) {
@@ -368,7 +368,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
      * frequencies which is 750. This mean that on average each time the loop is executed, the
      * invariant is used 750 times.
      */
-    private static double splitLocalLoopFrequency(LoopEx loop, List<ControlSplitNode> controlSplits) {
+    private static double splitLocalLoopFrequency(Loop loop, List<ControlSplitNode> controlSplits) {
         int loopDepth = loop.loop().getDepth();
         double loopLocalFrequency = loop.localLoopFrequency();
         ControlFlowGraph cfg = loop.loopsData().getCFG();
@@ -378,7 +378,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
         for (ControlSplitNode node : controlSplits) {
             HIRBlock b = cfg.blockFor(node);
             double f = b.getRelativeFrequency();
-            for (Loop<HIRBlock> l = b.getLoop(); l.getDepth() > loopDepth; l = l.getParent()) {
+            for (CFGLoop<HIRBlock> l = b.getLoop(); l.getDepth() > loopDepth; l = l.getParent()) {
                 f /= loop.loopsData().loop(l).localLoopFrequency();
             }
 
@@ -395,7 +395,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
      * @param loop the loop to unswitch
      * @return the maximum code size change (in the number of nodes)
      */
-    private static int loopMaxCodeSizeChange(LoopEx loop) {
+    private static int loopMaxCodeSizeChange(Loop loop) {
         final StructuredGraph graph = loop.loopBegin().graph();
         final OptionValues options = loop.loopBegin().getOptions();
         final int remainingGraphSpace = MaximumDesiredSize.getValue(options) - graph.getNodeCount();
@@ -413,7 +413,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     @Override
-    public UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
+    public UnswitchingDecision shouldUnswitch(Loop loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
         if (loop.loopBegin().unswitches() >= LoopMaxUnswitch.getValue(loop.loopBegin().graph().getOptions())) {
             return UnswitchingDecision.NO;
         }

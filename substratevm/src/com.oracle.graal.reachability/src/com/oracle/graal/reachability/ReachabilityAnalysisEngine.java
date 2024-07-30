@@ -292,10 +292,11 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
 
     @Override
     public boolean finish() throws InterruptedException {
-        universe.setAnalysisDataValid(false);
-        runReachability();
-        assert executor.getPostedOperations() == 0 : executor.getPostedOperations();
-        universe.setAnalysisDataValid(true);
+        do {
+            runReachability();
+            assert executor.getPostedOperations() == 0 : executor.getPostedOperations();
+            universe.runAtFixedPoint();
+        } while (executor.getPostedOperations() > 0);
         return true;
     }
 

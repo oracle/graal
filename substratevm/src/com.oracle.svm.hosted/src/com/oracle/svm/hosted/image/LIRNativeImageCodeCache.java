@@ -40,7 +40,6 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedDirectCallTrampolineSupport;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
@@ -55,7 +54,6 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
-import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.Reference;
@@ -397,26 +395,18 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     patchesHandled++;
                 }
             }
+
             for (DataPatch dataPatch : compilation.getDataPatches()) {
                 assert dataPatch.note == null : "Unexpected note: " + dataPatch.note;
                 Reference ref = dataPatch.reference;
                 var patcher = patches.get(dataPatch.pcOffset);
-                if (ref instanceof ConstantReference constant && constant.getConstant() instanceof SubstrateMethodPointerConstant methodPtrConstant) {
-                    /*
-                     * We directly patch SubstrateMethodPointerConstants.
-                     */
-                    HostedMethod hMethod = (HostedMethod) methodPtrConstant.pointer().getMethod();
-                    VMError.guarantee(hMethod.isCompiled(), "Method %s is not compiled although there is a method pointer constant created for it.", hMethod);
-                    int targetOffset = hMethod.getCodeAddressOffset();
-                    int pcDisplacement = targetOffset - (compStart + dataPatch.pcOffset);
-                    patcher.patch(compStart, pcDisplacement, compilation.getTargetCode());
-                } else {
-                    /*
-                     * Constants are allocated offsets in a separate space, which can be emitted as
-                     * read-only (.rodata) section.
-                     */
-                    patcher.relocate(ref, relocs, compStart);
-                }
+                /*
+                 * Constants are (1) allocated offsets in a separate space, which can be emitted as
+                 * read-only (.rodata) section, or (2) method pointers that are computed relative to
+                 * the PC.
+                 */
+                patcher.relocate(ref, relocs, compStart);
+
                 boolean noPriorMatch = patchedOffsets.add(dataPatch.pcOffset);
                 VMError.guarantee(noPriorMatch, "Patching same offset twice.");
                 patchesHandled++;
@@ -483,12 +473,6 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     private static final class NativeTextSectionImpl extends NativeImage.NativeTextSectionImpl {
         private NativeTextSectionImpl(RelocatableBuffer buffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
             super(buffer, objectFile, codeCache);
-        }
-
-        @Override
-        protected void defineBaseLayerMethodSymbol(String name, ObjectFile.Element section, HostedMethod method) {
-            VMError.guarantee(method.wrapped.isInBaseLayer(), "Expecting a base layer method, found %s", method);
-            objectFile.createUndefinedSymbol(name, 0, true);
         }
 
         @Override

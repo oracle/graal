@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package org.graalvm.wasm;
 
 import org.graalvm.wasm.api.InteropArray;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
@@ -50,8 +51,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -66,6 +69,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
     private final WasmFunction function;
     private final CallTarget target;
     private final TruffleContext truffleContext;
+    private Object importedFunction;
 
     /**
      * Represents a call target that is a WebAssembly function or an imported function.
@@ -83,7 +87,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         this(context, null, null, target);
     }
 
-    private WasmFunctionInstance(WasmContext context, WasmInstance moduleInstance, WasmFunction function, CallTarget target) {
+    public WasmFunctionInstance(WasmContext context, WasmInstance moduleInstance, WasmFunction function, CallTarget target) {
         Assert.assertNotNull(target, "Call target must be non-null", Failure.UNSPECIFIED_INTERNAL);
         this.context = context;
         this.moduleInstance = moduleInstance;
@@ -126,6 +130,14 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         return truffleContext;
     }
 
+    public void setImportedFunction(Object importedFunction) {
+        this.importedFunction = importedFunction;
+    }
+
+    public Object getImportedFunction() {
+        return importedFunction;
+    }
+
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean isExecutable() {
@@ -135,11 +147,11 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
     @ExportMessage
     Object execute(Object[] arguments,
                     @CachedLibrary("this") InteropLibrary self,
-                    @Cached("create(NO_BYTECODE_INDEX)") WasmIndirectCallNode callNode) {
+                    @Cached("create(NO_BYTECODE_INDEX)") WasmIndirectCallNode callNode) throws ArityException, UnsupportedTypeException {
         TruffleContext c = getTruffleContext();
         Object prev = c.enter(self);
         try {
-            Object result = callNode.execute(target, WasmArguments.create(moduleInstance, arguments));
+            Object result = callNode.execute(target, WasmArguments.create(moduleInstance, validateArguments(arguments)));
 
             // For external calls of a WebAssembly function we have to materialize the multi-value
             // stack.
@@ -154,6 +166,58 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         } finally {
             c.leave(self, prev);
         }
+    }
+
+    private Object[] validateArguments(Object[] arguments) throws ArityException, UnsupportedTypeException {
+        if (function == null) {
+            return arguments;
+        }
+        final int paramCount = function.paramCount();
+        if (arguments.length != paramCount) {
+            throw ArityException.create(paramCount, paramCount, arguments.length);
+        }
+        for (int i = 0; i < paramCount; i++) {
+            byte paramType = function.paramTypeAt(i);
+            Object value = arguments[i];
+            switch (paramType) {
+                case WasmType.I32_TYPE -> {
+                    if (value instanceof Integer) {
+                        continue;
+                    }
+                }
+                case WasmType.I64_TYPE -> {
+                    if (value instanceof Long) {
+                        continue;
+                    }
+                }
+                case WasmType.F32_TYPE -> {
+                    if (value instanceof Float) {
+                        continue;
+                    }
+                }
+                case WasmType.F64_TYPE -> {
+                    if (value instanceof Double) {
+                        continue;
+                    }
+                }
+                case WasmType.V128_TYPE -> {
+                    if (value instanceof Vector128) {
+                        continue;
+                    }
+                }
+                case WasmType.FUNCREF_TYPE -> {
+                    if (value instanceof WasmFunctionInstance || value == WasmConstant.NULL) {
+                        continue;
+                    }
+                }
+                case WasmType.EXTERNREF_TYPE -> {
+                    continue;
+                }
+                default -> throw WasmException.create(Failure.UNKNOWN_TYPE);
+            }
+            throw UnsupportedTypeException.create(arguments);
+        }
+        return arguments;
     }
 
     private Object multiValueStackAsArray(WasmLanguage language) {

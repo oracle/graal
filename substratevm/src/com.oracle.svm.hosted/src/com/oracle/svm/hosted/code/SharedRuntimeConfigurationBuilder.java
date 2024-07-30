@@ -61,7 +61,6 @@ import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
@@ -74,19 +73,16 @@ public abstract class SharedRuntimeConfigurationBuilder {
     protected final UniverseMetaAccess metaAccess;
     protected final Function<Providers, SubstrateBackend> backendProvider;
     protected final ClassInitializationSupport classInitializationSupport;
-    protected final LoopsDataProvider originalLoopsDataProvider;
     protected final SubstratePlatformConfigurationProvider platformConfig;
     protected final SnippetReflectionProvider snippetReflection;
 
     public SharedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, UniverseMetaAccess metaAccess, Function<Providers, SubstrateBackend> backendProvider,
-                    ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
-                    SubstratePlatformConfigurationProvider platformConfig, SnippetReflectionProvider snippetReflection) {
+                    ClassInitializationSupport classInitializationSupport, SubstratePlatformConfigurationProvider platformConfig, SnippetReflectionProvider snippetReflection) {
         this.options = options;
         this.hostVM = hostVM;
         this.metaAccess = metaAccess;
         this.backendProvider = backendProvider;
         this.classInitializationSupport = classInitializationSupport;
-        this.originalLoopsDataProvider = originalLoopsDataProvider;
         this.platformConfig = platformConfig;
         this.snippetReflection = snippetReflection;
     }
@@ -117,7 +113,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
         LoweringProvider lowerer = createLoweringProvider(foreignCalls, metaAccessExtensionProvider);
 
-        LoopsDataProvider loopsDataProvider = originalLoopsDataProvider;
+        LoopsDataProvider loopsDataProvider = GraalConfiguration.runtimeInstance().createLoopsDataProvider();
 
         /*
          * To simplify future merging of IdentityHashCodeProvider into ConstantReflectionProvider,
@@ -145,7 +141,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         }
 
         List<DebugHandlersFactory> handlers = new ArrayList<>();
-        for (DebugHandlersFactory factory : GraalServices.load(DebugHandlersFactory.class)) {
+        for (DebugHandlersFactory factory : DebugHandlersFactory.LOADER) {
             if (factory instanceof GraalDebugHandlersFactory) {
                 handlers.add(new GraalDebugHandlersFactory(snippetReflection));
             } else {

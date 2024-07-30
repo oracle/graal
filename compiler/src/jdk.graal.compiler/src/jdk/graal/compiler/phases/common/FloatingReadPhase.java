@@ -40,7 +40,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
@@ -199,7 +199,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         }
 
         result = EconomicSet.create(Equivalence.DEFAULT);
-        for (Loop<HIRBlock> inner : loop.getChildren()) {
+        for (CFGLoop<HIRBlock> inner : loop.getChildren()) {
             result.addAll(processLoop((HIRLoop) inner, modifiedInLoops));
         }
 
@@ -232,7 +232,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         if (graph.hasLoops()) {
             modifiedInLoops = EconomicMap.create(Equivalence.IDENTITY);
             ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeFrequency(true).build();
-            for (Loop<?> l : cfg.getLoops()) {
+            for (CFGLoop<?> l : cfg.getLoops()) {
                 HIRLoop loop = (HIRLoop) l;
                 processLoop(loop, modifiedInLoops);
             }

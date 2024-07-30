@@ -493,7 +493,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
-     * Adds masking to a given subword value according to a given {@Link JavaKind}, such that the
+     * Adds masking to a given subword value according to a given {@link JavaKind}, such that the
      * masked value falls in the range of the given kind. In the cases where the given kind is not a
      * subword kind, the input value is returned immediately.
      *

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -58,14 +58,13 @@ import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEnd;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
-import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMove;
+import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMoveToNative;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode.LLVMI32OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
@@ -497,14 +496,24 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
                         @Cached LLVMI32OffsetStoreNode fpOffsetStore,
                         @Cached LLVMPointerOffsetStoreNode overflowArgAreaStore,
                         @Exclusive @Cached LLVMPointerOffsetStoreNode regSaveAreaStore,
-                        @Cached NativeProfiledMemMove memMove,
+                        @Cached NativeProfiledMemMoveToNative memMove,
                         @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode) {
             initializeManaged(vaList, realArgs, numOfExpArgs, frame, stackAllocationNode);
+
+            if (!LLVMNativePointer.isInstance(vaList.regSaveAreaNativePtr) || !LLVMNativePointer.isInstance(vaList.overflowArgAreaBaseNativePtr)) {
+                /*
+                 * We don't have native memory pre-reserved on the stack. Maybe we have no access to
+                 * native memory? In this case, the toNative transition fails.
+                 */
+                vaList.nativized = false;
+                return;
+            }
+
             initNativeVAList(gpOffsetStore, fpOffsetStore, overflowArgAreaStore, regSaveAreaStore, vaList.vaListStackPtr, vaList.gpOffset, vaList.fpOffset,
                             vaList.overflowArgAreaBaseNativePtr.increment(vaList.overflowArgArea.getOffset()), vaList.regSaveAreaNativePtr);
-            initNativeAreas(vaList.realArguments, vaList.numberOfExplicitArguments, vaList.initGPOffset, vaList.initFPOffset, vaList.regSaveAreaNativePtr, vaList.overflowArgAreaBaseNativePtr,
-                            i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore,
-                            pointerOverflowArgAreaStore, memMove);
+            initNativeAreas(vaList.realArguments, vaList.numberOfExplicitArguments, vaList.initGPOffset, vaList.initFPOffset, LLVMNativePointer.cast(vaList.regSaveAreaNativePtr),
+                            LLVMNativePointer.cast(vaList.overflowArgAreaBaseNativePtr), i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore,
+                            i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, memMove);
             vaList.nativized = true;
         }
 
@@ -668,7 +677,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
                     @Cached LLVMI32OffsetStoreNode i32OverflowArgAreaStore,
                     @Cached LLVM80BitFloatOffsetStoreNode fp80bitOverflowArgAreaStore,
                     @Cached LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
-                    @Cached NativeProfiledMemMove memMove,
+                    @Cached NativeProfiledMemMoveToNative memMove,
                     @Cached BranchProfile nativizedProfile) {
         if (isNativized()) {
             nativizedProfile.enter();
@@ -688,12 +697,21 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
             return;
         }
 
+        if (!LLVMNativePointer.isInstance(regSaveAreaNativePtr) || !LLVMNativePointer.isInstance(overflowArgAreaBaseNativePtr)) {
+            /*
+             * We don't have native memory pre-reserved on the stack. Maybe we have no access to
+             * native memory? In this case, the toNative transition fails.
+             */
+            this.nativized = false;
+            return;
+        }
+
         initNativeVAList(gpOffsetStore, fpOffsetStore, overflowArgAreaStore, regSaveAreaStore, vaListStackPtr, gpOffset, fpOffset, overflowArgAreaBaseNativePtr.increment(overflowArgArea.getOffset()),
                         regSaveAreaNativePtr);
 
-        initNativeAreas(this.realArguments, this.numberOfExplicitArguments, this.initGPOffset, this.initFPOffset, regSaveAreaNativePtr, this.overflowArgAreaBaseNativePtr, i64RegSaveAreaStore,
-                        i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore,
-                        pointerOverflowArgAreaStore, memMove);
+        initNativeAreas(this.realArguments, this.numberOfExplicitArguments, this.initGPOffset, this.initFPOffset, LLVMNativePointer.cast(regSaveAreaNativePtr),
+                        LLVMNativePointer.cast(overflowArgAreaBaseNativePtr), i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore,
+                        i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, memMove);
     }
 
     private void allocateNativeAreas(StackAllocationNode stackAllocationNode, Frame frame) {
@@ -712,8 +730,8 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
     /**
      * Reconstruct native register_save_area and overflow_arg_area according to AMD64 ABI.
      */
-    private static void initNativeAreas(Object[] realArguments, int numberOfExplicitArguments, int initGPOffset, int initFPOffset, LLVMPointer regSaveAreaNativePtr,
-                    LLVMPointer overflowArgAreaBaseNativePtr,
+    private static void initNativeAreas(Object[] realArguments, int numberOfExplicitArguments, int initGPOffset, int initFPOffset, LLVMNativePointer regSaveAreaNativePtr,
+                    LLVMNativePointer overflowArgAreaBaseNativePtr,
                     LLVMI64OffsetStoreNode i64RegSaveAreaStore,
                     LLVMI32OffsetStoreNode i32RegSaveAreaStore,
                     LLVM80BitFloatOffsetStoreNode fp80bitRegSaveAreaStore,
@@ -722,7 +740,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
                     LLVMI32OffsetStoreNode i32OverflowArgAreaStore,
                     LLVM80BitFloatOffsetStoreNode fp80bitOverflowArgAreaStore,
                     LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
-                    LLVMMemMoveNode memMove) {
+                    NativeProfiledMemMoveToNative memMove) {
 
         int gp = initGPOffset;
         int fp = initFPOffset;
@@ -813,7 +831,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
                         @Exclusive @Cached LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
                         @Shared("overflowAreaStore") @Cached LLVMPointerOffsetStoreNode overflowArgAreaStore,
                         @Shared("regSaveAreaStore") @Cached LLVMPointerOffsetStoreNode regSaveAreaStore,
-                        @Cached NativeProfiledMemMove memMove) {
+                        @Cached NativeProfiledMemMoveToNative memMove) {
 
             int gp = calculateUsedGpArea(arguments, numberOfExplicitArguments);
             int initGPOffset = gp;
@@ -841,8 +859,8 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
                 }
             }
 
-            LLVMPointer regSaveAreaNativePtr = stackAllocationNode.executeWithTarget(X86_64BitVarArgs.FP_LIMIT, frame);
-            LLVMPointer overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(overflowArea, frame);
+            LLVMNativePointer regSaveAreaNativePtr = LLVMNativePointer.cast(stackAllocationNode.executeWithTarget(X86_64BitVarArgs.FP_LIMIT, frame));
+            LLVMNativePointer overflowArgAreaBaseNativePtr = LLVMNativePointer.cast(stackAllocationNode.executeWithTarget(overflowArea, frame));
 
             initNativeVAList(gpOffsetStore, fpOffsetStore, overflowArgAreaStore, regSaveAreaStore, nativeVAListPtr, initGPOffset, initFPOffset, overflowArgAreaBaseNativePtr, regSaveAreaNativePtr);
             initNativeAreas(arguments, numberOfExplicitArguments, initGPOffset, initFPOffset, regSaveAreaNativePtr, overflowArgAreaBaseNativePtr, i64RegSaveAreaStore, i32RegSaveAreaStore,

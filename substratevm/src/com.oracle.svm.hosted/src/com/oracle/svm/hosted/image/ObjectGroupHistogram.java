@@ -31,6 +31,9 @@ import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapInstance;
+import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -181,7 +184,8 @@ public final class ObjectGroupHistogram {
 
     private void processObject(ObjectInfo info, String group, boolean addObject, int recursionLevel, ObjectFilter objectFilter, FieldFilter fieldFilter) {
         assert info != null;
-        if (info.getConstant().isInBaseLayer()) {
+        ImageHeapConstant ihc = info.getConstant();
+        if (ihc.isInBaseLayer()) {
             /* Base layer objects don't count towards current layer's statistics. */
             return;
         }
@@ -193,27 +197,27 @@ public final class ObjectGroupHistogram {
                 return;
             }
         }
-        if (info.getClazz().isInstanceClass()) {
-            JavaConstant con = heap.hUniverse.getSnippetReflection().forObject(info.getObject());
+
+        if (ihc instanceof ImageHeapInstance) {
             for (HostedField field : info.getClazz().getInstanceFields(true)) {
                 if (field.getType().getStorageKind() == JavaKind.Object && !HostedConfiguration.isInlinedField(field) && field.isAccessed()) {
                     if (fieldFilter == null || fieldFilter.test(info, field)) {
-                        JavaConstant fieldValue = heap.hConstantReflection.readFieldValue(field, con);
+                        JavaConstant fieldValue = heap.hConstantReflection.readFieldValue(field, ihc);
                         if (fieldValue.isNonNull()) {
                             processObject(heap.getConstantInfo(fieldValue), group, true, recursionLevel + 1, objectFilter, fieldFilter);
                         }
                     }
                 }
             }
-        } else if (info.getObject() instanceof Object[]) {
-            for (Object element : (Object[]) info.getObject()) {
-                if (element != null) {
-                    ObjectInfo elementInfo = heap.getObjectInfo(heap.aUniverse.replaceObject(element));
+        } else if (ihc instanceof ImageHeapObjectArray) {
+            heap.hConstantReflection.forEachArrayElement(ihc, (element, idx) -> {
+                if (element.isNonNull()) {
+                    ObjectInfo elementInfo = heap.getConstantInfo(element);
                     if (elementInfo != null) {
                         processObject(elementInfo, group, true, recursionLevel + 1, objectFilter, fieldFilter);
                     }
                 }
-            }
+            });
         }
     }
 

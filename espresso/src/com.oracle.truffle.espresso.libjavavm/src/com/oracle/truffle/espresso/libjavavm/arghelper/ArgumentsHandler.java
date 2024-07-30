@@ -26,7 +26,10 @@ package com.oracle.truffle.espresso.libjavavm.arghelper;
 import static com.oracle.truffle.espresso.libjavavm.Arguments.abort;
 import static com.oracle.truffle.espresso.libjavavm.Arguments.warn;
 
+import java.io.File;
 import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -54,14 +57,37 @@ public class ArgumentsHandler {
      */
     public static final int LAUNCHER_OPTIONS_INDENT = 45;
 
+    private static final String JDK_MODULES_PREFIX = "jdk.module.";
+
+    private static final String ADD_MODULES = JDK_MODULES_PREFIX + "addmods";
+    private static final String ADD_EXPORTS = JDK_MODULES_PREFIX + "addexports";
+    private static final String ADD_OPENS = JDK_MODULES_PREFIX + "addopens";
+    private static final String ADD_READS = JDK_MODULES_PREFIX + "addreads";
+    private static final String ENABLE_NATIVE_ACCESS = JDK_MODULES_PREFIX + "enable.native.access";
+
+    private static final String MODULE_PATH = JDK_MODULES_PREFIX + "path";
+    private static final String UPGRADE_PATH = JDK_MODULES_PREFIX + "upgrade.path";
+    private static final String LIMIT_MODS = JDK_MODULES_PREFIX + "limitmods";
+
+    private static final String[] KNOWN_MODULE_OPTIONS = {
+                    ADD_MODULES,
+                    ADD_EXPORTS,
+                    ADD_OPENS,
+                    ADD_READS,
+                    ENABLE_NATIVE_ACCESS,
+                    MODULE_PATH,
+                    UPGRADE_PATH,
+                    LIMIT_MODS,
+    };
+
     private static final PrintStream out = System.out;
 
     private final Native nativeAccess;
     private final PolyglotArgs polyglotAccess;
-    private final ModulePropertyCounter modulePropertyCounter;
 
     private final Set<String> ignoredXXOptions;
     private final Map<String, String> mappedXXOptions;
+    private final Context.Builder builder;
 
     private boolean experimental;
 
@@ -73,18 +99,27 @@ public class ArgumentsHandler {
     private boolean helpExpert = false;
     private boolean helpInternal = false;
 
+    private boolean showIgnored;
+
+    private List<String> addModules = new ArrayList<>();
+    private List<String> addExports = new ArrayList<>();
+    private List<String> addOpens = new ArrayList<>();
+    private List<String> addReads = new ArrayList<>();
+    private List<String> enableNativeAccess = new ArrayList<>();
+
     @SuppressWarnings("this-escape")
     public ArgumentsHandler(Context.Builder builder, Set<String> ignoredXXOptions, Map<String, String> mappedXXOptions, JNIJavaVMInitArgs args) {
         assert mappedXXOptions.values().stream().allMatch(s -> s.contains("."));
         this.ignoredXXOptions = ignoredXXOptions;
         this.mappedXXOptions = mappedXXOptions;
         this.nativeAccess = new Native(this);
-        this.modulePropertyCounter = new ModulePropertyCounter(builder);
         this.polyglotAccess = new PolyglotArgs(builder, this);
-        this.experimental = checkExperimental(args);
+        this.builder = builder;
+        parseEarlyArguments(args);
     }
 
-    private static boolean checkExperimental(JNIJavaVMInitArgs args) {
+    private void parseEarlyArguments(JNIJavaVMInitArgs args) {
+        boolean foundFirstExperimental = false;
         Pointer p = (Pointer) args.getOptions();
         for (int i = 0; i < args.getNOptions(); i++) {
             JNIJavaVMOption option = (JNIJavaVMOption) p.add(i * SizeOf.get(JNIJavaVMOption.class));
@@ -94,38 +129,59 @@ public class ArgumentsHandler {
                 switch (optionString) {
                     case "--experimental-options":
                     case "--experimental-options=true":
-                        return true;
+                        if (!foundFirstExperimental) {
+                            this.experimental = true;
+                        }
+                        foundFirstExperimental = true;
+                        break;
                     case "--experimental-options=false":
-                        return false;
+                        if (!foundFirstExperimental) {
+                            this.experimental = false;
+                        }
+                        foundFirstExperimental = true;
+                        break;
+                    case "--log.level=CONFIG":
+                    case "--log.level=FINE":
+                    case "--log.level=FINER":
+                    case "--log.level=FINEST":
+                    case "--log.level=ALL":
+                        this.showIgnored = true;
+                        break;
                     default:
+                }
+            }
+        }
+    }
+
+    public boolean isModulesOption(String key) {
+        if (key.startsWith(JDK_MODULES_PREFIX)) {
+            for (String known : KNOWN_MODULE_OPTIONS) {
+                if (key.equals(known)) {
+                    return true;
                 }
             }
         }
         return false;
     }
 
-    public boolean isModulesOption(String key) {
-        return modulePropertyCounter.isModulesOption(key);
-    }
-
     public void addModules(String option) {
-        modulePropertyCounter.addModules(option);
+        addModules.add(option);
     }
 
     public void addExports(String option) {
-        modulePropertyCounter.addExports(option);
+        addExports.add(option);
     }
 
     public void addOpens(String option) {
-        modulePropertyCounter.addOpens(option);
+        addOpens.add(option);
     }
 
     public void addReads(String option) {
-        modulePropertyCounter.addReads(option);
+        addReads.add(option);
     }
 
     public void enableNativeAccess(String option) {
-        modulePropertyCounter.enableNativeAccess(option);
+        enableNativeAccess.add(option);
     }
 
     public void setExperimental(boolean experimental) {
@@ -170,8 +226,9 @@ public class ArgumentsHandler {
             }
         }
         if (ignoredXXOptions.contains(name)) {
-            // ignore
-            warn("Ignoring option: " + optionString);
+            if (showIgnored) {
+                warn("Ignoring option: " + optionString);
+            }
             return;
         }
         String mapped = mappedXXOptions.get(name);
@@ -209,6 +266,21 @@ public class ArgumentsHandler {
     }
 
     public void argumentProcessingDone() {
+        if (!addModules.isEmpty()) {
+            builder.option("java.AddModules", String.join(File.pathSeparator, addModules));
+        }
+        if (!addExports.isEmpty()) {
+            builder.option("java.AddExports", String.join(File.pathSeparator, addExports));
+        }
+        if (!addOpens.isEmpty()) {
+            builder.option("java.AddOpens", String.join(File.pathSeparator, addOpens));
+        }
+        if (!addReads.isEmpty()) {
+            builder.option("java.AddReads", String.join(File.pathSeparator, addReads));
+        }
+        if (!enableNativeAccess.isEmpty()) {
+            builder.option("java.EnableNativeAccess", String.join(File.pathSeparator, enableNativeAccess));
+        }
         printHelp();
         polyglotAccess.argumentProcessingDone();
     }

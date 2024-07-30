@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package com.oracle.svm.core.code;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.util.BitSet;
+import java.util.EnumSet;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.function.Consumer;
@@ -53,6 +54,7 @@ import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
@@ -61,7 +63,13 @@ import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
@@ -201,12 +209,14 @@ public class CodeInfoEncoder {
             String[] memberNamesArray = encodeArray(memberNames, String[]::new);
             String[] otherStringsArray = encodeArray(otherStrings, String[]::new);
 
-            /*
-             * For image code, we currently have a single code info for which method ids start at 0
-             * (with 0 meaning invalid). Runtime code info can only reference image methods via
-             * these same ids and doesn't have its own method table.
-             */
-            int methodTableFirstId = 0;
+            int methodTableFirstId;
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                var idTracker = MethodTableFirstIDTracker.singleton();
+                methodTableFirstId = idTracker.startingID;
+                idTracker.nextStartingId = methodTableFirstId + methods.getLength();
+            } else {
+                methodTableFirstId = 0;
+            }
             NonmovableArray<Byte> methodTable = encodeMethodTable();
 
             install(target, objectConstantsArray, classesArray, memberNamesArray, otherStringsArray, methodTable, methodTableFirstId, adjuster);
@@ -416,10 +426,10 @@ public class CodeInfoEncoder {
         return result;
     }
 
-    public void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
+    public void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster, Runnable recordActivity) {
         encoders.encodeAllAndInstall(target, adjuster);
         encodeReferenceMaps();
-        frameInfoEncoder.encodeAllAndInstall(target);
+        frameInfoEncoder.encodeAllAndInstall(target, recordActivity);
         encodeIPData();
 
         install(target);
@@ -712,8 +722,7 @@ class CodeInfoVerifier {
     private void verifyValue(CompilationResult compilation, JavaValue e, ValueInfo actualValue, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
         JavaValue expectedValue = e;
 
-        if (expectedValue instanceof StackLockValue) {
-            StackLockValue lock = (StackLockValue) expectedValue;
+        if (expectedValue instanceof StackLockValue lock) {
             assert ValueUtil.isIllegal(lock.getSlot()) : actualValue;
             assert lock.isEliminated() == actualValue.isEliminatedMonitor() : actualValue;
             expectedValue = lock.getOwner();
@@ -861,6 +870,41 @@ class CodeInfoVerifier {
         ValueInfo illegal = new ValueInfo();
         illegal.type = ValueType.Illegal;
         return illegal;
+    }
+}
+
+@AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
+class MethodTableFirstIDTracker implements LayeredImageSingleton {
+    public final int startingID;
+    public int nextStartingId = -1;
+
+    MethodTableFirstIDTracker() {
+        this(0);
+    }
+
+    static MethodTableFirstIDTracker singleton() {
+        return ImageSingletons.lookup(MethodTableFirstIDTracker.class);
+    }
+
+    private MethodTableFirstIDTracker(int id) {
+        startingID = id;
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
+    }
+
+    @Override
+    public PersistFlags preparePersist(ImageSingletonWriter writer) {
+        assert nextStartingId > 0 : nextStartingId;
+        writer.writeInt("startingID", nextStartingId);
+        return PersistFlags.CREATE;
+    }
+
+    @SuppressWarnings("unused")
+    public static Object createFromLoader(ImageSingletonLoader loader) {
+        return new MethodTableFirstIDTracker(loader.readInt("startingID"));
     }
 }
 

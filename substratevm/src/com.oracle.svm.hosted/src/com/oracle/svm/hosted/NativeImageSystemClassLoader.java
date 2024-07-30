@@ -65,6 +65,10 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         systemIOWrappers.replaceSystemOutErr();
     }
 
+    /*
+     * Note this is not an image singleton; this ClassLoader is installed while starting
+     * NativeImageGeneratorRunner.
+     */
     public static NativeImageSystemClassLoader singleton() {
         ClassLoader loader = ClassLoader.getSystemClassLoader();
         if (loader instanceof NativeImageSystemClassLoader) {
@@ -87,14 +91,17 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         this.nativeImageClassLoader = nativeImageClassLoader;
     }
 
-    private boolean isNativeImageClassLoader(ClassLoader current, ClassLoader c) {
-        ClassLoader loader = current;
+    /**
+     * Checks class loaders match. {@code start} is searched up to the system class loader.
+     */
+    private boolean matchesClassLoaderOrParent(ClassLoader start, ClassLoader candidate) {
+        ClassLoader current = start;
         do {
-            if (loader == c) {
+            if (current == candidate) {
                 return true;
             }
-            loader = loader.getParent();
-        } while (loader != defaultSystemClassLoader);
+            current = current.getParent();
+        } while (current != defaultSystemClassLoader);
         return false;
     }
 
@@ -103,12 +110,12 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         if (loader == null) {
             return false;
         }
-        return isNativeImageClassLoader(nativeImageClassLoader, c);
+        return matchesClassLoaderOrParent(nativeImageClassLoader, c);
     }
 
     public boolean isDisallowedClassLoader(ClassLoader c) {
         for (ClassLoader disallowedClassLoader : disallowedClassLoaders) {
-            if (isNativeImageClassLoader(disallowedClassLoader, c)) {
+            if (matchesClassLoaderOrParent(disallowedClassLoader, c)) {
                 return true;
             }
         }

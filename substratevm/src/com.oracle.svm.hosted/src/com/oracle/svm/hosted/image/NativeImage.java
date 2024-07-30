@@ -108,6 +108,7 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.RelocatableBuffer.Info;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.PriorLayerSymbolTracker;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -508,6 +509,11 @@ public abstract class NativeImage extends AbstractImage {
             defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() - heapLayout.getStartOffset());
             defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() + heapLayout.getWritableSize() - heapLayout.getStartOffset());
 
+            var symbolTracker = PriorLayerSymbolTracker.singletonOrNull();
+            if (symbolTracker != null) {
+                symbolTracker.defineSymbols(objectFile);
+            }
+
             // Mark the sections with the relocations from the maps.
             markRelocationSitesFromBuffer(textBuffer, textImpl);
             markRelocationSitesFromBuffer(roDataBuffer, roDataImpl);
@@ -603,6 +609,14 @@ public abstract class NativeImage extends AbstractImage {
         }
     }
 
+    private static boolean checkMethodPointerRelocationKind(Info info) {
+        int wordSize = ConfigurationValues.getTarget().arch.getWordSize();
+        int relocationSize = info.getRelocationSize();
+        RelocationKind relocationKind = info.getRelocationKind();
+
+        return (relocationSize == wordSize && RelocationKind.isDirect(relocationKind)) || (relocationSize == 4 && RelocationKind.isPCRelative(relocationKind));
+    }
+
     private void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         assert info.getTargetObject() instanceof CFunctionPointer : "Wrong type for FunctionPointer relocation: " + info.getTargetObject().toString();
 
@@ -617,10 +631,10 @@ public abstract class NativeImage extends AbstractImage {
         if (!target.isCompiled() && !target.wrapped.isInBaseLayer()) {
             target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
         }
+
+        assert checkMethodPointerRelocationKind(info);
         // A reference to a method. Mark the relocation site using the symbol name.
-        Architecture arch = ConfigurationValues.getTarget().arch;
-        assert (arch instanceof AArch64) || RelocationKind.getDirect(arch.getWordSize()) == info.getRelocationKind();
-        relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, methodPointer.isAbsolute());
+        relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, info.getAddend(), methodPointer.isAbsolute());
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {
@@ -893,8 +907,6 @@ public abstract class NativeImage extends AbstractImage {
             return getContent();
         }
 
-        protected abstract void defineBaseLayerMethodSymbol(String name, Element section, HostedMethod method);
-
         protected abstract void defineMethodSymbol(String name, boolean global, Element section, HostedMethod method, CompilationResult result);
 
         @SuppressWarnings("try")
@@ -937,10 +949,10 @@ public abstract class NativeImage extends AbstractImage {
                 // 1. fq with return type
 
                 if (codeCache.getBaseLayerMethods() != null) {
-                    // define base layer methods symbols
+                    // register base layer methods symbols
+                    var symbolTracker = PriorLayerSymbolTracker.singletonOrNull();
                     for (HostedMethod current : codeCache.getBaseLayerMethods()) {
-                        final String symName = localSymbolNameForMethod(current);
-                        defineBaseLayerMethodSymbol(symName, textSection, current);
+                        symbolTracker.registerPriorLayerReference(current);
                     }
                 }
 

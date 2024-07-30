@@ -53,7 +53,7 @@ import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
@@ -150,7 +150,7 @@ public class EarlyGVNTest extends GraalCompilerTest {
             if (count.invariantCount != 0) {
                 int invariantCount = count.count;
                 for (Node node : nodes) {
-                    for (LoopEx loop : loops.loops()) {
+                    for (Loop loop : loops.loops()) {
                         if (loop.whole().contains(node)) {
                             invariantCount--;
                             break;

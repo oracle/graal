@@ -35,6 +35,7 @@ import java.util.Locale;
 import java.util.ServiceLoader;
 import java.util.regex.Pattern;
 
+import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -45,29 +46,46 @@ import org.graalvm.collections.MapCursor;
  */
 public class OptionsParser {
 
-    private static volatile List<OptionDescriptors> cachedOptionDescriptors;
+    /**
+     * The set of compiler options available in libgraal. These correspond to the reachable
+     * {@link OptionKey}s discovered during Native Image static analysis. This field is only
+     * non-null when {@link OptionsParser} is loaded by the GuestGraal class loader.
+     */
+    private static EconomicMap<String, OptionDescriptor> libgraalOptionDescriptors;
 
     /**
      * Gets an iterable of available {@link OptionDescriptors}.
      */
-    @ExcludeFromJacocoGeneratedReport("contains libgraal only path")
+    @ExcludeFromJacocoGeneratedReport("contains libgraal-only path")
     public static Iterable<OptionDescriptors> getOptionsLoader() {
-        if (IS_IN_NATIVE_IMAGE || cachedOptionDescriptors != null) {
-            return cachedOptionDescriptors;
+        if (IS_IN_NATIVE_IMAGE) {
+            GraalError.guarantee(libgraalOptionDescriptors != null, "missing options");
+            return List.of(new OptionDescriptorsMap(libgraalOptionDescriptors));
         }
-        /*
-         * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
-         * Modules that depend on and extend Graal are loaded by the app class loader. As such, we
-         * need to start the provider search at the app class loader instead of the platform class
-         * loader.
-         */
-        return ServiceLoader.load(OptionDescriptors.class, ClassLoader.getSystemClassLoader());
+        boolean inGuestGraal = libgraalOptionDescriptors != null;
+        if (inGuestGraal && IS_BUILDING_NATIVE_IMAGE) {
+            /*
+             * Graal code is being run in the context of the GuestGraal loader while building
+             * libgraal so use the GuestGraal loader to load the OptionDescriptors.
+             */
+            ClassLoader myCL = OptionsParser.class.getClassLoader();
+            return ServiceLoader.load(OptionDescriptors.class, myCL);
+        } else {
+            /*
+             * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
+             * Modules that depend on and extend Graal are loaded by the app class loader so use it
+             * (instead of the platform class loader) to load the OptionDescriptors.
+             */
+            ClassLoader loader = ClassLoader.getSystemClassLoader();
+            return ServiceLoader.load(OptionDescriptors.class, loader);
+        }
     }
 
     @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
-    public static void setCachedOptionDescriptors(List<OptionDescriptors> list) {
-        assert IS_BUILDING_NATIVE_IMAGE : "Used to pre-initialize the option descriptors during native image generation";
-        OptionsParser.cachedOptionDescriptors = list;
+    public static void setLibgraalOptionDescriptors(EconomicMap<String, OptionDescriptor> descriptors) {
+        GraalError.guarantee(IS_BUILDING_NATIVE_IMAGE, "Can only set libgraal compiler options when building libgraal");
+        GraalError.guarantee(libgraalOptionDescriptors == null, "Libgraal compiler options must be set exactly once");
+        OptionsParser.libgraalOptionDescriptors = descriptors;
     }
 
     /**
@@ -175,35 +193,25 @@ public class OptionsParser {
 
         OptionDescriptor desc = lookup(loader, name);
         if (desc == null) {
-            List<OptionDescriptor> matches = fuzzyMatch(loader, name);
             Formatter msg = new Formatter();
-            msg.format("Could not find option %s", name);
-            if (!matches.isEmpty()) {
-                msg.format("%nDid you mean one of the following?");
-                for (OptionDescriptor match : matches) {
-                    msg.format("%n    %s=<value>", match.getName());
+            if (name.equals("PrintGraphFile")) {
+                msg.format("Option PrintGraphFile has been removed - use PrintGraph=File instead");
+            } else {
+                List<OptionDescriptor> matches = fuzzyMatch(loader, name);
+                msg.format("Could not find option %s", name);
+                if (!matches.isEmpty()) {
+                    msg.format("%nDid you mean one of the following?");
+                    for (OptionDescriptor match : matches) {
+                        msg.format("%n    %s=<value>", match.getName());
+                    }
                 }
             }
-            IllegalArgumentException iae = new IllegalArgumentException(msg.toString());
-            if (isFromLibGraal(iae)) {
-                msg.format("%nIf %s is a libgraal option, it must be specified with '-Djdk.libgraal.%s' as opposed to '-Djdk.graal.%s'.", name, name, name);
-                iae = new IllegalArgumentException(msg.toString());
-            }
-            throw iae;
+            throw new IllegalArgumentException(msg.toString());
         }
 
         Object value = parseOptionValue(desc, uncheckedValue);
 
         desc.getOptionKey().update(values, value);
-    }
-
-    private static boolean isFromLibGraal(Throwable t) {
-        for (StackTraceElement frame : t.getStackTrace()) {
-            if ("org.graalvm.libgraal.LibGraal".equals(frame.getClassName())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**

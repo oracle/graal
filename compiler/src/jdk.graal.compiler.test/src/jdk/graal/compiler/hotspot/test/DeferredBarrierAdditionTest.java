@@ -27,6 +27,7 @@ package jdk.graal.compiler.hotspot.test;
 import static org.junit.Assume.assumeTrue;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -71,9 +72,15 @@ public class DeferredBarrierAdditionTest extends HotSpotGraalCompilerTest {
         return a;
     }
 
+    @Before
+    public void checkGC() {
+        assumeTrue("this test only works for G1 and the serial collector",
+                        config.gc == HotSpotGraalRuntime.HotSpotGC.G1 || config.gc == HotSpotGraalRuntime.HotSpotGC.Serial);
+    }
+
     @Test
     public void testGroupAllocation() throws Exception {
-        testHelper("testCrossReferences", config.gc == HotSpotGraalRuntime.HotSpotGC.Z ? 0 : 1, getInitialOptions());
+        testHelper("testCrossReferences", config.gc == HotSpotGraalRuntime.HotSpotGC.X ? 0 : 1, getInitialOptions());
     }
 
     @SuppressWarnings("try")

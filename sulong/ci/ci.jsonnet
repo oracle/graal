@@ -18,15 +18,16 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     ],
   },
 
-  gate(standalone=false):: sc.gate + {
+  gate(standalone=false, style=false):: sc.gate + {
     setup+: [
-      ['apply-predicates', '--delete-excluded', '--pattern-root', '..'] # we are in the sulong directory
+      ['apply-predicates', '--delete-excluded', '--process-hidden', '--pattern-root', '..'] # we are in the sulong directory
         + (if std.objectHasAll(self.guard, 'excludes') then ['--exclude=' + e for e in  self.guard.excludes] else [])
         + ['--include=' + e for e in  self.guard.includes]
     ],
     guard+: {
-      includes: [
+      includes+: [
         # sulong and its dependencies
+        "<graal>/.git/**",
         "<graal>/sdk/**",
         "<graal>/truffle/**",
         "<graal>/sulong/**",
@@ -40,6 +41,9 @@ local sc = (import "ci_common/sulong-common.jsonnet");
         "<graal>/substratevm/**",
         # vm and its dependencies
         "<graal>/vm/**",
+      ] else []) + (if style then [
+        "<graal>/.clang-format",
+        "<graal>/pyproject.toml",
       ] else []),
     },
   },
@@ -55,7 +59,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
   },
 
   regular_builds:: [
-    $.sulong + $.gate() + sc.labsjdkLatest + sc.linux_amd64 + sc.style + { name: "gate-sulong-style-fullbuild-jdk-latest-linux-amd64" },
+    $.sulong + $.gate(style=true) + sc.labsjdkLatest + sc.linux_amd64 + sc.style + { name: "gate-sulong-style-fullbuild-jdk-latest-linux-amd64" },
     $.sulong + $.gate(standalone=true) + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.gateTags("build,sulongMisc,parser") + $.sulong_test_toolchain + { name: "gate-sulong-misc-parser-jdk-latest-linux-amd64" },
     $.sulong + $.gate() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c-jdk-latest-linux-amd64", timelimit: "45:00" },
     $.sulong + $.gate() + sc.labsjdkLatest + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_cpp") + { name: "gate-sulong-gcc_cpp-jdk-latest-linux-amd64", timelimit: "45:00" },

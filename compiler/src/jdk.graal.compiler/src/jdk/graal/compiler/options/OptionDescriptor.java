@@ -197,6 +197,16 @@ public final class OptionDescriptor {
     }
 
     /**
+     * Determines if this descriptor is service loaded.
+     *
+     * @see OptionGroup#registerAsService()
+     */
+    public boolean isServiceLoaded() {
+        OptionGroup group = getDeclaringClass().getAnnotation(OptionGroup.class);
+        return group == null || group.registerAsService();
+    }
+
+    /**
      * Returns the deprecation reason and the recommended replacement.
      */
     public String getDeprecationMessage() {

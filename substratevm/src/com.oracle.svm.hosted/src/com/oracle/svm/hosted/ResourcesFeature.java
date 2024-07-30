@@ -22,7 +22,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
@@ -85,9 +84,9 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.CompressedGlobTrie;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobTrieNode;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobUtils;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -141,17 +140,17 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * @see NativeImageResourceFileAttributesView
  */
 @AutomaticallyRegisteredFeature
-public final class ResourcesFeature implements InternalFeature {
+public class ResourcesFeature implements InternalFeature {
 
     static final String MODULE_NAME_ALL_UNNAMED = "ALL-UNNAMED";
 
     public static class Options {
         @OptionMigrationMessage("Use a resource-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead.")//
         @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeResources = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Regexp to match names of resources to be excluded from the image.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ExcludeResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ExcludeResources = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
         private static final String EMBEDDED_RESOURCES_FILE_NAME = "embedded-resources.json";
         @Option(help = "Create a " + EMBEDDED_RESOURCES_FILE_NAME + " file in the build directory. The output conforms to the JSON schema located at: " +
@@ -338,7 +337,7 @@ public final class ResourcesFeature implements InternalFeature {
                 alreadyProcessedResources.add(url.toString());
                 try {
                     boolean fromJar = url.getProtocol().equalsIgnoreCase("jar");
-                    boolean isDirectory = ResourcesUtils.resourceIsDirectory(url, fromJar, resourcePath);
+                    boolean isDirectory = ResourcesUtils.resourceIsDirectory(url, fromJar);
                     if (isDirectory) {
                         String content = ResourcesUtils.getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
                         Resources.singleton().registerDirectoryResource(null, resourcePath, content, fromJar);
@@ -387,6 +386,10 @@ public final class ResourcesFeature implements InternalFeature {
 
     private static ResourcesRegistryImpl resourceRegistryImpl() {
         return (ResourcesRegistryImpl) ImageSingletons.lookup(ResourcesRegistry.class);
+    }
+
+    protected boolean collectEmbeddedResourcesInfo() {
+        return Options.GenerateEmbeddedResourcesFile.getValue();
     }
 
     @Override
@@ -632,6 +635,11 @@ public final class ResourcesFeature implements InternalFeature {
 
             BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, reportLocation);
         }
+
+        /* prepare resources GlobTrie for runtime */
+        GlobTrieNode root = ImageSingletons.lookup(GlobTrieNode.class);
+        CompressedGlobTrie.removeNodes(root, (type) -> !access.isReachable(access.findClassByName(type)));
+        CompressedGlobTrie.finalize(root);
     }
 
     @Override

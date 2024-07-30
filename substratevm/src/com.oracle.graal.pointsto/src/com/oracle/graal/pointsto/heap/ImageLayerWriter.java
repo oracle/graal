@@ -69,6 +69,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -86,7 +87,6 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.FileDumpingUtil;
 
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -99,10 +99,7 @@ public class ImageLayerWriter {
     public static final String TYPE_SWITCH_SUBSTRING = "$$TypeSwitch";
     private final ImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private ImageHeap imageHeap;
-    /**
-     * Contains the same array as StringInternSupport#imageInternedStrings, which is sorted.
-     */
-    private String[] imageInternedStrings;
+    private IdentityHashMap<String, String> internedStringsIdentityMap;
 
     protected EconomicMap<String, Object> jsonMap = EconomicMap.create();
     protected List<Integer> constantsToRelink;
@@ -120,8 +117,8 @@ public class ImageLayerWriter {
         this.constantsToRelink = new ArrayList<>();
     }
 
-    public void setImageInternedStrings(String[] imageInternedStrings) {
-        this.imageInternedStrings = imageInternedStrings;
+    public void setInternedStringsIdentityMap(IdentityHashMap<String, String> map) {
+        this.internedStringsIdentityMap = map;
     }
 
     public void setImageHeap(ImageHeap heap) {
@@ -338,16 +335,13 @@ public class ImageLayerWriter {
         }
     }
 
-    @SuppressFBWarnings(value = "ES", justification = "Reference equality check needed to detect intern status")
     public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, BigBang bb, Class<?> clazz, JavaConstant hostedObject, int id) {
         if (clazz.equals(String.class)) {
             String value = bb.getSnippetReflectionProvider().asObject(String.class, hostedObject);
-            int stringIndex = Arrays.binarySearch(imageInternedStrings, value);
-            /*
-             * Arrays.binarySearch compares the strings by value. A comparison by reference is
-             * needed here as only interned strings are relinked.
-             */
-            if (stringIndex >= 0 && imageInternedStrings[stringIndex] == value) {
+            if (internedStringsIdentityMap.containsKey(value)) {
+                /*
+                 * Interned strings must be relinked.
+                 */
                 constantMap.put(VALUE_TAG, value);
                 constantsToRelink.add(id);
             }

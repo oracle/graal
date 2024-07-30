@@ -163,7 +163,7 @@ public class RedefineAddedField extends Field {
             getCompatibleField().setObject(obj, value, forceVolatile);
         } else {
             if (getDeclaringKlass().getContext().anyHierarchyChanged()) {
-                checkSetValueValifity(value);
+                checkSetValueValidity(value);
             }
             FieldStorageObject storageObject = getStorageObject(obj);
             if (forceVolatile) {

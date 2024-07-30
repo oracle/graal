@@ -50,9 +50,14 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  */
 public final class MathUtils {
 
-    private static final double LN_2 = 6.93147180559945286227e-01; // Math.log(2)
-    private static final double TWO_POW_M28 = 0x1.0p-28; // 2**-28
-    private static final double TWO_POW_P28 = 0x1.0p+28; // 2**28
+    /** The result of {@link Math#log Math.log(2)}. */
+    private static final double LN_2 = 6.93147180559945286227e-01; // 0x3fe62e42_fefa39ef
+    private static final double TWO_POW_M28 = 0x1.0p-28; // 2**-28, 0x3e300000_00000000
+    private static final double TWO_POW_P28 = 0x1.0p+28; // 2**28, 0x41b00000_00000000
+    /** Comparing >= against this value is equivalent to comparing the high word > 0x41b00000. */
+    private static final double TWO_POW_P28_HI = 0x1.00001p+28; // 0x41b00001_00000000
+    /** Comparing >= against this value is equivalent to comparing the high word > 0x40000000. */
+    private static final double TWO_HI = 0x1.00001p+1; // 0x40000001_00000000
 
     private MathUtils() {
     }
@@ -85,12 +90,15 @@ public final class MathUtils {
         }
         double ax = Math.abs(x);
         if (ax < TWO_POW_M28) { /* |x| < 2**-28 */
+            // if (ix < 0x3e30_0000)
             return x; /* (huge + x); return x inexact except 0 */
         }
         double w;
-        if (ax > TWO_POW_P28) { /* |x| > 2**28 */
+        if (ax >= TWO_POW_P28_HI) { /* |x| > 2**28 */
+            // if (ix > 0x41b0_0000)
             w = Math.log(ax) + LN_2;
-        } else if (ax > 2.0) { /* 2**28 > |x| > 2.0 */
+        } else if (ax >= TWO_HI) { /* 2**28 > |x| > 2.0 */
+            // if (ix > 0x4000_0000)
             w = Math.log(2.0 * ax + 1.0 / (Math.sqrt(x * x + 1.0) + ax));
         } else { /* 2.0 >= |x| > 2**-28 */
             double t = x * x;
@@ -128,6 +136,7 @@ public final class MathUtils {
         if (x < 1.0) { /* x < 1 */
             return (x - x) / (x - x); /* NaN */
         } else if (x >= TWO_POW_P28) { /* x >= 2**28 */
+            // if (hx >= 0x41b0_0000)
             if (!Double.isFinite(x)) { /* x is inf or NaN */
                 return x + x;
             } else {
@@ -135,7 +144,8 @@ public final class MathUtils {
             }
         } else if (x == 1.0) {
             return 0.0; /* acosh(1) = 0 */
-        } else if (x > 2.0) { /* 2**28 > x > 2 */
+        } else if (x >= TWO_HI) { /* 2**28 > x > 2 */
+            // if (hx > 0x4000_0000)
             double t = x * x;
             return Math.log(2.0 * x - 1.0 / (x + Math.sqrt(t - 1.0)));
         } else { /* 1 < x <= 2 */
@@ -181,10 +191,12 @@ public final class MathUtils {
             return x / 0; /* inf */
         }
         if (ax < TWO_POW_M28) { /* x < 2**-28 */
+            // if (ix < 0x3e30_0000)
             return x; /* (huge + x); return x */
         }
         double t;
         if (ax < 0.5) { /* |x| < 0.5 */
+            // if (ix < 0x3fe0_0000)
             t = ax + ax;
             t = 0.5 * Math.log1p(t + t * ax / (1.0 - ax));
         } else {

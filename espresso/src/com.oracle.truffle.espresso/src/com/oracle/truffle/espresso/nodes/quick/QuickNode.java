@@ -29,8 +29,6 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public abstract class QuickNode extends BaseQuickNode {
 
-    public static final QuickNode[] EMPTY_ARRAY = new QuickNode[0];
-
     protected final int top;
 
     private final int callerBCI;

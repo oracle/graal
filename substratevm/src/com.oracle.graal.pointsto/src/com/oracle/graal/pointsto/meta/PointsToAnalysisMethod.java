@@ -244,22 +244,6 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
-    public boolean isImplementationInvokable() {
-        if (!getTypeFlow().flowsGraphCreated()) {
-            // flows for direct roots can be created later
-            return isDirectRootMethod();
-        } else {
-            /*
-             * If only a stub is ever created for this method, then it will not be invoked.
-             *
-             * However, for deopt targets it is possible for a root to temporarily be a stub before
-             * a full flow graph is created.
-             */
-            return !getTypeFlow().getMethodFlowsGraphInfo().isStub() || (isDirectRootMethod() && isDeoptTarget());
-        }
-    }
-
-    @Override
     public void setReturnsAllInstantiatedTypes() {
         super.setReturnsAllInstantiatedTypes();
         assert !getTypeFlow().flowsGraphCreated() : "must call setReturnsAllInstantiatedTypes before typeflow is created";

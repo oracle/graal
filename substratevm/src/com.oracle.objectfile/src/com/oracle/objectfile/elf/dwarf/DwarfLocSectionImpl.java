@@ -34,23 +34,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.debugentry.range.SubRange;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
-import jdk.graal.compiler.debug.DebugContext;
-
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaConstant;
@@ -417,25 +416,40 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     }
 
     private int mapToDwarfReg(int regIdx) {
-        assert regIdx >= 0 : "negative register index!";
-        assert regIdx < dwarfRegMap.length : String.format("register index %d exceeds map range %d", regIdx, dwarfRegMap.length);
-        return dwarfRegMap[regIdx];
+        if (regIdx < 0) {
+            throw new AssertionError("Requesting dwarf register number for negative register index");
+        }
+        if (regIdx >= dwarfRegMap.length) {
+            throw new AssertionError("Register index " + regIdx + " exceeds map range " + dwarfRegMap.length);
+        }
+        int dwarfRegNum = dwarfRegMap[regIdx];
+        if (dwarfRegNum < 0) {
+            throw new AssertionError("Register index " + regIdx + " does not map to valid dwarf register number");
+        }
+        return dwarfRegNum;
     }
 
     private void initDwarfRegMap() {
         if (dwarfSections.elfMachine == ELFMachine.AArch64) {
-            dwarfRegMap = GRAAL_AARCH64_TO_DWARF_REG_MAP;
+            dwarfRegMap = graalToDwarfRegMap(DwarfRegEncodingAArch64.values());
             dwarfStackRegister = DwarfRegEncodingAArch64.SP.getDwarfEncoding();
         } else {
             assert dwarfSections.elfMachine == ELFMachine.X86_64 : "must be";
-            dwarfRegMap = GRAAL_X86_64_TO_DWARF_REG_MAP;
+            dwarfRegMap = graalToDwarfRegMap(DwarfRegEncodingAMD64.values());
             dwarfStackRegister = DwarfRegEncodingAMD64.RSP.getDwarfEncoding();
         }
     }
 
+    private interface DwarfRegEncoding {
+
+        int getDwarfEncoding();
+
+        int getGraalEncoding();
+    }
+
     // Register numbers used by DWARF for AArch64 registers encoded
     // along with their respective GraalVM compiler number.
-    public enum DwarfRegEncodingAArch64 {
+    public enum DwarfRegEncodingAArch64 implements DwarfRegEncoding {
         R0(0, AArch64.r0.number),
         R1(1, AArch64.r1.number),
         R2(2, AArch64.r2.number),
@@ -511,28 +525,22 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             this.graalEncoding = graalEncoding;
         }
 
-        public static int graalOrder(DwarfRegEncodingAArch64 e1, DwarfRegEncodingAArch64 e2) {
-            return Integer.compare(e1.graalEncoding, e2.graalEncoding);
-        }
-
+        @Override
         public int getDwarfEncoding() {
             return dwarfEncoding;
         }
-    }
 
-    // Map from compiler AArch64 register numbers to corresponding DWARF AArch64 register encoding.
-    // Register numbers for compiler general purpose and float registers occupy index ranges 0-31
-    // and 34-65 respectively. Table entries provided the corresponding number used by DWARF to
-    // identify the same register. Note that the table includes entries for ZR (32) and SP (33)
-    // even though we should not see those register numbers appearing in location values.
-    private static final int[] GRAAL_AARCH64_TO_DWARF_REG_MAP = Arrays.stream(DwarfRegEncodingAArch64.values()).sorted(DwarfRegEncodingAArch64::graalOrder)
-                    .mapToInt(DwarfRegEncodingAArch64::getDwarfEncoding).toArray();
+        @Override
+        public int getGraalEncoding() {
+            return graalEncoding;
+        }
+    }
 
     // Register numbers used by DWARF for AMD64 registers encoded
     // along with their respective GraalVM compiler number. n.b. some of the initial
     // 8 general purpose registers have different Dwarf and GraalVM encodings. For
     // example the compiler number for RDX is 3 while the DWARF number for RDX is 1.
-    public enum DwarfRegEncodingAMD64 {
+    public enum DwarfRegEncodingAMD64 implements DwarfRegEncoding {
         RAX(0, AMD64.rax.number),
         RDX(1, AMD64.rdx.number),
         RCX(2, AMD64.rcx.number),
@@ -602,16 +610,25 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             return Integer.compare(e1.graalEncoding, e2.graalEncoding);
         }
 
+        @Override
         public int getDwarfEncoding() {
             return dwarfEncoding;
         }
+
+        @Override
+        public int getGraalEncoding() {
+            return graalEncoding;
+        }
     }
 
-    // Map from compiler X86_64 register numbers to corresponding DWARF AMD64 register encoding.
-    // Register numbers for general purpose and float registers occupy index ranges 0-15 and 16-31
-    // respectively. Table entries provide the corresponding number used by DWARF to identify the
-    // same register.
-    private static final int[] GRAAL_X86_64_TO_DWARF_REG_MAP = Arrays.stream(DwarfRegEncodingAMD64.values()).sorted(DwarfRegEncodingAMD64::graalOrder).mapToInt(DwarfRegEncodingAMD64::getDwarfEncoding)
-                    .toArray();
-
+    // Map from compiler register numbers to corresponding DWARF register numbers.
+    private static int[] graalToDwarfRegMap(DwarfRegEncoding[] encoding) {
+        int size = Arrays.stream(encoding).mapToInt(DwarfRegEncoding::getGraalEncoding).max().orElseThrow() + 1;
+        int[] regMap = new int[size];
+        Arrays.fill(regMap, -1);
+        for (DwarfRegEncoding regEncoding : encoding) {
+            regMap[regEncoding.getGraalEncoding()] = regEncoding.getDwarfEncoding();
+        }
+        return regMap;
+    }
 }

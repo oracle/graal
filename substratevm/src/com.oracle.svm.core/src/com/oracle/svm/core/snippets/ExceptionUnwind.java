@@ -195,13 +195,15 @@ public abstract class ExceptionUnwind {
             VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Exception unwinding must not encounter unknown frame");
 
             Pointer sp = frame.getSP();
-            DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(frame);
-            if (deoptFrame != null) {
-                /* Deoptimization entry points always have an exception handler. */
-                deoptTakeExceptionInterruptible(deoptFrame);
-                jumpToHandler(sp, DeoptimizationSupport.getDeoptStubPointer(), hasCalleeSavedRegisters);
-                UnreachableNode.unreachable();
-                return; /* Unreachable */
+            if (DeoptimizationSupport.enabled()) {
+                DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(frame);
+                if (deoptFrame != null) {
+                    /* Deoptimization entry points always have an exception handler. */
+                    deoptTakeExceptionInterruptible(deoptFrame);
+                    jumpToHandler(sp, DeoptimizationSupport.getDeoptStubPointer(), hasCalleeSavedRegisters);
+                    UnreachableNode.unreachable();
+                    return; /* Unreachable */
+                }
             }
 
             long exceptionOffset = frame.getExceptionOffset();
@@ -213,6 +215,7 @@ public abstract class ExceptionUnwind {
             }
 
             /* No handler found in this frame, walk to caller frame. */
+            VMError.guarantee(!JavaFrames.isEntryPoint(frame), "Entry point methods must have an exception handler.");
             hasCalleeSavedRegisters = CodeInfoQueryResult.hasCalleeSavedRegisters(frame.getEncodedFrameSize());
         }
     }

@@ -46,8 +46,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -80,6 +82,7 @@ import com.oracle.truffle.tools.chromeinspector.commands.Params;
 import com.oracle.truffle.tools.chromeinspector.commands.Result;
 import com.oracle.truffle.tools.chromeinspector.domains.DebuggerDomain;
 import com.oracle.truffle.tools.chromeinspector.events.Event;
+import com.oracle.truffle.tools.chromeinspector.instrument.InspectorInstrument;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession.CommandPostProcessor;
 import com.oracle.truffle.tools.chromeinspector.types.CallArgument;
@@ -111,7 +114,8 @@ public final class InspectorDebugger extends DebuggerDomain {
     private static final AtomicLong lastUniqueId = new AtomicLong();
 
     private final InspectorExecutionContext context;
-    private final Object suspendLock = new Object();
+    private final Lock suspendLock = new ReentrantLock();
+    private final Condition suspendLockCondition = suspendLock.newCondition();
     private volatile SuspendedCallbackImpl suspendedCallback;
     private volatile DebuggerSession debuggerSession;
     private volatile ScriptsHandler scriptsHandler;
@@ -127,23 +131,26 @@ public final class InspectorDebugger extends DebuggerDomain {
     private final BlockingQueue<CancellableRunnable> suspendThreadExecutables = new LinkedBlockingQueue<>();
     private final ReadWriteLock domainLock;
     private final long uniqueId = lastUniqueId.incrementAndGet();
+    private final Runnable sessionDisposal;
 
-    public InspectorDebugger(InspectorExecutionContext context, boolean suspend, ReadWriteLock domainLock) {
+    public InspectorDebugger(InspectorExecutionContext context, boolean suspend, ReadWriteLock domainLock, Runnable sessionDisposal) {
         this.context = context;
         this.domainLock = domainLock;
+        this.sessionDisposal = sessionDisposal;
         context.setSuspendThreadExecutor(new SuspendedThreadExecutor() {
             @Override
             public void execute(CancellableRunnable executable) throws NoSuspendedThreadException {
+                suspendLock.lock();
                 try {
-                    synchronized (suspendLock) {
-                        if (running) {
-                            NoSuspendedThreadException.raise();
-                        }
-                        suspendThreadExecutables.put(executable);
-                        suspendLock.notifyAll();
+                    if (running) {
+                        NoSuspendedThreadException.raise();
                     }
+                    suspendThreadExecutables.put(executable);
+                    suspendLockCondition.signalAll();
                 } catch (InterruptedException iex) {
                     throw new RuntimeException(iex);
+                } finally {
+                    suspendLock.unlock();
                 }
             }
         });
@@ -196,11 +203,14 @@ public final class InspectorDebugger extends DebuggerDomain {
         context.releaseScriptsHandler();
         scriptsHandler = null;
         breakpointsHandler = null;
-        synchronized (suspendLock) {
+        suspendLock.lock();
+        try {
             if (!running) {
                 running = true;
-                suspendLock.notifyAll();
+                suspendLockCondition.signalAll();
             }
+        } finally {
+            suspendLock.unlock();
         }
     }
 
@@ -394,11 +404,14 @@ public final class InspectorDebugger extends DebuggerDomain {
     }
 
     private void doResume() {
-        synchronized (suspendLock) {
+        suspendLock.lock();
+        try {
             if (!running) {
                 running = true;
-                suspendLock.notifyAll();
+                suspendLockCondition.signalAll();
             }
+        } finally {
+            suspendLock.unlock();
         }
         // Wait for onSuspend() to finish
         try {
@@ -1103,8 +1116,11 @@ public final class InspectorDebugger extends DebuggerDomain {
                             return;
                         }
                     }
-                    synchronized (suspendLock) {
+                    suspendLock.lock();
+                    try {
                         running = false;
+                    } finally {
+                        suspendLock.unlock();
                     }
                     if (!runningUnwind) {
                         scriptsHandler.assureLoaded(ss.getSource());
@@ -1154,13 +1170,25 @@ public final class InspectorDebugger extends DebuggerDomain {
                 List<CancellableRunnable> executables;
                 for (;;) {
                     executables = null;
-                    synchronized (suspendLock) {
+                    suspendLock.lock();
+                    try {
                         if (!running && suspendThreadExecutables.isEmpty()) {
                             if (context.isSynchronous()) {
                                 running = true;
                             } else {
                                 try {
-                                    suspendLock.wait();
+                                    Long timeout = context.getSuspensionTimeout();
+                                    if (timeout == null) {
+                                        suspendLockCondition.await();
+                                    } else {
+                                        boolean success = suspendLockCondition.await(timeout, TimeUnit.MILLISECONDS);
+                                        if (!success) {
+                                            context.getInfoOutput().println("Timeout of " + timeout + "ms as specified via '--" + InspectorInstrument.INSTRUMENT_ID +
+                                                            ".SuspensionTimeout' was reached. The debugger session is disconnected.");
+                                            sessionDisposal.run();
+                                            return;
+                                        }
+                                    }
                                 } catch (InterruptedException ex) {
                                 }
                             }
@@ -1177,6 +1205,8 @@ public final class InspectorDebugger extends DebuggerDomain {
                             context.setSuspendedInfo(null);
                             break;
                         }
+                    } finally {
+                        suspendLock.unlock();
                     }
                     if (executables != null) {
                         for (CancellableRunnable r : executables) {

@@ -48,7 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
 
@@ -356,8 +356,8 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = NO_CALL;
     volatile List<OptimizedCallTarget> blockCompilations;
-    public final int id;
-    private static final AtomicInteger idCounter = new AtomicInteger(0);
+    public final long id;
+    private static final AtomicLong ID_COUNTER = new AtomicLong(0);
 
     @SuppressWarnings("this-escape")
     protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
@@ -370,7 +370,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
         // node(s).
         this.uninitializedNodeCount = uninitializedNodeCount(rootNode);
-        id = idCounter.getAndIncrement();
+        id = ID_COUNTER.getAndIncrement();
     }
 
     protected OptimizedCallTarget(EngineData engine) {
@@ -382,7 +382,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         this.sourceCallTarget = null;
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
         // node(s).
-        id = idCounter.getAndIncrement();
+        id = ID_COUNTER.getAndIncrement();
     }
 
     private int uninitializedNodeCount(RootNode rootNode) {
@@ -624,7 +624,18 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return profiledPERoot(args);
     }
 
+    @SuppressWarnings("unused")
+    private static void ensureStackSpace(long stackSpace) {
+        /*
+         * Intentionally empty. It does nothing on HotSpot. On SVM it is substituted by a method
+         * that actually does a stack space check.
+         */
+    }
+
     private boolean interpreterCall() {
+        if (TruffleOptions.AOT) {
+            ensureStackSpace(engine.interpreterCallStackHeadRoom);
+        }
         boolean bypassedInstalledCode = false;
         if (isValid()) {
             // Native entry stubs were deoptimized => reinstall.

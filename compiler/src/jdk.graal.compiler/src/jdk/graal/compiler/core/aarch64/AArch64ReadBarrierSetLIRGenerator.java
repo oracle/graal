@@ -37,18 +37,17 @@ import jdk.vm.ci.meta.Value;
 /**
  * AArch64 specific LIR generation for GC barriers.
  */
-public abstract class AArch64ReadBarrierSetLIRGenerator implements ReadBarrierSetLIRGeneratorTool {
+public interface AArch64ReadBarrierSetLIRGenerator extends ReadBarrierSetLIRGeneratorTool {
 
     /**
      * Emit an atomic read-and-write instruction with any required GC barriers.
      */
-    public abstract Value emitAtomicReadAndWrite(LIRGeneratorTool tool, LIRKind readKind, Value address, Value newValue, BarrierType barrierType);
+    Value emitAtomicReadAndWrite(LIRGeneratorTool tool, LIRKind readKind, Value address, Value newValue, BarrierType barrierType);
 
     /**
      * Emit an atomic compare and swap with any required GC barriers.
      */
-    public abstract void emitCompareAndSwapOp(LIRGeneratorTool tool, boolean isLogic, Value address, MemoryOrderMode memoryOrder, AArch64Kind memKind, Variable result,
-                    AllocatableValue allocatableExpectedValue,
-                    AllocatableValue allocatableNewValue, BarrierType barrierType);
+    void emitCompareAndSwapOp(LIRGeneratorTool tool, boolean isLogic, Value address, MemoryOrderMode memoryOrder, AArch64Kind memKind, Variable result,
+                    AllocatableValue allocatableExpectedValue, AllocatableValue allocatableNewValue, BarrierType barrierType);
 
 }

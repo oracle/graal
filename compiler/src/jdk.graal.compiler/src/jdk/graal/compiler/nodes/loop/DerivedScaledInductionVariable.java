@@ -41,13 +41,13 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     protected final ValueNode scale;
     protected final ValueNode value;
 
-    public DerivedScaledInductionVariable(LoopEx loop, InductionVariable base, ValueNode scale, ValueNode value) {
+    public DerivedScaledInductionVariable(Loop loop, InductionVariable base, ValueNode scale, ValueNode value) {
         super(loop, base);
         this.scale = scale;
         this.value = value;
     }
 
-    public DerivedScaledInductionVariable(LoopEx loop, InductionVariable base, NegateNode value) {
+    public DerivedScaledInductionVariable(Loop loop, InductionVariable base, NegateNode value) {
         super(loop, base);
         this.scale = ConstantNode.forIntegerStamp(value.stamp(NodeView.DEFAULT), -1, value.graph());
         this.value = value;

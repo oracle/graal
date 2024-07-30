@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,10 @@ package jdk.graal.compiler.core.test.inlining;
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
 import org.graalvm.collections.EconomicSet;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestRule;
+
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.TTY;
@@ -44,14 +48,10 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
-
+import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.Unsafe;
 
 public class NestedLoopEffectsPhaseComplexityTest extends GraalCompilerTest {
 
@@ -90,7 +90,7 @@ public class NestedLoopEffectsPhaseComplexityTest extends GraalCompilerTest {
     private static int InliningCountLowerBound = 1;
     private static int InliningCountUpperBound = 32;
 
-    @Rule public TestRule timeout = createTimeoutSeconds(120);
+    @Rule public TestRule timeout = createTimeoutSeconds(240);
 
     @Test
     public void inlineDirectRecursiveLoopCallUnsafeLoad() {

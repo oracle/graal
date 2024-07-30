@@ -93,7 +93,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
                 for (int i = 0; i < arguments.length; i++) {
                     constArgsWithReceiver[i] = arguments[i].isConstant();
                 }
-                policyScope = policy.openCalleeScope(cast(caller).policyScope, method);
+                policyScope = policy.openCalleeScope(cast(caller).policyScope, (AnalysisMethod) caller.method, method);
                 if (graph.getDebug().isLogEnabled()) {
                     graph.getDebug().logv("  ".repeat(inliningDepth) + "openCalleeScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }

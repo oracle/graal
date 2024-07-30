@@ -8,14 +8,17 @@
 
   local hotspot_amd64_builds = [
     c.weekly + hw.e3 + jdk + cc.c2 + suite
-  for jdk in cc.product_jdks
+  for jdk in cc.jdks_of_interest
   for suite in bench.groups.all_suites
   ],
 
   local hotspot_aarch64_builds = [
     c.weekly + hw.a12c + jdk + cc.c2 + suite
-  for jdk in cc.product_jdks
+  for jdk in cc.jdks_of_interest
   for suite in bench.groups.main_suites
+  ] + [
+    c.monthly + hw.a12c + jdk + cc.c2 + bench.specjbb2015,
+  for jdk in cc.product_jdks
   ],
 
   local hotspot_profiling_builds = std.flattenArrays([
@@ -31,7 +34,7 @@
 
   local weekly_forks_amd64_builds = std.flattenArrays([
     bc.generate_fork_builds(c.weekly + hw.e3 + jdk + cc.c2 + suite)
-  for jdk in cc.jdks_of_interest
+  for jdk in cc.product_jdks
   for suite in bench.groups.weekly_forks_suites
   ]),
 

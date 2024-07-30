@@ -372,6 +372,10 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                     }
                 }
                 break;
+            case MATCH_BEGIN:
+            case MATCH_END:
+                ast.getProperties().setMatchBoundaryAssertions();
+                break;
         }
         assertion.setMinPath(assertion.getParent().getMinPath());
         assertion.setMaxPath(assertion.getParent().getMaxPath());

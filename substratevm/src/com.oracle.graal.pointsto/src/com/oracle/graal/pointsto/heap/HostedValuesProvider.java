@@ -76,9 +76,9 @@ public class HostedValuesProvider {
         }
         if (value.getJavaKind() == JavaKind.Object) {
             Object oldObject = asObject(Object.class, value);
-            Object newObject = universe.replaceObject(oldObject);
-            if (newObject != oldObject) {
-                return validateReplacedConstant(forObject(newObject));
+            JavaConstant replacedConstant = universe.replaceObjectWithConstant(oldObject);
+            if (!replacedConstant.equals(value)) {
+                return validateReplacedConstant(replacedConstant);
             }
         }
         return value;

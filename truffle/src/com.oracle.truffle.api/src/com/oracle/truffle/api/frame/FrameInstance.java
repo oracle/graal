@@ -186,11 +186,11 @@ public interface FrameInstance {
         RootCallTarget target = (RootCallTarget) getCallTarget();
         Node callNode = getCallNode();
         RootNode rootNode = target.getRootNode();
-        return FrameAccessor.NODES.findBytecodeIndex(rootNode, callNode, captureFrame(rootNode, callNode));
+        return FrameAccessor.NODES.findBytecodeIndex(rootNode, callNode, captureFrame(rootNode));
     }
 
-    private Frame captureFrame(RootNode rootNode, Node callNode) {
-        return FrameAccessor.NODES.isCaptureFramesForTrace(rootNode, callNode) ? getFrame(FrameAccess.READ_ONLY) : null;
+    private Frame captureFrame(RootNode rootNode) {
+        return FrameAccessor.NODES.isCaptureFramesForTrace(rootNode, getCompilationTier() > 0) ? getFrame(FrameAccess.READ_ONLY) : null;
     }
 
 }

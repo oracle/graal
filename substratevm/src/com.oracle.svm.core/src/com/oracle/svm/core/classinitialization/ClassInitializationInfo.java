@@ -252,7 +252,7 @@ public final class ClassInitializationInfo {
         return initState == InitState.BeingInitialized;
     }
 
-    private boolean isInErrorState() {
+    public boolean isInErrorState() {
         return initState == InitState.InitializationError;
     }
 

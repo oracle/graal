@@ -36,7 +36,7 @@ import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -111,10 +111,10 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
         return budget;
     }
 
-    public static final Comparator<LoopEx> LOOP_COMPARATOR;
+    public static final Comparator<Loop> LOOP_COMPARATOR;
     static {
-        ToDoubleFunction<LoopEx> loopFreq = e -> e.loop().getHeader().getFirstPredecessor().getRelativeFrequency();
-        ToIntFunction<LoopEx> loopDepth = e -> e.loop().getDepth();
+        ToDoubleFunction<Loop> loopFreq = e -> e.loop().getHeader().getFirstPredecessor().getRelativeFrequency();
+        ToIntFunction<Loop> loopDepth = e -> e.loop().getDepth();
         LOOP_COMPARATOR = Comparator.comparingDouble(loopFreq).thenComparingInt(loopDepth).reversed();
     }
 
@@ -143,10 +143,10 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
                     peeled = false;
                     final LoopsData dataCounted = context.getLoopsDataProvider().getLoopsData(graph);
                     dataCounted.detectCountedLoops();
-                    List<LoopEx> countedLoops = dataCounted.countedLoops();
+                    List<Loop> countedLoops = dataCounted.countedLoops();
                     graph.getDebug().log(DebugContext.INFO_LEVEL, "Detected %d counted loops", countedLoops.size());
                     countedLoops.sort(LOOP_COMPARATOR);
-                    for (LoopEx loop : countedLoops) {
+                    for (Loop loop : countedLoops) {
                         if (getPolicies().shouldFullUnroll(loop)) {
                             if (graphSizeBefore == -1) {
                                 graphSizeBefore = NodeCostUtil.computeGraphSize(graph);

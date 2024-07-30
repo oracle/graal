@@ -42,7 +42,7 @@ public interface CollectionPolicy {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static String getInitialPolicyName() {
-        if (SubstrateOptions.UseEpsilonGC.getValue()) {
+        if (SubstrateOptions.useEpsilonGC()) {
             return "NeverCollect";
         } else if (!SerialGCOptions.useRememberedSet()) {
             return "OnlyCompletely";

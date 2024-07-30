@@ -2,9 +2,14 @@
 
 This changelog summarizes major changes to the WebAssembly engine implemented in GraalVM (GraalWasm).
 
+## Version 24.2.0
+
+* Updated developer metadata of Maven artifacts.
+
 ## Version 24.1.0
 
 * Implemented the [SIMD](https://github.com/WebAssembly/simd) proposal. This feature is enabled by default and can be disabled with the option `--wasm.SIMD=false`.
+* Added limited support for `fd_advise` in `wasi_snapshot_preview1`.
 
 ## Version 23.1.0
 

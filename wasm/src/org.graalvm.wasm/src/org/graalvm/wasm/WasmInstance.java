@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package org.graalvm.wasm;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiConsumer;
 
 import org.graalvm.wasm.api.Sequence;
 import org.graalvm.wasm.constants.GlobalModifier;
@@ -63,7 +62,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 @SuppressWarnings("static-method")
 public final class WasmInstance extends RuntimeState implements TruffleObject {
 
-    private List<BiConsumer<WasmContext, WasmInstance>> linkActions;
+    private List<LinkAction> linkActions;
 
     public WasmInstance(WasmContext context, WasmModule module) {
         this(context, module, module.numFunctions(), module.droppedDataInstanceOffset());
@@ -107,15 +106,15 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         WasmContext.get(null).linker().tryLink(this);
     }
 
-    public List<BiConsumer<WasmContext, WasmInstance>> linkActions() {
+    public List<LinkAction> linkActions() {
         return linkActions;
     }
 
-    public List<BiConsumer<WasmContext, WasmInstance>> createLinkActions() {
+    public List<LinkAction> createLinkActions() {
         return linkActions = module().getOrRecreateLinkActions();
     }
 
-    public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
+    public void addLinkAction(LinkAction action) {
         linkActions.add(action);
     }
 

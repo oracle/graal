@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -48,6 +49,16 @@ public final class JNIAccessibleClass {
     public JNIAccessibleClass(Class<?> clazz) {
         assert clazz != null;
         this.classObject = clazz;
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    JNIAccessibleClass() {
+        /* For negative queries */
+        this.classObject = null;
+    }
+
+    public boolean isNegative() {
+        return classObject == null;
     }
 
     public Class<?> getClassObject() {
@@ -87,7 +98,23 @@ public final class JNIAccessibleClass {
     }
 
     public JNIAccessibleMethod getMethod(JNIAccessibleMethodDescriptor descriptor) {
-        return (methods != null) ? methods.get(descriptor) : null;
+        if (methods == null) {
+            return null;
+        }
+        JNIAccessibleMethod method = methods.get(descriptor);
+        if (method == null) {
+            /*
+             * Negative method queries match any return type and are stored with only parameter
+             * types in their signature.
+             */
+            String signatureWithoutReturnType = descriptor.getSignatureWithoutReturnType();
+            if (signatureWithoutReturnType != null) {
+                /* We only need to perform the lookup on valid signatures */
+                method = methods.get(new JNIAccessibleMethodDescriptor(descriptor.getNameConvertToString(), signatureWithoutReturnType));
+                VMError.guarantee(method == null || method.isNegative(), "Only negative queries should have a signature without return type");
+            }
+        }
+        return method;
     }
 
     String getInternalName() {

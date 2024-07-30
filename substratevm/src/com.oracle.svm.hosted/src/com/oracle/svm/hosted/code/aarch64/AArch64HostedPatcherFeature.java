@@ -26,11 +26,14 @@ package com.oracle.svm.hosted.code.aarch64;
 
 import java.util.function.Consumer;
 
+import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import jdk.graal.compiler.asm.Assembler.CodeAnnotation;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.SingleInstructionAnnotation;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.MovSequenceAnnotation.MovAction;
 import jdk.graal.compiler.code.CompilationResult;
+import jdk.vm.ci.meta.VMConstant;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -169,17 +172,24 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
 
     @Override
     public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
+        Object relocVal = ref;
         if (ref instanceof ConstantReference constantRef) {
-            VMError.guarantee(!(constantRef.getConstant() instanceof SubstrateMethodPointerConstant), "SubstrateMethodPointerConstants should not be relocated %s", constantRef);
+            VMConstant constant = constantRef.getConstant();
+            if (constant instanceof SubstrateMethodPointerConstant methodPointerConstant) {
+                MethodPointer pointer = methodPointerConstant.pointer();
+                HostedMethod hMethod = (HostedMethod) pointer.getMethod();
+                VMError.guarantee(hMethod.isCompiled(), "Method %s is not compiled although there is a method pointer constant created for it.", hMethod);
+                relocVal = pointer;
+            }
         } else {
             VMError.guarantee(ref instanceof DataSectionReference || ref instanceof CGlobalDataReference, "Unexpected reference: %s", ref);
         }
 
         int siteOffset = compStart + macroInstruction.instructionPosition;
-        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, ref);
+        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, relocVal);
 
         siteOffset += 4;
-        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, ref);
+        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, relocVal);
     }
 
     @Uninterruptible(reason = ".")

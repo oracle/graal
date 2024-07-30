@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -317,7 +316,7 @@ public class FrameInfoEncoder {
                                     result = -Integer.compare(frameMaxHeight.get(f1), frameMaxHeight.get(f2));
                                 }
                                 return result;
-                            }).collect(Collectors.toList());
+                            }).toList();
             for (CompressedFrameData frame : sharedFrames) {
                 assert !sharedEncodedFrameIndexMap.containsKey(frame) : frame;
                 sharedEncodedFrameIndexMap.put(frame, encodingBuffer.getBytesWritten());
@@ -356,7 +355,7 @@ public class FrameInfoEncoder {
                     return sharedEncodedFrameIndexMap.containsKey(frame) && (frameSuccessors == null || frameSuccessors.size() == 1);
                 });
                 if (directlyPointToSharedFrame) {
-                    CompressedFrameData frame = slice.get(0);
+                    CompressedFrameData frame = slice.getFirst();
                     assert sharedEncodedFrameIndexMap.containsKey(frame) : frame;
                     encodedSliceIndexMap.put(sliceIdx, sharedEncodedFrameIndexMap.get(frame));
                 } else {
@@ -552,8 +551,7 @@ public class FrameInfoEncoder {
 
     private static void countVirtualObjects(JavaValue[] values, BitSet visitedVirtualObjects) {
         for (JavaValue value : values) {
-            if (value instanceof VirtualObject) {
-                VirtualObject virtualObject = (VirtualObject) value;
+            if (value instanceof VirtualObject virtualObject) {
                 if (!visitedVirtualObjects.get(virtualObject.getId())) {
                     visitedVirtualObjects.set(virtualObject.getId());
                     countVirtualObjects(virtualObject.getValues(), visitedVirtualObjects);
@@ -623,8 +621,7 @@ public class FrameInfoEncoder {
         ValueInfo result = new ValueInfo();
         result.kind = kind;
 
-        if (value instanceof StackLockValue) {
-            StackLockValue lock = (StackLockValue) value;
+        if (value instanceof StackLockValue lock) {
             assert ValueUtil.isIllegal(lock.getSlot()) : value;
             if (isDeoptEntry && lock.isEliminated()) {
                 throw VMError.shouldNotReachHere("Cannot have an eliminated monitor in a deoptimization entry point: value " + value + " in method " +
@@ -639,8 +636,7 @@ public class FrameInfoEncoder {
             result.type = ValueType.Illegal;
             assert result.kind == JavaKind.Illegal : value;
 
-        } else if (value instanceof StackSlot) {
-            StackSlot stackSlot = (StackSlot) value;
+        } else if (value instanceof StackSlot stackSlot) {
             result.type = ValueType.StackSlot;
             result.data = stackSlot.getOffset(data.totalFrameSize);
             // TODO BS GR-42085 The first check is needed when safe-point sampling is on. Is this
@@ -658,13 +654,12 @@ public class FrameInfoEncoder {
             result.isCompressedReference = isCompressedReference(register);
             ImageSingletons.lookup(Counters.class).registerValueCount.inc();
 
-        } else if (calleeSavedRegisters != null && value instanceof RegisterValue) {
+        } else if (calleeSavedRegisters != null && value instanceof RegisterValue registerValue) {
             if (isDeoptEntry) {
                 throw VMError.shouldNotReachHere("Cannot encode registers in deoptimization entry point: value " + value + " in method " +
                                 data.debugInfo.getBytecodePosition().getMethod().format("%H.%n(%p)"));
             }
 
-            RegisterValue registerValue = (RegisterValue) value;
             Register register = ValueUtil.asRegister(registerValue);
             if (!calleeSavedRegisters.calleeSaveable(register)) {
                 throw VMError.shouldNotReachHere("Register is not calleeSaveable: register " + registerValue + " in method " + data.debugInfo.getBytecodePosition().getMethod().format("%H.%n(%p)"));
@@ -679,8 +674,7 @@ public class FrameInfoEncoder {
             result.isCompressedReference = registerValue.getPlatformKind().getVectorLength() == 1 && isCompressedReference(registerValue);
             ImageSingletons.lookup(Counters.class).registerValueCount.inc();
 
-        } else if (value instanceof JavaConstant) {
-            JavaConstant constant = (JavaConstant) value;
+        } else if (value instanceof JavaConstant constant) {
             result.value = constant;
             if (constant instanceof CompressibleConstant) {
                 result.isCompressedReference = ((CompressibleConstant) constant).isCompressed();
@@ -830,7 +824,7 @@ public class FrameInfoEncoder {
             }
         }
 
-        data.virtualObjects[id] = valueList.toArray(new ValueInfo[valueList.size()]);
+        data.virtualObjects[id] = valueList.toArray(new ValueInfo[0]);
         ImageSingletons.lookup(Counters.class).virtualObjectsCount.inc();
     }
 
@@ -887,8 +881,8 @@ public class FrameInfoEncoder {
         return result;
     }
 
-    protected void encodeAllAndInstall(CodeInfo target) {
-        NonmovableArray<Byte> frameInfoEncodings = encodeFrameDatas();
+    protected void encodeAllAndInstall(CodeInfo target, Runnable recordActivity) {
+        NonmovableArray<Byte> frameInfoEncodings = encodeFrameDatas(recordActivity);
         install(target, frameInfoEncodings);
     }
 
@@ -905,7 +899,7 @@ public class FrameInfoEncoder {
                                         ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, NonmovableArrays.lengthOf(CodeInfoAccess.getObjectConstants(info))));
     }
 
-    private NonmovableArray<Byte> encodeFrameDatas() {
+    private NonmovableArray<Byte> encodeFrameDatas(Runnable recordActivity) {
         UnsafeArrayTypeWriter encodingBuffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         frameMetadata.encodeCompressedData(encodingBuffer, encoders);
         for (FrameData data : allDebugInfos) {
@@ -916,6 +910,7 @@ public class FrameInfoEncoder {
                 data.encodedFrameInfoIndex = frameMetadata.getEncodingOffset(data.frameSliceIndex);
                 assert frameMetadata.writeFrameVerificationInfo(data, encoders);
             }
+            recordActivity.run();
         }
         NonmovableArray<Byte> frameInfoEncodings = NonmovableArrays.createByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()), NmtCategory.Code);
         encodingBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(frameInfoEncodings));
@@ -988,14 +983,11 @@ public class FrameInfoEncoder {
     }
 
     protected static long encodePrimitiveConstant(JavaConstant constant) {
-        switch (constant.getJavaKind()) {
-            case Float:
-                return Float.floatToRawIntBits(constant.asFloat());
-            case Double:
-                return Double.doubleToRawLongBits(constant.asDouble());
-            default:
-                return constant.asLong();
-        }
+        return switch (constant.getJavaKind()) {
+            case Float -> Float.floatToRawIntBits(constant.asFloat());
+            case Double -> Double.doubleToRawLongBits(constant.asDouble());
+            default -> constant.asLong();
+        };
     }
 
     private static int encodeFlags(ValueType type, JavaKind kind, boolean isCompressedReference, boolean isEliminatedMonitor) {
@@ -1060,15 +1052,16 @@ public class FrameInfoEncoder {
         for (FrameData expectedData : allDebugInfos) {
             ReusableTypeReader reader = new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), expectedData.encodedFrameInfoIndex);
             FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry, reader, info, constantAccess);
-            FrameInfoVerifier.verifyFrames(expectedData, expectedData.frame, actualFrame);
+            FrameInfoVerifier.verifyFrames(expectedData, expectedData.frame, actualFrame, info);
         }
     }
 }
 
 class FrameInfoVerifier {
-    protected static void verifyFrames(FrameInfoEncoder.FrameData expectedData, FrameInfoQueryResult expectedTopFrame, FrameInfoQueryResult actualTopFrame) {
+    protected static void verifyFrames(FrameInfoEncoder.FrameData expectedData, FrameInfoQueryResult expectedTopFrame, FrameInfoQueryResult actualTopFrame, CodeInfo info) {
         FrameInfoQueryResult expectedFrame = expectedTopFrame;
         FrameInfoQueryResult actualFrame = actualTopFrame;
+        int methodIdAddend = CodeInfoAccess.getMethodTableFirstId(info);
         while (expectedFrame != null) {
             assert actualFrame != null;
             assert expectedFrame.isDeoptEntry() == actualFrame.isDeoptEntry() : actualFrame;
@@ -1087,7 +1080,7 @@ class FrameInfoVerifier {
                 assert actualFrame.getVirtualObjects() == actualTopFrame.getVirtualObjects() : actualFrame;
             }
 
-            assert expectedFrame.getSourceMethodId() == actualFrame.getSourceMethodId() : actualFrame;
+            assert expectedFrame.getSourceMethodId() == (actualFrame.getSourceMethodId() - methodIdAddend) : actualFrame;
             assert expectedFrame.getSourceLineNumber() == actualFrame.getSourceLineNumber() : actualFrame;
 
             expectedFrame = expectedFrame.caller;

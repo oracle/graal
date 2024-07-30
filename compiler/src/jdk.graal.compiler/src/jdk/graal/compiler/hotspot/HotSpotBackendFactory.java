@@ -29,6 +29,7 @@ import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
@@ -54,6 +55,7 @@ import jdk.graal.compiler.nodes.extended.ArrayRangeWrite;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.gc.CardTableBarrierSet;
 import jdk.graal.compiler.nodes.gc.G1BarrierSet;
+import jdk.graal.compiler.nodes.gc.NoBarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
@@ -66,7 +68,6 @@ import jdk.graal.compiler.nodes.type.NarrowOopStamp;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 import jdk.graal.compiler.replacements.classfile.ClassfileBytecodeProvider;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.InitTimer;
@@ -79,7 +80,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.runtime.JVMCIBackend;
 
-public abstract class HotSpotBackendFactory {
+public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
 
     protected HotSpotGraalConstantFieldProvider createConstantFieldProvider(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         return new HotSpotGraalConstantFieldProvider(config, metaAccess);
@@ -119,12 +120,6 @@ public abstract class HotSpotBackendFactory {
      * on this name.
      */
     public abstract String getName();
-
-    /**
-     * Gets the class describing the architecture the backend created by this factory is associated
-     * with.
-     */
-    public abstract Class<? extends Architecture> getArchitecture();
 
     protected LoopsDataProvider createLoopsDataProvider() {
         return new LoopsDataProviderImpl();
@@ -253,11 +248,14 @@ public abstract class HotSpotBackendFactory {
     private BarrierSet createBarrierSet(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         boolean useDeferredInitBarriers = config.useDeferredInitBarriers;
         ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
-        if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
-            ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
-            return new HotSpotZBarrierSet(referentField);
+        ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
+        if (config.gc == HotSpotGraalRuntime.HotSpotGC.X) {
+            return new HotSpotXBarrierSet(referentField);
+        } else if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
+            return new HotSpotZBarrierSet(objectArrayType, referentField);
+        } else if (config.gc == HotSpotGraalRuntime.HotSpotGC.Epsilon) {
+            return new NoBarrierSet();
         } else if (config.useG1GC()) {
-            ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
             return new G1BarrierSet(objectArrayType, referentField) {
                 @Override
                 protected boolean writeRequiresPostBarrier(FixedAccessNode node, ValueNode writtenValue) {

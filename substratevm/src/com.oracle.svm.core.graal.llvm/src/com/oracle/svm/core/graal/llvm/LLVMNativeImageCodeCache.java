@@ -29,7 +29,6 @@ import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmCompile;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmLink;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.llvmOptimize;
 import static com.oracle.svm.core.graal.llvm.LLVMToolchainUtils.nativeLink;
-import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 import static com.oracle.svm.hosted.image.NativeImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
 
@@ -318,11 +317,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     @Override
     public NativeTextSectionImpl getTextSectionImpl(RelocatableBuffer buffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
         return new NativeTextSectionImpl(buffer, objectFile, codeCache) {
-            @Override
-            protected void defineBaseLayerMethodSymbol(String name, Element section, HostedMethod method) {
-                throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
-            }
-
             @Override
             protected void defineMethodSymbol(String name, boolean global, Element section, HostedMethod method, CompilationResult result) {
                 ObjectFile.Symbol symbol = objectFile.createUndefinedSymbol(name, 0, true);

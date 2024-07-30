@@ -43,7 +43,7 @@
          "--kill-with-sigquit",
          "gate",
          "--strict-mode",
-         "--extra-vm-argument=-Djdk.graal.DumpOnError=true -Djdk.graal.PrintGraphFile=true -Djdk.graal.PrintBackendCFG=true -DGCUtils.saveHeapDumpTo=." +
+         "--extra-vm-argument=-Djdk.graal.DumpOnError=true -Djdk.graal.PrintGraph=File -Djdk.graal.PrintBackendCFG=true -DGCUtils.saveHeapDumpTo=." +
            (if extra_vm_args == "" then "" else " " + extra_vm_args)
       ] + (if extra_unittest_args != "" then [
         "--extra-unittest-argument=" + extra_unittest_args,
@@ -119,7 +119,8 @@
                   "-Dtck.inlineVerifierInstrument=false",
     extra_unittest_args="--verbose truffle") + {
       environment+: {"TRACE_COMPILATION": "true"},
-      logs+: ["*/*_compilation.log"]
+      logs+: ["*/*_compilation.log"],
+      components+: ["truffle"],
     },
 
   truffle_xcomp_zgc:: s.base("build,unittest",
@@ -130,7 +131,8 @@
                   "-XX:+UseZGC -XX:-ZGenerational",
     extra_unittest_args="--verbose truffle") + {
       environment+: {"TRACE_COMPILATION": "true"},
-      logs+: ["*/*_compilation.log"]
+      logs+: ["*/*_compilation.log"],
+      components+: ["truffle"],
     },
 
   truffle_xcomp_serialgc:: s.base("build,unittest",
@@ -141,7 +143,8 @@
                   "-XX:+UseSerialGC",
     extra_unittest_args="--verbose truffle") + {
       environment+: {"TRACE_COMPILATION": "true"},
-      logs+: ["*/*_compilation.log"]
+      logs+: ["*/*_compilation.log"],
+      components+: ["truffle"],
     },
 
   ctw:: s.base("build,ctw", no_warning_as_error=true),
@@ -201,13 +204,16 @@
 
   jdk_latest:: "Latest",
 
-  # Filters out the nominal gate jobs if in CE
-  as_gates(gate_jobs):: if config.graalvm_edition == "ce" then {} else gate_jobs,
+  # Filters out the non-style gate jobs if in CE
+  as_gates(gate_jobs):: if config.graalvm_edition == "ce" then {
+    [name]: gate_jobs[name]
+    for name in std.objectFields(gate_jobs) if utils.contains(name, "style")
+  } else gate_jobs,
 
-  # Converts the nominal gate jobs to dailies if in CE
+  # Converts the non-style gate jobs to dailies if in CE
   as_dailies(gate_jobs):: if config.graalvm_edition == "ce" then {
     [std.strReplace(name, "gate", "daily")]: gate_jobs[name]
-    for name in std.objectFields(gate_jobs)
+    for name in std.objectFields(gate_jobs) if !utils.contains(name, "style")
   } else {},
 
   # Candidates for gate jobs. In CE, these will be dailies instead of gates.

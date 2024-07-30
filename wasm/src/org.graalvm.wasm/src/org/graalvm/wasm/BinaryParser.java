@@ -70,7 +70,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.api.Vector128;
@@ -94,6 +93,7 @@ import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 import org.graalvm.wasm.parser.validation.ParserState;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ExceptionType;
 
@@ -224,7 +224,7 @@ public class BinaryParser extends BinaryStreamParser {
             assertIntEqual(offset - startOffset, size, String.format("Declared section (0x%02X) size is incorrect", sectionID), Failure.SECTION_SIZE_MISMATCH);
         }
         if (codeSectionOffset == -1) {
-            assertIntEqual(module.numFunctions(), module.importedFunctions().size(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
+            assertIntEqual(module.numFunctions(), module.numImportedFunctions(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
             codeSectionOffset = 0;
         }
         module.setBytecode(bytecode.toArray());
@@ -474,7 +474,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readCodeSection(RuntimeBytecodeGen bytecode, BytecodeGen functionDebugData) {
         final int codeSectionOffset = offset;
-        final int importedFunctionCount = module.importedFunctions().size();
+        final int importedFunctionCount = module.numImportedFunctions();
         final int codeEntryCount = readLength();
         final int expectedCodeEntryCount = module.numFunctions() - importedFunctionCount;
         assertIntEqual(codeEntryCount, expectedCodeEntryCount, Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
@@ -580,7 +580,7 @@ public class BinaryParser extends BinaryStreamParser {
         state.enterFunction(resultTypes);
 
         int opcode;
-        while (offset < sourceCodeEndOffset) {
+        end: while (offset < sourceCodeEndOffset) {
             // Insert a debug instruction if a line mapping exists.
             if (sourceLocationToLineMap != null) {
                 if (sourceLocationToLineMap.containsKey(offset)) {
@@ -606,8 +606,10 @@ public class BinaryParser extends BinaryStreamParser {
                         blockParamTypes = WasmType.VOID_TYPE_ARRAY;
                         blockResultTypes = encapsulateResultType(multiResult[0]);
                     } else if (multiValue) {
-                        blockParamTypes = extractBlockParamTypes(multiResult[0]);
-                        blockResultTypes = extractBlockResultTypes(multiResult[0]);
+                        int typeIndex = multiResult[0];
+                        state.checkFunctionTypeExists(typeIndex, module.typeCount());
+                        blockParamTypes = extractBlockParamTypes(typeIndex);
+                        blockResultTypes = extractBlockResultTypes(typeIndex);
                     } else {
                         throw WasmException.create(Failure.DISABLED_MULTI_VALUE);
                     }
@@ -625,8 +627,10 @@ public class BinaryParser extends BinaryStreamParser {
                         loopParamTypes = WasmType.VOID_TYPE_ARRAY;
                         loopResultTypes = encapsulateResultType(multiResult[0]);
                     } else if (multiValue) {
-                        loopParamTypes = extractBlockParamTypes(multiResult[0]);
-                        loopResultTypes = extractBlockResultTypes(multiResult[0]);
+                        int typeIndex = multiResult[0];
+                        state.checkFunctionTypeExists(typeIndex, module.typeCount());
+                        loopParamTypes = extractBlockParamTypes(typeIndex);
+                        loopResultTypes = extractBlockResultTypes(typeIndex);
                     } else {
                         throw WasmException.create(Failure.DISABLED_MULTI_VALUE);
                     }
@@ -644,8 +648,10 @@ public class BinaryParser extends BinaryStreamParser {
                         ifParamTypes = WasmType.VOID_TYPE_ARRAY;
                         ifResultTypes = encapsulateResultType(multiResult[0]);
                     } else if (multiValue) {
-                        ifParamTypes = extractBlockParamTypes(multiResult[0]);
-                        ifResultTypes = extractBlockResultTypes(multiResult[0]);
+                        int typeIndex = multiResult[0];
+                        state.checkFunctionTypeExists(typeIndex, module.typeCount());
+                        ifParamTypes = extractBlockParamTypes(typeIndex);
+                        ifResultTypes = extractBlockResultTypes(typeIndex);
                     } else {
                         throw WasmException.create(Failure.DISABLED_MULTI_VALUE);
                     }
@@ -655,6 +661,18 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.END: {
                     state.exit(multiValue);
+                    if (state.controlStackSize() == 0) {
+                        /*
+                         * If control stack is empty, we should have reached the end of the function
+                         * at this point. In an invalid wasm binary however, there can be extra
+                         * instructions after the END, which we may not be able to parse due to the
+                         * control stack being empty. To handle this case, and avoid having to
+                         * validate the control stack in every instruction that needs to access the
+                         * stack, we prematurely exit the loop and let the following code size check
+                         * (in readCodeSection) throw an exception.
+                         */
+                        break end;
+                    }
                     break;
                 }
                 case Instructions.ELSE: {
@@ -2689,10 +2707,14 @@ public class BinaryParser extends BinaryStreamParser {
             module.setElemInstance(currentElemSegmentId, headerOffset, elemType);
             if (mode == SegmentMode.ACTIVE) {
                 assertTrue(module.checkTableIndex(tableIndex), Failure.UNKNOWN_TABLE);
-                module.addLinkAction(((context, instance) -> context.linker().resolveElemSegment(context, instance, tableIndex, currentElemSegmentId, currentOffsetAddress,
-                                currentOffsetBytecode, bytecodeOffset, elementCount)));
+                module.addLinkAction((context, instance, imports) -> {
+                    context.linker().resolveElemSegment(context, instance, tableIndex, currentElemSegmentId, currentOffsetAddress,
+                                    currentOffsetBytecode, bytecodeOffset, elementCount);
+                });
             } else if (mode == SegmentMode.PASSIVE) {
-                module.addLinkAction(((context, instance) -> context.linker().resolvePassiveElemSegment(context, instance, currentElemSegmentId, bytecodeOffset, elementCount)));
+                module.addLinkAction((context, instance, imports) -> {
+                    context.linker().resolvePassiveElemSegment(context, instance, currentElemSegmentId, bytecodeOffset, elementCount);
+                });
             }
             for (long element : elements) {
                 final int initType = (int) (element >> 32);
@@ -2778,7 +2800,7 @@ public class BinaryParser extends BinaryStreamParser {
 
             module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, initBytecode, initValue);
             final int currentGlobalIndex = globalIndex;
-            module.addLinkAction((context, instance) -> {
+            module.addLinkAction((context, instance, imports) -> {
                 if (isInitialized) {
                     context.globals().store(type, instance.globalAddress(currentGlobalIndex), initValue);
                     context.linker().resolveGlobalInitialization(instance, currentGlobalIndex);
@@ -2868,15 +2890,18 @@ public class BinaryParser extends BinaryStreamParser {
                 bytecode.addDataHeader(byteLength, offsetBytecode, currentOffsetAddress, memoryIndex);
                 final int bytecodeOffset = bytecode.location();
                 module.setDataInstance(currentDataSegmentId, headerOffset);
-                module.addLinkAction(
-                                (context, instance) -> context.linker().resolveDataSegment(context, instance, currentDataSegmentId, memoryIndex, currentOffsetAddress, offsetBytecode, byteLength,
-                                                bytecodeOffset, droppedDataInstanceOffset));
+                module.addLinkAction((context, instance, imports) -> {
+                    context.linker().resolveDataSegment(context, instance, currentDataSegmentId, memoryIndex, currentOffsetAddress, offsetBytecode, byteLength,
+                                    bytecodeOffset, droppedDataInstanceOffset);
+                });
             } else {
                 bytecode.addDataHeader(mode, byteLength);
                 final int bytecodeOffset = bytecode.location();
                 bytecode.addDataRuntimeHeader(byteLength, unsafeMemory);
                 module.setDataInstance(currentDataSegmentId, headerOffset);
-                module.addLinkAction((context, instance) -> context.linker().resolvePassiveDataSegment(context, instance, currentDataSegmentId, bytecodeOffset, byteLength));
+                module.addLinkAction((context, instance, imports) -> {
+                    context.linker().resolvePassiveDataSegment(context, instance, currentDataSegmentId, bytecodeOffset, byteLength);
+                });
             }
             // Add the data section to the bytecode.
             for (int i = 0; i < byteLength; i++) {

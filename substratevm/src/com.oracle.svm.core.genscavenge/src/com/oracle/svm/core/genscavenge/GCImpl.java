@@ -28,6 +28,8 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -89,7 +91,6 @@ import com.oracle.svm.core.stack.JavaFrame;
 import com.oracle.svm.core.stack.JavaFrames;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperationData;
@@ -133,7 +134,7 @@ public final class GCImpl implements GC {
 
     @Override
     public String getName() {
-        if (SubstrateOptions.UseEpsilonGC.getValue()) {
+        if (SubstrateOptions.useEpsilonGC()) {
             return "Epsilon GC";
         } else {
             return "Serial GC";
@@ -196,17 +197,20 @@ public final class GCImpl implements GC {
         enqueueCollectOperation(data);
 
         boolean outOfMemory = data.getOutOfMemory();
-        if (outOfMemory && SerialGCOptions.IgnoreMaxHeapSizeWhileInVMOperation.getValue() && inVMInternalCode()) {
+        if (outOfMemory && shouldIgnoreOutOfMemory()) {
             outOfMemory = false;
         }
         return outOfMemory;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean shouldIgnoreOutOfMemory() {
+        return SerialGCOptions.IgnoreMaxHeapSizeWhileInVMOperation.getValue() && inVMInternalCode();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean inVMInternalCode() {
-        return VMOperation.isInProgress() ||
-                        ReferenceHandlerThread.isReferenceHandlerThread() ||
-                        StackOverflowCheck.singleton().isYellowZoneAvailable();
+        return VMOperation.isInProgress() || ReferenceHandlerThread.isReferenceHandlerThread();
     }
 
     @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
@@ -845,20 +849,33 @@ public final class GCImpl implements GC {
             if (deoptFrame == null) {
                 Pointer sp = frame.getSP();
                 CodeInfo codeInfo = CodeInfoAccess.unsafeConvert(frame.getIPCodeInfo());
-                NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
-                long referenceMapIndex = frame.getReferenceMapIndex();
-                if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
-                    throw CodeInfoTable.fatalErrorNoReferenceMap(sp, frame.getIP(), codeInfo);
-                }
-                CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, null);
 
-                if (RuntimeCompilation.isEnabled() && visitRuntimeCodeInfo && !CodeInfoAccess.isAOTImageCode(codeInfo)) {
+                if (JavaFrames.isInterpreterLeaveStub(frame)) {
                     /*
-                     * Runtime-compiled code that is currently on the stack must be kept alive. So,
-                     * we mark the tether as strongly reachable. The RuntimeCodeCacheWalker will
-                     * handle all other object references later on.
+                     * Variable frame size is packed into the first stack slot used for argument
+                     * passing (re-use of deopt slot).
                      */
-                    RuntimeCodeInfoAccess.walkTether(codeInfo, visitor);
+                    long varStackSize = DeoptimizationSlotPacking.decodeVariableFrameSizeFromDeoptSlot(sp.readLong(0));
+                    Pointer actualSP = sp.add(WordFactory.unsigned(varStackSize));
+
+                    InterpreterSupport.walkInterpreterLeaveStubFrame(visitor, actualSP, sp);
+                } else {
+                    NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
+                    long referenceMapIndex = frame.getReferenceMapIndex();
+                    if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
+                        throw CodeInfoTable.fatalErrorNoReferenceMap(sp, frame.getIP(), codeInfo);
+                    }
+
+                    CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, null);
+
+                    if (RuntimeCompilation.isEnabled() && visitRuntimeCodeInfo && !CodeInfoAccess.isAOTImageCode(codeInfo)) {
+                        /*
+                         * Runtime-compiled code that is currently on the stack must be kept alive.
+                         * So, we mark the tether as strongly reachable. The RuntimeCodeCacheWalker
+                         * will handle all other object references later on.
+                         */
+                        RuntimeCodeInfoAccess.walkTether(codeInfo, visitor);
+                    }
                 }
             } else {
                 /*

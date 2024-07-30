@@ -44,13 +44,13 @@ Here is an example Maven dependency setup that you can put into your project:
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<artifactId>polyglot</artifactId> 
-	<version>24.0.0</version> 
+	<version>${graalvm.polyglot.version}</version>
 </dependency>
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<!-- Select language: js, ruby, python, java, llvm, wasm, languages-->
 	<artifactId>js</artifactId> 
-	<version>24.0.0</version> 
+	<version>${graalvm.polyglot.version}</version>
 	<type>pom</type>
 </dependency>
 <!-- add additional languages if needed -->
@@ -58,7 +58,7 @@ Here is an example Maven dependency setup that you can put into your project:
 	<groupId>org.graalvm.polyglot</groupId> 
 	<!-- Select tools: profiler, inspect, coverage, dap, tools -->
 	<artifactId>tools</artifactId> 
-	<version>24.0.0</version> 
+	<version>${graalvm.polyglot.version}</version>
 	<type>pom</type>
 </dependency>
 <!-- add specific tools if needed -->
@@ -84,16 +84,16 @@ module com.mycompany.app {
 Whether your configuration can run with a Truffle runtime optimization depends on the GraalVM JDK you use.
 For further details, refer to the [Runtime Compilation section](#runtime-optimization-support).
 
-We recommend configuring polyglot embeddings using modules and the module-path whenever possible. 
-Be aware that using polyglot from the class-path instead will enable access to unsafe APIs for all libraries on the class-path.
-If the application is not yet modularized, hybrid use of the class and module-path is possible.
+We recommend configuring polyglot embeddings using modules and the module path whenever possible. 
+Be aware that using `org.graalvm.polyglot` from the class path instead will enable access to unsafe APIs for all libraries on the class path.
+If the application is not yet modularized, hybrid use of the class path and module path is possible.
 For example:
 ```
 $JAVA_HOME/bin/java -classpath=lib --module-path=lib/polyglot --add-modules=org.graalvm.polyglot ...
 ```
 In this example, `lib/polyglot` directory should contain all polyglot and language JAR files.
-In order to access polyglot classes from the class-path you also need to specify the `--add-modules=org.graalvm.polyglot` JVM option.
-If you are using [native-image](https://www.graalvm.org/latest/reference-manual/embed-languages/#build-native-executables-from-polyglot-applications) polyglot modules on the class-path will be automatically upgraded to the module-path.
+To access polyglot classes from the class path, you must also specify the `--add-modules=org.graalvm.polyglot` JVM option.
+If you are using [native-image](https://www.graalvm.org/latest/reference-manual/embed-languages/#build-native-executables-from-polyglot-applications), polyglot modules on the class path will be automatically upgraded to the module path.
 
 While we do support creating single uber JAR files from polyglot libraries, for example using the Maven Assembly plugin, we do not recommend it.
 Also note that uber JAR files are not supported in combination with creating native-images.
@@ -116,7 +116,7 @@ Complete the steps in this section to create a sample polyglot application that 
 
 4. Update the Maven [pom.xml](https://github.com/graalvm/polyglot-embedding-demo/blob/main/pom.xml) dependency configuration to include the languages to run as described in the [previous section](#dependency-setup).
 
-5. [Download and setup GraalVM](../../getting-started/graalvm-community/get-started-graalvm-community.md) by setting the `JAVA_HOME` environment variable to point to a GraalVM JDK.
+5. [Download and setup GraalVM](../../getting-started/get-started.md) by setting the value of the `JAVA_HOME` environment variable to the location of a GraalVM JDK.
 
 6. Run `mvn package exec:exec` to build and execute the sample code.
 
@@ -499,7 +499,7 @@ If the runtime was excluded successfully, you should see the following log messa
 ```
 [engine] WARNING: The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.
 Execution without runtime compilation will negatively impact the guest application performance.
-The following cause was found: No optimizing Truffle runtime found on the module or class-path.
+The following cause was found: No optimizing Truffle runtime found on the module or class path.
 For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/.
 To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
 ```
@@ -682,7 +682,7 @@ To summarize, the code cache can be controlled by keeping and maintaining strong
 
 ## Polyglot Isolates
 
-On Oracle GraalVM, a Polyglot engine can be configured to run in a dedicated Native Image isolate.
+On Oracle GraalVM, a polyglot engine can be configured to run in a dedicated Native Image isolate.
 A polyglot engine in this mode executes within a VM-level fault domain with a dedicated garbage collector and JIT compiler.
 Polyglot isolates are useful for [polyglot sandboxing](../../security/polyglot-sandbox.md).
 Running languages in an isolate works with HotSpot and Native Image host virtual machines.
@@ -694,22 +694,50 @@ For example, a dependency on isolated JavaScript can be configured by adding a M
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>polyglot</artifactId>
-    <version>24.0.0</version>
+    <version>${graalvm.polyglot.version}</version>
     <type>jar</type>
 </dependency>
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>js-isolate</artifactId>
-    <version>24.0.0</version>
+    <version>${graalvm.polyglot.version}</version>
     <type>pom</type>
 </dependency>
 ```
 
-The downloaded dependency is platform-independent, which contains a native-image for each platform.
-We plan to support downloading polyglot isolate native images for individual platforms in a future release.
+Starting from the Polyglot API version 24.1.0, the polyglot engine supports polyglot isolates for individual platforms.
+To download a polyglot isolate for a specific platform, append the operating system and
+CPU architecture classifiers to the polyglot isolate Maven `artifactId`. For example,
+to configure a dependency on isolated Python for Linux amd64, add the following Maven dependencies:
+
+```xml
+<dependency>
+	<groupId>org.graalvm.polyglot</groupId>
+	<artifactId>polyglot</artifactId>
+	<version>${graalvm.polyglot.version}</version>
+	<type>jar</type>
+</dependency>
+<dependency>
+	<groupId>org.graalvm.polyglot</groupId>
+	<artifactId>python-isolate-linux-amd64</artifactId>
+	<version>${graalvm.polyglot.version}</version>
+	<type>pom</type>
+</dependency>
+```
+
+Supported platform classifiers are:
+* `linux-amd64`
+* `linux-aarch64`
+* `darwin-amd64`
+* `darwin-aarch64`
+* `windows-amd64`
+
+For a complete Maven POM file that adds the polyglot isolate Native Image dependency for the current platform,
+refer to the [Polyglot Embedding Demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub.
+
 
 To enable isolate usage with the Polyglot API, the `--engine.SpawnIsolate=true` option must be passed to `Engine` or `Context` when constructed.
-The option `engine.SpawnIsolate` may not be available if used on any other JDK than Oracle GraalVM.
+The option `engine.SpawnIsolate` may not be available if used on any JDK other than Oracle GraalVM.
 
 ```java
 import org.graalvm.polyglot.*;
@@ -734,6 +762,7 @@ Currently, the following languages are available as polyglot isolates:
 | Language                      | Available from |
 |-------------------------------|----------------|
 | JavaScript (`js-isolate`)     | 23.1           |
+| Python (`python-isolate`)     | 24.1           |
 
 We plan to add support for more languages in future versions.
 

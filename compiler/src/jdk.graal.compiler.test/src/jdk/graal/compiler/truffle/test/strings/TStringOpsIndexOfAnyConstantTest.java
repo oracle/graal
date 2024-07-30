@@ -27,58 +27,25 @@ package jdk.graal.compiler.truffle.test.strings;
 import static org.junit.runners.Parameterized.Parameters;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
-import jdk.graal.compiler.core.common.CompilationIdentifier;
-import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.options.OptionValues;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 
 @RunWith(Parameterized.class)
-public class TStringOpsIndexOfAnyConstantTest extends TStringOpsIndexOfAnyTest {
+public class TStringOpsIndexOfAnyConstantTest extends TStringOpsIndexOfConstantTest<ArrayIndexOfNode> {
 
-    Object[] constantArgs;
-
-    public TStringOpsIndexOfAnyConstantTest(byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA, int[] values) {
-        super(arrayA, offsetA, lengthA, strideA, fromIndexA, values);
+    public TStringOpsIndexOfAnyConstantTest(byte[] array, int offset, int length, int stride, int fromIndex, int[] values) {
+        super(ArrayIndexOfNode.class, array, offset, length, stride, fromIndex, values);
     }
 
     @Parameters(name = "{index}: offset: {1}, length: {2}, stride: {3}, fromIndex: {4}, toIndex: {5}")
     public static List<Object[]> data() {
-        return TStringOpsIndexOfAnyTest.data().stream().filter(args -> {
-            int length = (int) args[2];
-            int fromIndex = (int) args[4];
-            // this test takes much longer than TStringOpsIndexOfAnyTest, reduce number of test
-            // cases
-            return length == 0 || length == 1 || length == 7 || length == 16 && fromIndex < 2;
-        }).collect(Collectors.toList());
+        return reduceTestData(reduceTestData(TStringOpsIndexOfAnyTest.data(), 2, 0, 1, 7, 16), 4, 0, 1);
     }
 
-    @Override
-    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        addConstantParameterBinding(conf, constantArgs);
-        return super.editGraphBuilderConfiguration(conf);
-    }
-
-    @Override
-    protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId, OptionValues options) {
-        return makeAllArraysStable(super.parseForCompile(method, compilationId, options));
-    }
-
-    @Override
-    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean ignoreForceCompile, boolean ignoreInstallAsDefault, OptionValues options) {
-        // Force recompile if constant binding should be done
-        return super.getCode(installedCodeOwner, graph, true, false, options);
-    }
-
-    @Override
     @Test
     public void testIndexOfAny() {
         constantArgs = new Object[7];
@@ -86,41 +53,32 @@ public class TStringOpsIndexOfAnyConstantTest extends TStringOpsIndexOfAnyTest {
         constantArgs[1] = arrayA;
         constantArgs[2] = offsetA;
         constantArgs[3] = lengthA;
-        if (strideA == 0) {
+        if (stride == 0) {
             byte[] valuesB = new byte[values.length];
             for (int i = 0; i < values.length; i++) {
                 valuesB[i] = (byte) values[i];
             }
-            constantArgs[4] = fromIndexA;
+            constantArgs[4] = fromIndex;
             constantArgs[5] = valuesB;
-            test(getIndexOfAnyByteIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, fromIndexA, valuesB);
+            test(getIndexOfAnyByteIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, fromIndex, valuesB);
         }
-        if (strideA < 2) {
+        if (stride < 2) {
             char[] valuesC = new char[values.length];
             for (int i = 0; i < values.length; i++) {
-                valuesC[i] = (char) (strideA == 0 ? values[i] & 0xff : values[i]);
+                valuesC[i] = (char) (stride == 0 ? values[i] & 0xff : values[i]);
             }
-            constantArgs[4] = strideA;
-            constantArgs[5] = fromIndexA;
+            constantArgs[4] = stride;
+            constantArgs[5] = fromIndex;
             constantArgs[6] = valuesC;
-            test(getIndexOfAnyCharIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesC);
+            test(getIndexOfAnyCharIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, stride, fromIndex, valuesC);
         }
         int[] valuesI = new int[values.length];
         for (int i = 0; i < values.length; i++) {
-            valuesI[i] = strideA == 0 ? values[i] & 0xff : strideA == 1 ? values[i] & 0xffff : values[i];
+            valuesI[i] = stride == 0 ? values[i] & 0xff : stride == 1 ? values[i] & 0xffff : values[i];
         }
-        constantArgs[4] = strideA;
-        constantArgs[5] = fromIndexA;
+        constantArgs[4] = stride;
+        constantArgs[5] = fromIndex;
         constantArgs[6] = valuesI;
-        test(getIndexOfAnyIntIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesI);
-    }
-
-    @Override
-    protected void checkLowTierGraph(StructuredGraph graph) {
-        if (isSupportedArchitecture()) {
-            if (arrayA.length < GraalOptions.StringIndexOfConstantLimit.getValue(graph.getOptions())) {
-                assertConstantReturn(graph);
-            }
-        }
+        test(getIndexOfAnyIntIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, stride, fromIndex, valuesI);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,12 +34,13 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 import org.graalvm.polyglot.PolyglotException;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.StringContains;
+import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.ClassRule;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
@@ -65,14 +66,11 @@ public class BigEndianTest {
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
 
-    @Rule public ExpectedException exception = ExpectedException.none();
-
     @Test
     public void testBitEndianDataLayout() throws IOException {
         File file = TEST_DIR.resolve("big_endian.ll.dir").resolve(FILENAME).toFile();
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder("llvm", file).build();
-        exception.expect(PolyglotException.class);
-        exception.expectMessage("Byte order BIG_ENDIAN");
-        runWithPolyglot.getPolyglotContext().eval(source);
+        PolyglotException exception = Assert.assertThrows(PolyglotException.class, () -> runWithPolyglot.getPolyglotContext().eval(source));
+        MatcherAssert.assertThat(exception.getMessage(), StringContains.containsString("Byte order BIG_ENDIAN"));
     }
 }

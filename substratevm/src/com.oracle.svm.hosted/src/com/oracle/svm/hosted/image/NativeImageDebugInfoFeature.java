@@ -30,18 +30,10 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.hosted.c.CGlobalDataFeature;
-import com.oracle.svm.util.ReflectionUtil;
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer;
@@ -52,15 +44,24 @@ import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.UniqueShortNameProviderDefaultImpl;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
@@ -165,7 +166,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                     var content = AssemblyBuffer.createOutputAssembler(objectFile.getByteOrder());
                     // 1 -> python file
                     content.writeByte((byte) 1);
-                    content.writeString("./svmhelpers.py");
+                    content.writeString("./gdb-debughelpers.py");
                     return new BasicProgbitsSectionImpl(content.getBlob()) {
                         @Override
                         public boolean isLoadable() {
@@ -180,7 +181,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.arguments", makeSectionImpl.apply(DiagnosticUtils.getBuilderArguments(imageClassLoader)));
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.java.properties", makeSectionImpl.apply(DiagnosticUtils.getBuilderProperties()));
 
-                Path svmDebugHelper = Path.of(System.getProperty("java.home"), "lib/svm/debug/svmhelpers.py");
+                Path svmDebugHelper = Path.of(System.getProperty("java.home"), "lib/svm/debug/gdb-debughelpers.py");
                 if (Files.exists(svmDebugHelper)) {
                     objectFile.newUserDefinedSection(".debug_gdb_scripts", makeGDBSectionImpl.get());
                 }

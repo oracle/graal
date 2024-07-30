@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -242,7 +242,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     public final void movflt(Register dst, Register src) {
         assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM) : dst + " " + src;
         if (isAVX512Register(dst) || isAVX512Register(src)) {
-            VexMoveOp.VMOVAPS.emit(this, AVXKind.AVXSize.XMM, dst, src);
+            VexMoveOp.EVMOVAPS.emit(this, AVXKind.AVXSize.XMM, dst, src);
         } else {
             movaps(dst, src);
         }
@@ -251,7 +251,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     public final void movflt(Register dst, AMD64Address src) {
         assert dst.getRegisterCategory().equals(AMD64.XMM);
         if (isAVX512Register(dst)) {
-            VexMoveOp.VMOVSS.emit(this, AVXKind.AVXSize.XMM, dst, src);
+            VexMoveOp.EVMOVSS.emit(this, AVXKind.AVXSize.XMM, dst, src);
         } else {
             movss(dst, src);
         }
@@ -260,7 +260,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     public final void movflt(AMD64Address dst, Register src) {
         assert src.getRegisterCategory().equals(AMD64.XMM);
         if (isAVX512Register(src)) {
-            VexMoveOp.VMOVSS.emit(this, AVXKind.AVXSize.XMM, dst, src);
+            VexMoveOp.EVMOVSS.emit(this, AVXKind.AVXSize.XMM, dst, src);
         } else {
             movss(dst, src);
         }
@@ -269,7 +269,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     public final void movdbl(Register dst, Register src) {
         assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM) : dst + " " + src;
         if (isAVX512Register(dst) || isAVX512Register(src)) {
-            VexMoveOp.VMOVAPD.emit(this, AVXKind.AVXSize.XMM, dst, src);
+            VexMoveOp.EVMOVAPD.emit(this, AVXKind.AVXSize.XMM, dst, src);
         } else {
             movapd(dst, src);
         }
@@ -278,7 +278,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     public final void movdbl(Register dst, AMD64Address src) {
         assert dst.getRegisterCategory().equals(AMD64.XMM);
         if (isAVX512Register(dst)) {
-            VexMoveOp.VMOVSD.emit(this, AVXKind.AVXSize.XMM, dst, src);
+            VexMoveOp.EVMOVSD.emit(this, AVXKind.AVXSize.XMM, dst, src);
         } else {
             movsd(dst, src);
         }
@@ -287,7 +287,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     public final void movdbl(AMD64Address dst, Register src) {
         assert src.getRegisterCategory().equals(AMD64.XMM);
         if (isAVX512Register(src)) {
-            VexMoveOp.VMOVSD.emit(this, AVXKind.AVXSize.XMM, dst, src);
+            VexMoveOp.EVMOVSD.emit(this, AVXKind.AVXSize.XMM, dst, src);
         } else {
             movsd(dst, src);
         }
@@ -480,6 +480,13 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         jmpWithoutAlignment(scratch);
         assert beforeJmp + bytesToEmit == position() : Assertions.errorMessage(beforeJmp, bytesToEmit, position());
         return beforeJmp;
+    }
+
+    public void jmp() {
+        mitigateJCCErratum(5);
+        annotatePatchingImmediate(1, 4);
+        emitByte(0xE9);
+        emitInt(0);
     }
 
     @SuppressWarnings("unused")

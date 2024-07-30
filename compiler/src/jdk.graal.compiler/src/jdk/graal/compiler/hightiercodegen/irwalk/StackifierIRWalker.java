@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.SortedSet;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -236,8 +236,8 @@ public class StackifierIRWalker extends IRWalker {
              * header and some need to start directly after, depending on whether the blocks are
              * supposed to end outside or inside the loop.
              */
-            SortedSet<LabeledBlock> labeledBlockStartsBeforeLoop = LabeledBlockGeneration.getSortedSetByLabeledBlockEnd();
-            SortedSet<LabeledBlock> labeledBlockStartsAfterLoop = LabeledBlockGeneration.getSortedSetByLabeledBlockEnd();
+            SortedSet<LabeledBlock> labeledBlockStartsBeforeLoop = LabeledBlockGeneration.getSortedSetByLabeledBlockEnd(stackifierData);
+            SortedSet<LabeledBlock> labeledBlockStartsAfterLoop = LabeledBlockGeneration.getSortedSetByLabeledBlockEnd(stackifierData);
 
             SortedSet<LabeledBlock> blockStarts = stackifierData.labeledBlockStarts(currentBlock);
 
@@ -354,7 +354,7 @@ public class StackifierIRWalker extends IRWalker {
      */
     private void generateForwardJump(HIRBlock currentBlock, HIRBlock successor) {
         if (LabeledBlockGeneration.isNormalLoopExit(currentBlock, successor, stackifierData)) {
-            Loop<HIRBlock> loop = currentBlock.getLoop();
+            CFGLoop<HIRBlock> loop = currentBlock.getLoop();
             Scope loopScope = ((LoopScopeContainer) stackifierData.getScopeEntry(loop.getHeader().getBeginNode())).getLoopScope();
             Scope innerScope = stackifierData.getEnclosingScope().get(currentBlock);
             /*
@@ -428,7 +428,7 @@ public class StackifierIRWalker extends IRWalker {
 
         genLoopHeader(currentBlock);
 
-        lowerBlocks(loopScope.getSortedBlocks());
+        lowerBlocks(loopScope.getSortedBlocks(stackifierData));
         genLoopEnd(currentBlock);
     }
 
@@ -473,7 +473,7 @@ public class StackifierIRWalker extends IRWalker {
         codeGenTool.genCatchBlockPrefix(caughtObjectName, caughtObjectType);
 
         if (catchScope != null) {
-            lowerBlocks(catchScope.getSortedBlocks());
+            lowerBlocks(catchScope.getSortedBlocks(stackifierData));
         } else {
             generateForwardJump(currentBlock, excpSucc);
         }
@@ -497,14 +497,14 @@ public class StackifierIRWalker extends IRWalker {
         Scope elseScope = ifScopeContainer.getElseScope();
         lowerIfHeader(lastNode);
         if (thenScope != null) {
-            lowerBlocks(thenScope.getSortedBlocks());
+            lowerBlocks(thenScope.getSortedBlocks(stackifierData));
         } else {
             HIRBlock trueBlock = nodeToBlockMap.get(lastNode.trueSuccessor());
             generateForwardJump(currentBlock, trueBlock);
         }
         codeGenTool.genElseHeader();
         if (elseScope != null) {
-            lowerBlocks(elseScope.getSortedBlocks());
+            lowerBlocks(elseScope.getSortedBlocks(stackifierData));
         } else {
             HIRBlock falseBlock = nodeToBlockMap.get(lastNode.falseSuccessor());
             generateForwardJump(currentBlock, falseBlock);
@@ -661,7 +661,7 @@ public class StackifierIRWalker extends IRWalker {
                 lowerSwitchCase(switchNode, succ, succk);
             }
             if (caseScopes[i] != null) {
-                lowerBlocks(caseScopes[i].getSortedBlocks());
+                lowerBlocks(caseScopes[i].getSortedBlocks(stackifierData));
             } else {
                 generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ));
             }
@@ -818,8 +818,8 @@ public class StackifierIRWalker extends IRWalker {
         codeGenTool.genComment("End of loop " + label);
     }
 
-    private static String getLabel(HIRBlock block) {
+    private String getLabel(HIRBlock block) {
         assert block.isLoopHeader();
-        return LABEL_PREFIX + block.getId();
+        return LABEL_PREFIX + stackifierData.blockOrder(block);
     }
 }

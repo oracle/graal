@@ -35,13 +35,13 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.services.Services;
 
 public final class InlineDuringParsingPlugin implements InlineInvokePlugin {
 
     private static int getInteger(String name, int def) {
-        String value = Services.getSavedProperty(name);
+        String value = GraalServices.getSavedProperty(name);
         if (value != null) {
             return Integer.parseInt(value);
         }

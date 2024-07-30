@@ -26,6 +26,11 @@ package jdk.graal.compiler.replacements.test;
 
 import java.util.Objects;
 
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.StringContains;
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Scope;
@@ -39,11 +44,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordCastNode;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -141,23 +141,23 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
         return obj;
     }
 
-    @Rule public final ExpectedException thrown = ExpectedException.none();
     private static final String UNKNOWN_REFERENCE_AT_SAFEPOINT_MSG = "should not reach here: unknown reference alive across safepoint";
 
     @Test
     @SuppressWarnings("try")
     public void testFieldOffsetMergeNonLiveBasePointer() {
-        thrown.expect(GraalError.class);
-        thrown.expectMessage(UNKNOWN_REFERENCE_AT_SAFEPOINT_MSG);
-        DebugContext debug = getDebugContext();
-        try (Scope s = debug.disable()) {
-            // Run a couple times to encourage objects to move
-            for (int i = 0; i < 4; i++) {
-                Result r = new Result();
-                test("fieldOffsetMergeSnippet01", r, 8L, 16L);
-                Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+        GraalError error = Assert.assertThrows(GraalError.class, () -> {
+            DebugContext debug = getDebugContext();
+            try (Scope s = debug.disable()) {
+                // Run a couple times to encourage objects to move
+                for (int i = 0; i < 4; i++) {
+                    Result r = new Result();
+                    test("fieldOffsetMergeSnippet01", r, 8L, 16L);
+                    Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+                }
             }
-        }
+        });
+        MatcherAssert.assertThat(error.getMessage(), StringContains.containsString(UNKNOWN_REFERENCE_AT_SAFEPOINT_MSG));
     }
 
     @Test
@@ -172,17 +172,18 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
     @Test
     @SuppressWarnings("try")
     public void testFieldOffsetMergeLiveBasePointer() {
-        thrown.expect(GraalError.class);
-        thrown.expectMessage(UNKNOWN_REFERENCE_AT_SAFEPOINT_MSG);
-        DebugContext debug = getDebugContext();
-        try (Scope s = debug.disable()) {
-            // Run a couple times to encourage objects to move
-            for (int i = 0; i < 4; i++) {
-                Result r = new Result();
-                test("fieldOffsetMergeSnippet03", r, new Result(), new Result(), 8L, 16L);
-                Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+        GraalError error = Assert.assertThrows(GraalError.class, () -> {
+            DebugContext debug = getDebugContext();
+            try (Scope s = debug.disable()) {
+                // Run a couple times to encourage objects to move
+                for (int i = 0; i < 4; i++) {
+                    Result r = new Result();
+                    test("fieldOffsetMergeSnippet03", r, new Result(), new Result(), 8L, 16L);
+                    Assert.assertEquals(r.beforeGC.delta(), r.afterGC.delta());
+                }
             }
-        }
+        });
+        MatcherAssert.assertThat(error.getMessage(), StringContains.containsString(UNKNOWN_REFERENCE_AT_SAFEPOINT_MSG));
     }
 
     public static boolean SideEffectB;

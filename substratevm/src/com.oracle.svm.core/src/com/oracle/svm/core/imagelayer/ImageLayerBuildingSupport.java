@@ -24,14 +24,11 @@
  */
 package com.oracle.svm.core.imagelayer;
 
-import java.util.EnumSet;
-
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
-
 import jdk.graal.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * Support for tracking the image layer stage of this native-image build. When image layers are
@@ -58,8 +55,10 @@ import jdk.graal.compiler.api.replacements.Fold;
  *     | (D) Application Layer  |
  *     |------------------------|
  * </pre>
+ *
+ * Note this is intentionally not a LayeredImageSingleton itself to prevent circular dependencies.
  */
-public abstract class ImageLayerBuildingSupport implements UnsavedSingleton {
+public abstract class ImageLayerBuildingSupport {
     protected final boolean buildingImageLayer;
     private final boolean buildingInitialLayer;
     private final boolean buildingApplicationLayer;
@@ -72,6 +71,16 @@ public abstract class ImageLayerBuildingSupport implements UnsavedSingleton {
 
     private static ImageLayerBuildingSupport singleton() {
         return ImageSingletons.lookup(ImageLayerBuildingSupport.class);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static boolean firstImageBuild() {
+        return !buildingImageLayer() || buildingInitialLayer();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static boolean lastImageBuild() {
+        return !buildingImageLayer() || buildingApplicationLayer();
     }
 
     @Fold
@@ -97,10 +106,5 @@ public abstract class ImageLayerBuildingSupport implements UnsavedSingleton {
     @Fold
     public static boolean buildingSharedLayer() {
         return singleton().buildingImageLayer && !singleton().buildingApplicationLayer;
-    }
-
-    @Override
-    public final EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.ALL_ACCESS_ALLOW_FOLDING;
     }
 }

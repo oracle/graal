@@ -86,7 +86,6 @@ import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.hotspot.HotSpotGraphBuilderPhase;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
-import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -379,8 +378,16 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     private static final ThreadLocal<HashMap<ResolvedJavaMethod, InstalledCode>> cache = ThreadLocal.withInitial(HashMap::new);
 
+    /**
+     * Reset the entire {@linkplain #cache} of {@linkplain InstalledCode}. Additionally, invalidate
+     * all code that was installed before. Some tests install default methods for example and one
+     * test should never influence another one.
+     */
     @BeforeClass
     public static void resetCodeCache() {
+        for (InstalledCode code : cache.get().values()) {
+            code.invalidate();
+        }
         cache.get().clear();
     }
 
@@ -503,7 +510,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                     boolean checkConstants,
                     boolean addGaphsToDebugContext) {
         DebugContext debug = actual.getDebug();
-        actual.getOptimizationLog().emit(new StableMethodNameFormatter(getDefaultGraphBuilderPhase(), getProviders(), debug));
+        actual.getOptimizationLog().emit();
 
         String expectedString = getCanonicalGraphString(expected, excludeVirtual, checkConstants);
         String actualString = getCanonicalGraphString(actual, excludeVirtual, checkConstants);
@@ -1261,9 +1268,9 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
-                            graphToCompile.getProfilingInfo(), suites, createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, null, true);
+                            graphToCompile.getProfilingInfo(), suites, createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, null, null, true);
             CompilationResult result = GraalCompiler.compile(request);
-            graphToCompile.getOptimizationLog().emit(new StableMethodNameFormatter(getDefaultGraphBuilderPhase(), getProviders(), graphToCompile.getDebug()));
+            graphToCompile.getOptimizationLog().emit();
             return result;
         } catch (Throwable e) {
             throw debug.handle(e);
@@ -1765,28 +1772,28 @@ public abstract class GraalCompilerTest extends GraalTest {
     public static final String SEED_PROPERTY_NAME = "test.graal.random.seed";
 
     /**
-     * Globally shared, lazily initialized random generator.
+     * Globally shared, lazily initialized random seed.
      */
-    private static volatile Random randomGenerator;
+    private static volatile Long randomSeed;
 
     /**
-     * Returns a global {@link java.util.Random} generator. The generator is seeded with the value
-     * specified by {@link #SEED_PROPERTY_NAME} if it exists.
+     * Returns a {@link java.util.Random} generator with a global seed specified by
+     * {@link #SEED_PROPERTY_NAME} if it exists.
      *
      * The used seed printed to stdout for reproducing test failures.
      */
     public static Random getRandomInstance() {
-        if (randomGenerator == null) {
+        if (randomSeed == null) {
             synchronized (GraalCompilerTest.class) {
-                if (randomGenerator == null) {
+                if (randomSeed == null) {
                     var seedLong = Long.getLong(SEED_PROPERTY_NAME);
                     var seed = seedLong != null ? seedLong : new Random().nextLong();
                     System.out.printf("Random generator seed: %d%n", seed);
                     System.out.printf("To re-run test with same seed, set \"-D%s=%d\" on command line.%n", SEED_PROPERTY_NAME, seed);
-                    randomGenerator = new Random(seed);
+                    randomSeed = seed;
                 }
             }
         }
-        return randomGenerator;
+        return new Random(randomSeed);
     }
 }

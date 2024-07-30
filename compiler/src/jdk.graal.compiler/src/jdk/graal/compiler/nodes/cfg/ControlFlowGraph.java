@@ -37,7 +37,7 @@ import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.cfg.BasicBlockSet;
 import jdk.graal.compiler.core.common.cfg.CFGVerifier;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -110,7 +110,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
 
     private NodeMap<HIRBlock> nodeToBlock;
     private HIRBlock[] reversePostOrder;
-    private List<Loop<HIRBlock>> loops;
+    private List<CFGLoop<HIRBlock>> loops;
     private int maxDominatorDepth;
     private EconomicMap<LoopBeginNode, LoopFrequencyData> localLoopFrequencyData;
 
@@ -157,36 +157,31 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
 
             BuildConfiguration buildConfig = cfg.buildConfig;
 
-            boolean loopInfoComputed = false;
             if (CFGOptions.DumpEndVersusExitLoopFrequencies.getValue(graph.getOptions())) {
                 // additional loop info for sink frequencies inside the loop body
-                if (!buildConfig.computeLoops) {
-                    cfg.computeLoopInformation();
-                }
-                if (!buildConfig.computeDominators) {
-                    cfg.computeDominators();
-                }
-                loopInfoComputed = true;
+                cfg.computeLoopInformation();
+                cfg.computeDominators();
             }
 
-            if (computeFrequency && !buildConfig.computeFrequency) {
+            if (computeFrequency) {
                 cfg.computeFrequencies();
             }
 
-            if (computeLoops && !loopInfoComputed && !buildConfig.computeLoops) {
+            if (computeLoops) {
                 cfg.computeLoopInformation();
             }
-            if (computeDominators && !loopInfoComputed && !buildConfig.computeDominators) {
+            if (computeDominators) {
                 cfg.computeDominators();
                 assert cfg.verifyRPOInnerLoopsFirst();
             }
-            if (computePostdominators && !buildConfig.computePostdominators) {
+            if (computePostdominators) {
                 cfg.computePostdominators();
             }
 
             // there's not much to verify when connectBlocks == false
             assert !(connectBlocks || computeLoops || computeDominators || computePostdominators) || CFGVerifier.verify(cfg);
-            cfg.buildConfig.update(modifiableBlocks, connectBlocks, computeFrequency, computeLoops | loopInfoComputed, computeDominators | loopInfoComputed, computePostdominators);
+
+            buildConfig.connectBlocks |= connectBlocks;
             graph.setLastCFG(cfg);
             return cfg;
         }
@@ -214,20 +209,10 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     private static final class BuildConfiguration {
         private boolean modifiableBlocks = false;
         private boolean connectBlocks = false;
-        private boolean computeFrequency = false;
-        private boolean computeLoops = false;
-        private boolean computeDominators = false;
-        private boolean computePostdominators = false;
-
-        @SuppressWarnings("hiding")
-        public void update(boolean modifiableBlocks, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
-            this.modifiableBlocks |= modifiableBlocks;
-            this.connectBlocks |= connectBlocks;
-            this.computeFrequency |= computeFrequency;
-            this.computeLoops |= computeLoops;
-            this.computeDominators |= computeDominators;
-            this.computePostdominators |= computePostdominators;
-        }
+        private boolean frequenciesComputed = false;
+        private boolean loopsComputed = false;
+        private boolean dominatorsComputed = false;
+        private boolean postdominatorsComputed = false;
 
         /**
          * Checks that this build configuration is not weaker than a build configuration from the
@@ -236,8 +221,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
          */
         @SuppressWarnings("hiding")
         public boolean notWeakerThan(boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
-            return (this.connectBlocks || !connectBlocks) && (this.computeFrequency || !computeFrequency) && (this.computeLoops || !computeLoops) &&
-                            (this.computeDominators || !computeDominators) && (this.computePostdominators || !computePostdominators);
+            return (this.connectBlocks || !connectBlocks) && (this.frequenciesComputed || !computeFrequency) && (this.loopsComputed || !computeLoops) &&
+                            (this.dominatorsComputed || !computeDominators) && (this.postdominatorsComputed || !computePostdominators);
         }
     }
 
@@ -254,6 +239,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
             }
         }
         reversePostOrder = ReversePostOrder.identifyBlocks(this, numBlocks);
+        buildConfig.modifiableBlocks = makeModifiable;
     }
 
     public double localLoopFrequency(LoopBeginNode lb) {
@@ -405,8 +391,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     }
 
     public static void addDeferredExit(DeferredExit[] deferredExits, HIRBlock b) {
-        Loop<HIRBlock> outermostExited = b.getDominator().getLoop();
-        Loop<HIRBlock> exitBlockLoop = b.getLoop();
+        CFGLoop<HIRBlock> outermostExited = b.getDominator().getLoop();
+        CFGLoop<HIRBlock> exitBlockLoop = b.getLoop();
         assert outermostExited != null : "Dominator must be in a loop. Possible cause is a missing loop exit node.";
         while (outermostExited.getParent() != null && outermostExited.getParent() != exitBlockLoop) {
             outermostExited = outermostExited.getParent();
@@ -719,6 +705,11 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     }
 
     private void computeDominators() {
+        if (buildConfig.dominatorsComputed) {
+            return;
+        }
+        buildConfig.dominatorsComputed = true;
+
         assert reversePostOrder[0].getPredecessorCount() == 0 : "start block has no predecessor and therefore no dominator";
         HIRBlock[] blocks = reversePostOrder;
         int curMaxDominatorDepth = 0;
@@ -841,7 +832,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     }
 
     @Override
-    public List<Loop<HIRBlock>> getLoops() {
+    public List<CFGLoop<HIRBlock>> getLoops() {
         return loops;
     }
 
@@ -1201,6 +1192,11 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
      */
     //@formatter:on
     private void computeFrequencies() {
+        if (buildConfig.frequenciesComputed) {
+            return;
+        }
+        buildConfig.frequenciesComputed = true;
+
         /*
          * General note: While it is not verified that the reverse post order contains inner loops
          * first yet, this will be verified once we calculate dominance information, thus we should
@@ -1227,14 +1223,19 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     }
 
     private void computeLoopInformation() {
+        if (buildConfig.loopsComputed) {
+            return;
+        }
+        buildConfig.loopsComputed = true;
+
         loops = new ArrayList<>(graph.getNodes(LoopBeginNode.TYPE).count());
         if (graph.hasLoops()) {
             HIRBlock[] stack = new HIRBlock[this.reversePostOrder.length];
             for (HIRBlock block : reversePostOrder) {
                 AbstractBeginNode beginNode = block.getBeginNode();
                 if (beginNode instanceof LoopBeginNode) {
-                    Loop<HIRBlock> parent = block.getLoop();
-                    Loop<HIRBlock> loop = new HIRLoop(parent, loops.size(), block);
+                    CFGLoop<HIRBlock> parent = block.getLoop();
+                    CFGLoop<HIRBlock> loop = new HIRLoop(parent, loops.size(), block);
                     if (parent != null) {
                         parent.getChildren().add(loop);
                     }
@@ -1299,7 +1300,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         }
     }
 
-    private static void computeLoopBlocks(HIRBlock start, Loop<HIRBlock> loop, HIRBlock[] stack, boolean usePred) {
+    private static void computeLoopBlocks(HIRBlock start, CFGLoop<HIRBlock> loop, HIRBlock[] stack, boolean usePred) {
         if (start.getLoop() != loop) {
             start.setLoop(loop);
             stack[0] = start;
@@ -1322,6 +1323,11 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     }
 
     public void computePostdominators() {
+        if (buildConfig.postdominatorsComputed) {
+            return;
+        }
+        buildConfig.postdominatorsComputed = true;
+
         HIRBlock[] reversePostOrderTmp = this.reversePostOrder;
         outer: for (int j = reversePostOrderTmp.length - 1; j >= 0; --j) {
             HIRBlock block = reversePostOrderTmp[j];

@@ -41,7 +41,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 
-import jdk.vm.ci.services.Services;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 
 /**
  * A compiler phase that can apply an ordered collection of phases to a graph.
@@ -397,7 +397,7 @@ public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<?
                     graphStateBefore = graph.getGraphState().copy();
                 }
             } catch (Throwable t) {
-                if (Boolean.parseBoolean(Services.getSavedProperty("test.graal.compilationplan.fuzzing"))) {
+                if (Boolean.parseBoolean(GraalServices.getSavedProperty("test.graal.compilationplan.fuzzing"))) {
                     TTY.println("========================================================================================================================");
                     TTY.println("An error occurred while executing phase %s.", phase.getClass().getName());
                     TTY.printf("The graph state after the failing phase is:%n%s", graph.getGraphState().toString("\t"));

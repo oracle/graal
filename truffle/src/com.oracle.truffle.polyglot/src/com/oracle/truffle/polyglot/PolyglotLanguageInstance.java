@@ -62,6 +62,7 @@ import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
+/** The data corresponding to a specific {@link TruffleLanguage} instance. */
 final class PolyglotLanguageInstance implements VMObject {
 
     final PolyglotLanguage language;

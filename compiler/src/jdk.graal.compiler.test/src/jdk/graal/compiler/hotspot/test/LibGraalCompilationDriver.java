@@ -25,7 +25,7 @@
 package jdk.graal.compiler.hotspot.test;
 
 import static jdk.graal.compiler.debug.MemUseTrackerKey.getCurrentThreadAllocatedBytes;
-import static sun.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
+import static jdk.internal.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
@@ -59,8 +59,8 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
 import jdk.graal.compiler.util.OptionsEncoder;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
@@ -68,7 +68,6 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import sun.misc.Unsafe;
 
 /**
  * Encapsulates functionality to compile a batch of methods for stand-alone compile test programs
@@ -82,6 +81,7 @@ public class LibGraalCompilationDriver {
 
     static {
         // To be able to use Unsafe
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base");
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.graal.compiler");
     }
 
@@ -153,7 +153,7 @@ public class LibGraalCompilationDriver {
         return compiler.getGraalRuntime();
     }
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /**
      * Implemented by

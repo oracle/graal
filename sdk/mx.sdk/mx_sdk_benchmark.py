@@ -1080,7 +1080,7 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
         return "graal-compiler"
 
     def version(self):
-        return "1.03"
+        return "1.04"
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2015BenchmarkSuite, self).vmArgs(bmSuiteArgs))

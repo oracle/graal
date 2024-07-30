@@ -150,7 +150,16 @@ public final class ScopeImpl implements DebugContext.Scope {
     private boolean interceptDisabled;
 
     ScopeImpl(DebugContext owner, Thread thread, boolean interceptDisabled) {
-        this(owner, thread.getName(), null, false, interceptDisabled);
+        this(owner, getThreadName(thread), null, false, interceptDisabled);
+    }
+
+    private static String getThreadName(Thread thread) {
+        String name = thread.getName();
+        if (name.isEmpty()) { // the default for virtual threads
+            return thread.toString();
+        } else {
+            return name;
+        }
     }
 
     private ScopeImpl(DebugContext owner, String unqualifiedName, ScopeImpl parent, boolean sandbox, boolean interceptDisabled, Object... context) {

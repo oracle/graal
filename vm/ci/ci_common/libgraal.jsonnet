@@ -62,6 +62,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
       '*/graal-compiler-ctw.log',
       '*/gcutils_heapdump_*.hprof.gz'
     ],
+    components+: ["truffle"],
     timelimit: '1:00:00',
     teardown+: if coverage then [
       g.upload_coverage
@@ -77,6 +78,38 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   # Use economy mode for coverage testing
   libgraal_truffle_coverage: self.libgraal_truffle_base(['-Ob'], coverage=true),
 
+  # Gate for guestgraal
+  guestgraal_compiler:: {
+    local guestgraal_env = std.strReplace(vm.libgraal_env, "libgraal", "guestgraal"),
+    # LibGraal gate tasks currently expected to work
+    local tasks = [
+      "LibGraal Compiler:Basic",
+      "LibGraal Compiler:FatalErrorHandling",
+      "LibGraal Compiler:OOMEDumping",
+      "LibGraal Compiler:SystemicFailureDetection",
+      "LibGraal Compiler:CompilationTimeout:JIT",
+      "LibGraal Compiler:CTW",
+      "LibGraal Compiler:DaCapo",
+      "LibGraal Compiler:ScalaDaCapo"
+    ] +
+    # Renaissance is missing the msvc redistributable on Windows [GR-50132]
+    if self.os == "windows" then [] else ["LibGraal Compiler:Renaissance"],
+
+    run+: [
+      ['mx', '--env', guestgraal_env, 'build'],
+      ['mx', '--env', guestgraal_env, 'native-image', '-J-esa', '-J-ea', '-esa', '-ea',
+       '-p', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'JNIUTILS'],
+       '-cp', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'GUESTGRAAL_LIBRARY'],
+       '-H:+UnlockExperimentalVMOptions', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases'],
+      ['mx', '--env', guestgraal_env, 'gate', '--task', std.join(",", tasks), '--extra-vm-argument=-XX:JVMCILibPath=$PWD/' + vm.vm_dir],
+    ],
+    logs+: [
+      '*/graal-compiler.log',
+      '*/graal-compiler-ctw.log'
+    ],
+    timelimit: '1:00:00',
+  },
+
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local gate_jobs = {
     "gate-vm-libgraal_compiler-labsjdk-latest-linux-amd64": {},
@@ -86,7 +119,12 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
     "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {},
     "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
-  },
+  } + if repo_config.graalvm_edition == "ce" then
+  {
+    # GuestGraal on EE is still under construction
+    "gate-vm-guestgraal_compiler-labsjdk-latest-linux-amd64": {}
+  } else {},
+
   local gates = g.as_gates(gate_jobs),
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -144,7 +182,9 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
       "libgraal_truffle",
       "libgraal_compiler_quickbuild",
       "libgraal_truffle_quickbuild"
-    ]
+    ] +
+    # GuestGraal on EE is still under construction
+    (if repo_config.graalvm_edition == "ce" then ["guestgraal_compiler"] else [])
   ],
 
   local adjust_windows_version(gate) = (

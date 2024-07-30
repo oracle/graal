@@ -26,6 +26,47 @@ package com.oracle.svm.core.layeredimagesingleton;
 
 import java.util.EnumSet;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+/**
+ * In additional to the traditional singleton model, i.e. a key-value map whose lookups are constant
+ * folded within generated code, we provide two additional options:
+ *
+ * <ul>
+ * <li>{@link ApplicationLayerOnlyImageSingleton}: Instead of having a per-layer singleton, all
+ * {@link ImageSingletons#lookup} calls refer to a single singleton which will be created in the
+ * application layer.</li>
+ *
+ * <li>{@link MultiLayeredImageSingleton}: {@link ImageSingletons#lookup} calls continue to refer to
+ * the appropriate per layer image singleton, but there is also an additional method
+ * {@link MultiLayeredImageSingleton#getAllLayers} which returns an array with the image singletons
+ * corresponding to this key in all layers they were created. The length of this array will vary
+ * from [0, total #layers], based on the number of layers singletons were installed in (i.e., it is
+ * not required for the singleton to be installed in all layers). Within the array, the singletons
+ * will be arranged so that index [0] corresponds to the singleton originating from the oldest layer
+ * in which the singleton was installed and index [length - 1] holds the singleton from the newest
+ * layer.</li>
+ * </ul>
+ *
+ * Note the unique behavior of {@link ApplicationLayerOnlyImageSingleton} applies only when building
+ * a layered image. Calling {@link MultiLayeredImageSingleton#getAllLayers} during a traditional
+ * build requires the singleton to be installed in the build and will return an array of length 1
+ * containing that singleton.
+ *
+ * Currently, when using these special singleton types there are additional restrictions:
+ *
+ * <ol>
+ * <li>The key class type must match the implementation type</li>
+ * <li>The same object cannot be mapped into multiple keys, i.e. there is a one-to-one mapping
+ * between Class<->singleton object</li>
+ * <li>{@link ImageSingletons#add} must be called before the analysis phase (i.e. these image
+ * singletons cannot be added at a later point)</li>
+ * <li>{@link ApplicationLayerOnlyImageSingleton}s can only be installed in the application
+ * layer</li>
+ * </ol>
+ */
 public interface LayeredImageSingleton {
 
     enum PersistFlags {
@@ -46,8 +87,14 @@ public interface LayeredImageSingleton {
         CREATE
     }
 
+    /*
+     * Returns how this singleton should be handled for the current build. The returned value must
+     * not change throughout execution (i.e., the returned results can be cached).
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
     EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags();
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     PersistFlags preparePersist(ImageSingletonWriter writer);
 
 }

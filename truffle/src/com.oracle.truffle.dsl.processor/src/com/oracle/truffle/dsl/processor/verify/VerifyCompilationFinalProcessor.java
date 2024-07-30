@@ -71,7 +71,7 @@ public class VerifyCompilationFinalProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
-            return false;
+            return true;
         }
         try (ProcessorContext context = ProcessorContext.enter(processingEnv)) {
             TruffleTypes types = context.getTypes();
@@ -85,7 +85,7 @@ public class VerifyCompilationFinalProcessor extends AbstractProcessor {
                 }
                 assertNoErrorExpected(element);
             }
-            return false;
+            return true;
         }
     }
 

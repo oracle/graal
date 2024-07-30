@@ -28,12 +28,12 @@ Subject to the conditions in the license, including the License for Early Adopte
 Oracle GraalVM is also free to use on Oracle Cloud Infrastructure.
 For more information about Oracle GraalVM licensing, see the [Oracle Java SE Licensing FAQ](https://www.oracle.com/java/technologies/javase/jdk-faqs.html#GraalVM-licensing).
 
-GraalVM Community Edition is open-source software built from the sources available on [GitHub](https://github.com/oracle/graal) and distributed under [version 2 of the GNU General Public License with the “Classpath” Exception](https://github.com/oracle/graal/blob/master/LICENSE), which are the same terms as for Java.
+GraalVM Community Edition is open-source project built from the sources available on [GitHub](https://github.com/oracle/graal) and distributed under [version 2 of the GNU General Public License with the “Classpath” Exception](https://github.com/oracle/graal/blob/master/LICENSE), which are the same terms as for Java.
 Check the [licenses](https://github.com/oracle/graal#license) of individual GraalVM components which are generally derivative of the license of a particular language and may differ.
 
 ## What to Read Next
 
-Start with installing GraalVM by following the [installation guide](getting-started/graalvm-community/get-started-graalvm-community.md).
+Start with installing GraalVM by following the [installation guide](getting-started/get-started.md).
 
 Whether you are new to GraalVM Native Image or have little experience using it, continue to [Getting Started](reference-manual/native-image/README.md).
 

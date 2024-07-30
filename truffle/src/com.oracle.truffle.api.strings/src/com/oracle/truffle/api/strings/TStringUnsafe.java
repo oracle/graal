@@ -164,60 +164,32 @@ final class TStringUnsafe {
         return new String(chars).equals(ret);
     }
 
-    static byte getByteManaged(Object array, long byteOffset) {
+    static byte getByte(Object array, long byteOffset) {
         return UNSAFE.getByte(array, byteOffset);
     }
 
-    static byte getByteNative(long array, long byteOffset) {
-        return UNSAFE.getByte(array + byteOffset);
-    }
-
-    static char getCharManaged(Object array, long byteOffset) {
+    static char getChar(Object array, long byteOffset) {
         return UNSAFE.getChar(array, byteOffset);
     }
 
-    static char getCharNative(long array, long byteOffset) {
-        return UNSAFE.getChar(array + byteOffset);
-    }
-
-    static int getIntManaged(Object array, long byteOffset) {
+    static int getInt(Object array, long byteOffset) {
         return UNSAFE.getInt(array, byteOffset);
     }
 
-    static int getIntNative(long array, long byteOffset) {
-        return UNSAFE.getInt(array + byteOffset);
-    }
-
-    static long getLongManaged(Object array, long byteOffset) {
+    static long getLong(Object array, long byteOffset) {
         return UNSAFE.getLong(array, byteOffset);
     }
 
-    static long getLongNative(long array) {
-        return UNSAFE.getLong(array);
-    }
-
-    static void putByteManaged(byte[] array, long byteOffset, byte value) {
+    static void putByte(byte[] array, long byteOffset, byte value) {
         UNSAFE.putByte(array, byteOffset, value);
     }
 
-    static void putByteNative(long array, long byteOffset, byte value) {
-        UNSAFE.putByte(array + byteOffset, value);
-    }
-
-    static void putCharManaged(byte[] array, long byteOffset, char value) {
+    static void putChar(byte[] array, long byteOffset, char value) {
         UNSAFE.putChar(array, byteOffset, value);
     }
 
-    static void putCharNative(long array, long byteOffset, char value) {
-        UNSAFE.putChar(array + byteOffset, value);
-    }
-
-    static void putIntManaged(byte[] array, long byteOffset, int value) {
+    static void putInt(byte[] array, long byteOffset, int value) {
         UNSAFE.putInt(array, byteOffset, value);
-    }
-
-    static void putIntNative(long array, long byteOffset, int value) {
-        UNSAFE.putInt(array + byteOffset, value);
     }
 
     static void copyFromNative(long arraySrc, int offsetSrc, byte[] arrayDst, long offsetDst, int byteLength) {

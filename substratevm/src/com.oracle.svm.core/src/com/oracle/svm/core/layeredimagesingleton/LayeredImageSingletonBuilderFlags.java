@@ -42,19 +42,7 @@ public enum LayeredImageSingletonBuilderFlags {
     /**
      * This singleton should not have been created. Throw error if it is created.
      */
-    UNSUPPORTED,
-    /**
-     * This singleton should only be created in the initial layer.
-     */
-    INITIAL_LAYER_ONLY,
-    /**
-     * Allow the singleton to be constant-folded within the generated code.
-     */
-    ALLOW_CONSTANT_FOLDING,
-    /**
-     * Prevent the singleton to be constant-folded within the generated code.
-     */
-    PREVENT_CONSTANT_FOLDING;
+    UNSUPPORTED;
 
     /*
      * Below are some common flag patterns.
@@ -62,11 +50,9 @@ public enum LayeredImageSingletonBuilderFlags {
 
     public static final EnumSet<LayeredImageSingletonBuilderFlags> BUILDTIME_ACCESS_ONLY = EnumSet.of(BUILDTIME_ACCESS);
 
-    public static final EnumSet<LayeredImageSingletonBuilderFlags> RUNTIME_ACCESS_ONLY_ALLOW_FOLDING = EnumSet.of(RUNTIME_ACCESS,
-                    ALLOW_CONSTANT_FOLDING);
+    public static final EnumSet<LayeredImageSingletonBuilderFlags> RUNTIME_ACCESS_ONLY = EnumSet.of(RUNTIME_ACCESS);
 
-    public static final EnumSet<LayeredImageSingletonBuilderFlags> ALL_ACCESS_ALLOW_FOLDING = EnumSet.of(RUNTIME_ACCESS,
-                    BUILDTIME_ACCESS, ALLOW_CONSTANT_FOLDING);
+    public static final EnumSet<LayeredImageSingletonBuilderFlags> ALL_ACCESS = EnumSet.of(RUNTIME_ACCESS, BUILDTIME_ACCESS);
 
     public static boolean verifyImageBuilderFlags(LayeredImageSingleton singleton) {
         EnumSet<LayeredImageSingletonBuilderFlags> flags = singleton.getImageBuilderFlags();
@@ -79,16 +65,13 @@ public enum LayeredImageSingletonBuilderFlags {
             assert flags.equals(EnumSet.of(UNSUPPORTED)) : "Unsupported should be the only flag set " + flags;
         }
 
-        if (flags.contains(RUNTIME_ACCESS)) {
-            assert !flags.containsAll(EnumSet.of(PREVENT_CONSTANT_FOLDING, ALLOW_CONSTANT_FOLDING)) : String.format("Must set one of %s or %s. flags: %s", PREVENT_CONSTANT_FOLDING,
-                            ALLOW_CONSTANT_FOLDING, flags);
-            assert flags.contains(PREVENT_CONSTANT_FOLDING) || flags.contains(ALLOW_CONSTANT_FOLDING) : String.format("Must set one of %s or %s. flags: %s", PREVENT_CONSTANT_FOLDING,
-                            ALLOW_CONSTANT_FOLDING, flags);
+        if (singleton instanceof MultiLayeredImageSingleton || singleton instanceof ApplicationLayerOnlyImageSingleton) {
+            assert flags.contains(RUNTIME_ACCESS) : String.format("%s must be set when implementing either %s or %s: %s", RUNTIME_ACCESS, MultiLayeredImageSingleton.class,
+                            ApplicationLayerOnlyImageSingleton.class, singleton);
         }
 
-        if (flags.contains(BUILDTIME_ACCESS) && !flags.contains(RUNTIME_ACCESS)) {
-            assert !(flags.contains(PREVENT_CONSTANT_FOLDING) || flags.contains(ALLOW_CONSTANT_FOLDING)) : "Constant folding is only applicable for runtime accesses " + flags;
-        }
+        assert !(singleton instanceof MultiLayeredImageSingleton && singleton instanceof ApplicationLayerOnlyImageSingleton) : String.format("%s can only implement one of %s or %s", singleton,
+                        MultiLayeredImageSingleton.class, ApplicationLayerOnlyImageSingleton.class);
 
         return true;
     }

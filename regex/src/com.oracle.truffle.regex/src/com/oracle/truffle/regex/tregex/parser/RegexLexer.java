@@ -44,7 +44,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
+import java.util.function.IntPredicate;
 
 import org.graalvm.collections.EconomicSet;
 
@@ -557,7 +557,7 @@ public abstract class RegexLexer {
         return pattern.regionMatches(position, match, 0, match.length());
     }
 
-    protected boolean lookahead(Predicate<Character> predicate, int length) {
+    protected boolean lookahead(IntPredicate predicate, int length) {
         if (pattern.length() - position < length) {
             return false;
         }
@@ -588,7 +588,7 @@ public abstract class RegexLexer {
         return matches;
     }
 
-    protected boolean consumingLookahead(Predicate<Character> predicate, int length) {
+    protected boolean consumingLookahead(IntPredicate predicate, int length) {
         final boolean matches = lookahead(predicate, length);
         if (matches) {
             position += length;
@@ -603,19 +603,19 @@ public abstract class RegexLexer {
         return pattern.charAt(position - 1) == c;
     }
 
-    protected int count(Predicate<Character> predicate) {
+    protected int count(IntPredicate predicate) {
         return count(predicate, position, pattern.length());
     }
 
-    protected int countUpTo(Predicate<Character> predicate, int max) {
+    protected int countUpTo(IntPredicate predicate, int max) {
         return count(predicate, position, (int) Math.min(((long) position) + max, pattern.length()));
     }
 
-    protected int countFrom(Predicate<Character> predicate, int fromIndex) {
+    protected int countFrom(IntPredicate predicate, int fromIndex) {
         return count(predicate, fromIndex, pattern.length());
     }
 
-    protected int count(Predicate<Character> predicate, int fromIndex, int toIndex) {
+    protected int count(IntPredicate predicate, int fromIndex, int toIndex) {
         for (int i = fromIndex; i < toIndex; i++) {
             if (!predicate.test(pattern.charAt(i))) {
                 return i - fromIndex;

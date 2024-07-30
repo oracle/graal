@@ -49,6 +49,12 @@ public final class MissingReflectionRegistrationUtils {
         report(exception);
     }
 
+    public static void forUnsafeAllocation(String className) {
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("unsafe instantiate class", className),
+                        Class.class, null, className, null);
+        report(exception);
+    }
+
     public static void forField(Class<?> declaringClass, String fieldName) {
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access field",
                         declaringClass.getTypeName() + "#" + fieldName),

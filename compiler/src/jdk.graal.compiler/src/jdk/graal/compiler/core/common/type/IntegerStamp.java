@@ -2396,6 +2396,8 @@ public final class IntegerStamp extends PrimitiveStamp {
                         }
                     },
 
+                    null, // FMA
+
                     new ArithmeticOpTable.ReinterpretOp() {
 
                         @Override

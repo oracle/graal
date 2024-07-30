@@ -67,7 +67,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
-import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.util.json.JsonParser;
 import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -153,11 +152,11 @@ public final class ProfileReplaySupport {
      * either throw an exception or emit a warning in this case.
      * </p>
      */
-    public static ProfileReplaySupport profileReplayPrologue(DebugContext debug, Providers providers, int entryBCI, ResolvedJavaMethod method,
+    public static ProfileReplaySupport profileReplayPrologue(DebugContext debug, int entryBCI, ResolvedJavaMethod method,
                     StableProfileProvider profileProvider, TypeFilter profileSaveFilter) {
         if (SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) {
             LambdaNameFormatter lambdaNameFormatter = new LambdaNameFormatter() {
-                private final StableMethodNameFormatter stableFormatter = new HotSpotStableMethodNameFormatter(providers, debug, true);
+                private final StableMethodNameFormatter stableFormatter = new StableMethodNameFormatter(true);
 
                 @Override
                 public boolean isLambda(ResolvedJavaMethod m) {

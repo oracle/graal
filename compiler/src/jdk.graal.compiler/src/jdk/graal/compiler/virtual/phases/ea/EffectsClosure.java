@@ -34,7 +34,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
-import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
@@ -109,7 +109,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
      * Effects that can only be applied after the effects from within the loop have been applied and
      * that must be applied before any effect from after the loop is applied. E.g., updating phis.
      */
-    protected EconomicMap<Loop<HIRBlock>, GraphEffectList> loopMergeEffects = EconomicMap.create(Equivalence.IDENTITY);
+    protected EconomicMap<CFGLoop<HIRBlock>, GraphEffectList> loopMergeEffects = EconomicMap.create(Equivalence.IDENTITY);
 
     /**
      * The entry state of loops is needed when loop proxies are processed.
@@ -117,7 +117,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     private EconomicMap<LoopBeginNode, BlockT> loopEntryStates = EconomicMap.create(Equivalence.IDENTITY);
 
     // Intended to be used by read-eliminating phases based on the effects phase.
-    protected EconomicMap<Loop<HIRBlock>, LoopKillCache> loopLocationKillCache = EconomicMap.create(Equivalence.IDENTITY);
+    protected EconomicMap<CFGLoop<HIRBlock>, LoopKillCache> loopLocationKillCache = EconomicMap.create(Equivalence.IDENTITY);
 
     protected boolean changed;
     protected final DebugContext debug;
@@ -190,7 +190,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             }
 
             @Override
-            protected List<Void> processLoop(Loop<HIRBlock> loop, Void initialState) {
+            protected List<Void> processLoop(CFGLoop<HIRBlock> loop, Void initialState) {
                 LoopInfo<Void> info = ReentrantBlockIterator.processLoop(this, loop, initialState);
                 apply(loopMergeEffects.get(loop));
                 return info.exitStates;
@@ -354,7 +354,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     @Override
     @SuppressWarnings("try")
-    protected final List<BlockT> processLoop(Loop<HIRBlock> loop, BlockT initialState) {
+    protected final List<BlockT> processLoop(CFGLoop<HIRBlock> loop, BlockT initialState) {
         if (initialState.isDead()) {
             ArrayList<BlockT> states = new ArrayList<>();
             for (int i = 0; i < loop.getLoopExits().size(); i++) {
@@ -388,9 +388,9 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         NodeMap<ValueNode> aliasesCopy = null;
         NodeBitMap hasScalarReplacedInputsCopy = null;
         BlockMap<GraphEffectList> blockEffectsCopy = null;
-        EconomicMap<Loop<HIRBlock>, GraphEffectList> loopMergeEffectsCopy = null;
+        EconomicMap<CFGLoop<HIRBlock>, GraphEffectList> loopMergeEffectsCopy = null;
         EconomicMap<LoopBeginNode, BlockT> loopEntryStatesCopy = null;
-        EconomicMap<Loop<HIRBlock>, LoopKillCache> loopLocationKillCacheCopy = null;
+        EconomicMap<CFGLoop<HIRBlock>, LoopKillCache> loopLocationKillCacheCopy = null;
         BlockT initialStateRemovedKilledLocationsBackup = null;
 
         if (loop.getDepth() == 1) {
@@ -399,7 +399,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
              * Find out if we will need the copy versions
              */
             boolean initBackUp = false;
-            for (Loop<HIRBlock> l : cfg.getLoops()) {
+            for (CFGLoop<HIRBlock> l : cfg.getLoops()) {
                 if (l.getDepth() > GraalOptions.EscapeAnalysisLoopCutoff.getValue(cfg.graph.getOptions())) {
                     initBackUp = true;
                     break;
@@ -553,17 +553,17 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     }
 
     @SuppressWarnings("unused")
-    protected BlockT stripKilledLoopLocations(Loop<HIRBlock> loop, BlockT initialState) {
+    protected BlockT stripKilledLoopLocations(CFGLoop<HIRBlock> loop, BlockT initialState) {
         return initialState;
     }
 
     @SuppressWarnings("unused")
-    protected void processKilledLoopLocations(Loop<HIRBlock> loop, BlockT initialState, BlockT mergedStates) {
+    protected void processKilledLoopLocations(CFGLoop<HIRBlock> loop, BlockT initialState, BlockT mergedStates) {
         // nothing to do
     }
 
     @SuppressWarnings("unused")
-    protected void processInitialLoopState(Loop<HIRBlock> loop, BlockT initialState) {
+    protected void processInitialLoopState(CFGLoop<HIRBlock> loop, BlockT initialState) {
         // nothing to do
     }
 
@@ -599,7 +599,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         }
     }
 
-    private boolean assertExitStatesNonEmpty(Loop<HIRBlock> loop, LoopInfo<BlockT> info) {
+    private boolean assertExitStatesNonEmpty(CFGLoop<HIRBlock> loop, LoopInfo<BlockT> info) {
         for (int i = 0; i < loop.getLoopExits().size(); i++) {
             assert info.exitStates.get(i) != null : "no loop exit state at " + loop.getLoopExits().get(i) + " / " + loop.getHeader();
         }

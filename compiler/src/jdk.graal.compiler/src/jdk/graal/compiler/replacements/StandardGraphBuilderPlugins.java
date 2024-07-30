@@ -189,6 +189,7 @@ import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.AESNode.CryptMode;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import jdk.graal.compiler.replacements.nodes.BitCountNode;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
@@ -647,12 +648,14 @@ public class StandardGraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements, boolean explicitUnsafeNullChecks) {
-        Registration sunMiscUnsafe = new Registration(plugins, "sun.misc.Unsafe");
-        registerUnsafePlugins0(sunMiscUnsafe, true, explicitUnsafeNullChecks);
-
         JavaKind[] supportedJavaKinds = {JavaKind.Int, JavaKind.Long, JavaKind.Object};
-        registerUnsafeGetAndOpPlugins(sunMiscUnsafe, true, explicitUnsafeNullChecks, supportedJavaKinds);
-        registerUnsafeAtomicsPlugins(sunMiscUnsafe, true, explicitUnsafeNullChecks, "compareAndSwap", supportedJavaKinds, VOLATILE);
+
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            Registration sunMiscUnsafe = new Registration(plugins, "sun.misc.Unsafe");
+            registerUnsafePlugins0(sunMiscUnsafe, true, explicitUnsafeNullChecks);
+            registerUnsafeGetAndOpPlugins(sunMiscUnsafe, true, explicitUnsafeNullChecks, supportedJavaKinds);
+            registerUnsafeAtomicsPlugins(sunMiscUnsafe, true, explicitUnsafeNullChecks, "compareAndSwap", supportedJavaKinds, VOLATILE);
+        }
 
         Registration jdkInternalMiscUnsafe = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
 
@@ -2444,13 +2447,29 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerBigIntegerPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, BigInteger.class, replacements);
-        r.register(new SnippetSubstitutionInvocationPlugin<>(BigIntegerSnippets.Templates.class,
-                        "implMultiplyToLen", int[].class, int.class, int[].class, int.class, int[].class) {
-            @Override
-            public SnippetTemplate.SnippetInfo getSnippet(BigIntegerSnippets.Templates templates) {
-                return templates.implMultiplyToLen;
-            }
-        });
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            r.register(new SnippetSubstitutionInvocationPlugin<>(BigIntegerSnippets.Templates.class,
+                            "implMultiplyToLen", int[].class, int.class, int[].class, int.class, int[].class) {
+                @Override
+                public SnippetTemplate.SnippetInfo getSnippet(BigIntegerSnippets.Templates templates) {
+                    return templates.implMultiplyToLen;
+                }
+            });
+        } else {
+            r.register(new InvocationPlugin("implMultiplyToLen", int[].class, int.class, int[].class, int.class, int[].class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode xlen, ValueNode y, ValueNode ylen, ValueNode z) {
+                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                        ValueNode zlen = b.add(AddNode.create(xlen, ylen, NodeView.DEFAULT));
+                        BigIntegerMultiplyToLenNode multiplyToLen = b.append(new BigIntegerMultiplyToLenNode(helper.arrayStart(x, JavaKind.Int), xlen,
+                                        helper.arrayStart(y, JavaKind.Int), ylen, helper.arrayStart(z, JavaKind.Int), zlen));
+                        b.addPush(JavaKind.Object, z);
+                        b.setStateAfter(multiplyToLen);
+                        return true;
+                    }
+                }
+            });
+        }
         r.register(new InvocationPlugin("implMulAdd", int[].class, int[].class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode out, ValueNode in, ValueNode offset, ValueNode len, ValueNode k) {

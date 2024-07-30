@@ -40,7 +40,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -672,7 +672,7 @@ public class CountedLoopTest extends GraalCompilerTest {
     protected void checkHighTierGraph(StructuredGraph graph) {
         LoopsData loops = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
         loops.detectCountedLoops();
-        for (LoopEx lex : loops.countedLoops()) {
+        for (Loop lex : loops.countedLoops()) {
             lex.counted().createOverFlowGuard();
         }
         for (IVPropertyNode node : graph.getNodes().filter(IVPropertyNode.class)) {

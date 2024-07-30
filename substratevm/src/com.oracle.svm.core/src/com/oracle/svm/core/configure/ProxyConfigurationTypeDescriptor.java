@@ -66,11 +66,6 @@ public record ProxyConfigurationTypeDescriptor(String[] interfaceNames) implemen
     }
 
     @Override
-    public boolean definedAsType() {
-        return true;
-    }
-
-    @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append("{").indent().newline();
         writer.quote("proxy").append(":");

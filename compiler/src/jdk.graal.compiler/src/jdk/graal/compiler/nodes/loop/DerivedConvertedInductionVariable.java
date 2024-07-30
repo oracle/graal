@@ -35,7 +35,7 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     protected final Stamp stamp;
     protected final ValueNode value;
 
-    public DerivedConvertedInductionVariable(LoopEx loop, InductionVariable base, Stamp stamp, ValueNode value) {
+    public DerivedConvertedInductionVariable(Loop loop, InductionVariable base, Stamp stamp, ValueNode value) {
         super(loop, base);
         this.stamp = stamp;
         this.value = value;

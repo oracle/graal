@@ -60,32 +60,25 @@ public abstract class CustomTypeFieldHandler {
         assert field.isAccessed();
         if (fieldValueInterceptionSupport.hasFieldValueTransformer(field)) {
             if (field.getJavaKind().isObject() && !fieldValueInterceptionSupport.isValueAvailable(field)) {
-                injectFieldTypes(field, field.getType());
+                injectFieldTypes(field, List.of(field.getType()), true);
             } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive() && field instanceof PointsToAnalysisField ptaField) {
                 ptaField.saturatePrimitiveField();
             }
         } else if (fieldValueInterceptionSupport.lookupFieldValueInterceptor(field) instanceof FieldValueComputer fieldValueComputer) {
             if (field.getStorageKind().isObject()) {
-                field.setCanBeNull(fieldValueComputer.canBeNull());
-                injectFieldTypes(field, transformTypes(field, fieldValueComputer.types()));
+                List<AnalysisType> types = transformTypes(field, fieldValueComputer.types());
+                for (AnalysisType type : types) {
+                    assert !type.isPrimitive() : type + " for " + field;
+                    type.registerAsInstantiated("Is declared as the type of an unknown object field.");
+                }
+                injectFieldTypes(field, types, fieldValueComputer.canBeNull());
             } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive() && field instanceof PointsToAnalysisField ptaField) {
                 ptaField.saturatePrimitiveField();
             }
         }
     }
 
-    private void injectFieldTypes(AnalysisField field, List<AnalysisType> customTypes) {
-        for (AnalysisType type : customTypes) {
-            if (!type.isPrimitive()) {
-                type.registerAsInstantiated("Is declared as the type of an unknown object field.");
-            }
-        }
-
-        /* Use the annotation types, instead of the declared type, in the field initialization. */
-        injectFieldTypes(field, customTypes.toArray(new AnalysisType[0]));
-    }
-
-    public abstract void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes);
+    public abstract void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull);
 
     private List<AnalysisType> transformTypes(AnalysisField field, List<Class<?>> types) {
         List<AnalysisType> customTypes = new ArrayList<>();

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.bootstrap;
 
-import java.lang.invoke.ConstantBootstraps;
 import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -33,13 +32,13 @@ import java.lang.invoke.StringConcatFactory;
 import java.lang.invoke.TypeDescriptor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.lang.runtime.ObjectMethods;
 import java.lang.runtime.SwitchBootstraps;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
@@ -47,6 +46,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -69,7 +69,6 @@ public class BootstrapMethodConfiguration implements InternalFeature {
     private final ConcurrentMap<BootstrapMethodRecord, BootstrapMethodInfo> bootstrapMethodInfoCache = new ConcurrentHashMap<>();
     private final Set<Executable> indyBuildTimeAllowList;
     private final Set<Executable> condyBuildTimeAllowList;
-    private final Set<Executable> trustedCondy;
 
     public static BootstrapMethodConfiguration singleton() {
         return ImageSingletons.lookup(BootstrapMethodConfiguration.class);
@@ -116,21 +115,8 @@ public class BootstrapMethodConfiguration implements InternalFeature {
             indyBuildTimeAllowList = Set.of(metafactory, altMetafactory, makeConcat, makeConcatWithConstants, bootstrap, typeSwitch, enumSwitch);
         }
 
-        /* Bootstrap methods used for various dynamic constants. */
-        Method nullConstant = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "nullConstant", MethodHandles.Lookup.class, String.class, Class.class);
-        Method primitiveClass = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "primitiveClass", MethodHandles.Lookup.class, String.class, Class.class);
-        Method enumConstant = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "enumConstant", MethodHandles.Lookup.class, String.class, Class.class);
-        Method getStaticFinal = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "getStaticFinal", MethodHandles.Lookup.class, String.class, Class.class, Class.class);
-        Method invoke = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "invoke", MethodHandles.Lookup.class, String.class, Class.class, MethodHandle.class, Object[].class);
-        Method explicitCast = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "explicitCast", MethodHandles.Lookup.class, String.class, Class.class, Object.class);
-
-        /* Bootstrap methods used for dynamic constants representing class data. */
-        Method classData = ReflectionUtil.lookupMethod(MethodHandles.class, "classData", MethodHandles.Lookup.class, String.class, Class.class);
-        Method classDataAt = ReflectionUtil.lookupMethod(MethodHandles.class, "classDataAt", MethodHandles.Lookup.class, String.class, Class.class, int.class);
-
         /* Set of bootstrap methods for constant dynamic allowed at build time is empty for now */
         condyBuildTimeAllowList = Set.of();
-        trustedCondy = Set.of(nullConstant, primitiveClass, enumConstant, getStaticFinal, invoke, explicitCast, classData, classDataAt);
     }
 
     @Override
@@ -161,14 +147,14 @@ public class BootstrapMethodConfiguration implements InternalFeature {
      * Check if the provided method is allowed to be executed at build time.
      */
     public boolean isCondyAllowedAtBuildTime(Executable method) {
-        return method != null && condyBuildTimeAllowList.contains(method);
+        return method != null && (condyBuildTimeAllowList.contains(method) || isProxyCondy(method));
     }
 
     /**
-     * Check if the provided method is defined in the JDK.
+     * Every {@link Proxy} class has its own bootstrap method that is used for a constant dynamic.
      */
-    public boolean isCondyTrusted(Executable method) {
-        return method != null && trustedCondy.contains(method);
+    private static boolean isProxyCondy(Executable method) {
+        return Proxy.isProxyClass(method.getDeclaringClass()) && method.getName().equals("$getMethod");
     }
 
     public ConcurrentMap<BootstrapMethodRecord, BootstrapMethodInfo> getBootstrapMethodInfoCache() {

@@ -123,8 +123,8 @@ The attack surface of GraalVM when running untrusted code consists of the entire
 In addition to the restrictions of the ISOLATED policy, the UNTRUSTED policy:
 * Requires redirection of the standard [input](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#in-java.io.InputStream-) stream.
 * Requires setting the maximum memory consumption of the guest code. This is a limit in addition to the maximum isolate heap size backed by a mechanism that keeps track of the size of objects allocated by the guest code on the guest VM heap. This limit can be thought of as a "soft" memory limit, whereas the isolate heap size is the "hard" limit.
-* Requires setting the maximum number of stack frames that can be pushed on the stack by guest code. This limit can protect against unbounded recursion to exhaust the stack.
-* Requires setting the maximum AST depth of the guest code. Together with the stack frame limit, this puts a bound on the stack space consumed by guest code.
+* Requires setting the maximum number of stack frames that can be pushed onto the stack by guest code. This limit can protect against unbounded recursion that exhausts the stack.
+* Requires setting the maximum depth of any Abstract Syntax Tree (AST) of the guest code. Together with the stack frame limit, this puts a bound on the stack space consumed by guest code.
 * Requires setting the maximum output and error stream sizes. As output and error streams have to be redirected, the receiving ends are on the host side. Limiting the output and error stream sizes protects against availability issues on the host.
 * Requires untrusted code mitigations to be enabled. Untrusted code mitigations address risks from JIT spraying and speculative execution attacks. They include constant blinding as well as comprehensive use of speculative execution barriers.
 * Further restricts host access to ensure there are no implicit entry points to host code. This means that guest-code access to host arrays, lists, maps, buffers, iterables and iterators is disallowed. The reason is that there may be various implementations of these APIs on the host side, resulting in implicit entry points. In addition, direct mappings of guest implementations to host interfaces via [HostAccess.Builder#allowImplementationsAnnotatedBy](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html) are disallowed. The [HostAccess.UNTRUSTED](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html#UNTRUSTED) host access policy is preconfigured to fulfill the requirements for the UNTRUSTED sandboxing policy.
@@ -228,7 +228,7 @@ Re-profiling may be required if the workload changes or when switching to a diff
 
 Certain limits can be [reset](#resetting-resource-limits) at any point of time during the execution.
 
-### Limiting active CPU time
+### Limiting Active CPU Time
 
 The `sandbox.MaxCPUTime` option allows you to specify the maximum CPU time spent running guest code.
 CPU time spent depends on the underlying hardware.
@@ -269,7 +269,7 @@ try (Context context = Context.newBuilder("js")
 }
 ```
 
-### Limiting the number of executed statements
+### Limiting the Number of Executed Statements
 
 Specifies the maximum number of statements a context may execute until it is canceled.
 After the statement limit was triggered for a context, it is no longer usable and every use of the context will throw a `PolyglotException` that returns `true` for `PolyglotException.isCancelled()`.
@@ -300,27 +300,27 @@ try (Context context = Context.newBuilder("js")
 }
 ```
 
-### AST depth limit
+### AST Depth Limit
 
 A limit on the maximum expression depth of a guest language function.
 Only instrumentable nodes count towards the limit.
 
 The AST depth can give an estimate of the complexity of a function as well as its stack frame size.
 
-### Limiting the number of stack frames
+### Limiting the Number of Stack Frames
 
-Specifies the maximum number of frames a context can push on the stack.
+Specifies the maximum number of frames a context can push onto the stack.
 A thread-local stack frame counter is incremented on function enter and decremented on function return.
 
 The stack frame limit in itself serves as a safeguard against infinite recursion.
 Together with the AST depth limit it can restrict total stack space usage.
 
-### Limiting the number of active threads
+### Limiting the Number of Active Threads
 
 Limits the number of threads that can be used by a context at the same point in time.
 Multithreading is not supported in the UNTRUSTED sandbox policy.
 
-### Heap memory limits
+### Heap Memory Limits
 
 The `sandbox.MaxHeapMemory` option specifies the maximum heap memory guest code is allowed to retain during its run.
 Only objects residing in guest code count towards the limit - memory allocated during callbacks to host code does not.
@@ -389,7 +389,9 @@ The described low memory trigger can be disabled by the `sandbox.UseLowMemoryTri
 By default it is enabled ("true"). If disabled ("false"), retained size checking for the execution context can be triggered only by the allocated bytes checker.
 All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.UseLowMemoryTrigger`.
 
-### Limiting the amount of data written to standard output and error streams
+The `sandbox.UseLowMemoryTrigger` option is not supported for the ISOLATED and UNTRUSTED sandbox policies. The option defaults to disabled (`false`) wherever it is not supported.
+
+### Limiting the Amount of Data Written to Standard Output and Error Streams
 
 Limits the size of the output that guest code writes to standard output or standard error output during runtime.
 Limiting the size of the output can serve as protection against denial-of-service attacks that flood the output.
@@ -521,7 +523,7 @@ The GraalVM sandbox differs from Security Managers in the following aspects:
 * *Resource limits*: The Java Security Manager cannot restrict the usage of computational resources such as CPU time or memory, allowing untrusted code to DoS the JVM. The GraalVM sandbox offers controls to set limits on several computational resources (CPU time, memory, threads, processes), guest code may consume to address availability concerns. 
 * *Configuration*: Crafting a Java Security Manager policy was often found to be a complex and error-prone task, requiring a subject matter expert that knows exactly which parts of the program require what level of access. Configuring the GraalVM sandbox provides security profiles that focus on common sandboxing use cases and threat models.
 
-## Reporting vulnerabilities
+## Reporting Vulnerabilities
 
 If you believe you have found a security vulnerability, please submit a report to secalert_us@oracle.com preferably with a proof of concept.
 Please refer to [Reporting Vulnerabilities](https://www.oracle.com/corporate/security-practices/assurance/vulnerability/reporting.html) for additional information including our public encryption key for secure email.

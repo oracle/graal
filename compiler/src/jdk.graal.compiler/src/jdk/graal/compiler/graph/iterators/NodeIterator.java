@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,13 +37,22 @@ public abstract class NodeIterator<T extends Node> implements Iterator<T> {
 
     @Override
     public boolean hasNext() {
+        if (current != null) {
+            return true;
+        }
         forward();
         return current != null;
     }
 
     @Override
     public T next() {
-        forward();
+        /*
+         * Normally hasNext() should call forward(). Only call it here if current is null,
+         * indicating users calling next() without calling hasNext() first.
+         */
+        if (current == null) {
+            forward();
+        }
         T ret = current;
         if (current == null) {
             throw new NoSuchElementException();

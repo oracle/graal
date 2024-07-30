@@ -240,28 +240,26 @@ class Example {
 ### Resource Metadata in JSON
 
 Resource metadata should be specified in a _resource-config.json_ file and conform to the JSON schema defined in
-[resource-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.0.0.json).
-The schema also includes further details and explanations how this configuration works. Here is the example of the resource-config.json:
+[resource-config-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.1.0.json).
+The schema also includes further details and explanations how this configuration works. Here is the example of a _resource-config.json_ file:
 ```json
 {
-  "resources": {
-    "includes": [
-      {
-        "condition": {
-          "typeReachable": "<condition-class>"
-        },
-        "pattern": ".*\\.txt"
-      }
-    ],
-    "excludes": [
-      {
-        "condition": {
-          "typeReachable": "<condition-class>"
-        },
-        "pattern": ".*\\.txt"
-      }
-    ]
-  },
+  "globs": [
+    {
+      "condition": {
+        "typeReachable": "<condition-class>"
+      },
+      "pattern": "META-INF/**/*.txt"
+    }
+  ],
+  "resources": [
+    {
+      "condition": {
+        "typeReachable": "<condition-class>"
+      },
+      "pattern": ".*\\.txt"
+    }
+  ],
   "bundles": [
     {
       "condition": {
@@ -284,12 +282,20 @@ The schema also includes further details and explanations how this configuration
 }
 ```
 
+Resources can be specified via globs or Java regular expressions (see [Resource Metadata in JSON](#resource-metadata-in-json)).
+We recommend using globs because they:
+* Have custom handling in `native-image` that can speed up a resource registration process
+* Are less expressive and therefore less error-prone than regular expressions
+* Provide better support for resource-related checks at runtime
+
+Learn more about globs and some syntax rules to be observed in the [Accessing Resources in Native Image documentation](Resources.md).
+
 ## Dynamic Proxy
 
-The JDK supports generating proxy classes for a given interface list.
-Native Image does not support generating new classes at runtime and requires metadata to properly run code that uses these proxies.
+The JDK can generate proxy classes for a specified list of interfaces.
+Native Image does not generate new classes at runtime and therefore requires metadata to properly run code that uses these proxies.
 
-> Note: The order of interfaces in the interface list used to create a proxy matters. Creating a proxy with two identical interface lists in which the interfaces are not in the same order, creates two distinct proxy classes.
+> Note: The order of interfaces in the interface list used to create a proxy is important. Creating a proxy with two identical interface lists in which the interfaces are not in the same order, creates two distinct proxy classes.
 
 ### Code Example
 The following code creates two distinct proxies:
@@ -453,8 +459,8 @@ This mode can be activated with the `-H:ThrowMissingRegistrationErrors=` option 
 
 ### Reflection
 
-* If a reflectively-accessed element (`Class`, `Field`, `Method`, etc.) is not present on the image class- or module-path, it still needs to be registered to ensure the correct exception (`ClassNotFoundException` or similar) is thrown.
-  If an element is queried at runtime without having been registered, regardless of whether it is present on the class- or module-path, this query will throw a `MissingReflectionRegistrationError`.
+* If a reflectively-accessed element (`Class`, `Field`, `Method`, etc.) is not present on the image class or module path, it still needs to be registered to ensure the correct exception (`ClassNotFoundException` or similar) is thrown.
+  If an element is queried at runtime without having been registered, regardless of whether it is present on the class path or module path, this query will throw a `MissingReflectionRegistrationError`.
   This change ensures that the error is not ambiguous between a non-existent element and one that was not registered for reflection in the image;
 * This rationale also requires that any query that returns a collection of class members (`Class.getMethods()` or similar) has to be registered in full (with `"queryAllPublicMethods"` in this case) to succeed at runtime.
   This additionally ensures that any of the registered elements can be queried individually, and non-existent elements of that type will throw the correct exception without having to be registered.
@@ -462,8 +468,8 @@ This mode can be activated with the `-H:ThrowMissingRegistrationErrors=` option 
 
 ### Resources
 
-* If a resource or resource bundle is not present on the image class- or module-path, it still needs to be registered to ensure the correct return value (`null`).
-  If a resource is queried at runtime without having been registered, regardless of whether it is present on the class- or module-path, this query will throw a `MissingResourceRegistrationError`.
+* If a resource or resource bundle is not present on the image class path or module path, it still needs to be registered to ensure the correct return value (`null`).
+  If a resource is queried at runtime without having been registered, regardless of whether it is present on the class path or module path, this query will throw a `MissingResourceRegistrationError`.
   This change ensures that the program behavior is not ambiguous between a non-existent resource and one that was not registered for runtime access;
 
 The Native Image agent does not support custom implementations of `ResourceBundle$Control` or `Bundles$Strategy` and requires manual registrations for the reflection and resource queries that they will perform.

@@ -210,7 +210,7 @@ public class IsolateArgumentParser {
     }
 
     private static boolean shouldValidate(RuntimeOptionKey<?> option) {
-        if (SubstrateOptions.UseSerialGC.getValue()) {
+        if (SubstrateOptions.useSerialGC()) {
             /* The serial GC supports changing the heap size at run-time to some degree. */
             return option != SubstrateGCOptions.MinHeapSize && option != SubstrateGCOptions.MaxHeapSize && option != SubstrateGCOptions.MaxNewSize;
         }

@@ -186,8 +186,10 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
             final Label continuation = new Label();
             final Label entryPoint = new Label();
 
-            // The following code sequence must be emitted in exactly this fashion as HotSpot
-            // will check that the barrier is the expected code sequence.
+            /*
+             * The following code sequence must be emitted in exactly this fashion as HotSpot will
+             * check that the barrier is the expected code sequence.
+             */
             asm.align(4);
             crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
             crb.recordMark(HotSpotMarkId.ENTRY_BARRIER_PATCH);

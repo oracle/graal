@@ -40,6 +40,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -230,7 +231,7 @@ final class Target_jdk_graal_compiler_serviceprovider_IsolateUtil {
 
     @Substitute
     public static long getIsolateID() {
-        return ImageSingletons.lookup(GraalCompilerSupport.class).getIsolateId();
+        return ImageSingletons.lookup(IsolateSupport.class).getIsolateID();
     }
 }
 

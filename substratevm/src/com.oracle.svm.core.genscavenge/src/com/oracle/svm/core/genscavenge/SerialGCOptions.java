@@ -123,7 +123,7 @@ public final class SerialGCOptions {
     }
 
     private static void serialGCOnly(OptionKey<?> optionKey) {
-        if (!SubstrateOptions.UseSerialGC.getValue()) {
+        if (!SubstrateOptions.useSerialGC()) {
             throw UserError.abort("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
         }
     }
@@ -145,11 +145,11 @@ public final class SerialGCOptions {
 
     @Fold
     public static boolean useRememberedSet() {
-        return !SubstrateOptions.UseEpsilonGC.getValue() && ConcealedOptions.UseRememberedSet.getValue();
+        return !SubstrateOptions.useEpsilonGC() && ConcealedOptions.UseRememberedSet.getValue();
     }
 
     @Fold
     public static boolean useCompactingOldGen() {
-        return !SubstrateOptions.UseEpsilonGC.getValue() && ConcealedOptions.CompactingOldGen.getValue();
+        return !SubstrateOptions.useEpsilonGC() && ConcealedOptions.CompactingOldGen.getValue();
     }
 }

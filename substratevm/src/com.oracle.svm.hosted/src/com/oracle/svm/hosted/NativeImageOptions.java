@@ -40,7 +40,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -65,7 +65,7 @@ public class NativeImageOptions {
                     "may result in application crashes. The specific options available are target " +
                     "platform dependent. See --list-cpu-features for feature list. These features " +
                     "are in addition to -march.", type = User, stability = OptionStability.STABLE)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @APIOption(name = "list-cpu-features")//
     @Option(help = "Show CPU features specific to the target platform and exit.", type = User)//
@@ -80,7 +80,8 @@ public class NativeImageOptions {
                     "option to the empty string. The specific options available are target platform " +
                     "dependent. See --list-cpu-features for feature list. The default values are: " +
                     "AMD64: 'AVX,AVX2'; AArch64: ''", type = User)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeCheckedCPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> RuntimeCheckedCPUFeatures = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     public static final String MICRO_ARCHITECTURE_NATIVE = "native";
     public static final String MICRO_ARCHITECTURE_COMPATIBILITY = "compatibility";
@@ -132,7 +133,7 @@ public class NativeImageOptions {
 
     @Option(help = "Directory for temporary files generated during native image generation. If this option is specified, the temporary files are not deleted so that you can inspect them after native image generation")//
     @BundleMember(role = BundleMember.Role.Output)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> TempDirectory = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> TempDirectory = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
 
     @Option(help = "Suppress console error output for unittests")//
     public static final HostedOptionKey<Boolean> SuppressStderr = new HostedOptionKey<>(false);
@@ -292,8 +293,8 @@ public class NativeImageOptions {
 
     @Option(help = "Sets the dir where diagnostic information is dumped.")//
     @BundleMember(role = BundleMember.Role.Output)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> DiagnosticsDir = new HostedOptionKey<>(
-                    LocatableMultiOptionValue.Paths.buildWithDefaults(Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", ""))));
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> DiagnosticsDir = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Paths.buildWithDefaults(Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", ""))));
 
     @Option(help = "Enables the diagnostic mode.")//
     public static final HostedOptionKey<Boolean> DiagnosticsMode = new HostedOptionKey<>(false) {

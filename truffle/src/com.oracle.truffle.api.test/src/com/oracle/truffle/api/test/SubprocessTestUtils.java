@@ -120,6 +120,8 @@ import org.junit.runners.model.Statement;
  */
 public final class SubprocessTestUtils {
 
+    private static final boolean DEBUG_SUBPROCESSES = Boolean.getBoolean("SubprocessTestUtils.javaDebugger");
+
     /**
      * Recommended value of the subprocess timeout. After exceeding it, the process is forcibly
      * terminated.
@@ -709,6 +711,10 @@ public final class SubprocessTestUtils {
             } else {
                 command.add(vmArg);
             }
+        }
+        if (DEBUG_SUBPROCESSES) {
+            command.add("-agentlib:jdwp=transport=dt_socket,server=y,address=8000,suspend=y");
+            System.err.println("The subprocess will wait for a debugger to be attached on port 8000");
         }
         command.addAll(mainClassAndArgs);
         return process(command, env, workingDir, timeout);

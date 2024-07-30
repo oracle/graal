@@ -435,6 +435,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         verifyConstructors(node);
         verifySpecializationThrows(node);
         verifyFrame(node);
+        verifyReportPolymorphism(node);
 
         if (isGenerateSlowPathOnly(node)) {
             removeFastPathSpecializations(node, node.getSharedCaches());
@@ -4425,6 +4426,26 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    private static void verifyReportPolymorphism(NodeData node) {
+        if (node.isReportPolymorphism()) {
+            List<SpecializationData> reachableSpecializations = node.getReachableSpecializations();
+            if (reachableSpecializations.size() == 1 && reachableSpecializations.get(0).getMaximumNumberOfInstances() == 1) {
+                node.addSuppressableWarning(TruffleSuppressedWarnings.SPLITTING,
+                                "This node uses @ReportPolymorphism but has a single specialization instance, so the annotation has no effect. Remove the annotation or move it to another node to resolve this.");
+            }
+
+            if (reachableSpecializations.stream().noneMatch(SpecializationData::isReportPolymorphism)) {
+                node.addSuppressableWarning(TruffleSuppressedWarnings.SPLITTING,
+                                "This node uses @ReportPolymorphism but all specializations use @ReportPolymorphism.Exclude. Remove some excludes or do not use ReportPolymorphism at all for this node to resolve this.");
+            }
+
+            if (reachableSpecializations.stream().anyMatch(SpecializationData::isReportMegamorphism)) {
+                node.addSuppressableWarning(TruffleSuppressedWarnings.SPLITTING,
+                                "This node uses @ReportPolymorphism on the class and @ReportPolymorphism.Megamorphic on some specializations, the latter annotation has no effect. Remove one of the annotations to resolve this.");
             }
         }
     }

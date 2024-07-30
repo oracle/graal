@@ -74,6 +74,7 @@ import java.util.function.Predicate;
 import java.util.logging.LogRecord;
 
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -519,6 +520,10 @@ public abstract class AbstractPolyglotImpl {
                     boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService) {
         return getNext().buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler, hostLanguage,
                         hostLanguageOnly, registerInActiveEngines, polyglotHostService);
+    }
+
+    public void onEngineCreated(Object polyglotEngine) {
+        getNext().onEngineCreated(polyglotEngine);
     }
 
     public abstract int getPriority();
@@ -1444,6 +1449,9 @@ public abstract class AbstractPolyglotImpl {
 
     public Object newFileSystem(FileSystem fs) {
         return getNext().newFileSystem(fs);
+    }
+
+    public void validateVirtualThreadCreation(OptionValues engineOptions) {
     }
 
     /**

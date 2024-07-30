@@ -31,47 +31,27 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.math.BigInteger;
-import java.util.Collections;
 
 import org.junit.Test;
 import org.objectweb.asm.Type;
 
-import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
-import jdk.graal.compiler.core.test.TestGraphBuilderPhase;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugContext.Builder;
-import jdk.graal.compiler.hotspot.meta.HotSpotJITClassInitializationPlugin;
 import jdk.graal.compiler.java.LambdaUtils;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.runtime.JVMCI;
 
 public class LambdaStableNameTest {
-    private String findStableLambdaName(ResolvedJavaType type) {
-        OptionValues options = new OptionValues(OptionValues.newOptionMap());
-        DebugContext debug = new Builder(options, Collections.emptyList()).build();
-        GraalJVMCICompiler compiler = (GraalJVMCICompiler) JVMCI.getRuntime().getCompiler();
-        Providers providers = compiler.getGraalRuntime().getCapability(RuntimeProvider.class).getHostBackend().getProviders();
-        final HotSpotJITClassInitializationPlugin initializationPlugin = new HotSpotJITClassInitializationPlugin();
-        return LambdaUtils.findStableLambdaName(initializationPlugin, providers, type, options, debug, this,
-                        config -> new TestGraphBuilderPhase.Instance(providers, config, OptimisticOptimizations.NONE, null));
-    }
-
     @Test
     public void checkStableLamdaNameForRunnableAndAutoCloseable() {
         String s = "a string";
         Runnable r = s::hashCode;
         ResolvedJavaType rType = JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaType(r.getClass());
 
-        String name = findStableLambdaName(rType);
+        String name = LambdaUtils.findStableLambdaName(rType);
         assertLambdaName(name);
 
         AutoCloseable ac = s::hashCode;
         ResolvedJavaType acType = JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaType(ac.getClass());
-        String acName = findStableLambdaName(acType);
+        String acName = LambdaUtils.findStableLambdaName(acType);
         assertEquals("Both stable lambda names are the same as they reference the same method", name, acName);
 
         String myName = Type.getInternalName(getClass());

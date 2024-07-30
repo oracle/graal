@@ -55,9 +55,9 @@ import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo
 import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
 import com.oracle.truffle.runtime.AbstractGraalTruffleRuntimeListener;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.ModuleUtil;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.jfr.CompilationEvent;
 import com.oracle.truffle.runtime.jfr.CompilationStatisticsEvent;
 import com.oracle.truffle.runtime.jfr.DeoptimizationEvent;
@@ -130,6 +130,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     public void onCompilationTruffleTierFinished(OptimizedCallTarget target, AbstractCompilationTask task, GraphInfo graph) {
         CompilationData data = getCurrentData();
         if (data.event != null) {
+            data.partialEvaluationSuccess = true;
             data.partialEvalNodeCount = graph.getNodeCount();
             data.timePartialEvaluationFinished = System.nanoTime();
         }
@@ -138,6 +139,9 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     @Override
     public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
         CompilationData data = getCurrentData();
+        if (!data.partialEvaluationSuccess) {
+            data.timePartialEvaluationFinished = System.nanoTime();
+        }
         statistics.finishCompilation(data.finish(), bailout, 0);
         if (data.event != null) {
             data.event.failed(tier, isPermanentFailure(bailout, permanentBailout), reason, lazyStackTrace);
@@ -190,6 +194,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     private static final class CompilationData {
         final CompilationEvent event;
         final long timeCompilationStarted;
+        boolean partialEvaluationSuccess;
         int partialEvalNodeCount;
         long timePartialEvaluationFinished;
 

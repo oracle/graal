@@ -77,7 +77,6 @@ concurrency:
 
 env:
   JAVA_HOME: ${{ github.workspace }}/jdk
-  JDT: builtin
   LANG: en_US.UTF-8
   MX_GIT_CACHE: refcache
   MX_PATH: ${{ github.workspace }}/mx
@@ -92,6 +91,7 @@ jobs:
   build-graalvm-linux:
     name: /${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE_TAGS }} JDK${{ matrix.env.JDK_VERSION }}
     runs-on: ubuntu-20.04
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -157,6 +157,7 @@ jobs:
               NATIVE_IMAGES: "lib:jvmcicompiler,native-image,lib:native-image-agent,lib:native-image-diagnostics-agent,polyglot"
               WITHOUT_VCS: true
     env:
+      JDT: builtin # Compile with ECJ (and javac) as part of gate runs tagged with 'fullbuild'
       MX_RUNS_DEBUG: ${{ contains(matrix.env.GATE_TAGS, 'debug') || matrix.env.GATE_TAGS == '' }}
       MX_RUNS_STYLE: ${{ contains(matrix.env.GATE_TAGS, 'style') || matrix.env.GATE_TAGS == '' }}
     steps:
@@ -225,6 +226,7 @@ jobs:
   build-graalvm-windows:
     name: /substratevm on Windows
     runs-on: windows-2022
+    timeout-minutes: 60
     env:
       MX_PYTHON: 'python'
     steps:

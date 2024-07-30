@@ -54,7 +54,7 @@ public final class GraphState {
      * These sets of {@link StageFlag}s represent the necessary stages that must be applied to a
      * {@link StructuredGraph} for a complete compilation.
      */
-    private static final EnumSet<StageFlag> HIGH_TIER_MANDATORY_STAGES = EnumSet.of(
+    private static final EnumSet<StageFlag> HIGH_TIER_MANDATORY_STAGES = EnumSet.of(StageFlag.LOOP_OVERFLOWS_CHECKED,
                     StageFlag.HIGH_TIER_LOWERING);
     private static final EnumSet<StageFlag> MID_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.VALUE_PROXY_REMOVAL,
@@ -606,6 +606,7 @@ public final class GraphState {
     public enum StageFlag {
         CANONICALIZATION,
         /* Stages applied by high tier. */
+        LOOP_OVERFLOWS_CHECKED,
         FINAL_PARTIAL_ESCAPE,
         HIGH_TIER_LOWERING,
         /* Stages applied by mid tier. */

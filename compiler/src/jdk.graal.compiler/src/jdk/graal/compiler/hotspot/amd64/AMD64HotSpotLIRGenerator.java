@@ -55,6 +55,8 @@ import jdk.graal.compiler.hotspot.HotSpotLIRGenerationResult;
 import jdk.graal.compiler.hotspot.HotSpotLIRGenerator;
 import jdk.graal.compiler.hotspot.HotSpotLockStack;
 import jdk.graal.compiler.hotspot.amd64.g1.AMD64HotSpotG1BarrierSetLIRTool;
+import jdk.graal.compiler.hotspot.amd64.x.AMD64HotSpotXBarrierSetLIRGenerator;
+import jdk.graal.compiler.hotspot.amd64.z.AMD64HotSpotZBarrierSetLIRGenerator;
 import jdk.graal.compiler.hotspot.debug.BenchmarkCounters;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
@@ -115,11 +117,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     protected static BarrierSetLIRGeneratorTool getBarrierSet(GraalHotSpotVMConfig config, HotSpotProviders providers) {
-        if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
-            return new AMD64HotSpotZBarrierSetLIRGenerator(config, providers);
+        if (config.gc == HotSpotGraalRuntime.HotSpotGC.X) {
+            return new AMD64HotSpotXBarrierSetLIRGenerator(config, providers);
         }
         if (config.gc == HotSpotGraalRuntime.HotSpotGC.G1) {
             return new AMD64G1BarrierSetLIRGenerator(new AMD64HotSpotG1BarrierSetLIRTool(config, providers));
+        }
+        if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
+            return new AMD64HotSpotZBarrierSetLIRGenerator(config, providers);
         }
         return null;
     }

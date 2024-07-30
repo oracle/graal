@@ -206,6 +206,10 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return constantData.hostedObject != null;
     }
 
+    public static int getConstantID(ImageHeapConstant constant) {
+        return constant.getConstantData().id;
+    }
+
     @Override
     public JavaKind getJavaKind() {
         return JavaKind.Object;

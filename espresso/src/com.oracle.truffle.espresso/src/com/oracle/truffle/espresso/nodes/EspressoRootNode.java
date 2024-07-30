@@ -147,7 +147,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     @Override
-    protected boolean isCaptureFramesForTrace(Node currentNode) {
+    protected boolean isCaptureFramesForTrace(boolean compiled) {
         return true;
     }
 
@@ -159,7 +159,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     @Override
     public final String toString() {
-        return getQualifiedName();
+        return methodNode.toString();
     }
 
     @Override
@@ -414,9 +414,14 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
         private void enter(StaticObject monitor) {
             if (top >= capacity) {
-                monitors = Arrays.copyOf(monitors, capacity <<= 1);
+                grow();
             }
             monitors[top++] = monitor;
+        }
+
+        @TruffleBoundary
+        private void grow() {
+            monitors = Arrays.copyOf(monitors, capacity <<= 1);
         }
 
         private void exit(StaticObject monitor, EspressoRootNode node) {

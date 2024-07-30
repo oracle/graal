@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -98,19 +98,19 @@ public class SubWordFieldStoreTest extends CustomizedBytecodePatternTest {
 
             SubWordTestUtil.getUnsafe(snippet);
             snippet.visitVarInsn(ALOAD, 0);
-            snippet.visitMethodInsn(INVOKEVIRTUAL, "sun/misc/Unsafe", "staticFieldBase", "(Ljava/lang/reflect/Field;)Ljava/lang/Object;", false);
+            snippet.visitMethodInsn(INVOKEVIRTUAL, "jdk/internal/misc/Unsafe", "staticFieldBase", "(Ljava/lang/reflect/Field;)Ljava/lang/Object;", false);
             snippet.visitVarInsn(ASTORE, 1);
 
             SubWordTestUtil.getUnsafe(snippet);
             snippet.visitVarInsn(ALOAD, 0);
-            snippet.visitMethodInsn(INVOKEVIRTUAL, "sun/misc/Unsafe", "staticFieldOffset", "(Ljava/lang/reflect/Field;)J", false);
+            snippet.visitMethodInsn(INVOKEVIRTUAL, "jdk/internal/misc/Unsafe", "staticFieldOffset", "(Ljava/lang/reflect/Field;)J", false);
             snippet.visitVarInsn(LSTORE, 2);
 
             SubWordTestUtil.getUnsafe(snippet);
             snippet.visitVarInsn(ALOAD, 1);
             snippet.visitVarInsn(LLOAD, 2);
             snippet.visitLdcInsn(value);
-            snippet.visitMethodInsn(INVOKEVIRTUAL, "sun/misc/Unsafe", "put" + SubWordTestUtil.getUnsafePutMethodName(kind), "(Ljava/lang/Object;J" + kind.getTypeChar() + ")V", false);
+            snippet.visitMethodInsn(INVOKEVIRTUAL, "jdk/internal/misc/Unsafe", "put" + SubWordTestUtil.getUnsafePutMethodName(kind), "(Ljava/lang/Object;J" + kind.getTypeChar() + ")V", false);
         } else {
             snippet.visitLdcInsn(value);
             snippet.visitFieldInsn(PUTSTATIC, internalClassName, fieldName, fieldDescriptor);
@@ -125,18 +125,18 @@ public class SubWordFieldStoreTest extends CustomizedBytecodePatternTest {
 
                 SubWordTestUtil.getUnsafe(snippet);
                 snippet.visitVarInsn(ALOAD, 0);
-                snippet.visitMethodInsn(INVOKEVIRTUAL, "sun/misc/Unsafe", "staticFieldBase", "(Ljava/lang/reflect/Field;)Ljava/lang/Object;", false);
+                snippet.visitMethodInsn(INVOKEVIRTUAL, "jdk/internal/misc/Unsafe", "staticFieldBase", "(Ljava/lang/reflect/Field;)Ljava/lang/Object;", false);
                 snippet.visitVarInsn(ASTORE, 1);
 
                 SubWordTestUtil.getUnsafe(snippet);
                 snippet.visitVarInsn(ALOAD, 0);
-                snippet.visitMethodInsn(INVOKEVIRTUAL, "sun/misc/Unsafe", "staticFieldOffset", "(Ljava/lang/reflect/Field;)J", false);
+                snippet.visitMethodInsn(INVOKEVIRTUAL, "jdk/internal/misc/Unsafe", "staticFieldOffset", "(Ljava/lang/reflect/Field;)J", false);
                 snippet.visitVarInsn(LSTORE, 2);
             }
             SubWordTestUtil.getUnsafe(snippet);
             snippet.visitVarInsn(ALOAD, 1);
             snippet.visitVarInsn(LLOAD, 2);
-            snippet.visitMethodInsn(INVOKEVIRTUAL, "sun/misc/Unsafe", "get" + SubWordTestUtil.getUnsafePutMethodName(kind), "(Ljava/lang/Object;J)" + kind.getTypeChar(), false);
+            snippet.visitMethodInsn(INVOKEVIRTUAL, "jdk/internal/misc/Unsafe", "get" + SubWordTestUtil.getUnsafePutMethodName(kind), "(Ljava/lang/Object;J)" + kind.getTypeChar(), false);
         } else {
             snippet.visitFieldInsn(GETSTATIC, internalClassName, fieldName, fieldDescriptor);
         }

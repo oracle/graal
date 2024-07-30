@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
+import static jdk.graal.compiler.core.common.GraalOptions.AssemblyGCBarriers;
 import static jdk.graal.compiler.core.common.GraalOptions.FullUnroll;
 import static jdk.graal.compiler.core.common.GraalOptions.LoopPeeling;
 import static jdk.graal.compiler.core.common.GraalOptions.OptReadElimination;
@@ -39,6 +40,7 @@ import java.util.ListIterator;
 import java.util.Objects;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -111,6 +113,11 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
         public int hashCode() {
             return Objects.hash(a, b);
         }
+    }
+
+    @Before
+    public void checkAssemblyBarriers() {
+        Assume.assumeFalse("doesn't work with assembly barriers ", AssemblyGCBarriers.getValue(getInitialOptions()));
     }
 
     private int expectedBarriers;
@@ -223,7 +230,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     }
 
     public Object testReferenceReferentSnippet() {
-        return UNSAFE.getObject(weakReference, referenceReferentFieldOffset);
+        return UNSAFE.getReference(weakReference, referenceReferentFieldOffset);
     }
 
     /**
@@ -238,7 +245,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     }
 
     public Object testReferenceReferent2Snippet(long offset) {
-        return UNSAFE.getObject(weakReference, offset);
+        return UNSAFE.getReference(weakReference, offset);
     }
 
     /**
@@ -252,7 +259,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     }
 
     public Object testReferenceReferent3Snippet() {
-        return UNSAFE.getObject(weakReference, referenceQueueFieldOffset);
+        return UNSAFE.getReference(weakReference, referenceQueueFieldOffset);
     }
 
     /**
@@ -267,7 +274,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     }
 
     public Object testReferenceReferent4Snippet() {
-        return UNSAFE.getObject(weakReferenceAsObject, referenceReferentFieldOffset);
+        return UNSAFE.getReference(weakReferenceAsObject, referenceReferentFieldOffset);
     }
 
     /**
@@ -282,7 +289,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     }
 
     public Object testReferenceReferent5Snippet() {
-        return UNSAFE.getObject(dummyReference, referenceReferentFieldOffset);
+        return UNSAFE.getReference(dummyReference, referenceReferentFieldOffset);
     }
 
     static Object[] src = new Object[1];
@@ -357,7 +364,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
     @Before
     public void before() {
-        assumeTrue("ZGC has no write barriers", !(config.gc == HotSpotGC.Z));
+        assumeTrue("ZGC has no write barriers", !(config.gc == HotSpotGC.X));
         expectedBarriers = -1;
     }
 

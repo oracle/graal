@@ -98,7 +98,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
@@ -144,8 +143,10 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
         if (Platform.includedIn(Platform.WINDOWS.class)) {
             // This is the Windows 64-bit ABI for parameters.
-            // Note that float parameters also "consume" a general register and vice versa.
+            // Note that float parameters also "consume" a general register and vice versa in the
+            // native ABI.
             nativeGeneralParameterRegs = new RegisterArray(rcx, rdx, r8, r9);
+
             javaGeneralParameterRegs = new RegisterArray(rdx, r8, r9, rdi, rsi, rcx);
             xmmParameterRegs = new RegisterArray(xmm0, xmm1, xmm2, xmm3);
 
@@ -289,7 +290,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
              * argument. In the meantime, we put it in a scratch register. r10 contains the target,
              * rax the number of vector args, so r11 is the only scratch register left.
              */
-            JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[0], metaAccess, target);
+            JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, parameterTypes[0], metaAccess, target);
             kinds[0] = kind;
             ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());
             locations[0] = r11.asValue(paramValueKind);
@@ -300,7 +301,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             int currentXMM = 0;
 
             for (int i = firstActualArgument; i < parameterTypes.length; i++) {
-                JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
+                JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, parameterTypes[i], metaAccess, target);
                 kinds[i] = kind;
 
                 if (type.nativeABI() && Platform.includedIn(Platform.WINDOWS.class)) {
@@ -362,7 +363,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             VMError.guarantee(parameterTypes.length == type.fixedParameterAssignment.length, "Parameters/assignments size mismatch.");
 
             for (int i = firstActualArgument; i < locations.length; i++) {
-                JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
+                JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, parameterTypes[i], metaAccess, target);
                 kinds[i] = kind;
 
                 ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());
@@ -414,7 +415,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             }
         }
 
-        JavaKind returnKind = returnType == null ? JavaKind.Void : ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) returnType, metaAccess, target);
+        JavaKind returnKind = returnType == null ? JavaKind.Void : ObjectLayout.getCallSignatureKind(isEntryPoint, returnType, metaAccess, target);
         AllocatableValue returnLocation = returnKind == JavaKind.Void ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(valueKindFactory.getValueKind(returnKind.getStackKind()));
         return new SubstrateCallingConvention(type, kinds, currentStackOffset, returnLocation, locations);
     }
@@ -433,5 +434,9 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
     public RegisterArray getJavaGeneralParameterRegs() {
         return javaGeneralParameterRegs;
+    }
+
+    public RegisterArray getFloatingPointParameterRegs() {
+        return xmmParameterRegs;
     }
 }

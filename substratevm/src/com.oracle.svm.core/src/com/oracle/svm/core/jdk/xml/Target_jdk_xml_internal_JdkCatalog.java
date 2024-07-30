@@ -32,7 +32,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK22OrLater;
+import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
@@ -46,7 +46,7 @@ import com.oracle.svm.util.ReflectionUtil;
  * Ideally, we would initialize all of {@code jdk.xml} at run time, but that is too intrusive at the
  * current point in time (GR-50683).
  */
-@TargetClass(className = "jdk.xml.internal.JdkCatalog", onlyWith = JDK22OrLater.class)
+@TargetClass(className = "jdk.xml.internal.JdkCatalog", onlyWith = JDKLatest.class)
 public final class Target_jdk_xml_internal_JdkCatalog {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JdkCatalogSupplier.class, isFinal = true) //
@@ -59,7 +59,7 @@ public final class Target_jdk_xml_internal_JdkCatalog {
     }
 }
 
-@TargetClass(className = "javax.xml.catalog.Catalog", onlyWith = JDK22OrLater.class)
+@TargetClass(className = "javax.xml.catalog.Catalog", onlyWith = JDKLatest.class)
 final class Target_javax_xml_catalog_Catalog {
 }
 

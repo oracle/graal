@@ -47,14 +47,15 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.posix.darwin.DarwinSubstrateSigprofHandler;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.linux.LinuxSubstrateSigprofHandler;
+import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
@@ -141,7 +142,7 @@ class PosixSubstrateSigProfHandlerFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (JfrExecutionSamplerSupported.isSupported() && isSignalHandlerBasedExecutionSamplerEnabled()) {
+        if (JfrExecutionSamplerSupported.isSupported() && isSignalHandlerBasedExecutionSamplerEnabled() && useAsyncSampler()) {
             SubstrateSigprofHandler sampler = makeNewSigprofHandler();
             ImageSingletons.add(JfrExecutionSampler.class, sampler);
             ImageSingletons.add(SubstrateSigprofHandler.class, sampler);
@@ -151,11 +152,19 @@ class PosixSubstrateSigProfHandlerFeature implements InternalFeature {
         }
     }
 
+    private static boolean useAsyncSampler() {
+        return !ImageSingletons.contains(ProfilingSampler.class) || ImageSingletons.lookup(ProfilingSampler.class).isAsyncSampler();
+    }
+
     private static SubstrateSigprofHandler makeNewSigprofHandler() {
-        if (Platform.includedIn(Platform.LINUX.class)) {
+        /*
+         * For JFR, we should employ a global timer instead of a per-thread timer to adhere to the
+         * sampling frequency specified in .jfc.
+         */
+        if (Platform.includedIn(Platform.DARWIN.class) || HasJfrSupport.get()) {
+            return new PosixSubstrateGlobalSigprofHandler();
+        } else if (Platform.includedIn(Platform.LINUX.class)) {
             return new LinuxSubstrateSigprofHandler();
-        } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            return new DarwinSubstrateSigprofHandler();
         } else {
             throw VMError.shouldNotReachHere("The JFR-based sampler is not supported on this platform.");
         }

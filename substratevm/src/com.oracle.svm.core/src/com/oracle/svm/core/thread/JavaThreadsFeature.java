@@ -34,12 +34,4 @@ public abstract class JavaThreadsFeature implements InternalFeature {
         }
         return JavaThreads.getThreadId(thread);
     }
-
-    protected static void setThreadSeqNumber(long num) {
-        JavaThreads.threadSeqNumber.set(num);
-    }
-
-    protected static void setThreadInitNumber(int num) {
-        JavaThreads.threadInitNumber.set(num);
-    }
 }

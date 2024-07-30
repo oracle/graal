@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.chromeinspector.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -63,6 +64,9 @@ public class ProfilerTest {
         assertEquals("{\"result\":{},\"id\":3}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":4,\"method\":\"Profiler.start\"}");
         assertEquals("{\"result\":{},\"id\":4}", tester.getMessages(true).trim());
+        tester.sendMessage("{\"id\":10,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
+        assertTrue(tester.compareReceivedMessages("{\"result\":{},\"id\":10}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source).get();
         tester.sendMessage("{\"id\":5,\"method\":\"Profiler.stop\"}");
         JSONObject json = new JSONObject(tester.getMessages(true).trim());
@@ -89,6 +93,9 @@ public class ProfilerTest {
         assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":3,\"method\":\"Profiler.startPreciseCoverage\"}");
         assertEquals("{\"result\":{},\"id\":3}", tester.getMessages(true).trim());
+        tester.sendMessage("{\"id\":4,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
+        assertTrue(tester.compareReceivedMessages("{\"result\":{},\"id\":4}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source).get();
         tester.sendMessage("{\"id\":5,\"method\":\"Profiler.takePreciseCoverage\"}");
         // No results in case of no source section

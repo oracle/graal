@@ -230,6 +230,6 @@ class ComputeQueueValue implements FieldValueTransformer {
 class NotSerialNotEpsilonGC implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return !SubstrateOptions.UseSerialGC.getValue() && !SubstrateOptions.UseEpsilonGC.getValue();
+        return !SubstrateOptions.useSerialGC() && !SubstrateOptions.useEpsilonGC();
     }
 }

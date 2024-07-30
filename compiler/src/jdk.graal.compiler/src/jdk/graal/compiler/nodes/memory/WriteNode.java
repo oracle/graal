@@ -37,6 +37,8 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.IndirectInputChangedCanonicalization;
 import jdk.graal.compiler.graph.Node.InputsChangedCanonicalization;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.WriteBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
@@ -49,6 +51,7 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
@@ -68,14 +71,28 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
     protected WriteNode(NodeClass<? extends WriteNode> c, AddressNode address, LocationIdentity location, LocationIdentity killedLocationIdentity, ValueNode value, BarrierType barrierType,
                     MemoryOrderMode memoryOrder) {
         super(c, address, location, value, barrierType);
+        assert barrierType == BarrierType.NONE || barrierType == BarrierType.ARRAY || barrierType == BarrierType.FIELD || barrierType == BarrierType.UNKNOWN ||
+                        barrierType == BarrierType.POST_INIT_WRITE : barrierType;
         this.killedLocationIdentity = killedLocationIdentity;
         this.memoryOrder = memoryOrder;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        LIRKind writeKind = gen.getLIRGeneratorTool().getLIRKind(value().stamp(NodeView.DEFAULT));
-        gen.getLIRGeneratorTool().getArithmetic().emitStore(writeKind, gen.operand(address), gen.operand(value()), gen.state(this), memoryOrder);
+        WriteBarrierSetLIRGeneratorTool barrierSet = null;
+        LIRGeneratorTool tool = gen.getLIRGeneratorTool();
+        if (getBarrierType() != BarrierType.NONE && tool.getBarrierSet() instanceof WriteBarrierSetLIRGeneratorTool bs) {
+            barrierSet = bs;
+        }
+
+        LIRKind writeKind = tool.getLIRKind(value().stamp(NodeView.DEFAULT));
+        Value writeValue = gen.operand(value());
+        if (barrierSet != null) {
+            barrierSet.emitStore(tool, writeKind, getBarrierType(), gen.operand(getAddress()), writeValue, gen.state(this), memoryOrder, getLocationIdentity());
+        } else {
+            tool.getArithmetic().emitStore(writeKind, gen.operand(getAddress()), writeValue, gen.state(this), memoryOrder);
+        }
+
     }
 
     @Override

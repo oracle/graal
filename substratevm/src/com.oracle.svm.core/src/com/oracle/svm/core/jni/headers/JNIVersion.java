@@ -34,18 +34,18 @@ import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 @CContext(JNIHeaderDirectives.class)
 public final class JNIVersion {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isSupported(int version) {
-        return (JavaVersionUtil.JAVA_SPEC >= 22 && version == JNIVersionJDKLatest.JNI_VERSION_LATEST()) ||
-                        version == JNI_VERSION_21() ||
-                        version == JNI_VERSION_20() ||
-                        version == JNI_VERSION_19() ||
-                        version == JNI_VERSION_10() ||
-                        version == JNI_VERSION_9() ||
-                        version == JNI_VERSION_1_8() ||
-                        version == JNI_VERSION_1_6() ||
-                        version == JNI_VERSION_1_4() ||
-                        version == JNI_VERSION_1_2() ||
-                        version == JNI_VERSION_1_1();
+    public static boolean isSupported(int version, boolean builtInLibrary) {
+        if (JavaVersionUtil.JAVA_SPEC >= 22 && version == JNIVersionJDKLatest.JNI_VERSION_LATEST()) {
+            return true;
+        }
+        if (version == JNI_VERSION_21() || version == JNI_VERSION_20() || version == JNI_VERSION_19() || version == JNI_VERSION_10() || version == JNI_VERSION_9() || version == JNI_VERSION_1_8()) {
+            return true;
+        }
+        if (builtInLibrary) {
+            // Specification requires 1.8 or later for built-in (statically linked) libraries.
+            return false;
+        }
+        return version == JNI_VERSION_1_6() || version == JNI_VERSION_1_4() || version == JNI_VERSION_1_2() || version == JNI_VERSION_1_1();
     }
 
     // Checkstyle: stop

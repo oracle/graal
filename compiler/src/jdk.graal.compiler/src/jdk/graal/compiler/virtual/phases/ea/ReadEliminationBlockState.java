@@ -28,9 +28,10 @@ import java.util.Iterator;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.nodes.ValueNode;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -191,7 +192,13 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         return readCache.get(identifier);
     }
 
-    public void killReadCache(LocationIdentity identity, ValueNode index, ValueNode array) {
+    /**
+     * Kill the cache for memory accesses established so far down the control flow graph.
+     * {@code kill} represents a memory kill to location {@code identity}, potentially expressing an
+     * array access. This method must implement Java semantic for regular fields, array accesses,
+     * volatile operations etc.
+     */
+    public void killReadCache(@SuppressWarnings("unused") Node kill, LocationIdentity identity, ValueNode index, ValueNode array) {
         if (identity.isAny()) {
             /**
              * Kill all mutable locations.

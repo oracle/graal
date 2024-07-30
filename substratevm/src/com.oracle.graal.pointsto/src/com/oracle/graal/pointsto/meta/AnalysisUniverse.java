@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.meta;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,6 +47,7 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -56,7 +56,9 @@ import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
+import com.oracle.graal.pointsto.meta.AnalysisElement.MethodOverrideReachableNotification;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -99,16 +101,10 @@ public class AnalysisUniverse implements Universe {
     final AtomicInteger nextMethodId = new AtomicInteger(1);
     final AtomicInteger nextFieldId = new AtomicInteger(1);
 
-    /**
-     * True if the analysis has converged and the analysis data is valid. This is similar to
-     * {@link #sealed} but in contrast to {@link #sealed}, the analysis data can be set to invalid
-     * again, e.g. if features modify the universe.
-     */
-    boolean analysisDataValid;
-
     protected final SubstitutionProcessor substitutions;
 
     private Function<Object, Object>[] objectReplacers;
+    private Function<Object, ImageHeapConstant>[] objectToConstantReplacers;
 
     private SubstitutionProcessor[] featureSubstitutions;
     private SubstitutionProcessor[] featureNativeSubstitutions;
@@ -129,6 +125,8 @@ public class AnalysisUniverse implements Universe {
     private BigBang bb;
     private DuringAnalysisAccess concurrentAnalysisAccess;
 
+    private final Map<AnalysisMethod, Set<MethodOverrideReachableNotification>> methodOverrideReachableNotifications = new ConcurrentHashMap<>();
+
     public JavaKind getWordKind() {
         return wordKind;
     }
@@ -146,6 +144,7 @@ public class AnalysisUniverse implements Universe {
 
         sealed = false;
         objectReplacers = (Function<Object, Object>[]) new Function<?, ?>[0];
+        objectToConstantReplacers = (Function<Object, ImageHeapConstant>[]) new Function<?, ?>[0];
         featureSubstitutions = new SubstitutionProcessor[0];
         featureNativeSubstitutions = new SubstitutionProcessor[0];
     }
@@ -177,13 +176,6 @@ public class AnalysisUniverse implements Universe {
 
     public boolean sealed() {
         return sealed;
-    }
-
-    public void setAnalysisDataValid(boolean dataIsValid) {
-        if (dataIsValid) {
-            collectMethodImplementations();
-        }
-        analysisDataValid = dataIsValid;
     }
 
     public AnalysisType optionalLookup(ResolvedJavaType type) {
@@ -425,10 +417,27 @@ public class AnalysisUniverse implements Universe {
         }
         AnalysisMethod newValue = analysisFactory.createMethod(this, method);
         AnalysisMethod oldValue = methods.putIfAbsent(method, newValue);
-        if (oldValue == null && newValue.isInBaseLayer()) {
-            getImageLayerLoader().patchBaseLayerMethod(newValue);
+
+        if (oldValue == null) {
+            if (newValue.isInBaseLayer()) {
+                getImageLayerLoader().patchBaseLayerMethod(newValue);
+            }
+            prepareMethodImplementations(newValue);
         }
         return oldValue != null ? oldValue : newValue;
+    }
+
+    /** Prepare information that {@link AnalysisMethod#collectMethodImplementations} needs. */
+    private static void prepareMethodImplementations(AnalysisMethod method) {
+        if (!method.canBeStaticallyBound() && !method.isConstructor()) {
+            ConcurrentLightHashSet.addElement(method.declaringClass, AnalysisType.overrideableMethodsUpdater, method);
+            for (AnalysisType subtype : method.declaringClass.getAllSubtypes()) {
+                AnalysisMethod override = subtype.resolveConcreteMethod(method, null);
+                if (override != null && !override.equals(method)) {
+                    ConcurrentLightHashSet.addElement(method, AnalysisMethod.allImplementationsUpdater, override);
+                }
+            }
+        }
     }
 
     public AnalysisMethod[] lookup(JavaMethod[] inputs) {
@@ -559,6 +568,12 @@ public class AnalysisUniverse implements Universe {
         objectReplacers[objectReplacers.length - 1] = replacer;
     }
 
+    public void registerObjectToConstantReplacer(Function<Object, ImageHeapConstant> replacer) {
+        assert replacer != null;
+        objectToConstantReplacers = Arrays.copyOf(objectToConstantReplacers, objectToConstantReplacers.length + 1);
+        objectToConstantReplacers[objectToConstantReplacers.length - 1] = replacer;
+    }
+
     public void registerFeatureSubstitution(SubstitutionProcessor substitution) {
         SubstitutionProcessor[] subs = featureSubstitutions;
         subs = Arrays.copyOf(subs, subs.length + 1);
@@ -581,63 +596,76 @@ public class AnalysisUniverse implements Universe {
         return featureNativeSubstitutions;
     }
 
+    public Object replaceObject(Object source) {
+        return replaceObject0(source, false);
+    }
+
+    public JavaConstant replaceObjectWithConstant(Object source) {
+        assert !(source instanceof ImageHeapConstant) : source;
+
+        var replacedObject = replaceObject0(source, true);
+        if (replacedObject instanceof ImageHeapConstant constant) {
+            return constant;
+        }
+
+        return getHostedValuesProvider().forObject(replacedObject);
+    }
+
     /**
-     * Invokes all registered object replacers for an object.
+     * Invokes all registered object replacers and "object to constant" replacers for an object.>
+     *
+     * <p>
+     * The "object to constant" replacer is allowed to successfully complete only when
+     * {@code allowObjectToConstantReplacement} is true. When
+     * {@code allowObjectToConstantReplacement} is false, if any "object to constant" replacer is
+     * triggered we throw an error.
      *
      * @param source The source object
+     * @param allowObjectToConstantReplacement whether object to constant replacement is supported
      * @return The replaced object or the original source, if the source is not replaced by any
      *         registered replacer.
      */
-    public Object replaceObject(Object source) {
+    private Object replaceObject0(Object source, boolean allowObjectToConstantReplacement) {
         if (source == null) {
             return null;
         }
+
         Object destination = source;
         for (Function<Object, Object> replacer : objectReplacers) {
             destination = replacer.apply(destination);
         }
-        return destination;
-    }
 
-    public static Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
-        return getMethodImplementations(baseMethod, true);
-    }
-
-    private void collectMethodImplementations() {
-        for (AnalysisMethod method : methods.values()) {
-            Set<AnalysisMethod> implementations = getMethodImplementations(method, false);
-            method.implementations = implementations.toArray(new AnalysisMethod[implementations.size()]);
-        }
-    }
-
-    public static Set<AnalysisMethod> getMethodImplementations(AnalysisMethod method, boolean includeInlinedMethods) {
-        Set<AnalysisMethod> implementations = new LinkedHashSet<>();
-        if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
-            if (includeInlinedMethods ? method.isReachable() : method.isImplementationInvoked()) {
-                implementations.add(method);
+        ImageHeapConstant ihc = null;
+        for (Function<Object, ImageHeapConstant> replacer : objectToConstantReplacers) {
+            var result = replacer.apply(destination);
+            if (result != null) {
+                AnalysisError.guarantee(allowObjectToConstantReplacement, "Object to constant replacement has been triggered from an unsupported location");
+                AnalysisError.guarantee(ihc == null, "Multiple object to constant replacers have been trigger on a single object %s %s %s", destination, ihc, result);
+                ihc = result;
             }
-        } else {
-            collectMethodImplementations(method, method.getDeclaringClass(), implementations, includeInlinedMethods);
         }
-        return implementations;
+
+        return ihc == null ? destination : ihc;
     }
 
-    private static boolean collectMethodImplementations(AnalysisMethod method, AnalysisType holder, Set<AnalysisMethod> implementations, boolean includeInlinedMethods) {
-        boolean holderOrSubtypeInstantiated = holder.isInstantiated();
-        for (AnalysisType subClass : holder.getSubTypes()) {
-            if (subClass.equals(holder)) {
-                /* Subtypes include the holder type itself. The holder is processed below. */
-                continue;
+    public void registerOverrideReachabilityNotification(AnalysisMethod declaredMethod, MethodOverrideReachableNotification notification) {
+        methodOverrideReachableNotifications.computeIfAbsent(declaredMethod, m -> ConcurrentHashMap.newKeySet()).add(notification);
+    }
+
+    public void runAtFixedPoint() {
+        /*
+         * It is too expensive to immediately send out override notifications when a new method
+         * becomes reachable. We therefore send them out after the analysis has reached a fixed
+         * point. When new tasks are scheduled, the parallel analysis must be restarted.
+         */
+        for (var entry : methodOverrideReachableNotifications.entrySet()) {
+            var method = entry.getKey();
+            for (var override : method.collectMethodImplementations(true)) {
+                for (var notification : entry.getValue()) {
+                    notification.notifyCallback(this, override);
+                }
             }
-            holderOrSubtypeInstantiated |= collectMethodImplementations(method, subClass, implementations, includeInlinedMethods);
         }
-
-        AnalysisMethod resolved = method.resolveInType(holder, holderOrSubtypeInstantiated);
-        if (resolved != null && (includeInlinedMethods ? resolved.isReachable() : resolved.isImplementationInvoked())) {
-            implementations.add(resolved);
-        }
-
-        return holderOrSubtypeInstantiated;
     }
 
     /**

@@ -62,12 +62,12 @@ The steps below show how to embedded Jipher in a native executable, using a simp
     }
     ```
 
-2. Compile the application with Jipher JAR files on the classpath:
+2. Compile the application with Jipher JAR files on the class path:
 
     ```shell
     javac -cp $GRAALVM_HOME/lib/jipher/jipher-jce.jar:$GRAALVM_HOME/lib/jipher/jipher-pki.jar JipherExample.java
     ```
-3. Run the application on the JVM with the agent enabled. The tracing agent captures and writes down all the dynamic features encountered during a test run into multiple _*-config.json_ files.
+3. Run the application on the JVM with the agent enabled. The Tracing Agent captures and writes down all the dynamic features encountered during a test run into multiple _*-config.json_ files.
 
     ```shell
     java -cp $GRAALVM_HOME/lib/jipher/jipher-jce.jar:$GRAALVM_HOME/lib/jipher/jipher-pki.jar:. -agentlib:native-image-agent=config-output-dir=<path> JipherExample

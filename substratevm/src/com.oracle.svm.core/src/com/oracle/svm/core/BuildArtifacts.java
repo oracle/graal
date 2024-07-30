@@ -25,6 +25,8 @@
 package com.oracle.svm.core;
 
 import java.nio.file.Path;
+import java.util.List;
+import java.util.function.BiConsumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -88,4 +90,10 @@ public interface BuildArtifacts {
 
     /** Adds an artifact produced during native image build. */
     void add(ArtifactType type, Path artifact);
+
+    List<Path> get(ArtifactType type);
+
+    void forEach(BiConsumer<ArtifactType, List<Path>> action);
+
+    boolean isEmpty();
 }

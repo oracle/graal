@@ -41,7 +41,7 @@ The _*.debug_ file contains additional information about the build, which can be
 readelf -p .debug.svm.imagebuild.classpath hello_image.debug
 ```
 
-It gives a list of all classpath entries that were used to build the native executable:
+It gives a list of all class path entries that were used to build the native executable:
 ```
 String dump of section '.debug.svm.imagebuild.classpath':
   [     0]  /home/user/.mx/cache/HAMCREST_e237ae735aac4fa5a7253ec693191f42ef7ddce384c11d29fbf605981c0be077d086757409acad53cb5b9e53d86a07cc428d459ff0f5b00d32a8cbbca390be49/hamcrest.jar
@@ -565,3 +565,4 @@ void svm_dbg_print_locationInfo(graal_isolatethread_t* thread, size_t mem);
 ### Related Documentation
 
 * [Debug Info Feature](../DebugInfo.md)
+* [Debug Native Executables with a Python Helper Script](debug-native-executables-with-python-helper.md)

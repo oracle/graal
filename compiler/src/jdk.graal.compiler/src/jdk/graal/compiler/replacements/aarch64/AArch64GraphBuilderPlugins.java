@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.CopySignNode;
+import jdk.graal.compiler.nodes.calc.FusedMultiplyAddNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.MaxNode;
 import jdk.graal.compiler.nodes.calc.MinNode;
@@ -67,7 +68,6 @@ import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.FloatToHalfFloatNode;
-import jdk.graal.compiler.replacements.nodes.FusedMultiplyAddNode;
 import jdk.graal.compiler.replacements.nodes.HalfFloatToFloatNode;
 import jdk.graal.compiler.replacements.nodes.MessageDigestNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
@@ -485,7 +485,9 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     ValueNode nonNullReceiver = receiver.get(true);
                     ValueNode bufStart = helper.arrayElementPointer(buf, JavaKind.Byte, ofs);
                     ValueNode state = helper.loadField(nonNullReceiver, stateField);
-                    ValueNode stateStart = helper.arrayStart(state, JavaKind.Byte);
+                    assert stateField.getType().isArray() : "SHA3.state expected to be an array, got: " + stateField.getType();
+                    JavaKind stateElementKind = stateField.getType().getComponentType().getJavaKind();
+                    ValueNode stateStart = helper.arrayStart(state, stateElementKind);
                     ValueNode blockSize = helper.loadField(nonNullReceiver, blockSizeField);
                     b.add(new MessageDigestNode.SHA3Node(bufStart, stateStart, blockSize));
                     return true;

@@ -34,6 +34,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.core.code.FrameSourceInfo;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
@@ -100,7 +101,7 @@ final class Target_java_lang_StackWalker {
 
         JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), new JavaStackFrameVisitor() {
             @Override
-            public boolean visitFrame(FrameInfoQueryResult frameInfo) {
+            public boolean visitFrame(FrameSourceInfo frameInfo) {
                 if (StackTraceUtils.shouldShowFrame(frameInfo, showHiddenFrames, showReflectFrames, showHiddenFrames)) {
                     action.accept(new StackFrameImpl(frameInfo));
                 }
@@ -412,10 +413,10 @@ final class Target_java_lang_StackWalker {
     }
 
     final class StackFrameImpl implements StackWalker.StackFrame {
-        private final FrameInfoQueryResult frameInfo;
+        private final FrameSourceInfo frameInfo;
         private StackTraceElement ste;
 
-        StackFrameImpl(FrameInfoQueryResult frameInfo) {
+        StackFrameImpl(FrameSourceInfo frameInfo) {
             this.frameInfo = frameInfo;
         }
 

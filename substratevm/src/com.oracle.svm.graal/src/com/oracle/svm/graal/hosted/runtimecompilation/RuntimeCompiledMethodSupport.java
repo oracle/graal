@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.graal.hosted.runtimecompilation;
 
-import static com.oracle.svm.common.meta.MultiMethod.DEOPT_TARGET_METHOD;
 import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
+import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
 
 import java.util.List;
@@ -163,7 +163,7 @@ public class RuntimeCompiledMethodSupport {
             VMError.shouldNotReachHere(exception);
         }
 
-        encodeRuntimeCompiledMethods(compilationState);
+        encodeRuntimeCompiledMethods(hUniverse, compilationState);
 
         /*
          * For Deoptimization Targets add a custom phase which removes all deoptimization
@@ -299,7 +299,7 @@ public class RuntimeCompiledMethodSupport {
     }
 
     @SuppressWarnings("try")
-    private static void encodeRuntimeCompiledMethods(CompilationState compilationState) {
+    private static void encodeRuntimeCompiledMethods(HostedUniverse hUniverse, CompilationState compilationState) {
         compilationState.graphEncoder.finishPrepare();
 
         // at this point no new deoptimization entrypoints can be registered.
@@ -323,7 +323,7 @@ public class RuntimeCompiledMethodSupport {
         com.oracle.svm.graal.TruffleRuntimeCompilationSupport.setGraphEncoding(null, compilationState.graphEncoder.getEncoding(), compilationState.graphEncoder.getObjects(),
                         compilationState.graphEncoder.getNodeClasses());
 
-        compilationState.objectReplacer.setMethodsImplementations();
+        compilationState.objectReplacer.setMethodsImplementations(hUniverse);
     }
 
     /**

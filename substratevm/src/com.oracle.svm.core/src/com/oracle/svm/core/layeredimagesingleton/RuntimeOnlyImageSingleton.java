@@ -30,7 +30,7 @@ public interface RuntimeOnlyImageSingleton extends LayeredImageSingleton {
 
     @Override
     default EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
-        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY_ALLOW_FOLDING;
+        return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
     }
 
     @Override

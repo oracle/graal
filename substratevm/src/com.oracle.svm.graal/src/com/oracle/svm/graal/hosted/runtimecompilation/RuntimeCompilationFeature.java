@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.graal.hosted.runtimecompilation;
 
-import static com.oracle.svm.common.meta.MultiMethod.DEOPT_TARGET_METHOD;
 import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
 import static com.oracle.svm.core.util.VMError.guarantee;
+import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
 
@@ -61,7 +61,6 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.ParallelExecutionException;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.ParsingReason;
@@ -78,9 +77,9 @@ import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -172,7 +171,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         public static final HostedOptionKey<Boolean> PrintRuntimeCompilationCallTree = new HostedOptionKey<>(false);
 
         @Option(help = "Maximum number of methods allowed for runtime compilation.", stability = OptionStability.STABLE)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> MaxRuntimeCompileMethods = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> MaxRuntimeCompileMethods = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Enforce checking of maximum number of methods allowed for runtime compilation. Useful for checking in the gate that the number of methods does not go up without a good reason.")//
         public static final HostedOptionKey<Boolean> EnforceMaxRuntimeCompileMethods = new HostedOptionKey<>(false);
@@ -378,12 +377,11 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     private void installRuntimeConfig(BeforeAnalysisAccessImpl config) {
         Function<Providers, SubstrateBackend> backendProvider = TruffleRuntimeCompilationSupport.getRuntimeBackendProvider();
         ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
-        Providers originalProviders = GraalAccess.getOriginalProviders();
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(
                         ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(config.getMetaAccess()));
         RuntimeConfiguration runtimeConfig = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class)
                         .createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
-                                        backendProvider, classInitializationSupport, originalProviders.getLoopsDataProvider(), platformConfig,
+                                        backendProvider, classInitializationSupport, platformConfig,
                                         config.getBigBang().getSnippetReflectionProvider())
                         .build();
 
@@ -598,11 +596,11 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             for (var e : exception.getExceptions()) {
                 if (e instanceof AnalysisError.ParsingError parsingError) {
                     AnalysisMethod errorMethod = parsingError.getMethod();
-                    if (errorMethod.isDeoptTarget() || SubstrateCompilationDirectives.isRuntimeCompiledMethod(errorMethod)) {
+                    if (SubstrateCompilationDirectives.isDeoptTarget(errorMethod) || SubstrateCompilationDirectives.isRuntimeCompiledMethod(errorMethod)) {
                         AnalysisMethod failingRuntimeMethod = null;
                         if (SubstrateCompilationDirectives.isRuntimeCompiledMethod(errorMethod)) {
                             failingRuntimeMethod = errorMethod;
-                        } else if (errorMethod.isDeoptTarget()) {
+                        } else if (SubstrateCompilationDirectives.isDeoptTarget(errorMethod)) {
                             failingRuntimeMethod = errorMethod.getMultiMethod(RUNTIME_COMPILED_METHOD);
                         }
                         printFailingRuntimeMethodTrace(treeInfo, failingRuntimeMethod, errorMethod);
@@ -656,7 +654,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         @Override
         public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
-            if (method.isDeoptTarget()) {
+            if (SubstrateCompilationDirectives.isDeoptTarget(method)) {
                 /*
                  * The assertion setting for the deoptTarget and the runtime compiled method must
                  * match.
@@ -758,7 +756,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                  * If new frame states are found, then redo the type flow
                  */
                 for (ResolvedJavaMethod method : recomputeMethods) {
-                    assert MultiMethod.isDeoptTarget(method);
+                    assert SubstrateCompilationDirectives.isDeoptTarget(method);
                     ((PointsToAnalysisMethod) method).getTypeFlow().updateFlowsGraph(bb, MethodFlowsGraph.GraphKind.FULL, null, true);
                 }
 
@@ -779,7 +777,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         @Override
         public void afterParsingHook(AnalysisMethod method, StructuredGraph graph) {
-            if (method.isDeoptTarget()) {
+            if (SubstrateCompilationDirectives.isDeoptTarget(method)) {
                 new RuntimeCompiledMethodSupport.ConvertMacroNodes().apply(graph);
             }
         }
@@ -910,13 +908,13 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         @Override
-        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod method) {
+        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod caller, AnalysisMethod method) {
             if (outer instanceof InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope accOuter) {
                 /*
                  * Once the accumulative policy is activated, we cannot return to the trivial
                  * policy.
                  */
-                return inliningUtils.createAccumulativeInlineScope(accOuter, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
+                return inliningUtils.createAccumulativeInlineScope(accOuter, caller, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
             }
 
             assert outer == null || outer instanceof RuntimeCompilationAlwaysInlineScope : "unexpected outer scope: " + outer;
@@ -936,7 +934,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 return new RuntimeCompilationAlwaysInlineScope(inliningDepth);
             } else {
                 // start with a new accumulative inline scope
-                return inliningUtils.createAccumulativeInlineScope(null, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
+                return inliningUtils.createAccumulativeInlineScope(null, caller, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
             }
         }
     }
@@ -1099,7 +1097,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         @Override
         public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation) {
-            if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD || implementation.isDeoptTarget()) {
+            if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD || SubstrateCompilationDirectives.isDeoptTarget(implementation)) {
                 /*
                  * If the method may be intrinsified later, the implementation can change.
                  *

@@ -27,8 +27,8 @@ package jdk.graal.compiler.truffle.test;
 import static jdk.graal.compiler.graph.test.matchers.NodeIterableCount.hasCount;
 import static jdk.graal.compiler.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
-import static org.junit.Assert.assertThat;
 
 import java.lang.reflect.Field;
 
@@ -60,7 +60,6 @@ import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import sun.misc.Unsafe;
 
 public class ConditionAnchoringTest extends GraalCompilerTest {
     private static final long offset;
@@ -70,7 +69,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         long fieldOffset = 0;
         try {
             Field field = CheckedObject.class.getDeclaredField("field");
-            fieldOffset = getObjectFieldOffset(field);
+            fieldOffset = UNSAFE.objectFieldOffset(field);
         } catch (NoSuchFieldException | SecurityException e) {
             e.printStackTrace();
         }
@@ -170,14 +169,13 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
 
     @SuppressWarnings({"unused", "hiding"})
     private static final class MyUnsafeAccess {
-        private static final Unsafe MY_UNSAFE = UNSAFE;
 
         static int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
-            return MY_UNSAFE.getInt(receiver, offset);
+            return UNSAFE.getInt(receiver, offset);
         }
 
         static void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity) {
-            MY_UNSAFE.putInt(receiver, offset, value);
+            UNSAFE.putInt(receiver, offset, value);
         }
     }
 }

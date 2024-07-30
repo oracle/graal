@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,11 +40,13 @@ public class PredicatedProxyNodeIterator<T extends Node> extends NodeIterator<T>
 
     @Override
     protected void forward() {
-        while ((current == null || !current.isAlive() || !predicate.apply(current)) && iterator.hasNext()) {
-            current = iterator.next();
+        while (iterator.hasNext()) {
+            T c = iterator.next();
+            if (c != null && c.isAlive() && predicate.apply(c)) {
+                current = c;
+                return;
+            }
         }
-        if (current != null && (!current.isAlive() || !predicate.apply(current))) {
-            current = null;
-        }
+        current = null;
     }
 }

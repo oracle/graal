@@ -28,7 +28,7 @@ import java.util.function.Function;
 
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
@@ -79,7 +79,7 @@ public final class ClassInitializationOptions {
     @APIOption(name = "delay-class-initialization-to-runtime", valueTransformer = InitializationValueRunTime.class, deprecated = "Use --initialize-at-run-time.", defaultValue = "")//
     @APIOption(name = "rerun-class-initialization-at-runtime", valueTransformer = InitializationValueRunTime.class, deprecated = "Equivalent to --initialize-at-run-time.", defaultValue = "") //
     @Option(help = "A comma-separated list of classes appended with their initialization strategy ('" + SUFFIX_BUILD_TIME + "' or '" + SUFFIX_RUN_TIME + "')", type = OptionType.User)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ClassInitialization = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ClassInitialization = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Instead of abort, only warn if --initialize-at-build-time= is used.", type = OptionType.Debug, //
                     deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.0 and will be removed in a future release")//

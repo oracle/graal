@@ -2218,7 +2218,9 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
     public class NativeImageDebugLocalInfo implements DebugLocalInfo {
         protected final String name;
-        protected ResolvedJavaType type;
+        protected final ResolvedJavaType type;
+        protected final ResolvedJavaType valueType;
+        protected final String typeName;
         protected final JavaKind kind;
         protected int slot;
         protected int line;
@@ -2231,14 +2233,14 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
             // if we don't have a type default it for the JavaKind
             // it may still end up null when kind is Undefined.
             this.type = (resolvedType != null ? resolvedType : hostedTypeForKind(kind));
+
+            this.valueType = (type != null && type instanceof HostedType) ? getOriginal((HostedType) type) : type;
+            this.typeName = valueType == null ? "" : valueType().toJavaName();
         }
 
         @Override
         public ResolvedJavaType valueType() {
-            if (type != null && type instanceof HostedType) {
-                return getOriginal((HostedType) type);
-            }
-            return type;
+            return valueType;
         }
 
         @Override
@@ -2248,8 +2250,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
         @Override
         public String typeName() {
-            ResolvedJavaType valueType = valueType();
-            return (valueType == null ? "" : valueType().toJavaName());
+            return typeName;
         }
 
         @Override

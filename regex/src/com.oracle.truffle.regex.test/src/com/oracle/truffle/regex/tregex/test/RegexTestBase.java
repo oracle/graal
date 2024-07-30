@@ -63,6 +63,7 @@ public abstract class RegexTestBase {
     private static final boolean TABLE_OMIT_FROM_INDEX = false;
 
     private static Context context;
+    private static boolean printTableHeader = true;
 
     @BeforeClass
     public static void setUp() {
@@ -299,9 +300,23 @@ public abstract class RegexTestBase {
 
     private static void printTable(String pattern, String flags, String input, int fromIndex, String expectedResult, String actualResult) {
         if (TABLE_OMIT_FROM_INDEX) {
-            System.out.printf("%-20s%-20s%-30s%s%n", regexSlashes(pattern, flags), quote(input), expectedResult, actualResult);
+            String format = "%-20s%-20s%-30s%s%n";
+            printTableHeader(format, "Pattern", "Input", "Expected result", "TRegex result");
+            System.out.printf(format, regexSlashes(pattern, flags), quote(input), expectedResult, actualResult);
         } else {
-            System.out.printf("%-20s%-20s%-4d%-30s%s%n", regexSlashes(pattern, flags), quote(input), fromIndex, expectedResult, actualResult);
+            String format = "%-16s%-16s%-10s%-20s%s%n";
+            printTableHeader(format, "Pattern", "Input", "Offset", "Expected result", "TRegex result");
+            System.out.printf(format, regexSlashes(pattern, flags), quote(input), fromIndex, expectedResult, actualResult);
+        }
+    }
+
+    private static void printTableHeader(String format, Object... names) {
+        if (printTableHeader) {
+            String header = String.format(format, names);
+            System.out.println();
+            System.out.print(header);
+            System.out.println("-".repeat(header.length() - 1));
+            printTableHeader = false;
         }
     }
 

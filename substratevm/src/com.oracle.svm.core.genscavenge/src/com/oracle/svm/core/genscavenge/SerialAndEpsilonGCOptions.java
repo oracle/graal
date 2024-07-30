@@ -76,7 +76,7 @@ public final class SerialAndEpsilonGCOptions {
     }
 
     public static void serialOrEpsilonGCOnly(OptionKey<?> optionKey) {
-        if (!SubstrateOptions.UseSerialGC.getValue() && !SubstrateOptions.UseEpsilonGC.getValue()) {
+        if (!SubstrateOptions.useSerialGC() && !SubstrateOptions.useEpsilonGC()) {
             throw UserError.abort("The option '" + optionKey.getName() + "' can only be used together with the serial ('--gc=serial') or the epsilon garbage collector ('--gc=epsilon').");
         }
     }

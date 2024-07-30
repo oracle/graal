@@ -31,7 +31,7 @@ import java.lang.ref.WeakReference;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.loop.LoopEx;
+import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.word.LocationIdentity;
@@ -45,7 +45,7 @@ public class ReferenceGetLoopTest extends GraalCompilerTest {
     protected void checkMidTierGraph(StructuredGraph graph) {
         final LoopsData loops = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
         boolean found = false;
-        for (LoopEx loop : loops.loops()) {
+        for (Loop loop : loops.loops()) {
             for (Node node : loop.inside().nodes()) {
                 if (node instanceof MemoryAccess) {
                     MemoryAccess access = (MemoryAccess) node;

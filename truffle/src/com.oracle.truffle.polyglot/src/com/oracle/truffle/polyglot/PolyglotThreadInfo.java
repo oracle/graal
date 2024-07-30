@@ -42,8 +42,8 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
-import java.util.BitSet;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -59,14 +59,20 @@ import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.TruffleWeakReference;
 
+// Information attached by context to each thread which entered the context
 final class PolyglotThreadInfo {
 
-    static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null, null, false);
+    static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null, null, null);
     private static final Object NULL_CLASS_LOADER = new Object();
 
     final PolyglotContextImpl context;
     @CompilationFinal private final TruffleWeakReference<Thread> thread;
-    final PolyglotContextImpl polyglotThreadOwnerContext;
+    private final boolean polyglotThread;
+    /**
+     * Only true if the thread was created "inside" exitContext, i.e. created from the thread
+     * running exitContext(), or transitively from such a thread created inside exitContext.
+     */
+    final boolean createdInExitContext;
 
     /*
      * Only modify if Thread.currentThread() == thread.get().
@@ -74,6 +80,7 @@ final class PolyglotThreadInfo {
     private volatile int enteredCount;
     private volatile TruffleSafepoint.Interrupter leaveAndEnterInterrupter;
     final LinkedList<Object[]> explicitContextStack = new LinkedList<>();
+    boolean interruptSent;
     volatile boolean cancelled;
     volatile boolean leaveAndEnterInterrupted;
     private Object originalContextClassLoader = NULL_CLASS_LOADER;
@@ -100,23 +107,11 @@ final class PolyglotThreadInfo {
         ASSERT_ENTER_RETURN_PARITY = assertsOn;
     }
 
-    PolyglotThreadInfo(PolyglotContextImpl context, Thread thread, boolean polyglotThreadFirstEnter) {
+    PolyglotThreadInfo(PolyglotContextImpl context, Thread thread, PolyglotThreadTask polyglotThreadTask) {
         this.context = context;
         this.thread = new TruffleWeakReference<>(thread);
-        if (thread instanceof PolyglotThread) {
-            assert !polyglotThreadFirstEnter || ((PolyglotThread) thread).getOwnerContext() == context;
-            this.polyglotThreadOwnerContext = ((PolyglotThread) thread).getOwnerContext();
-        } else if (polyglotThreadFirstEnter) {
-            /*
-             * This branch is only for host thread created for a host call from a polyglot thread in
-             * a polyglot isolate. First enters for threads that are instances of PolyglotThread
-             * also have polyglotThreadFirstEnter == true, but they are handled by the first branch
-             * of this if statement.
-             */
-            this.polyglotThreadOwnerContext = context;
-        } else {
-            this.polyglotThreadOwnerContext = null;
-        }
+        this.polyglotThread = polyglotThreadTask != null;
+        this.createdInExitContext = isCreatedInExitContext(context, polyglotThreadTask);
         if (context == null) {
             this.encapsulatingNodeReference = null;
             this.fastThreadLocals = null;
@@ -130,6 +125,23 @@ final class PolyglotThreadInfo {
             initializedLanguageContexts = null;
         }
         this.probesEnterList = initProbesEnterList(context);
+    }
+
+    private static boolean isCreatedInExitContext(PolyglotContextImpl context, PolyglotThreadTask polyglotThreadTask) {
+        if (polyglotThreadTask == null || polyglotThreadTask == PolyglotThreadTask.ISOLATE_POLYGLOT_THREAD) {
+            return false;
+        }
+        Thread parentThread = polyglotThreadTask.parentThread;
+        Thread hardExitTriggeringThread = context.closeExitedTriggerThread;
+        if (hardExitTriggeringThread != null) {
+            if (hardExitTriggeringThread == parentThread) {
+                return true;
+            } else {
+                PolyglotThreadInfo parentInfo = context.getThreadInfo(parentThread);
+                return parentInfo.isPolyglotThread() && parentInfo.createdInExitContext;
+            }
+        }
+        return false;
     }
 
     private static List<ProbeNode> initProbesEnterList(PolyglotContextImpl context) {
@@ -258,8 +270,14 @@ final class PolyglotThreadInfo {
         }
     }
 
-    boolean isPolyglotThread(PolyglotContextImpl c) {
-        return polyglotThreadOwnerContext == c;
+    /**
+     * Returns true if and only if the thread is a polyglot thread created by {@link #context}. For
+     * example it is false if context 1 created this polyglot thread but we are calling this method
+     * in an inner context 2. {@link PolyglotThreadInfo} are stored per context in
+     * {@code PolyglotContextImpl#threads}.
+     */
+    boolean isPolyglotThread() {
+        return polyglotThread;
     }
 
     void notifyLeave(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {

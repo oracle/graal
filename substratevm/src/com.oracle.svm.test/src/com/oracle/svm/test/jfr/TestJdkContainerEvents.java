@@ -34,7 +34,7 @@ import java.util.List;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.svm.core.OS;
+import com.oracle.svm.core.container.Container;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
@@ -44,7 +44,8 @@ public class TestJdkContainerEvents extends JfrRecordingTest {
 
     @Test
     public void test() throws Throwable {
-        Assume.assumeTrue("Container support is limited to Linux", OS.LINUX.isCurrent());
+        Assume.assumeTrue("Container support not enabled or available", Container.isSupported());
+        Assume.assumeTrue("Test assumes running containerized", Container.singleton().isContainerized());
         String[] events = new String[]{"jdk.ContainerCPUThrottling", "jdk.ContainerCPUUsage",
                         "jdk.ContainerConfiguration", "jdk.ContainerIOUsage", "jdk.ContainerMemoryUsage"};
 

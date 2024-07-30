@@ -53,7 +53,7 @@ public interface AbstractControlFlowGraph<T extends BasicBlock<T>> {
      */
     T[] getBlocks();
 
-    Collection<Loop<T>> getLoops();
+    Collection<CFGLoop<T>> getLoops();
 
     T getStartBlock();
 

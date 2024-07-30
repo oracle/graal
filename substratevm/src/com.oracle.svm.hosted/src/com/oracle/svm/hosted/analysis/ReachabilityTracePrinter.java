@@ -38,7 +38,7 @@ import com.oracle.graal.pointsto.reports.ObjectTreePrinter;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 
 import jdk.graal.compiler.debug.MethodFilter;
@@ -50,13 +50,13 @@ public final class ReachabilityTracePrinter {
 
     public static class Options {
         @Option(help = "Print a trace and abort the build process if any type matching the specified pattern becomes reachable.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AbortOnTypeReachable = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AbortOnTypeReachable = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Print a trace and abort the build process if any method matching the specified pattern becomes reachable.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AbortOnMethodReachable = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AbortOnMethodReachable = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Print a trace and abort the build process if any field matching the specified pattern becomes reachable.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AbortOnFieldReachable = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AbortOnFieldReachable = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
     }
 
     public static void report(String imageName, OptionValues options, String reportsPath, BigBang bb) {

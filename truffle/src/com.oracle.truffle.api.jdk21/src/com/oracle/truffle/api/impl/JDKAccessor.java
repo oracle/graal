@@ -52,4 +52,8 @@ public abstract class JDKAccessor {
         return t.isVirtual();
     }
 
+    public static Thread newVirtualThread(String name, Runnable runnable) {
+        return Thread.ofVirtual().name(name).unstarted(runnable);
+    }
+
 }

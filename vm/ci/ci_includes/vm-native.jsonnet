@@ -9,7 +9,8 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       ['mx', '--env', 'ce', '--native-images=lib:jvmcicompiler', 'gate', '--no-warning-as-error', '--tags', 'build,truffle-jvm'],
     ],
     notify_groups: ["truffle"],
-    timelimit: '1:00:00',
+    components+: ["truffle"],
+    timelimit: '1:15:00',
     name: self.targets[0] + '-vm-ce-truffle-jvm-labs' + self.jdk_name + '-linux-amd64',
   },
 
@@ -18,6 +19,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       ['mx', '--env', 'ce', '--native-images=lib:jvmcicompiler', 'gate', '--no-warning-as-error', '--tags', 'build,truffle-native' + self.gate_tag_suffix],
     ],
     notify_groups: ["truffle"],
+    components+: ["truffle"],
     timelimit: '1:00:00',
     name: self.targets[0] + '-vm-ce-truffle-native' + self.gate_tag_suffix + '-labs' + self.jdk_name + '-linux-amd64',
   },
@@ -31,6 +33,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       ['mx', '--dynamicimports', '/compiler', 'gate', '--tags', 'truffle-' + mode]
     ],
     notify_groups: ["truffle"],
+    components+: ["truffle"],
     timelimit: '40:00',
     name: self.targets[0] + '-vm-ce-truffle-lts-compatibility-' + mode + '-linux-amd64',
   },
@@ -40,6 +43,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       ['mx', '--env', 'ce', '--dynamicimports', '/tools', '--native-images=lib:jvmcicompiler', 'gate', '--tags', 'build,truffle-native-tck,truffle-native-tck-sl'],
     ],
     notify_groups: ["truffle"],
+    components+: ["truffletck"],
     timelimit: '35:00',
     name: self.targets[0] + '-vm-truffle-native-tck-labs' + self.jdk_name + '-linux-amd64',
   },
@@ -50,6 +54,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       ['mx', '--env', 'ce-llvm', '--native-images=', 'gate', '--no-warning-as-error', '--tags', 'build,maven-downloader'],
     ],
     notify_groups: ["truffle"],
+    components+: ["truffle"],
     timelimit: '30:00',
     packages+: {
       maven: '>=3.3.9',

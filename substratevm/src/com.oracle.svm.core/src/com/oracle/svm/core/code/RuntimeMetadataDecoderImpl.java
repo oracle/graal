@@ -193,7 +193,8 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     }
 
     /**
-     * Parameters encoding for executables.
+     * Parameters encoding for executables. Note that this method can re-throw an exception that was
+     * caught and encoded at image build time.
      *
      * <pre>
      * ParameterMetadata[] parameters

@@ -833,9 +833,10 @@ meth public com.oracle.truffle.api.TruffleThreadBuilder beforeEnter(java.lang.Ru
 meth public com.oracle.truffle.api.TruffleThreadBuilder context(com.oracle.truffle.api.TruffleContext)
 meth public com.oracle.truffle.api.TruffleThreadBuilder stackSize(long)
 meth public com.oracle.truffle.api.TruffleThreadBuilder threadGroup(java.lang.ThreadGroup)
+meth public com.oracle.truffle.api.TruffleThreadBuilder virtual(boolean)
 meth public java.lang.Thread build()
 supr java.lang.Object
-hfds afterLeave,beforeEnter,polyglotLanguageContext,runnable,stackSize,threadGroup,truffleContext
+hfds afterLeave,beforeEnter,polyglotLanguageContext,runnable,stackSize,threadGroup,truffleContext,virtual
 
 CLSS public abstract interface com.oracle.truffle.api.frame.Frame
 meth public abstract com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()
@@ -1361,7 +1362,9 @@ CLSS public abstract com.oracle.truffle.api.nodes.RootNode
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>)
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>,com.oracle.truffle.api.frame.FrameDescriptor)
 meth protected boolean countsTowardsStackTraceLimit()
+meth protected boolean isCaptureFramesForTrace(boolean)
 meth protected boolean isCaptureFramesForTrace(com.oracle.truffle.api.nodes.Node)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth protected boolean isCloneUninitializedSupported()
 meth protected boolean isInstrumentable()
 meth protected boolean isSameFrame(com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.frame.Frame)

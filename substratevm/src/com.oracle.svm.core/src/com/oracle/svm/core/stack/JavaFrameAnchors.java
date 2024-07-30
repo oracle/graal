@@ -29,19 +29,23 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
 
@@ -58,6 +62,7 @@ import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 public class JavaFrameAnchors {
     static final SnippetRuntime.SubstrateForeignCallDescriptor VERIFY_FRAME_ANCHOR_STUB = SnippetRuntime.findForeignCall(JavaFrameAnchors.class, "verifyFrameAnchorStub", NO_SIDE_EFFECT);
     private static final FastThreadLocalWord<JavaFrameAnchor> lastAnchorTL = FastThreadLocalFactory.createWord("JavaFrameAnchors.lastAnchor").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
+    private static final FastThreadLocalInt verificationInProgressTL = FastThreadLocalFactory.createInt("JavaFrameAnchors.verificationInProgress");
 
     public static void pushFrameAnchor(JavaFrameAnchor newAnchor) {
         if (SubstrateOptions.VerifyFrameAnchors.getValue()) {
@@ -117,18 +122,28 @@ public class JavaFrameAnchors {
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void verifyFrameAnchorStub(boolean newAnchor) {
-        JavaFrameAnchor cur = lastAnchorTL.get();
-        verifyFrameAnchor(cur, newAnchor);
+        if (verificationInProgressTL.get() != 0 || SubstrateDiagnostics.isFatalErrorHandlingThread()) {
+            return;
+        }
 
-        JavaFrameAnchor prev = cur.getPreviousAnchor();
-        if (prev.isNonNull()) {
-            verifyFrameAnchor(prev, false);
+        verificationInProgressTL.set(verificationInProgressTL.get() + 1);
+        try {
+            JavaFrameAnchor cur = lastAnchorTL.get();
+            verifyFrameAnchor(cur, newAnchor);
+
+            JavaFrameAnchor prev = cur.getPreviousAnchor();
+            if (prev.isNonNull()) {
+                verifyFrameAnchor(prev, false);
+            }
+        } finally {
+            verificationInProgressTL.set(verificationInProgressTL.get() - 1);
         }
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void verifyFrameAnchor(JavaFrameAnchor cur, boolean newAnchor) {
         VMError.guarantee(StatusSupport.getStatusVolatile() == StatusSupport.STATUS_IN_JAVA, "Invalid thread status.");
+        VMError.guarantee(((Pointer) cur).aboveOrEqual(KnownIntrinsics.readStackPointer()), "The frame anchor struct is outside of the used stack.");
         VMError.guarantee(cur.getMagicBefore() == JavaFrameAnchor.MAGIC, "Corrupt frame anchor: magic before");
         VMError.guarantee(cur.getMagicAfter() == JavaFrameAnchor.MAGIC, "Corrupt frame anchor: magic after");
         VMError.guarantee(newAnchor == cur.getLastJavaIP().isNull(), "Corrupt frame anchor: invalid IP");

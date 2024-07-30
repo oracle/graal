@@ -268,6 +268,7 @@ final class MachORelocationInfo implements RelocationRecord, RelocationMethod {
         // FIXME: also allow section numbers here, for non-extern symbols
         // FIXME: encode R_ABS symbol number
         this.sym = symtab.getSymbol(symbolName);
+        assert this.sym != null : "could not find symbol " + symbolName;
         // if the symbol is defined in the same file, i.e. locally, we have a target section
         assert !asLocalReloc || this.sym.isDefined();
         this.targetSection = asLocalReloc ? (MachOSection) this.sym.getDefinedSection() : null;

@@ -42,30 +42,50 @@ public final class SignatureUtil {
      * @return the parsed return type descriptor
      */
     public static String parseSignature(String signature, List<String> parameters) {
-        if (signature.length() == 0) {
-            throw new IllegalArgumentException("Signature cannot be empty");
+        return parseSignatureInternal(signature, parameters, true, false);
+    }
+
+    /*
+     * If throwOnInvalidFormat is not set, returns null if signature parsing failed.
+     */
+    private static String parseSignatureInternal(String signature, List<String> parameters, boolean throwOnInvalidFormat, boolean acceptMissingReturnType) {
+        if (signature.isEmpty()) {
+            return throwOrReturn(throwOnInvalidFormat, null, "Signature cannot be empty");
         }
         if (signature.charAt(0) == '(') {
             int cur = 1;
             while (cur < signature.length() && signature.charAt(cur) != ')') {
-                int nextCur = parseSignature(signature, cur);
-                parameters.add(signature.substring(cur, nextCur));
+                int nextCur = parseParameterSignature(signature, cur, throwOnInvalidFormat);
+                if (nextCur == -1) {
+                    assert !throwOnInvalidFormat : "parseParameterSignature can only return -1 if throwOnInvalidFormat is not set";
+                    return null;
+                }
+                if (parameters != null) {
+                    parameters.add(signature.substring(cur, nextCur));
+                }
                 cur = nextCur;
             }
 
             cur++;
-            int nextCur = parseSignature(signature, cur);
+            if (acceptMissingReturnType && cur == signature.length()) {
+                return "";
+            }
+            int nextCur = parseParameterSignature(signature, cur, throwOnInvalidFormat);
+            if (nextCur == -1) {
+                assert !throwOnInvalidFormat : "parseParameterSignature can only return -1 if throwOnInvalidFormat is not set";
+                return null;
+            }
             String returnType = signature.substring(cur, nextCur);
             if (nextCur != signature.length()) {
-                throw new IllegalArgumentException("Extra characters at end of signature: " + signature);
+                return throwOrReturn(throwOnInvalidFormat, null, "Extra characters at end of signature: " + signature);
             }
             return returnType;
         } else {
-            throw new IllegalArgumentException("Signature must start with a '(': " + signature);
+            return throwOrReturn(throwOnInvalidFormat, null, "Signature must start with a '(': " + signature);
         }
     }
 
-    private static int parseSignature(String signature, int start) {
+    private static int parseParameterSignature(String signature, int start, boolean throwOnInvalidFormat) {
         try {
             int cur = start;
             char first;
@@ -78,7 +98,7 @@ public final class SignatureUtil {
                 case 'L':
                     while (signature.charAt(cur) != ';') {
                         if (signature.charAt(cur) == '.') {
-                            throw new IllegalArgumentException("Class name in signature contains '.' at index " + cur + ": " + signature);
+                            return throwOrReturn(throwOnInvalidFormat, -1, "Class name in signature contains '.' at index " + cur + ": " + signature);
                         }
                         cur++;
                     }
@@ -95,11 +115,32 @@ public final class SignatureUtil {
                 case 'Z':
                     break;
                 default:
-                    throw new IllegalArgumentException("Invalid character '" + signature.charAt(cur - 1) + "' at index " + (cur - 1) + " in signature: " + signature);
+                    return throwOrReturn(throwOnInvalidFormat, -1, "Invalid character '" + signature.charAt(cur - 1) + "' at index " + (cur - 1) + " in signature: " + signature);
             }
             return cur;
         } catch (StringIndexOutOfBoundsException e) {
-            throw new IllegalArgumentException("Truncated signature: " + signature);
+            return throwOrReturn(throwOnInvalidFormat, -1, "Truncated signature: " + signature);
+        }
+    }
+
+    /**
+     * Checks if the given signature can be successfully parsed by
+     * {@link #parseSignature(String, List)}.
+     *
+     * @param signature the signature to check
+     * @param acceptMissingReturnType whether a signature without a return type is considered to be
+     *            valid
+     * @return whether the signature can be successfully parsed
+     */
+    public static boolean isSignatureValid(String signature, boolean acceptMissingReturnType) {
+        return parseSignatureInternal(signature, null, false, acceptMissingReturnType) != null;
+    }
+
+    private static <T> T throwOrReturn(boolean shouldThrow, T returnValue, String errorMessage) {
+        if (shouldThrow) {
+            throw new IllegalArgumentException(errorMessage);
+        } else {
+            return returnValue;
         }
     }
 }

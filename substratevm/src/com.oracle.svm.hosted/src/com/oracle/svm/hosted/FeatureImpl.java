@@ -51,9 +51,12 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -65,7 +68,9 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
@@ -249,7 +254,7 @@ public class FeatureImpl {
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
-            return AnalysisUniverse.reachableMethodOverrides(baseMethod);
+            return baseMethod.collectMethodImplementations(true);
         }
 
         public void rescanObject(Object obj) {
@@ -290,6 +295,15 @@ public class FeatureImpl {
         @Override
         public void registerObjectReplacer(Function<Object, Object> replacer) {
             getUniverse().registerObjectReplacer(replacer);
+        }
+
+        /**
+         * Register an object replacer which may return an ImageHeapConstant. Note only one replacer
+         * can be triggered for a given object; otherwise an error will be thrown. Too, if the
+         * object should not be replaced then {@code null} should be returned.
+         */
+        public void registerObjectToConstantReplacer(Function<Object, ImageHeapConstant> replacer) {
+            getUniverse().registerObjectToConstantReplacer(replacer);
         }
 
         /**
@@ -337,12 +351,15 @@ public class FeatureImpl {
         private final NativeLibraries nativeLibraries;
         private final boolean concurrentReachabilityHandlers;
         private final ReachabilityHandler reachabilityHandler;
+        private ClassForNameSupport classForNameSupport;
 
-        public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
+        public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries,
+                        DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
             this.nativeLibraries = nativeLibraries;
             this.concurrentReachabilityHandlers = SubstrateOptions.RunReachabilityHandlersConcurrently.getValue(bb.getOptions());
             this.reachabilityHandler = concurrentReachabilityHandlers ? ConcurrentReachabilityHandler.singleton() : ReachabilityHandlerFeature.singleton();
+            this.classForNameSupport = ClassForNameSupport.singleton();
         }
 
         public NativeLibraries getNativeLibraries() {
@@ -385,6 +402,7 @@ public class FeatureImpl {
                 throw UserError.abort("Cannot register an abstract class as instantiated: " + aType.toJavaName(true));
             }
             aType.registerAsUnsafeAllocated("From feature");
+            classForNameSupport.registerUnsafeAllocated(ConfigurationCondition.alwaysTrue(), aType.getJavaClass());
         }
 
         @Override
@@ -416,15 +434,6 @@ public class FeatureImpl {
         public boolean registerAsUnsafeAccessed(AnalysisField aField, Object reason) {
             assert !AnnotationAccess.isAnnotationPresent(aField, Delete.class);
             return aField.registerAsUnsafeAccessed(reason);
-        }
-
-        public void registerAsFrozenUnsafeAccessed(Field field, Object reason) {
-            registerAsFrozenUnsafeAccessed(getMetaAccess().lookupJavaField(field), reason);
-        }
-
-        public void registerAsFrozenUnsafeAccessed(AnalysisField aField, Object reason) {
-            aField.registerAsFrozenUnsafeAccessed();
-            registerAsUnsafeAccessed(aField, reason);
         }
 
         public void registerAsRoot(Executable method, boolean invokeSpecial, String reason, MultiMethod.MultiMethodKey... otherRoots) {
@@ -629,6 +638,10 @@ public class FeatureImpl {
         public Collection<? extends SharedMethod> getMethods() {
             return hUniverse.getMethods();
         }
+
+        public ImageHeapScanner getHeapScanner() {
+            return aUniverse.getHeapScanner();
+        }
     }
 
     public static class BeforeCompilationAccessImpl extends CompilationAccessImpl implements Feature.BeforeCompilationAccess {
@@ -665,6 +678,10 @@ public class FeatureImpl {
 
         public NativeImageCodeCache getCodeCache() {
             return codeCache;
+        }
+
+        public NativeImageHeap getHeap() {
+            return heap;
         }
     }
 
@@ -749,6 +766,19 @@ public class FeatureImpl {
                 linkerInvocationTransformers = new ArrayList<>();
             }
             linkerInvocationTransformers.add(transformer);
+        }
+    }
+
+    public static class AfterAbstractImageCreationAccessImpl extends FeatureAccessImpl implements InternalFeature.AfterAbstractImageCreationAccess {
+        protected final AbstractImage abstractImage;
+
+        AfterAbstractImageCreationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext, AbstractImage abstractImage) {
+            super(featureHandler, imageClassLoader, debugContext);
+            this.abstractImage = abstractImage;
+        }
+
+        public AbstractImage getImage() {
+            return abstractImage;
         }
     }
 
