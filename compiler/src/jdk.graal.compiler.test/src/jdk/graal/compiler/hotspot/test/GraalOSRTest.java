@@ -266,4 +266,28 @@ public class GraalOSRTest extends GraalOSRTestBase {
         Pattern cpRef = Pattern.compile("#\\d+");
         return Stream.of(dis.split("\n")).map(line -> cpRef.matcher(line.trim()).replaceAll(mr -> "#__")).collect(Collectors.joining(System.lineSeparator()));
     }
+
+    static ReturnValue testArrayBottom(byte[] aB, int[] aI, int i) {
+        Object a = null;
+        long base = 0;
+        if (i % 2 == 0) {
+            a = aB;
+            base = Unsafe.ARRAY_BYTE_BASE_OFFSET;
+        } else {
+            a = aI;
+            base = Unsafe.ARRAY_INT_BASE_OFFSET;
+        }
+        int res = 0;
+        for (int j = 0; j < 10000; j++) {
+            res += UNSAFE.getByte(a, base + j);
+        }
+        GraalDirectives.sideEffect(res);
+
+        return ReturnValue.SUCCESS;
+    }
+
+    @Test
+    public void testOSR07() {
+        testOSR(getInitialOptions(), "testArrayBottom", null, new byte[100], new int[100], 10);
+    }
 }
