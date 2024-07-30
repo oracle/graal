@@ -45,6 +45,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
@@ -60,6 +61,7 @@ import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeEncodingException;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -1706,6 +1708,264 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testManyBytecodes() {
+        BasicInterpreter node = parseNode("manyBytecodes", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+            for (int i = 0; i < Short.MAX_VALUE * 2; i++) {
+                b.emitLoadConstant(123L);
+            }
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testManyConstants() {
+        BasicInterpreter node = parseNode("manyConstants", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+            for (int i = 0; i < Short.MAX_VALUE * 2; i++) {
+                b.emitLoadConstant((long) i);
+            }
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testManyNodes() {
+        BasicInterpreter node = parseNode("manyNodes", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+            for (int i = 0; i < Short.MAX_VALUE * 2; i++) {
+                b.emitVoidOperation();
+            }
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testManyConditionalBranches() {
+        BasicInterpreter node = parseNode("manyConditionalBranches", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+            for (int i = 0; i < Short.MAX_VALUE * 2; i++) {
+                b.beginConditional();
+                b.emitLoadArgument(0);
+                b.emitLoadConstant(123L);
+                b.emitLoadConstant(321L);
+                b.endConditional();
+            }
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertEquals(42L, node.getCallTarget().call(true));
+    }
+
+    @Test
+    public void testManyLocals() {
+        BasicInterpreter node = parseNode("manyLocals", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+
+            for (int i = 0; i < Short.MAX_VALUE - 10; i++) {
+                b.createLocal();
+            }
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(x);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertEquals(42L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testTooManyLocals() {
+        assertThrows(BytecodeEncodingException.class, () -> {
+            parseNode("tooManyLocals", b -> {
+                b.beginRoot(LANGUAGE);
+                b.beginBlock();
+
+                for (int i = 0; i < Short.MAX_VALUE; i++) {
+                    b.createLocal();
+                }
+                BytecodeLocal x = b.createLocal();
+                b.beginStoreLocal(x);
+                b.emitLoadConstant(42L);
+                b.endStoreLocal();
+
+                b.beginReturn();
+                b.emitLoadLocal(x);
+                b.endReturn();
+                b.endBlock();
+                b.endRoot();
+            });
+        });
+    }
+
+    @Test
+    public void testManyRoots() {
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
+            for (int i = 0; i < Short.MAX_VALUE; i++) {
+                b.beginRoot(LANGUAGE);
+                b.beginReturn();
+                b.emitLoadConstant((long) i);
+                b.endReturn();
+                b.endRoot();
+            }
+        });
+        assertEquals(0L, nodes.getNode(0).getCallTarget().call());
+        assertEquals(42L, nodes.getNode(42).getCallTarget().call());
+        assertEquals((long) (Short.MAX_VALUE - 1), nodes.getNode(Short.MAX_VALUE - 1).getCallTarget().call());
+
+    }
+
+    @Test
+    public void testTooManyRoots() {
+        assertThrowsWithMessage("Root node count exceeded maximum value", BytecodeEncodingException.class, () -> {
+            createNodes(BytecodeConfig.DEFAULT, b -> {
+                for (int i = 0; i < Short.MAX_VALUE + 1; i++) {
+                    b.beginRoot(LANGUAGE);
+                    b.beginReturn();
+                    b.emitLoadConstant((long) i);
+                    b.endReturn();
+                    b.endRoot();
+                }
+            });
+        });
+    }
+
+    @Test
+    public void testManyInstructionsInLoop() {
+        BasicInterpreter node = parseNode("manyInstructionsInLoop", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+
+            BytecodeLocal x = b.createLocal();
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(0L);
+            b.endStoreLocal();
+
+            BytecodeLocal result = b.createLocal();
+
+            b.beginStoreLocal(result);
+            b.emitLoadConstant(0L);
+            b.endStoreLocal();
+
+            b.beginWhile();
+            b.beginLessThanOperation();
+            b.emitLoadLocal(x);
+            b.emitLoadConstant(5L);
+            b.endLessThanOperation();
+
+            b.beginBlock();
+            for (int i = 0; i < Short.MAX_VALUE * 2; i++) {
+                b.emitVoidOperation();
+            }
+            // x = x + 1
+            b.beginStoreLocal(x);
+            b.beginAddOperation();
+            b.emitLoadLocal(x);
+            b.emitLoadConstant(1L);
+            b.endAddOperation();
+            b.endStoreLocal();
+
+            // result += x
+            b.beginStoreLocal(result);
+            b.beginAddOperation();
+            b.emitLoadLocal(result);
+            b.emitLoadLocal(x);
+            b.endAddOperation();
+            b.endStoreLocal();
+
+            b.endBlock();
+
+            b.endWhile();
+
+            b.beginReturn();
+            b.emitLoadLocal(result);
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertEquals(15L, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testManyStackValues() {
+        BasicInterpreter node = parseNode("manyStackValues", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            for (int i = 0; i < Short.MAX_VALUE - 1; i++) {
+                b.beginAddOperation();
+                b.emitLoadConstant(1L);
+            }
+            b.emitLoadConstant(0L);
+
+            for (int i = 0; i < Short.MAX_VALUE - 1; i++) {
+                b.endAddOperation();
+            }
+
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals((long) Short.MAX_VALUE - 1, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testTooManyStackValues() {
+        assertThrowsWithMessage("Maximum stack height exceeded", BytecodeEncodingException.class, () -> {
+            parseNode("tooManyStackValues", b -> {
+                b.beginRoot(LANGUAGE);
+                b.beginReturn();
+                for (int i = 0; i < Short.MAX_VALUE; i++) {
+                    b.beginAddOperation();
+                    b.emitLoadConstant(1L);
+                }
+                b.emitLoadConstant(0L);
+
+                for (int i = 0; i < Short.MAX_VALUE; i++) {
+                    b.endAddOperation();
+                }
+
+                b.endReturn();
+                b.endRoot();
+            });
+        });
+
+    }
+
+    @Test
     public void testIntrospectionDataInstructions() {
         BasicInterpreter node = parseNode("introspectionDataInstructions", b -> {
             b.beginRoot(LANGUAGE);
@@ -2025,7 +2285,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertEquals(0, s1.getStartBytecodeIndex());
         assertEquals(instructions.get(1).getBytecodeIndex(), s1.getEndBytecodeIndex());
 
-        assertEquals(4, s2.getStartBytecodeIndex());
+        assertEquals(6, s2.getStartBytecodeIndex());
         assertEquals(instructions.get(2).getBytecodeIndex(), s2.getEndBytecodeIndex());
 
         assertEquals(0, s3.getStartBytecodeIndex());
