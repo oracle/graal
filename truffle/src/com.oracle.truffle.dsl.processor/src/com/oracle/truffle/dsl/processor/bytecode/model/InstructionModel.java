@@ -90,7 +90,26 @@ public final class InstructionModel implements PrettyPrintable {
 
         CUSTOM,
         CUSTOM_SHORT_CIRCUIT,
-        SUPERINSTRUCTION,
+        SUPERINSTRUCTION;
+
+        public boolean isLocalVariableAccess() {
+            switch (this) {
+                case LOAD_LOCAL:
+                case STORE_LOCAL:
+                case CLEAR_LOCAL:
+                    return true;
+            }
+            return false;
+        }
+
+        public boolean isLocalVariableMaterializedAccess() {
+            switch (this) {
+                case LOAD_LOCAL_MATERIALIZED:
+                case STORE_LOCAL_MATERIALIZED:
+                    return true;
+            }
+            return false;
+        }
     }
 
     public enum ImmediateWidth {
@@ -398,6 +417,7 @@ public final class InstructionModel implements PrettyPrintable {
             case YIELD:
             case THROW:
             case CUSTOM_SHORT_CIRCUIT:
+            case INVALIDATE:
                 return true;
             default:
                 return false;

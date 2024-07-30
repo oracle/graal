@@ -382,7 +382,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(value), PRIMITIVE_LOCATION);
     }
 
-    void unsafeSetByte(int slot, byte value) {
+    public void unsafeSetByte(int slot, byte value) {
         unsafeVerifyIndexedSet(slot, BYTE_TAG);
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(value), PRIMITIVE_LOCATION);
     }
@@ -457,7 +457,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(Float.floatToRawIntBits(value)), PRIMITIVE_LOCATION);
     }
 
-    void unsafeSetFloat(int slot, float value) {
+    public void unsafeSetFloat(int slot, float value) {
         unsafeVerifyIndexedSet(slot, FLOAT_TAG);
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(Float.floatToRawIntBits(value)), PRIMITIVE_LOCATION);
     }
