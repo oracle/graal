@@ -142,7 +142,7 @@ class Embedding {
 
 A number of useful context option can be set with `contextBuilder.option(key, value)`:
 * Java properties can be added by settings `java.Properties.property.name` to the desired value (in this case this would set the `property.name`).
-* `java.Properties.java.class.path` can be used to set the classpath of the Java on Truffle context.
+* `java.Properties.java.class.path` can be used to set the class path of the Java on Truffle context.
 * `java.Properties.java.library.path` can be used to set the native library path of the Java on Truffle context.
 * `java.EnableAssertions` can be set to `true` to enable assertions.
 * `java.EnableSystemAssertions` can be set to `true` to enable assertions in the Java standard library.

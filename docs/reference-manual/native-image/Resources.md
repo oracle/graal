@@ -8,7 +8,7 @@ redirect_from: /reference-manual/native-image/Resources/
 
 # Accessing Resources in Native Image
 
-By default, the `native-image` tool will not integrate any of the resources that are on the classpath into a native executable.
+By default, the `native-image` tool will not integrate any of the resources that are on the class path into a native executable.
 To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or their corresponding `ClassLoader` methods) return specific resources (instead of `null`), you must specify the resources that should be accessible at runtime.
 
 There are several ways a resource can be registered for inclusion and be made accessible at runtime:
@@ -203,7 +203,7 @@ For example:
 ```
 
 This will cause the `native-image` tool to only include `resource-file.txt` from the Java module `library-module`.
-If other modules or the classpath contains resources that match the pattern `resource-file.txt`, only the one in `library-module` is registered for inclusion in the executable.
+If other modules or the class path contains resources that match the pattern _resource-file.txt_, only the one in _library-module_ is registered for inclusion in the executable.
 Similarly, if other resource bundles are accessible with the same bundle name `your.pkg.Bundle`, only the one from `main-module` is included.
 Native Image will also ensure that the modules are guaranteed to be accessible at runtime.
 

@@ -62,7 +62,7 @@ The steps below show how to embedded Jipher in a native executable, using a simp
     }
     ```
 
-2. Compile the application with Jipher JAR files on the classpath:
+2. Compile the application with Jipher JAR files on the class path:
 
     ```shell
     javac -cp $GRAALVM_HOME/lib/jipher/jipher-jce.jar:$GRAALVM_HOME/lib/jipher/jipher-pki.jar JipherExample.java
