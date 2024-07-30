@@ -67,7 +67,7 @@ public class ReplacementsAnnotationProcessor extends AbstractProcessor {
             }
             generator.generateAll(this);
         }
-        return false;
+        return true;
     }
 
     public List<AnnotationHandler> getHandlers() {
