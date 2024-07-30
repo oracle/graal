@@ -61,7 +61,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/cgroupV2Subsystem_linux.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/osContainer_linux.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/osContainer_linux.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/os_linux.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+8/src/hotspot/os/linux/os_linux.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/os_linux.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/linux/os_linux.inline.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/os/posix/include/jvm_md.h")
@@ -72,8 +72,8 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/memory/allocation.inline.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/memory/allStatic.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/nmt/memflags.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+7/src/hotspot/share/runtime/os.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/runtime/os.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+8/src/hotspot/share/runtime/os.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+8/src/hotspot/share/runtime/os.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/runtime/os.inline.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/checkedCast.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/compilerWarnings_gcc.hpp")
@@ -86,7 +86,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 // The following annotations are for files in `src/svm`, which are completely customized for SVM
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/logging/log.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/memory/allocation.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+6/src/hotspot/share/runtime/globals.hpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+8/src/hotspot/share/runtime/globals.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/debug.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/debug.hpp")
 class ContainerLibrary {
