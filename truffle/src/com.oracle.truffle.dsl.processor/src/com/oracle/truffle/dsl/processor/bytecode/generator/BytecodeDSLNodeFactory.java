@@ -8678,7 +8678,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         type.add(createAsConstant());
                         break;
                     case NODE_PROFILE:
-                        type.add(createAsNodeProfile());
+                        type.add(createAsCachedNode());
                         break;
                     case BRANCH_PROFILE:
                         type.add(createAsBranchProfile());
@@ -8765,8 +8765,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 return ex;
             }
 
-            private CodeExecutableElement createAsNodeProfile() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asNodeProfile");
+            private CodeExecutableElement createAsCachedNode() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asCachedNode");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(arrayOf(types.Node), "cachedNodes", "this.bytecode.getCachedNodes()");
@@ -11686,7 +11686,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             List<InstructionModel> instructions = model.getInstructions().stream().//
                             filter((i) -> !tier.isUncached() || !i.isQuickening()).//
                             filter((i) -> isInstructionReachable(i)).//
-                            // sort control flow first to avoid them ending up in a partition
                             toList();
 
             InstructionPartitionResult instructionPartitions = partitionInstructions(instructions);

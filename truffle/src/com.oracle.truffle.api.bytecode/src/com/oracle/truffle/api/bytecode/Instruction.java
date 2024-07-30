@@ -192,11 +192,11 @@ public abstract class Instruction {
             throw unsupported();
         }
 
-        public Node asNodeProfile() {
+        public Node asCachedNode() {
             throw unsupported();
         }
 
-        public Node asTagNode() {
+        public TagTreeNode asTagNode() {
             throw unsupported();
         }
 
@@ -213,7 +213,7 @@ public abstract class Instruction {
         }
 
         public final List<SpecializationInfo> getSpecializationInfo() {
-            Node n = asNodeProfile();
+            Node n = asCachedNode();
             if (Introspection.isIntrospectable(n)) {
                 return Introspection.getSpecializations(n);
             } else {
@@ -237,13 +237,13 @@ public abstract class Instruction {
                 case CONSTANT:
                     return String.format("%s(%s)", getName(), printConstant(asConstant()));
                 case NODE_PROFILE:
-                    return String.format("%s(%s)", getName(), printNodeProfile(asNodeProfile()));
+                    return String.format("%s(%s)", getName(), printNodeProfile(asCachedNode()));
                 case BYTECODE_INDEX:
                     return String.format("%s(%04x)", getName(), asBytecodeIndex());
                 case BRANCH_PROFILE:
                     return String.format("%s(%s)", getName(), asBranchProfile().toString());
                 case TAG_NODE:
-                    return String.format("%s%s", getName(), printTagProfile((TagTreeNode) asTagNode()));
+                    return String.format("%s%s", getName(), printTagProfile(asTagNode()));
                 default:
                     throw new UnsupportedOperationException("Unexpected argument kind " + getKind());
             }
