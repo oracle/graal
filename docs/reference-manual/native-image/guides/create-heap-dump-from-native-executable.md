@@ -63,7 +63,7 @@ Heap dump created at '/path/to/helloworld.hprof'.
 
 > Note: This requires the `Signal` API, which is enabled by default except when building shared libraries.
 
-The following example is a simple multi-threaded Java application that runs for 60 seconds. 
+The following example is a simple multithreaded Java application that runs for 60 seconds. 
 This provides you with enough time to send it a `SIGUSR1` signal. 
 The application will handle the signal and create a heap dump in the application's working directory. 
 The heap dump will contain the `Collection` of `Person`s referenced by the static variable `CROWD`.

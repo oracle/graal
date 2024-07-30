@@ -175,7 +175,7 @@ The full option help of `--bundle-apply` shows a more advanced use case that wil
 ### Building in a Container
 
 Another addition to the `--bundle-create` and `--bundle-apply` options is to perform image building inside a container image.
-This ensures that during the image build `native-image` can not access any resources that were not explicitly specified via the classpath or module path.
+This ensures that during the image build `native-image` can not access any resources that were not explicitly specified via the class path or module path.
 
 Modify the `--bundle-create` argument in the Maven / Gradle Native Image plugin configuration above to `<buildArg>--bundle-create,container<buildArg>`.
 This still creates the same bundle as before. 
@@ -322,7 +322,7 @@ native-image --bundle-apply=application-pgo-optimized.nib
 
 As described later in [Bundle File Format](#bundle-file-format), a bundle file is a JAR file with a contained launcher for launching the bundled application.
 This means you can use a native image bundle with any JDK and execute it as a JAR file with `<jdk>/bin/java -jar [bundle-file.nib]`.
-The launcher uses the command line arguments stored in _run.json_ and adds all JAR files and folders in _input/classes/cp_ and _input/classes/p_ to the classpath and module path respectively.
+The launcher uses the command line arguments stored in _run.json_ and adds all JAR files and directories in _input/classes/cp/_ and _input/classes/p/_ to the class path and module path, respectively.
 
 The launcher also comes with a separate command-line interface described in its help text:
 ```
@@ -334,7 +334,7 @@ where options include:
 
     --with-native-image-agent[,update-bundle[=<new-bundle-name>]]
                 runs the application with a native-image-agent attached
-                'update-bundle' adds the agents output to the bundle-files classpath.
+                'update-bundle' adds the agents output to the bundle-files class path.
                 '=<new-bundle-name>' creates a new bundle with the agent output instead.
                 Note 'update-bundle' requires native-image to be installed
 
@@ -395,7 +395,7 @@ Inside a bundle you can find the following inner structure:
 │       ├── path_substitutions.json          <- Record of path-substitutions that happened
 │       │                                       during bundle creation for the input files                                        
 │       └── run.json            <- Full command line for executing the bundled application
-│                                                        (minus classpath and module path)
+│                                                        (minus class path and module path)
 └── output
     ├── default
     │   ├── myimage         <- Created image and other output created by the image builder 

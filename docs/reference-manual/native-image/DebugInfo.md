@@ -76,7 +76,7 @@ This local cache provides a convenient way of making just the necessary sources 
 
 The implementation tries to be smart about locating source files.
 It uses the current `JAVA_HOME` to locate the JDK src.zip when searching for JDK runtime sources.
-It also uses entries in the classpath to suggest locations for GraalVM source files and application source files (see below for precise details of the scheme used to identify source locations).
+It also uses entries on the class path to suggest locations for GraalVM source files and application source files (see below for precise details of the scheme used to identify source locations).
 However, source layouts do vary and it may not be possible to find all sources.
 Hence, users can specify the location of source files explicitly on the command line using option `DebugInfoSourceSearchPath`:
 
@@ -122,8 +122,8 @@ The resulting cache directory will be something like `/tmp/1272696/sources`.
 If the source cache path includes a directory that does not yet exist, it will be created during population of the cache.
 
 Note that in all the examples above the `DebugInfoSourceSearchPath` options are actually redundant.
-In the first case, the classpath entries for _apps/hello/classes_ and _apps/greeter/classes_ will be used to derive the default search roots _apps/hello/src_ and _apps/greeter/src_.
-In the second case, the classpath entries for _apps/target/hello.jar_ and _apps/target/greeter.jar_ will be used to derive the default search roots _apps/target/hello-sources.jar_ and _apps/target/greeter-sources.jar_.
+In the first case, the class path entries for _apps/hello/classes/_ and _apps/greeter/classes/_ will be used to derive the default search roots _apps/hello/src/_ and _apps/greeter/src/_.
+In the second case, the class path entries for _apps/target/hello.jar_ and _apps/target/greeter.jar_ will be used to derive the default search roots _apps/target/hello-sources.jar_ and _apps/target/greeter-sources.jar_.
 
 ## Supported Features
 
@@ -603,21 +603,21 @@ Retrieved files are cached under subdirectory _sources_, using the module name (
 For example, on Linux the source for `class java.util.HashMap` will be cached in file _sources/java.base/java/util/HashMap.java_.
 Debug info records for this class and its methods will identify this source file using the relative directory path _java.base/java/util_ and file name _HashMap.java_. On Windows things will be the same modulo use of `\` rather than `/` as the file separator.
 
-Sources for GraalVM classes are retrieved from ZIP files or source directories derived from entries in the classpath.
+Sources for GraalVM classes are retrieved from ZIP files or source directories derived from entries on the class path.
 Retrieved files are cached under subdirectory _sources_, using the package name of the associated class to define the directory hierarchy in which the source is located (for example, class `com.oracle.svm.core.VM` has its source file cached at `sources/com/oracle/svm/core/VM.java`).
 
-The lookup scheme for cached GraalVM sources varies depending upon what is found in each classpath entry.
+The lookup scheme for cached GraalVM sources varies depending upon what is found in each class path entry.
 Given a JAR file entry like _/path/to/foo.jar_, the corresponding file _/path/to/foo.src.zip_ is considered as a candidate ZIP file system from which source files may be extracted.
 When the entry specifies a directory like _/path/to/bar_, then directories _/path/to/bar/src_ and _/path/to/bar/src_gen_ are considered as candidates.
 Candidates are skipped when the ZIP file or source directory does not exist, or it does not contain at least one subdirectory hierarchy that matches one of the expected GraalVM package hierarchies.
 
-Sources for application classes are retrieved from source JAR files or source directories derived from entries in the classpath.
-Retrieved files are cached under subdirectory _sources_, using the package name of the associated class to define the directory hierarchy in which the source is located (for example, class `org.my.foo.Foo` has its source file cached as `sources/org/my/foo/Foo.java`).
+Sources for application classes are retrieved from source JAR files or source directories derived from entries in the class path.
+Retrieved files are cached under subdirectory _sources_, using the package name of the associated class to define the directory hierarchy in which the source is located (for example, class `org.my.foo.Foo` has its source file cached as _sources/org/my/foo/Foo.java_).
 
-The lookup scheme for cached application sources varies depending upon what is found in each classpath entry.
+The lookup scheme for cached application sources varies depending upon what is found in each class path entry.
 Given a JAR file entry like _/path/to/foo.jar_, the corresponding JAR file _/path/to/foo-sources.jar_ is considered as a candidate ZIP file system from which source files may be extracted.
-When the entry specifies a dir like _/path/to/bar/classes_ or _/path/to/bar/target/classes_ then one of the directories
-_/path/to/bar/src/main/java_, _/path/to/bar/src/java_ or _/path/to/bar/src_ is selected as a candidate (in that order of preference).
+When the entry specifies a directory like _/path/to/bar/classes/_ or _/path/to/bar/target/classes/_ then one of the directories
+_/path/to/bar/src/main/java/_, _/path/to/bar/src/java/_ or _/path/to/bar/src/_ is selected as a candidate (in that order of preference).
 Finally, the current directory in which the native executable is being run is also considered as a candidate.
 
 These lookup strategies are only provisional and may need extending in the future.

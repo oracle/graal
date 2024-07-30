@@ -84,16 +84,16 @@ module com.mycompany.app {
 Whether your configuration can run with a Truffle runtime optimization depends on the GraalVM JDK you use.
 For further details, refer to the [Runtime Compilation section](#runtime-optimization-support).
 
-We recommend configuring polyglot embeddings using modules and the module-path whenever possible. 
-Be aware that using polyglot from the class-path instead will enable access to unsafe APIs for all libraries on the class-path.
-If the application is not yet modularized, hybrid use of the class and module-path is possible.
+We recommend configuring polyglot embeddings using modules and the module path whenever possible. 
+Be aware that using `org.graalvm.polyglot` from the class path instead will enable access to unsafe APIs for all libraries on the class path.
+If the application is not yet modularized, hybrid use of the class path and module path is possible.
 For example:
 ```
 $JAVA_HOME/bin/java -classpath=lib --module-path=lib/polyglot --add-modules=org.graalvm.polyglot ...
 ```
 In this example, `lib/polyglot` directory should contain all polyglot and language JAR files.
-In order to access polyglot classes from the class-path you also need to specify the `--add-modules=org.graalvm.polyglot` JVM option.
-If you are using [native-image](https://www.graalvm.org/latest/reference-manual/embed-languages/#build-native-executables-from-polyglot-applications) polyglot modules on the class-path will be automatically upgraded to the module-path.
+To access polyglot classes from the class path, you must also specify the `--add-modules=org.graalvm.polyglot` JVM option.
+If you are using [native-image](https://www.graalvm.org/latest/reference-manual/embed-languages/#build-native-executables-from-polyglot-applications), polyglot modules on the class path will be automatically upgraded to the module path.
 
 While we do support creating single uber JAR files from polyglot libraries, for example using the Maven Assembly plugin, we do not recommend it.
 Also note that uber JAR files are not supported in combination with creating native-images.
@@ -499,7 +499,7 @@ If the runtime was excluded successfully, you should see the following log messa
 ```
 [engine] WARNING: The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.
 Execution without runtime compilation will negatively impact the guest application performance.
-The following cause was found: No optimizing Truffle runtime found on the module or class-path.
+The following cause was found: No optimizing Truffle runtime found on the module or class path.
 For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/.
 To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
 ```

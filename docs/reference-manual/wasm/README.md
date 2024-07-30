@@ -55,7 +55,7 @@ To run the demo, you need the following:
     It produces a standalone file _floyd.wasm_ in the current working directory.
 
 3. Add dependencies. The GraalVM SDK Polyglot API is not available by default, but can be easily added as a Maven dependency to your Java project.
-The GraalWasm artifact should be on the Java module or classpath too. Add the following set of dependencies to the project configuration file (_pom.xml_ in case of Maven).
+The GraalWasm artifact should be on the Java module or class path too. Add the following set of dependencies to the project configuration file (_pom.xml_ in case of Maven).
 
     - To enable the GraalVM polyglot runtime:
         ```xml
