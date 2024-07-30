@@ -11,7 +11,7 @@ The following language implementations exist already (in alphabetical order):
 * [Enso](https://github.com/enso-org/enso), an open source, visual language for data science that lets you design, prototype and develop any application by connecting visual elements together.
 * [Espresso](https://github.com/oracle/graal/tree/master/espresso), a meta-circular Java bytecode interpreter. *
 * [FastR](https://github.com/graalvm/fastr), an implementation of GNU R. *
-* [Graal.js](https://github.com/graalvm/graaljs), an ECMAScript 2020 compliant JavaScript implementation. *
+* [GraalJS](https://github.com/graalvm/graaljs), an ECMAScript-compliant JavaScript implementation. *
 * [GraalPy](https://github.com/graalvm/graalpython), an early-stage implementation of Python. *
 * [GraalWasm](https://github.com/oracle/graal/tree/master/wasm), a compliant WebAssembly implementation. *
 * [grCUDA](https://github.com/NVIDIA/grcuda), a polyglot CUDA integration.
