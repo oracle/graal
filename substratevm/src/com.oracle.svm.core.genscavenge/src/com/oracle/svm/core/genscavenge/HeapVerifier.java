@@ -91,7 +91,7 @@ public final class HeapVerifier {
     private static boolean verifyYoungGeneration(Occasion occasion) {
         boolean success = true;
         YoungGeneration youngGeneration = HeapImpl.getHeapImpl().getYoungGeneration();
-        if (occasion == HeapVerifier.Occasion.AFTER_COLLECTION) {
+        if (occasion == Occasion.During || occasion == Occasion.After) {
             Space eden = youngGeneration.getEden();
             if (!eden.isEmpty()) {
                 Log.log().string("Eden contains chunks after a collection: firstAlignedChunk: ").zhex(eden.getFirstAlignedHeapChunk()).string(", firstUnalignedChunk: ")
@@ -475,7 +475,8 @@ public final class HeapVerifier {
     }
 
     public enum Occasion {
-        BEFORE_COLLECTION,
-        AFTER_COLLECTION
+        Before,
+        During,
+        After
     }
 }

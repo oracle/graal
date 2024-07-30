@@ -89,6 +89,9 @@ public final class SerialGCOptions {
     @Option(help = "Verify the heap before doing a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyBeforeGC = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
 
+    @Option(help = "Verify the heap during a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> VerifyDuringGC = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
+
     @Option(help = "Verify the heap after doing a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyAfterGC = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
 

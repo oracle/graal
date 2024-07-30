@@ -25,6 +25,9 @@
 package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.core.genscavenge.HeapVerifier.Occasion.After;
+import static com.oracle.svm.core.genscavenge.HeapVerifier.Occasion.Before;
+import static com.oracle.svm.core.genscavenge.HeapVerifier.Occasion.During;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
@@ -233,12 +236,12 @@ public final class GCImpl implements GC {
             GenScavengeMemoryPoolMXBeans.notifyBeforeCollection();
             HeapImpl.getAccounting().notifyBeforeCollection();
 
-            verifyBeforeGC();
+            verifyHeap(Before);
 
             boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
             data.setOutOfMemory(outOfMemory);
 
-            verifyAfterGC();
+            verifyHeap(After);
         } finally {
             collectionTimer.close();
         }
@@ -265,6 +268,7 @@ public final class GCImpl implements GC {
                 // objects
                 ReferenceObjectProcessing.setSoftReferencesAreWeak(true);
                 try {
+                    verifyHeap(During);
                     outOfMemory = doCollectImpl(cause, requestingNanoTime, true, true);
                 } finally {
                     ReferenceObjectProcessing.setSoftReferencesAreWeak(false);
@@ -295,6 +299,7 @@ public final class GCImpl implements GC {
         if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(incremental)) {
             if (incremental) { // uncommit unaligned chunks
                 ChunkBasedCommittedMemoryProvider.get().uncommitUnusedMemory();
+                verifyHeap(During);
             }
             long startTicks = JfrGCEvents.startGCPhasePause();
             try {
@@ -334,58 +339,38 @@ public final class GCImpl implements GC {
         return usedBytes.aboveThan(policy.getMaximumHeapSize()); // out of memory?
     }
 
-    private void verifyBeforeGC() {
-        if (SubstrateGCOptions.VerifyHeap.getValue() && SerialGCOptions.VerifyBeforeGC.getValue()) {
+    private void verifyHeap(HeapVerifier.Occasion occasion) {
+        if (SubstrateGCOptions.VerifyHeap.getValue() && shouldVerify(occasion)) {
             if (SubstrateGCOptions.VerboseGC.getValue()) {
-                printGCPrefixAndTime().string("Verifying Before GC ").newline();
+                printGCPrefixAndTime().string("Verifying ").string(occasion.name()).string(" GC ").newline();
             }
 
-            Timer verifyBeforeTimer = timers.verifyBefore.open();
-            try {
-                boolean success = true;
-                success &= HeapVerifier.verify(HeapVerifier.Occasion.BEFORE_COLLECTION);
-                success &= StackVerifier.verifyAllThreads();
+            long start = System.nanoTime();
 
-                if (!success) {
-                    String kind = getGCKind();
-                    Log.log().string("Heap verification failed before ").string(kind).string(" garbage collection.").newline();
-                    VMError.shouldNotReachHereAtRuntime();
-                }
-            } finally {
-                verifyBeforeTimer.close();
+            boolean success = true;
+            success &= HeapVerifier.verify(occasion);
+            success &= StackVerifier.verifyAllThreads();
+
+            if (!success) {
+                String kind = getGCKind();
+                Log.log().string("Heap verification ").string(occasion.name()).string(" GC failed (").string(kind).string(" garbage collection)").newline();
+                throw VMError.shouldNotReachHere("Heap verification failed");
             }
 
             if (SubstrateGCOptions.VerboseGC.getValue()) {
-                printGCPrefixAndTime().string("Verifying Before GC ").rational(timers.verifyBefore.getMeasuredNanos(), TimeUtils.nanosPerMilli, 3).string("ms").newline();
+                printGCPrefixAndTime().string("Verifying ").string(occasion.name()).string(" GC ")
+                                .rational(TimeUtils.nanoSecondsSince(start), TimeUtils.nanosPerMilli, 3).string("ms").newline();
             }
         }
     }
 
-    private void verifyAfterGC() {
-        if (SubstrateGCOptions.VerifyHeap.getValue() && SerialGCOptions.VerifyAfterGC.getValue()) {
-            if (SubstrateGCOptions.VerboseGC.getValue()) {
-                printGCPrefixAndTime().string("Verifying After GC ").newline();
-            }
-
-            Timer verifyAfterTime = timers.verifyAfter.open();
-            try {
-                boolean success = true;
-                success &= HeapVerifier.verify(HeapVerifier.Occasion.AFTER_COLLECTION);
-                success &= StackVerifier.verifyAllThreads();
-
-                if (!success) {
-                    String kind = getGCKind();
-                    Log.log().string("Heap verification failed after ").string(kind).string(" garbage collection.").newline();
-                    VMError.shouldNotReachHereAtRuntime();
-                }
-            } finally {
-                verifyAfterTime.close();
-            }
-
-            if (SubstrateGCOptions.VerboseGC.getValue()) {
-                printGCPrefixAndTime().string("Verifying After GC ").rational(timers.verifyAfter.getMeasuredNanos(), TimeUtils.nanosPerMilli, 3).string("ms").newline();
-            }
-        }
+    private static boolean shouldVerify(HeapVerifier.Occasion occasion) {
+        return switch (occasion) {
+            case Before -> SerialGCOptions.VerifyBeforeGC.getValue();
+            case During -> SerialGCOptions.VerifyDuringGC.getValue();
+            case After -> SerialGCOptions.VerifyAfterGC.getValue();
+            default -> throw VMError.shouldNotReachHere("Unexpected heap verification occasion.");
+        };
     }
 
     private String getGCKind() {
