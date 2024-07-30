@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import java.nio.ByteOrder;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.Assertions;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -76,6 +75,8 @@ public final class ConstantReflectionUtil {
      * as the array element's bit width, e.g. reading a {@code char} value from a {@code byte}
      * array.
      *
+     * @param typePunnedOffset array offset in relation to the type punned element size, e.g.
+     *            "number of char elements in this byte array".
      * @param typePunnedLength array length in relation to the type punned element size, e.g.
      *            "number of char elements in this byte array".
      * @param typePunnedStride type punned array element size.
@@ -84,16 +85,16 @@ public final class ConstantReflectionUtil {
      * @param arrayKind actual array kind, e.g. {@link JavaKind#Byte} for a {@code byte} array we
      *            want to read a {@code char} from.
      */
-    public static boolean boundsCheckTypePunned(int typePunnedLength, Stride typePunnedStride, int arrayLength, JavaKind arrayKind) {
-        return typePunnedLength * typePunnedStride.value <= arrayLength * arrayKind.getByteCount();
-    }
-
-    public static void boundsCheckTypePunnedGuarantee(int typePunnedLength, Stride typePunnedStride, int arrayLength, JavaKind arrayKind) {
-        GraalError.guarantee(boundsCheckTypePunned(typePunnedLength, typePunnedStride, arrayLength, arrayKind), Assertions.errorMessageContext(
-                        "typePunnedLength", typePunnedLength,
-                        "typePunnedStride", typePunnedStride.value,
-                        "arrayLength", arrayLength,
-                        "arrayKind", arrayKind));
+    public static boolean boundsCheckTypePunned(long typePunnedOffset, int typePunnedLength, Stride typePunnedStride, int arrayLength, JavaKind arrayKind) {
+        /*
+         * Note: A simple (offset + length |<=| array.length) check does not protect against illegal
+         * negative offset or length values for which (offset + length) might appear to be in bounds
+         * while the start of the range is out of bounds or greater than the end.
+         */
+        long arrayByteLength = (long) arrayLength * arrayKind.getByteCount();
+        long byteOffset = typePunnedOffset * typePunnedStride.value;
+        long byteLength = (long) typePunnedLength * typePunnedStride.value;
+        return Long.compareUnsigned(byteOffset + byteLength, arrayByteLength) <= 0 && byteOffset >= 0 && byteLength >= 0;
     }
 
     /**
