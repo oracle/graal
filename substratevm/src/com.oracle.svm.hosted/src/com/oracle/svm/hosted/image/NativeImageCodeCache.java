@@ -48,8 +48,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.meta.CompressedNullConstant;
-import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -83,6 +81,8 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -269,9 +269,13 @@ public abstract class NativeImageCodeCache {
         return embeddedConstants;
     }
 
-    public void addConstantsToHeap() {
+    public Map<Constant, Object> getEmbeddedConstants() {
         VMError.guarantee(!embeddedConstants.isEmpty(), "Embedded constants should already be computed.");
-        embeddedConstants.forEach((constant, reason) -> addConstantToHeap(constant, reason instanceof BytecodePosition position ? position.getMethod().getName() : reason));
+        return Collections.unmodifiableMap(embeddedConstants);
+    }
+
+    public void addConstantsToHeap() {
+        getEmbeddedConstants().forEach((constant, reason) -> addConstantToHeap(constant, reason instanceof BytecodePosition position ? position.getMethod().getName() : reason));
     }
 
     private void addConstantToHeap(Constant constant, Object reason) {
