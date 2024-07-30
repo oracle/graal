@@ -155,7 +155,7 @@ public final class InstructionModel implements PrettyPrintable {
         SHORT("short", ImmediateWidth.SHORT),
         BYTECODE_INDEX("bci", ImmediateWidth.INT),
         STACK_POINTER("sp", ImmediateWidth.SHORT),
-        CONSTANT("const", ImmediateWidth.SHORT),
+        CONSTANT("const", ImmediateWidth.INT),
         NODE_PROFILE("node", ImmediateWidth.INT),
         TAG_NODE("tag", ImmediateWidth.INT),
         BRANCH_PROFILE("branch_profile", ImmediateWidth.INT);

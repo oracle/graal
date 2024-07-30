@@ -147,7 +147,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     public static final String COROUTINE_FRAME_IDX = "COROUTINE_FRAME_IDX";
     public static final String EPILOG_EXCEPTION_IDX = "EPILOG_EXCEPTION_IDX";
     public static final String EMPTY_INT_ARRAY = "EMPTY_INT_ARRAY";
-    public static final String EMPTY_SHORT_ARRAY = "EMPTY_SHORT_ARRAY";
 
     // Bytecode version encoding: [tags][instrumentations][source bit]
     public static final int MAX_TAGS = 32;
@@ -231,7 +230,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         parserType = generic(types.BytecodeParser, bytecodeBuilderType);
 
         addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), int[].class, EMPTY_INT_ARRAY, "new int[0]");
-        addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), short[].class, EMPTY_SHORT_ARRAY, "new short[0]");
 
         if (model.enableYield) {
             continuationRootNodeImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationRootNodeImpl");
@@ -2116,7 +2114,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             name = "CustomOperationData";
                             fields = List.of(//
                                             field(arrayOf(context.getType(int.class)), "childBcis").asFinal(),
-                                            field(arrayOf(context.getType(short.class)), "constants").asFinal(),
+                                            field(arrayOf(context.getType(int.class)), "constants").asFinal(),
                                             field(arrayOf(context.getDeclaredType(Object.class)), "locals").asFinal().asVarArgs());
                         }
                         break;
@@ -2399,7 +2397,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             private CodeTypeElement create() {
                 List<CodeVariableElement> fields = List.of(
                                 new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, context.getType(Object.class)), "constants"),
-                                new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(HashMap.class, context.getType(Object.class), context.getDeclaredType(Short.class)), "map"));
+                                new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(HashMap.class, context.getType(Object.class), context.getDeclaredType(Integer.class)), "map"));
 
                 constantPool.addAll(fields);
 
@@ -2418,7 +2416,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             private CodeExecutableElement createAddConstant() {
-                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(short.class),
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class),
                                 "addConstant");
                 ex.addParameter(new CodeVariableElement(context.getType(Object.class), "constant"));
 
@@ -2428,7 +2426,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startReturn().string("map.get(constant)").end();
                 b.end();
 
-                b.statement("short index = safeCastShort(constants.size())");
+                b.statement("int index = constants.size()");
                 b.statement("constants.add(constant)");
                 b.statement("map.put(constant, index)");
                 b.startReturn().string("index").end();
@@ -2447,7 +2445,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 CodeTreeBuilder b = ex.createBuilder();
 
-                b.statement("short index = safeCastShort(constants.size())");
+                b.declaration(type(short.class), "index", safeCastShort("constants.size()"));
                 b.statement("constants.add(null)");
                 b.startReturn().string("index").end();
 
@@ -2659,7 +2657,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             final CodeVariableElement outer = addField(serializationState, Set.of(PRIVATE, FINAL), serializationState.asType(), "outer");
             final CodeVariableElement depth = addField(serializationState, Set.of(PRIVATE, FINAL), type(int.class), "depth");
             final CodeVariableElement objects = addField(serializationState, Set.of(PRIVATE, FINAL),
-                            generic(HashMap.class, Object.class, Short.class), "objects");
+                            generic(HashMap.class, Object.class, Integer.class), "objects");
             final CodeVariableElement builtNodes = addField(serializationState, Set.of(PRIVATE, FINAL), generic(ArrayList.class, model.getTemplateType().asType()), "builtNodes");
             final CodeVariableElement rootStack = addField(serializationState, Set.of(PRIVATE, FINAL), generic(ArrayDeque.class, serializationRootNode.asType()), "rootStack");
 
@@ -2728,7 +2726,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startAssign("this", buffer).variable(buffer).end();
                 b.startAssign("this", callback).field(outer.getName(), callback).end();
                 b.startAssign("this", outer).variable(outer).end();
-                b.startAssign("this", depth).startGroup().field(outer.getName(), depth).string(" + 1").end(2);
+                b.startAssign("this", depth).startCall("safeCastShort").startGroup().field(outer.getName(), depth).string(" + 1").end(3);
 
                 return pushConstructor;
             }
@@ -2748,7 +2746,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             private CodeExecutableElement createSerializeObject() {
-                CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(short.class), "serializeObject");
+                CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "serializeObject");
                 method.addParameter(new CodeVariableElement(type(Object.class), "object"));
                 method.addThrownType(type(IOException.class));
                 CodeTreeBuilder b = method.createBuilder();
@@ -2756,9 +2754,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 String argumentName = "object";
                 String index = "index";
 
-                b.startAssign("Short " + index).startCall("objects.get").string(argumentName).end(2);
+                b.startDeclaration(declaredType(Integer.class), index).startCall("objects.get").string(argumentName).end(2);
                 b.startIf().string(index + " == null").end().startBlock();
-                b.startAssign(index).startCall("(short) objects.size").end(2);
+                b.startAssign(index).string("objects.size()").end();
                 b.startStatement().startCall("objects.put").string(argumentName).string(index).end(2);
 
                 b.startStatement();
@@ -2962,8 +2960,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(createEmitOperationBegin());
             builder.add(createBeforeChild());
             builder.add(createAfterChild());
-            builder.add(createSafeCastByte());
             builder.add(createSafeCastShort());
+            builder.add(createCheckOverflowShort());
+            builder.add(createCheckOverflowInt());
+            builder.add(createCheckBci());
+            builder.add(createUpdateMaxStackHeight());
             builder.add(createEnsureBytecodeCapacity());
             builder.add(createDoEmitVariadic());
             builder.add(createDoEmitFinallyHandler());
@@ -2975,6 +2976,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(createPatchHandlerTable());
             builder.add(createDoEmitRoot());
             builder.add(createAllocateNode());
+            builder.add(createAllocateBytecodeLocal());
             builder.add(createAllocateBranchProfile());
             if (model.enableYield) {
                 builder.add(createAllocateContinuationConstant());
@@ -3292,10 +3294,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 b.declaration(nodeList, "nodesToSerialize", "existingNodes != null ? existingNodes : serialization.builtNodes");
 
-                b.statement("short[][] nodeFields = new short[nodesToSerialize.size()][]");
+                b.statement("int[][] nodeFields = new int[nodesToSerialize.size()][]");
                 b.startFor().string("int i = 0; i < nodeFields.length; i ++").end().startBlock();
                 b.declaration(model.getTemplateType().asType(), "node", "nodesToSerialize.get(i)");
-                b.statement("short[] fields = nodeFields[i] = new short[" + model.serializedFields.size() + "]");
+                b.statement("int[] fields = nodeFields[i] = new int[" + model.serializedFields.size() + "]");
                 for (int i = 0; i < model.serializedFields.size(); i++) {
                     VariableElement var = model.serializedFields.get(i);
                     b.startStatement();
@@ -3312,10 +3314,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 b.lineComment("3. Encode the constant pool indices for each root node's fields.");
                 b.startFor().string("int i = 0; i < nodeFields.length; i++").end().startBlock();
-                b.statement("short[] fields = nodeFields[i]");
+                b.statement("int[] fields = nodeFields[i]");
 
                 for (int i = 0; i < model.serializedFields.size(); i++) {
-                    serializationElements.writeShort(b, "fields[" + i + "]");
+                    serializationElements.writeInt(b, "fields[" + i + "]");
                 }
                 b.end();
             }
@@ -3357,7 +3359,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             serializationElements.writeShort(b, serializationElements.codeCreateFinallyParser);
             serializationElements.writeInt(b, "bytes.length");
             serializationElements.writeBytes(b, "bytes");
-            b.statement("return (short) serialization.finallyParserCount++");
+            b.startReturn().string(safeCastShort("serialization.finallyParserCount++")).end();
 
             return method;
         }
@@ -3394,12 +3396,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // create label
 
             b.startCase().staticReference(serializationElements.codeCreateLocal).end().startBlock();
-            b.statement("int nameId = buffer.readShort()");
+            b.statement("int nameId = buffer.readInt()");
             b.statement("Object name = null");
             b.startIf().string("nameId != -1").end().startBlock();
             b.statement("name = context.consts.get(nameId)");
             b.end();
-            b.statement("int infoId = buffer.readShort()");
+            b.statement("int infoId = buffer.readInt()");
             b.statement("Object info = null");
             b.startIf().string("infoId != -1").end().startBlock();
             b.statement("info = context.consts.get(infoId)");
@@ -3447,7 +3449,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (ElementUtils.needsCastTo(type(Object.class), var.asType())) {
                         b.cast(var.asType());
                     }
-                    b.string("context.consts.get(buffer.readShort())");
+                    b.string("context.consts.get(buffer.readInt())");
                     b.end();
                 }
                 b.end();
@@ -3560,19 +3562,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
                 case LOCAL:
                     String serializationLocalCls = serializationLocal.getSimpleName().toString();
-                    serializationElements.writeShort(after, String.format("(short) ((%s) %s).contextDepth", serializationLocalCls, argumentName));
-                    serializationElements.writeShort(after, String.format("(short) ((%s) %s).localIndex", serializationLocalCls, argumentName));
+                    serializationElements.writeShort(after, safeCastShort(String.format("((%s) %s).contextDepth", serializationLocalCls, argumentName)));
+                    serializationElements.writeShort(after, safeCastShort(String.format("((%s) %s).localIndex", serializationLocalCls, argumentName)));
                     break;
                 case LOCAL_ARRAY:
-                    serializationElements.writeShort(after, "(short) " + argumentName + ".length");
+                    serializationElements.writeShort(after, safeCastShort(argumentName + ".length"));
                     // Emit the depth once then assert that all locals have the same depth.
                     String depth = argumentName + "Depth";
                     after.startIf().string(argumentName, ".length > 0").end().startBlock();
                     after.startDeclaration(type(short.class), depth);
-                    after.cast(type(short.class));
+                    after.startCall("safeCastShort");
+                    after.startGroup();
                     after.startParantheses().cast(serializationLocal.asType()).string(argumentName, "[0]").end();
                     after.string(".contextDepth");
-                    after.end();
+                    after.end(3);
 
                     serializationElements.writeShort(after, depth);
 
@@ -3581,16 +3584,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     after.cast(serializationLocal.asType()).string(argumentName, "[i]");
                     after.end();
 
-                    after.startAssert().string(depth, " == (short) localImpl.contextDepth").end();
-                    serializationElements.writeShort(after, "(short) localImpl.localIndex");
+                    after.startAssert().string(depth, " == ", safeCastShort("localImpl.contextDepth")).end();
+                    serializationElements.writeShort(after, safeCastShort("localImpl.localIndex"));
 
                     after.end(); // for
                     after.end(); // if
                     break;
                 case LABEL:
                     String serializationLabelCls = serializationLabel.getSimpleName().toString();
-                    serializationElements.writeShort(after, String.format("(short) ((%s) %s).contextDepth", serializationLabelCls, argumentName));
-                    serializationElements.writeShort(after, String.format("(short) ((%s) %s).labelIndex", serializationLabelCls, argumentName));
+                    serializationElements.writeShort(after, safeCastShort(String.format("((%s) %s).contextDepth", serializationLabelCls, argumentName)));
+                    serializationElements.writeShort(after, safeCastShort(String.format("((%s) %s).labelIndex", serializationLabelCls, argumentName)));
                     break;
                 case TAGS:
                     serializationElements.writeInt(after, "encodedTags");
@@ -3603,8 +3606,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
                 case OBJECT: {
                     String index = argumentName + "_index";
-                    before.statement("short ", index, " = ", "serialization.serializeObject(", argumentName, ")");
-                    serializationElements.writeShort(after, index);
+                    before.startDeclaration(type(int.class), index);
+                    before.startCall("serialization.serializeObject").string(argumentName).end();
+                    before.end();
+                    serializationElements.writeInt(after, index);
                     break;
                 }
                 case FINALLY_PARSER: {
@@ -3657,7 +3662,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (!ElementUtils.isObject(argType)) {
                         b.cast(argType);
                     }
-                    b.string("context.consts.get(buffer.readShort())");
+                    b.string("context.consts.get(buffer.readInt())");
                     b.end(); // declaration
                     break;
                 case FINALLY_PARSER:
@@ -3719,14 +3724,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.enableSerialization) {
                 b.startIf().string("serialization != null").end().startBlock();
                 serializationWrapException(b, () -> {
-                    b.declaration(type(short.class), "nameId");
+                    b.declaration(type(int.class), "nameId");
                     b.startIf().string("name != null").end().startBlock();
                     b.statement("nameId = serialization.serializeObject(name)");
                     b.end().startElseBlock();
                     b.statement("nameId = -1");
                     b.end();
 
-                    b.declaration(type(short.class), "infoId");
+                    b.declaration(type(int.class), "infoId");
                     b.startIf().string("info != null").end().startBlock();
                     b.statement("infoId = serialization.serializeObject(info)");
                     b.end().startElseBlock();
@@ -3734,8 +3739,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end();
 
                     serializationElements.writeShort(b, serializationElements.codeCreateLocal);
-                    serializationElements.writeShort(b, "nameId");
-                    serializationElements.writeShort(b, "infoId");
+                    serializationElements.writeInt(b, "nameId");
+                    serializationElements.writeInt(b, "infoId");
                 });
                 b.startReturn().startNew(serializationLocal.asType());
                 b.string("serialization.depth");
@@ -3747,12 +3752,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.enableLocalScoping) {
                 TypeMirror scopeType = scopeDataType.asType();
                 b.declaration(scopeType, "scope", "getCurrentScope()");
-                b.declaration(type(short.class), "localIndex", "safeCastShort(numLocals++) /* unique global index */");
-                b.declaration(type(short.class), "frameIndex", "safeCastShort(USER_LOCALS_START_IDX + scope.frameOffset + scope.numLocals) /* location in frame */");
+                b.declaration(type(short.class), "localIndex", "allocateBytecodeLocal() /* unique global index */");
+                b.declaration(type(short.class), "frameIndex", safeCastShort("USER_LOCALS_START_IDX + scope.frameOffset + scope.numLocals") + " /* location in frame */");
                 b.declaration(type(int.class), "tableIndex", "doEmitLocal(localIndex, frameIndex, name, info) /* index in global table */");
                 b.statement("scope.registerLocal(tableIndex)");
             } else {
-                b.declaration(type(short.class), "frameIndex", "safeCastShort(USER_LOCALS_START_IDX + numLocals++) /* location in frame */");
+                b.declaration(type(short.class), "frameIndex", "allocateBytecodeLocal() /* location in frame */");
                 b.statement("doEmitLocal(name, info)");
             }
 
@@ -4176,7 +4181,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (operation.kind == OperationKind.TAG) {
-                b.declaration(tagNode.asType(), "node", "new TagNode(encodedTags & this.tags, (short)bci)");
+                b.declaration(tagNode.asType(), "node", "new TagNode(encodedTags & this.tags, bci)");
                 b.startIf().string("tagNodes == null").end().startBlock();
                 b.statement("tagNodes = new ArrayList<>()");
                 b.end();
@@ -4346,10 +4351,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             b.startStatement().string("RootData operationData = ");
-            b.tree(createOperationData("RootData", "language", "safeCastShort(numRoots++)"));
+            b.tree(createOperationData("RootData", "language", safeCastShort("numRoots++")));
             b.end();
             b.startIf().string("reparseReason == null").end().startBlock();
             b.statement("builtNodes.add(null)");
+            b.startIf().string("builtNodes.size() > Short.MAX_VALUE").end().startBlock();
+            emitThrow(b, types.BytecodeEncodingException, "\"Root node count exceeded maximum value.\"");
+            b.end();
             b.end();
 
             if (model.enableLocalScoping) {
@@ -4449,7 +4457,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.string("serialization.language");
                     b.startStaticCall(types.FrameDescriptor, "newBuilder").end();
                     b.string("serialization.depth");
-                    b.string("serialization.rootCount++");
+                    b.startCall("checkOverflowShort").string("serialization.rootCount++").doubleQuote("Root node count").end();
                     b.end();
                     b.end(); // declaration
                     b.statement("serialization.rootStack.push(node)");
@@ -4481,11 +4489,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case IF_THEN_ELSE -> createOperationData(className, "this.reachable", "this.reachable");
                 case CONDITIONAL -> createOperationData(className, "this.reachable", "this.reachable");
                 case WHILE -> createOperationData(className, "bci", "this.reachable");
-                case TRY_CATCH -> createOperationData(className, "++numHandlers", "safeCastShort(currentStackHeight)", "bci", "this.reachable", "this.reachable", "this.reachable");
-                case FINALLY_TRY -> createOperationData(className, "++numHandlers", "safeCastShort(currentStackHeight)", operation.getOperationBeginArgumentName(0), "bci", "this.reachable",
+                case TRY_CATCH -> createOperationData(className, "++numHandlers", safeCastShort("currentStackHeight"), "bci", "this.reachable", "this.reachable", "this.reachable");
+                case FINALLY_TRY -> createOperationData(className, "++numHandlers", safeCastShort("currentStackHeight"), operation.getOperationBeginArgumentName(0), "bci", "this.reachable",
                                 "this.reachable",
                                 "false");
-                case FINALLY_TRY_CATCH -> createOperationData(className, "++numHandlers", "safeCastShort(currentStackHeight)", operation.getOperationBeginArgumentName(0), "bci", "this.reachable",
+                case FINALLY_TRY_CATCH -> createOperationData(className, "++numHandlers", safeCastShort("currentStackHeight"), operation.getOperationBeginArgumentName(0), "bci", "this.reachable",
                                 "this.reachable",
                                 "this.reachable");
                 case FINALLY_HANDLER -> createOperationData(className, "finallyOperationSp");
@@ -4511,9 +4519,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                         CodeTreeBuilder constantsArrayBuilder = CodeTreeBuilder.createBuilder();
                         if (constantOperandIndices == null || constantOperandIndices.size() == 0) {
-                            args[1] = EMPTY_SHORT_ARRAY;
+                            args[1] = EMPTY_INT_ARRAY;
                         } else {
-                            constantsArrayBuilder.startNewArray(arrayOf(context.getType(short.class)), null);
+                            constantsArrayBuilder.startNewArray(arrayOf(context.getType(int.class)), null);
                             for (String constantIndex : constantOperandIndices) {
                                 constantsArrayBuilder.string(constantIndex);
                             }
@@ -4854,7 +4862,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end();
 
                     b.statement("tagNode.children = children");
-                    b.statement("tagNode.returnBci = (short)bci");
+                    b.statement("tagNode.returnBci = bci");
 
                     b.startIf().string("operationData.producedValue").end().startBlock();
                     String[] args;
@@ -4975,7 +4983,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startFor().string("int index = 0; index < operationData.numLocals; index++").end().startBlock();
             b.statement("locals[operationData.locals[index] + LOCALS_OFFSET_END_BCI] = bci");
             if (!isRoot) {
-                buildEmitInstruction(b, model.clearLocalInstruction, "safeCastShort(locals[operationData.locals[index] + LOCALS_OFFSET_FRAME_INDEX])");
+                buildEmitInstruction(b, model.clearLocalInstruction, safeCastShort("locals[operationData.locals[index] + LOCALS_OFFSET_FRAME_INDEX]"));
             }
             b.end(); // for
             b.end(); // block
@@ -5108,7 +5116,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startAssign("tagTree_").string("this.tagRoots.get(0)").end();
                 b.end().startElseBlock();
                 b.startAssign("tagTree_").startNew(tagNode.asType());
-                b.string("0").string("(short) -1");
+                b.string("0").string("-1");
                 b.end().end();
                 b.statement("tagTree_.children = tagTree_.insert(this.tagRoots.toArray(TagNode[]::new))");
                 b.end();
@@ -5396,7 +5404,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          */
         private void emitFinallyHandlersAfterTry(CodeTreeBuilder b, OperationModel op, String finallyHandlerSp) {
             b.declaration(type(int.class), "handlerSp", "currentStackHeight + 1 /* reserve space for the exception */");
-            b.statement("maxStackHeight = Math.max(maxStackHeight, handlerSp)");
+            b.statement("updateMaxStackHeight(handlerSp)");
             b.declaration(type(int.class), "exHandlerIndex", UNINIT);
 
             b.startIf().string("operationData.operationReachable").end().startBlock();
@@ -5508,7 +5516,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                 }
                 case RETURN -> new String[]{};
-                case LOAD_ARGUMENT -> new String[]{"safeCastShort(" + operation.getOperationBeginArgumentName(0) + ")"};
+                case LOAD_ARGUMENT -> new String[]{safeCastShort(operation.getOperationBeginArgumentName(0))};
                 case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(" + operation.getOperationBeginArgumentName(0) + ")"};
                 case YIELD -> {
                     b.declaration(context.getType(short.class), "constantPoolIndex", "allocateContinuationConstant()");
@@ -5784,7 +5792,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                  * it's a disabled instrumentation), we need the constant pool to be stable.
                  */
                 String constantPoolIndex = operation.getConstantOperandBeforeName(i) + "Index";
-                b.startDeclaration(type(short.class), constantPoolIndex);
+                b.startDeclaration(type(int.class), constantPoolIndex);
                 buildAddArgumentConstant(b, operation.operationBeginArguments[i]);
                 b.end();
                 result.add(constantPoolIndex);
@@ -5818,7 +5826,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             for (int i = 0; i < numConstantOperandsBefore; i++) {
                 if (inEmit) {
                     String variable = operation.getConstantOperandBeforeName(i) + "Index";
-                    b.startDeclaration(type(short.class), variable);
+                    b.startDeclaration(type(int.class), variable);
                     buildAddArgumentConstant(b, operation.operationBeginArguments[i]);
                     b.end();
                     result.add(variable);
@@ -5835,7 +5843,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     result.add(UNINIT);
                 } else {
                     String variable = operation.getConstantOperandAfterName(i) + "Index";
-                    b.startDeclaration(type(short.class), variable);
+                    b.startDeclaration(type(int.class), variable);
                     buildAddArgumentConstant(b, operation.operationEndArguments[i]);
                     b.end();
                     result.add(variable);
@@ -6025,7 +6033,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("updateReachable()");
                 b.lineComment("The exception dispatch logic pushes the exception onto the stack.");
                 b.statement("currentStackHeight = currentStackHeight + 1");
-                b.statement("maxStackHeight = Math.max(maxStackHeight, currentStackHeight)");
+                b.statement("updateMaxStackHeight(currentStackHeight)");
 
                 b.end(); // if
 
@@ -6285,7 +6293,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end();
                         buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
                         b.end().startElseBlock();
-                        buildEmitInstruction(b, model.branchBackwardInstruction, new String[]{"(short) operationData.whileStartBci"});
+                        buildEmitInstruction(b, model.branchBackwardInstruction, new String[]{"operationData.whileStartBci"});
                         b.statement("int toUpdate = operationData.endBranchFixupBci");
                         b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
                         b.statement(writeInt("bc", "toUpdate", "bci"));
@@ -6560,16 +6568,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             b.startIf().string("stackEffect > 0").end().startBlock();
-            b.statement("maxStackHeight = Math.max(maxStackHeight, currentStackHeight)");
+            b.statement("updateMaxStackHeight(currentStackHeight)");
             b.end();
 
             b.startIf().string("!reachable").end().startBlock();
             b.statement("return false");
             b.end();
 
-            b.declaration(type(int.class), "newSize", "bci + " + representativeInstruction.getInstructionLength());
-            b.startIf().string("newSize > bc.length").end().startBlock();
-            b.statement("ensureBytecodeCapacity(newSize)");
+            b.declaration(type(int.class), "newBci", "checkBci(bci + " + representativeInstruction.getInstructionLength() + ")");
+            b.startIf().string("newBci > bc.length").end().startBlock();
+            b.statement("ensureBytecodeCapacity(newBci)");
             b.end();
 
             if (model.enableTracing) {
@@ -6578,7 +6586,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 // ArrayIndexOutOfBoundsException
                 b.startAssign("basicBlockBoundary").startStaticCall(context.getType(Arrays.class), "copyOf");
                 b.string("basicBlockBoundary");
-                b.string("newSize + 1");
+                b.string("newBci + 1");
                 b.end(2);
             }
 
@@ -6590,20 +6598,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement(writeImmediate("bc", "bci", "data" + i, immediate));
             }
 
-            b.statement("bci = bci + " + representativeInstruction.getInstructionLength());
+            b.statement("bci = newBci");
             b.statement("return true");
 
-            return ex;
-        }
-
-        private CodeExecutableElement createSafeCastByte() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(byte.class), "safeCastByte");
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "num"));
-            CodeTreeBuilder b = ex.createBuilder();
-            b.startIf().string("Byte.MIN_VALUE <= num && num <= Byte.MAX_VALUE").end().startBlock();
-            b.startReturn().string("(byte) num").end();
-            b.end();
-            emitThrow(b, IllegalArgumentException.class, "\"Value \" + num + \" cannot be encoded as a byte.\"");
             return ex;
         }
 
@@ -6614,7 +6611,57 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("Short.MIN_VALUE <= num && num <= Short.MAX_VALUE").end().startBlock();
             b.startReturn().string("(short) num").end();
             b.end();
-            emitThrow(b, IllegalArgumentException.class, "\"Value \" + num + \" cannot be encoded as a short.\"");
+            emitThrow(b, types.BytecodeEncodingException, "\"Value \" + num + \" cannot be encoded as a short.\"");
+            return ex;
+        }
+
+        private CodeExecutableElement createCheckOverflowShort() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(short.class), "checkOverflowShort");
+            ex.addParameter(new CodeVariableElement(context.getType(short.class), "num"));
+            ex.addParameter(new CodeVariableElement(context.getDeclaredType(String.class), "valueName"));
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("num < 0").end().startBlock();
+            emitThrow(b, types.BytecodeEncodingException, "valueName + \" overflowed.\"");
+            b.end();
+            b.statement("return num");
+
+            return ex;
+        }
+
+        private CodeExecutableElement createCheckOverflowInt() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(int.class), "checkOverflowInt");
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "num"));
+            ex.addParameter(new CodeVariableElement(context.getDeclaredType(String.class), "valueName"));
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("num < 0").end().startBlock();
+            emitThrow(b, types.BytecodeEncodingException, "valueName + \" overflowed.\"");
+            b.end();
+            b.statement("return num");
+
+            return ex;
+        }
+
+        private CodeExecutableElement createCheckBci() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(int.class), "checkBci");
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "newBci"));
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().startCall("checkOverflowInt");
+            b.string("newBci");
+            b.doubleQuote("Bytecode index");
+            b.end(2);
+            return ex;
+        }
+
+        private CodeExecutableElement createUpdateMaxStackHeight() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "updateMaxStackHeight");
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "stackHeight"));
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("maxStackHeight = Math.max(maxStackHeight, stackHeight)");
+
+            b.startIf().string("maxStackHeight > Short.MAX_VALUE").end().startBlock();
+            emitThrow(b, types.BytecodeEncodingException, "\"Maximum stack height exceeded.\"");
+            b.end();
+            b.end(2);
             return ex;
         }
 
@@ -6656,9 +6703,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(2);
             b.end().startElseBlock();
 
-            b.startIf().string("currentStackHeight + count > maxStackHeight").end().startBlock();
-            b.statement("maxStackHeight = currentStackHeight + count");
-            b.end();
+            b.statement("updateMaxStackHeight(currentStackHeight + count)");
             b.statement("int elementCount = count + 1");
             buildEmitInstruction(b, model.storeNullInstruction);
 
@@ -6677,8 +6722,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             buildEmitInstruction(b, model.mergeVariadicInstruction);
             b.end();
 
-            b.startIf().string("count == 0 && currentStackHeight > maxStackHeight").end().startBlock();
-            b.statement("maxStackHeight = currentStackHeight");
+            b.startIf().string("count == 0").end().startBlock();
+            b.lineComment("pushed empty array");
+            b.statement("updateMaxStackHeight(currentStackHeight)");
             b.end();
 
             return ex;
@@ -6814,7 +6860,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssert().string("finallyTryData.finallyHandlerSp == ", UNINIT).end();
             b.startTryBlock();
             b.statement("finallyTryData.finallyHandlerSp = operationSp");
-            buildBegin(b, model.finallyHandlerOperation, "safeCastShort(finallyOperationSp)");
+            buildBegin(b, model.finallyHandlerOperation, safeCastShort("finallyOperationSp"));
             b.statement("finallyTryData.finallyParser.run()");
             buildEnd(b, model.finallyHandlerOperation);
             b.end().startFinallyBlock();
@@ -7270,7 +7316,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startFor().string("int j = 0; j < operationData.numLocals; j++").end().startBlock();
                     b.statement("locals[operationData.locals[j] + LOCALS_OFFSET_END_BCI] = bci");
                     if (operationKind == OperationKind.BRANCH) {
-                        buildEmitInstruction(b, model.clearLocalInstruction, "safeCastShort(locals[operationData.locals[j] + LOCALS_OFFSET_FRAME_INDEX])");
+                        buildEmitInstruction(b, model.clearLocalInstruction, safeCastShort("locals[operationData.locals[j] + LOCALS_OFFSET_FRAME_INDEX]"));
                     }
                     b.statement("needsRewind = true");
                     b.end(); // for
@@ -7396,9 +7442,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("return -1");
             b.end();
 
-            b.startReturn();
+            b.startReturn().startCall("checkOverflowInt");
             b.string("numNodes++");
-            b.end();
+            b.doubleQuote("Node counter");
+            b.end(2);
+
+            return ex;
+        }
+
+        private CodeExecutableElement createAllocateBytecodeLocal() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(short.class), "allocateBytecodeLocal");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startReturn().startCall("checkOverflowShort");
+            if (model.enableLocalScoping) {
+                b.string("(short) numLocals++");
+            } else {
+                b.string("(short) (USER_LOCALS_START_IDX + numLocals++)");
+            }
+            b.doubleQuote("Number of locals");
+            b.end(2);
 
             return ex;
         }
@@ -7411,9 +7474,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("return -1");
             b.end();
 
-            b.startReturn();
+            b.startReturn().startCall("checkOverflowInt");
             b.string("numConditionalBranches++");
-            b.end();
+            b.doubleQuote("Number of branch profiles");
+            b.end(2);
 
             return ex;
         }
@@ -8799,11 +8863,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(new CodeVariableElement(Set.of(FINAL, STATIC), arrayOf(type.asType()), "EMPTY_ARRAY")).createInitBuilder().string("new TagNode[0]");
 
             type.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "tags"));
-            type.add(new CodeVariableElement(Set.of(FINAL), type(short.class), "enterBci"));
+            type.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "enterBci"));
 
             type.add(createConstructorUsingFields(Set.of(), type));
 
-            compFinal(type.add(new CodeVariableElement(Set.of(), type(short.class), "returnBci")));
+            compFinal(type.add(new CodeVariableElement(Set.of(), type(int.class), "returnBci")));
             child(type.add(new CodeVariableElement(Set.of(), arrayOf(type.asType()), "children")));
 
             child(type.add(new CodeVariableElement(Set.of(PRIVATE, VOLATILE), types.ProbeNode, "probe")));
@@ -11926,7 +11990,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                         b.end();
                     }
-                    b.statement("bci = + " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
+                    b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
                     b.statement("break");
                     break;
                 case BRANCH_FALSE:
@@ -14678,7 +14742,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private void emitThrow(CodeTreeBuilder b, Class<? extends Throwable> exceptionClass, String reasonCode) {
-        b.startThrow().startNew(context.getType(exceptionClass));
+        emitThrow(b, context.getType(exceptionClass), reasonCode);
+    }
+
+    private static void emitThrow(CodeTreeBuilder b, TypeMirror exceptionClass, String reasonCode) {
+        b.startThrow().startNew(exceptionClass);
         if (reasonCode != null) {
             b.string(reasonCode);
         }
@@ -14732,6 +14800,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.cast(type);
         b.string(value);
         return b.build();
+    }
+
+    private static String safeCastShort(String value) {
+        return String.format("safeCastShort(%s)", value);
     }
 
     private String localFrame() {

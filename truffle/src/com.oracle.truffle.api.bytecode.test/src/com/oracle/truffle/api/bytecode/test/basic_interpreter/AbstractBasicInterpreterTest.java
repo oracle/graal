@@ -121,7 +121,7 @@ public abstract class AbstractBasicInterpreterTest {
     public static <T extends Throwable> T assertThrowsWithMessage(String message, Class<T> expectedThrowable,
                     ThrowingRunnable runnable) {
         T error = Assert.assertThrows(expectedThrowable, runnable);
-        assertTrue("Invalid message: ", error.getMessage().contains(message));
+        assertTrue(String.format("Invalid message: %s", error.getMessage()), error.getMessage().contains(message));
         return error;
     }
 
