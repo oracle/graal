@@ -619,14 +619,16 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                  * implict casts one specialization can have multiple.
                  */
                 Map<List<TypeMirror>, List<SpecializationData>> boxingGroups = new LinkedHashMap<>();
+                int signatureCount = 0;
                 for (SpecializationData specialization : operation.instruction.nodeData.getReachableSpecializations()) {
                     if (specialization.getMethod() == null) {
                         continue;
                     }
 
                     List<TypeMirror> baseSignature = operation.getSpecializationSignature(specialization).signature().getDynamicOperandTypes();
-
                     List<List<TypeMirror>> expandedSignatures = expandBoxingEliminatedImplicitCasts(model, operation.instruction.nodeData.getTypeSystem(), baseSignature);
+
+                    signatureCount += expandedSignatures.size();
 
                     TypeMirror boxingReturnType;
                     if (specialization.hasUnexpectedResultRewrite()) {
@@ -653,6 +655,12 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                     filter((e) -> e.stream().anyMatch(model::isBoxingEliminated)).toList()) {
                         boxingGroups.computeIfAbsent(sig, (s) -> new ArrayList<>()).add(specialization);
                     }
+                }
+
+                if (signatureCount > 32 && operation.customModel != null) {
+                    // TODO offer a solution for this problem.
+                    operation.customModel.addWarning(
+                                    String.format("This operation expands to '%s' instructions due to boxing elimination.", signatureCount));
                 }
 
                 for (List<TypeMirror> boxingGroup : boxingGroups.keySet().stream().//
@@ -967,7 +975,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         appended.add(cast.getSourceType());
                         newSignatures.add(appended);
                     }
-                    break;
                 }
             }
             for (List<TypeMirror> s : expandedSignatures) {

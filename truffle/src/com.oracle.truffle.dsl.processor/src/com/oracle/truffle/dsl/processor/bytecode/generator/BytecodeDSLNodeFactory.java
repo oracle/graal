@@ -155,6 +155,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     public static final int MAX_INSTRUMENTATIONS = 31;
     public static final int INSTRUMENTATION_OFFSET = 1;
 
+    // !Important: Keep these in sync with InstructionBytecodeSizeTest!
+    // Estimated number of Java bytecodes per instruction.
+    public static final int ESTIMATED_CUSTOM_INSTRUCTION_SIZE = 30;
+
+    // Estimated number of bytecodes needed if they are just part of the switch table.
+    public static final int INSTRUCTION_DISPATCH_SIZE = 6;
+    // Estimated number of java bytecodes needed for a bytecode loop
+    public static final int ESTIMATED_BYTECODE_FOOTPRINT = 1000;
+
+    // Limit from HotSpot to be classified as a huge method and therefore not be JIT compiled
+    public static final int JAVA_JIT_BYTECODE_LIMIT = 8000;
+
     private final ProcessorContext context = ProcessorContext.getInstance();
     private final TruffleTypes types = context.getTypes();
     private final BytecodeDSLModel model;
@@ -9736,6 +9748,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        record InstructionValidationGroup(List<InstructionImmediate> immediates, int instructionLength, boolean allowNegativeChildBci, boolean localVar, boolean localVarMat) {
+
+            InstructionValidationGroup(BytecodeDSLModel model, InstructionModel instruction) {
+                this(instruction.getImmediates(), instruction.getInstructionLength(), acceptsInvalidChildBci(model, instruction),
+                                instruction.kind.isLocalVariableAccess(),
+                                instruction.kind.isLocalVariableMaterializedAccess());
+            }
+
+        }
+
         private CodeExecutableElement createValidateBytecodes() {
             CodeExecutableElement validate = new CodeExecutableElement(Set.of(PRIVATE, FINAL), type(boolean.class), "validateBytecodes");
             CodeTreeBuilder b = validate.createBuilder();
@@ -9763,11 +9785,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startTryBlock();
             b.startSwitch().tree(readInstruction("bc", "bci")).end().startBlock();
 
-            for (InstructionModel instr : model.getInstructions()) {
-                b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
+            Map<InstructionValidationGroup, List<InstructionModel>> groups = model.getInstructions().stream().collect(
+                            Collectors.groupingBy((i) -> new InstructionValidationGroup(model, i), LinkedHashMap::new, Collectors.toList()));
+
+            for (var entry : groups.entrySet()) {
+                InstructionValidationGroup group = entry.getKey();
+                List<InstructionModel> instructions = entry.getValue();
+
+                for (InstructionModel instruction : instructions) {
+                    b.startCase().tree(createInstructionConstant(instruction)).end();
+                }
+                b.startBlock();
 
                 boolean rootNodeAvailable = false;
-                for (InstructionImmediate immediate : instr.getImmediates()) {
+                for (InstructionImmediate immediate : group.immediates()) {
                     // argument data array
                     String localName = immediate.name();
                     b.startDeclaration(immediate.kind().toType(context), localName);
@@ -9777,7 +9808,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     switch (immediate.kind()) {
                         case BYTECODE_INDEX:
                             b.startIf();
-                            if (acceptsInvalidChildBci(instr)) {
+                            if (group.allowNegativeChildBci()) {
                                 // supports -1 immediates
                                 b.string(localName, " < -1");
                             } else {
@@ -9798,7 +9829,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             break;
                         case LOCAL_OFFSET: {
                             if (!rootNodeAvailable) {
-                                rootNodeAvailable = tryEmitRootNodeForLocalInstruction(b, instr);
+                                rootNodeAvailable = tryEmitRootNodeForLocalInstruction(b, group);
                             }
                             b.startIf().string(localName).string(" < USER_LOCALS_START_IDX");
                             if (rootNodeAvailable) {
@@ -9811,7 +9842,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         }
                         case LOCAL_INDEX: {
                             if (!rootNodeAvailable) {
-                                rootNodeAvailable = tryEmitRootNodeForLocalInstruction(b, instr);
+                                rootNodeAvailable = tryEmitRootNodeForLocalInstruction(b, group);
                             }
                             b.startIf().string(localName).string(" < 0");
                             if (rootNodeAvailable) {
@@ -9855,7 +9886,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                 }
 
-                b.statement("bci = bci + " + instr.getInstructionLength());
+                b.statement("bci = bci + " + group.instructionLength());
                 b.statement("break");
 
                 b.end();
@@ -9970,22 +10001,24 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return validate;
         }
 
-        private boolean tryEmitRootNodeForLocalInstruction(CodeTreeBuilder b, InstructionModel instr) {
-            switch (instr.kind) {
-                case LOAD_LOCAL, STORE_LOCAL, CLEAR_LOCAL: {
-                    b.startAssign("root").string("this.getRoot()").end();
+        private boolean tryEmitRootNodeForLocalInstruction(CodeTreeBuilder b, InstructionValidationGroup group) {
+            if (group.localVar()) {
+                b.startAssign("root").string("this.getRoot()").end();
+                return true;
+            } else if (group.localVarMat()) {
+                InstructionImmediate rootImmediate = null;
+                for (InstructionImmediate immediate : group.immediates()) {
+                    if (immediate.kind() == ImmediateKind.LOCAL_ROOT) {
+                        rootImmediate = immediate;
+                        break;
+                    }
+                }
+
+                if (rootImmediate != null) {
+                    b.startAssign("root").startCall("this.getRoot().getBytecodeRootNodeImpl").tree(readImmediate("bc", "bci", rootImmediate)).end(2);
                     return true;
                 }
-                case LOAD_LOCAL_MATERIALIZED, STORE_LOCAL_MATERIALIZED: {
-                    InstructionImmediate rootImmediate = instr.getImmediate(ImmediateKind.LOCAL_ROOT);
-                    if (rootImmediate != null) {
-                        b.startAssign("root").startCall("this.getRoot().getBytecodeRootNodeImpl").tree(readImmediate("bc", "bci", rootImmediate)).end(2);
-                        return true;
-                    }
-                    break;
-                }
-                default:
-                    throw new AssertionError("Unexpected instruction: " + instr);
+                return false;
             }
             return false;
         }
@@ -9993,18 +10026,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         /**
          * Returns true if the instruction can take -1 as a child bci.
          */
-        private boolean acceptsInvalidChildBci(InstructionModel instr) {
+        private static boolean acceptsInvalidChildBci(BytecodeDSLModel model, InstructionModel instr) {
             if (instr.isShortCircuitConverter() || instr.isEpilogReturn()) {
                 return true;
             }
             return isSameOrGenericQuickening(instr, model.popInstruction) || isSameOrGenericQuickening(instr, model.storeLocalInstruction);
         }
 
-        private boolean isSameOrGenericQuickening(InstructionModel instr, InstructionModel expected) {
+        private static boolean isSameOrGenericQuickening(InstructionModel instr, InstructionModel expected) {
             if (instr == expected) {
                 return true;
             }
-            return instr.getQuickeningRoot() == expected && ElementUtils.typeEquals(instr.signature.getSpecializedType(0), context.getDeclaredType(Object.class));
+            return instr.getQuickeningRoot() == expected && ElementUtils.typeEquals(instr.signature.getSpecializedType(0), type(Object.class));
         }
 
         // calls dump, but catches any exceptions and falls back on an error string
@@ -11462,7 +11495,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
 
                 b.statement("bci += " + key.instructionLength());
-                b.statement("continue loop");
+                b.statement("break");
                 b.end();
             }
 
@@ -11512,7 +11545,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             // This method returns a list containing the continueAt method plus helper methods for
             // custom instructions. The helper methods help reduce the bytecode size of the dispatch
             // loop.
-            List<CodeExecutableElement> results = new ArrayList<>();
+            List<CodeExecutableElement> methods = new ArrayList<>();
 
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), context.getType(int.class), "continueAt");
             GeneratorUtils.addOverride(ex);
@@ -11524,14 +11557,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
 
-            results.add(ex);
+            methods.add(ex);
 
             CodeTreeBuilder b = ex.createBuilder();
             if (tier.isUninitialized()) {
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 b.statement("$root.transitionToCached()");
                 b.startReturn().string("startState").end();
-                return results;
+                return methods;
             }
             if (tier.isUncached()) {
                 b.startDeclaration(types.EncapsulatingNodeReference, "encapsulatingNode").startStaticCall(types.EncapsulatingNodeReference, "getCurrent").end().end();
@@ -11582,551 +11615,54 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startTryBlock();
 
-            b.startSwitch().tree(readInstruction("bc", "bci")).end().startBlock();
+            // filtered instructions
+            List<InstructionModel> instructions = model.getInstructions().stream().//
+                            filter((i) -> !tier.isUncached() || !i.isQuickening()).//
+                            filter((i) -> isInstructionReachable(i)).//
+                            // sort control flow first to avoid them ending up in a partition
+                            toList();
 
-            Map<Boolean, List<InstructionModel>> instructionsByInvalidate = model.getInstructions().stream() //
-                            .collect(Collectors.groupingBy(instr -> instr.kind == InstructionKind.INVALIDATE));
+            InstructionPartitionResult instructionPartitions = partitionInstructions(instructions);
+            b.declaration(type(int.class), "op", readInstruction("bc", "bci"));
 
-            for (InstructionModel instr : instructionsByInvalidate.get(false)) {
-                if (instr.isQuickening() && tier.isUncached()) {
-                    continue;
-                }
+            b.startSwitch().string("op").end().startBlock();
 
-                if (!isInstructionReachable(instr)) {
-                    continue;
-                }
-
-                b.startCase().tree(createInstructionConstant(instr)).end();
-                if (tier.isUncached()) {
-                    for (InstructionModel quickendInstruction : instr.getFlattenedQuickenedInstructions()) {
-                        b.startCase().tree(createInstructionConstant(quickendInstruction)).end();
-                    }
-                }
-                b.startBlock();
-
-                if (model.enableTracing) {
-                    b.startStatement().startCall("tracer.traceInstruction");
-                    b.string("bci");
-                    b.string(instr.getId());
-                    b.string(String.valueOf(instr.signature != null && instr.signature.isVariadic));
-                    b.end(2);
-                }
-
-                switch (instr.kind) {
-                    case BRANCH:
-                        b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
-                        b.statement("continue loop");
-                        break;
-                    case BRANCH_BACKWARD:
-                        if (tier.isUncached()) {
-                            b.startIf().string("--uncachedExecuteCount <= 0").end().startBlock();
-                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                            b.statement("$root.transitionToCached()");
-                            b.statement("return (sp << 16) | " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
-                            b.end();
-                        } else {
-                            emitReportLoopCount(b, CodeTreeBuilder.createBuilder().string("++loopCounter.value >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE").build(), true);
-
-                            b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(1).string(" && ") //
-                                            .startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("this").end(2).startBlock();
-
-                            if (model.enableYield) {
-                                /**
-                                 * If this invocation was resumed, the locals are no longer in the
-                                 * stack frame and we need to pass the local frame to executeOSR.
-                                 *
-                                 * If this invocation was not resumed, the locals are still in the
-                                 * stack frame. We pass null to signal that executeOSR should use
-                                 * the stack frame (which may be virtualized by Bytecode OSR code).
-                                 */
-                                b.startDeclaration(type(Object.class), "interpreterState");
-                                b.string("frame == ", localFrame(), " ? null : ", localFrame());
-                                b.end();
-                            }
-
-                            b.startAssign("Object osrResult");
-                            b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
-                            b.string("this");
-                            b.string("(sp << 16) | " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX))); // target
-
-                            if (model.enableYield) {
-                                b.string("interpreterState");
-                            } else {
-                                b.string("null"); // interpreterState
-                            }
-                            b.string("null"); // beforeTransfer
-                            b.string("frame"); // parentFrame
-                            b.end(2);
-
-                            b.startIf().string("osrResult != null").end().startBlock();
-                            /**
-                             * executeOSR invokes BytecodeNode#continueAt, which returns an int
-                             * encoding the sp and bci when it returns/when the bytecode is
-                             * rewritten. Returning this value is correct in either case: If it's a
-                             * return, we'll read the result out of the frame (the OSR code copies
-                             * the OSR frame contents back into our frame first); if it's a rewrite,
-                             * we'll transition and continue executing.
-                             */
-                            b.startReturn().cast(type(int.class)).string("osrResult").end();
-                            b.end();
-
-                            b.end();
-                        }
-                        b.statement("bci = + " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
-                        b.statement("continue loop");
-                        break;
-                    case BRANCH_FALSE:
-                        String booleanValue = "(Boolean) " + getFrameObject("sp - 1") + " == Boolean.TRUE";
-                        b.startIf();
-                        if (tier.isUncached()) {
-                            b.string(booleanValue);
-                        } else {
-                            b.startStaticCall(types.BytecodeSupport, "profileBranch");
-                            b.string("branchProfiles");
-                            b.tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BRANCH_PROFILE)));
-                            if (model.isBoxingEliminated(context.getType(boolean.class))) {
-                                if (instr.isQuickening()) {
-                                    b.startCall(lookupDoBranch(instr).getSimpleName().toString());
-                                    if (model.specializationDebugListener) {
-                                        b.string("this");
-                                    }
-                                    b.string("frame").string("bc").string("bci").string("sp");
-                                    b.end();
-                                } else {
-                                    b.startCall(lookupDoSpecializeBranch(instr).getSimpleName().toString());
-                                    if (model.specializationDebugListener) {
-                                        b.string("this");
-                                    }
-                                    b.string("frame").string("bc").string("bci").string("sp");
-                                    b.end();
-                                }
-                            } else {
-                                b.string(booleanValue);
-                            }
-                            b.end();
-                        }
-                        b.end(); // if
-
-                        b.startBlock();
-                        b.statement("sp -= 1");
-                        b.statement("bci += " + instr.getInstructionLength());
-                        b.statement("continue loop");
-                        b.end().startElseBlock();
-                        b.statement("sp -= 1");
-                        b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate("branch_target")));
-                        b.statement("continue loop");
-                        b.end();
-                        break;
-                    case CUSTOM_SHORT_CIRCUIT:
-                        ShortCircuitInstructionModel shortCircuitInstruction = instr.shortCircuitModel;
-
-                        b.startIf();
-
-                        if (shortCircuitInstruction.continueWhen()) {
-                            b.string("!");
-                        }
-                        /*
-                         * NB: Short circuit operations can evaluate to an operand or to the boolean
-                         * conversion of an operand. The stack is different in either case.
-                         */
-                        b.string("(boolean) ").string(getFrameObject("sp - 1"));
-
-                        b.end().startBlock();
-                        if (shortCircuitInstruction.returnConvertedBoolean()) {
-                            // Stack: [..., convertedValue]
-                            // leave convertedValue on the top of stack
-                        } else {
-                            // Stack: [..., value, convertedValue]
-                            // pop convertedValue
-                            b.statement(clearFrame("frame", "sp - 1"));
-                            b.statement("sp -= 1");
-                        }
-                        b.startAssign("bci").tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX))).end();
-                        b.statement("continue loop");
-                        b.end().startElseBlock();
-                        if (shortCircuitInstruction.returnConvertedBoolean()) {
-                            // Stack: [..., convertedValue]
-                            // clear convertedValue
-                            b.statement(clearFrame("frame", "sp - 1"));
-                            b.statement("sp -= 1");
-                        } else {
-                            // Stack: [..., value, convertedValue]
-                            // clear convertedValue and value
-                            b.statement(clearFrame("frame", "sp - 1"));
-                            b.statement(clearFrame("frame", "sp - 2"));
-                            b.statement("sp -= 2");
-                        }
-                        b.statement("bci += " + instr.getInstructionLength());
-                        b.statement("continue loop");
-                        b.end();
-                        break;
-                    case TAG_RESUME:
-                        b.startStatement();
-                        b.startCall(lookupTagResume(instr).getSimpleName().toString());
-                        b.string("frame");
-                        b.string("bc").string("bci").string("sp");
-                        b.end();
-                        b.end();
-                        break;
-                    case TAG_ENTER:
-                        b.startStatement();
-                        b.startCall(lookupTagEnter(instr).getSimpleName().toString());
-                        b.string("frame");
-                        b.string("bc").string("bci").string("sp");
-                        b.end();
-                        b.end();
-                        break;
-                    case TAG_YIELD:
-                        b.startStatement();
-                        b.startCall(lookupTagYield(instr).getSimpleName().toString());
-                        b.string("frame");
-                        b.string("bc").string("bci").string("sp");
-                        b.end();
-                        b.end();
-                        break;
-                    case TAG_LEAVE:
-                        if (tier.isUncached() || instr.isQuickening() || !model.usesBoxingElimination()) {
-                            b.startStatement();
-                            b.startCall(lookupTagLeave(instr).getSimpleName().toString());
-                            if (model.specializationDebugListener) {
-                                b.string("this");
-                            }
-                            b.string("frame");
-                            b.string("bc").string("bci").string("sp");
-                            b.end();
-                            b.end();
-                        } else {
-                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                            b.startStatement();
-                            b.startCall(lookupSpecializeTagLeave(instr).getSimpleName().toString());
-                            if (model.specializationDebugListener) {
-                                b.string("this");
-                            }
-                            b.string("frame");
-                            b.string("bc").string("bci").string("sp");
-                            b.end();
-                            b.end();
-                        }
-                        break;
-                    case TAG_LEAVE_VOID:
-                        b.startStatement();
-                        b.startCall(lookupTagLeaveVoid(instr).getSimpleName().toString());
-                        b.string("frame");
-                        b.string("bc").string("bci").string("sp");
-                        b.end();
-                        b.end();
-                        break;
-                    case LOAD_ARGUMENT:
-                        InstructionImmediate argIndex = instr.getImmediate(ImmediateKind.SHORT);
-                        if (instr.isReturnTypeQuickening()) {
-                            TypeMirror returnType = instr.signature.returnType;
-                            b.startTryBlock();
-                            b.startStatement();
-                            startSetFrame(b, returnType).string("frame").string("sp");
-                            b.startGroup();
-                            b.startStaticCall(lookupExpectMethod(context.getType(Object.class), returnType));
-                            b.string(localFrame() + ".getArguments()[" + readImmediate("bc", "bci", argIndex).toString() + "]");
-                            b.end(); // expect
-                            b.end(); // argument group
-                            b.end(); // set frame
-                            b.end(); // statement
-                            b.end().startCatchBlock(types.UnexpectedResultException, "e"); // try
-                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                            emitQuickening(b, "this", "bc", "bci", null,
-                                            b.create().tree(createInstructionConstant(instr.getQuickeningRoot())).build());
-                            b.startStatement();
-                            startSetFrame(b, context.getType(Object.class)).string("frame").string("sp");
-                            b.string("e.getResult()");
-                            b.end(); // set frame
-                            b.end(); // statement
-                            b.end(); // catch block
-                        } else {
-                            b.startStatement();
-                            startSetFrame(b, context.getType(Object.class)).string("frame").string("sp");
-                            b.startGroup();
-                            b.string(localFrame() + ".getArguments()[" + readImmediate("bc", "bci", argIndex).toString() + "]");
-                            b.end(); // argument group
-                            b.end(); // set frame
-                            b.end(); // statement
-                        }
-
-                        b.statement("sp += 1");
-                        break;
-                    case LOAD_CONSTANT:
-                        InstructionImmediate constIndex = instr.getImmediate(ImmediateKind.CONSTANT);
-                        TypeMirror returnType = instr.signature.returnType;
-                        if (tier.isUncached() || (model.usesBoxingElimination() && !ElementUtils.isObject(returnType))) {
-                            b.startStatement();
-                            startSetFrame(b, returnType).string("frame").string("sp");
-                            b.startGroup();
-                            if (!ElementUtils.isObject(returnType)) {
-                                b.cast(returnType);
-                            }
-                            b.tree(readConst(readImmediate("bc", "bci", constIndex)));
-                            b.end();
-                            b.end();
-                            b.end();
-                        } else {
-                            b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end(2).startBlock();
-                            b.statement("loadConstantCompiled(frame, bc, bci, sp, constants)");
-                            b.end().startElseBlock();
-                            b.statement(setFrameObject("sp", readConst(readImmediate("bc", "bci", constIndex)).toString()));
-                            b.end();
-                        }
-                        b.statement("sp += 1");
-                        break;
-                    case LOAD_EXCEPTION:
-                        InstructionImmediate exceptionSp = instr.getImmediate(ImmediateKind.STACK_POINTER);
-                        b.startStatement();
-                        startSetFrame(b, context.getType(Object.class)).string("frame").string("sp");
-                        startGetFrameUnsafe(b, "frame", type(Object.class)).startGroup().string("$root.maxLocals + ").tree(readImmediate("bc", "bci", exceptionSp)).end(2);
-                        b.end(); // set frame
-                        b.end(); // statement
-                        b.statement("sp += 1");
-                        break;
-                    case POP:
-                        if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
-                            b.startStatement();
-                            b.startCall(lookupDoPop(instr).getSimpleName().toString());
-                            if (model.specializationDebugListener) {
-                                b.string("this");
-                            }
-                            b.string("frame");
-                            b.string("bc").string("bci").string("sp");
-                            b.end();
-                            b.end();
-                        } else {
-                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                            b.startStatement();
-                            b.startCall(lookupDoSpecializePop(instr).getSimpleName().toString());
-                            if (model.specializationDebugListener) {
-                                b.string("this");
-                            }
-                            b.string("frame");
-                            b.string("bc").string("bci").string("sp");
-                            b.end();
-                            b.end();
-                        }
-                        b.statement("sp -= 1");
-                        break;
-                    case DUP:
-                        b.statement(copyFrameSlot("sp - 1", "sp"));
-                        b.statement("sp += 1");
-                        break;
-                    case RETURN:
-                        storeBciInFrameIfNecessary(b);
-                        emitBeforeReturnProfiling(b);
-                        emitReturnTopOfStack(b);
-                        break;
-                    case LOAD_LOCAL:
-                        if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
-                            b.startStatement();
-                            b.startCall(lookupDoLoadLocal(instr).getSimpleName().toString());
-                            if (model.specializationDebugListener) {
-                                b.string("this");
-                            }
-                            b.string("frame");
-                            if (model.enableYield) {
-                                b.string("localFrame");
-                            }
-                            b.string("bc").string("bci").string("sp");
-                            b.end();
-                            b.end();
-                        } else {
-                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                            b.startStatement();
-                            b.startCall(lookupDoSpecializeLoadLocal(instr).getSimpleName().toString());
-                            if (model.specializationDebugListener) {
-                                b.string("this");
-                            }
-                            b.string("frame");
-                            if (model.enableYield) {
-                                b.string("localFrame");
-                            }
-                            b.string("bc").string("bci").string("sp");
-                            b.end();
-                            b.end();
-                        }
-                        b.statement("sp += 1");
-                        break;
-                    case LOAD_LOCAL_MATERIALIZED:
-                        String materializedFrame = "((VirtualFrame) " + getFrameObject("sp - 1)");
-                        if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
-                            b.startStatement();
-                            b.startCall(lookupDoLoadLocal(instr).getSimpleName().toString());
-                            if (model.specializationDebugListener) {
-                                b.string("this");
-                            }
-                            b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
-                            b.end();
-                            b.end();
-                        } else {
-                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                            b.startStatement();
-                            b.startCall(lookupDoSpecializeLoadLocal(instr).getSimpleName().toString());
-                            if (model.specializationDebugListener) {
-                                b.string("this");
-                            }
-                            b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
-                            b.end();
-                            b.end();
-                        }
-                        break;
-                    case STORE_LOCAL:
-                        if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
-                            b.startStatement();
-                            b.startCall(lookupDoStoreLocal(instr).getSimpleName().toString());
-                            b.string("frame");
-                            if (model.enableYield) {
-                                b.string("localFrame");
-                            }
-                            b.string("bc").string("bci").string("sp");
-                            b.end();
-                            b.end();
-                        } else {
-                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                            b.startStatement();
-                            b.startCall(lookupDoSpecializeStoreLocal(instr).getSimpleName().toString());
-                            b.string("frame");
-                            if (model.enableYield) {
-                                b.string("localFrame");
-                            }
-                            b.string("bc").string("bci").string("sp");
-                            startGetFrameUnsafe(b, "frame", type(Object.class)).string("sp - 1").end();
-                            b.end();
-                            b.end();
-                        }
-                        b.statement(clearFrame("frame", "sp - 1"));
-                        b.statement("sp -= 1");
-                        break;
-                    case STORE_LOCAL_MATERIALIZED:
-                        materializedFrame = "((VirtualFrame) " + getFrameObject("sp - 2)");
-
-                        if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
-                            b.startStatement();
-                            b.startCall(lookupDoStoreLocal(instr).getSimpleName().toString());
-                            b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
-                            b.end();
-                            b.end();
-                        } else {
-                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                            b.startStatement();
-                            b.startCall(lookupDoSpecializeStoreLocal(instr).getSimpleName().toString());
-                            b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
-                            startGetFrameUnsafe(b, localFrame(), type(Object.class)).string("sp - 1").end();
-                            b.end();
-                            b.end();
-                        }
-
-                        b.statement("sp -= 2");
-                        break;
-                    case MERGE_CONDITIONAL:
-                        if (!model.usesBoxingElimination()) {
-                            throw new AssertionError("Merge.conditional only supports boxing elimination enabled.");
-                        }
-                        if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
-                            b.startStatement();
-                            b.startCall(lookupDoMergeConditional(instr).getSimpleName().toString());
-                            if (model.specializationDebugListener) {
-                                b.string("this");
-                            }
-                            b.string("frame").string("bc").string("bci").string("sp");
-                            b.end();
-                            b.end();
-                        } else {
-                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                            b.startStatement();
-                            b.startCall(lookupDoSpecializeMergeConditional(instr).getSimpleName().toString());
-                            if (model.specializationDebugListener) {
-                                b.string("this");
-                            }
-                            b.string("frame").string("bc").string("bci").string("sp");
-                            startRequireFrame(b, type(Object.class)).string("frame").string("sp - 1").end();
-                            b.end();
-                            b.end();
-                        }
-                        b.statement("sp -= 1");
-                        break;
-                    case THROW:
-                        b.statement("throw sneakyThrow((Throwable) " + getFrameObject("frame", "sp - 1") + ")");
-                        break;
-                    case YIELD:
-                        InstructionImmediate continuationIndex = instr.getImmediate(ImmediateKind.CONSTANT);
-                        storeBciInFrameIfNecessary(b);
-                        emitBeforeReturnProfiling(b);
-                        b.statement("int maxLocals = $root.maxLocals");
-                        b.statement(copyFrameTo("frame", "maxLocals", "localFrame", "maxLocals", "(sp - 1 - maxLocals)"));
-
-                        b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
-                        b.cast(continuationRootNodeImpl.asType());
-                        b.tree(readConst(readImmediate("bc", "bci", continuationIndex)));
-                        b.end();
-
-                        b.startDeclaration(types.ContinuationResult, "continuationResult");
-                        b.startCall("continuationRootNode.createContinuation");
-                        b.string(localFrame());
-                        b.string(getFrameObject("sp - 1"));
-                        b.end(2);
-
-                        b.statement(setFrameObject("sp - 1", "continuationResult"));
-                        emitReturnTopOfStack(b);
-                        break;
-                    case STORE_NULL:
-                        b.statement(setFrameObject("sp", "null"));
-                        b.statement("sp += 1");
-                        break;
-                    case CLEAR_LOCAL:
-                        b.statement(clearFrame("frame", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_OFFSET)).toString()));
-                        break;
-                    case LOAD_VARIADIC:
-                        int effect = -instr.variadicPopCount + 1;
-                        b.startStatement();
-                        if (instr.variadicPopCount == 0) {
-                            b.string(setFrameObject("sp", emptyObjectArray.getSimpleName().toString()));
-                        } else {
-                            b.string(setFrameObject("sp - " + instr.variadicPopCount, "readVariadic(frame, sp, " + instr.variadicPopCount + ")"));
-                        }
-                        b.end();
-
-                        if (effect != 0) {
-                            if (effect > 0) {
-                                b.statement("sp += " + effect);
-                            } else {
-                                b.statement("sp -= " + -effect);
-                            }
-                        }
-                        break;
-                    case MERGE_VARIADIC:
-                        b.statement(setFrameObject("sp - 1", "mergeVariadic((Object[]) " + getFrameObject("sp - 1") + ")"));
-                        break;
-                    case CUSTOM:
-                        results.add(buildCustomInstructionExecute(b, instr));
-                        break;
-                    case SUPERINSTRUCTION:
-                        // not implemented yet
-                        break;
-                    default:
-                        throw new UnsupportedOperationException("not implemented: " + instr.kind);
-                }
-                if (!instr.isControlFlow()) {
-                    b.statement("bci += " + instr.getInstructionLength());
-                    b.statement("continue loop");
-                }
-                b.end();
+            for (InstructionModel instruction : instructionPartitions.topLevelInstructions()) {
+                buildInstructionCaseBlock(b, instruction);
             }
 
-            // Group invalidate instructions together.
-            if (instructionsByInvalidate.containsKey(true)) {
-                for (InstructionModel instr : instructionsByInvalidate.get(true)) {
-                    b.startCase().tree(createInstructionConstant(instr)).end();
+            for (var entry : instructionPartitions.otherInstructions.entrySet()) {
+                InstructionPartition partition = entry.getKey();
+                List<List<InstructionModel>> instructionGroups = entry.getValue();
+
+                int groupIndex = 0;
+                for (List<InstructionModel> instructionGroup : instructionGroups) {
+                    for (InstructionModel instruction : instructionGroup) {
+                        b.startCase().tree(createInstructionConstant(instruction)).end();
+                    }
+                    b.startCaseBlock();
+
+                    CodeExecutableElement continueAt = createPartitionContinueAt(partition, groupIndex, instructionGroup);
+                    methods.add(continueAt);
+
+                    b.startStatement();
+                    b.startCall(continueAt.getSimpleName().toString());
+                    for (VariableElement var : continueAt.getParameters()) {
+                        b.string(var.getSimpleName().toString());
+                    }
+                    b.end().end();
+
+                    emitCustomStackEffect(b, partition.stackEffect());
+                    b.statement("bci += " + partition.instructionLength());
+                    b.statement("break");
+
+                    b.end(); // case block
+
+                    groupIndex++;
                 }
-                b.startBlock();
-                emitInvalidate(b);
-                b.end(); // case invalidate
             }
 
             b.end(); // switch
-
             b.end(); // try
 
             b.startCatchBlock(type(Throwable.class), "originalThrowable");
@@ -12269,8 +11805,630 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            results.addAll(doInstructionMethods.values());
-            return results;
+            methods.addAll(doInstructionMethods.values());
+            return methods;
+        }
+
+        private CodeExecutableElement createPartitionContinueAt(InstructionPartition partition, int groupIndex, List<InstructionModel> instructionGroup) {
+            String stackEffectName;
+            if (partition.stackEffect < 0) {
+                stackEffectName = "_" + -partition.stackEffect();
+            } else {
+                stackEffectName = String.valueOf(partition.stackEffect());
+            }
+            String methodName = "continueAt_" + partition.instructionLength + "_" + stackEffectName + "_" + groupIndex;
+            CodeExecutableElement continueAtMethod = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), methodName);
+
+            continueAtMethod.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            if (model.enableYield) {
+                continueAtMethod.getParameters().add(new CodeVariableElement(types.VirtualFrame, "localFrame"));
+            }
+
+            List<CodeVariableElement> extraParams = createExtraParameters();
+            if (tier.isCached()) {
+                continueAtMethod.getParameters().add(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "cachedNodes"));
+            }
+            continueAtMethod.getParameters().addAll(extraParams);
+            continueAtMethod.addParameter(new CodeVariableElement(type(int.class), "op"));
+
+            CodeTreeBuilder c = continueAtMethod.createBuilder();
+
+            c.startSwitch().string("op").end().startBlock();
+            for (InstructionModel instruction : instructionGroup) {
+                buildInstructionCases(c, instruction);
+                c.startCaseBlock();
+                buildCustomInstructionExecute(c, instruction);
+                c.statement("break");
+                c.end();
+            }
+            c.end(); // switch block
+            return continueAtMethod;
+        }
+
+        private void buildInstructionCases(CodeTreeBuilder b, InstructionModel instruction) {
+            b.startCase().tree(createInstructionConstant(instruction)).end();
+            if (tier.isUncached()) {
+                for (InstructionModel quickendInstruction : instruction.getFlattenedQuickenedInstructions()) {
+                    b.startCase().tree(createInstructionConstant(quickendInstruction)).end();
+                }
+            }
+        }
+
+        private void buildInstructionCaseBlock(CodeTreeBuilder b, InstructionModel instr) {
+            buildInstructionCases(b, instr);
+            b.startBlock();
+
+            if (model.enableTracing) {
+                b.startStatement().startCall("tracer.traceInstruction");
+                b.string("bci");
+                b.string(instr.getId());
+                b.string(String.valueOf(instr.signature != null && instr.signature.isVariadic));
+                b.end(2);
+            }
+
+            switch (instr.kind) {
+                case BRANCH:
+                    b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
+                    b.statement("break");
+                    break;
+                case BRANCH_BACKWARD:
+                    if (tier.isUncached()) {
+                        b.startIf().string("--uncachedExecuteCount <= 0").end().startBlock();
+                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                        b.statement("$root.transitionToCached()");
+                        b.statement("return (sp << 16) | " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
+                        b.end();
+                    } else {
+                        emitReportLoopCount(b, CodeTreeBuilder.createBuilder().string("++loopCounter.value >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE").build(), true);
+
+                        b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(1).string(" && ") //
+                                        .startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("this").end(2).startBlock();
+
+                        if (model.enableYield) {
+                            /**
+                             * If this invocation was resumed, the locals are no longer in the stack
+                             * frame and we need to pass the local frame to executeOSR.
+                             *
+                             * If this invocation was not resumed, the locals are still in the stack
+                             * frame. We pass null to signal that executeOSR should use the stack
+                             * frame (which may be virtualized by Bytecode OSR code).
+                             */
+                            b.startDeclaration(type(Object.class), "interpreterState");
+                            b.string("frame == ", localFrame(), " ? null : ", localFrame());
+                            b.end();
+                        }
+
+                        b.startAssign("Object osrResult");
+                        b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
+                        b.string("this");
+                        b.string("(sp << 16) | " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX))); // target
+
+                        if (model.enableYield) {
+                            b.string("interpreterState");
+                        } else {
+                            b.string("null"); // interpreterState
+                        }
+                        b.string("null"); // beforeTransfer
+                        b.string("frame"); // parentFrame
+                        b.end(2);
+
+                        b.startIf().string("osrResult != null").end().startBlock();
+                        /**
+                         * executeOSR invokes BytecodeNode#continueAt, which returns an int encoding
+                         * the sp and bci when it returns/when the bytecode is rewritten. Returning
+                         * this value is correct in either case: If it's a return, we'll read the
+                         * result out of the frame (the OSR code copies the OSR frame contents back
+                         * into our frame first); if it's a rewrite, we'll transition and continue
+                         * executing.
+                         */
+                        b.startReturn().cast(type(int.class)).string("osrResult").end();
+                        b.end();
+
+                        b.end();
+                    }
+                    b.statement("bci = + " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
+                    b.statement("break");
+                    break;
+                case BRANCH_FALSE:
+                    String booleanValue = "(Boolean) " + getFrameObject("sp - 1") + " == Boolean.TRUE";
+                    b.startIf();
+                    if (tier.isUncached()) {
+                        b.string(booleanValue);
+                    } else {
+                        b.startStaticCall(types.BytecodeSupport, "profileBranch");
+                        b.string("branchProfiles");
+                        b.tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BRANCH_PROFILE)));
+                        if (model.isBoxingEliminated(context.getType(boolean.class))) {
+                            if (instr.isQuickening()) {
+                                b.startCall(lookupDoBranch(instr).getSimpleName().toString());
+                                if (model.specializationDebugListener) {
+                                    b.string("this");
+                                }
+                                b.string("frame").string("bc").string("bci").string("sp");
+                                b.end();
+                            } else {
+                                b.startCall(lookupDoSpecializeBranch(instr).getSimpleName().toString());
+                                if (model.specializationDebugListener) {
+                                    b.string("this");
+                                }
+                                b.string("frame").string("bc").string("bci").string("sp");
+                                b.end();
+                            }
+                        } else {
+                            b.string(booleanValue);
+                        }
+                        b.end();
+                    }
+                    b.end(); // if
+
+                    b.startBlock();
+                    b.statement("sp -= 1");
+                    b.statement("bci += " + instr.getInstructionLength());
+                    b.statement("break");
+                    b.end().startElseBlock();
+                    b.statement("sp -= 1");
+                    b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate("branch_target")));
+                    b.statement("break");
+                    b.end();
+                    break;
+                case CUSTOM_SHORT_CIRCUIT:
+                    ShortCircuitInstructionModel shortCircuitInstruction = instr.shortCircuitModel;
+
+                    b.startIf();
+
+                    if (shortCircuitInstruction.continueWhen()) {
+                        b.string("!");
+                    }
+                    /*
+                     * NB: Short circuit operations can evaluate to an operand or to the boolean
+                     * conversion of an operand. The stack is different in either case.
+                     */
+                    b.string("(boolean) ").string(getFrameObject("sp - 1"));
+
+                    b.end().startBlock();
+                    if (shortCircuitInstruction.returnConvertedBoolean()) {
+                        // Stack: [..., convertedValue]
+                        // leave convertedValue on the top of stack
+                    } else {
+                        // Stack: [..., value, convertedValue]
+                        // pop convertedValue
+                        b.statement(clearFrame("frame", "sp - 1"));
+                        b.statement("sp -= 1");
+                    }
+                    b.startAssign("bci").tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX))).end();
+                    b.statement("break");
+                    b.end().startElseBlock();
+                    if (shortCircuitInstruction.returnConvertedBoolean()) {
+                        // Stack: [..., convertedValue]
+                        // clear convertedValue
+                        b.statement(clearFrame("frame", "sp - 1"));
+                        b.statement("sp -= 1");
+                    } else {
+                        // Stack: [..., value, convertedValue]
+                        // clear convertedValue and value
+                        b.statement(clearFrame("frame", "sp - 1"));
+                        b.statement(clearFrame("frame", "sp - 2"));
+                        b.statement("sp -= 2");
+                    }
+                    b.statement("bci += " + instr.getInstructionLength());
+                    b.statement("break");
+                    b.end();
+                    break;
+                case TAG_RESUME:
+                    b.startStatement();
+                    b.startCall(lookupTagResume(instr).getSimpleName().toString());
+                    b.string("frame");
+                    b.string("bc").string("bci").string("sp");
+                    b.end();
+                    b.end();
+                    break;
+                case TAG_ENTER:
+                    b.startStatement();
+                    b.startCall(lookupTagEnter(instr).getSimpleName().toString());
+                    b.string("frame");
+                    b.string("bc").string("bci").string("sp");
+                    b.end();
+                    b.end();
+                    break;
+                case TAG_YIELD:
+                    b.startStatement();
+                    b.startCall(lookupTagYield(instr).getSimpleName().toString());
+                    b.string("frame");
+                    b.string("bc").string("bci").string("sp");
+                    b.end();
+                    b.end();
+                    break;
+                case TAG_LEAVE:
+                    if (tier.isUncached() || instr.isQuickening() || !model.usesBoxingElimination()) {
+                        b.startStatement();
+                        b.startCall(lookupTagLeave(instr).getSimpleName().toString());
+                        if (model.specializationDebugListener) {
+                            b.string("this");
+                        }
+                        b.string("frame");
+                        b.string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                    } else {
+                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                        b.startStatement();
+                        b.startCall(lookupSpecializeTagLeave(instr).getSimpleName().toString());
+                        if (model.specializationDebugListener) {
+                            b.string("this");
+                        }
+                        b.string("frame");
+                        b.string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                    }
+                    break;
+                case TAG_LEAVE_VOID:
+                    b.startStatement();
+                    b.startCall(lookupTagLeaveVoid(instr).getSimpleName().toString());
+                    b.string("frame");
+                    b.string("bc").string("bci").string("sp");
+                    b.end();
+                    b.end();
+                    break;
+                case LOAD_ARGUMENT:
+                    InstructionImmediate argIndex = instr.getImmediate(ImmediateKind.SHORT);
+                    if (instr.isReturnTypeQuickening()) {
+                        TypeMirror returnType = instr.signature.returnType;
+                        b.startTryBlock();
+                        b.startStatement();
+                        startSetFrame(b, returnType).string("frame").string("sp");
+                        b.startGroup();
+                        b.startStaticCall(lookupExpectMethod(context.getType(Object.class), returnType));
+                        b.string(localFrame() + ".getArguments()[" + readImmediate("bc", "bci", argIndex).toString() + "]");
+                        b.end(); // expect
+                        b.end(); // argument group
+                        b.end(); // set frame
+                        b.end(); // statement
+                        b.end().startCatchBlock(types.UnexpectedResultException, "e"); // try
+                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                        emitQuickening(b, "this", "bc", "bci", null,
+                                        b.create().tree(createInstructionConstant(instr.getQuickeningRoot())).build());
+                        b.startStatement();
+                        startSetFrame(b, context.getType(Object.class)).string("frame").string("sp");
+                        b.string("e.getResult()");
+                        b.end(); // set frame
+                        b.end(); // statement
+                        b.end(); // catch block
+                    } else {
+                        b.startStatement();
+                        startSetFrame(b, context.getType(Object.class)).string("frame").string("sp");
+                        b.startGroup();
+                        b.string(localFrame() + ".getArguments()[" + readImmediate("bc", "bci", argIndex).toString() + "]");
+                        b.end(); // argument group
+                        b.end(); // set frame
+                        b.end(); // statement
+                    }
+
+                    b.statement("sp += 1");
+                    break;
+                case LOAD_CONSTANT:
+                    InstructionImmediate constIndex = instr.getImmediate(ImmediateKind.CONSTANT);
+                    TypeMirror returnType = instr.signature.returnType;
+                    if (tier.isUncached() || (model.usesBoxingElimination() && !ElementUtils.isObject(returnType))) {
+                        b.startStatement();
+                        startSetFrame(b, returnType).string("frame").string("sp");
+                        b.startGroup();
+                        if (!ElementUtils.isObject(returnType)) {
+                            b.cast(returnType);
+                        }
+                        b.tree(readConst(readImmediate("bc", "bci", constIndex)));
+                        b.end();
+                        b.end();
+                        b.end();
+                    } else {
+                        b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end(2).startBlock();
+                        b.statement("loadConstantCompiled(frame, bc, bci, sp, constants)");
+                        b.end().startElseBlock();
+                        b.statement(setFrameObject("sp", readConst(readImmediate("bc", "bci", constIndex)).toString()));
+                        b.end();
+                    }
+                    b.statement("sp += 1");
+                    break;
+                case LOAD_EXCEPTION:
+                    InstructionImmediate exceptionSp = instr.getImmediate(ImmediateKind.STACK_POINTER);
+                    b.startStatement();
+                    startSetFrame(b, context.getType(Object.class)).string("frame").string("sp");
+                    startGetFrameUnsafe(b, "frame", type(Object.class)).startGroup().string("$root.maxLocals + ").tree(readImmediate("bc", "bci", exceptionSp)).end(2);
+                    b.end(); // set frame
+                    b.end(); // statement
+                    b.statement("sp += 1");
+                    break;
+                case POP:
+                    if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
+                        b.startStatement();
+                        b.startCall(lookupDoPop(instr).getSimpleName().toString());
+                        if (model.specializationDebugListener) {
+                            b.string("this");
+                        }
+                        b.string("frame");
+                        b.string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                    } else {
+                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                        b.startStatement();
+                        b.startCall(lookupDoSpecializePop(instr).getSimpleName().toString());
+                        if (model.specializationDebugListener) {
+                            b.string("this");
+                        }
+                        b.string("frame");
+                        b.string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                    }
+                    b.statement("sp -= 1");
+                    break;
+                case DUP:
+                    b.statement(copyFrameSlot("sp - 1", "sp"));
+                    b.statement("sp += 1");
+                    break;
+                case RETURN:
+                    storeBciInFrameIfNecessary(b);
+                    emitBeforeReturnProfiling(b);
+                    emitReturnTopOfStack(b);
+                    break;
+                case LOAD_LOCAL:
+                    if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
+                        b.startStatement();
+                        b.startCall(lookupDoLoadLocal(instr).getSimpleName().toString());
+                        if (model.specializationDebugListener) {
+                            b.string("this");
+                        }
+                        b.string("frame");
+                        if (model.enableYield) {
+                            b.string("localFrame");
+                        }
+                        b.string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                    } else {
+                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                        b.startStatement();
+                        b.startCall(lookupDoSpecializeLoadLocal(instr).getSimpleName().toString());
+                        if (model.specializationDebugListener) {
+                            b.string("this");
+                        }
+                        b.string("frame");
+                        if (model.enableYield) {
+                            b.string("localFrame");
+                        }
+                        b.string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                    }
+                    b.statement("sp += 1");
+                    break;
+                case LOAD_LOCAL_MATERIALIZED:
+                    String materializedFrame = "((VirtualFrame) " + getFrameObject("sp - 1)");
+                    if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
+                        b.startStatement();
+                        b.startCall(lookupDoLoadLocal(instr).getSimpleName().toString());
+                        if (model.specializationDebugListener) {
+                            b.string("this");
+                        }
+                        b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                    } else {
+                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                        b.startStatement();
+                        b.startCall(lookupDoSpecializeLoadLocal(instr).getSimpleName().toString());
+                        if (model.specializationDebugListener) {
+                            b.string("this");
+                        }
+                        b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                    }
+                    break;
+                case STORE_LOCAL:
+                    if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
+                        b.startStatement();
+                        b.startCall(lookupDoStoreLocal(instr).getSimpleName().toString());
+                        b.string("frame");
+                        if (model.enableYield) {
+                            b.string("localFrame");
+                        }
+                        b.string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                    } else {
+                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                        b.startStatement();
+                        b.startCall(lookupDoSpecializeStoreLocal(instr).getSimpleName().toString());
+                        b.string("frame");
+                        if (model.enableYield) {
+                            b.string("localFrame");
+                        }
+                        b.string("bc").string("bci").string("sp");
+                        startGetFrameUnsafe(b, "frame", type(Object.class)).string("sp - 1").end();
+                        b.end();
+                        b.end();
+                    }
+                    b.statement(clearFrame("frame", "sp - 1"));
+                    b.statement("sp -= 1");
+                    break;
+                case STORE_LOCAL_MATERIALIZED:
+                    materializedFrame = "((VirtualFrame) " + getFrameObject("sp - 2)");
+
+                    if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
+                        b.startStatement();
+                        b.startCall(lookupDoStoreLocal(instr).getSimpleName().toString());
+                        b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                    } else {
+                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                        b.startStatement();
+                        b.startCall(lookupDoSpecializeStoreLocal(instr).getSimpleName().toString());
+                        b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
+                        startGetFrameUnsafe(b, localFrame(), type(Object.class)).string("sp - 1").end();
+                        b.end();
+                        b.end();
+                    }
+
+                    b.statement("sp -= 2");
+                    break;
+                case MERGE_CONDITIONAL:
+                    if (!model.usesBoxingElimination()) {
+                        throw new AssertionError("Merge.conditional only supports boxing elimination enabled.");
+                    }
+                    if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
+                        b.startStatement();
+                        b.startCall(lookupDoMergeConditional(instr).getSimpleName().toString());
+                        if (model.specializationDebugListener) {
+                            b.string("this");
+                        }
+                        b.string("frame").string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                    } else {
+                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                        b.startStatement();
+                        b.startCall(lookupDoSpecializeMergeConditional(instr).getSimpleName().toString());
+                        if (model.specializationDebugListener) {
+                            b.string("this");
+                        }
+                        b.string("frame").string("bc").string("bci").string("sp");
+                        startRequireFrame(b, type(Object.class)).string("frame").string("sp - 1").end();
+                        b.end();
+                        b.end();
+                    }
+                    b.statement("sp -= 1");
+                    break;
+                case THROW:
+                    b.statement("throw sneakyThrow((Throwable) " + getFrameObject("frame", "sp - 1") + ")");
+                    break;
+                case YIELD:
+                    InstructionImmediate continuationIndex = instr.getImmediate(ImmediateKind.CONSTANT);
+                    storeBciInFrameIfNecessary(b);
+                    emitBeforeReturnProfiling(b);
+                    b.statement("int maxLocals = $root.maxLocals");
+                    b.statement(copyFrameTo("frame", "maxLocals", "localFrame", "maxLocals", "(sp - 1 - maxLocals)"));
+
+                    b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
+                    b.cast(continuationRootNodeImpl.asType());
+                    b.tree(readConst(readImmediate("bc", "bci", continuationIndex)));
+                    b.end();
+
+                    b.startDeclaration(types.ContinuationResult, "continuationResult");
+                    b.startCall("continuationRootNode.createContinuation");
+                    b.string(localFrame());
+                    b.string(getFrameObject("sp - 1"));
+                    b.end(2);
+
+                    b.statement(setFrameObject("sp - 1", "continuationResult"));
+                    emitReturnTopOfStack(b);
+                    break;
+                case STORE_NULL:
+                    b.statement(setFrameObject("sp", "null"));
+                    b.statement("sp += 1");
+                    break;
+                case CLEAR_LOCAL:
+                    b.statement(clearFrame("frame", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.LOCAL_OFFSET)).toString()));
+                    break;
+                case LOAD_VARIADIC:
+                    int effect = -instr.variadicPopCount + 1;
+                    b.startStatement();
+                    if (instr.variadicPopCount == 0) {
+                        b.string(setFrameObject("sp", emptyObjectArray.getSimpleName().toString()));
+                    } else {
+                        b.string(setFrameObject("sp - " + instr.variadicPopCount, "readVariadic(frame, sp, " + instr.variadicPopCount + ")"));
+                    }
+                    b.end();
+
+                    if (effect != 0) {
+                        if (effect > 0) {
+                            b.statement("sp += " + effect);
+                        } else {
+                            b.statement("sp -= " + -effect);
+                        }
+                    }
+                    break;
+                case MERGE_VARIADIC:
+                    b.statement(setFrameObject("sp - 1", "mergeVariadic((Object[]) " + getFrameObject("sp - 1") + ")"));
+                    break;
+                case CUSTOM:
+                    buildCustomInstructionExecute(b, instr);
+                    emitCustomStackEffect(b, getStackEffect(instr));
+                    break;
+                case SUPERINSTRUCTION:
+                    // not implemented yet
+                    break;
+                case INVALIDATE:
+                    emitInvalidate(b);
+                    break;
+                default:
+                    throw new UnsupportedOperationException("not implemented: " + instr.kind);
+            }
+            if (!instr.isControlFlow()) {
+                b.statement("bci += " + instr.getInstructionLength());
+                b.statement("break");
+            }
+            b.end();
+        }
+
+        record InstructionPartition(int stackEffect, int instructionLength) {
+            InstructionPartition(InstructionModel instr) {
+                this(getStackEffect(instr), instr.getInstructionLength());
+            }
+        }
+
+        record InstructionPartitionResult(List<InstructionModel> topLevelInstructions, Map<InstructionPartition, List<List<InstructionModel>>> otherInstructions) {
+        }
+
+        /**
+         * Unfortunately HotSpot does not JIT methods bigger than {@link #JAVA_JIT_BYTECODE_LIMIT}
+         * bytecodes. So we need to split up the instructions.
+         */
+        private InstructionPartitionResult partitionInstructions(List<InstructionModel> originalInstructions) {
+            int instructionCount = originalInstructions.size();
+            int estimatedSize = ESTIMATED_BYTECODE_FOOTPRINT + (instructionCount * ESTIMATED_CUSTOM_INSTRUCTION_SIZE);
+            if (estimatedSize > JAVA_JIT_BYTECODE_LIMIT) {
+                Map<Boolean, List<InstructionModel>> instructionsByCustom = originalInstructions.stream() //
+                                .collect(Collectors.groupingBy(instr -> instr.kind == InstructionKind.CUSTOM));
+                int instructionsPerPartion = JAVA_JIT_BYTECODE_LIMIT / ESTIMATED_CUSTOM_INSTRUCTION_SIZE;
+
+                List<InstructionModel> builtinInstructions = new ArrayList<>(instructionsByCustom.get(false));
+                if (builtinInstructions.size() >= instructionsPerPartion) {
+                    throw new AssertionError("Too many builtin operations produced to fit in a single method.");
+                }
+
+                // lets compute how many custom instructions still fit into the main partition
+                int spaceUsedForBuiltins = ESTIMATED_BYTECODE_FOOTPRINT + (ESTIMATED_CUSTOM_INSTRUCTION_SIZE * builtinInstructions.size());
+                // dispatching needs some space in the main partition. each entry accounts to size
+                int spaceUsedForDispatching = (originalInstructions.size() - builtinInstructions.size()) * INSTRUCTION_DISPATCH_SIZE;
+                int spaceLeftForCustom = Math.max(0, JAVA_JIT_BYTECODE_LIMIT - spaceUsedForBuiltins - spaceUsedForDispatching);
+                int customInstructionsInFirstPartition = spaceLeftForCustom / ESTIMATED_CUSTOM_INSTRUCTION_SIZE;
+
+                List<InstructionModel> customInstructions = instructionsByCustom.get(true);
+                builtinInstructions.addAll(customInstructions.subList(0, Math.min(customInstructions.size(), customInstructionsInFirstPartition)));
+                List<InstructionModel> instructionsToPartition = customInstructions.subList(customInstructionsInFirstPartition, customInstructions.size());
+
+                Map<InstructionPartition, List<InstructionModel>> partitioned = instructionsToPartition.stream()//
+                                .collect(Collectors.groupingBy(InstructionPartition::new, LinkedHashMap::new, Collectors.toList()));
+
+                Map<InstructionPartition, List<List<InstructionModel>>> finalPartitioned = new LinkedHashMap<>();
+                for (var entry : partitioned.entrySet()) {
+                    finalPartitioned.put(entry.getKey(), splitList(entry.getValue(), instructionsPerPartion));
+                }
+                return new InstructionPartitionResult(builtinInstructions, finalPartitioned);
+            } else {
+                return new InstructionPartitionResult(originalInstructions, new LinkedHashMap<>());
+            }
+        }
+
+        private static <T> List<List<T>> splitList(List<T> originalList, int chunkSize) {
+            List<List<T>> chunks = new ArrayList<>();
+            for (int i = 0; i < originalList.size(); i += chunkSize) {
+                chunks.add(originalList.subList(i, Math.min(originalList.size(), i + chunkSize)));
+            }
+            return chunks;
         }
 
         private static boolean isInstructionReachable(InstructionModel model) {
@@ -13881,10 +14039,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         // Generate a helper method that implements the custom instruction. Also emits a call to the
         // helper inside continueAt.
-        private CodeExecutableElement buildCustomInstructionExecute(CodeTreeBuilder continueAtBuilder, InstructionModel instr) {
+        private void buildCustomInstructionExecute(CodeTreeBuilder continueAtBuilder, InstructionModel instr) {
             // To reduce bytecode in the dispatch loop, extract each implementation into a helper.
             String methodName = instructionMethodName(instr);
             CodeExecutableElement helper = new CodeExecutableElement(Set.of(PRIVATE, FINAL), context.getType(void.class), methodName);
+            CodeExecutableElement prev = doInstructionMethods.put(instr, helper);
+            if (prev != null) {
+                throw new AssertionError("Custom instruction already emitted.");
+            }
 
             helper.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
             if (model.enableYield) {
@@ -13910,12 +14072,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
             helper.getParameters().addAll(extraParams);
 
-            boolean isVoid = instr.signature.isVoid;
-
             CodeTreeBuilder b = helper.createBuilder();
 
             // Since an instruction produces at most one value, stackEffect is at most 1.
-            int stackEffect = (isVoid ? 0 : 1) - instr.signature.dynamicOperandCount;
+            int stackEffect = getStackEffect(instr);
 
             if (customInstructionMayReadBci(instr)) {
                 storeBciInFrameIfNecessary(b);
@@ -13962,7 +14122,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             buildCallExecute(b, instr, null, extraParams);
 
             // Update the stack.
-            if (!isVoid) {
+            if (!instr.signature.isVoid) {
                 b.startStatement();
                 if (instr.isReturnTypeQuickening()) {
                     startSetFrame(b, instr.signature.returnType);
@@ -13984,7 +14144,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (unexpectedValue) {
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                if (!isVoid) {
+                if (!instr.signature.isVoid) {
                     b.startStatement();
                     startSetFrame(b, context.getType(Object.class));
                     b.string("frame");
@@ -14009,14 +14169,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             continueAtBuilder.startStatement().startCall(methodName);
             continueAtBuilder.variables(helper.getParameters());
             continueAtBuilder.end(2);
+        }
 
+        private void emitCustomStackEffect(CodeTreeBuilder continueAtBuilder, int stackEffect) {
             if (stackEffect > 0) {
                 continueAtBuilder.statement("sp += " + stackEffect);
             } else if (stackEffect < 0) {
                 continueAtBuilder.statement("sp -= " + -stackEffect);
             }
+        }
 
-            return helper;
+        private static int getStackEffect(InstructionModel instr) {
+            return (instr.signature.isVoid ? 0 : 1) - instr.signature.dynamicOperandCount;
         }
 
         private GeneratedTypeMirror getCachedDataClassType(InstructionModel instr) {

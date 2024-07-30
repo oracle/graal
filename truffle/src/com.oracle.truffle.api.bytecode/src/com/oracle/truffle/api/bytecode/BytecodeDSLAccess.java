@@ -328,6 +328,13 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
     public abstract void setBoolean(Frame frame, int slot, boolean value);
 
     /**
+     * Stores a byte into the frame.
+     *
+     * @since 24.2
+     */
+    public abstract void setByte(Frame frame, int slot, byte value);
+
+    /**
      * Stores an int into the frame.
      *
      * @since 24.2
@@ -340,6 +347,13 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
      * @since 24.2
      */
     public abstract void setLong(Frame frame, int slot, long value);
+
+    /**
+     * Stores a float into the frame.
+     *
+     * @since 24.2
+     */
+    public abstract void setFloat(Frame frame, int slot, float value);
 
     /**
      * Stores a double into the frame.
@@ -521,8 +535,18 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
         }
 
         @Override
+        public void setByte(Frame frame, int slot, byte value) {
+            ((FrameWithoutBoxing) frame).unsafeSetByte(slot, value);
+        }
+
+        @Override
         public void setLong(Frame frame, int slot, long value) {
             ((FrameWithoutBoxing) frame).unsafeSetLong(slot, value);
+        }
+
+        @Override
+        public void setFloat(Frame frame, int slot, float value) {
+            ((FrameWithoutBoxing) frame).unsafeSetFloat(slot, value);
         }
 
         @Override
@@ -746,6 +770,11 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
         }
 
         @Override
+        public void setByte(Frame frame, int slot, byte value) {
+            frame.setByte(slot, value);
+        }
+
+        @Override
         public void setInt(Frame frame, int slot, int value) {
             frame.setInt(slot, value);
         }
@@ -753,6 +782,11 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
         @Override
         public void setLong(Frame frame, int slot, long value) {
             frame.setLong(slot, value);
+        }
+
+        @Override
+        public void setFloat(Frame frame, int slot, float value) {
+            frame.setFloat(slot, value);
         }
 
         @Override

@@ -191,18 +191,12 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                     b.end();
                     return true;
                 } else {
-                    if (cast != null) {
-                        b.startStaticCall(cast.getMethod());
-                    }
                     if (!ElementUtils.isObject(genericType)) {
                         b.cast(specializedType);
                     }
                     BytecodeDSLNodeFactory.startGetFrameUnsafe(b, frame, null);
                     b.string(stackIndex);
                     b.end();
-                    if (cast != null) {
-                        b.end();
-                    }
                     return false;
                 }
             } else {
