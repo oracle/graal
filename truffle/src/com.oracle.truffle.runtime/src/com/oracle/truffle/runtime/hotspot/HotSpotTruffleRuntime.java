@@ -328,7 +328,7 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
 
                 if (!TRACE_TRANSFER_TO_INTERPRETER && engine.traceTransferToInterpreter) {
                     callTarget.engine.getEngineLogger().warning("The option engine.TraceTransferToInterpreter was set to true dynamically using the embedding API. This is not supported. " +
-                                    "Use the -Dpolyglot.engine.TraceTransferToInterpreter=true Java command line option instead to resovle this.");
+                                    "Use the -Dpolyglot.engine.TraceTransferToInterpreter=true Java command line option instead to resolve this.");
                 }
                 traceTransferToInterpreter = engine.traceTransferToInterpreter;
                 truffleCompilerInitialized = true;
