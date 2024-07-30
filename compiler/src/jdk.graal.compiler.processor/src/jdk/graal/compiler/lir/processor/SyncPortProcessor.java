@@ -341,6 +341,6 @@ public class SyncPortProcessor extends AbstractProcessor {
                 }
             }
         }
-        return false;
+        return true;
     }
 }
