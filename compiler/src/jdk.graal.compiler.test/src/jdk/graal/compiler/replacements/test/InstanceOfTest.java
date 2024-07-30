@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.ReturnNode;
@@ -537,5 +538,18 @@ public class InstanceOfTest extends TypeCheckTest {
     }
 
     static class Depth14 extends Depth12 {
+    }
+
+    public static int iof(Object o) {
+        if (o instanceof Object[]) {
+            return 0;
+        }
+        GraalDirectives.sideEffect(2);
+        return 1;
+    }
+
+    @Test
+    public void testInstanceOfArray() {
+        test("iof", new Object());
     }
 }

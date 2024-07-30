@@ -175,6 +175,34 @@ public abstract class Stamp implements SpeculationContextObject {
     }
 
     /**
+     * Tests whether this stamp represents an array type without any additional knowledge about
+     * nullness or its component type. Normally such stamps are only possible at places where
+     * control flow merges array types that have their least common ancestor in
+     * {@link java.lang.Object}.
+     *
+     * An example of such a stamp can be seen in the following code
+     *
+     * <pre>
+     * void foo(boolean a, int[] iA, byte[] bA) {
+     *     Object o = null;
+     *     if (a) {
+     *         o = iA;
+     *     } else {
+     *         o = bA;
+     *     }
+     *     use(o); // potentially null, always array stamp without a concrete type
+     * }
+     * </pre>
+     */
+    public boolean isBottomArrayType() {
+        if (isObjectStamp()) {
+            ObjectStamp o = ((ObjectStamp) this);
+            return o.isAlwaysArray() && o.type() == null;
+        }
+        return false;
+    }
+
+    /**
      * If this stamp represents a single value, the methods returns this single value. It returns
      * null otherwise.
      *
