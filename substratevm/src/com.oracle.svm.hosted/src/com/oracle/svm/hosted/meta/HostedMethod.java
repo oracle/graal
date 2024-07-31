@@ -68,6 +68,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.debug.JavaMethodContext;
@@ -113,6 +114,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     private int codeAddressOffset;
     private boolean codeAddressOffsetValid;
     private boolean compiled;
+    private boolean compiledInPriorLayer;
 
     /**
      * All concrete methods that can actually be called when calling this method. This includes all
@@ -250,6 +252,14 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         return compiled;
     }
 
+    public void setCompiledInPriorLayer() {
+        this.compiledInPriorLayer = true;
+    }
+
+    public boolean isCompiledInPriorLayer() {
+        return compiledInPriorLayer;
+    }
+
     public String getUniqueShortName() {
         return uniqueShortName;
     }
@@ -268,7 +278,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean forceIndirectCall() {
-        return wrapped.isInBaseLayer();
+        return isCompiledInPriorLayer();
     }
 
     @Override
@@ -484,6 +494,14 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean canBeInlined() {
+        /*
+         * GR-55278: Graphs that contain references to $$Lambda types cannot be persisted. Those
+         * methods should not be inlined in the base layer as we need to be able to call them from
+         * the extension layers.
+         */
+        if (HostedImageLayerBuildingSupport.buildingSharedLayer() && !HostedImageLayerBuildingSupport.singleton().getWriter().persistedMethodGraph(wrapped)) {
+            return false;
+        }
         return wrapped.canBeInlined();
     }
 

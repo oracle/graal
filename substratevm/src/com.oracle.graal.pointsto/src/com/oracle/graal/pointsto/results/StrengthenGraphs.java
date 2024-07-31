@@ -227,6 +227,11 @@ public abstract class StrengthenGraphs {
             return;
         }
 
+        if (method.isInBaseLayer()) {
+            useSharedLayerGraph(method);
+            return;
+        }
+
         graph.resetDebug(debug);
         if (beforeCounters != null) {
             beforeCounters.collect(graph);
@@ -241,6 +246,8 @@ public abstract class StrengthenGraphs {
         }
         method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE));
 
+        persistStrengthenGraph(method);
+
         if (nodeReferences != null) {
             /* Ensure the temporarily decoded graph is not kept alive via the node references. */
             for (var nodeReference : nodeReferences) {
@@ -248,6 +255,10 @@ public abstract class StrengthenGraphs {
             }
         }
     }
+
+    protected abstract void useSharedLayerGraph(AnalysisMethod method);
+
+    protected abstract void persistStrengthenGraph(AnalysisMethod method);
 
     /*
      * Returns a type that can replace the original type in stamps as an exact type. When the
