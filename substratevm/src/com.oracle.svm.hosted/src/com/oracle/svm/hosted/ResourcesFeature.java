@@ -635,6 +635,11 @@ public class ResourcesFeature implements InternalFeature {
 
             BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, reportLocation);
         }
+
+        /* prepare resources GlobTrie for runtime */
+        GlobTrieNode root = ImageSingletons.lookup(GlobTrieNode.class);
+        CompressedGlobTrie.removeNodes(root, (type) -> !access.isReachable(access.findClassByName(type)));
+        CompressedGlobTrie.finalize(root);
     }
 
     @Override

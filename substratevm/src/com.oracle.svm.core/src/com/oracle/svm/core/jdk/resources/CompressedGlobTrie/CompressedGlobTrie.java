@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import org.graalvm.nativeimage.Platform;
@@ -123,7 +124,6 @@ public class CompressedGlobTrie {
             starPatterns.forEach(pattern -> addPattern(root, pattern));
             noStarPatterns.forEach(pattern -> addPattern(root, pattern));
 
-            root.trim();
             return root;
         }
 
@@ -338,6 +338,13 @@ public class CompressedGlobTrie {
 
             return s1Levels.size() - s2Levels.size();
         }
+    }
+
+    /**
+     * Trims the Trie and makes it unmodifiable.
+     */
+    public static void finalize(GlobTrieNode root) {
+        root.trim();
     }
 
     /**
@@ -707,5 +714,37 @@ public class CompressedGlobTrie {
 
     private static boolean patternReachedEnd(int index, List<GlobTrieNode> parts) {
         return index >= parts.size();
+    }
+
+    public static void removeNodes(GlobTrieNode head, Predicate<String> shouldRemove) {
+        List<String> contentToRemove = head.getAdditionalContent().stream().filter(shouldRemove).toList();
+        head.removeAdditionalContent(contentToRemove);
+
+        List<GlobTrieNode> childrenToRemove = new ArrayList<>();
+        for (GlobTrieNode child : head.getChildren()) {
+            removeNodes(child, shouldRemove);
+
+            /* leaf without additional content should be removed */
+            if (child.isLeaf() && child.getAdditionalContent().isEmpty()) {
+                if (child.getChildren().isEmpty()) {
+                    /* if it is the last node remove it physically */
+                    childrenToRemove.add(child);
+                } else {
+                    /*
+                     * the child still has children, but it terminated some pattern => don't remove
+                     * it, just say that it doesn't terminate any pattern anymore
+                     */
+                    child.makeNodeInternal();
+                }
+                continue;
+            }
+
+            /* internal node without children should be removed */
+            if (!child.isLeaf() && child.getChildren().isEmpty()) {
+                childrenToRemove.add(child);
+            }
+        }
+
+        head.removeChildren(childrenToRemove);
     }
 }
