@@ -33,7 +33,7 @@ import org.graalvm.word.LocationIdentity;
  * restrictions of VM thread local variables.
  */
 public abstract class FastThreadLocal {
-    class FastThreadLocalLocationIdentity extends LocationIdentity {
+    public class FastThreadLocalLocationIdentity extends LocationIdentity {
         @Override
         public boolean isImmutable() {
             return false;

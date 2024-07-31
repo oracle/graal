@@ -57,9 +57,7 @@ public class StandalonePointsToAnalysis extends PointsToAnalysis {
     public void cleanupAfterAnalysis() {
         super.cleanupAfterAnalysis();
         // No need to keep method graphs for standalone analysis.
-        universe.getMethods().forEach(m -> {
-            m.setAnalyzedGraph(null);
-        });
+        universe.getMethods().forEach(AnalysisMethod::clearAnalyzedGraph);
         universe.getMethods().clear();
         universe.getFields().clear();
         addedClinits.clear();

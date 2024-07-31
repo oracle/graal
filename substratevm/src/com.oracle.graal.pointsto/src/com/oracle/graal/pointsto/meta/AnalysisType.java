@@ -1257,6 +1257,18 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
     }
 
+    public AnalysisMethod findConstructor(Signature signature) {
+        if (wrapped instanceof BaseLayerType) {
+            return null;
+        }
+        for (AnalysisMethod ctor : getDeclaredConstructors(false)) {
+            if (ctor.getSignature().equals(signature)) {
+                return ctor;
+            }
+        }
+        return null;
+    }
+
     @Override
     public AnalysisMethod findMethod(String name, Signature signature) {
         for (AnalysisMethod method : getDeclaredMethods(false)) {

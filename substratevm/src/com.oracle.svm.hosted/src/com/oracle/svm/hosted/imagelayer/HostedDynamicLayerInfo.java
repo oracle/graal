@@ -84,6 +84,10 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
         return Pair.create(basePointer, offset);
     }
 
+    public boolean isCompiled(int id) {
+        return methodIdToOffsetMap.containsKey(id);
+    }
+
     void registerOffset(HostedMethod method) {
         int offset = method.getCodeAddressOffset();
         int methodID = method.getWrapped().getId();

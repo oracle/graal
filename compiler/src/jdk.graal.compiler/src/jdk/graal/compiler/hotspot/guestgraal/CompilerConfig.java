@@ -35,6 +35,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Stream;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
@@ -89,7 +90,18 @@ public class CompilerConfig {
         encodedObjects.put("encodedSnippets", encodedSnippets);
         encodedObjects.put("foreignCallSignatures", foreignCallSignatures);
 
-        String encoded = ObjectCopier.encode(encodedObjects, externalValues);
+        ObjectCopier.Encoder encoder = new ObjectCopier.Encoder(externalValues) {
+            @Override
+            protected ClassInfo makeClassInfo(Class<?> declaringClass) {
+                ClassInfo ci = ClassInfo.of(declaringClass);
+                for (var f : ci.fields().values()) {
+                    // Avoid problems with identity hash codes
+                    GraalError.guarantee(!f.getName().toLowerCase(Locale.ROOT).contains("hash"), "Cannot serialize hash field: %s", f);
+                }
+                return ci;
+            }
+        };
+        String encoded = ObjectCopier.encode(encoder, encodedObjects);
 
         Files.writeString(Path.of(args[0]), encoded);
     }

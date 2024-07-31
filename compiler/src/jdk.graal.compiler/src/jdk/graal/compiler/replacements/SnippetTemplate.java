@@ -844,12 +844,12 @@ public class SnippetTemplate {
     private static final TimerKey SnippetTemplateCreationTime = DebugContext.timer("SnippetTemplateCreationTime");
     private static final CounterKey SnippetTemplates = DebugContext.counter("SnippetTemplateCount");
 
-    static class Options {
+    public static class Options {
         @Option(help = "Use a LRU cache for snippet templates.")//
         public static final OptionKey<Boolean> UseSnippetTemplateCache = new OptionKey<>(true);
 
         @Option(help = "")//
-        static final OptionKey<Integer> MaxTemplatesPerSnippet = new OptionKey<>(50);
+        public static final OptionKey<Integer> MaxTemplatesPerSnippet = new OptionKey<>(50);
     }
 
     /**
@@ -997,11 +997,11 @@ public class SnippetTemplate {
         }
     }
 
-    private static final class LRUCache<K, V> extends LinkedHashMap<K, V> {
+    public static final class LRUCache<K, V> extends LinkedHashMap<K, V> {
         private static final long serialVersionUID = 1L;
         private final int maxCacheSize;
 
-        LRUCache(int initialCapacity, int maxCacheSize) {
+        public LRUCache(int initialCapacity, int maxCacheSize) {
             super(initialCapacity, 0.75F, true);
             this.maxCacheSize = maxCacheSize;
         }

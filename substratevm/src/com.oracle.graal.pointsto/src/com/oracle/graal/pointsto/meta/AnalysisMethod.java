@@ -44,6 +44,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
@@ -186,12 +187,22 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     private boolean returnsAllInstantiatedTypes;
 
-    @SuppressWarnings("this-escape")
+    @SuppressWarnings({"this-escape", "unchecked"})
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
 
         declaringClass = universe.lookup(wrapped.getDeclaringClass());
-        signature = getUniverse().lookup(wrapped.getSignature(), wrapped.getDeclaringClass());
+        var wrappedSignature = wrapped.getSignature();
+        if (wrappedSignature instanceof ResolvedSignature<?> resolvedSignature) {
+            /* BaseLayerMethods return fully resolved signatures */
+            if (resolvedSignature.getReturnType() instanceof AnalysisType) {
+                signature = (ResolvedSignature<AnalysisType>) resolvedSignature;
+            } else {
+                signature = getUniverse().lookup(wrappedSignature, wrapped.getDeclaringClass());
+            }
+        } else {
+            signature = getUniverse().lookup(wrappedSignature, wrapped.getDeclaringClass());
+        }
         hasNeverInlineDirective = universe.hostVM().hasNeverInlineDirective(wrapped);
 
         name = createName(wrapped, multiMethodKey);
@@ -827,6 +838,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return ensureGraphParsedHelper(bb, true);
     }
 
+    public Object getGraph() {
+        return parsedGraphCacheState.get();
+    }
+
     /**
      * Ensures that the method has been parsed, i.e., that the {@link StructuredGraph Graal IR} for
      * the method is available.
@@ -849,7 +864,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
              */
 
             if (curState == GRAPH_CACHE_UNPARSED || (forceReparse && curState instanceof AnalysisParsedGraph)) {
-                AnalysisParsedGraph graph = parseGraph(bb, curState);
+                AnalysisParsedGraph graph;
+                if (isInBaseLayer && getUniverse().getImageLayerLoader().hasAnalysisParsedGraph(this)) {
+                    graph = getBaseLayerGraph(curState);
+                } else {
+                    graph = parseGraph(bb, curState);
+                }
                 if (graph != null) {
                     return graph;
                 }
@@ -871,7 +891,15 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         }
     }
 
+    private AnalysisParsedGraph getBaseLayerGraph(Object expectedValue) {
+        return setGraph(expectedValue, () -> getUniverse().getImageLayerLoader().getAnalysisParsedGraph(this));
+    }
+
     private AnalysisParsedGraph parseGraph(BigBang bb, Object expectedValue) {
+        return setGraph(expectedValue, () -> AnalysisParsedGraph.parseBytecode(bb, this));
+    }
+
+    private AnalysisParsedGraph setGraph(Object expectedValue, Supplier<AnalysisParsedGraph> graphSupplier) {
         ReentrantLock lock = new ReentrantLock();
         lock.lock();
         try {
@@ -884,7 +912,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
                 return null;
             }
 
-            AnalysisParsedGraph graph = AnalysisParsedGraph.parseBytecode(bb, this);
+            AnalysisParsedGraph graph = graphSupplier.get();
 
             /*
              * Since we still hold the parsing lock, the transition form "parsing" to "parsed"
@@ -962,6 +990,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public void setAnalyzedGraph(EncodedGraph analyzedGraph) {
         this.analyzedGraph = analyzedGraph;
+    }
+
+    public void clearAnalyzedGraph() {
+        this.analyzedGraph = null;
     }
 
     public EncodedGraph getAnalyzedGraph() {

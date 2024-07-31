@@ -50,6 +50,7 @@ import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
+import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -120,6 +121,7 @@ public class AnalysisUniverse implements Universe {
     private final JavaKind wordKind;
     private AnalysisPolicy analysisPolicy;
     private ImageHeapScanner heapScanner;
+    private ImageLayerWriter imageLayerWriter;
     private ImageLayerLoader imageLayerLoader;
     private HeapSnapshotVerifier heapVerifier;
     private BigBang bb;
@@ -372,7 +374,7 @@ public class AnalysisUniverse implements Universe {
         AnalysisField newValue = analysisFactory.createField(this, field);
         AnalysisField oldValue = fields.putIfAbsent(field, newValue);
         if (oldValue == null && newValue.isInBaseLayer()) {
-            getImageLayerLoader().loadFieldFlags(newValue);
+            getImageLayerLoader().initializeBaseLayerField(newValue);
         }
         return oldValue != null ? oldValue : newValue;
     }
@@ -420,7 +422,7 @@ public class AnalysisUniverse implements Universe {
 
         if (oldValue == null) {
             if (newValue.isInBaseLayer()) {
-                getImageLayerLoader().patchBaseLayerMethod(newValue);
+                getImageLayerLoader().initializeBaseLayerMethod(newValue);
             }
             prepareMethodImplementations(newValue);
         }
@@ -745,6 +747,14 @@ public class AnalysisUniverse implements Universe {
 
     public ImageHeapScanner getHeapScanner() {
         return heapScanner;
+    }
+
+    public void setImageLayerWriter(ImageLayerWriter imageLayerWriter) {
+        this.imageLayerWriter = imageLayerWriter;
+    }
+
+    public ImageLayerWriter getImageLayerWriter() {
+        return imageLayerWriter;
     }
 
     public void setImageLayerLoader(ImageLayerLoader imageLayerLoader) {
