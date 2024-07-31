@@ -24,38 +24,19 @@
  */
 package com.oracle.svm.core.heap.dump;
 
-import java.io.IOException;
-
+import com.oracle.svm.core.Sigusr1Handler;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.log.Log;
-
-import jdk.internal.misc.Signal;
 
 public class HeapDumpStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
         if (isFirstIsolate && SubstrateOptions.EnableSignalHandling.getValue()) {
-            DumpHeapReport.install();
+            Sigusr1Handler.install();
         }
 
         if (SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue()) {
             HeapDumping.singleton().initializeDumpHeapOnOutOfMemoryError();
-        }
-    }
-}
-
-class DumpHeapReport implements Signal.Handler {
-    static void install() {
-        Signal.handle(new Signal("USR1"), new DumpHeapReport());
-    }
-
-    @Override
-    public void handle(Signal arg0) {
-        try {
-            HeapDumping.singleton().dumpHeap(true);
-        } catch (IOException e) {
-            Log.log().string("IOException during dumpHeap: ").string(e.getMessage()).newline();
         }
     }
 }
