@@ -195,8 +195,7 @@ public final class ImageHeapInfo {
             return (T) WordFactory.nullPointer();
         }
         UnsignedWord offset = WordFactory.unsigned(offsetInImageHeap);
-        Pointer heapBase = KnownIntrinsics.heapBase();
-        return (T) heapBase.add(offset);
+        return (T) KnownIntrinsics.heapBase().add(offset);
     }
 
     public void print(Log log) {

@@ -1813,7 +1813,7 @@ public final class JNIFunctions {
                     case CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED:
                     case CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE:
                         return JNIErrors.JNI_ENOMEM();
-                    case CEntryPointErrors.SINGLE_ISOLATE_ALREADY_EXISTS:
+                    case CEntryPointErrors.SINGLE_ISOLATE_ALREADY_CREATED:
                         return JNIErrors.JNI_EEXIST();
                 }
             }

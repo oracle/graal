@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
@@ -66,9 +65,7 @@ public class OSCommittedMemoryProvider extends ChunkBasedCommittedMemoryProvider
         if (!SubstrateOptions.SpawnIsolates.getValue()) {
             return CEntryPointErrors.NO_ERROR;
         }
-
-        PointerBase heapBase = KnownIntrinsics.heapBase();
-        return ImageHeapProvider.get().freeImageHeap(heapBase);
+        return ImageHeapProvider.get().freeImageHeap(KnownIntrinsics.heapBase());
     }
 }
 

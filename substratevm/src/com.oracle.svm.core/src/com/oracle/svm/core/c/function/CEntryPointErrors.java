@@ -170,7 +170,7 @@ public final class CEntryPointErrors {
     public static final int UNKNOWN_STACK_BOUNDARIES = 32;
 
     @Description("The isolate could not be created because only a single isolate is supported.") //
-    public static final int SINGLE_ISOLATE_ALREADY_EXISTS = 33;
+    public static final int SINGLE_ISOLATE_ALREADY_CREATED = 33;
 
     public static String getDescription(int code) {
         String result = null;

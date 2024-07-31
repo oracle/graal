@@ -143,8 +143,7 @@ public abstract class Heap {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer getImageHeapStart() {
-        Pointer heapBase = KnownIntrinsics.heapBase();
-        return heapBase.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
+        return KnownIntrinsics.heapBase().add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
     }
 
     /**

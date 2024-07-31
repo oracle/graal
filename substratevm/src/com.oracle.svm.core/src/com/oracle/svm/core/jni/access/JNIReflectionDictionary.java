@@ -39,11 +39,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jni.MissingJNIRegistrationUtils;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
@@ -259,22 +259,19 @@ public final class JNIReflectionDictionary {
     }
 
     private static JNIMethodId toMethodID(JNIAccessibleMethod method) {
-        SignedWord value = WordFactory.zero();
-        if (method != null) {
-            value = Word.objectToUntrackedPointer(method); // safe because it is in the image heap
-            if (SubstrateOptions.SpawnIsolates.getValue()) { // use offset: valid across isolates
-                value = value.subtract((SignedWord) KnownIntrinsics.heapBase());
-            }
+        if (method == null) {
+            return WordFactory.zero();
         }
-        return (JNIMethodId) value;
+        assert Heap.getHeap().isInImageHeap(method);
+        return (JNIMethodId) Word.objectToUntrackedPointer(method).subtract(KnownIntrinsics.heapBase());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
-        Pointer p = (Pointer) method;
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            p = p.add(KnownIntrinsics.heapBase());
+        if (!SubstrateOptions.SpawnIsolates.getValue() && method == WordFactory.zero()) {
+            return null;
         }
+        Pointer p = KnownIntrinsics.heapBase().add((Pointer) method);
         JNIAccessibleMethod jniMethod = p.toObject(JNIAccessibleMethod.class, false);
         VMError.guarantee(jniMethod == null || !jniMethod.isNegative(), "Existing methods can't correspond to a negative query");
         return jniMethod;

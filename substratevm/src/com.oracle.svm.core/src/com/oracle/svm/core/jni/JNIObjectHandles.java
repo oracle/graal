@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
-import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
@@ -437,8 +436,7 @@ final class JNIImageHeapHandles {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static <T> T getObject(JNIObjectHandle handle) {
         assert isInRange(handle);
-        UnsignedWord base = KnownIntrinsics.heapBase();
-        Pointer offset = ((Pointer) handle).and(OBJ_OFFSET_BITS_MASK).add(base);
+        Pointer offset = ((Pointer) handle).and(OBJ_OFFSET_BITS_MASK).add(KnownIntrinsics.heapBase());
         @SuppressWarnings("unchecked")
         T obj = (T) offset.toObjectNonNull();
         assert isInImageHeap(obj);

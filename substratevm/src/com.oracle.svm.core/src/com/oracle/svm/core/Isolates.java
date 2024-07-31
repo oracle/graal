@@ -63,7 +63,7 @@ public class Isolates {
     public static final CGlobalData<Pointer> ISOLATE_COUNTER = CGlobalDataFactory.createWord((WordBase) WordFactory.unsigned(1));
 
     /* Only used if SpawnIsolates is disabled. */
-    private static final CGlobalData<Pointer> SINGLE_ISOLATE_ALREADY_EXISTS = CGlobalDataFactory.createWord();
+    private static final CGlobalData<Pointer> SINGLE_ISOLATE_ALREADY_CREATED = CGlobalDataFactory.createWord();
 
     private static long startTimeMillis;
     private static long startNanoTime;
@@ -137,8 +137,8 @@ public class Isolates {
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static int create(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters) {
         if (!SubstrateOptions.SpawnIsolates.getValue()) {
-            if (!SINGLE_ISOLATE_ALREADY_EXISTS.get().logicCompareAndSwapWord(0, WordFactory.zero(), WordFactory.signed(1), NamedLocationIdentity.OFF_HEAP_LOCATION)) {
-                return CEntryPointErrors.SINGLE_ISOLATE_ALREADY_EXISTS;
+            if (!SINGLE_ISOLATE_ALREADY_CREATED.get().logicCompareAndSwapWord(0, WordFactory.zero(), WordFactory.signed(1), NamedLocationIdentity.OFF_HEAP_LOCATION)) {
+                return CEntryPointErrors.SINGLE_ISOLATE_ALREADY_CREATED;
             }
         }
 
