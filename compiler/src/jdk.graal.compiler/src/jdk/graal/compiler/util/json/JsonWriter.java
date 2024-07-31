@@ -326,7 +326,8 @@ public class JsonWriter implements AutoCloseable {
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             // Escaping rules according to https://www.ietf.org/rfc/rfc4627.txt section 2.5
-            if (c == '"' || c == '\\' || c == '/') {
+            // except for '/' because it is unnecessarily verbose.
+            if (c == '"' || c == '\\') {
                 escapeSequence(sb, c);
             } else if (c == '\b') {
                 escapeSequence(sb, 'b');
