@@ -49,6 +49,17 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  */
 public class StableProfileProvider implements ProfileProvider {
 
+    private static final Class<?> TRANSLATED_EXCEPTION;
+    static {
+        Class<?> clz;
+        try {
+            clz = Class.forName("jdk.internal.vm.TranslatedException");
+        } catch (ClassNotFoundException cnf) {
+            clz = null;
+        }
+        TRANSLATED_EXCEPTION = clz;
+    }
+
     private final TypeResolver resolver;
 
     /**
@@ -67,6 +78,19 @@ public class StableProfileProvider implements ProfileProvider {
          * @return a {@link ResolvedJavaType} if the type can be resolved, null otherwise
          */
         ResolvedJavaType resolve(ResolvedJavaMethod method, ProfilingInfo realProfile, int bci, ResolvedJavaType loadingIssuingType, String typeName);
+    }
+
+    private static boolean isTranslatedNoClassDefFound(Throwable e) {
+        Throwable effectiveException = e;
+        if (TRANSLATED_EXCEPTION != null && TRANSLATED_EXCEPTION.isInstance(e)) {
+            /*
+             * As of JDK 24 (JDK-8335553), a translated exception is boxed in a TranslatedException.
+             * Unbox a translated unchecked exception to get the real one.
+             */
+            Throwable cause = e.getCause();
+            effectiveException = cause;
+        }
+        return effectiveException instanceof NoClassDefFoundError;
     }
 
     /**
@@ -97,8 +121,12 @@ public class StableProfileProvider implements ProfileProvider {
             if (actualType == null) {
                 try {
                     actualType = UnresolvedJavaType.create(typeName).resolve(method.getDeclaringClass());
-                } catch (NoClassDefFoundError ncdfe) {
-                    // do nothing
+                } catch (Throwable t) {
+                    if (isTranslatedNoClassDefFound(t)) {
+                        // do nothing
+                    } else {
+                        throw t;
+                    }
                 }
             }
 
@@ -106,8 +134,12 @@ public class StableProfileProvider implements ProfileProvider {
                 // try using the original type issuing the load operation of this profile
                 try {
                     actualType = UnresolvedJavaType.create(typeName).resolve(loadingIssuingType);
-                } catch (NoClassDefFoundError ncdfe) {
-                    // do nothing
+                } catch (Throwable t) {
+                    if (isTranslatedNoClassDefFound(t)) {
+                        // do nothing
+                    } else {
+                        throw t;
+                    }
                 }
             }
             if (actualType == null) {
@@ -115,8 +147,12 @@ public class StableProfileProvider implements ProfileProvider {
                     for (JavaTypeProfile.ProfiledType actual : actualProfile.getTypes()) {
                         try {
                             actualType = UnresolvedJavaType.create(typeName).resolve(actual.getType());
-                        } catch (NoClassDefFoundError ncdfe) {
-                            // do nothing
+                        } catch (Throwable t) {
+                            if (isTranslatedNoClassDefFound(t)) {
+                                // do nothing
+                            } else {
+                                throw t;
+                            }
                         }
                         if (actualType != null) {
                             break;
