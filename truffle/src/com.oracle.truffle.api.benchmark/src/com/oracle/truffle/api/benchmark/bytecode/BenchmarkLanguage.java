@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.benchmark.bytecode;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -71,20 +69,9 @@ class BenchmarkLanguage extends TruffleLanguage<Object> {
         });
     }
 
-    @SuppressWarnings("unchecked")
     private static <T extends BytecodeBenchmarkRootNodeBuilder> BytecodeRootNodes<BytecodeBenchmarkRootNode> createNodes(Class<? extends BytecodeBenchmarkRootNode> interpreterClass,
                     BytecodeParser<T> builder) {
-        try {
-            Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
-            return (BytecodeRootNodes<BytecodeBenchmarkRootNode>) create.invoke(null, BytecodeConfig.DEFAULT, builder);
-        } catch (InvocationTargetException e) {
-            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
-            // get caught by the test harness.
-            throw new IllegalStateException(e.getCause());
-        } catch (Exception e) {
-            // Other exceptions (e.g., NoSuchMethodError) likely indicate a bad reflective call.
-            throw new AssertionError("Encountered exception during reflective call: " + e.getMessage());
-        }
+        return BytecodeBenchmarkRootNodeBuilder.invokeCreate(interpreterClass, BytecodeConfig.DEFAULT, builder);
     }
 
     public static void registerName(String name, Function<BenchmarkLanguage, CallTarget> parser) {

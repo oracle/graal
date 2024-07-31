@@ -25,7 +25,6 @@
 package jdk.graal.compiler.truffle.test;
 
 import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.parseNode;
-import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.invokeNewConfigBuilder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -154,7 +153,8 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         assertCompiled(target);
 
         // Instrumentation should invalidate the compiled code.
-        root.getRootNodes().update(invokeNewConfigBuilder(interpreterClass).addInstrumentation(BasicInterpreter.IncrementValue.class).build());
+        root.getRootNodes().update(
+                        BasicInterpreterBuilder.invokeNewConfigBuilder(interpreterClass).addInstrumentation(BasicInterpreter.IncrementValue.class).build());
         assertNotCompiled(target);
 
         // The instrumented interpreter should be recompiled.
@@ -240,7 +240,8 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         assertCompiled(continuationCallTarget);
 
         // Instrumentation should invalidate the compiled code.
-        root.getRootNodes().update(invokeNewConfigBuilder(interpreterClass).addInstrumentation(BasicInterpreter.IncrementValue.class).build());
+        root.getRootNodes().update(
+                        BasicInterpreterBuilder.invokeNewConfigBuilder(interpreterClass).addInstrumentation(BasicInterpreter.IncrementValue.class).build());
         assertNotCompiled(target);
         assertNotCompiled(continuationCallTarget);
 

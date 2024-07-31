@@ -45,8 +45,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -100,27 +98,10 @@ public class LocalHelpersTest {
         return b.createLocal(name, null);
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> createNodes(
-                    Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass,
-                    BytecodeConfig config,
-                    BytecodeParser<T> builder) {
-        try {
-            Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
-            return (BytecodeRootNodes<BytecodeNodeWithLocalIntrospection>) create.invoke(null, config, builder);
-        } catch (InvocationTargetException e) {
-            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
-            // get caught by the test harness.
-            throw new IllegalStateException(e.getCause());
-        } catch (Exception e) {
-            // Other exceptions (e.g., NoSuchMethodError) likely indicate a bad reflective call.
-            throw new AssertionError("Encountered exception during reflective call: " + e.getMessage());
-        }
-    }
-
     public static <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodeWithLocalIntrospection parseNode(Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass,
                     BytecodeParser<T> builder) {
-        BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> nodes = createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> nodes = BytecodeNodeWithLocalIntrospectionBuilder.invokeCreate((Class<? extends BytecodeNodeWithLocalIntrospection>) interpreterClass,
+                        BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(0);
     }
 

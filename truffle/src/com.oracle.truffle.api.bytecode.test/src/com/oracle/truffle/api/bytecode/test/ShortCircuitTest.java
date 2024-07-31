@@ -42,8 +42,6 @@ package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.List;
 
 import org.junit.Test;
@@ -78,27 +76,10 @@ public class ShortCircuitTest {
 
     @Parameter(0) public Class<? extends BytecodeNodeWithShortCircuit> interpreterClass;
 
-    @SuppressWarnings("unchecked")
-    public static <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeRootNodes<BytecodeNodeWithShortCircuit> createNodes(
-                    Class<? extends BytecodeNodeWithShortCircuit> interpreterClass,
-                    BytecodeConfig config,
-                    BytecodeParser<T> builder) {
-        try {
-            Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
-            return (BytecodeRootNodes<BytecodeNodeWithShortCircuit>) create.invoke(null, config, builder);
-        } catch (InvocationTargetException e) {
-            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
-            // get caught by the test harness.
-            throw new IllegalStateException(e.getCause());
-        } catch (Exception e) {
-            // Other exceptions (e.g., NoSuchMethodError) likely indicate a bad reflective call.
-            throw new AssertionError("Encountered exception during reflective call: " + e.getMessage());
-        }
-    }
-
     public static <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeNodeWithShortCircuit parseNode(Class<? extends BytecodeNodeWithShortCircuit> interpreterClass,
                     BytecodeParser<T> builder) {
-        BytecodeRootNodes<BytecodeNodeWithShortCircuit> nodes = createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<BytecodeNodeWithShortCircuit> nodes = BytecodeNodeWithShortCircuitBuilder.invokeCreate((Class<? extends BytecodeNodeWithShortCircuit>) interpreterClass,
+                        BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 
