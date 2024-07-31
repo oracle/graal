@@ -117,7 +117,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableSerialization = true, //
                                 enableTagInstrumentation = true, //
                                 decisionsFile = "basic_interpreter_decisions.json")),
-                @Variant(suffix = "WithGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class,//
+                @Variant(suffix = "WithGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
                                 enableLocalScoping = false, //
@@ -619,7 +619,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
 
         @TruffleBoundary
         protected static BytecodeConfig getConfig(BasicInterpreter root) {
-            BytecodeConfig.Builder configBuilder = AbstractBasicInterpreterTest.invokeNewConfigBuilder(root.getClass());
+            BytecodeConfig.Builder configBuilder = BasicInterpreterBuilder.invokeNewConfigBuilder(root.getClass());
             configBuilder.addInstrumentation(IncrementValue.class);
             return configBuilder.build();
         }
@@ -636,7 +636,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
 
         @TruffleBoundary
         protected static BytecodeConfig getConfig(BasicInterpreter root) {
-            BytecodeConfig.Builder configBuilder = AbstractBasicInterpreterTest.invokeNewConfigBuilder(root.getClass());
+            BytecodeConfig.Builder configBuilder = BasicInterpreterBuilder.invokeNewConfigBuilder(root.getClass());
             configBuilder.addInstrumentation(DoubleValue.class);
             return configBuilder.build();
         }

@@ -52,8 +52,6 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -229,7 +227,7 @@ public abstract class AbstractBasicInterpreterTest {
     }
 
     public BytecodeConfig.Builder createBytecodeConfigBuilder() {
-        return invokeNewConfigBuilder(run.interpreterClass);
+        return BasicInterpreterBuilder.invokeNewConfigBuilder(run.interpreterClass);
     }
 
     /**
@@ -245,7 +243,8 @@ public abstract class AbstractBasicInterpreterTest {
                     BytecodeConfig config,
                     BytecodeParser<T> builder) {
 
-        BytecodeRootNodes<BasicInterpreter> result = invokeCreate(interpreterClass, config, builder);
+        BytecodeRootNodes<BasicInterpreter> result = BasicInterpreterBuilder.invokeCreate((Class<? extends BasicInterpreter>) interpreterClass, config,
+                        (BytecodeParser<? extends BasicInterpreterBuilder>) builder);
         if (testSerialize) {
             assertBytecodeNodesEqual(result, doRoundTrip(interpreterClass, config, result));
         }
@@ -261,7 +260,7 @@ public abstract class AbstractBasicInterpreterTest {
             throw new AssertionError(ex);
         }
         Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
-        return invokeDeserialize(interpreterClass, LANGUAGE, config, input, DESERIALIZER);
+        return BasicInterpreterBuilder.invokeDeserialize((Class<? extends BasicInterpreter>) interpreterClass, (TruffleLanguage<?>) LANGUAGE, config, input, DESERIALIZER);
     }
 
     public BytecodeRootNodes<BasicInterpreter> doRoundTrip(BytecodeRootNodes<BasicInterpreter> nodes) {
@@ -287,55 +286,6 @@ public abstract class AbstractBasicInterpreterTest {
         BasicInterpreter op = nodes.getNode(0);
         op.setName(rootName);
         return op;
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T extends BasicInterpreter> BytecodeRootNodes<T> invokeCreate(Class<? extends BasicInterpreter> interpreterClass, BytecodeConfig config,
-                    BytecodeParser<? extends BasicInterpreterBuilder> builder) {
-        try {
-            Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
-            return (BytecodeRootNodes<T>) create.invoke(null, config, builder);
-        } catch (InvocationTargetException e) {
-            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
-            // get caught by the test harness.
-            if (e.getCause() instanceof RuntimeException) {
-                throw (RuntimeException) e.getCause();
-            } else if (e.getCause() instanceof Error) {
-                throw (Error) e.getCause();
-            } else {
-                throw new AssertionError(e);
-            }
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T extends BasicInterpreter> BytecodeRootNodes<T> invokeDeserialize(Class<? extends BasicInterpreter> interpreterClass, TruffleLanguage<?> language, BytecodeConfig config,
-                    Supplier<DataInput> input, BytecodeDeserializer callback) {
-        try {
-            Method deserialize = interpreterClass.getMethod("deserialize", TruffleLanguage.class, BytecodeConfig.class, Supplier.class, BytecodeDeserializer.class);
-            return (BytecodeRootNodes<T>) deserialize.invoke(null, language, config, input, callback);
-        } catch (InvocationTargetException e) {
-            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
-            // get caught by the test harness.
-            throw new IllegalStateException(e.getCause());
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
-    }
-
-    public static BytecodeConfig.Builder invokeNewConfigBuilder(Class<? extends BasicInterpreter> interpreterClass) {
-        try {
-            Method newConfigBuilder = interpreterClass.getMethod("newConfigBuilder");
-            return (BytecodeConfig.Builder) newConfigBuilder.invoke(null);
-        } catch (InvocationTargetException e) {
-            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
-            // get caught by the test harness.
-            throw new IllegalStateException(e.getCause());
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
     }
 
     private static void assertBytecodeNodesEqual(BytecodeRootNodes<BasicInterpreter> expectedBytecodeNodes, BytecodeRootNodes<BasicInterpreter> actualBytecodeNodes) {

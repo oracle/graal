@@ -43,8 +43,6 @@ package com.oracle.truffle.api.bytecode.test;
 import static org.junit.Assert.assertEquals;
 import static com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -63,7 +61,6 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
-import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
@@ -98,35 +95,7 @@ public class ConstantOperandTest {
 
     @SuppressWarnings("unchecked")
     private <T extends ConstantOperandTestRootNodeBuilder> ConstantOperandTestRootNode parse(BytecodeParser<? extends T> parser) {
-        try {
-            Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
-            return ((BytecodeRootNodes<ConstantOperandTestRootNode>) create.invoke(null, BytecodeConfig.DEFAULT, parser)).getNode(0);
-        } catch (InvocationTargetException e) {
-            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
-            // get caught by the test harness.
-            if (e.getCause() instanceof RuntimeException) {
-                throw (RuntimeException) e.getCause();
-            } else if (e.getCause() instanceof Error) {
-                throw (Error) e.getCause();
-            } else {
-                throw new AssertionError(e);
-            }
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
-    }
-
-    public static BytecodeConfig.Builder invokeNewConfigBuilder(Class<? extends ConstantOperandTestRootNode> interpreterClass) {
-        try {
-            Method newConfigBuilder = interpreterClass.getMethod("newConfigBuilder");
-            return (BytecodeConfig.Builder) newConfigBuilder.invoke(null);
-        } catch (InvocationTargetException e) {
-            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
-            // get caught by the test harness.
-            throw new IllegalStateException(e.getCause());
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
+        return ConstantOperandTestRootNodeBuilder.invokeCreate(interpreterClass, BytecodeConfig.DEFAULT, parser).getNode(0);
     }
 
     @Test
@@ -201,7 +170,7 @@ public class ConstantOperandTest {
         });
         assertEquals(123, root.getCallTarget().call(123));
 
-        root.getRootNodes().update(invokeNewConfigBuilder(interpreterClass).addInstrumentation(ReplaceValue.class).build());
+        root.getRootNodes().update(ConstantOperandTestRootNodeBuilder.invokeNewConfigBuilder(interpreterClass).addInstrumentation(ReplaceValue.class).build());
         assertEquals(42, root.getCallTarget().call(123));
     }
 
@@ -224,7 +193,7 @@ public class ConstantOperandTest {
         ContinuationResult cont = (ContinuationResult) root.getCallTarget().call();
         assertEquals(42, cont.getResult());
 
-        root.getRootNodes().update(invokeNewConfigBuilder(interpreterClass).addInstrumentation(ReplaceValue.class).build());
+        root.getRootNodes().update(ConstantOperandTestRootNodeBuilder.invokeNewConfigBuilder(interpreterClass).addInstrumentation(ReplaceValue.class).build());
         cont = (ContinuationResult) root.getCallTarget().call();
         assertEquals(123, cont.getResult());
     }

@@ -40,17 +40,25 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
+import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.generic;
+
+import java.io.DataInput;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.AnnotationProcessor;
@@ -59,9 +67,14 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModels;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeNames;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeParameterElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
 public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSLModels> {
 
@@ -156,6 +169,9 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
             }
         }
 
+        // Add helper methods to reflectively invoke static methods.
+        abstractBuilderType.addAll(createReflectiveHelpers(modelList.getTemplateType().asType(), abstractBuilderType.asType()));
+
         results.add(abstractBuilderType);
 
         return results;
@@ -182,6 +198,76 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
         }
 
         return false;
+    }
+
+    private List<CodeExecutableElement> createReflectiveHelpers(TypeMirror templateType, TypeMirror abstractBuilderType) {
+        List<CodeExecutableElement> result = new ArrayList<>();
+        ProcessorContext ctx = ProcessorContext.getInstance();
+
+        CodeTypeParameterElement tExtendsBasicInterpreter = new CodeTypeParameterElement(CodeNames.of("T"), templateType);
+        result.add(createReflectiveHelper("newConfigBuilder", templateType, types.BytecodeConfig_Builder, null));
+        result.add(createReflectiveHelper("create", templateType, generic(types.BytecodeRootNodes, tExtendsBasicInterpreter.asType()), tExtendsBasicInterpreter,
+                        new CodeVariableElement(types.BytecodeConfig, "config"),
+                        new CodeVariableElement(generic(types.BytecodeParser, ElementHelpers.wildcard(abstractBuilderType, null)), "builder")));
+        result.add(createReflectiveHelper("deserialize", templateType, generic(types.BytecodeRootNodes, tExtendsBasicInterpreter.asType()), tExtendsBasicInterpreter,
+                        new CodeVariableElement(generic(types.TruffleLanguage, ElementHelpers.wildcard(null, null)), "language"),
+                        new CodeVariableElement(types.BytecodeConfig, "config"),
+                        new CodeVariableElement(generic(ctx.getDeclaredType(Supplier.class), ctx.getDeclaredType(DataInput.class)), "input"),
+                        new CodeVariableElement(types.BytecodeDeserializer, "callback")));
+
+        return result;
+    }
+
+    private static CodeExecutableElement createReflectiveHelper(String name, TypeMirror templateType, DeclaredType returnType, CodeTypeParameterElement typeParameter, CodeVariableElement... params) {
+        String helperName = "invoke" + Character.toUpperCase(name.charAt(0)) + name.substring(1);
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(Modifier.PUBLIC, Modifier.STATIC), returnType, helperName);
+
+        if (!returnType.getTypeArguments().isEmpty()) {
+            GeneratorUtils.mergeSuppressWarnings(ex, "unchecked");
+        }
+
+        if (typeParameter != null) {
+            ex.getTypeParameters().add(typeParameter);
+        }
+
+        ex.addParameter(new CodeVariableElement(generic(Class.class, ElementHelpers.wildcard(templateType, null)), "interpreterClass"));
+        for (CodeVariableElement param : params) {
+            ex.addParameter(param);
+        }
+
+        CodeTreeBuilder b = ex.createBuilder();
+        ProcessorContext ctx = ProcessorContext.getInstance();
+
+        b.startTryBlock();
+        b.startDeclaration(ctx.getDeclaredType(Method.class), "method");
+        b.startCall("interpreterClass.getMethod");
+        b.doubleQuote(name);
+        for (CodeVariableElement param : params) {
+            b.typeLiteral(param.asType());
+        }
+        b.end();
+        b.end();
+
+        b.startReturn().cast(returnType);
+        b.startCall("method.invoke");
+        b.string("null"); // static method
+        for (CodeVariableElement param : params) {
+            b.variable(param);
+        }
+        b.end();
+        b.end();
+
+        b.end().startCatchBlock(ctx.getDeclaredType(InvocationTargetException.class), "e");
+        b.startIf().string("e.getCause() instanceof RuntimeException err").end().startBlock();
+        b.startThrow().string("err").end();
+        b.end().startElseBlock();
+        b.startThrow().startNew(ctx.getDeclaredType(AssertionError.class)).string("e.getCause()").end(2);
+        b.end();
+        b.end().startCatchBlock(ctx.getDeclaredType(Exception.class), "e");
+        b.startThrow().startNew(ctx.getDeclaredType(AssertionError.class)).string("e").end(2);
+        b.end();
+
+        return ex;
     }
 
 }
