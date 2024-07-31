@@ -37,6 +37,7 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
@@ -234,6 +235,14 @@ public abstract class CCompilerInvoker {
                     int minor0 = scanner.nextInt();
                     int minor1 = scanner.nextInt();
                     return new CompilerInfo(compilerPath, "intel", "Intel(R) C++ Compiler", "icc", major, minor0, minor1, "x86_64");
+                }
+
+                if (scanner.findInLine(Pattern.quote("Intel(R) oneAPI DPC++/C++ Compiler ")) != null) {
+                    scanner.useDelimiter("[. ]");
+                    int major = scanner.nextInt();
+                    int minor0 = scanner.nextInt();
+                    int minor1 = scanner.nextInt();
+                    return new CompilerInfo(compilerPath, "intel", "Intel(R) oneAPI DPC++/C++ Compiler", "icx", major, minor0, minor1, "x86_64");
                 }
 
                 if (scanner.findInLine("clang version ") != null) {
