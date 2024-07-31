@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -194,7 +194,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected Replacements replacements;
 
     private BoxingSnippets.Templates boxingSnippets;
-    protected IdentityHashCodeSnippets.Templates identityHashCodeSnippets;
+    private IdentityHashCodeSnippets.Templates identityHashCodeSnippets;
     protected IsArraySnippets.Templates isArraySnippets;
     protected StringLatin1Snippets.Templates latin1Templates;
     protected StringUTF16Snippets.Templates utf16templates;
@@ -213,6 +213,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     public void initialize(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers) {
         replacements = providers.getReplacements();
         boxingSnippets = new BoxingSnippets.Templates(options, factory, providers);
+        identityHashCodeSnippets = createIdentityHashCodeSnippets(options, providers);
         if (EmitStringSubstitutions.getValue(options)) {
             latin1Templates = new StringLatin1Snippets.Templates(options, providers);
             providers.getReplacements().registerSnippetTemplateCache(latin1Templates);
@@ -222,6 +223,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(options, providers));
         providers.getReplacements().registerSnippetTemplateCache(new BigIntegerSnippets.Templates(options, providers));
     }
+
+    protected abstract IdentityHashCodeSnippets.Templates createIdentityHashCodeSnippets(OptionValues options, Providers providers);
 
     @Override
     public boolean supportsImplicitNullChecks() {
