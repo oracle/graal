@@ -3908,7 +3908,8 @@ def graalvm_version(version_type):
 
         java_vnum, java_pre, java_build, _ = _base_jdk_version_info
         if version_type == 'vendor':
-            graalvm_pre = '' if _suite.is_release() else '-dev'
+            assert not _suite.is_release() or java_pre != 'ea', 'Release mode with an JDK EA build as base'
+            graalvm_pre = '' if _suite.is_release() or java_pre == 'ea' else '-dev'
             if java_pre:
                 graalvm_pre += '.' if graalvm_pre else '-'
                 graalvm_pre += java_pre
