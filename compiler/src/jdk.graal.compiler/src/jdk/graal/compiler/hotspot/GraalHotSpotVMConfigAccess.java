@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -207,11 +207,6 @@ public class GraalHotSpotVMConfigAccess {
 
     static void reportError(String rawErrorMessage) {
         String value = getSavedProperty(JVMCI_CONFIG_CHECK_PROP_NAME);
-        if (!JVMCI && value == null) {
-            // We cannot control when VM config updates are made in non-JVMCI
-            // JDKs so disable this check by default.
-            value = "ignore";
-        }
         if ("ignore".equals(value)) {
             return;
         }

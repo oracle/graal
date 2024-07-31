@@ -119,9 +119,9 @@ public class IdentityHashCodeUtil {
         long lockBits = markWord & config.lockMaskInPlace;
         boolean containsHashCode;
         if (config.lockingMode == config.lockingModeLightweight) {
-            containsHashCode = lockBits != config.monitorMask;
+            containsHashCode = lockBits != config.monitorValue;
         } else {
-            containsHashCode = lockBits == config.unlockedMask;
+            containsHashCode = lockBits == config.unlockedValue;
         }
         if (containsHashCode) {
             int hashcode = (int) (markWord >>> config.identityHashCodeShift);
