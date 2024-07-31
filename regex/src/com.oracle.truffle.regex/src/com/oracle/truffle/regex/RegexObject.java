@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -155,8 +156,8 @@ public final class RegexObject extends AbstractConstantKeysObject {
     private final AbstractRegexObject flags;
     private final int numberOfCaptureGroups;
     private final AbstractRegexObject namedCaptureGroups;
-    @CompilationFinal private RegexRootNode execRootNode;
-    @CompilationFinal private RegexRootNode execBooleanRootNode;
+    @CompilationFinal private RootCallTarget execRootCallTarget;
+    @CompilationFinal private RootCallTarget execBooleanRootCallTarget;
     private final boolean backtracking;
 
     public RegexObject(RegexExecNode execNode, RegexSource source, AbstractRegexObject flags, int numberOfCaptureGroups, AbstractRegexObject namedCaptureGroups) {
@@ -167,9 +168,9 @@ public final class RegexObject extends AbstractConstantKeysObject {
         this.namedCaptureGroups = namedCaptureGroups;
         RegexRootNode rootNode = new RegexRootNode(execNode.getRegexLanguage(), execNode);
         if (execNode.isBooleanMatch()) {
-            this.execBooleanRootNode = rootNode;
+            this.execBooleanRootCallTarget = rootNode.getCallTarget();
         } else {
-            this.execRootNode = rootNode;
+            this.execRootCallTarget = rootNode.getCallTarget();
         }
         this.backtracking = execNode.isBacktracking();
     }
@@ -191,11 +192,11 @@ public final class RegexObject extends AbstractConstantKeysObject {
     }
 
     public String getLabel() {
-        return execRootNode == null ? getLabel(execBooleanRootNode) : getLabel(execRootNode);
+        return execRootCallTarget == null ? getLabel(execBooleanRootCallTarget) : getLabel(execRootCallTarget);
     }
 
-    private static String getLabel(RegexRootNode rootNode) {
-        RegexExecNode execNode = (RegexExecNode) rootNode.getBodyUnwrapped();
+    private static String getLabel(RootCallTarget rootCallTarget) {
+        RegexExecNode execNode = (RegexExecNode) getRootNode(rootCallTarget).getBodyUnwrapped();
         if (execNode instanceof LiteralRegexExecNode) {
             return "literal";
         } else if (execNode.isBacktracking()) {
@@ -207,20 +208,25 @@ public final class RegexObject extends AbstractConstantKeysObject {
         }
     }
 
+    private static RegexRootNode getRootNode(RootCallTarget execRootCallTarget) {
+        return (RegexRootNode) execRootCallTarget.getRootNode();
+    }
+
     public CallTarget getExecCallTarget() {
-        if (execRootNode == null) {
+        if (execRootCallTarget == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            execRootNode = new RegexRootNode(language, new TRegexCompilationRequest(language, execBooleanRootNode.getSource().withoutBooleanMatch()).compile());
+            execRootCallTarget = new RegexRootNode(language,
+                            new TRegexCompilationRequest(language, getRootNode(execBooleanRootCallTarget).getSource().withoutBooleanMatch()).compile()).getCallTarget();
         }
-        return execRootNode.getCallTarget();
+        return execRootCallTarget;
     }
 
     public CallTarget getExecBooleanCallTarget() {
-        if (execBooleanRootNode == null) {
+        if (execBooleanRootCallTarget == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            execBooleanRootNode = new RegexRootNode(language, new TRegexCompilationRequest(language, execRootNode.getSource().withBooleanMatch()).compile());
+            execBooleanRootCallTarget = new RegexRootNode(language, new TRegexCompilationRequest(language, getRootNode(execRootCallTarget).getSource().withBooleanMatch()).compile()).getCallTarget();
         }
-        return execBooleanRootNode.getCallTarget();
+        return execBooleanRootCallTarget;
     }
 
     public boolean isBacktracking() {
@@ -330,7 +336,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
         Object execIdentity(String symbol, RegexObject receiver, Object[] args,
                         @Cached("symbol") String cachedSymbol,
                         @Cached @Shared ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            return execNode.execute(receiver.getExecCallTarget(), args);
+            return execNode.execute(receiver, args);
         }
 
         @SuppressWarnings("unused")
@@ -338,34 +344,35 @@ public final class RegexObject extends AbstractConstantKeysObject {
         Object execEquals(String symbol, RegexObject receiver, Object[] args,
                         @Cached("symbol") String cachedSymbol,
                         @Cached @Shared ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            return execNode.execute(receiver.getExecCallTarget(), args);
+            return execNode.execute(receiver, args);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_EXEC_BOOLEAN)"}, limit = N_METHODS)
         boolean execBooleanIdentity(String symbol, RegexObject receiver, Object[] args,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached @Shared ExecCompiledRegexNode execBoolNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            return execBoolNode.execute(receiver.getExecBooleanCallTarget(), args) != RegexResult.getNoMatchInstance();
+                        @Cached @Shared ExecBooleanCompiledRegexNode execBoolNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
+            return execBoolNode.execute(receiver, args) != RegexResult.getNoMatchInstance();
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_EXEC_BOOLEAN)"}, limit = N_METHODS, replaces = "execBooleanIdentity")
         boolean execBooleanEquals(String symbol, RegexObject receiver, Object[] args,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached @Shared ExecCompiledRegexNode execBoolNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            return execBoolNode.execute(receiver.getExecBooleanCallTarget(), args) != RegexResult.getNoMatchInstance();
+                        @Cached @Shared ExecBooleanCompiledRegexNode execBoolNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
+            return execBoolNode.execute(receiver, args) != RegexResult.getNoMatchInstance();
         }
 
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = {"execEquals", "execBooleanEquals"})
         static Object invokeGeneric(String symbol, RegexObject receiver, Object[] args,
-                        @Cached @Shared ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException {
+                        @Cached @Shared ExecCompiledRegexNode execNode,
+                        @Cached @Shared ExecBooleanCompiledRegexNode execBoolNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException {
             switch (symbol) {
                 case PROP_EXEC:
-                    return execNode.execute(receiver.getExecCallTarget(), args);
+                    return execNode.execute(receiver, args);
                 case PROP_EXEC_BOOLEAN:
-                    return execNode.execute(receiver.getExecBooleanCallTarget(), args) != RegexResult.getNoMatchInstance();
+                    return execBoolNode.execute(receiver, args) != RegexResult.getNoMatchInstance();
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw UnknownIdentifierException.create(symbol);
@@ -382,10 +389,6 @@ public final class RegexObject extends AbstractConstantKeysObject {
             this.regex = regex;
         }
 
-        public RegexObject getRegexObject() {
-            return regex;
-        }
-
         @SuppressWarnings("static-method")
         @ExportMessage
         boolean isExecutable() {
@@ -396,7 +399,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
         Object execute(Object[] args,
                         @Cached ExecCompiledRegexNode execNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             checkArity(args);
-            return execNode.execute(getRegexObject().getExecCallTarget(), args);
+            return execNode.execute(regex, args);
         }
 
         @TruffleBoundary
@@ -415,10 +418,6 @@ public final class RegexObject extends AbstractConstantKeysObject {
             this.regex = regex;
         }
 
-        public RegexObject getRegexObject() {
-            return regex;
-        }
-
         @SuppressWarnings("static-method")
         @ExportMessage
         boolean isExecutable() {
@@ -427,9 +426,9 @@ public final class RegexObject extends AbstractConstantKeysObject {
 
         @ExportMessage
         boolean execute(Object[] args,
-                        @Cached ExecCompiledRegexNode execNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+                        @Cached ExecBooleanCompiledRegexNode execNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             checkArity(args);
-            return execNode.execute(getRegexObject().getExecBooleanCallTarget(), args) != RegexResult.getNoMatchInstance();
+            return execNode.execute(regex, args) != RegexResult.getNoMatchInstance();
         }
 
         @TruffleBoundary
@@ -444,21 +443,44 @@ public final class RegexObject extends AbstractConstantKeysObject {
     @GenerateUncached
     abstract static class ExecCompiledRegexNode extends Node {
 
-        abstract Object execute(CallTarget receiver, Object[] args) throws UnsupportedMessageException, ArityException, UnsupportedTypeException;
+        abstract Object execute(RegexObject receiver, Object[] args) throws UnsupportedMessageException, ArityException, UnsupportedTypeException;
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "receiver == cachedCallTarget", limit = "4")
-        static Object doDirectCall(CallTarget receiver, Object[] args,
-                        @Cached("receiver") CallTarget cachedCallTarget,
-                        @Cached("create(cachedCallTarget)") DirectCallNode directCallNode) {
+        @Specialization(guards = "receiver == cachedReceiver", limit = "4")
+        static Object doDirectCall(RegexObject receiver, Object[] args,
+                        @Cached("receiver") RegexObject cachedReceiver,
+                        @Cached("create(receiver.getExecCallTarget())") DirectCallNode directCallNode) {
             return directCallNode.call(args);
         }
 
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = "doDirectCall")
-        static Object doIndirectCall(CallTarget receiver, Object[] args,
+        static Object doIndirectCall(RegexObject receiver, Object[] args,
                         @Cached IndirectCallNode indirectCallNode) {
-            return indirectCallNode.call(receiver, args);
+            return indirectCallNode.call(receiver.getExecCallTarget(), args);
+        }
+    }
+
+    @ImportStatic(RegexObject.class)
+    @GenerateInline(false)
+    @GenerateUncached
+    abstract static class ExecBooleanCompiledRegexNode extends Node {
+
+        abstract Object execute(RegexObject receiver, Object[] args) throws UnsupportedMessageException, ArityException, UnsupportedTypeException;
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "receiver == cachedReceiver", limit = "4")
+        static Object doDirectCall(RegexObject receiver, Object[] args,
+                        @Cached("receiver") RegexObject cachedReceiver,
+                        @Cached("create(receiver.getExecBooleanCallTarget())") DirectCallNode directCallNode) {
+            return directCallNode.call(args);
+        }
+
+        @ReportPolymorphism.Megamorphic
+        @Specialization(replaces = "doDirectCall")
+        static Object doIndirectCall(RegexObject receiver, Object[] args,
+                        @Cached IndirectCallNode indirectCallNode) {
+            return indirectCallNode.call(receiver.getExecBooleanCallTarget(), args);
         }
     }
 
