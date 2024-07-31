@@ -124,20 +124,20 @@ public class EveryChunkNativePeriodicEvents extends Event {
     private static void emitNmtPeakEvents() {
         NativeMemoryUsageTotalPeakEvent nmtTotalPeakEvent = new NativeMemoryUsageTotalPeakEvent();
 
-        long totalPeakUsed = NativeMemoryTracking.singleton().getPeakTotalUsedMemory();
+        long totalPeakUsed = NativeMemoryTracking.singleton().getPeakTotalMallocMemory();
         nmtTotalPeakEvent.peakCommitted = totalPeakUsed;
         nmtTotalPeakEvent.peakReserved = totalPeakUsed;
-        nmtTotalPeakEvent.countAtPeak = NativeMemoryTracking.singleton().getCountAtTotalPeakUsage();
+        nmtTotalPeakEvent.countAtPeak = NativeMemoryTracking.singleton().getCountAtPeakTotalMallocMemory();
         nmtTotalPeakEvent.commit();
 
         for (NmtCategory nmtCategory : NmtCategory.values()) {
             NativeMemoryUsagePeakEvent nmtPeakEvent = new NativeMemoryUsagePeakEvent();
             nmtPeakEvent.type = nmtCategory.getName();
 
-            long peakUsed = NativeMemoryTracking.singleton().getPeakUsedMemory(nmtCategory);
+            long peakUsed = NativeMemoryTracking.singleton().getPeakMallocMemory(nmtCategory);
             nmtPeakEvent.peakCommitted = peakUsed;
             nmtPeakEvent.peakReserved = peakUsed;
-            nmtPeakEvent.countAtPeak = NativeMemoryTracking.singleton().getCountAtPeakUsage(nmtCategory);
+            nmtPeakEvent.countAtPeak = NativeMemoryTracking.singleton().getCountAtPeakMallocMemory(nmtCategory);
             nmtPeakEvent.commit();
         }
     }
@@ -150,7 +150,7 @@ public class EveryChunkNativePeriodicEvents extends Event {
 
         if (JfrEvent.NativeMemoryUsage.shouldEmit()) {
             for (NmtCategory nmtCategory : nmtCategories) {
-                long usedMemory = NativeMemoryTracking.singleton().getUsedMemory(nmtCategory);
+                long usedMemory = NativeMemoryTracking.singleton().getMallocMemory(nmtCategory);
 
                 JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.NativeMemoryUsage);
                 JfrNativeEventWriter.putLong(data, timestamp);
@@ -162,7 +162,7 @@ public class EveryChunkNativePeriodicEvents extends Event {
         }
 
         if (JfrEvent.NativeMemoryUsageTotal.shouldEmit()) {
-            long totalUsedMemory = NativeMemoryTracking.singleton().getTotalUsedMemory();
+            long totalUsedMemory = NativeMemoryTracking.singleton().getTotalMallocMemory();
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.NativeMemoryUsageTotal);
             JfrNativeEventWriter.putLong(data, timestamp);

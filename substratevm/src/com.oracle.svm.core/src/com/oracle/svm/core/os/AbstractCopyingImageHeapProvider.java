@@ -40,18 +40,19 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.nmt.NmtPreImageHeapData;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
-    public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
+    public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer, NmtPreImageHeapData nmtData) {
         Pointer selfReservedMemory = WordFactory.nullPointer();
         UnsignedWord requiredSize = getTotalRequiredAddressSpaceSize();
         if (reservedAddressSpace.isNull()) {
             UnsignedWord alignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
-            selfReservedMemory = VirtualMemoryProvider.get().reserve(requiredSize, alignment, false);
+            selfReservedMemory = VirtualMemoryProvider.get().reserve(requiredSize, alignment, false, nmtData);
             if (selfReservedMemory.isNull()) {
                 return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
             }
@@ -73,13 +74,13 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
 
             int error = DynamicMethodAddressResolutionHeapSupport.get().initialize();
             if (error != CEntryPointErrors.NO_ERROR) {
-                freeImageHeap(selfReservedHeapBase);
+                freeImageHeap(selfReservedHeapBase, nmtData);
                 return error;
             }
 
             error = DynamicMethodAddressResolutionHeapSupport.get().install(heapBase);
             if (error != CEntryPointErrors.NO_ERROR) {
-                freeImageHeap(selfReservedHeapBase);
+                freeImageHeap(selfReservedHeapBase, nmtData);
                 return error;
             }
         } else {
@@ -90,9 +91,9 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
         // Copy the memory to the reserved address space.
         UnsignedWord imageHeapSizeInFile = getImageHeapSizeInFile(IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get());
         Pointer imageHeap = getImageHeapBegin(heapBase);
-        int result = commitAndCopyMemory(IMAGE_HEAP_BEGIN.get(), imageHeapSizeInFile, imageHeap);
+        int result = commitAndCopyMemory(IMAGE_HEAP_BEGIN.get(), imageHeapSizeInFile, imageHeap, nmtData);
         if (result != CEntryPointErrors.NO_ERROR) {
-            freeImageHeap(selfReservedHeapBase);
+            freeImageHeap(selfReservedHeapBase, nmtData);
             return result;
         }
 
@@ -101,7 +102,7 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
         UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(IMAGE_HEAP_BEGIN.get()), pageSize);
         if (writableBeginPageOffset.aboveThan(0)) {
             if (VirtualMemoryProvider.get().protect(imageHeap, writableBeginPageOffset, Access.READ) != 0) {
-                freeImageHeap(selfReservedHeapBase);
+                freeImageHeap(selfReservedHeapBase, nmtData);
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }
@@ -112,7 +113,7 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
             Pointer afterWritableBoundary = imageHeap.add(writableEndPageOffset);
             UnsignedWord afterWritableSize = imageHeapSizeInFile.subtract(writableEndPageOffset);
             if (VirtualMemoryProvider.get().protect(afterWritableBoundary, afterWritableSize, Access.READ) != 0) {
-                freeImageHeap(selfReservedHeapBase);
+                freeImageHeap(selfReservedHeapBase, nmtData);
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }
@@ -126,8 +127,8 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
     }
 
     @Uninterruptible(reason = "Called during isolate initialization.")
-    protected int commitAndCopyMemory(Pointer loadedImageHeap, UnsignedWord imageHeapSize, Pointer newImageHeap) {
-        Pointer actualNewImageHeap = VirtualMemoryProvider.get().commit(newImageHeap, imageHeapSize, Access.READ | Access.WRITE);
+    protected int commitAndCopyMemory(Pointer loadedImageHeap, UnsignedWord imageHeapSize, Pointer newImageHeap, NmtPreImageHeapData nmtData) {
+        Pointer actualNewImageHeap = VirtualMemoryProvider.get().commit(newImageHeap, imageHeapSize, Access.READ | Access.WRITE, nmtData);
         if (actualNewImageHeap.isNull() || actualNewImageHeap.notEqual(newImageHeap)) {
             return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
         }
@@ -140,13 +141,18 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
     @Override
     @Uninterruptible(reason = "Called during isolate tear-down.")
     public int freeImageHeap(PointerBase heapBase) {
+        return freeImageHeap(heapBase, WordFactory.nullPointer());
+    }
+
+    @Uninterruptible(reason = "Called during isolate tear-down.")
+    private int freeImageHeap(PointerBase heapBase, NmtPreImageHeapData nmtData) {
         if (heapBase.isNonNull()) {
             Pointer addressSpaceStart = (Pointer) heapBase;
             if (DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
                 addressSpaceStart = addressSpaceStart.subtract(getPreHeapAlignedSizeForDynamicMethodAddressResolver());
             }
 
-            if (VirtualMemoryProvider.get().free(addressSpaceStart, getTotalRequiredAddressSpaceSize()) != 0) {
+            if (VirtualMemoryProvider.get().free(addressSpaceStart, getTotalRequiredAddressSpaceSize(), nmtData) != 0) {
                 return CEntryPointErrors.FREE_IMAGE_HEAP_FAILED;
             }
         }

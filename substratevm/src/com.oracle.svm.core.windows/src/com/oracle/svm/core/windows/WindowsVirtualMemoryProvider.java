@@ -46,6 +46,10 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.nmt.NativeMemoryTracking;
+import com.oracle.svm.core.nmt.NmtPreImageHeapData;
+import com.oracle.svm.core.nmt.NmtPreImageHeapDataAccess;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -54,6 +58,7 @@ import com.oracle.svm.core.windows.headers.MemoryAPI;
 import com.oracle.svm.core.windows.headers.SysinfoAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
+import com.oracle.svm.core.VMInspectionOptions;
 
 @AutomaticallyRegisteredImageSingleton(VirtualMemoryProvider.class)
 public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
@@ -125,7 +130,19 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
+    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtPreImageHeapData nmtData) {
+        return reserve0(nbytes, alignment, executable, nmtData, NmtCategory.ImageHeap);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtCategory category) {
+        return reserve0(nbytes, alignment, executable, WordFactory.nullPointer(), category);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @SuppressWarnings("unused")
+    private static Pointer reserve0(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtPreImageHeapData nmtData, NmtCategory category) {
         if (nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -146,6 +163,13 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
              * placeholders. This effectively makes the use of placeholders transparent.
              */
             replacePlaceholder(reservedPlaceholder, nbytes);
+            if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+                if (nmtData.isNull()) {
+                    NativeMemoryTracking.singleton().trackReserve(reservedPlaceholder, nbytes, category);
+                } else {
+                    NmtPreImageHeapDataAccess.enqueueReserve(nmtData, reservedPlaceholder, nbytes, category);
+                }
+            }
             return reservedPlaceholder;
         }
 
@@ -160,7 +184,16 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
         if (reserved.isNull()) {
             return WordFactory.nullPointer();
         }
-        return requiredAlignment.equal(UNALIGNED) ? reserved : PointerUtils.roundUp(reserved, requiredAlignment);
+
+        Pointer addr = requiredAlignment.equal(UNALIGNED) ? reserved : PointerUtils.roundUp(reserved, requiredAlignment);
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            if (nmtData.isNull()) {
+                NativeMemoryTracking.singleton().trackReserve(addr, nbytes.add(requiredAlignment), category);
+            } else {
+                NmtPreImageHeapDataAccess.enqueueReserve(nmtData, addr, nbytes.add(requiredAlignment), category);
+            }
+        }
+        return addr;
     }
 
     private static final int MEM_RESERVE_PLACEHOLDER = 0x00040000;
@@ -283,7 +316,19 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access) {
+    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtPreImageHeapData nmtData) {
+        return mapFile0(start, nbytes, fileHandle, offset, access, nmtData, NmtCategory.ImageHeap);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtCategory category) {
+        return mapFile0(start, nbytes, fileHandle, offset, access, WordFactory.nullPointer(), category);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @SuppressWarnings("unused")
+    private Pointer mapFile0(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtPreImageHeapData nmtData, NmtCategory category) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -312,6 +357,12 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
         if (fileView.isNull()) {
             /* Restore a normal allocation as the caller is unaware of placeholders. */
             replacePlaceholder(start, nbytes);
+        } else if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            if (nmtData.isNull()) {
+                NativeMemoryTracking.singleton().trackCommit(start, nbytes, category);
+            } else {
+                NmtPreImageHeapDataAccess.enqueueCommit(nmtData, start, nbytes, category);
+            }
         }
         return fileView;
     }
@@ -351,7 +402,19 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access) {
+    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access, NmtPreImageHeapData nmtData) {
+        return commit0(start, nbytes, access, nmtData, NmtCategory.ImageHeap);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access, NmtCategory category) {
+        return commit0(start, nbytes, access, WordFactory.nullPointer(), category);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @SuppressWarnings("unused")
+    private Pointer commit0(PointerBase start, UnsignedWord nbytes, int access, NmtPreImageHeapData nmtData, NmtCategory category) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -360,7 +423,15 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
          * VirtualAlloc only guarantees the zeroing for freshly committed pages (i.e., the content
          * of pages that were already committed earlier won't be touched).
          */
-        return MemoryAPI.VirtualAlloc(start, nbytes, MemoryAPI.MEM_COMMIT(), accessAsProt(access));
+        Pointer addr = MemoryAPI.VirtualAlloc(start, nbytes, MemoryAPI.MEM_COMMIT(), accessAsProt(access));
+        if (addr.isNonNull() && VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            if (nmtData.isNull()) {
+                NativeMemoryTracking.singleton().trackCommit(start, nbytes, category);
+            } else {
+                NmtPreImageHeapDataAccess.enqueueCommit(nmtData, start, nbytes, category);
+            }
+        }
+        return addr;
     }
 
     @Override
@@ -383,12 +454,24 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
         }
 
         int result = MemoryAPI.VirtualFree(start, nbytes, MemoryAPI.MEM_DECOMMIT());
-        return (result != 0) ? 0 : -1;
+        if (result != 0) {
+            if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+                NativeMemoryTracking.singleton().trackUncommit(start, nbytes);
+            }
+            return 0;
+        }
+        return -1;
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int free(PointerBase start, UnsignedWord nbytes) {
+        return free(start, nbytes, WordFactory.nullPointer());
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int free(PointerBase start, UnsignedWord nbytes, NmtPreImageHeapData nmtData) {
         if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
             return -1;
         }
@@ -408,6 +491,10 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
                 return -1;
             }
             end = ((Pointer) memoryInfo.AllocationBase()).subtract(1);
+
+            if (nmtData.isNull() && VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+                NativeMemoryTracking.singleton().trackFree(start);
+            }
         }
         return 0;
     }
