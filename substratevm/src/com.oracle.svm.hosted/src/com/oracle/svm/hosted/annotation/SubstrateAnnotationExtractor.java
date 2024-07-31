@@ -49,6 +49,10 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
+import com.oracle.graal.pointsto.meta.BaseLayerElement;
+import com.oracle.graal.pointsto.meta.BaseLayerField;
+import com.oracle.graal.pointsto.meta.BaseLayerMethod;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.hosted.annotation.AnnotationMetadata.AnnotationExtractionError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -181,7 +185,9 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
         }
 
         AnnotatedElement root = findRoot(cur);
-        if (root != null) {
+        if (root instanceof BaseLayerElement baseLayerElement) {
+            result = Arrays.stream(baseLayerElement.getBaseLayerAnnotations()).map(AnnotationValue::new).toList().toArray(new AnnotationValue[0]);
+        } else if (root != null) {
             result = concat(result, declaredOnly ? getDeclaredAnnotationDataFromRoot(root) : getAnnotationDataFromRoot(root));
         }
         return result;
@@ -441,7 +447,9 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     private static AnnotatedElement findRoot(AnnotatedElement element) {
         assert !(element instanceof WrappedElement || element instanceof AnnotationWrapper);
         try {
-            if (element instanceof ResolvedJavaType type) {
+            if (element instanceof BaseLayerType || element instanceof BaseLayerMethod || element instanceof BaseLayerField) {
+                return element;
+            } else if (element instanceof ResolvedJavaType type) {
                 return OriginalClassProvider.getJavaClass(type);
             } else if (element instanceof ResolvedJavaMethod method) {
                 return OriginalMethodProvider.getJavaMethod(method);

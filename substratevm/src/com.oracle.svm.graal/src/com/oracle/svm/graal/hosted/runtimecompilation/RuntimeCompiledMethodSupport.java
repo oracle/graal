@@ -229,7 +229,7 @@ public class RuntimeCompiledMethodSupport {
              * The graph in the analysis universe is no longer necessary once it is transplanted
              * into the hosted universe.
              */
-            aMethod.setAnalyzedGraph(null);
+            aMethod.clearAnalyzedGraph();
 
             if (!trackNodeSourcePosition) {
                 /*

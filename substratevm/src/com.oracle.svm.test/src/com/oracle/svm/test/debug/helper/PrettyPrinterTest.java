@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.test.debug.helper;
 
-import com.oracle.svm.core.NeverInline;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+
+import com.oracle.svm.core.NeverInline;
 
 public class PrettyPrinterTest {
 
@@ -135,6 +136,12 @@ public class PrettyPrinterTest {
         System.out.print("");
     }
 
+    @SuppressWarnings("unused")
+    @NeverInline("For testing purposes")
+    static void testLambda(Function<String, String> lambda) {
+        System.out.print("");
+    }
+
     static ExampleClass setupExampleObject(boolean recursive) {
         ExampleClass example = new ExampleClass();
         example.f10 = new ExampleClass(10, 20, (short) 30, '\40', (byte) 50, true, "60", Day.Sunday, new Object(), null);
@@ -163,5 +170,7 @@ public class PrettyPrinterTest {
         testArrayList(new ArrayList<>(List.of("this", "is", "a", "string", "list")), new ArrayList<>(List.of(1, 2L, "string")), nullList);
         testHashMap(new HashMap<>(Map.of("this", "one", "is", "two", "a", "three", "string", "four", "list", "five")),
                         new HashMap<>(Map.of(1, new ExampleClass(), 2L, "string", (byte) 3, new ArrayList<>())));
+
+        testLambda(str -> str);
     }
 }

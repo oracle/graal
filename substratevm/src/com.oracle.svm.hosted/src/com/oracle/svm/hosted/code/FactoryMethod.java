@@ -105,4 +105,8 @@ public final class FactoryMethod extends NonBytecodeMethod {
     public ResolvedJavaMethod getTargetConstructor() {
         return targetConstructor;
     }
+
+    public boolean throwAllocatedObject() {
+        return throwAllocatedObject;
+    }
 }
