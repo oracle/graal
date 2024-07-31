@@ -885,7 +885,7 @@ public final class NativeImageHeap implements ImageHeap {
             return size;
         }
 
-        int getIdentityHashCode() {
+        public int getIdentityHashCode() {
             return identityHashCode;
         }
 
