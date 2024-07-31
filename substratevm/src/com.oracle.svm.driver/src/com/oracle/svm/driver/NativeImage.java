@@ -29,9 +29,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.module.Configuration;
 import java.lang.module.FindException;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReference;
+import java.lang.module.ResolvedModule;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -1568,10 +1570,20 @@ public class NativeImage {
         List<Path> finalImageModulePath = applicationModules.values().stream().toList();
 
         if (!addModules.isEmpty()) {
-
             arguments.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" +
                             String.join(",", addModules));
+        }
 
+        /*
+         * Make sure to add all system modules required by the application that might not be part of
+         * the boot module layer of image builder. If we do not do this, the image builder will fail
+         * to create the image-build module layer, as it will attempt to define system modules to
+         * the host VM.
+         */
+        Set<String> implicitlyRequiredSystemModules = getImplicitlyRequiredSystemModules(finalImageModulePath);
+        addModules.addAll(implicitlyRequiredSystemModules);
+
+        if (!addModules.isEmpty()) {
             List<String> addModulesForBuilderVM = new ArrayList<>();
             for (String moduleNameInAddModules : addModules) {
                 if (!applicationModules.containsKey(moduleNameInAddModules)) {
@@ -1764,6 +1776,28 @@ public class NativeImage {
             throw showError("Failed to collect ModuleReferences for module-path entries " + modulePath, e);
         }
         return mrefs;
+    }
+
+    private Set<String> getImplicitlyRequiredSystemModules(Collection<Path> finalModulePath) {
+        if (!config.modulePathBuild || finalModulePath.isEmpty()) {
+            return Set.of();
+        }
+
+        List<Path> modulePath = finalModulePath.stream().filter(p -> !p.endsWith("lib/svm/library-support.jar")).toList();
+
+        ModuleFinder finder = ModuleFinder.of(modulePath.toArray(Path[]::new));
+        Set<String> modules = finder.findAll().stream()
+                        .map(mref -> mref.descriptor().name())
+                        .collect(Collectors.toSet());
+
+        Configuration configuration = ModuleLayer.boot().configuration().resolve(finder, ModuleFinder.ofSystem(), modules);
+        Set<String> applicationModulePathRequiredModules = configuration.modules().stream()
+                        .map(ResolvedModule::name)
+                        .collect(Collectors.toSet());
+
+        Set<String> applicationModulePathRequiredSystemModules = new HashSet<>(getBuiltInModules());
+        applicationModulePathRequiredSystemModules.retainAll(applicationModulePathRequiredModules);
+        return applicationModulePathRequiredSystemModules;
     }
 
     boolean useBundle() {
