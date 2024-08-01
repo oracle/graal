@@ -237,6 +237,60 @@ public abstract class Fd implements Closeable {
 
     /**
      * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#-fd_pwritefd-fd-iovs-ciovec_array-offset-filesize---resultsize-errno"><code>fd_pwrite</code></a>:
+     * writes {@code iovecCount} buffers of data described by {@code iovecArrayAddress} to the file
+     * represented by this file descriptor without using and updating the file descriptor's offset.
+     * <p>
+     * Similar to POSIX <a href="https://linux.die.net/man/2/pwritev"><code>pwritev</code></a>.
+     *
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param iovecArrayAddress {@code {buf: u8*, buf_len: u32}*}: start address of an array of
+     *            <a href=
+     *            "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#-iovec-struct"><code>iovc</code></a>
+     * @param iovecCount number of <a href=
+     *            "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#-iovec-struct"><code>iovc</code></a>
+     * @param offset {@code u64}: the offset within the file at which to write
+     * @param sizeAddress {@code u32*}: the address at which to write the number of bytes written
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     */
+    public Errno pwrite(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, long offset, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdWrite)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#-fd_preadfd-fd-iovs-iovec_array-offset-filesize---resultsize-errno"><code>fd_pread</code></a>:
+     * reads {@code iovecCount} buffers of data described by {@code iovecArrayAddress} from the file
+     * represented by this file descriptor without using and updating the file descriptor's offset.
+     * <p>
+     * Similar to POSIX <a href="https://linux.die.net/man/2/preadv"><code>preadv</code></a>.
+     *
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param iovecArrayAddress {@code {buf: u8*, buf_len: u32}*}: start address of an array of
+     *            <a href=
+     *            "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#-iovec-struct"><code>iovc</code></a>
+     * @param iovecCount number of <a href=
+     *            "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#-iovec-struct"><code>iovc</code></a>
+     * @param offset {@code u64}: the offset within the file at which to read
+     * @param sizeAddress {@code u32*}: the address at which to write the number of bytes written
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     */
+    public Errno pread(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, long offset, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdRead)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
      * "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#fd_seek"><code>fd_seek</code></a>:
      * moves the offset of this file descriptor.
      * <p>

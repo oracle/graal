@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,51 +38,50 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm.predefined.wasi;
 
-package org.graalvm.wasm.predefined.wasi.fd;
-
-import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.WasmArguments;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
-import org.graalvm.wasm.predefined.wasi.types.Fdflags;
-import org.graalvm.wasm.predefined.wasi.types.Filetype;
-import org.graalvm.wasm.predefined.wasi.types.Rights;
 
-import java.io.InputStream;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-import static org.graalvm.wasm.predefined.wasi.FlagUtils.flags;
-import static org.graalvm.wasm.predefined.wasi.FlagUtils.flagsShort;
-import static org.graalvm.wasm.predefined.wasi.FlagUtils.isSet;
+public final class WasiFdPreadNode extends WasmBuiltinRootNode {
 
-/**
- * File descriptor wrapping an {@link InputStream}.
- */
-final class InputStreamFd extends Fd {
-
-    private static final long FS_RIGHTS_BASE = flags(Rights.FdRead);
-    private static final long FS_RIGHTS_INHERITING = 0;
-    private static final short FS_FLAGS = flagsShort(Fdflags.Append);
-
-    private final InputStream inputStream;
-
-    InputStreamFd(InputStream inputStream) {
-        super(Filetype.CharacterDevice, FS_RIGHTS_BASE, FS_RIGHTS_INHERITING, FS_FLAGS);
-        this.inputStream = inputStream;
+    public WasiFdPreadNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Errno read(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, int sizeAddress) {
-        if (!isSet(fsRightsBase, Rights.FdRead)) {
-            return Errno.Notcapable;
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+        final Object[] args = frame.getArguments();
+        return fdPread(context, memory(frame),
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1),
+                        (int) WasmArguments.getArgument(args, 2),
+                        (long) WasmArguments.getArgument(args, 3),
+                        (int) WasmArguments.getArgument(args, 4));
+    }
+
+    @TruffleBoundary
+    private int fdPread(WasmContext context, WasmMemory memory, int fd, int iov, int iovcnt, long offset, int sizeAddress) {
+        final Fd handle = context.fdManager().get(fd);
+        if (handle == null) {
+            return Errno.Badf.ordinal();
         }
-        return FdUtils.readFromStream(node, memory, inputStream, iovecArrayAddress, iovecCount, sizeAddress);
+        return handle.pread(this, memory, iov, iovcnt, offset, sizeAddress).ordinal();
     }
 
     @Override
-    public Errno pread(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, long offset, int sizeAddress) {
-        if (!isSet(fsRightsBase, Rights.FdRead)) {
-            return Errno.Notcapable;
-        }
-        return Errno.Spipe;
+    public String builtinNodeName() {
+        return "__wasi_fd_pread";
     }
+
 }
