@@ -48,6 +48,10 @@ import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.predefined.wasi.fd.Fd;
+import org.graalvm.wasm.predefined.wasi.types.Errno;
+
+import java.io.IOException;
 
 public class WasiFdRenumberNode extends WasmBuiltinRootNode {
 
@@ -63,7 +67,24 @@ public class WasiFdRenumberNode extends WasmBuiltinRootNode {
 
     @TruffleBoundary
     public int fdRenumber(WasmContext context, int fd, int to) {
-        return context.fdManager().renumber(fd, to).ordinal();
+        synchronized (context.fdManager()) {
+            Fd handle = context.fdManager().get(fd);
+            if (handle == null) {
+                return Errno.Badf.ordinal();
+            }
+            Fd toHandle = context.fdManager().get(to);
+            if (toHandle == null) {
+                // do not allow renumbering to arbitrary fd values
+                return Errno.Badf.ordinal();
+            }
+            try {
+                toHandle.close();
+            } catch (IOException e) {
+                return Errno.Io.ordinal();
+            }
+            context.fdManager().renumber(fd, to);
+            return Errno.Success.ordinal();
+        }
     }
 
     @Override
