@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,57 +38,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm.predefined.wasi;
 
-package org.graalvm.wasm.predefined.wasi.fd;
-
-import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.WasmArguments;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
-import org.graalvm.wasm.predefined.wasi.types.Fdflags;
-import org.graalvm.wasm.predefined.wasi.types.Filetype;
-import org.graalvm.wasm.predefined.wasi.types.Rights;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-import static org.graalvm.wasm.predefined.wasi.FlagUtils.flags;
-import static org.graalvm.wasm.predefined.wasi.FlagUtils.flagsShort;
-import static org.graalvm.wasm.predefined.wasi.FlagUtils.isSet;
+public final class WasiFdDatasyncNode extends WasmBuiltinRootNode {
 
-/**
- * File descriptor wrapping an {@link OutputStream}.
- */
-final class OutputStreamFd extends Fd {
-
-    private static final long FS_RIGHTS_BASE = flags(Rights.FdWrite);
-    private static final long FS_RIGHTS_INHERITING = 0;
-    private static final short FS_FLAGS = flagsShort(Fdflags.Append);
-
-    private final OutputStream outputStream;
-
-    OutputStreamFd(OutputStream outputStream) {
-        super(Filetype.CharacterDevice, FS_RIGHTS_BASE, FS_RIGHTS_INHERITING, FS_FLAGS);
-        this.outputStream = outputStream;
+    public WasiFdDatasyncNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Errno write(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, int sizeAddress) {
-        if (!isSet(fsRightsBase, Rights.FdWrite)) {
-            return Errno.Notcapable;
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+        final Object[] args = frame.getArguments();
+        return fdDatasync(context, (int) WasmArguments.getArgument(args, 0));
+    }
+
+    @TruffleBoundary
+    private static int fdDatasync(WasmContext context, int fd) {
+        final Fd handle = context.fdManager().get(fd);
+        if (handle == null) {
+            return Errno.Badf.ordinal();
         }
-        return FdUtils.writeToStream(node, memory, outputStream, iovecArrayAddress, iovecCount, sizeAddress);
+        return handle.datasync().ordinal();
     }
 
     @Override
-    public Errno datasync() {
-        if (!isSet(fsRightsBase, Rights.FdDatasync)) {
-            return Errno.Notcapable;
-        }
-        try {
-            outputStream.flush();
-        } catch (IOException e) {
-            return Errno.Io;
-        }
-        return Errno.Success;
+    public String builtinNodeName() {
+        return "__wasi_fd_datasync";
     }
+
 }
