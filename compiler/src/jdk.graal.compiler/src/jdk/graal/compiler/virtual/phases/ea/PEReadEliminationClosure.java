@@ -441,6 +441,13 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
             values[0] = states.get(0).getReadCache(getPhiValueAt(phi, 0), identity, index, kind, PEReadEliminationClosure.this);
             if (values[0] != null) {
                 for (int i = 1; i < states.size(); i++) {
+                    ObjectState obj = getObjectState(states.get(i), getPhiValueAt(phi, i));
+                    if (obj != null && obj.isVirtual()) {
+                        // abort, the alias is still virtual and we cannot materialize it here
+                        // during read elimination
+                        return;
+                    }
+
                     ValueNode value = states.get(i).getReadCache(getPhiValueAt(phi, i), identity, index, kind, PEReadEliminationClosure.this);
                     // e.g. unsafe loads / stores with same identity and different access kinds see
                     // mergeReadCache(states)
