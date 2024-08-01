@@ -38,7 +38,6 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.VMError;
 
@@ -62,6 +61,9 @@ public class Isolates {
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME);
     public static final CGlobalData<Pointer> ISOLATE_COUNTER = CGlobalDataFactory.createWord((WordBase) WordFactory.unsigned(1));
+
+    /* Only used if SpawnIsolates is disabled. */
+    private static final CGlobalData<Pointer> SINGLE_ISOLATE_ALREADY_CREATED = CGlobalDataFactory.createWord();
 
     private static long startTimeMillis;
     private static long startNanoTime;
@@ -129,29 +131,24 @@ public class Isolates {
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static int checkIsolate(Isolate isolate) {
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            return isolate.isNull() ? CEntryPointErrors.NULL_ARGUMENT : CEntryPointErrors.NO_ERROR;
-        } else {
-            return isolate.equal(CEntryPointSetup.SINGLE_ISOLATE_SENTINEL) ? CEntryPointErrors.NO_ERROR : CEntryPointErrors.UNINITIALIZED_ISOLATE;
-        }
+        return isolate.isNull() ? CEntryPointErrors.NULL_ARGUMENT : CEntryPointErrors.NO_ERROR;
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static int create(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters) {
+        if (!SubstrateOptions.SpawnIsolates.getValue()) {
+            if (!SINGLE_ISOLATE_ALREADY_CREATED.get().logicCompareAndSwapWord(0, WordFactory.zero(), WordFactory.signed(1), NamedLocationIdentity.OFF_HEAP_LOCATION)) {
+                return CEntryPointErrors.SINGLE_ISOLATE_ALREADY_CREATED;
+            }
+        }
+
         WordPointer heapBasePointer = StackValue.get(WordPointer.class);
         int result = CommittedMemoryProvider.get().initialize(heapBasePointer, parameters);
         if (result != CEntryPointErrors.NO_ERROR) {
             return result;
         }
 
-        Isolate isolate;
-        if (!SubstrateOptions.SpawnIsolates.getValue()) {
-            isolate = (Isolate) CEntryPointSetup.SINGLE_ISOLATE_SENTINEL;
-            VMError.guarantee(IMAGE_HEAP_BEGIN.get().equal(heapBasePointer.read()));
-        } else {
-            isolate = heapBasePointer.read();
-        }
-
+        Isolate isolate = heapBasePointer.read();
         result = checkIsolate(isolate);
         if (result != CEntryPointErrors.NO_ERROR) {
             isolatePointer.write(WordFactory.nullPointer());
@@ -165,9 +162,6 @@ public class Isolates {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static PointerBase getHeapBase(Isolate isolate) {
-        if (!SubstrateOptions.SpawnIsolates.getValue()) {
-            return IMAGE_HEAP_BEGIN.get();
-        }
         return isolate;
     }
 }

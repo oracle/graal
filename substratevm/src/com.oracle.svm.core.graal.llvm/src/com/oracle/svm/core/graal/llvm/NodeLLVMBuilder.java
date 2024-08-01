@@ -192,7 +192,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             builder.buildStackmap(builder.constantLong(startPatchpointID));
             gen.getCompilationResult().recordInfopoint(NumUtil.safeToInt(startPatchpointID), null, InfopointReason.METHOD_START);
 
-            if (gen.isEntryPoint() && SubstrateOptions.SpawnIsolates.getValue()) {
+            if (gen.isEntryPoint()) {
                 /*
                  * In entry points, we want to restore the heap base register on return. For
                  * example, in Isolate creation, this allows the current thread to get back its heap

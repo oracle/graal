@@ -35,7 +35,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -192,16 +191,14 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
      */
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
     protected static boolean tryEnterIsolate() {
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            Isolate isolate = getSignalHandlerIsolate();
-            if (isolate.isNull()) {
-                /* It is not the initial isolate or the initial isolate already exited. */
-                return false;
-            }
-
-            /* Write isolate pointer (heap base) into register. */
-            CEntryPointSnippets.setHeapBase(Isolates.getHeapBase(isolate));
+        Isolate isolate = getSignalHandlerIsolate();
+        if (isolate.isNull()) {
+            /* It is not the initial isolate or the initial isolate already exited. */
+            return false;
         }
+
+        /* Write isolate pointer (heap base) into register. */
+        CEntryPointSnippets.setHeapBase(Isolates.getHeapBase(isolate));
 
         /* We are keeping reference to isolate thread inside OS thread local area. */
         ThreadLocalKey key = singleton().keyForNativeThreadLocal;

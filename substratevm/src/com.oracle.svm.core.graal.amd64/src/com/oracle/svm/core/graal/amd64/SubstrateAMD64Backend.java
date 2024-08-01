@@ -1815,30 +1815,20 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         if (SubstrateControlFlowIntegrity.enabled()) {
             asm.endbranch();
         }
-        if (SubstrateOptions.SpawnIsolates.getValue()) { // method id is offset from heap base
-            asm.movq(rax, new AMD64Address(threadArg.getRegister(), threadIsolateOffset));
-            /*
-             * Load the isolate pointer from the JNIEnv argument (same as the isolate thread). The
-             * isolate pointer is equivalent to the heap base address (which would normally be
-             * provided via Isolate.getHeapBase which is a no-op), which we then use to access the
-             * method object and read the entry point.
-             */
-            asm.addq(rax, methodIdArg.getRegister()); // address of JNIAccessibleMethod
-            if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
-                var jumpTargetRegister = SubstrateControlFlowIntegrity.singleton().getCFITargetRegister();
-                asm.movq(jumpTargetRegister, new AMD64Address(rax, methodObjEntryPointOffset));
-                asm.jmp(jumpTargetRegister);
-            } else {
-                asm.jmp(new AMD64Address(rax, methodObjEntryPointOffset));
-            }
-        } else { // methodId is absolute address
-            if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
-                var jumpTargetRegister = SubstrateControlFlowIntegrity.singleton().getCFITargetRegister();
-                asm.movq(jumpTargetRegister, new AMD64Address(methodIdArg.getRegister(), methodObjEntryPointOffset));
-                asm.jmp(jumpTargetRegister);
-            } else {
-                asm.jmp(new AMD64Address(methodIdArg.getRegister(), methodObjEntryPointOffset));
-            }
+        asm.movq(rax, new AMD64Address(threadArg.getRegister(), threadIsolateOffset));
+        /*
+         * Load the isolate pointer from the JNIEnv argument (same as the isolate thread). The
+         * isolate pointer is equivalent to the heap base address (which would normally be provided
+         * via Isolate.getHeapBase which is a no-op), which we then use to access the method object
+         * and read the entry point.
+         */
+        asm.addq(rax, methodIdArg.getRegister()); // address of JNIAccessibleMethod
+        if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
+            var jumpTargetRegister = SubstrateControlFlowIntegrity.singleton().getCFITargetRegister();
+            asm.movq(jumpTargetRegister, new AMD64Address(rax, methodObjEntryPointOffset));
+            asm.jmp(jumpTargetRegister);
+        } else {
+            asm.jmp(new AMD64Address(rax, methodObjEntryPointOffset));
         }
         result.recordMark(asm.position(), PROLOGUE_DECD_RSP);
         result.recordMark(asm.position(), PROLOGUE_END);
