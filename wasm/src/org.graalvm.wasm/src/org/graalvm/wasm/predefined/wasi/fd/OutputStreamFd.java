@@ -80,6 +80,14 @@ final class OutputStreamFd extends Fd {
     }
 
     @Override
+    public Errno pwrite(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, long offset, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdWrite)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Spipe;
+    }
+
+    @Override
     public Errno datasync() {
         if (!isSet(fsRightsBase, Rights.FdDatasync)) {
             return Errno.Notcapable;

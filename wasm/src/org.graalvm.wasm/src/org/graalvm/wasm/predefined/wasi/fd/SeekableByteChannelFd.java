@@ -98,6 +98,22 @@ abstract class SeekableByteChannelFd extends Fd {
     }
 
     @Override
+    public Errno pread(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, long offset, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdRead)) {
+            return Errno.Notcapable;
+        }
+        return FdUtils.readFromStreamAt(node, memory, inputStream, iovecArrayAddress, iovecCount, channel, offset, sizeAddress);
+    }
+
+    @Override
+    public Errno pwrite(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, long offset, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdWrite)) {
+            return Errno.Notcapable;
+        }
+        return FdUtils.writeToStreamAt(node, memory, outputStream, iovecArrayAddress, iovecCount, channel, offset, sizeAddress);
+    }
+
+    @Override
     public Errno seek(Node node, WasmMemory memory, long offset, Whence whence, int newOffsetAddress) {
         if (!isSet(fsRightsBase, Rights.FdSeek)) {
             return Errno.Notcapable;

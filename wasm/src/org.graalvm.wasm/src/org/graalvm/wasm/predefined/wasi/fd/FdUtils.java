@@ -53,6 +53,7 @@ import org.graalvm.wasm.predefined.wasi.types.Iovec;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.channels.SeekableByteChannel;
 import java.util.concurrent.TimeUnit;
 
 final class FdUtils {
@@ -106,6 +107,42 @@ final class FdUtils {
 
         memory.store_i32(node, sizeAddress, totalBytesRead);
         return Errno.Success;
+    }
+
+    static Errno writeToStreamAt(Node node, WasmMemory memory, OutputStream stream, int iovecArrayAddress, int iovecCount, SeekableByteChannel channel, long offset, int sizeAddress) {
+        try {
+            long currentOffset = channel.position();
+            try {
+                channel.position(offset);
+                Errno status = writeToStream(node, memory, stream, iovecArrayAddress, iovecCount, sizeAddress);
+                if (status != Errno.Success) {
+                    return status;
+                }
+                return Errno.Success;
+            } finally {
+                channel.position(currentOffset);
+            }
+        } catch (IOException e) {
+            return Errno.Io;
+        }
+    }
+
+    static Errno readFromStreamAt(Node node, WasmMemory memory, InputStream stream, int iovecArrayAddress, int iovecCount, SeekableByteChannel channel, long offset, int sizeAddress) {
+        try {
+            long currentOffset = channel.position();
+            try {
+                channel.position(offset);
+                Errno status = readFromStream(node, memory, stream, iovecArrayAddress, iovecCount, sizeAddress);
+                if (status != Errno.Success) {
+                    return status;
+                }
+                return Errno.Success;
+            } finally {
+                channel.position(currentOffset);
+            }
+        } catch (IOException e) {
+            return Errno.Io;
+        }
     }
 
     /**
