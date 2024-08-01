@@ -82,6 +82,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -106,6 +107,7 @@ import javax.lang.model.util.ElementFilter;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.ConstantOperandModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.DynamicOperandModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
@@ -3411,7 +3413,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // create local
 
             b.startCase().staticReference(serializationElements.codeCreateObject).end().startBlock();
-            b.statement("context.consts.add(callback.deserialize(context, buffer))");
+            b.startStatement();
+            b.startCall("context.consts.add");
+            b.startStaticCall(type(Objects.class), "requireNonNull");
+            b.string("callback.deserialize(context, buffer)");
+            b.end();
+            b.end();
+            b.end();
             b.statement("break");
             b.end(); // create object
 
@@ -4164,6 +4172,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
+            if (operation.constantOperands != null && operation.constantOperands.hasConstantOperands()) {
+                int index = 0;
+                for (ConstantOperandModel operand : operation.constantOperands.before()) {
+                    buildOperandNonNullCheck(b, operand.type(), operation.getOperationBeginArgumentName(index++));
+                }
+            }
+
             List<String> constantOperandIndices = emitConstantBeginOperands(b, operation);
 
             if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
@@ -4300,6 +4315,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 createSerializeBegin(rootOperation, b);
                 b.statement("return");
                 b.end();
+            }
+
+            if (model.prolog != null) {
+                for (OperationArgument operationArgument : model.prolog.operation.operationBeginArguments) {
+                    buildOperandNonNullCheck(b, operationArgument.builderType(), operationArgument.name());
+                }
             }
 
             b.startIf().string("bc != null").end().startBlock(); // {
@@ -4690,6 +4711,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
+            if (operation.constantOperands != null && operation.constantOperands.hasConstantOperands()) {
+                int index = 0;
+                for (ConstantOperandModel operand : operation.constantOperands.after()) {
+                    buildOperandNonNullCheck(b, operand.type(), operation.getOperationEndArgumentName(index++));
+                }
+            }
+
             List<String> constantOperandIndices = emitConstantOperands(b, operation);
 
             if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
@@ -5027,14 +5055,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (needsRootBlock()) {
                 emitCastOperationData(b, model.blockOperation, "operationSp - 1", "blockOperation");
                 b.startIf().string("!blockOperation.producedValue").end().startBlock();
-                buildEmit(b, model.loadConstantOperation, "null");
+                buildEmit(b, model.loadNullOperation);
                 b.end();
                 buildEnd(b, model.blockOperation);
                 emitCastOperationData(b, model.rootOperation, "rootOperationSp");
             } else {
                 emitCastOperationData(b, model.rootOperation, "rootOperationSp");
                 b.startIf().string("!operationData.producedValue").end().startBlock();
-                buildEmit(b, model.loadConstantOperation, "null");
+                buildEmit(b, model.loadNullOperation);
                 b.end();
             }
 
@@ -5044,6 +5072,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     OperationModel prologOperation = model.prolog.operation;
                     List<InstructionImmediate> constantOperands = prologOperation.instruction.getImmediates(ImmediateKind.CONSTANT);
                     int endConstantsOffset = prologOperation.constantOperands.before().size();
+
+                    for (OperationArgument operationArgument : model.prolog.operation.operationEndArguments) {
+                        buildOperandNonNullCheck(b, operationArgument.builderType(), operationArgument.name());
+                    }
+
                     for (int i = 0; i < prologOperation.operationEndArguments.length; i++) {
                         InstructionImmediate immediate = constantOperands.get(endConstantsOffset + i);
                         b.statement(writeImmediate("bc", "operationData.prologBci", "constantPool.addConstant(" + prologOperation.operationEndArguments[i].name() + ")", immediate));
@@ -5515,7 +5548,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         yield new String[]{"operationData.frameIndex"};
                     }
                 }
-                case RETURN -> new String[]{};
+                case RETURN, LOAD_NULL -> new String[]{};
                 case LOAD_ARGUMENT -> new String[]{safeCastShort(operation.getOperationBeginArgumentName(0))};
                 case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(" + operation.getOperationBeginArgumentName(0) + ")"};
                 case YIELD -> {
@@ -5703,6 +5736,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
+            if (operation.kind == OperationKind.LOAD_CONSTANT) {
+                buildOperandNonNullCheck(b, type(Object.class), operation.operationBeginArguments[0].name());
+            }
+            if (operation.constantOperands != null && operation.constantOperands.hasConstantOperands()) {
+                int index = 0;
+                for (ConstantOperandModel operand : operation.constantOperands.before()) {
+                    buildOperandNonNullCheck(b, operand.type(), operation.getOperationBeginArgumentName(index++));
+                }
+                index = 0;
+                for (ConstantOperandModel operand : operation.constantOperands.after()) {
+                    buildOperandNonNullCheck(b, operand.type(), operation.getOperationEndArgumentName(index++));
+                }
+            }
+
             List<String> constantOperandIndices = emitConstantOperands(b, operation);
 
             if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
@@ -5763,6 +5810,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             return ex;
+        }
+
+        private void buildOperandNonNullCheck(CodeTreeBuilder b, TypeMirror type, String name) {
+            if (!ElementUtils.isPrimitive(type)) {
+                b.startIf().string(name, " == null").end().startBlock();
+                b.startThrow().startCall("failArgument").doubleQuote("The " + name + " parameter must not be null. Use emitLoadNull() instead for null values.").end().end();
+                b.end();
+            }
         }
 
         /**
@@ -6743,7 +6798,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                      */
                     yield 0;
                 }
-                case DUP, LOAD_ARGUMENT, LOAD_CONSTANT, LOAD_LOCAL, LOAD_EXCEPTION -> 1;
+                case DUP, LOAD_ARGUMENT, LOAD_CONSTANT, LOAD_NULL, LOAD_LOCAL, LOAD_EXCEPTION -> 1;
                 case RETURN, THROW, BRANCH_FALSE, POP, STORE_LOCAL, MERGE_CONDITIONAL -> -1;
                 case STORE_LOCAL_MATERIALIZED -> -2;
                 case CUSTOM -> (instr.signature.isVoid ? 0 : 1) - instr.signature.dynamicOperandCount;
@@ -11888,6 +11943,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             String methodName = "continueAt_" + partition.instructionLength + "_" + stackEffectName + "_" + groupIndex;
             CodeExecutableElement continueAtMethod = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), methodName);
 
+            continueAtMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(types.HostCompilerDirectives_BytecodeInterpreterSwitch));
+
             continueAtMethod.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
             if (model.enableYield) {
                 continueAtMethod.getParameters().add(new CodeVariableElement(types.VirtualFrame, "localFrame"));
@@ -12137,12 +12194,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (tier.isUncached() || (model.usesBoxingElimination() && !ElementUtils.isObject(returnType))) {
                         b.startStatement();
                         startSetFrame(b, returnType).string("frame").string("sp");
-                        b.startGroup();
-                        if (!ElementUtils.isObject(returnType)) {
-                            b.cast(returnType);
-                        }
-                        b.tree(readConst(readImmediate("bc", "bci", constIndex)));
-                        b.end();
+                        b.tree(readConst(readImmediate("bc", "bci", constIndex), returnType));
                         b.end();
                         b.end();
                     } else {
@@ -12152,6 +12204,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement(setFrameObject("sp", readConst(readImmediate("bc", "bci", constIndex)).toString()));
                         b.end();
                     }
+                    b.statement("sp += 1");
+                    break;
+                case LOAD_NULL:
+                    b.startStatement();
+                    startSetFrame(b, type(Object.class)).string("frame").string("sp");
+                    b.string("null");
+                    b.end();
+                    b.end();
                     b.statement("sp += 1");
                     break;
                 case LOAD_EXCEPTION:
@@ -12974,8 +13034,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement(copyFrameTo("frame", "maxLocals", "localFrame", "maxLocals", "(sp - 1 - maxLocals)"));
 
             b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode");
-            b.cast(continuationRootNodeImpl.asType());
-            b.tree(readConst(readImmediate("bc", "bci", continuationIndex)));
+            b.tree(readConst(readImmediate("bc", "bci", continuationIndex), continuationRootNodeImpl.asType()));
             b.end();
 
             b.startDeclaration(types.ContinuationResult, "continuationResult");
@@ -14408,10 +14467,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 for (int i = 0; i < instr.signature.constantOperandsBeforeCount; i++) {
                     TypeMirror constantOperandType = instr.operation.constantOperands.before().get(i).type();
                     b.startGroup();
-                    if (!ElementUtils.isObject(constantOperandType)) {
-                        b.cast(constantOperandType);
-                    }
-                    b.tree(readConst(readImmediate("bc", "bci", constants.get(i))));
+                    b.tree(readConst(readImmediate("bc", "bci", constants.get(i)), constantOperandType));
                     b.end();
                 }
 
@@ -15002,6 +15058,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return readConst(index, "constants");
     }
 
+    private static CodeTree readConst(CodeTree index, TypeMirror knownType) {
+        return readConst(index, "constants", knownType);
+    }
+
     public static CodeTree readConst(String index, String constants) {
         return readConst(CodeTreeBuilder.singleString(index), constants);
     }
@@ -15015,13 +15075,30 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return b.build();
     }
 
+    public static CodeTree readConst(CodeTree index, String constants, TypeMirror knownType) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        boolean needsCast = knownType != null && !ElementUtils.isObject(knownType);
+        if (needsCast) {
+            b.startCall("ACCESS.uncheckedCast");
+        }
+        b.startCall("ACCESS.readObject");
+        b.string(constants);
+        b.tree(index);
+        b.end();
+        if (needsCast) {
+            b.typeLiteral(ElementUtils.boxType(knownType));
+            b.end();
+        }
+        return b.build();
+    }
+
     private static CodeTree readTagNode(TypeMirror expectedType, CodeTree index) {
         return readTagNode(expectedType, "tagRoot.tagNodes", index);
     }
 
     private static CodeTree readTagNode(TypeMirror expectedType, String tagNodes, CodeTree index) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startCall("ACCESS.cast");
+        b.startCall("ACCESS.uncheckedCast");
         b.startCall("ACCESS.readObject");
         b.string(tagNodes);
         b.tree(index);
@@ -15041,7 +15118,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private static CodeTree readNodeProfile(TypeMirror expectedType, CodeTree index) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startCall("ACCESS.cast");
+        b.startCall("ACCESS.uncheckedCast");
         b.startCall("ACCESS.readObject");
         b.string("cachedNodes");
         b.tree(index);

@@ -71,6 +71,7 @@ public final class InstructionModel implements PrettyPrintable {
         TAG_RESUME,
         LOAD_ARGUMENT,
         LOAD_CONSTANT,
+        LOAD_NULL,
         LOAD_EXCEPTION,
         LOAD_LOCAL,
         CLEAR_LOCAL,
