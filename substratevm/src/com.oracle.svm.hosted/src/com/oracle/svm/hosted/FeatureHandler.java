@@ -94,6 +94,10 @@ public class FeatureHandler {
         }
     }
 
+    public boolean containsFeature(Class<?> c) {
+        return registeredFeatures.contains(c);
+    }
+
     public void forEachGraalFeature(Consumer<InternalFeature> consumer) {
         for (Feature feature : featureInstances) {
             if (feature instanceof InternalFeature) {
