@@ -53,6 +53,7 @@ import org.graalvm.wasm.exception.WasmException;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import org.graalvm.wasm.predefined.wasi.types.Errno;
 
 public final class FdManager implements Closeable {
 
@@ -123,6 +124,26 @@ public final class FdManager implements Closeable {
 
     public synchronized void remove(int fd) {
         handles.removeKey(fd);
+    }
+
+    public synchronized Errno renumber(int fd, int to) {
+        Fd handle = handles.get(fd);
+        if (handle == null) {
+            return Errno.Badf;
+        }
+        Fd toHandle = handles.get(to);
+        if (toHandle == null) {
+            // do not allow renumbering to arbitrary fd values
+            return Errno.Badf;
+        }
+        try {
+            toHandle.close();
+        } catch (IOException e) {
+            return Errno.Io;
+        }
+        handles.put(to, handle);
+        handles.removeKey(fd);
+        return Errno.Success;
     }
 
     /**
