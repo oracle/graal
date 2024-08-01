@@ -260,7 +260,7 @@ class DirectoryFd extends Fd {
                     int fdAddress) {
         // Check that the rights of the newly created fd are both a subset of fsRightsBase and
         // fsRightsInheriting.
-        if (!isSet(fsRightsBase, Rights.PathOpen) || !isSubsetOf(childFsRightsBase, fsRightsBase) || !isSubsetOf(childFsRightsBase, fsRightsInheriting)) {
+        if (!isSet(fsRightsBase, Rights.PathOpen) || !isSubsetOf(childFsRightsBase, fsRightsInheriting) || !isSubsetOf(childFsRightsBase, fsRightsInheriting)) {
             return Errno.Notcapable;
         }
 
