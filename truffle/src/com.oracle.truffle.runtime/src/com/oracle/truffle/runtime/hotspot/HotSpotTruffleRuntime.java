@@ -581,6 +581,13 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
     }
 
     private void traceTransferToInterpreter() {
+        if (!traceTransferToInterpreter) {
+            return;
+        }
+        traceTransferToInterpreterImpl();
+    }
+
+    private void traceTransferToInterpreterImpl() {
         TruffleCompiler compiler = truffleCompiler;
         int offset = pendingTransferToInterpreterOffset;
         if (compiler == null || offset == -1) {
