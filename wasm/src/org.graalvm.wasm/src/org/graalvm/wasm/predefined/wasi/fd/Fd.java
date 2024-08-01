@@ -177,7 +177,7 @@ public abstract class Fd implements Closeable {
      */
     public Errno pathOpen(Node node, WasmMemory memory, int dirflags, int pathAddress, int pathLength, short oflags, long childFsRightsBase, long childFsRightsInheriting, short fdflags,
                     int fdAddress) {
-        if (!isSet(fsRightsBase, Rights.PathOpen) || !isSubsetOf(childFsRightsBase, fsRightsBase) || !isSubsetOf(childFsRightsBase, fsRightsInheriting)) {
+        if (!isSet(fsRightsBase, Rights.PathOpen) || !isSubsetOf(childFsRightsBase, fsRightsInheriting) || !isSubsetOf(childFsRightsBase, fsRightsInheriting)) {
             return Errno.Notcapable;
         }
         return Errno.Acces;
