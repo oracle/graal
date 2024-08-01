@@ -92,7 +92,6 @@ import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import com.oracle.svm.core.option.HostedOptionKey;
