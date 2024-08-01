@@ -540,12 +540,19 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
 
     @Override
     public void notifyTransferToInterpreter() {
-        if (CompilerDirectives.inInterpreter() && TRACE_TRANSFER_TO_INTERPRETER && traceTransferToInterpreter) {
+        if (CompilerDirectives.inInterpreter() && TRACE_TRANSFER_TO_INTERPRETER) {
             traceTransferToInterpreter();
         }
     }
 
     private void traceTransferToInterpreter() {
+        if (!traceTransferToInterpreter) {
+            return;
+        }
+        traceTransferToInterpreterImpl();
+    }
+
+    private void traceTransferToInterpreterImpl() {
         TruffleCompiler compiler = truffleCompiler;
         assert compiler != null;
         assert pendingTransferToInterpreterOffset != -1;
