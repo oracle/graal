@@ -30,7 +30,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -69,8 +68,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     private final TargetDescription target;
 
     @SuppressWarnings("this-escape")
-    public LIRNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, Set<HostedMethod> baseLayerMethods, NativeImageHeap imageHeap) {
-        super(compilations, imageHeap, baseLayerMethods);
+    public LIRNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
+        super(compilations, imageHeap);
         target = ConfigurationValues.getTarget();
         trampolineMap = new HashMap<>();
         orderedTrampolineMap = new HashMap<>();

@@ -701,6 +701,11 @@ public class ImageLayerLoader {
         /* No flags to load in the AnalysisMethod */
     }
 
+    /**
+     * Currently we save analysis parsed graphs for methods considered
+     * {@link AnalysisMethod#isReachable}. See {@link ImageLayerWriter#persistMethodGraphs} for
+     * implementation.
+     */
     public boolean hasAnalysisParsedGraph(AnalysisMethod analysisMethod) {
         EconomicMap<String, Object> methodData = getMethodData(analysisMethod);
         return get(methodData, ANALYSIS_PARSED_GRAPH_TAG) != null;

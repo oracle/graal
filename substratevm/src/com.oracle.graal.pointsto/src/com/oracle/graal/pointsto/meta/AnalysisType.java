@@ -1071,7 +1071,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
                 ResolvedJavaType originalCallerType = originalMethod.getDeclaringClass();
 
                 try {
-                    newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(originalMethod, originalCallerType));
+                    var concreteMethod = originalMethod instanceof BaseLayerMethod ? originalMethod : wrapped.resolveConcreteMethod(originalMethod, originalCallerType);
+                    newResolvedMethod = universe.lookup(concreteMethod);
                     if (newResolvedMethod == null) {
                         newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
                     }

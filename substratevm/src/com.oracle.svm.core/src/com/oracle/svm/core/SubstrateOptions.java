@@ -198,6 +198,7 @@ public class SubstrateOptions {
     public static final String KEEP_ALIVE_PREFIX = "-keepalive";
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
     public static OptionEnabledHandler<Boolean> imageLayerEnabledHandler;
+    public static OptionEnabledHandler<Boolean> imageLayerCreateEnabledHandler;
 
     @Fold
     public static boolean getSourceLevelDebug() {
@@ -431,6 +432,10 @@ public class SubstrateOptions {
 
     public static void setImageLayerEnabledHandler(OptionEnabledHandler<Boolean> updateHandler) {
         SubstrateOptions.imageLayerEnabledHandler = updateHandler;
+    }
+
+    public static void setImageLayerCreateEnabledHandler(OptionEnabledHandler<Boolean> updateHandler) {
+        SubstrateOptions.imageLayerCreateEnabledHandler = updateHandler;
     }
 
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
