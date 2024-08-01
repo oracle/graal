@@ -4,161 +4,24 @@ This section is a user manual for Bytecode DSL. It should be consulted in combin
 
 ## Built-in operations
 
-The DSL defines several built-in operations. Each operation takes a certain number of child operations (e.g., `Op(child1, child2)`), or takes a variadic number of arguments (e.g., `Op(children*)`). Some operations may produce a value.
+The built-in operations are listed here for discoverability. Please consult the Javadoc of the builder methods for precise details about their semantics.
 
-
-### Basic operations
-
-`Root(children*)`
-* Produces value: N/A
-* `beginRoot` arguments: (`TruffleLanguage<?>`)
-
-Each Root operation defines one function (i.e., a `RootNode`). Its children define the body of the function. Root is the only top-level operation; all others must be enclosed inside a Root operation. The control flow must never reach the end of the Root operation (i.e., it should return). The `beginRoot` function takes the language instance as a parameter, which is used to construct the `RootNode`. The `endRoot` function returns the resulting `RootNode`.
-
-To simplify parsing, root operations can be nested. However, the generated nodes are independent (a nested root node does not have access to the outer node's locals).
-
-`Block(children*)`
-* Produces value: Only if the last child produces a value.
-
-Block is a grouping operation that executes its children sequentially, producing the result of the last child (if any). It can be used to group multiple operations together in a single operation. It has a similar role to a block `{ ... }` in Java, but it can also produce a value (i.e., blocks can be expressions).
-
-`Return(value)`
-* Produces value: N/A
-* `value` must produce a value
-
-Return executes `value` and returns the result (ending execution).
-
-`LoadConstant`
-* Produces value: yes
-* `emitLoadConstant` arguments: (`Object`)
-
-LoadConstant produces the given constant value. The argument must be immutable, since it may be shared across multiple LoadConstant operations.
-
-`LoadArgument`
-* Produces value: yes
-* `emitLoadArgument` arguments: (`int`)
-
-LoadArgument reads an argument from the frame using the given index and produces its value.
-
-`LoadLocal`
-* Produces value: yes
-* `emitLoadLocal` arguments: (`BytecodeLocal`)
-
-LoadLocal reads the given local from the frame and produces the current value (see [Locals](#locals)). If a value has not been written to the local, LoadLocal produces the default value as defined by the `FrameDescriptor` (`null` by default).
-
-`StoreLocal(value)`
-* Produces value: no
-* `value` must produce a value
-* `beginStoreLocal` arguments: (`BytecodeLocal`)
-
-StoreLocal executes `value` and then overwrites the given local with the result.
-
-`LoadLocalMaterialized(frame)`
-* Produces value: yes
-* `frame` must produce a `Frame` value
-* `beginLoadLocalMaterialized` arguments: (`BytecodeLocal`)
-
-LoadLocalMaterialized has the same semantics as LoadLocal, except its `frame` child is executed to produce the frame to use for the load. This can be used to read locals from materialized frames, including from frames of enclosing functions (e.g., in nested functions or lambdas).
-
-`StoreLocalMaterialized(frame, value)`
-* Produces value: no
-* `frame` must produce a `Frame` value
-* `value` must produce a value
-* `beginStoreLocalMaterialized` arguments: (`BytecodeLocal`)
-
-StoreLocalMaterialized has the same semantics as StoreLocal, except its `frame` child is executed to produce the frame to use for the store. This can be used to store locals into materialized frames, including from frames of enclosing functions (e.g., in nested functions or lambdas).
-
-
-### Control flow operations
-
-`IfThen(cond, thens)`
-
-* Produces value: no
-* `cond` must produce a `boolean` value
-
-IfThen implements the `if (cond) thens` Java language construct. It evaluates `cond`, and if it produces `true`, it executes `thens`. It does not produce a result. Note that only Java booleans are accepted as results of the first operation, and all other values produce undefined behaviour.
-
-`IfThenElse(cond, thens, elses)`
-* Produces value: no
-* `cond` must produce a `boolean` value
-
-IfThenElse implements the `if (cond) thens else elses` Java language construct. It evaluates `cond`, and if it produces `true`, it executes `thens`; otherwise, it executes `elses`. No value is produced in either case.
-
-`Conditional(cond, thens, elses)`
-* Produces value: yes
-* `cond` must produce a `boolean` value
-* `thens` and `elses` must produce a value
-
-Conditional implements the `cond ? thens : elses` Java language construct. It has the same semantics as IfThenElse, except it produces the value produced by the child that was conditionally executed.
-
-`While(cond, body)`
-* Produces value: no
-* `cond` must produce a `boolean` value
-
-While implements the `while (cond) body` Java language construct. It evaluates `cond`, and if it produces `true`, it executes `body` and then repeats.
-
-`Yield(value)`
-* Produces value: yes
-* `value` must produce a value
-* Requires `enableYield` feature
-
-Yield executes `value`, suspends execution at the given point, and returns a `ContinuationResult` containing the result (see [Continuations](#continuations)). At a later time, a caller can resume a `ContinuationResult`, continuing execution after the Yield. When resuming, the caller passes a value that becomes the value produced by the Yield.
-
-`TryCatch(body, handler)`
-* Produces value: no
-* `beginTryCatch` arguments: (`BytecodeLocal`)
-
-TryCatch executes its `body`. If any Truffle exception occurs during the execution, the exception is stored in the given local and `handler` is executed. This operation models the behavior of the `try ... catch ...` construct in the Java language, but without filtering exceptions based on type. It does not produce a value, regardless of whether an exception is caught.
-
-`FinallyTry(handler, body)`
-* Produces value: no
-* `beginFinallyTry` arguments: (`BytecodeLocal`)
-
-FinallyTry executes its `body`. After the execution finishes (either normally, exceptionally, or via a control flow operation like Return or Branch), the `handler` is executed. If the `body` finished exceptionally, the Truffle exception is stored in the given local; otherwise, the value of the local is `null` when the `handler` executes. After executing the `handler`, if the `body` finished normally or exceptionally, control flow continues after the FinallyTry; otherwise, it continues where the control flow operation would have taken it (e.g., to a label that was branched to).
-This operation models the `try ... finally` construct in the Java language.
-
-Note the ordering of the child operations.
-The finally handler is the first operation in order to simplify and speed up bytecode generation.
-
-`FinallyTryNoExcept(handler, body)`
-* Produces value: no
-
-FinallyTryNoExcept has the same semantics as FinallyTry, except the `handler` is not executed if an exception is thrown.
-
-`Label`
-* Produces value: no
-* `emitLabel` arguments: (`BytecodeLabel`)
-
-Label defines a location in the bytecode that can be used as a forward branch target. Its argument is a `BytecodeLabel` allocated by the builder (see [Labels](#labels)). Each `BytecodeLabel` must be defined exactly once, and it should be defined directly inside the same operation in which it is created.
-
-`Branch`
-* Produces value: N/A
-* `emitBranch` arguments: (`BytecodeLabel`)
-
-Branch performs an unconditional forward branch to a label (for conditional and backwards branches, use IfThen and While operations).
-
-
-### Metadata operations
-
-The following operations are "transparent". They statically encode metadata (e.g., source information) about the program, but have no run time effect; at run time, they execute their `children` operations in sequence.
-
-`Source(children*)`
-* Produces value: Only if the last child produces a value.
-* `beginSource` arguments: (`Source`)
-
-Source associates the enclosed `children` operations with the given `Source` object (see [Source information](#source-information)). Together with SourceSection, it encodes source locations for a program.
-
-`SourceSection(children*)`
-* Produces value: Only if the last child produces a value.
-* `beginSourceSection` arguments: (`int, int`)
-
-SourceSection associates the enclosed `children` operations with the given source character offset and length (see [Source information](#source-information)). It must be (directly or indirectly) enclosed within a Source operation.
-
-`Tag(children*)`
-* Produces value: Only if the last child produces a value.
-* `beginTag` arguments: (`Class<? extends Tag>`)
-
-Tag associates the enclosed `children` operations with the given tag for instrumentation (see [Instrumentation](#instrumentation)).
+- `Root`: defines a root node
+- `Block`: sequences multiple operations
+- `LoadConstant`: produces a non-`null` constant value
+- `LoadNull`: produces `null`
+- `LoadArgument`: reads the value of an argument
+- `LoadException`: reads the value of the current exception
+- `LoadLocal`, `StoreLocal`: reads from/writes to a local in the current frame
+- `LoadLocalMaterialized`, `StoreLocalMaterialized`: reads from/writes to a local in a materialized frame
+- `Return`: returns with a value
+- `Label`: defines a forward branch location
+- `Branch`: branches forward to the location of a label
+- `IfThen`, `IfThenElse`, `Conditional`, `While`: common control flow operations
+- `TryCatch`, `FinallyTry`, `FinallyTryCatch`: exception handler operations
+- `Source`, `SourceSection`: annotates the enclosed operations with source information (see [Source information](#source-information))
+- `Tag`: annotates the enclosed operation with tag information
+- `Yield`: yields from the current root (see [Continuations](#continuations))
 
 
 ## Defining custom operations

@@ -101,7 +101,7 @@ Bytecode DSL supports a variety of features, including:
 
 ## Resources
 
-As a next step, we recommend reading the [Getting Started guide](GettingStarted.md), which introduces Bytecode DSL by implementing a simple interpreter.
+As a next step, we recommend reading the [Getting Started guide](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/GettingStarted.java), which introduces Bytecode DSL by implementing a simple interpreter.
 
 For more technical details about Bytecode DSL, consult the [User guide](UserGuide.md) and [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html).
 See also the guides and tutorials on [optimization](Optimization.md), [serialization][serialization], and [continuations][continuations].

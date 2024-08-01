@@ -63,41 +63,89 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
- * This file contains the full source for the getting started guide. It can be read on its own, but
- * readers may find the amount of details overwhelming. We recommend reading the getting started
- * guide, which gradually works up to the end result here in this file.
+ * This tutorial explains how to define a basic Bytecode DSL interpreter. The source code itself is
+ * meant to be read in order from top to bottom.
+ * <p>
+ * <h1>Operations</h1> Operations are the basic unit of language semantics in Bytecode DSL. Each
+ * operation performs some computation and can return a value. For example, the
+ * <code>LoadArgument</code> operation loads the value of a given argument.
+ * <p>
+ * Operations can have child operations. For example, an <code>Equals</code> operation may have two
+ * child operations. Child operations execute before their parent, and their results are passed as
+ * arguments to the parent (with the exception of built-in control flow operations).
+ * <p>
+ * Operations nest together to form a program. Consider the following pseudocode:
+ *
+ * <pre>
+ * if x == 42:
+ *   print("success")
+ * </pre>
+ *
+ * This code could be represented with the following "tree" of operations:
+ *
+ * <pre>
+ * (IfThen
+ *   (Equals
+ *     (LoadLocal x)
+ *     (LoadConstant 42))
+ *   (CallFunction
+ *     (LoadGlobal (LoadConstant "print"))
+ *     (LoadConstant "success")))
+ * </pre>
+ *
+ * Note that while a Bytecode DSL program can be logically represented as a tree of operations,
+ * Bytecode DSL interpreters <i>do not construct or execute ASTs</i>. The bytecode builder takes an
+ * operation tree specification via a sequence of method calls and automatically synthesizes a
+ * bytecode program that implements the operation tree.
+ *
+ * <h2>Built-in and custom operations</h2> Bytecode DSL interpreters have built-in and custom
+ * operations.
+ * <p>
+ * Built-in operations are automatically included in your interpreter. They model common language
+ * primitives, such as control flow (<code>IfThen</code>, <code>While</code>, etc.), constant
+ * accesses (<code>LoadConstant</code>) and local variable manipulation (<code>LoadLocal</code>,
+ * <code>StoreLocal</code>). The built-in operations are listed in the User Guide and described in
+ * the generated Javadoc.
+ * <p>
+ * Custom operations are provided by the language. They model language-specific behaviour, such as
+ * arithmetic operations, value conversions, function calls, etc. In our previous example,
+ * <code>Equals</code>, <code>CallFunction</code> and <code>LoadGlobal</code> are custom operations.
+ * Most custom operations are {@link Operation regular operations} that eagerly evaluate their
+ * children, but languages can also define {@link ShortCircuitOperation short-circuit operations} to
+ * implement short-circuiting behaviour.
  *
  * @see <a href=
- *      "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/GettingStarted.md">Getting
- *      started guide</a>
+ *      "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">User
+ *      Guide</a>
  */
 public class GettingStarted {
 
     /**
-     * First, we define the actual interpreter.
+     * The first step in creating a Bytecode DSL interpreter is to define the interpreter class.
      * <p>
      * The specification for the interpreter consists of the {@link GenerateBytecode} annotation,
      * plus the operation specifications, which come in the form of {@link Operation} inner classes
      * or {@link OperationProxy} and {@link ShortCircuitOperation} annotations. Bytecode DSL uses
      * the specification to generate a bytecode interpreter with all supporting code.
      * <p>
-     * Your class should be annotated with {@link GenerateBytecode}. The annotated class must be a
-     * subclass of {@link RootNode}, and it must implement {@link BytecodeRootNode}.
+     * Your class should be annotated with {@link GenerateBytecode}. The annotated class must be
+     * abstract, must be a subclass of {@link RootNode}, and must implement
+     * {@link BytecodeRootNode}.
      */
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
     /**
      * Defines a new {@code ScOr} operation. It uses {@code OR} semantics, converts values to
      * boolean using {@link ToBool}, and produces the converted boolean values.
      */
-    @ShortCircuitOperation(name = "ScOr", operator = ShortCircuitOperation.Operator.OR_RETURN_CONVERTED, booleanConverter = GettingStartedBytecodeNode.ToBool.class)
-    public abstract static class GettingStartedBytecodeNode extends RootNode implements BytecodeRootNode {
+    @ShortCircuitOperation(name = "ScOr", operator = ShortCircuitOperation.Operator.OR_RETURN_CONVERTED, booleanConverter = GettingStartedBytecodeRootNode.ToBool.class)
+    public abstract static class GettingStartedBytecodeRootNode extends RootNode implements BytecodeRootNode {
 
         /**
          * All Bytecode root nodes must define a constructor that takes only a
          * {@link TruffleLanguage} and a {@link FrameDescriptor} (or
          * {@link FrameDescriptor.Builder}).
          */
-        protected GettingStartedBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected GettingStartedBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -203,40 +251,40 @@ public class GettingStarted {
     }
 
     /**
-     * When implementing a language with a Bytecode DSL interpreter, the main challenge is to express the language's
-     * semantics using operations. There are many built-in operations to help you; this tutorial will introduce them
-     * gradually.
+     * When implementing a language with a Bytecode DSL interpreter, the main challenge is to
+     * express the language's semantics using operations. There are many built-in operations for
+     * common language behaviour; this tutorial will introduce them gradually.
      * <p>
      * Consider a small function that adds 1 to its first (and only) argument:
-     * @formatter:off
-     * <code>
+     *
+     * <pre>
      * def plusOne(arg0):
      *   return arg0 + 1
-     * </code>
-     * @formatter:on
+     * </pre>
      *
      * This function can be encoded using the following "tree" of operations:
-     * @formatter:off
-     * <code>
+     *
+     * <pre>
      * (Root
      *   (Return
      *     (Add
      *       (LoadArgument 0)
      *       (LoadConstant 1))))
-     * </code>
-     * @formatter:on
+     * </pre>
      *
      * This example uses some new operations:
      * <ul>
-     * <li>{@code Root} is the top-level operation used to declare a root node. It executes its children.</li>
+     * <li>{@code Root} is the top-level operation used to declare a root node. It executes its
+     * children.</li>
      * <li>{@code Return} returns the value produced by its child.</li>
      * <li>{@code Add} is the custom operation we defined in our specification.</li>
      * <li>{@code LoadArgument} loads an argument.</li>
      * <li>{@code LoadConstant} loads a constant.</li>
      * </ul>
      *
-     * In words, the above tree declares a root node that returns the result of adding its first argument and the
-     * integer constant {@code 1}. Let's next show how to implement this function in source code.
+     * In words, the above tree declares a root node that returns the result of adding its first
+     * argument and the integer constant {@code 1}. Let's next show how to implement this function
+     * in source code.
      */
     @Test
     public void testPlusOne() {
@@ -246,11 +294,11 @@ public class GettingStarted {
          * translates these method calls to bytecode.
          * <p>
          * Each operation is specified using {@code begin} and {@code end} calls. Each child
-         * operation is specified between these calls. Operations that have no children are instead
-         * specified with {@code emit} calls. Observe the symmetry between the builder calls and the
-         * abstract tree representation above.
+         * operation is specified between these calls. Operations that have no children (i.e., no
+         * dynamic data dependency) are instead specified with {@code emit} calls. Observe the
+         * symmetry between the builder calls and the abstract tree representation above.
          */
-        BytecodeParser<GettingStartedBytecodeNodeGen.Builder> parser = b -> {
+        BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
             // @formatter:off
             b.beginRoot(null); // TruffleLanguage goes here
                 b.beginReturn();
@@ -268,8 +316,8 @@ public class GettingStarted {
          * {@link BytecodeRootNodes} instance containing the root node(s). These root nodes contain
          * bytecode that implements the series of operations.
          */
-        BytecodeRootNodes<GettingStartedBytecodeNode> rootNodes = GettingStartedBytecodeNodeGen.create(BytecodeConfig.DEFAULT, parser);
-        GettingStartedBytecodeNode plusOne = rootNodes.getNode(0);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        GettingStartedBytecodeRootNode plusOne = rootNodes.getNode(0);
 
         /**
          * When we call the root node, it will execute the bytecode that implements {@code plusOne},
@@ -282,24 +330,25 @@ public class GettingStarted {
     /**
      * Let's introduce some more features: sequencing and local variables.
      * <p>
-     * A {@code Block} operation executes its children in sequence. It can produce a value if its last child produces a
-     * value.
+     * A {@code Block} operation executes its children in sequence. It can produce a value if its
+     * last child produces a value.
      * <p>
-     * Programs can reserve space in the frame using locals. This space can be accessed using {@code StoreLocal} and
-     * {@code LoadLocal} operations. A local is scoped to the operation it is created in.
+     * Programs can reserve space in the frame using locals. This space can be accessed using
+     * {@code StoreLocal} and {@code LoadLocal} operations. A local is scoped to the operation it is
+     * created in.
      * <p>
-     * To demonstrate these operations, we could rewrite the {@code plusOne} program above as follows:
-     * @formatter:off
-     * <code>
+     * To demonstrate these operations, we could rewrite the {@code plusOne} program above as
+     * follows:
+     *
+     * <pre>
      * def plusOne(arg0):
      *   x = arg0 + 1
      *   return x
-     * </code>
-     * @formatter:on
+     * </pre>
      *
      * As operations, this function can be encoded as:
-     * @formatter:off
-     * <code>
+     *
+     * <pre>
      * (Root
      *   (Block
      *     (CreateLocal x)
@@ -309,12 +358,11 @@ public class GettingStarted {
      *         (LoadConstant 1)))
      *     (Return
      *       (LoadLocal x))))
-     * </code>
-     * @formatter:on
+     * </pre>
      */
     @Test
     public void testPlusOneWithLocals() {
-        BytecodeParser<GettingStartedBytecodeNodeGen.Builder> parser = b -> {
+        BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
             // @formatter:off
             b.beginRoot(null); // TruffleLanguage goes here
                 b.beginBlock();
@@ -338,8 +386,8 @@ public class GettingStarted {
             // @formatter:on
         };
 
-        BytecodeRootNodes<GettingStartedBytecodeNode> rootNodes = GettingStartedBytecodeNodeGen.create(BytecodeConfig.DEFAULT, parser);
-        GettingStartedBytecodeNode plusOne = rootNodes.getNode(0);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        GettingStartedBytecodeRootNode plusOne = rootNodes.getNode(0);
 
         assertEquals(42, plusOne.getCallTarget().call(41));
         assertEquals(123, plusOne.getCallTarget().call(122));
@@ -356,18 +404,18 @@ public class GettingStarted {
     @Test
     public void testIfThenElse() {
         /**
-         * First, let's demonstrate the {@code IfThenElse} operation by implementing the following function:
-         * @formatter:off
-         * <code>
+         * First, let's demonstrate the {@code IfThenElse} operation by implementing the following
+         * function:
+         *
+         * <pre>
          * def checkPassword(arg0):
          *   if arg0 == 1337:
          *     return "Access granted."
          *   else:
          *     return "Access denied."
-         * </code>
-         * @formatter:on
+         * </pre>
          */
-        BytecodeParser<GettingStartedBytecodeNodeGen.Builder> ifThenElseParser = b -> {
+        BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> ifThenElseParser = b -> {
             // @formatter:off
             b.beginRoot(null); // TruffleLanguage goes here
                 b.beginIfThenElse();
@@ -390,24 +438,23 @@ public class GettingStarted {
             b.endRoot();
             // @formatter:on
         };
-        BytecodeRootNodes<GettingStartedBytecodeNode> rootNodes = GettingStartedBytecodeNodeGen.create(BytecodeConfig.DEFAULT, ifThenElseParser);
-        GettingStartedBytecodeNode checkPassword = rootNodes.getNode(0);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, ifThenElseParser);
+        GettingStartedBytecodeRootNode checkPassword = rootNodes.getNode(0);
 
-        assertEquals("Access granted.", checkPassword.getCallTarget().call(1337, 42, 123));
-        assertEquals("Access denied.", checkPassword.getCallTarget().call(1338, 42, 123));
+        assertEquals("Access granted.", checkPassword.getCallTarget().call(1337));
+        assertEquals("Access denied.", checkPassword.getCallTarget().call(1338));
 
         /**
          * There is also an {@code IfThen} operation, which omits the "false" case, and a
          * {@code Conditional} operation, which produces the value from its conditionally-executed
          * child. We can rewrite the above program with a conditional as follows:
-         * @formatter:off
-         * <code>
+         *
+         * <pre>
          * def checkPassword(arg0):
          *   return arg0 == 1337 ? "Access granted." : "Access denied."
-         * </code>
-         * @formatter:on
+         * </pre>
          */
-        BytecodeParser<GettingStartedBytecodeNodeGen.Builder> conditionalParser = b -> {
+        BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> conditionalParser = b -> {
             // @formatter:off
             b.beginRoot(null); // TruffleLanguage goes here
                 b.beginReturn();
@@ -428,31 +475,29 @@ public class GettingStarted {
             b.endRoot();
             // @formatter:on
         };
-        rootNodes = GettingStartedBytecodeNodeGen.create(BytecodeConfig.DEFAULT, conditionalParser);
+        rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, conditionalParser);
         checkPassword = rootNodes.getNode(0);
 
-        assertEquals("Access granted.", checkPassword.getCallTarget().call(1337, 42, 123));
-        assertEquals("Access denied.", checkPassword.getCallTarget().call(1338, 42, 123));
+        assertEquals("Access granted.", checkPassword.getCallTarget().call(1337));
+        assertEquals("Access denied.", checkPassword.getCallTarget().call(1338));
     }
 
     /**
      * Bytecode DSL has a {@code While} operation for implementing loops. Let's implement the
      * following function:
-     * @formatter:off
-     * <code>
+     *
+     * <pre>
      * def sumToN(n):
      *   total = 0
      *   i = 0
      *   while i < n:
      *     i += 1
      *     total += i
-     *   return total
-     * </code>
-     * @formatter:on
-     * */
+     * </pre>
+     */
     @Test
     public void testLoop() {
-        BytecodeParser<GettingStartedBytecodeNodeGen.Builder> parser = b -> {
+        BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
             // @formatter:off
             b.beginRoot(null); // TruffleLanguage goes here
                 b.beginBlock();
@@ -500,8 +545,8 @@ public class GettingStarted {
             // @formatter:on
         };
 
-        BytecodeRootNodes<GettingStartedBytecodeNode> rootNodes = GettingStartedBytecodeNodeGen.create(BytecodeConfig.DEFAULT, parser);
-        GettingStartedBytecodeNode sumToN = rootNodes.getNode(0);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        GettingStartedBytecodeRootNode sumToN = rootNodes.getNode(0);
 
         assertEquals(10, sumToN.getCallTarget().call(4));
         assertEquals(55, sumToN.getCallTarget().call(10));
@@ -509,10 +554,10 @@ public class GettingStarted {
 
     /**
      * For more advanced control flow, Bytecode DSL also allows you to define and branch to labels.
-     * Programs can branch forward to labels using the {@code Branch} operation. Let's use labels to implement
-     * {@code sumToN} using a {@code break}:
-     * @formatter:off
-     * <code>
+     * Programs can branch forward to labels using the {@code Branch} operation. Let's use labels to
+     * implement {@code sumToN} using a {@code break}:
+     *
+     * <pre>
      * def sumToN(n):
      *   total = 0
      *   i = 0
@@ -522,12 +567,11 @@ public class GettingStarted {
      *       break
      *     total += i
      *   return total
-     * </code>
-     * @formatter:on
+     * </pre>
      */
     @Test
     public void testLoopWithBreak() {
-        BytecodeParser<GettingStartedBytecodeNodeGen.Builder> parser = b -> {
+        BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
             // @formatter:off
             b.beginRoot(null); // TruffleLanguage goes here
                 b.beginBlock();
@@ -587,17 +631,17 @@ public class GettingStarted {
             // @formatter:on
         };
 
-        BytecodeRootNodes<GettingStartedBytecodeNode> rootNodes = GettingStartedBytecodeNodeGen.create(BytecodeConfig.DEFAULT, parser);
-        GettingStartedBytecodeNode sumToN = rootNodes.getNode(0);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        GettingStartedBytecodeRootNode sumToN = rootNodes.getNode(0);
 
         assertEquals(10, sumToN.getCallTarget().call(4));
         assertEquals(55, sumToN.getCallTarget().call(10));
     }
 
     /**
-     * In addition to the condition and looping contructs, Bytecode DSL also supports exception
-     * handling with {@code TryCatch}, a "finally" construct with {@code FinallyTry}, and
-     * continuations. We will not cover those here.
+     * In addition to the condition and looping contructs, Bytecode DSL has other control flow
+     * mechanisms for exception handling ({@code TryCatch}, {@code FinallyTry}, and
+     * {@code FinallyTryCatch}) and continuations ({@code Yield}). We will not cover those here.
      */
 
     /**
@@ -619,13 +663,13 @@ public class GettingStarted {
      */
     @Test
     public void testShortCircuitOr() {
-        BytecodeParser<GettingStartedBytecodeNodeGen.Builder> parser = b -> {
+        BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
             /**
-             *  @formatter:off
-             *  <code>
-             *  def eagerOr(arg0):
-             *    return arg0 or 42 / 0
-             *  </code>
+             * @formatter:off
+             * <pre>
+             * def eagerOr(arg0):
+             *   return arg0 or 42 / 0
+             * </pre>
              */
             b.beginRoot(null); // TruffleLanguage goes here
                 b.beginReturn();
@@ -645,15 +689,15 @@ public class GettingStarted {
             b.endRoot();
 
             /**
-             * <code>
+             * <pre>
              * def shortCircuitOr(arg0):
              *   return arg0 sc_or 42 / 0
-             * </code>
+             * </pre>
              */
             b.beginRoot(null); // TruffleLanguage goes here
                 b.beginReturn();
                     // This operation produces the converted boolean value.
-                    // Note that each operand is implicitly converted (ToBool isn't necessary).
+                    // Note that each operand is implicitly converted (it isn't necessary to emit a ToBool operation).
                     b.beginScOr();
                         // This operation executes first.
                         b.emitLoadArgument(0);
@@ -667,9 +711,9 @@ public class GettingStarted {
             b.endRoot();
             // @formatter:on
         };
-        BytecodeRootNodes<GettingStartedBytecodeNode> rootNodes = GettingStartedBytecodeNodeGen.create(BytecodeConfig.DEFAULT, parser);
-        GettingStartedBytecodeNode eagerOr = rootNodes.getNode(0);
-        GettingStartedBytecodeNode shortCircuitOr = rootNodes.getNode(1);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        GettingStartedBytecodeRootNode eagerOr = rootNodes.getNode(0);
+        GettingStartedBytecodeRootNode shortCircuitOr = rootNodes.getNode(1);
 
         // The eager OR always evaluates its operands, so the divide-by-zero is executed even when
         // its first argument is truthy.
@@ -698,7 +742,7 @@ public class GettingStarted {
      * Hopefully it has helped build some intuition about how operations work.
      * <p>
      * So far, the parsers have been hard-coded for specific programs. Our next step is to write a
-     * parser that works for *any* guest program. This topic is covered in the
+     * parser that works for <i>any</i> guest program. This topic is covered in the
      * {@link ParsingTutorial}.
      */
 }
