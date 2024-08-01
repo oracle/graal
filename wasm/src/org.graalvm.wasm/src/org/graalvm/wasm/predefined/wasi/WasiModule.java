@@ -152,7 +152,7 @@ public final class WasiModule extends BuiltinModule {
                         new WasiFdAdviseNode(language, module));
         defineFunction(context, module, "fd_allocate", types(FD_TYPE, FILESIZE_TYPE, FILESIZE_TYPE), types(ERRNO_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_allocate"));
         defineFunction(context, module, "fd_close", types(FD_TYPE), types(ERRNO_TYPE), new WasiFdCloseNode(language, module));
-        defineFunction(context, module, "fd_datasync", types(FD_TYPE), types(ERRNO_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_datasync"));
+        defineFunction(context, module, "fd_datasync", types(FD_TYPE), types(ERRNO_TYPE), new WasiFdDatasyncNode(language, module));
         defineFunction(context, module, "fd_fdstat_get", types(FD_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiFdFdstatGetNode(language, module));
         defineFunction(context, module, "fd_fdstat_set_flags", types(FD_TYPE, FDFLAGS_TYPE), types(ERRNO_TYPE), new WasiFdFdstatSetFlagsNode(language, module));
         defineFunction(context, module, "fd_fdstat_set_rights", types(FD_TYPE, RIGHTS_TYPE, RIGHTS_TYPE), types(ERRNO_TYPE),
