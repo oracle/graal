@@ -47,10 +47,10 @@ public abstract class ReservedRegisters {
     protected final Register heapBaseRegister;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected ReservedRegisters(Register frameRegister, Register threadRegister, Register heapBaseRegisterCandidate) {
+    protected ReservedRegisters(Register frameRegister, Register threadRegister, Register heapBaseRegister) {
         this.frameRegister = frameRegister;
         this.threadRegister = threadRegister;
-        this.heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? heapBaseRegisterCandidate : null;
+        this.heapBaseRegister = heapBaseRegister;
     }
 
     /**

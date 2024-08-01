@@ -166,7 +166,7 @@ public abstract class ResourceConfigurationParser<C> extends ConfigurationParser
         }
 
         Object moduleObject = globObject.get(MODULE_KEY);
-        String module = moduleObject == null ? "" : asString(moduleObject);
+        String module = asNullableString(moduleObject, MODULE_KEY);
 
         Object valueObject = globObject.get(GLOB_KEY);
         String value = asString(valueObject, GLOB_KEY);

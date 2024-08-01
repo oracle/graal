@@ -24,13 +24,11 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
-import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
@@ -38,6 +36,7 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.word.Word;
 
@@ -157,19 +156,13 @@ public final class ImageHeapInfo {
     }
 
     /**
-     * This method only returns the correct result for pointers that point to the the start of an
+     * This method only returns the correct result for pointers that point to the start of an
      * object. This is sufficient for all our current use cases. This code must be as fast as
      * possible as the GC uses it for every visited reference.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInImageHeap(Pointer objectPointer) {
-        boolean result;
-        if (objectPointer.isNull()) {
-            result = false;
-        } else {
-            result = objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstObject)) && objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastObject));
-        }
-        return result;
+        return objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstObject)) && objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastObject));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -202,8 +195,7 @@ public final class ImageHeapInfo {
             return (T) WordFactory.nullPointer();
         }
         UnsignedWord offset = WordFactory.unsigned(offsetInImageHeap);
-        Pointer heapBase = (Pointer) Isolates.getHeapBase(CurrentIsolate.getIsolate());
-        return (T) heapBase.add(offset);
+        return (T) KnownIntrinsics.heapBase().add(offset);
     }
 
     public void print(Log log) {
