@@ -246,13 +246,34 @@ public abstract class Fd implements Closeable {
      * @param memory the {@link WasmMemory} from which to read and write
      * @param offset the number of bytes to move
      * @param whence the base from which the {@code offset} is relative
-     * @param newOffsetAddress {@code u32*}: the address at which to write the new offset of this
+     * @param newOffsetAddress {@code u64*}: the address at which to write the new offset of this
      *            file descriptor, relative to the start of the file.
      * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
      * @throws WasmException if an error happens while writing or reading to {@code memory}
      */
     public Errno seek(Node node, WasmMemory memory, long offset, Whence whence, int newOffsetAddress) {
         if (!isSet(fsRightsBase, Rights.FdSeek)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#fd_tell"><code>fd_tell</code></a>:
+     * gets the offset of this file descriptor.
+     * <p>
+     * Similar to POSIX <a href="https://linux.die.net/man/2/lseek"><code>lseek(fd, 0, SEEK_CUR)</code></a>.
+     *
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param offsetAddress {@code u64*}: the address at which to write the offset of this
+     *            file descriptor, relative to the start of the file.
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     */
+    public Errno tell(Node node, WasmMemory memory, int offsetAddress) {
+        if (!isSet(fsRightsBase, Rights.FdTell)) {
             return Errno.Notcapable;
         }
         return Errno.Acces;
