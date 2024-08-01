@@ -856,8 +856,6 @@ public class SubstrateOptions {
      */
     @Option(help = "Use linker option to prevent unreferenced symbols in image.")//
     public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN);
-    @Option(help = "Ignore undefined symbols referenced from the built image.")//
-    public static final HostedOptionKey<Boolean> IgnoreUndefinedReferences = new HostedOptionKey<>(false);
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
     @Option(help = "Compatibility option to make symbols used for the image heap global. " +

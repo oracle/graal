@@ -130,7 +130,6 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
                 SubstrateOptions.LayeredBaseImageAnalysis.update(values, true);
                 SubstrateOptions.ClosedTypeWorld.update(values, false);
-                SubstrateOptions.StripDebugInfo.update(values, false);
                 if (imageLayerEnabledHandler != null) {
                     imageLayerEnabledHandler.onOptionEnabled(values);
                 }

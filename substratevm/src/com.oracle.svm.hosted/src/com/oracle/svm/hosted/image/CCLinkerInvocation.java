@@ -48,8 +48,8 @@ import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.BionicLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -270,9 +270,13 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 /* Perform garbage collection of unused input sections. */
                 additionalPreOptions.add("-Wl,--gc-sections");
             }
-            if (SubstrateOptions.IgnoreUndefinedReferences.getValue()) {
-                /* Ignore references to undefined symbols from the object files. */
-                additionalPreOptions.add("-Wl,--unresolved-symbols=ignore-in-object-files");
+
+            if (!imageKind.isExecutable) {
+                /*
+                 * We do not want interposition to affect the resolution of symbols we define and
+                 * reference within this library.
+                 */
+                additionalPreOptions.add("-Wl,-Bsymbolic");
             }
 
             /* Use --version-script to control the visibility of image symbols. */
