@@ -175,7 +175,7 @@ public abstract class SubstrateSegfaultHandler {
         }
 
         /* Try to determine the isolate via the heap base register. */
-        return SubstrateOptions.SpawnIsolates.getValue() && tryEnterIsolateViaHeapBaseRegister(context);
+        return tryEnterIsolateViaHeapBaseRegister(context);
     }
 
     @Uninterruptible(reason = "Thread state not set up yet.")
@@ -191,10 +191,7 @@ public abstract class SubstrateSegfaultHandler {
         if (isolateThread.isNonNull()) {
             Isolate isolate = VMThreads.IsolateTL.get(isolateThread);
             if (isValid(isolate)) {
-                if (SubstrateOptions.SpawnIsolates.getValue()) {
-                    CEntryPointSnippets.setHeapBase(isolate);
-                }
-
+                CEntryPointSnippets.setHeapBase(isolate);
                 WriteCurrentVMThreadNode.writeCurrentVMThread(isolateThread);
                 return true;
             }
@@ -230,14 +227,10 @@ public abstract class SubstrateSegfaultHandler {
          * value as an extra sanity check. Note that the heap base register still contains an
          * invalid value when we execute this code, which makes things a bit more complex.
          */
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            UnsignedWord staticFieldsOffsets = ReferenceAccess.singleton().getCompressedRepresentation(StaticFieldsSupport.getStaticPrimitiveFields());
-            UnsignedWord wellKnownFieldOffset = staticFieldsOffsets.shiftLeft(ReferenceAccess.singleton().getCompressionShift()).add(WordFactory.unsigned(offsetOfStaticFieldWithWellKnownValue));
-            Pointer wellKnownField = ((Pointer) isolate).add(wellKnownFieldOffset);
-            return wellKnownField.readLong(0) == MARKER_VALUE;
-        }
-
-        return true;
+        UnsignedWord staticFieldsOffsets = ReferenceAccess.singleton().getCompressedRepresentation(StaticFieldsSupport.getStaticPrimitiveFields());
+        UnsignedWord wellKnownFieldOffset = staticFieldsOffsets.shiftLeft(ReferenceAccess.singleton().getCompressionShift()).add(WordFactory.unsigned(offsetOfStaticFieldWithWellKnownValue));
+        Pointer wellKnownField = ((Pointer) isolate).add(wellKnownFieldOffset);
+        return wellKnownField.readLong(0) == MARKER_VALUE;
     }
 
     /**

@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jni.functions;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -40,7 +39,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.CGlobalData;
@@ -51,7 +49,6 @@ import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
-import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveTearDownIsolateEpilogue;
 import com.oracle.svm.core.headers.LibC;
@@ -111,16 +108,6 @@ public final class JNIInvocationInterface {
         static class JNICreateJavaVMPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
-                if (!SubstrateOptions.SpawnIsolates.getValue()) {
-                    int error = CEntryPointActions.enterByIsolate((Isolate) CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
-                    if (error == CEntryPointErrors.NO_ERROR) {
-                        CEntryPointActions.leave();
-                        return JNIErrors.JNI_EEXIST();
-                    } else if (error != CEntryPointErrors.UNINITIALIZED_ISOLATE) {
-                        return JNIErrors.JNI_EEXIST();
-                    }
-                }
-
                 boolean hasSpecialVmOptions = false;
                 CEntryPointCreateIsolateParameters params = WordFactory.nullPointer();
                 CCharPointerPointer errorstr = WordFactory.nullPointer();
@@ -177,6 +164,7 @@ public final class JNIInvocationInterface {
                     // The isolate was created successfully, so we can finish the initialization.
                     return Support.finishInitialization(vmBuf, penv, vmArgs, hasSpecialVmOptions);
                 }
+
                 if (errorstr.isNonNull()) {
                     CCharPointer msg = CEntryPointErrors.getDescriptionAsCString(code);
                     CCharPointer msgCopy = msg.isNonNull() ? LibC.strdup(msg) : WordFactory.nullPointer();

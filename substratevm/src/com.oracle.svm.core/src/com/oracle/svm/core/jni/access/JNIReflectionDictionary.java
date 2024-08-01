@@ -35,22 +35,20 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.SignedWord;
-import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jni.MissingJNIRegistrationUtils;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.Utf8.WrappedAsciiCString;
 import com.oracle.svm.core.util.VMError;
@@ -261,22 +259,19 @@ public final class JNIReflectionDictionary {
     }
 
     private static JNIMethodId toMethodID(JNIAccessibleMethod method) {
-        SignedWord value = WordFactory.zero();
-        if (method != null) {
-            value = Word.objectToUntrackedPointer(method); // safe because it is in the image heap
-            if (SubstrateOptions.SpawnIsolates.getValue()) { // use offset: valid across isolates
-                value = value.subtract((SignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
-            }
+        if (method == null) {
+            return WordFactory.zero();
         }
-        return (JNIMethodId) value;
+        assert Heap.getHeap().isInImageHeap(method);
+        return (JNIMethodId) Word.objectToUntrackedPointer(method).subtract(KnownIntrinsics.heapBase());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
-        Pointer p = (Pointer) method;
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            p = p.add((UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
+        if (!SubstrateOptions.SpawnIsolates.getValue() && method == WordFactory.zero()) {
+            return null;
         }
+        Pointer p = KnownIntrinsics.heapBase().add((Pointer) method);
         JNIAccessibleMethod jniMethod = p.toObject(JNIAccessibleMethod.class, false);
         VMError.guarantee(jniMethod == null || !jniMethod.isNegative(), "Existing methods can't correspond to a negative query");
         return jniMethod;
