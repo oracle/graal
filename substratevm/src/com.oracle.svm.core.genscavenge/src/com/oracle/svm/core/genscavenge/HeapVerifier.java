@@ -38,6 +38,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -364,20 +365,24 @@ public final class HeapVerifier {
             return false;
         }
 
-        if (ObjectHeaderImpl.isAlignedHeader(header)) {
-            AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(referencedObject);
-            if (referencedObject.belowThan(AlignedHeapChunk.getObjectsStart(chunk)) || referencedObject.aboveOrEqual(HeapChunk.getTopPointer(chunk))) {
-                Log.log().string("Object reference ").zhex(reference).string(" points to ").zhex(referencedObject).string(", which is outside the usable part of the corresponding aligned chunk.");
-                printParent(parentObject);
-                return false;
-            }
-        } else {
-            assert ObjectHeaderImpl.isUnalignedHeader(header);
-            UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunkFromObjectPointer(referencedObject);
-            if (referencedObject != UnalignedHeapChunk.getObjectStart(chunk)) {
-                Log.log().string("Object reference ").zhex(reference).string(" points to ").zhex(referencedObject).string(", which is outside the usable part of the corresponding unaligned chunk.");
-                printParent(parentObject);
-                return false;
+        if (HeapImpl.usesImageHeapChunks() || !Heap.getHeap().isInImageHeap(referencedObject)) {
+            if (ObjectHeaderImpl.isAlignedHeader(header)) {
+                AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(referencedObject);
+                if (referencedObject.belowThan(AlignedHeapChunk.getObjectsStart(chunk)) || referencedObject.aboveOrEqual(HeapChunk.getTopPointer(chunk))) {
+                    Log.log().string("Object reference ").zhex(reference).string(" points to ").zhex(referencedObject)
+                                    .string(", which is outside the usable part of the corresponding aligned chunk. ");
+                    printParent(parentObject);
+                    return false;
+                }
+            } else {
+                assert ObjectHeaderImpl.isUnalignedHeader(header);
+                UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunkFromObjectPointer(referencedObject);
+                if (referencedObject != UnalignedHeapChunk.getObjectStart(chunk)) {
+                    Log.log().string("Object reference ").zhex(reference).string(" points to ").zhex(referencedObject)
+                                    .string(", which is outside the usable part of the corresponding unaligned chunk. ");
+                    printParent(parentObject);
+                    return false;
+                }
             }
         }
 
