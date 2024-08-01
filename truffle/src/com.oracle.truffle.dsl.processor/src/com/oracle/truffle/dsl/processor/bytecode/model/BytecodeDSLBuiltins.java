@@ -55,6 +55,8 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeM
 
 /**
  * Helper class that initializes a {@link BytecodeDSLModel} with all of the Bytecode DSL builtins.
+ *
+ * The user guide should be updated when new builtin operations are added.
  */
 public class BytecodeDSLBuiltins {
     public static void addBuiltins(BytecodeDSLModel m, TruffleTypes types, ProcessorContext context) {

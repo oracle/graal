@@ -55,7 +55,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
-import com.oracle.truffle.api.bytecode.test.examples.GettingStarted.GettingStartedBytecodeNode;
+import com.oracle.truffle.api.bytecode.test.examples.GettingStarted.GettingStartedBytecodeRootNode;
 
 /**
  * This tutorial demonstrates how to programmatically parse bytecode for a Bytecode DSL interpreter.
@@ -70,11 +70,12 @@ public class ParsingTutorial {
     /**
      * In the getting started guide, we defined a Bytecode DSL interpreter and demonstrated how to
      * implement common language constructs using operations. All of the parsers were hard-coded for
-     * specific programs. Our next step is to write a parser that works for *any* guest program.
+     * specific programs. Our next step is to write a parser that works for <i>any</i> guest
+     * program.
      * <p>
      * The key insight is that most nodes in a language's AST mirror operations in its Bytecode DSL
      * interpreter (e.g., an if-then node can be implemented with an {@code IfThen} operation).
-     * Consequently, parsing can be performed with a simple tree traversal.
+     * Consequently, parsing can often be performed with a simple tree traversal.
      * <p>
      * Let's assume that the guest program can be parsed to an AST made up of the following nodes.
      * We will implement the tree traversal using the visitor pattern.
@@ -212,13 +213,13 @@ public class ParsingTutorial {
      * visitor methods are straightforward; comments are included in the trickier spots.
      */
     static class BytecodeVisitor implements Visitor {
-        final GettingStartedBytecodeNodeGen.Builder b;
+        final GettingStartedBytecodeRootNodeGen.Builder b;
         final TruffleLanguage<BytecodeDSLTestLanguage> language;
         final Map<String, BytecodeLocal> locals;
 
         BytecodeLabel currentBreakLabel = null;
 
-        BytecodeVisitor(GettingStartedBytecodeNodeGen.Builder b, TruffleLanguage<BytecodeDSLTestLanguage> language) {
+        BytecodeVisitor(GettingStartedBytecodeRootNodeGen.Builder b, TruffleLanguage<BytecodeDSLTestLanguage> language) {
             this.b = b;
             this.language = language;
             this.locals = new HashMap<>();
@@ -340,7 +341,6 @@ public class ParsingTutorial {
             BytecodeLocal local = locals.get(r.name);
             assert local != null;
             b.emitLoadLocal(local);
-
         }
 
         public void visitWriteLocal(WriteLocal w) {
@@ -363,11 +363,11 @@ public class ParsingTutorial {
     /**
      * For convenience, lets define a helper method that performs the parse.
      */
-    public static GettingStartedBytecodeNode parse(Method method) {
-        BytecodeParser<GettingStartedBytecodeNodeGen.Builder> parser = b -> {
+    public static GettingStartedBytecodeRootNode parse(Method method) {
+        BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
             method.accept(new BytecodeVisitor(b, null)); // TruffleLanguage goes here
         };
-        BytecodeRootNodes<GettingStartedBytecodeNode> rootNodes = GettingStartedBytecodeNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
         return rootNodes.getNode(0);
     }
 
@@ -384,7 +384,7 @@ public class ParsingTutorial {
             new String[0]
         );
         // @formatter:on
-        GettingStartedBytecodeNode plusOne = parse(method);
+        GettingStartedBytecodeRootNode plusOne = parse(method);
 
         assertEquals(42, plusOne.getCallTarget().call(41));
         assertEquals(123, plusOne.getCallTarget().call(122));
@@ -402,10 +402,10 @@ public class ParsingTutorial {
             new String[0]
         );
         // @formatter:on
-        GettingStartedBytecodeNode checkPassword = parse(method);
+        GettingStartedBytecodeRootNode checkPassword = parse(method);
 
-        assertEquals("Access granted.", checkPassword.getCallTarget().call(1337, 42, 123));
-        assertEquals("Access denied.", checkPassword.getCallTarget().call(1338, 42, 123));
+        assertEquals("Access granted.", checkPassword.getCallTarget().call(1337));
+        assertEquals("Access denied.", checkPassword.getCallTarget().call(1338));
     }
 
     @Test
@@ -427,7 +427,7 @@ public class ParsingTutorial {
             new String[] {"total", "i"}
         );
         // @formatter:on
-        GettingStartedBytecodeNode sumToN = parse(method);
+        GettingStartedBytecodeRootNode sumToN = parse(method);
 
         assertEquals(10, sumToN.getCallTarget().call(4));
         assertEquals(55, sumToN.getCallTarget().call(10));
@@ -446,7 +446,7 @@ public class ParsingTutorial {
             new String[0]
         );
         // @formatter:on
-        GettingStartedBytecodeNode shortCircuitOr = parse(method);
+        GettingStartedBytecodeRootNode shortCircuitOr = parse(method);
 
         assertEquals(true, shortCircuitOr.getCallTarget().call(123));
         try {
@@ -480,24 +480,23 @@ public class ParsingTutorial {
      * <p>
      * The general approach is to break down the node's behaviour into multiple smaller steps:
      *
-     * @formatter:off
-     * <code>
-     * array = <evaluate the array>
+     * <pre>
+     * array = [evaluate the array]
      * i = 0
      * while i < array.length:
-     *   <store array[i] into variable>
-     *   <body>
+     *   [store array[i] into variable]
+     *   [body]
      *   i += 1
-     * </code>
-     * @formatter:on
+     * </pre>
      *
-     * We have already figured out how to implement most of these features. What's missing is a couple of
-     * operations: one to compute an array length, and one to index into an array. (Since we only have one
-     * interpreter definition, they are already included in the original interpreter, but we have ignored
-     * them until now.) Let's implement a new visitor that supports {@link ForEach}.
+     * We have already figured out how to implement most of these features. What's missing is a
+     * couple of operations: one to compute an array length, and one to index into an array. (Since
+     * we only have one interpreter definition, they are already included in the original
+     * interpreter, but we have ignored them until now.) Let's implement a new visitor that supports
+     * {@link ForEach}.
      */
     class BytecodeVisitorWithForEach extends BytecodeVisitor {
-        BytecodeVisitorWithForEach(GettingStartedBytecodeNodeGen.Builder b, TruffleLanguage<BytecodeDSLTestLanguage> language) {
+        BytecodeVisitorWithForEach(GettingStartedBytecodeRootNodeGen.Builder b, TruffleLanguage<BytecodeDSLTestLanguage> language) {
             super(b, language);
         }
 
@@ -570,11 +569,11 @@ public class ParsingTutorial {
             new String[] {"sum"}
         );
         // @formatter:on
-        BytecodeParser<GettingStartedBytecodeNodeGen.Builder> parser = b -> {
+        BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
             method.accept(new BytecodeVisitorWithForEach(b, null)); // TruffleLanguage goes here
         };
-        BytecodeRootNodes<GettingStartedBytecodeNode> rootNodes = GettingStartedBytecodeNodeGen.create(BytecodeConfig.DEFAULT, parser);
-        GettingStartedBytecodeNode sumArray = rootNodes.getNode(0);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        GettingStartedBytecodeRootNode sumArray = rootNodes.getNode(0);
 
         assertEquals(42, sumArray.getCallTarget().call(new int[]{40, 2}));
         assertEquals(0, sumArray.getCallTarget().call(new int[0]));
