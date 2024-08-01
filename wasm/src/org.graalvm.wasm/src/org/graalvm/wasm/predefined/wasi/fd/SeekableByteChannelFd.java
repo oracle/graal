@@ -103,17 +103,15 @@ abstract class SeekableByteChannelFd extends Fd {
             return Errno.Notcapable;
         }
         try {
-            switch (whence) {
-                case Set:
-                    channel.position(offset);
-                    break;
-                case Cur:
-                    channel.position(channel.position() + offset);
-                    break;
-                case End:
-                    channel.position(channel.size() + offset);
-                    break;
+            long newOffset = switch (whence) {
+                case Set -> offset;
+                case Cur -> channel.position() + offset;
+                case End -> channel.size() + offset;
+            };
+            if (newOffset < 0) {
+                return Errno.Inval;
             }
+            channel.position(newOffset);
             memory.store_i64(node, newOffsetAddress, channel.position());
         } catch (IOException e) {
             return Errno.Io;
@@ -121,4 +119,16 @@ abstract class SeekableByteChannelFd extends Fd {
         return Errno.Success;
     }
 
+    @Override
+    public Errno tell(Node node, WasmMemory memory, int offsetAddress) {
+        if (!isSet(fsRightsBase, Rights.FdTell)) {
+            return Errno.Notcapable;
+        }
+        try {
+            memory.store_i64(node, offsetAddress, channel.position());
+        } catch (IOException e) {
+            return Errno.Io;
+        }
+        return Errno.Success;
+    }
 }
