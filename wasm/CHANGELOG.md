@@ -9,7 +9,7 @@ This changelog summarizes major changes to the WebAssembly engine implemented in
 ## Version 24.1.0
 
 * Implemented the [SIMD](https://github.com/WebAssembly/simd) proposal. This feature is enabled by default and can be disabled with the option `--wasm.SIMD=false`.
-* Implemented `fd_advise` and `fd_renumber` in `wasi_snapshot_preview1`.
+* Implemented `clock_res_get`, `fd_advise` and `fd_renumber` in `wasi_snapshot_preview1`.
 
 ## Version 23.1.0
 
