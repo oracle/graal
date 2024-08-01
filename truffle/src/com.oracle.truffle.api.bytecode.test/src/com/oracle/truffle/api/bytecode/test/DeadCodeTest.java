@@ -508,7 +508,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "branch.false",
                         "load.constant",
                         "return",
-                        "load.constant",
+                        "load.null",
                         "return");
 
         assertEquals(42, node.getCallTarget().call(42));
@@ -798,7 +798,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "load.argument",
                         "pop",
                         "throw",
-                        "load.constant",
+                        "load.null",
                         "return");
     }
 
@@ -850,7 +850,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "load.argument",
                         "pop",
                         "throw",
-                        "load.constant",
+                        "load.null",
                         "return");
         node.getBytecodeNode().getInstructionsAsList().stream() //
                         .filter(insn -> insn.getName().equals("load.argument")) //

@@ -746,7 +746,7 @@ public class TagTest extends AbstractInstructionTest {
         assertInstructions(node,
                         "c.EnterMethod",
                         "c.Throw",
-                        "load.constant",
+                        "load.null",
                         "c.LeaveValue",
                         "return");
 
@@ -755,7 +755,7 @@ public class TagTest extends AbstractInstructionTest {
                         "tag.enter",
                         "c.EnterMethod",
                         "c.Throw",
-                        "load.constant",
+                        "load.null",
                         "c.LeaveValue",
                         "tag.leave",
                         "return");
@@ -763,8 +763,8 @@ public class TagTest extends AbstractInstructionTest {
         assertFails(() -> node.getCallTarget().call(), TestException.class);
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0022, null, RootTag.class),
-                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x0022, TestException.class, RootTag.class));
+                        new Event(EventKind.ENTER, 0x0000, 0x001e, null, RootTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x001e, TestException.class, RootTag.class));
     }
 
     @Test
@@ -818,7 +818,7 @@ public class TagTest extends AbstractInstructionTest {
         assertInstructions(node,
                         "c.EnterMethod",
                         "c.Throw",
-                        "load.constant",
+                        "load.null",
                         "c.LeaveValue",
                         "return");
 
@@ -827,7 +827,7 @@ public class TagTest extends AbstractInstructionTest {
                         "c.EnterMethod",
                         "tag.enter",
                         "c.Throw",
-                        "load.constant",
+                        "load.null",
                         "tag.leave",
                         "c.LeaveValue",
                         "return");
@@ -835,8 +835,8 @@ public class TagTest extends AbstractInstructionTest {
         assertFails(() -> node.getCallTarget().call(), TestException.class);
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0006, 0x0018, null, RootBodyTag.class),
-                        new Event(EventKind.EXCEPTIONAL, 0x0006, 0x0018, TestException.class, RootBodyTag.class));
+                        new Event(EventKind.ENTER, 0x0006, 0x0014, null, RootBodyTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0006, 0x0014, TestException.class, RootBodyTag.class));
     }
 
     @Test
@@ -1346,7 +1346,7 @@ public class TagTest extends AbstractInstructionTest {
 
         assertInstructions(node,
                         "branch",
-                        "load.constant",
+                        "load.null",
                         "return");
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class, StandardTags.ExpressionTag.class).build());
@@ -1361,17 +1361,17 @@ public class TagTest extends AbstractInstructionTest {
                         "load.constant",
                         "tag.leave",
                         "return",
-                        "load.constant",
+                        "load.null",
                         "tag.leave",
                         "return");
 
         // instrumentation events should be correct even if we hit a trap
         assertEvents(node,
                         events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0036, null, RootTag.class),
+                        new Event(EventKind.ENTER, 0x0000, 0x0032, null, RootTag.class),
                         new Event(EventKind.ENTER, 0x0006, 0x0018, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0006, 0x0018, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0036, null, RootTag.class));
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0032, null, RootTag.class));
 
     }
 
@@ -1532,7 +1532,7 @@ public class TagTest extends AbstractInstructionTest {
                         "tag.leave",
                         "return",
                         "tag.leaveVoid",
-                        "load.constant",
+                        "load.null",
                         "return");
         assertEquals(42L, node.getCallTarget().call());
         assertEvents(node,
@@ -1552,7 +1552,7 @@ public class TagTest extends AbstractInstructionTest {
                         "tag.leave",
                         "return",
                         "tag.leaveVoid",
-                        "load.constant",
+                        "load.null",
                         "return");
         assertEquals(42L, node.getCallTarget().call());
         assertEvents(node,
@@ -1614,7 +1614,7 @@ public class TagTest extends AbstractInstructionTest {
                         "tag.leave",
                         "return",
                         "tag.leaveVoid",
-                        "load.constant",
+                        "load.null",
                         "return");
         assertEquals(42L, node.getCallTarget().call());
         assertEvents(node,
@@ -2067,7 +2067,7 @@ public class TagTest extends AbstractInstructionTest {
                         "tag.leave",
                         "return",
                         "tag.leaveVoid",
-                        "load.constant",
+                        "load.null",
                         "return");
         assertEquals(123L, node.getCallTarget().call());
         assertEvents(node, events,

@@ -72,6 +72,7 @@ public class OperationModel implements PrettyPrintable {
         YIELD,
 
         LOAD_CONSTANT,
+        LOAD_NULL,
         LOAD_ARGUMENT,
         LOAD_EXCEPTION,
         LOAD_LOCAL,

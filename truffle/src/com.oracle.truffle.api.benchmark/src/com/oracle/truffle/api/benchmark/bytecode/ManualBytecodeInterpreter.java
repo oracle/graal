@@ -551,7 +551,7 @@ class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
                 case OP_ADD: {
                     int lhs = UFA.getInt(frame, sp - 2);
                     int rhs = UFA.getInt(frame, sp - 1);
-                    UFA.setInt(frame, sp - 2, UFA.cast(UFA.readObject(localNodes, BYTES.getShort(localBc, bci + 1)), AddNode.class).execute(lhs, rhs));
+                    UFA.setInt(frame, sp - 2, UFA.uncheckedCast(UFA.readObject(localNodes, BYTES.getShort(localBc, bci + 1)), AddNode.class).execute(lhs, rhs));
                     sp -= 1;
                     bci += 2;
                     continue loop;
@@ -560,14 +560,14 @@ class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
                 case OP_MOD: {
                     int lhs = UFA.getInt(frame, sp - 2);
                     int rhs = UFA.getInt(frame, sp - 1);
-                    UFA.setInt(frame, sp - 2, UFA.cast(UFA.readObject(localNodes, BYTES.getShort(localBc, bci + 1)), ModNode.class).execute(lhs, rhs));
+                    UFA.setInt(frame, sp - 2, UFA.uncheckedCast(UFA.readObject(localNodes, BYTES.getShort(localBc, bci + 1)), ModNode.class).execute(lhs, rhs));
                     sp -= 1;
                     bci += 2;
                     continue loop;
                 }
                 // ( -- i)
                 case OP_CONST: {
-                    UFA.setInt(frame, sp, UFA.cast(UFA.readObject(localObjs, BYTES.getShort(localBc, bci + 1)), Integer.class));
+                    UFA.setInt(frame, sp, UFA.uncheckedCast(UFA.readObject(localObjs, BYTES.getShort(localBc, bci + 1)), Integer.class));
                     sp += 1;
                     bci += 2;
                     continue loop;
@@ -672,7 +672,7 @@ class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
                 case OP_ADD: {
                     int lhs = (int) UFA.getObject(frame, sp - 2);
                     int rhs = (int) UFA.getObject(frame, sp - 1);
-                    UFA.setObject(frame, sp - 2, UFA.cast(UFA.readObject(localNodes, BYTES.getShort(localBc, bci + 1)), ManualUnsafeNodedInterpreter.AddNode.class).execute(lhs, rhs));
+                    UFA.setObject(frame, sp - 2, UFA.uncheckedCast(UFA.readObject(localNodes, BYTES.getShort(localBc, bci + 1)), ManualUnsafeNodedInterpreter.AddNode.class).execute(lhs, rhs));
                     sp -= 1;
                     bci += 2;
                     continue loop;
@@ -681,14 +681,14 @@ class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
                 case OP_MOD: {
                     int lhs = (int) UFA.getObject(frame, sp - 2);
                     int rhs = (int) UFA.getObject(frame, sp - 1);
-                    UFA.setObject(frame, sp - 2, UFA.cast(UFA.readObject(localNodes, BYTES.getShort(localBc, bci + 1)), ManualUnsafeNodedInterpreter.ModNode.class).execute(lhs, rhs));
+                    UFA.setObject(frame, sp - 2, UFA.uncheckedCast(UFA.readObject(localNodes, BYTES.getShort(localBc, bci + 1)), ManualUnsafeNodedInterpreter.ModNode.class).execute(lhs, rhs));
                     sp -= 1;
                     bci += 2;
                     continue loop;
                 }
                 // ( -- i)
                 case OP_CONST: {
-                    UFA.setObject(frame, sp, UFA.cast(UFA.readObject(localObjs, BYTES.getShort(localBc, bci + 1)), Integer.class));
+                    UFA.setObject(frame, sp, UFA.uncheckedCast(UFA.readObject(localObjs, BYTES.getShort(localBc, bci + 1)), Integer.class));
                     sp += 1;
                     bci += 2;
                     continue loop;

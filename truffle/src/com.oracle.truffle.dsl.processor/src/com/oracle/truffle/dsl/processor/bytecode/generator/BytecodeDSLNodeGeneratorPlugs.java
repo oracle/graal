@@ -135,12 +135,9 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     private boolean buildChildExecution(CodeTreeBuilder b, FrameState frameState, String frame, int specializationIndex) {
         if (specializationIndex < instruction.signature.constantOperandsBeforeCount) {
             TypeMirror constantOperandType = instruction.operation.constantOperands.before().get(specializationIndex).type();
-            if (!ElementUtils.isObject(constantOperandType)) {
-                b.cast(constantOperandType);
-            }
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
             InstructionImmediate imm = imms.get(specializationIndex);
-            b.tree(readConst(readImmediate("$bc", "$bci", imm), "$bytecode.constants"));
+            b.tree(readConst(readImmediate("$bc", "$bci", imm), "$bytecode.constants", constantOperandType));
             return false;
         }
 
@@ -212,12 +209,9 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         int constantOperandAfterCount = instruction.signature.constantOperandsAfterCount;
         if (constantOperandAfterIndex < constantOperandAfterCount) {
             TypeMirror constantOperandType = instruction.operation.constantOperands.after().get(constantOperandAfterIndex).type();
-            if (!ElementUtils.isObject(constantOperandType)) {
-                b.cast(constantOperandType);
-            }
             List<InstructionImmediate> imms = instruction.getImmediates(ImmediateKind.CONSTANT);
             InstructionImmediate imm = imms.get(instruction.signature.constantOperandsBeforeCount + constantOperandAfterIndex);
-            b.tree(readConst(readImmediate("$bc", "$bci", imm), "$bytecode.constants"));
+            b.tree(readConst(readImmediate("$bc", "$bci", imm), "$bytecode.constants", constantOperandType));
             return false;
         }
 

@@ -150,6 +150,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public OperationModel finallyTryCatchOperation;
     public OperationModel finallyHandlerOperation;
     public OperationModel loadConstantOperation;
+    public OperationModel loadNullOperation;
     public OperationModel loadLocalOperation;
     public OperationModel loadLocalMaterializedOperation;
     public OperationModel tagOperation;
@@ -174,6 +175,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel storeLocalInstruction;
     public InstructionModel throwInstruction;
     public InstructionModel loadConstantInstruction;
+    public InstructionModel loadNullInstruction;
     public InstructionModel yieldInstruction;
     public InstructionModel[] loadVariadicInstruction;
     public InstructionModel mergeVariadicInstruction;

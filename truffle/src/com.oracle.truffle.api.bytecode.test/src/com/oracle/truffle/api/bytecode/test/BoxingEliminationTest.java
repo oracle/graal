@@ -56,7 +56,6 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
-import com.oracle.truffle.api.bytecode.LocalSetter;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;

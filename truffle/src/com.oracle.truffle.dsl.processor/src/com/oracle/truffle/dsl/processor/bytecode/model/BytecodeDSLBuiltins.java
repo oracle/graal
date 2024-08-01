@@ -73,6 +73,7 @@ public class BytecodeDSLBuiltins {
         m.throwInstruction = m.instruction(InstructionKind.THROW, "throw", m.signature(void.class, Object.class));
         m.loadConstantInstruction = m.instruction(InstructionKind.LOAD_CONSTANT, "load.constant", m.signature(Object.class)) //
                         .addImmediate(ImmediateKind.CONSTANT, "constant");
+        m.loadNullInstruction = m.instruction(InstructionKind.LOAD_NULL, "load.null", m.signature(Object.class));
 
         m.blockOperation = m.operation(OperationKind.BLOCK, "Block",
                         """
@@ -200,6 +201,11 @@ public class BytecodeDSLBuiltins {
                         """) //
                         .setOperationBeginArguments(new OperationArgument(context.getType(Object.class), Encoding.OBJECT, "constant", "the constant value to load")) //
                         .setInstruction(m.loadConstantInstruction);
+
+        m.loadNullOperation = m.operation(OperationKind.LOAD_NULL, "LoadNull", """
+                        LoadNull produces a {@code null} value.
+                        """) //
+                        .setInstruction(m.loadNullInstruction);
         m.operation(OperationKind.LOAD_ARGUMENT, "LoadArgument", """
                         LoadArgument reads the argument at {@code index} from the frame.
                         """) //

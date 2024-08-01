@@ -41,7 +41,7 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
-import static com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
+import static org.junit.Assert.assertThrows;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,8 +54,8 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -67,6 +67,7 @@ import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.LocalSetter;
 import com.oracle.truffle.api.bytecode.Operation;
@@ -254,6 +255,27 @@ public class ConstantOperandTest {
         }).getNode(0);
         assertEquals(42L, root2.getCallTarget().call());
         assertEquals(List.of("bar", 5), root2.prologEvents);
+    }
+
+    @Test
+    public void testPrologNull() {
+        ConstantOperandsInPrologTestRootNodeGen.create(BytecodeConfig.DEFAULT, b -> {
+            assertThrows(IllegalArgumentException.class, () -> b.beginRoot(LANGUAGE, null));
+            b.beginRoot(LANGUAGE, "foo");
+            assertThrows(IllegalArgumentException.class, () -> b.emitLoadConstant(null));
+            b.endRoot(0);
+        }).getNode(0);
+    }
+
+    @Test
+    public void testConstantNulls() {
+        parse(b -> {
+            b.beginRoot(LANGUAGE);
+            assertThrows(IllegalArgumentException.class, () -> b.emitLoadConstant(null));
+            assertThrows(IllegalArgumentException.class, () -> b.beginGetAttrWithDefault(null));
+            assertThrows(IllegalArgumentException.class, () -> b.endGetAttrWithDefault(null));
+            b.endRoot();
+        });
     }
 
     @Test
