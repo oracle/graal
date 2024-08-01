@@ -131,4 +131,17 @@ abstract class SeekableByteChannelFd extends Fd {
         }
         return Errno.Success;
     }
+
+    @Override
+    public Errno datasync() {
+        if (!isSet(fsRightsBase, Rights.FdDatasync)) {
+            return Errno.Notcapable;
+        }
+        try {
+            outputStream.flush();
+        } catch (IOException e) {
+            return Errno.Io;
+        }
+        return Errno.Success;
+    }
 }

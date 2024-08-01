@@ -618,6 +618,20 @@ public abstract class Fd implements Closeable {
         return Errno.Acces;
     }
 
+    /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#-fd_datasyncfd-fd---result-errno"><code>fd_datasync</code></a>:
+     * Synchronize the data of a file to disk.
+     *
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     */
+    public Errno datasync() {
+        if (!isSet(fsRightsBase, Rights.FdDatasync)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Inval;
+    }
+
     @Override
     public void close() throws IOException {
     }
