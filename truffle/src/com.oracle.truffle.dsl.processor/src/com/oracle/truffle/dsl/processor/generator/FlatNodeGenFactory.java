@@ -796,12 +796,7 @@ public class FlatNodeGenFactory {
                 }
             }
 
-            for (TypeMirror type : uniqueSortedTypes(expectedTypes, false)) {
-                if (!typeSystem.hasType(type)) {
-                    clazz.addOptional(TypeSystemCodeGenerator.createExpectMethod(PRIVATE, typeSystem,
-                                    context.getType(Object.class), type));
-                }
-            }
+            generateExpectedHelpers(clazz);
 
             clazz.getEnclosedElements().addAll(removeThisMethods.values());
 
@@ -919,6 +914,8 @@ public class FlatNodeGenFactory {
                 }
             }
 
+            generateExpectedHelpers(clazz);
+
             inlined.getEnclosedElements().addAll(removeThisMethods.values());
 
             inlined.getImplements().add(types.UnadoptableNode);
@@ -1017,6 +1014,15 @@ public class FlatNodeGenFactory {
         debug.end();
 
         return clazz;
+    }
+
+    private void generateExpectedHelpers(CodeTypeElement clazz) {
+        for (TypeMirror type : uniqueSortedTypes(expectedTypes, false)) {
+            if (!typeSystem.hasType(type)) {
+                clazz.addOptional(TypeSystemCodeGenerator.createExpectMethod(PRIVATE, typeSystem,
+                                context.getType(Object.class), type));
+            }
+        }
     }
 
     private CodeVariableElement createCacheInlinedField(CodeTreeBuilder init, SpecializationData specialization,
