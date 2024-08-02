@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.hotspot.guestgraal.truffle;
 
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.vm.ci.common.NativeImageReinitialize;
@@ -59,29 +58,24 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
             // fast path if Truffle was not initialized
             return null;
         }
-        Object runtimeLocalRef = RunTime.createHandleForLocalReference(globalReference);
-        if (runtimeLocalRef == null) {
+        Object runtimeLocalHandle = NativeImageHostCalls.createLocalHandleForWeakGlobalReference(globalReference);
+        if (runtimeLocalHandle == null) {
             // The Truffle runtime was collected by the GC
             return null;
         }
         TruffleHostEnvironment environment = this.previousRuntime;
         if (environment != null) {
             Object cached = hsRuntime(environment).hsHandle;
-            if (RunTime.isSameObject(cached, runtimeLocalRef)) {
+            if (NativeImageHostCalls.isSameObject(cached, runtimeLocalHandle)) {
                 // fast path for registered and cached Truffle runtime handle
                 return environment;
             }
-        }
-        ResolvedJavaType runtimeType = runtime().asResolvedJavaType(RunTime.getObjectClass(runtimeLocalRef));
-        if (runtimeType == null) {
-            throw GraalError.shouldNotReachHere("The object class needs to be available for a Truffle runtime object.");
         }
         /*
          * We do not currently validate the forType. But in the future we want to lookup the runtime
          * per type. So in theory multiple truffle runtimes can be loaded.
          */
-        HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(runtimeLocalRef, runtimeType);
-
+        HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(NativeImageHostCalls.createGlobalHandle(runtimeLocalHandle), NativeImageHostCalls.getObjectClass(runtimeLocalHandle));
         this.previousRuntime = environment = new LibGraalTruffleHostEnvironment(runtime, runtime().getHostJVMCIBackend().getMetaAccess());
         return environment;
     }

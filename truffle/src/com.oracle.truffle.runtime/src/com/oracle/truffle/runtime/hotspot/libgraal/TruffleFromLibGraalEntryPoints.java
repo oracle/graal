@@ -62,7 +62,6 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetPartialEvaluationMethodInfo;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetPosition;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetSuppliedString;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.HasNextTier;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
@@ -270,11 +269,6 @@ final class TruffleFromLibGraalEntryPoints {
         return new LibGraalStringSupplier(handle);
     }
 
-    @TruffleFromLibGraal(GetSuppliedString)
-    static String getSuppliedString(Supplier<String> supplier) {
-        return supplier.get();
-    }
-
     @TruffleFromLibGraal(IsCancelled)
     static boolean isCancelled(Object task) {
         return ((TruffleCompilationTask) task).isCancelled();
@@ -443,25 +437,25 @@ final class TruffleFromLibGraalEntryPoints {
     static Object getPartialEvaluationMethodInfo(Object truffleRuntime, long methodHandle) {
         ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         PartialEvaluationMethodInfo info = ((TruffleCompilerRuntime) truffleRuntime).getPartialEvaluationMethodInfo(method);
-        byte[] result = new byte[5];
-        result[0] = (byte) info.loopExplosion().ordinal();
-        result[1] = (byte) info.inlineForPartialEvaluation().ordinal();
-        result[2] = (byte) info.inlineForTruffleBoundary().ordinal();
-        result[3] = (byte) (info.isInlineable() ? 1 : 0);
-        result[4] = (byte) (info.isSpecializationMethod() ? 1 : 0);
-        return result;
+        BinaryOutput.ByteArrayBinaryOutput out = BinaryOutput.create(new byte[5]);
+        out.writeByte(info.loopExplosion().ordinal());
+        out.writeByte(info.inlineForPartialEvaluation().ordinal());
+        out.writeByte(info.inlineForTruffleBoundary().ordinal());
+        out.writeBoolean(info.isInlineable());
+        out.writeBoolean(info.isSpecializationMethod());
+        return out.getArray();
     }
 
     @TruffleFromLibGraal(Id.GetHostMethodInfo)
     static Object getHostMethodInfo(Object truffleRuntime, long methodHandle) {
         ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         HostMethodInfo info = ((TruffleCompilerRuntime) truffleRuntime).getHostMethodInfo(method);
-        byte[] result = new byte[4];
-        result[0] = (byte) (info.isTruffleBoundary() ? 1 : 0);
-        result[1] = (byte) (info.isBytecodeInterpreterSwitch() ? 1 : 0);
-        result[2] = (byte) (info.isBytecodeInterpreterSwitchBoundary() ? 1 : 0);
-        result[3] = (byte) (info.isInliningCutoff() ? 1 : 0);
-        return result;
+        BinaryOutput.ByteArrayBinaryOutput out = BinaryOutput.create(new byte[4]);
+        out.writeBoolean(info.isTruffleBoundary());
+        out.writeBoolean(info.isBytecodeInterpreterSwitch());
+        out.writeBoolean(info.isBytecodeInterpreterSwitchBoundary());
+        out.writeBoolean(info.isInliningCutoff());
+        return out.getArray();
     }
 
     /*----------------------*/

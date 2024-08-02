@@ -40,30 +40,19 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsLastTier;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.SetCallCounts;
-import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getOrFail;
+import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMethodHandleOrFail;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 final class HSTruffleCompilationTask extends HSIndirectHandle implements TruffleCompilationTask {
 
-    private static MethodHandle isCancelled;
-    private static MethodHandle hasNextTier;
-    private static MethodHandle isLastTier;
-    private static MethodHandle getPosition;
-    private static MethodHandle addTargetToDequeue;
-    private static MethodHandle setCallCounts;
-    private static MethodHandle addInlinedTarget;
-    private static MethodHandle getDebugProperties;
-
-    static void initialize(Map<String, MethodHandle> upCallHandles) {
-        isCancelled = getOrFail(upCallHandles, IsCancelled);
-        hasNextTier = getOrFail(upCallHandles, HasNextTier);
-        isLastTier = getOrFail(upCallHandles, IsLastTier);
-        getPosition = getOrFail(upCallHandles, GetPosition);
-        addTargetToDequeue = getOrFail(upCallHandles, AddTargetToDequeue);
-        setCallCounts = getOrFail(upCallHandles, SetCallCounts);
-        addInlinedTarget = getOrFail(upCallHandles, AddInlinedTarget);
-        getDebugProperties = getOrFail(upCallHandles, GetDebugProperties);
-    }
+    private static final MethodHandle isCancelled = getHostMethodHandleOrFail(IsCancelled);
+    private static final MethodHandle hasNextTier = getHostMethodHandleOrFail(HasNextTier);
+    private static final MethodHandle isLastTier = getHostMethodHandleOrFail(IsLastTier);
+    private static final MethodHandle getPosition = getHostMethodHandleOrFail(GetPosition);
+    private static final MethodHandle addTargetToDequeue = getHostMethodHandleOrFail(AddTargetToDequeue);
+    private static final MethodHandle setCallCounts = getHostMethodHandleOrFail(SetCallCounts);
+    private static final MethodHandle addInlinedTarget = getHostMethodHandleOrFail(AddInlinedTarget);
+    private static final MethodHandle getDebugProperties = getHostMethodHandleOrFail(GetDebugProperties);
 
     HSTruffleCompilationTask(Object hsHandle) {
         super(hsHandle);

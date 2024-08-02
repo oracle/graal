@@ -27,13 +27,19 @@ package com.oracle.svm.graal.hotspot.guestgraal;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.management.ManagementFactory;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
@@ -370,6 +376,8 @@ final class GuestGraalLibGraalScope {
 
 final class GuestGraalTruffleToLibGraalEntryPoints {
 
+    private static final String GRAAL_ENTRY_POINT_CLASS = "jdk.graal.compiler.hotspot.guestgraal.truffle.GraalEntryPoint";
+
     private final MethodHandle initializeIsolate;
     private final MethodHandle registerRuntime;
     private final MethodHandle initializeRuntime;
@@ -397,7 +405,28 @@ final class GuestGraalTruffleToLibGraalEntryPoints {
     private final MethodHandle purgePartialEvaluationCaches;
     private final MethodHandle getCompilerVersion;
 
-    GuestGraalTruffleToLibGraalEntryPoints(Map<String, MethodHandle> handles) {
+    GuestGraalTruffleToLibGraalEntryPoints(Lookup guestGraalLookup) {
+        Map<String, MethodHandle> handles = new HashMap<>();
+        try {
+            Class<?> graalEntryPointClass = guestGraalLookup.findClass(GRAAL_ENTRY_POINT_CLASS);
+            Set<String> methodNames = new HashSet<>();
+            Arrays.stream(Id.values()).map(Id::getMethodName).forEach(methodNames::add);
+            methodNames.remove("releaseHandle"); // Implemented in native-image host
+            for (Method m : graalEntryPointClass.getDeclaredMethods()) {
+                if (Modifier.isStatic(m.getModifiers()) && Modifier.isPublic(m.getModifiers())) {
+                    String methodName = m.getName();
+                    if (methodNames.remove(methodName)) {
+                        handles.put(methodName, guestGraalLookup.unreflect(m));
+                    }
+                }
+            }
+            if (!methodNames.isEmpty()) {
+                throw new RuntimeException(String.format("Cannot find methods for following ids %s in %s", methodNames, GRAAL_ENTRY_POINT_CLASS));
+            }
+        } catch (ClassNotFoundException | IllegalAccessException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+
         this.initializeIsolate = getOrFail(handles, Id.InitializeIsolate);
         this.registerRuntime = getOrFail(handles, Id.RegisterRuntime);
         this.initializeRuntime = getOrFail(handles, Id.InitializeRuntime);
@@ -424,15 +453,14 @@ final class GuestGraalTruffleToLibGraalEntryPoints {
         this.getDataPatchesCount = getOrFail(handles, Id.GetDataPatchesCount);
         this.purgePartialEvaluationCaches = getOrFail(handles, Id.PurgePartialEvaluationCaches);
         this.getCompilerVersion = getOrFail(handles, Id.GetCompilerVersion);
-
     }
 
     private static MethodHandle getOrFail(Map<String, MethodHandle> handles, Id id) {
-        MethodHandle handle = handles.get(id.name());
+        MethodHandle handle = handles.get(id.getMethodName());
         if (handle != null) {
             return handle;
         } else {
-            throw new NoSuchElementException(id.name());
+            throw new NoSuchElementException(id.getMethodName());
         }
     }
 
@@ -451,7 +479,7 @@ final class GuestGraalTruffleToLibGraalEntryPoints {
     @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_initializeIsolate")
     public static void initializeIsolate(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JClass runtimeClass) {
         try (JNIMethodScope s = openScope(Id.InitializeIsolate, env)) {
-            TruffleFromLibGraalStartPoint.initialize(new TruffleFromLibGraalCalls(JNIMethodScope.env(), runtimeClass));
+            TruffleFromLibGraalStartPoint.initializeJNI(runtimeClass);
             singleton().initializeIsolate.invoke();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);

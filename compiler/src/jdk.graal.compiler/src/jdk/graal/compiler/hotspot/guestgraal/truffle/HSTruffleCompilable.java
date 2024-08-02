@@ -51,45 +51,26 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsTrivial;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationFailed;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.PrepareForCompilation;
-import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getOrFail;
+import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMethodHandleOrFail;
 
 final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompilable {
 
-    private static MethodHandle getFailedSpeculationsAddress;
-    private static MethodHandle getCompilerOptions;
-    private static MethodHandle engineId;
-    private static MethodHandle prepareForCompilation;
-    private static MethodHandle isTrivial;
-    private static MethodHandle asJavaConstant;
-    private static MethodHandle getCompilableName;
-    private static MethodHandle createStringSupplier;
-    private static MethodHandle onCompilationFailed;
-    private static MethodHandle getNonTrivialNodeCount;
-    private static MethodHandle countDirectCallNodes;
-    private static MethodHandle getCompilableCallCount;
-    private static MethodHandle compilableToString;
-    private static MethodHandle cancelCompilation;
-    private static MethodHandle isSameOrSplit;
-    private static MethodHandle getKnownCallSiteCount;
-
-    static void initialize(Map<String, MethodHandle> upCallHandles) {
-        getFailedSpeculationsAddress = getOrFail(upCallHandles, GetFailedSpeculationsAddress);
-        getCompilerOptions = getOrFail(upCallHandles, GetCompilerOptions);
-        engineId = getOrFail(upCallHandles, EngineId);
-        prepareForCompilation = getOrFail(upCallHandles, PrepareForCompilation);
-        isTrivial = getOrFail(upCallHandles, IsTrivial);
-        asJavaConstant = getOrFail(upCallHandles, AsJavaConstant);
-        getCompilableName = getOrFail(upCallHandles, GetCompilableName);
-        createStringSupplier = getOrFail(upCallHandles, CreateStringSupplier);
-        onCompilationFailed = getOrFail(upCallHandles, OnCompilationFailed);
-        getNonTrivialNodeCount = getOrFail(upCallHandles, GetNonTrivialNodeCount);
-        countDirectCallNodes = getOrFail(upCallHandles, CountDirectCallNodes);
-        getCompilableCallCount = getOrFail(upCallHandles, GetCompilableCallCount);
-        compilableToString = getOrFail(upCallHandles, CompilableToString);
-        cancelCompilation = getOrFail(upCallHandles, CancelCompilation);
-        isSameOrSplit = getOrFail(upCallHandles, IsSameOrSplit);
-        getKnownCallSiteCount = getOrFail(upCallHandles, GetKnownCallSiteCount);
-    }
+    private static final MethodHandle getFailedSpeculationsAddress = getHostMethodHandleOrFail(GetFailedSpeculationsAddress);
+    private static final MethodHandle getCompilerOptions = getHostMethodHandleOrFail(GetCompilerOptions);
+    private static final MethodHandle engineId = getHostMethodHandleOrFail(EngineId);
+    private static final MethodHandle prepareForCompilation = getHostMethodHandleOrFail(PrepareForCompilation);
+    private static final MethodHandle isTrivial = getHostMethodHandleOrFail(IsTrivial);
+    private static final MethodHandle asJavaConstant = getHostMethodHandleOrFail(AsJavaConstant);
+    private static final MethodHandle getCompilableName = getHostMethodHandleOrFail(GetCompilableName);
+    private static final MethodHandle createStringSupplier = getHostMethodHandleOrFail(CreateStringSupplier);
+    private static final MethodHandle onCompilationFailed = getHostMethodHandleOrFail(OnCompilationFailed);;
+    private static final MethodHandle getNonTrivialNodeCount = getHostMethodHandleOrFail(GetNonTrivialNodeCount);
+    private static final MethodHandle countDirectCallNodes = getHostMethodHandleOrFail(CountDirectCallNodes);
+    private static final MethodHandle getCompilableCallCount = getHostMethodHandleOrFail(GetCompilableCallCount);
+    private static final MethodHandle compilableToString = getHostMethodHandleOrFail(CompilableToString);
+    private static final MethodHandle cancelCompilation = getHostMethodHandleOrFail(CancelCompilation);
+    private static final MethodHandle isSameOrSplit = getHostMethodHandleOrFail(IsSameOrSplit);
+    private static final MethodHandle getKnownCallSiteCount = getHostMethodHandleOrFail(GetKnownCallSiteCount);
 
     /**
      * Handle to {@code speculationLog} field of the {@code OptimizedCallTarget}.

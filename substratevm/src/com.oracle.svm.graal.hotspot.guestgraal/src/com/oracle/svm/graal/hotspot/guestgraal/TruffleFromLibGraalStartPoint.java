@@ -24,30 +24,70 @@
  */
 package com.oracle.svm.graal.hotspot.guestgraal;
 
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
-import jdk.graal.compiler.debug.GraalError;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JavaVM;
-import org.graalvm.jniutils.JNI.JString;
-import org.graalvm.jniutils.JNI.JValue;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativebridge.BinaryInput;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordFactory;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callAddInlinedTarget;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callAddTargetToDequeue;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callAsJavaConstant;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callCancelCompilation;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callCompilableToString;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callConsumeOptimizedAssumptionDependency;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callCountDirectCallNodes;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callCreateStringSupplier;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callEngineId;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetCompilableCallCount;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetCompilableName;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetCompilerOptions;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetConstantFieldInfo;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetDebugProperties;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetDescription;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetFailedSpeculationsAddress;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetHostMethodInfo;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetKnownCallSiteCount;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetLanguage;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetLineNumber;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetNodeClassName;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetNodeId;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetNonTrivialNodeCount;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetOffsetEnd;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetOffsetStart;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetPartialEvaluationMethodInfo;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetPosition;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callGetURI;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callHasNextTier;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callIsCancelled;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callIsLastTier;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callIsSameOrSplit;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callIsSuppressedFailure;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callIsTrivial;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callIsValueType;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callLog;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callOnCodeInstallation;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callOnCompilationFailed;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callOnCompilationRetry;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callOnFailure;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callOnGraalTierFinished;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callOnIsolateShutdown;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callOnSuccess;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callOnTruffleTierFinished;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callPrepareForCompilation;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callRegisterOptimizedAssumptionDependency;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointGen.callSetCallCounts;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AddInlinedTarget;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AddTargetToDequeue;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AsJavaConstant;
@@ -95,124 +135,120 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.PrepareForCompilation;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.RegisterOptimizedAssumptionDependency;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.SetCallCounts;
-import static java.lang.invoke.MethodType.methodType;
+import static org.graalvm.jniutils.JNIMethodScope.env;
 import static org.graalvm.jniutils.JNIUtil.createString;
 
 // TODO: Should be generated by annotation processor
+/**
+ * JNI calls to HotSpot called by guest Graal using method handles.
+ */
 public final class TruffleFromLibGraalStartPoint {
 
-    private static FromLibGraalCalls<Id> calls;
+    private static TruffleFromLibGraalCalls calls;
     private static JavaVM javaVM;
 
     private TruffleFromLibGraalStartPoint() {
     }
 
-    static void initialize(FromLibGraalCalls<Id> fromLibGraalCalls) {
-        calls = fromLibGraalCalls;
-        JavaVM vm = JNIUtil.GetJavaVM(JNIMethodScope.env());
-        assert javaVM.isNull() || javaVM.equal(vm);
-        javaVM = vm;
+    static void initializeJNI(JClass runtimeClass) {
+        if (calls == null) {
+            calls = new TruffleFromLibGraalCalls(JNIMethodScope.env(), runtimeClass);
+            JavaVM vm = JNIUtil.GetJavaVM(JNIMethodScope.env());
+            assert javaVM.isNull() || javaVM.equal(vm);
+            javaVM = vm;
+        }
     }
 
+    @TruffleFromLibGraal(OnIsolateShutdown)
     public static void onIsolateShutdown(long isolateId) {
         JNIEnv env = JNIUtil.GetEnv(javaVM);
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setLong(isolateId);
-        calls.callVoid(env, OnIsolateShutdown, args);
+        callOnIsolateShutdown(calls, env, isolateId);
     }
 
+    @TruffleFromLibGraal(GetPartialEvaluationMethodInfo)
     public static byte[] getPartialEvaluationMethodInfo(Object hsHandle, long methodHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(2, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setLong(methodHandle);
-        JByteArray jbytes = calls.callJObject(env, GetPartialEvaluationMethodInfo, args);
-        return JNIUtil.createArray(env, jbytes);
+        JByteArray hsByteArray = callGetPartialEvaluationMethodInfo(calls, env, ((HSObject) hsHandle).getHandle(), methodHandle);
+        CCharPointer buffer = StackValue.get(5);
+        JNIUtil.GetByteArrayRegion(env(), hsByteArray, 0, 5, buffer);
+        BinaryInput in = BinaryInput.create(buffer, 5);
+        return new byte[]{
+                        in.readByte(),
+                        in.readByte(),
+                        in.readByte(),
+                        (byte) (in.readBoolean() ? 1 : 0),
+                        (byte) (in.readBoolean() ? 1 : 0),
+        };
     }
 
-    public static byte[] getHostMethodInfo(Object hsHandle, long methodHandle) {
+    @TruffleFromLibGraal(GetHostMethodInfo)
+    public static boolean[] getHostMethodInfo(Object hsHandle, long methodHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(2, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setLong(methodHandle);
-        JByteArray jbytes = calls.callJObject(env, GetHostMethodInfo, args);
-        return JNIUtil.createArray(env, jbytes);
+        JByteArray hsByteArray = callGetHostMethodInfo(calls, env, ((HSObject) hsHandle).getHandle(), methodHandle);
+        CCharPointer buffer = StackValue.get(4);
+        JNIUtil.GetByteArrayRegion(env(), hsByteArray, 0, 4, buffer);
+        BinaryInput in = BinaryInput.create(buffer, 4);
+        boolean[] result = new boolean[4];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = in.readBoolean();
+        }
+        return result;
     }
 
+    @TruffleFromLibGraal(OnCodeInstallation)
     public static void onCodeInstallation(Object hsHandle, Object compilableHsHandle, long installedCodeHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(3, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setJObject(((HSObject) compilableHsHandle).getHandle());
-        args.addressOf(2).setLong(installedCodeHandle);
-        calls.callVoid(env, OnCodeInstallation, args);
+        callOnCodeInstallation(calls, env, ((HSObject) hsHandle).getHandle(), ((HSObject) compilableHsHandle).getHandle(), installedCodeHandle);
     }
 
+    @TruffleFromLibGraal(RegisterOptimizedAssumptionDependency)
     public static Object registerOptimizedAssumptionDependency(Object hsHandle, long optimizedAssumptionHandle) {
         JNIMethodScope scope = JNIMethodScope.scope();
-        JValue args = StackValue.get(2, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setLong(optimizedAssumptionHandle);
-        return new HSObject(scope, calls.callJObject(scope.getEnv(), RegisterOptimizedAssumptionDependency, args));
+        JObject assumptionConsumer = callRegisterOptimizedAssumptionDependency(calls, scope.getEnv(), ((HSObject) hsHandle).getHandle(), optimizedAssumptionHandle);
+        return assumptionConsumer.isNull() ? null : new HSObject(scope, assumptionConsumer);
     }
 
+    @TruffleFromLibGraal(IsValueType)
     public static boolean isValueType(Object hsHandle, long typeHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(2, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setLong(typeHandle);
-        return calls.callBoolean(env, IsValueType, args);
+        return callIsValueType(calls, env, ((HSObject) hsHandle).getHandle(), typeHandle);
     }
 
+    @TruffleFromLibGraal(GetConstantFieldInfo)
     public static int getConstantFieldInfo(Object hsHandle, long typeHandle, boolean isStatic, int fieldIndex) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(4, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setLong(typeHandle);
-        args.addressOf(2).setBoolean(isStatic);
-        args.addressOf(3).setInt(fieldIndex);
-        return calls.callInt(env, GetConstantFieldInfo, args);
+        return callGetConstantFieldInfo(calls, env, ((HSObject) hsHandle).getHandle(), typeHandle, isStatic, fieldIndex);
     }
 
+    @TruffleFromLibGraal(Log)
     public static void log(Object hsHandle, String loggerId, Object compilableHsHandle, String message) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(4, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setJObject(JNIUtil.createHSString(env, loggerId));
-        args.addressOf(2).setJObject(((HSObject) compilableHsHandle).getHandle());
-        args.addressOf(3).setJObject(JNIUtil.createHSString(env, message));
-        calls.callVoid(env, Log, args);
+        callLog(calls, env, ((HSObject) hsHandle).getHandle(), JNIUtil.createHSString(env, loggerId), ((HSObject) compilableHsHandle).getHandle(), JNIUtil.createHSString(env, message));
     }
 
+    @TruffleFromLibGraal(CreateStringSupplier)
     public static Object createStringSupplier(Object serializedException) {
         JNIMethodScope scope = JNIMethodScope.scope();
         long serializedExceptionHandle = LibGraalObjectHandles.create(serializedException);
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setLong(serializedExceptionHandle);
-        return new HSObject(scope, calls.callJObject(scope.getEnv(), CreateStringSupplier, args));
+        return new HSObject(scope, callCreateStringSupplier(calls, scope.getEnv(), serializedExceptionHandle));
     }
 
+    @TruffleFromLibGraal(IsSuppressedFailure)
     public static boolean isSuppressedFailure(Object hsHandle, Object compilableHsHandle, Object supplierHsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(3, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setJObject(((HSObject) compilableHsHandle).getHandle());
-        args.addressOf(2).setJObject(((HSObject) supplierHsHandle).getHandle());
-        return calls.callBoolean(env, IsSuppressedFailure, args);
+        return callIsSuppressedFailure(calls, env, ((HSObject) hsHandle).getHandle(), ((HSObject) compilableHsHandle).getHandle(), ((HSObject) supplierHsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(GetFailedSpeculationsAddress)
     public static long getFailedSpeculationsAddress(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callLong(env, GetFailedSpeculationsAddress, args);
+        return callGetFailedSpeculationsAddress(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(GetCompilerOptions)
     public static Map<String, String> getCompilerOptions(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        JByteArray res = calls.callJObject(env, GetCompilerOptions, args);
+        JByteArray res = callGetCompilerOptions(calls, env, ((HSObject) hsHandle).getHandle());
         BinaryInput in = BinaryInput.create(JNIUtil.createArray(env, res));
         int size = in.readInt();
         Map<String, String> map = new LinkedHashMap<>();
@@ -223,141 +259,116 @@ public final class TruffleFromLibGraalStartPoint {
         return map;
     }
 
+    @TruffleFromLibGraal(EngineId)
     public static long engineId(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callLong(env, EngineId, args);
+        return callEngineId(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(PrepareForCompilation)
     public static void prepareForCompilation(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        calls.callVoid(env, PrepareForCompilation, args);
+        callPrepareForCompilation(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(IsTrivial)
     public static boolean isTrivial(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callBoolean(env, IsTrivial, args);
+        return callIsTrivial(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(AsJavaConstant)
     public static long asJavaConstant(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callLong(env, AsJavaConstant, args);
+        return callAsJavaConstant(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(OnCompilationFailed)
     public static void onCompilationFailed(Object hsHandle, Object serializedExceptionHsHandle, boolean suppressed, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(6, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setJObject(((HSObject) serializedExceptionHsHandle).getHandle());
-        args.addressOf(2).setBoolean(suppressed);
-        args.addressOf(3).setBoolean(bailout);
-        args.addressOf(4).setBoolean(permanentBailout);
-        args.addressOf(5).setBoolean(graphTooBig);
-        calls.callVoid(env, OnCompilationFailed, args);
+        callOnCompilationFailed(calls, env, ((HSObject) hsHandle).getHandle(), ((HSObject) serializedExceptionHsHandle).getHandle(),
+                        suppressed, bailout, permanentBailout, graphTooBig);
     }
 
+    @TruffleFromLibGraal(GetCompilableName)
     public static String getCompilableName(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return createString(env, calls.callJObject(env, GetCompilableName, args));
+        return createString(env, callGetCompilableName(calls, env, ((HSObject) hsHandle).getHandle()));
     }
 
+    @TruffleFromLibGraal(GetNonTrivialNodeCount)
     public static int getNonTrivialNodeCount(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callInt(env, GetNonTrivialNodeCount, args);
+        return callGetNonTrivialNodeCount(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(CountDirectCallNodes)
     public static int countDirectCallNodes(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callInt(env, CountDirectCallNodes, args);
+        return callCountDirectCallNodes(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(GetCompilableCallCount)
     public static int getCompilableCallCount(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callInt(env, GetCompilableCallCount, args);
+        return callGetCompilableCallCount(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(CompilableToString)
     public static String compilableToString(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return createString(env, calls.callJObject(env, CompilableToString, args));
+        return createString(env, callCompilableToString(calls, env, ((HSObject) hsHandle).getHandle()));
     }
 
+    @TruffleFromLibGraal(CancelCompilation)
     public static boolean cancelCompilation(Object hsHandle, CharSequence reason) {
         JNIEnv env = JNIMethodScope.env();
-        JString jniReason = JNIUtil.createHSString(env, reason.toString());
-        JValue args = StackValue.get(2, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setJObject(jniReason);
-        return calls.callBoolean(env, CancelCompilation, args);
+        return callCancelCompilation(calls, env, ((HSObject) hsHandle).getHandle(), JNIUtil.createHSString(env, reason.toString()));
     }
 
+    @TruffleFromLibGraal(IsSameOrSplit)
     public static boolean isSameOrSplit(Object hsHandle, Object otherHsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(2, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setJObject(otherHsHandle == null ? WordFactory.nullPointer() : ((HSObject) otherHsHandle).getHandle());
-        return calls.callBoolean(env, IsSameOrSplit, args);
+        return callIsSameOrSplit(calls, env, ((HSObject) hsHandle).getHandle(),
+                        otherHsHandle == null ? WordFactory.nullPointer() : ((HSObject) otherHsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(GetKnownCallSiteCount)
     public static int getKnownCallSiteCount(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callInt(env, GetKnownCallSiteCount, args);
+        return callGetKnownCallSiteCount(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(ConsumeOptimizedAssumptionDependency)
     public static void consumeOptimizedAssumptionDependency(Object hsHandle, Object compilableHsHandle, long installedCode) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(3, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setJObject(((HSObject) compilableHsHandle).getHandle());
-        args.addressOf(2).setLong(installedCode);
-        calls.callVoid(env, ConsumeOptimizedAssumptionDependency, args);
+        callConsumeOptimizedAssumptionDependency(calls, env, ((HSObject) hsHandle).getHandle(),
+                        compilableHsHandle == null ? WordFactory.nullPointer() : ((HSObject) compilableHsHandle).getHandle(),
+                        installedCode);
     }
 
+    @TruffleFromLibGraal(IsCancelled)
     public static boolean isCancelled(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callBoolean(env, IsCancelled, args);
+        return callIsCancelled(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(IsLastTier)
     public static boolean isLastTier(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callBoolean(env, IsLastTier, args);
+        return callIsLastTier(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(HasNextTier)
     public static boolean hasNextTier(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callBoolean(env, HasNextTier, args);
+        return callHasNextTier(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(GetPosition)
     public static Object getPosition(Object hsHandle, long nodeHandle) {
         JNIMethodScope scope = JNIMethodScope.scope();
-        JValue args = StackValue.get(2, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setLong(nodeHandle);
-        JObject hsPosition = calls.callJObject(scope.getEnv(), GetPosition, args);
+        JObject hsPosition = callGetPosition(calls, scope.getEnv(), ((HSObject) hsHandle).getHandle(), nodeHandle);
         if (hsPosition.isNull()) {
             return null;
         } else {
@@ -365,37 +376,28 @@ public final class TruffleFromLibGraalStartPoint {
         }
     }
 
+    @TruffleFromLibGraal(AddTargetToDequeue)
     public static void addTargetToDequeue(Object hsHandle, Object compilableHsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(2, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setJObject(((HSObject) compilableHsHandle).getHandle());
-        calls.callVoid(env, AddTargetToDequeue, args);
+        callAddTargetToDequeue(calls, env, ((HSObject) hsHandle).getHandle(), ((HSObject) compilableHsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(SetCallCounts)
     public static void setCallCounts(Object hsHandle, int total, int inlined) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(3, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setInt(total);
-        args.addressOf(2).setInt(inlined);
-        calls.callVoid(env, SetCallCounts, args);
+        callSetCallCounts(calls, env, ((HSObject) hsHandle).getHandle(), total, inlined);
     }
 
+    @TruffleFromLibGraal(AddInlinedTarget)
     public static void addInlinedTarget(Object hsHandle, Object compilableHsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(2, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setJObject(((HSObject) compilableHsHandle).getHandle());
-        calls.callVoid(env, AddInlinedTarget, args);
+        callAddInlinedTarget(calls, env, ((HSObject) hsHandle).getHandle(), ((HSObject) compilableHsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(GetDebugProperties)
     public static Map<String, Object> getDebugProperties(Object hsHandle, long nodeHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(2, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setLong(nodeHandle);
-        byte[] bytes = JNIUtil.createArray(env, (JByteArray) calls.callJObject(env, GetDebugProperties, args));
+        byte[] bytes = JNIUtil.createArray(env, (JByteArray) callGetDebugProperties(calls, env, ((HSObject) hsHandle).getHandle(), nodeHandle));
         BinaryInput in = BinaryInput.create(bytes);
         Map<String, Object> result = new LinkedHashMap<>();
         int size = in.readInt();
@@ -407,185 +409,97 @@ public final class TruffleFromLibGraalStartPoint {
         return result;
     }
 
+    @TruffleFromLibGraal(OnSuccess)
     public static void onSuccess(Object hsHandle, Object compilableHsHandle, Object taskHsHandle, Object graphInfo, Object compilationResultInfo, int tier) {
         try (LibGraalObjectHandleScope graphInfoScope = LibGraalObjectHandleScope.forObject(graphInfo);
                         LibGraalObjectHandleScope compilationResultInfoScope = LibGraalObjectHandleScope.forObject(compilationResultInfo)) {
             JNIEnv env = JNIMethodScope.env();
-            JValue args = StackValue.get(6, JValue.class);
-            args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-            args.addressOf(1).setJObject(((HSObject) compilableHsHandle).getHandle());
-            args.addressOf(2).setJObject(((HSObject) taskHsHandle).getHandle());
-            args.addressOf(3).setLong(graphInfoScope.getHandle());
-            args.addressOf(4).setLong(compilationResultInfoScope.getHandle());
-            args.addressOf(5).setInt(tier);
-            calls.callVoid(env, OnSuccess, args);
+            callOnSuccess(calls, env, ((HSObject) hsHandle).getHandle(), ((HSObject) compilableHsHandle).getHandle(),
+                            ((HSObject) taskHsHandle).getHandle(), graphInfoScope.getHandle(), compilationResultInfoScope.getHandle(),
+                            tier);
         }
     }
 
+    @TruffleFromLibGraal(OnTruffleTierFinished)
     public static void onTruffleTierFinished(Object hsHandle, Object compilableHsHandle, Object taskHsHandle, Object graphInfo) {
         try (LibGraalObjectHandleScope graphInfoScope = LibGraalObjectHandleScope.forObject(graphInfo)) {
             JNIEnv env = JNIMethodScope.env();
-            JValue args = StackValue.get(4, JValue.class);
-            args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-            args.addressOf(1).setJObject(((HSObject) compilableHsHandle).getHandle());
-            args.addressOf(2).setJObject(((HSObject) taskHsHandle).getHandle());
-            args.addressOf(3).setLong(graphInfoScope.getHandle());
-            calls.callVoid(env, OnTruffleTierFinished, args);
+            callOnTruffleTierFinished(calls, env, ((HSObject) hsHandle).getHandle(), ((HSObject) compilableHsHandle).getHandle(),
+                            ((HSObject) taskHsHandle).getHandle(), graphInfoScope.getHandle());
         }
     }
 
+    @TruffleFromLibGraal(OnGraalTierFinished)
     public static void onGraalTierFinished(Object hsHandle, Object compilableHsHandle, Object graphInfo) {
         try (LibGraalObjectHandleScope graphInfoScope = LibGraalObjectHandleScope.forObject(graphInfo)) {
             JNIEnv env = JNIMethodScope.env();
-            JValue args = StackValue.get(3, JValue.class);
-            args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-            args.addressOf(1).setJObject(((HSObject) compilableHsHandle).getHandle());
-            args.addressOf(2).setLong(graphInfoScope.getHandle());
-            calls.callVoid(env, OnGraalTierFinished, args);
+            callOnGraalTierFinished(calls, env, ((HSObject) hsHandle).getHandle(), ((HSObject) compilableHsHandle).getHandle(),
+                            graphInfoScope.getHandle());
         }
     }
 
+    @TruffleFromLibGraal(OnFailure)
     public static void onFailure(Object hsHandle, Object compilableHsHandle, String reason, boolean bailout, boolean permanentBailout, int tier, Object lazyStackTrace) {
         try (LibGraalObjectHandleScope lazyStackTraceScope = lazyStackTrace != null ? LibGraalObjectHandleScope.forObject(lazyStackTrace) : null) {
             JNIEnv env = JNIMethodScope.env();
-            JValue args = StackValue.get(7, JValue.class);
-            args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-            args.addressOf(1).setJObject(((HSObject) compilableHsHandle).getHandle());
-            args.addressOf(2).setJObject(JNIUtil.createHSString(env, reason));
-            args.addressOf(3).setBoolean(bailout);
-            args.addressOf(4).setBoolean(permanentBailout);
-            args.addressOf(5).setInt(tier);
-            args.addressOf(6).setLong(lazyStackTraceScope != null ? lazyStackTraceScope.getHandle() : 0L);
-            calls.callVoid(env, OnFailure, args);
+            callOnFailure(calls, env, ((HSObject) hsHandle).getHandle(),
+                            ((HSObject) compilableHsHandle).getHandle(), JNIUtil.createHSString(env, reason),
+                            bailout, permanentBailout, tier, lazyStackTraceScope != null ? lazyStackTraceScope.getHandle() : 0L);
         }
     }
 
+    @TruffleFromLibGraal(OnCompilationRetry)
     public static void onCompilationRetry(Object hsHandle, Object compilableHsHandle, Object taskHsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(3, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        args.addressOf(1).setJObject(((HSObject) compilableHsHandle).getHandle());
-        args.addressOf(2).setJObject(((HSObject) taskHsHandle).getHandle());
-        calls.callVoid(env, OnCompilationRetry, args);
+        callOnCompilationRetry(calls, env, ((HSObject) hsHandle).getHandle(),
+                        ((HSObject) compilableHsHandle).getHandle(), ((HSObject) taskHsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(GetOffsetStart)
     public static int getOffsetStart(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callInt(env, GetOffsetStart, args);
+        return callGetOffsetStart(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(GetOffsetEnd)
     public static int getOffsetEnd(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callInt(env, GetOffsetEnd, args);
+        return callGetOffsetEnd(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(GetLineNumber)
     public static int getLineNumber(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callInt(env, GetLineNumber, args);
+        return callGetLineNumber(calls, env, ((HSObject) hsHandle).getHandle());
     }
 
+    @TruffleFromLibGraal(GetLanguage)
     public static String getLanguage(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return JNIUtil.createString(env, calls.callJObject(env, GetLanguage, args));
+        return JNIUtil.createString(env, callGetLanguage(calls, env, ((HSObject) hsHandle).getHandle()));
     }
 
+    @TruffleFromLibGraal(GetDescription)
     public static String getDescription(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return JNIUtil.createString(env, calls.callJObject(env, GetDescription, args));
+        return JNIUtil.createString(env, callGetDescription(calls, env, ((HSObject) hsHandle).getHandle()));
     }
 
+    @TruffleFromLibGraal(GetURI)
     public static String getURI(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return JNIUtil.createString(env, calls.callJObject(env, GetURI, args));
+        return JNIUtil.createString(env, callGetURI(calls, env, ((HSObject) hsHandle).getHandle()));
     }
 
+    @TruffleFromLibGraal(GetNodeClassName)
     public static String getNodeClassName(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return JNIUtil.createString(env, calls.callJObject(env, GetNodeClassName, args));
+        return JNIUtil.createString(env, callGetNodeClassName(calls, env, ((HSObject) hsHandle).getHandle()));
     }
 
+    @TruffleFromLibGraal(GetNodeId)
     public static int getNodeId(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
-        JValue args = StackValue.get(1, JValue.class);
-        args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
-        return calls.callInt(env, GetNodeId, args);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static Map<String, MethodHandle> getUpCallHandles() {
-        try {
-            Map<String, MethodHandle> result = new HashMap<>();
-            insertMethodHandle(result, OnIsolateShutdown, methodType(void.class, long.class));
-            insertMethodHandle(result, GetPartialEvaluationMethodInfo, methodType(byte[].class, Object.class, long.class));
-            insertMethodHandle(result, GetHostMethodInfo, methodType(byte[].class, Object.class, long.class));
-            insertMethodHandle(result, OnCodeInstallation, methodType(void.class, Object.class, Object.class, long.class));
-            insertMethodHandle(result, RegisterOptimizedAssumptionDependency, methodType(Object.class, Object.class, long.class));
-            insertMethodHandle(result, IsValueType, methodType(boolean.class, Object.class, long.class));
-            insertMethodHandle(result, GetConstantFieldInfo, methodType(int.class, Object.class, long.class, boolean.class, int.class));
-            insertMethodHandle(result, Log, methodType(void.class, Object.class, String.class, Object.class, String.class));
-            insertMethodHandle(result, CreateStringSupplier, methodType(Object.class, Object.class));
-            insertMethodHandle(result, IsSuppressedFailure, methodType(boolean.class, Object.class, Object.class, Object.class));
-            insertMethodHandle(result, GetFailedSpeculationsAddress, methodType(long.class, Object.class));
-            insertMethodHandle(result, GetCompilerOptions, methodType(Map.class, Object.class));
-            insertMethodHandle(result, EngineId, methodType(long.class, Object.class));
-            insertMethodHandle(result, PrepareForCompilation, methodType(void.class, Object.class));
-            insertMethodHandle(result, IsTrivial, methodType(boolean.class, Object.class));
-            insertMethodHandle(result, AsJavaConstant, methodType(long.class, Object.class));
-            insertMethodHandle(result, OnCompilationFailed, methodType(void.class, Object.class, Object.class, boolean.class, boolean.class, boolean.class, boolean.class));
-            insertMethodHandle(result, GetCompilableName, methodType(String.class, Object.class));
-            insertMethodHandle(result, GetNonTrivialNodeCount, methodType(int.class, Object.class));
-            insertMethodHandle(result, CountDirectCallNodes, methodType(int.class, Object.class));
-            insertMethodHandle(result, GetCompilableCallCount, methodType(int.class, Object.class));
-            insertMethodHandle(result, CompilableToString, methodType(String.class, Object.class));
-            insertMethodHandle(result, CancelCompilation, methodType(boolean.class, Object.class, CharSequence.class));
-            insertMethodHandle(result, IsSameOrSplit, methodType(boolean.class, Object.class, Object.class));
-            insertMethodHandle(result, GetKnownCallSiteCount, methodType(int.class, Object.class));
-            insertMethodHandle(result, ConsumeOptimizedAssumptionDependency, methodType(void.class, Object.class, Object.class, long.class));
-            insertMethodHandle(result, IsCancelled, methodType(boolean.class, Object.class));
-            insertMethodHandle(result, IsLastTier, methodType(boolean.class, Object.class));
-            insertMethodHandle(result, HasNextTier, methodType(boolean.class, Object.class));
-            insertMethodHandle(result, GetPosition, methodType(Object.class, Object.class, long.class));
-            insertMethodHandle(result, AddTargetToDequeue, methodType(void.class, Object.class, Object.class));
-            insertMethodHandle(result, SetCallCounts, methodType(void.class, Object.class, int.class, int.class));
-            insertMethodHandle(result, AddInlinedTarget, methodType(void.class, Object.class, Object.class));
-            insertMethodHandle(result, GetDebugProperties, methodType(Map.class, Object.class, long.class));
-            insertMethodHandle(result, OnSuccess, methodType(void.class, Object.class, Object.class, Object.class, Object.class, Object.class, int.class));
-            insertMethodHandle(result, OnTruffleTierFinished, methodType(void.class, Object.class, Object.class, Object.class, Object.class));
-            insertMethodHandle(result, OnGraalTierFinished, methodType(void.class, Object.class, Object.class, Object.class));
-            insertMethodHandle(result, OnFailure, methodType(void.class, Object.class, Object.class, String.class, boolean.class, boolean.class, int.class, Object.class));
-            insertMethodHandle(result, OnCompilationRetry, methodType(void.class, Object.class, Object.class, Object.class));
-            insertMethodHandle(result, GetOffsetStart, methodType(int.class, Object.class));
-            insertMethodHandle(result, GetOffsetEnd, methodType(int.class, Object.class));
-            insertMethodHandle(result, GetLineNumber, methodType(int.class, Object.class));
-            insertMethodHandle(result, GetLanguage, methodType(String.class, Object.class));
-            insertMethodHandle(result, GetDescription, methodType(String.class, Object.class));
-            insertMethodHandle(result, GetURI, methodType(String.class, Object.class));
-            insertMethodHandle(result, GetNodeClassName, methodType(String.class, Object.class));
-            insertMethodHandle(result, GetNodeId, methodType(int.class, Object.class));
-            return result;
-        } catch (Throwable e) {
-            throw GraalError.shouldNotReachHere(e);
-        }
-    }
-
-    private static final MethodHandles.Lookup LKP = MethodHandles.lookup();
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static void insertMethodHandle(Map<String, MethodHandle> into, Id id, MethodType type) throws NoSuchMethodException, IllegalAccessException {
-        into.put(id.name(), LKP.findStatic(TruffleFromLibGraalStartPoint.class, id.getMethodName(), type));
+        return callGetNodeId(calls, env, ((HSObject) hsHandle).getHandle());
     }
 }

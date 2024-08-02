@@ -25,27 +25,25 @@
 package com.oracle.svm.graal.hotspot.guestgraal;
 
 import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.util.Map;
+/**
+ * Entry points for native-image specific methods called by guest Graal using method handles.
+ */
+public final class NativeImageHostEntryPoint {
 
-import static java.lang.invoke.MethodType.methodType;
-
-public final class TruffleNativeHostMethods {
-
-    private TruffleNativeHostMethods() {
+    private NativeImageHostEntryPoint() {
     }
 
-    public static Object createHandleForLocalReference(long jniLocalRef) {
+    public static void initializeHost(long runtimeClass) {
+        TruffleFromLibGraalStartPoint.initializeJNI(WordFactory.pointer(runtimeClass));
+    }
+
+    public static Object createLocalHandleForLocalReference(long jniLocalRef) {
         JNIMethodScope scope = JNIMethodScope.scopeOrNull();
         if (scope == null) {
             return null;
@@ -53,10 +51,17 @@ public final class TruffleNativeHostMethods {
         return new HSObject(scope, WordFactory.pointer(jniLocalRef));
     }
 
-    public static Object createHandleForWeakGlobalReference(long jniWeakGlobalRef) {
+    public static Object createLocalHandleForWeakGlobalReference(long jniWeakGlobalRef) {
         JNIMethodScope scope = JNIMethodScope.scope();
         JObject localRef = JNIUtil.NewLocalRef(scope.getEnv(), WordFactory.pointer(jniWeakGlobalRef));
         return localRef.isNull() ? null : new HSObject(scope, localRef);
+    }
+
+    public static Object createGlobalHandle(Object hsHandle) {
+        if (hsHandle == null) {
+            return null;
+        }
+        return new HSObject(JNIMethodScope.env(), ((HSObject) hsHandle).getHandle());
     }
 
     public static boolean isSameObject(Object o1, Object o2) {
@@ -69,20 +74,5 @@ public final class TruffleNativeHostMethods {
 
     public static Object createTruffleCompilerOptionDescriptor(String name, int type, boolean deprecated, String help, String deprecationMessage) {
         return new TruffleCompilerOptionDescriptor(name, TruffleCompilerOptionDescriptor.Type.values()[type], deprecated, help, deprecationMessage);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static Map<String, MethodHandle> getUpCallHandles() {
-        MethodHandles.Lookup lkp = MethodHandles.lookup();
-        try {
-            return Map.of("RunTime#createHandleForLocalReference", lkp.findStatic(TruffleNativeHostMethods.class, "createHandleForLocalReference", methodType(Object.class, long.class)),
-                            "RunTime#createHandleForWeakGlobalReference", lkp.findStatic(TruffleNativeHostMethods.class, "createHandleForWeakGlobalReference", methodType(Object.class, long.class)),
-                            "RunTime#isSameObject", lkp.findStatic(TruffleNativeHostMethods.class, "isSameObject", methodType(boolean.class, Object.class, Object.class)),
-                            "RunTime#getObjectClass", lkp.findStatic(TruffleNativeHostMethods.class, "getObjectClass", methodType(long.class, Object.class)),
-                            "RunTime#createTruffleCompilerOptionDescriptor", lkp.findStatic(TruffleNativeHostMethods.class, "createTruffleCompilerOptionDescriptor",
-                                            methodType(Object.class, String.class, int.class, boolean.class, String.class, String.class)));
-        } catch (Throwable e) {
-            throw GraalError.shouldNotReachHere(e);
-        }
     }
 }

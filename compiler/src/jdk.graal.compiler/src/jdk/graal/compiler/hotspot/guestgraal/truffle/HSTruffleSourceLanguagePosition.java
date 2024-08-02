@@ -28,7 +28,6 @@ import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
 
 import java.lang.invoke.MethodHandle;
 import java.net.URI;
-import java.util.Map;
 
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetDescription;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetLanguage;
@@ -38,29 +37,18 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetEnd;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
-import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getOrFail;
+import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMethodHandleOrFail;
 
 final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements TruffleSourceLanguagePosition {
 
-    private static MethodHandle getOffsetStart;
-    private static MethodHandle getOffsetEnd;
-    private static MethodHandle getLineNumber;
-    private static MethodHandle getLanguage;
-    private static MethodHandle getDescription;
-    private static MethodHandle getURI;
-    private static MethodHandle getNodeClassName;
-    private static MethodHandle getNodeId;
-
-    static void initialize(Map<String, MethodHandle> upCallHandles) {
-        getOffsetStart = getOrFail(upCallHandles, GetOffsetStart);
-        getOffsetEnd = getOrFail(upCallHandles, GetOffsetEnd);
-        getLineNumber = getOrFail(upCallHandles, GetLineNumber);
-        getLanguage = getOrFail(upCallHandles, GetLanguage);
-        getDescription = getOrFail(upCallHandles, GetDescription);
-        getURI = getOrFail(upCallHandles, GetURI);
-        getNodeClassName = getOrFail(upCallHandles, GetNodeClassName);
-        getNodeId = getOrFail(upCallHandles, GetNodeId);
-    }
+    private static final MethodHandle getOffsetStart = getHostMethodHandleOrFail(GetOffsetStart);
+    private static final MethodHandle getOffsetEnd = getHostMethodHandleOrFail(GetOffsetEnd);
+    private static final MethodHandle getLineNumber = getHostMethodHandleOrFail(GetLineNumber);
+    private static final MethodHandle getLanguage = getHostMethodHandleOrFail(GetLanguage);
+    private static final MethodHandle getDescription = getHostMethodHandleOrFail(GetDescription);
+    private static final MethodHandle getURI = getHostMethodHandleOrFail(GetURI);
+    private static final MethodHandle getNodeClassName = getHostMethodHandleOrFail(GetNodeClassName);
+    private static final MethodHandle getNodeId = getHostMethodHandleOrFail(GetNodeId);
 
     HSTruffleSourceLanguagePosition(Object hsHandle) {
         super(hsHandle);

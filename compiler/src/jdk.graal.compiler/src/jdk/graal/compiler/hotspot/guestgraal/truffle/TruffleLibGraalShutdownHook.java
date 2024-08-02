@@ -31,9 +31,8 @@ import jdk.vm.ci.hotspot.HotSpotVMEventListener;
 import jdk.vm.ci.services.JVMCIServiceLocator;
 
 import java.lang.invoke.MethodHandle;
-import java.util.Map;
 
-import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getOrFail;
+import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMethodHandleOrFail;
 
 @ServiceProvider(JVMCIServiceLocator.class)
 public class TruffleLibGraalShutdownHook extends JVMCIServiceLocator {
@@ -55,11 +54,7 @@ public class TruffleLibGraalShutdownHook extends JVMCIServiceLocator {
 
     static class ShutdownHook implements HotSpotVMEventListener {
 
-        private static MethodHandle onIsolateShutdown;
-
-        static void initialize(Map<String, MethodHandle> upCallHandles) {
-            onIsolateShutdown = getOrFail(upCallHandles, Id.OnIsolateShutdown);
-        }
+        private static final MethodHandle onIsolateShutdown = getHostMethodHandleOrFail(Id.OnIsolateShutdown);
 
         ShutdownHook() {
         }

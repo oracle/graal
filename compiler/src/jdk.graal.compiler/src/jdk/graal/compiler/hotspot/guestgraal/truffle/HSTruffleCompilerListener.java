@@ -29,7 +29,6 @@ import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
 
 import java.lang.invoke.MethodHandle;
-import java.util.Map;
 import java.util.function.Supplier;
 
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationRetry;
@@ -37,23 +36,15 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnGraalTierFinished;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnSuccess;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnTruffleTierFinished;
-import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getOrFail;
+import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMethodHandleOrFail;
 
 final class HSTruffleCompilerListener extends HSIndirectHandle implements TruffleCompilerListener {
 
-    private static MethodHandle onSuccess;
-    private static MethodHandle onTruffleTierFinished;
-    private static MethodHandle onGraalTierFinished;
-    private static MethodHandle onFailure;
-    private static MethodHandle onCompilationRetry;
-
-    static void initialize(Map<String, MethodHandle> upCallHandles) {
-        onSuccess = getOrFail(upCallHandles, OnSuccess);
-        onTruffleTierFinished = getOrFail(upCallHandles, OnTruffleTierFinished);
-        onGraalTierFinished = getOrFail(upCallHandles, OnGraalTierFinished);
-        onFailure = getOrFail(upCallHandles, OnFailure);
-        onCompilationRetry = getOrFail(upCallHandles, OnCompilationRetry);
-    }
+    private static final MethodHandle onSuccess = getHostMethodHandleOrFail(OnSuccess);
+    private static final MethodHandle onTruffleTierFinished = getHostMethodHandleOrFail(OnTruffleTierFinished);
+    private static final MethodHandle onGraalTierFinished = getHostMethodHandleOrFail(OnGraalTierFinished);
+    private static final MethodHandle onFailure = getHostMethodHandleOrFail(OnFailure);
+    private static final MethodHandle onCompilationRetry = getHostMethodHandleOrFail(OnCompilationRetry);
 
     HSTruffleCompilerListener(Object hsHandle) {
         super(hsHandle);

@@ -28,12 +28,12 @@ import static java.lang.invoke.MethodType.methodType;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -416,25 +416,25 @@ public final class GuestGraalFeature implements Feature {
                             configResult.encodedConfig());
 
             MethodHandle getRuntimeHandles = mhl.findStatic(buildTimeClass, "getRuntimeHandles", methodType(Map.class));
-
-            Class<?> truffleBuildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime");
-            MethodHandle truffleConfigureGraalForLibGraal = mhl.findStatic(truffleBuildTimeClass, "configureGraalForLibGraal", methodType(void.class));
-            MethodHandle getTruffleDownCallHandles = mhl.findStatic(truffleBuildTimeClass, "getRuntimeHandles", methodType(Map.class, Map.class));
-            truffleConfigureGraalForLibGraal.invoke();
-            initRuntimeHandles(getRuntimeHandles, getTruffleDownCallHandles);
-
+            initGraalRuntimeHandles(getRuntimeHandles);
+            initializeTruffle();
         } catch (Throwable e) {
             throw VMError.shouldNotReachHere(e);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private static void initRuntimeHandles(MethodHandle getRuntimeHandles, MethodHandle getDownCallHandles) throws Throwable {
+    private static void initGraalRuntimeHandles(MethodHandle getRuntimeHandles) throws Throwable {
         ImageSingletons.add(GuestGraal.class, new GuestGraal((Map<String, MethodHandle>) getRuntimeHandles.invoke()));
-        Map<String, MethodHandle> upCallHandles = new HashMap<>();
-        upCallHandles.putAll(TruffleFromLibGraalStartPoint.getUpCallHandles());
-        upCallHandles.putAll(TruffleNativeHostMethods.getUpCallHandles());
-        ImageSingletons.add(GuestGraalTruffleToLibGraalEntryPoints.class, new GuestGraalTruffleToLibGraalEntryPoints((Map<String, MethodHandle>) getDownCallHandles.invoke(upCallHandles)));
+    }
+
+    private void initializeTruffle() throws Throwable {
+        Class<?> truffleBuildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime");
+        MethodHandle getLookup = mhl.findStatic(truffleBuildTimeClass, "getLookup", methodType(Lookup.class, Lookup.class));
+        ImageSingletons.add(GuestGraalTruffleToLibGraalEntryPoints.class, new GuestGraalTruffleToLibGraalEntryPoints((Lookup) getLookup.invoke(mhl)));
+        MethodHandle truffleConfigureGraalForLibGraal = mhl.findStatic(truffleBuildTimeClass, "configureGraalForLibGraal", methodType(void.class, Consumer.class));
+        Consumer<Class<?>> initializeInBuildTime = RuntimeClassInitialization::initializeAtBuildTime;
+        truffleConfigureGraalForLibGraal.invoke(initializeInBuildTime);
     }
 
     @SuppressWarnings("try")

@@ -29,20 +29,15 @@ import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerAssumptionDependency;
 
 import java.lang.invoke.MethodHandle;
-import java.util.Map;
 import java.util.function.Consumer;
 
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.ConsumeOptimizedAssumptionDependency;
-import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getOrFail;
+import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMethodHandleOrFail;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 final class HSConsumer extends HSIndirectHandle implements Consumer<OptimizedAssumptionDependency> {
 
-    private static MethodHandle consumeOptimizedAssumptionDependency;
-
-    static void initialize(Map<String, MethodHandle> upCallHandles) {
-        consumeOptimizedAssumptionDependency = getOrFail(upCallHandles, ConsumeOptimizedAssumptionDependency);
-    }
+    private static final MethodHandle consumeOptimizedAssumptionDependency = getHostMethodHandleOrFail(ConsumeOptimizedAssumptionDependency);
 
     HSConsumer(Object hsHandle) {
         super(hsHandle);

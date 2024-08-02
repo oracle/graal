@@ -34,76 +34,15 @@ import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilationSupport;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
-import java.lang.invoke.MethodHandle;
-import java.util.Map;
-import java.util.Objects;
 import java.util.function.Supplier;
-
-import static jdk.graal.compiler.hotspot.guestgraal.truffle.HSIndirectHandle.handleException;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
-public final class RunTime {
+/**
+ * Guest Graal entry points for Truffle to libgraal calls.
+ */
+public final class GraalEntryPoint {
 
-    private static volatile Handles handles;
-    private static final String COMPILER_VERSION = HotSpotTruffleCompilationSupport.readCompilerVersion();
-
-    static void initialize(Map<String, MethodHandle> upCallHandles) {
-        handles = new Handles(Objects.requireNonNull(upCallHandles.get("RunTime#createHandleForLocalReference")),
-                        Objects.requireNonNull(upCallHandles.get("RunTime#createHandleForWeakGlobalReference")),
-                        Objects.requireNonNull(upCallHandles.get("RunTime#isSameObject")),
-                        Objects.requireNonNull(upCallHandles.get("RunTime#getObjectClass")),
-                        Objects.requireNonNull(upCallHandles.get("RunTime#createTruffleCompilerOptionDescriptor")));
-    }
-
-    private record Handles(MethodHandle createHandleForLocalReference, MethodHandle createHandleForWeakGlobalReference,
-                    MethodHandle isSameObject, MethodHandle getObjectClass, MethodHandle createTruffleCompilerOptionDescriptor) {
-    }
-
-    private RunTime() {
-    }
-
-    // libgraal to native-image upcalls
-
-    static Object createHandleForLocalReference(long jniLocalHandle) {
-        try {
-            return handles.createHandleForLocalReference.invoke(jniLocalHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-    }
-
-    static Object createHandleForWeakGlobalReference(long jniLocalHandle) {
-        try {
-            return handles.createHandleForWeakGlobalReference.invoke(jniLocalHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-    }
-
-    static boolean isSameObject(Object o1, Object o2) {
-        try {
-            return (boolean) handles.isSameObject.invoke(o1, o2);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-    }
-
-    static long getObjectClass(Object o) {
-        try {
-            return (long) handles.getObjectClass.invoke(o);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-    }
-
-    static Object createTruffleCompilerOptionDescriptor(String name, int type, boolean deprecated, String help, String deprecationMessage) {
-        try {
-            return handles.createTruffleCompilerOptionDescriptor.invoke(name, type, deprecated, help, deprecationMessage);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+    private GraalEntryPoint() {
     }
 
     // HotSpot to libgraal entry points
@@ -117,8 +56,7 @@ public final class RunTime {
     }
 
     public static Object initializeRuntime(Object hsHandle, long hsClassLoaderDelegate) {
-        ResolvedJavaType classLoaderDelegate = runtime().asResolvedJavaType(hsClassLoaderDelegate);
-        return new HSTruffleCompilerRuntime(hsHandle, classLoaderDelegate);
+        return new HSTruffleCompilerRuntime(hsHandle, hsClassLoaderDelegate);
     }
 
     public static Object newCompiler(Object truffleCompilerRuntime) {
@@ -218,7 +156,7 @@ public final class RunTime {
         Object[] result = new Object[options.length];
         for (int i = 0; i < options.length; i++) {
             TruffleCompilerOptionDescriptor option = options[i];
-            result[i] = createTruffleCompilerOptionDescriptor(option.name(), option.type().ordinal(), option.deprecated(), option.help(), option.deprecationMessage());
+            result[i] = NativeImageHostCalls.createTruffleCompilerOptionDescriptor(option.name(), option.type().ordinal(), option.deprecated(), option.help(), option.deprecationMessage());
         }
         return result;
     }
@@ -236,6 +174,6 @@ public final class RunTime {
     }
 
     public static String getCompilerVersion() {
-        return COMPILER_VERSION;
+        return HSTruffleCompilerRuntime.COMPILER_VERSION;
     }
 }
