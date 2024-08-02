@@ -169,7 +169,7 @@ public final class WasiModule extends BuiltinModule {
         defineFunction(context, module, "fd_read", types(FD_TYPE, IOVEC_ARRAY_ADDRESS_TYPE, IOVEC_ARRAY_LENGTH_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE),
                         new WasiFdReadNode(language, module));
         defineFunction(context, module, "fd_readdir", types(FD_TYPE, POINTER_TYPE, SIZE_TYPE, DIRCOOKIE_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE),
-                        new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_readdir"));
+                        new WasiFdReaddirNode(language, module));
         defineFunction(context, module, "fd_renumber", types(FD_TYPE, FD_TYPE), types(ERRNO_TYPE), new WasiFdRenumberNode(language, module));
         defineFunction(context, module, "fd_seek", types(FD_TYPE, FILEDELTA_TYPE, WHENCE_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiFdSeekNode(language, module));
         defineFunction(context, module, "fd_sync", types(FD_TYPE), types(ERRNO_TYPE), new WasiFdSyncNode(language, module));

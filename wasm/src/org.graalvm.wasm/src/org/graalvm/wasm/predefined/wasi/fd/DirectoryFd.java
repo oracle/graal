@@ -45,15 +45,20 @@ import static org.graalvm.wasm.predefined.wasi.FlagUtils.isSet;
 import static org.graalvm.wasm.predefined.wasi.FlagUtils.isSubsetOf;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.NotLinkException;
 import java.nio.file.attribute.FileTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.wasi.WasiClockTimeGetNode;
+import org.graalvm.wasm.predefined.wasi.types.Dirent;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 import org.graalvm.wasm.predefined.wasi.types.Fdflags;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
@@ -137,6 +142,14 @@ class DirectoryFd extends Fd {
             hostFile = preopenedRoot.containedHostFile(hostFile.getCanonicalFile());
         }
         return hostFile;
+    }
+
+    @Override
+    public Errno filestatGet(Node node, WasmMemory memory, int resultAddress) {
+        if (!isSet(fsRightsBase, Rights.FdFilestatGet)) {
+            return Errno.Notcapable;
+        }
+        return FdUtils.writeFilestat(node, memory, resultAddress, virtualFile);
     }
 
     @Override
@@ -312,6 +325,61 @@ class DirectoryFd extends Fd {
                 return Errno.Acces;
             }
         }
+    }
+
+    @Override
+    public Errno readdir(Node node, WasmMemory memory, int bufAddress, int bufLength, long cookie, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdReaddir)) {
+            return Errno.Notcapable;
+        }
+        try {
+            Collection<TruffleFile> children = virtualFile.list();
+            List<TruffleFile> entries = new ArrayList<>(children.size() + 2);
+            entries.add(virtualFile.resolve("."));
+            entries.add(virtualFile.resolve(".."));
+            entries.addAll(children);
+
+            int bufPointer = bufAddress;
+            int bufEnd = bufAddress + bufLength;
+            long currentEntry = 0;
+
+            for (TruffleFile file : entries) {
+                // Only write entries whose index is past the received "cookie"
+                if (currentEntry >= cookie) {
+                    byte[] name = file.getName().getBytes(StandardCharsets.UTF_8);
+
+                    if (bufEnd - bufPointer >= Dirent.BYTES) {
+                        bufPointer += FdUtils.writeDirent(node, memory, bufPointer, file, name.length, currentEntry + 1);
+                    } else {
+                        // Write dirent to temp buffer and truncate
+                        byte[] dirent = FdUtils.writeDirentToByteArray(file, name.length, currentEntry + 1);
+                        for (int i = 0; bufPointer < bufEnd; i++, bufPointer++) {
+                            assert i < dirent.length;
+                            memory.store_i32_8(node, bufPointer, dirent[i]);
+                        }
+                        assert bufPointer == bufEnd;
+                        break;
+                    }
+
+                    if (bufEnd - bufPointer >= name.length) {
+                        bufPointer += memory.writeString(node, file.getName(), bufPointer);
+                    } else {
+                        // Truncate file name
+                        for (int i = 0; bufPointer < bufEnd; i++, bufPointer++) {
+                            assert i < name.length;
+                            memory.store_i32_8(node, bufPointer, name[i]);
+                        }
+                        assert bufPointer == bufEnd;
+                        break;
+                    }
+                }
+                currentEntry++;
+            }
+            memory.store_i32(node, sizeAddress, bufPointer - bufAddress);
+        } catch (IOException e) {
+            return Errno.Io;
+        }
+        return Errno.Success;
     }
 
     @Override
