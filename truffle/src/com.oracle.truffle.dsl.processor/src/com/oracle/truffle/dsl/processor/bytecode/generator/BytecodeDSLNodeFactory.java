@@ -11801,16 +11801,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.interceptControlFlowException != null) {
                 b.startIf().string("throwable instanceof ").type(types.ControlFlowException).end().startBlock();
                 b.startTryBlock();
-                b.startReturn();
+                b.startAssign("temp");
                 b.startCall("resolveControlFlowException");
                 b.string("$root").string(localFrame()).string("bci").startGroup().cast(types.ControlFlowException).string("throwable").end();
-
-                if (tier.isCached()) {
-                    b.string("loopCounter");
-                } else {
-                    b.string("uncachedExecuteCount");
-                }
                 b.end().end(); // call, return
+
+                emitBeforeReturnProfiling(b);
+
+                b.statement("return temp");
 
                 b.end().startCatchBlock(types.ControlFlowException, "rethrownCfe");
                 b.startThrow().string("rethrownCfe").end();
@@ -12006,13 +12004,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("return (sp << 16) | bci");
                         b.end();
                     } else {
+                        emitReportLoopCount(b, CodeTreeBuilder.createBuilder().string("++loopCounter.value >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE").build(), true);
+
                         b.startAssign("temp");
                         b.startCall(lookupBranchBackward(instr).getSimpleName().toString());
                         b.string("frame");
                         if (model.enableYield) {
                             b.string("localFrame");
                         }
-                        b.string("bc").string("bci").string("sp").string("loopCounter");
+                        b.string("bc").string("bci").string("sp");
                         b.end();
                         b.end();
 
@@ -12531,19 +12531,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             new CodeVariableElement(types.VirtualFrame, "frame"),
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(types.ControlFlowException, "cfe"));
-            if (tier.isUncached()) {
-                method.addParameter(new CodeVariableElement(type(int.class), "uncachedExecuteCount"));
-            } else {
-                method.addParameter(new CodeVariableElement(loopCounter.asType(), "loopCounter"));
-            }
 
             method.getThrownTypes().add(type(Throwable.class));
 
-            method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
             CodeTreeBuilder b = method.createBuilder();
-
             b.startAssign("Object result").startCall("$root", model.interceptControlFlowException).string("cfe").string("frame").string("this").string("bci").end(2);
-            emitBeforeReturnProfiling(b);
             // There may not be room above the sp. Just use the first stack slot.
             b.statement(setFrameObject("$root.maxLocals", "result"));
             b.startDeclaration(type(int.class), "sp").string("$root.maxLocals + 1").end();
@@ -12623,7 +12615,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "handler"),
                             new CodeVariableElement(type(int[].class), "localHandlers"));
-            method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
             method.addAnnotationMirror(new CodeAnnotationMirror(types.ExplodeLoop));
 
             if (!tier.isCached()) {
@@ -12904,11 +12895,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             method.addParameter(new CodeVariableElement(type(byte[].class), "bc"));
             method.addParameter(new CodeVariableElement(type(int.class), "bci"));
             method.addParameter(new CodeVariableElement(type(int.class), "sp"));
-            method.addParameter(new CodeVariableElement(loopCounter.asType(), "loopCounter"));
 
             CodeTreeBuilder b = method.createBuilder();
-
-            emitReportLoopCount(b, CodeTreeBuilder.createBuilder().string("++loopCounter.value >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE").build(), true);
 
             b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(1).string(" && ") //
                             .startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("this").end(2).startBlock();
