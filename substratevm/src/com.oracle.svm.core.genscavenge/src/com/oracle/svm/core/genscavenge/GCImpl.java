@@ -248,8 +248,6 @@ public final class GCImpl implements GC {
         printGCAfter(cause.getName());
         finishCollection();
         timers.mutator.open();
-
-        data.setOutOfMemory(outOfMemory);
     }
 
     private boolean collectImpl(GCCause cause, long requestingNanoTime, boolean forceFullGC) {
@@ -266,7 +264,7 @@ public final class GCImpl implements GC {
                     // objects
                     ReferenceObjectProcessing.setSoftReferencesAreWeak(true);
                     try {
-                    verifyHeap(During);
+                        verifyHeap(During);
                         outOfMemory = doCollectImpl(cause, requestingNanoTime, true, true);
                     } finally {
                         ReferenceObjectProcessing.setSoftReferencesAreWeak(false);
@@ -344,7 +342,7 @@ public final class GCImpl implements GC {
     private void verifyHeap(HeapVerifier.Occasion occasion) {
         if (SubstrateGCOptions.VerifyHeap.getValue() && shouldVerify(occasion)) {
             if (SubstrateGCOptions.VerboseGC.getValue()) {
-                printGCPrefixAndTime().string("Verifying ").string(occasion.name()).string(" GC ").newline();
+                Log.log().string("Verifying ").string(occasion.name()).string(" GC ").newline();
             }
 
             long start = System.nanoTime();
@@ -360,7 +358,7 @@ public final class GCImpl implements GC {
             }
 
             if (SubstrateGCOptions.VerboseGC.getValue()) {
-                printGCPrefixAndTime().string("Verifying ").string(occasion.name()).string(" GC ")
+                Log.log().string("Verifying ").string(occasion.name()).string(" GC ")
                                 .rational(TimeUtils.nanoSecondsSince(start), TimeUtils.nanosPerMilli, 3).string("ms").newline();
             }
         }

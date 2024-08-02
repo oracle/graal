@@ -30,7 +30,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.log.Log;
 
 /**
  * This data is only updated during a GC.
@@ -126,7 +125,6 @@ public final class GCAccounting {
     }
 
     void beforeCollectOnce(boolean completeCollection) {
-        Log trace = Log.noopLog().string("[GCImpl.Accounting.beforeCollection:").newline();
         /* Gather some space statistics. */
         HeapImpl heap = HeapImpl.getHeapImpl();
         YoungGeneration youngGen = heap.getYoungGeneration();
@@ -146,10 +144,6 @@ public final class GCAccounting {
         if (!completeCollection) {
             lastIncrementalCollectionOverflowedSurvivors = false;
         }
-        trace.string("  edenChunkBytesBefore: ").unsigned(edenChunkBytesBefore)
-                        .string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
-                        .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
-        trace.string("]").newline();
     }
 
     /** Called after an object has been promoted from the young generation to the old generation. */
@@ -159,15 +153,6 @@ public final class GCAccounting {
     }
 
     void afterCollectOnce(boolean completeCollection) {
-        Log trace = Log.noopLog().string("[GCImpl.Accounting.afterIncrementalCollection:");
-        trace.string("  incrementalCollectionCount: ").signed(incrementalCollectionCount)
-                        .string("  oldChunkBytesAfter: ").unsigned(oldChunkBytesAfter)
-                        .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
-        trace.string("]").newline();
-        Log trace = Log.noopLog().string("[GCImpl.Accounting.afterCompleteCollection:");
-        trace.string("  completeCollectionCount: ").signed(completeCollectionCount)
-                        .string("  oldChunkBytesAfter: ").unsigned(oldChunkBytesAfter);
-        trace.string("]").newline();
         HeapImpl heap = HeapImpl.getHeapImpl();
         // This is called after the collection, after the space flip, so OldSpace is FromSpace.
         YoungGeneration youngGen = heap.getYoungGeneration();

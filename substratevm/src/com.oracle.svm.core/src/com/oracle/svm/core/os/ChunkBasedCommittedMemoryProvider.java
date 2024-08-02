@@ -41,7 +41,6 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
         return (ChunkBasedCommittedMemoryProvider) ImageSingletons.lookup(CommittedMemoryProvider.class);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
         return allocate(nbytes, alignment, false);
     }

@@ -29,11 +29,12 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 
 @DuplicatedInNativeCode
 final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
@@ -69,7 +70,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
         }
 
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        Word header = ohi.readHeaderFromPointer(ptrToObj);
+        Word header = ObjectHeader.readHeaderFromPointer(ptrToObj);
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
             return true;
         }

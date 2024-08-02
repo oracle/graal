@@ -250,7 +250,7 @@ public final class HeapVerifier {
             return false;
         }
 
-        Word header = ObjectHeaderImpl.getObjectHeaderImpl().readHeaderFromPointer(ptr);
+        Word header = ObjectHeaderImpl.readHeaderFromPointer(ptr);
         if (ObjectHeaderImpl.isProducedHeapChunkZapped(header) || ObjectHeaderImpl.isConsumedHeapChunkZapped(header)) {
             Log.log().string("Object ").zhex(ptr).string(" has a zapped header: ").zhex(header).newline();
             return false;
@@ -317,11 +317,11 @@ public final class HeapVerifier {
 
     // This method is executed exactly once per object in the heap.
     private static boolean verifyReferences(Object obj) {
-        if (!SerialGCOptions.VerifyReferences.getValue()) {
+        if (!SerialGCOptions.VerifyReferences.getValue() && !SerialGCOptions.VerifyReferencesPointIntoValidChunk.getValue()) {
             return true;
         }
 
-        REFERENCE_VERIFIER.initialize(obj);
+        REFERENCE_VERIFIER.initialize();
         InteriorObjRefWalker.walkObject(obj, REFERENCE_VERIFIER);
 
         boolean success = REFERENCE_VERIFIER.result;
@@ -350,17 +350,17 @@ public final class HeapVerifier {
             return true;
         }
 
-        if (!HeapImpl.getHeapImpl().isInHeap(referencedObject)) {
+        if (SerialGCOptions.VerifyReferencesPointIntoValidChunk.getValue() && !HeapImpl.getHeapImpl().isInHeap(referencedObject)) {
             Log.log().string("Object reference at ").zhex(reference).string(" points outside the Java heap: ").zhex(referencedObject).string(". ");
-            printParentObject(parentObject);
+            printParent(parentObject);
             return false;
         }
 
-        Word header = ObjectHeader.readHeaderFromPointer(referencedObject);
+        Word header = ObjectHeaderImpl.readHeaderFromPointer(referencedObject);
         if (!ObjectHeaderImpl.getObjectHeaderImpl().isEncodedObjectHeader(header)) {
             Log.log().string("Object reference at ").zhex(reference).string(" does not point to a Java object or the object header of the Java object is invalid: ").zhex(referencedObject)
                             .string(". ");
-            printParentObject(parentObject);
+            printParent(parentObject);
             return false;
         }
 
@@ -388,7 +388,7 @@ public final class HeapVerifier {
         return true;
     }
 
-    private static void printParentObject(Object parentObject) {
+    private static void printParent(Object parentObject) {
         if (parentObject != null) {
             Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();
         } else {
@@ -460,22 +460,19 @@ public final class HeapVerifier {
     }
 
     private static class ObjectReferenceVerifier implements ObjectReferenceVisitor {
-        private Object parentObject;
         private boolean result;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         ObjectReferenceVerifier() {
         }
 
-        @SuppressWarnings("hiding")
-        public void initialize(Object parentObject) {
-            this.parentObject = parentObject;
+        public void initialize() {
             this.result = true;
         }
 
         @Override
         public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
-            result &= verifyReference(parentObject, objRef, compressed);
+            result &= verifyReference(holderObject, objRef, compressed);
             return true;
         }
     }

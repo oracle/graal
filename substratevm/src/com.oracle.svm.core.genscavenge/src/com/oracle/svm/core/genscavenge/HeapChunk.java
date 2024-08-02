@@ -41,8 +41,8 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
@@ -332,7 +332,7 @@ public final class HeapChunk {
     public static HeapChunk.Header<?> getEnclosingHeapChunk(Object obj) {
         if (!GraalDirectives.inIntrinsic()) {
             assert !HeapImpl.getHeapImpl().isInImageHeap(obj) || HeapImpl.usesImageHeapChunks() : "Must be checked before calling this method";
-            assert !ObjectHeaderImpl.getObjectHeaderImpl().isPointerToForwardedObject(Word.objectToUntrackedPointer(obj)) : "Forwarded objects must be a pointer and not an object";
+            assert !ObjectHeaderImpl.isPointerToForwardedObject(Word.objectToUntrackedPointer(obj)) : "Forwarded objects must be a pointer and not an object";
         }
         if (ObjectHeaderImpl.isAlignedObject(obj)) {
             return AlignedHeapChunk.getEnclosingChunk(obj);

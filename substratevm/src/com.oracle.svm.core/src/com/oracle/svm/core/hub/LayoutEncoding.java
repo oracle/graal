@@ -361,7 +361,7 @@ public class LayoutEncoding {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean checkOptionalIdentityHashField(Object obj) {
         ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        Word header = oh.readHeaderFromPointer(Word.objectToUntrackedPointer(obj));
+        Word header = ObjectHeader.readHeaderFromPointer(Word.objectToUntrackedPointer(obj));
         return oh.hasOptionalIdentityHashField(header);
     }
 

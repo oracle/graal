@@ -140,7 +140,6 @@ final class UnalignedChunkRememberedSet {
         return chunk.add(getCardTableStartOffset());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer getCardTableEnd(UnalignedHeader chunk) {
         return getCardTableStart(chunk).add(getCardTableSize());
     }

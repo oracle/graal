@@ -114,18 +114,16 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return reservedBitsMask;
     }
 
-    /**
-     * Read the header of the object at the specified address. When compressed references are
-     * enabled, the specified address must be the uncompressed absolute address of the object in
-     * memory.
-     */
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Word readHeaderFromPointer(Pointer objectPointer) {
-        if (getReferenceSize() == Integer.BYTES) {
-            return WordFactory.unsigned(objectPointer.readInt(getHubOffset()));
+    @Override
+    public Pointer extractPotentialDynamicHubFromHeader(Word header) {
+        if (ReferenceAccess.singleton().haveCompressedReferences()) {
+            UnsignedWord hubBits = header.unsignedShiftRight(numReservedBits);
+            UnsignedWord baseRelativeBits = hubBits.shiftLeft(numAlignmentBits);
+            return KnownIntrinsics.heapBase().add(baseRelativeBits);
         } else {
-            return objectPointer.readWord(getHubOffset());
+            UnsignedWord pointerBits = clearBits(header);
+            return (Pointer) pointerBits;
         }
     }
 
@@ -135,38 +133,6 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             return WordFactory.unsigned(ObjectAccess.readInt(o, getHubOffset()));
         } else {
             return ObjectAccess.readWord(o, getHubOffset());
-        }
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public DynamicHub readDynamicHubFromPointer(Pointer ptr) {
-        Word header = readHeaderFromPointer(ptr);
-        return dynamicHubFromObjectHeader(header);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public DynamicHub dynamicHubFromObjectHeader(Word header) {
-        return (DynamicHub) extractPotentialDynamicHubFromHeader(header).toObject();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    public Pointer readPotentialDynamicHubFromPointer(Pointer ptr) {
-        Word potentialHeader = readHeaderFromPointer(ptr);
-        return extractPotentialDynamicHubFromHeader(potentialHeader);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private Pointer extractPotentialDynamicHubFromHeader(UnsignedWord header) {
-        if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            UnsignedWord hubBits = header.unsignedShiftRight(numReservedBits);
-            UnsignedWord baseRelativeBits = hubBits.shiftLeft(numAlignmentBits);
-            return KnownIntrinsics.heapBase().add(baseRelativeBits);
-        } else {
-            UnsignedWord pointerBits = clearBits(header);
-            return (Pointer) pointerBits;
         }
     }
 
@@ -389,7 +355,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean isPointerToForwardedObject(Pointer p) {
+    static boolean isPointerToForwardedObject(Pointer p) {
         Word header = readHeaderFromPointer(p);
         return isForwardedHeader(header);
     }
@@ -448,16 +414,6 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         assert !isProducedHeapChunkZapped(header) : "Produced chunk zap value";
         assert !isConsumedHeapChunkZapped(header) : "Consumed chunk zap value";
         return header.and(reservedBitsMask);
-    }
-
-    @Fold
-    static int getHubOffset() {
-        return ConfigurationValues.getObjectLayout().getHubOffset();
-    }
-
-    @Fold
-    static int getReferenceSize() {
-        return ConfigurationValues.getObjectLayout().getReferenceSize();
     }
 
     @Fold
