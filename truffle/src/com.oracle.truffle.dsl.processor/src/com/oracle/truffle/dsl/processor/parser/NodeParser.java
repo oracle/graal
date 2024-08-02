@@ -1795,32 +1795,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    private static class ImportsKey {
-
-        private final TypeElement relativeTo;
-        private final TypeElement importGuardsClass;
-        private final boolean includeConstructors;
-
-        ImportsKey(TypeElement relativeTo, TypeElement importGuardsClass, boolean includeConstructors) {
-            this.relativeTo = relativeTo;
-            this.importGuardsClass = importGuardsClass;
-            this.includeConstructors = includeConstructors;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(relativeTo, importGuardsClass, includeConstructors);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof ImportsKey) {
-                ImportsKey other = (ImportsKey) obj;
-                return Objects.equals(relativeTo, other.relativeTo) && Objects.equals(importGuardsClass, other.importGuardsClass) && Objects.equals(includeConstructors, other.includeConstructors);
-            }
-            return false;
-        }
-
+    private record ImportsKey(TypeElement relativeTo, TypeElement importGuardsClass, boolean includeConstructors) {
     }
 
     private final Map<ImportsKey, List<Element>> importCache = ProcessorContext.getInstance().getCacheMap(ImportsKey.class);
