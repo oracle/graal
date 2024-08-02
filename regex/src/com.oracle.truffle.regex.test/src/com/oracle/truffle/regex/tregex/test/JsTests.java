@@ -302,4 +302,9 @@ public class JsTests extends RegexTestBase {
         // Minimized version
         test("()\\1{3,}", "", "", 0, true, 0, 0, 0, 0);
     }
+
+    @Test
+    public void gr56676() {
+        test("(?<!a)", "digyus", "x\uDE40", 2, true, 2, 2);
+    }
 }
