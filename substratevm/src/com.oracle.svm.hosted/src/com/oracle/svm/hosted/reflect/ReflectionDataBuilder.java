@@ -937,13 +937,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         registerTypesForTypeAnnotations(recordComponent);
     }
 
-    private void registerTypesForError(Throwable t) {
-        metaAccess.lookupJavaType(t.getClass()).registerAsInstantiated("Error object on the image heap for reflective queries");
-        if (t.getCause() != null) {
-            registerTypesForError(t.getCause());
-        }
-    }
-
     private void registerTypesForAnnotations(AnnotatedElement annotatedElement) {
         if (annotatedElement != null) {
             if (!filteredAnnotations.containsKey(annotatedElement)) {
@@ -1091,8 +1084,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz)) {
             throw error;
         } else {
-            registerTypesForError(error);
-            errorMap.put(clazz, error);
+            var registeredError = errorMap.computeIfAbsent(clazz, k -> {
+                universe.getHeapScanner().rescanObject(error);
+                return error;
+            });
+            assert registeredError.toString().equals(error.toString()) : "Attempting to replace " + registeredError + " with " + error;
         }
     }
 
