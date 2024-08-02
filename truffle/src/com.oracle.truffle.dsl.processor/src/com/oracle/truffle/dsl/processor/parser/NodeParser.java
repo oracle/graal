@@ -3966,7 +3966,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private ExecutableElement lookupInlineMethod(DSLExpressionResolver resolver, NodeData node, CacheExpression cache, TypeMirror type, MessageContainer errorTarget) {
-
         String inlineMethodName = ElementUtils.getAnnotationValue(String.class, cache.getMessageAnnotation(), "inlineMethod", false);
         ExecutableElement inlineMethod = null;
         if (inlineMethodName != null) {
@@ -4008,15 +4007,27 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 return null;
             }
 
-            NodeData inlinedNode = lookupNodeData(node, type, errorTarget);
-            if (inlinedNode != null && inlinedNode.isGenerateInline()) {
-                CodeExecutableElement method = NodeFactoryFactory.createInlineMethod(inlinedNode, null);
-                method.setEnclosingElement(NodeCodeGenerator.nodeElement(inlinedNode));
-                inlineMethod = method;
+            Map<String, ExecutableElement> inlineSignatureCache = context.getInlineSignatureCache();
+            String id = ElementUtils.getUniqueIdentifier(parameterType.asType());
+            ExecutableElement cachedInline;
+            if (inlineSignatureCache.containsKey(id)) {
+                cachedInline = inlineSignatureCache.get(id);
+            } else {
+                NodeData inlinedNode = lookupNodeData(node, type, errorTarget);
+                if (inlinedNode != null && inlinedNode.isGenerateInline()) {
+                    CodeExecutableElement method = NodeFactoryFactory.createInlineMethod(inlinedNode, null);
+                    method.setEnclosingElement(NodeCodeGenerator.nodeElement(inlinedNode));
+                    cachedInline = method;
+                } else {
+                    cachedInline = null;
+                }
+                inlineSignatureCache.put(id, cachedInline);
+            }
+            if (cachedInline != null) {
+                inlineMethod = cachedInline;
             }
         }
         return inlineMethod;
-
     }
 
     private static boolean hasDefaultCreateCacheMethod(TypeMirror type) {
