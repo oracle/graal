@@ -199,10 +199,9 @@ public class NodeFactoryFactory {
     }
 
     private CodeExecutableElement createCreateNodeMethod() {
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), node.getNodeType(), "createNode");
-        CodeVariableElement arguments = new CodeVariableElement(context.getType(Object.class), "arguments");
-        method.setVarArgs(true);
-        method.addParameter(arguments);
+        CodeExecutableElement method = GeneratorUtils.override(types.NodeFactory, "createNode");
+        method.setReturnType(node.getNodeType());
+        method.getModifiers().remove(Modifier.ABSTRACT);
 
         CodeTreeBuilder builder = method.createBuilder();
         List<ExecutableElement> signatures = GeneratorUtils.findUserConstructors(createdFactoryElement.asType());
