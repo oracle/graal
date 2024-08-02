@@ -46,6 +46,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 /**
  * Operation parameter that allows an operation to update the value of a local. This class is
  * intended to be used in combination with the {@link ConstantOperand} annotation.
+ * <p>
+ * When a local setter is declared as a constant operand, the corresponding builder method will take
+ * a {@link BytecodeLocal} argument representing the local to be updated.
  *
  * @since 24.2
  */

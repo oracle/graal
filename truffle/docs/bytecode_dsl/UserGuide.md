@@ -1,204 +1,189 @@
-# Bytecode DSL user guide
+# Bytecode DSL user guide <!-- omit in toc -->
 
-This section is a user manual for Bytecode DSL. It should be consulted in combination with the Javadoc when implementing a Bytecode DSL interpreter.
+This document explains what you can do in a Bytecode DSL interpreter and how to do it. Its goal is to introduce Bytecode DSL topics at a conceptual level. For more concrete technical details, please consult the DSL's [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html) and the generated Javadoc for your interpreter. If you haven't already, we recommend reading the [Getting Started guide](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/GettingStarted.java) first.
 
-## Built-in operations
 
-The built-in operations are listed here for discoverability. Please consult the Javadoc of the builder methods for precise details about their semantics.
+- [Operations](#operations)
+  - [Built-in operations](#built-in-operations)
+  - [Custom operations](#custom-operations)
+    - [Specializations](#specializations)
+    - [Advanced use cases](#advanced-use-cases)
+- [Bytecode nodes](#bytecode-nodes)
+- [Locals](#locals)
+  - [Accessing locals](#accessing-locals)
+  - [Scoping](#scoping)
+  - [Materialized local accesses](#materialized-local-accesses)
+- [Control flow](#control-flow)
+  - [Unstructured control flow](#unstructured-control-flow)
+- [Exception handling](#exception-handling)
+- [Features](#features)
+  - [Cached and uncached execution](#cached-and-uncached-execution)
+  - [Source information](#source-information)
+  - [Instrumentation](#instrumentation)
+  - [Bytecode index introspection](#bytecode-index-introspection)
+  - [Reparsing metadata](#reparsing-metadata)
+  - [Serialization](#serialization)
+  - [Continuations](#continuations)
+
+
+## Operations
+Operations are the basic unit of language semantics in Bytecode DSL.
+Each operation performs some computation and can produce a value.
+For example, the `LoadArgument` operation produces the value of a given argument.
+
+Operations can have children.
+For example, an `Equals` operation may have two child operations that produce its operands.
+Usually, child operations execute before their parent, and their results are passed as arguments to the parent.
+
+A Bytecode DSL program is conceptually a "tree" of operations.
+Consider the following pseudocode:
+
+```
+if x == 42:
+  print("success")
+```
+
+This code could be represented with the following operation tree:
+
+```
+(IfThen
+  (Equals
+    (LoadLocal x)
+    (LoadConstant 42))
+  (CallFunction
+    (LoadGlobal (LoadConstant "print"))
+    (LoadConstant "success")))
+```
+
+Note that while we describe a program as a tree of operations, Bytecode DSL interpreters _do not construct or execute ASTs_.
+The bytecode builder takes an operation tree specification via a sequence of method calls and automatically synthesizes a bytecode program that implements the operation tree.
+
+Bytecode DSL interpreters have two kinds of operations: built-in and custom.
+
+
+### Built-in operations
+
+Every Bytecode DSL interpreter comes with a predefined set of built-in operations.
+They model common language primitives, such as constant accesses (`LoadConstant`), local variable manipulation (`LoadLocal`, `StoreLocal`), and control flow (`IfThen`, `While`, etc.).
+
+The built-in operations are listed below.
+The precise semantics of these operations are described in the bytecode builder Javadoc.
+
 
 - `Root`: defines a root node
+- `Return`: returns a value from the root node
 - `Block`: sequences multiple operations
-- `LoadConstant`: produces a non-`null` constant value
-- `LoadNull`: produces `null`
-- `LoadArgument`: reads the value of an argument
-- `LoadException`: reads the value of the current exception
-- `LoadLocal`, `StoreLocal`: reads from/writes to a local in the current frame
-- `LoadLocalMaterialized`, `StoreLocalMaterialized`: reads from/writes to a local in a materialized frame
-- `Return`: returns with a value
-- `Label`: defines a forward branch location
-- `Branch`: branches forward to the location of a label
-- `IfThen`, `IfThenElse`, `Conditional`, `While`: common control flow operations
-- `TryCatch`, `FinallyTry`, `FinallyTryCatch`: exception handler operations
-- `Source`, `SourceSection`: annotates the enclosed operations with source information (see [Source information](#source-information))
-- `Tag`: annotates the enclosed operation with tag information
-- `Yield`: yields from the current root (see [Continuations](#continuations))
+- Value producers
+  - `LoadConstant`: produces a non-`null` constant value
+  - `LoadNull`: produces `null`
+  - `LoadArgument`: produces the value of an argument
+- Local variable operations (see [Locals](#locals))
+  - `LoadLocal`
+  - `StoreLocal`
+  - `LoadLocalMaterialized`
+  - `StoreLocalMaterialized`
+- Control flow operations (see [Control flow](#control-flow))
+  - `IfThen`
+  - `IfThenElse`
+  - `Conditional`
+  - `While`
+  - `Label`, `Branch` (see [Unstructured control flow](#unstructured-control-flow))
+- Exception handler operations (see [Exception handling](#exception-handling))
+  - `TryCatch`
+  - `FinallyTry`
+  - `FinallyTryCatch`
+  - `LoadException`
+- Source operations (see [Source information](#source-information))
+  - `Source`
+  - `SourceSection`
+- Instrumentation operations (see [Instrumentation](#instrumentation))
+  - `Tag`
+- Continuation operations (see [Continuations](#continuations))
+  - `Yield`
 
 
-## Defining custom operations
+### Custom operations
+
+Custom operations are provided by the language.
+They model language-specific behaviour, such as arithmetic operations, value conversions, or function calls.
+Here, we discuss regular custom operations that eagerly evaluate their
+children; Bytecode DSL also supports [short circuit operations](ShortCircuitOperations.md).
 
 Custom operations are defined using Java classes in one of two ways:
 
-1. Typically, operations are defined as inner classes of the root class annotated with `@Operation`.
-2. To support migration from an AST interpreter, custom operations can also be *proxies* of existing existing Truffle node classes. To define an operation proxy, the root class should have an `@OperationProxy` annotation referencing the node class, and the node class itself should be marked `@OperationProxy.Proxyable`. Proxied nodes have additional restrictions compared to regular Truffle AST nodes, so making a node proxyable can require some (minimal) refactoring.
+1. Typically, operations are defined as inner classes of the root class annotated with [`@Operation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/Operation.java).
+2. To support migration from an AST interpreter, custom operations can also be *proxies* of existing existing Truffle node classes. To define an operation proxy, the root class should have an [`@OperationProxy`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/OperationProxy.java) annotation referencing the node class, and the node class itself should be marked `@OperationProxy.Proxyable`. Proxied nodes have additional restrictions compared to regular Truffle AST nodes, so making a node proxyable can require some (minimal) refactoring.
 
-Both approaches are demonstrated below:
+The example below defines two custom operations, `OperationA` and `OperationB`:
 ```
 @GenerateBytecode(...)
-@OperationProxy(MyNode.class)
+@OperationProxy(OperationB.class)
 public abstract class MyBytecodeRootNode extends RootNode implements BytecodeRootNode {
-  @Operation
-  public static final MyOperation {
-    @Specialization
-    public static int doInt(int num) { ... }
+    ...
+    @Operation
+    public static final OperationA {
+        @Specialization
+        public static int doInt(VirtualFrame frame, int num) { ... }
 
-    @Specialization
-    public static Object doObject(Object obj) { ... }
-  }
+        @Specialization
+        public static Object doObject(Object obj) { ... }
+    }
 }
 
 @OperationProxy.Proxyable
-public abstract MyNode extends Node {
-    ...
+public abstract OperationB extends Node {
+    @Specialization
+    public static void doInts(int a, int b) { ... }
+
+    @Specialization
+    public static void doStrings(String a, String b) { ... }
 }
 
 ```
 
-Operation classes define `@Specialization`s in much the same way as Truffle DSL nodes, with some additional restrictions.
-All specialization methods (and any members referenced by guards/cache initializers) must be static and visible to the generated node (i.e., public or non-private).
-Additionally, they cannot define instance members.
-For regular (non-proxied) operations, specializations should also be marked `final`, may only extend `Object`, and cannot have explicit constructors.
+#### Specializations
 
+Operation classes define their semantics using `@Specialization`s just like Truffle DSL nodes.
+These specializations can use the same expressive conveniences (caches, bind expressions, etc.).
 
-The semantics of an operation is determined entirely by its `@Specialization`s.
-Note that for proxied nodes, any `execute` methods that they define are ignored.
-Similarly, node fields annotated with `@NodeChild` are ignored; instead, a child value is supplied by child operations.
+Specializations can declare an optional frame parameter as the first parameter, and they may declare Truffle DSL parameters (`@Cached`, `@Bind`, etc.).
+The rest of the parameters are called _dynamic operands_.
 
-### Specialization parameters
+All specializations must have the same number of dynamic operands and must all be `void` or non-`void`; these attributes make up the _signature_ for an operation.
+The value of each dynamic operand is supplied by a child operation; thus, the number of dynamic operands defines the number of child operations.
+For example, `OperationA` above has one dynamic operand, so it requires one child operation; `OperationB` has two dynamic operands, so it requires two children.
 
-Each specialization of an operation can define a certain set of parameters.
-The non-frame and non-DSL parameters define a "signature" for the operation; this signature must be consistent across all specialization methods.
-Parameters must be declared in the following order:
+#### Advanced use cases
 
-* An optional `Frame` or `VirtualFrame` parameter.
-* The value parameters. All specializations within an operation must have the same number of value parameters, but their types can change. For any `@Fallback` specialization, these parameters must have type `Object`.
-* An optional `@Variadic`-annotated parameter with the type `Object[]` can be the last value parameter (see [Variadic operations](#variadic-operations)). Either all or none of the specializations must have this parameter.
-* Zero or more `LocalSetter` parameters. All specializations within an operation must have the same number of `LocalSetter` parameters (see [Producing multiple results with LocalSetter](#producing-multiple-results-with-localsetter))
-* Zero or more `LocalSetterRange` parameters. Similar to `LocalSetter`, but for a contiguous range of locals.
-* Any Truffle DSL parameters, annotated with `@Cached` or `@Bind`. Each specialization can have a different number of these.
+An operation can take zero or more values for its last dynamic operand by declaring a [`@Variadic`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/Variadic.java)` Object[]` as the final dynamic operand.
 
-All specializations must have either a `void` or non-`void` return type, which determines whether the custom operation produces a value.
+An operation can also define _constant operands_, which are embedded in the bytecode and produce partial evaluation constant values, by declaring [`@ConstantOperand`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/ConstantOperand.java)s.
 
-If the operation has no value parameters (i.e., no data dependencies), an  `emit` method will be defined for it in the `Builder`.
-Otherwise, a pair of `begin` and `end` methods will be defined.
-These methods can be used to emit the operation during parsing.
+An operation may need to produce more than one result, or to modify local variables. For either case, the operation can use [`LocalSetter`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/LocalSetter.java) or [`LocalSetterRange`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/LocalSetterRange.java).
 
-The `begin`/`emit` methods require one `BytecodeLocal` argument for each `LocalSetter`, and one `BytecodeLocal[]` for each `LocalSetterRange` parameter in the operation's signature.
+Regular operations eagerly execute their children. There are also [short circuit operations](ShortCircuitOperations.md) to implement short-circuit behaviour.
 
-### Variadic operations
+## Bytecode nodes
 
-Custom operations can be made variadic – that is, they can take zero or more values for their last argument.
-To make an operation variadic, each specialization should declare an `Object[]` as the last value parameter and it should be annotated with `@Variadic`.
+The state of a Bytecode DSL interpreter is encapsulated in a [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/BytecodeNode.java).
+This class contains the bytecode and supporting metadata.
+It defines several helper methods for most things languages need to do, like introspect bytecode, access local variables, or compute source information; it is worth familiarizing yourself with its APIs.
+The current bytecode node can be obtained with `BytecodeRootNode#getBytecodeNode()`.
 
-The number of regular value parameters defines the minimum number of children for the operation; all of the remaining ones will be collected into one `Object[]` and passed for the variadic parameter.
-The variadic array's length is always a compilation-time constant (its length is encoded in the bytecode).
-
-### Producing multiple results with LocalSetter
-
-Each operation can produce a single value (by returning it), but some operations may wish to produce multiple results.
-Moreover, an operation may wish to modify [local variables](#locals) during execution.
-For either use case, an operation can declare `LocalSetter` parameters, which allow operations to store values into local variables using their `set` methods.
-
-When parsing an operation that declares `LocalSetter`s, the language specifies a `BytecodeLocal` for each `LocalSetter`; then, during execution, the operation is implicitly passed `LocalSetter`s that can write values to the locals.
-
-For operations that need to update a contiguous range of locals (i.e., locals that were allocated sequentially), there is also `LocalSetterRange`.
-During parsing, the language supplies an array of `BytecodeLocal`s, and then at run time they can be updated by index.
-
-## Defining short-circuiting custom operations
-
-One limitation of regular operations is that they are *eager*: all of the child operations are evaluated before the operation itself evaluates.
-Many languages define *short-circuiting* operators (e.g., Java's `&&`) which can evaluate a subset of their operands, terminating early when an operand meets a particular condition (e.g., when it is `true`).
-
-Bytecode DSL allows you to define `ShortCircuitOperation`s to implement short-circuiting behaviour.
-A short-circuit operation implements `AND` or `OR` semantics, executing each child operation until the first `false` or `true` value, respectively.
-Since operands will not necessarily be `boolean`s (an operation may have its own notion of "truthy" and "falsy" values), each short-circuit operation defines a boolean converter operation that first coerces each operand to `boolean` before it is compared to `true`/`false`.
-
-For example, suppose there exists a `CoerceToBoolean` operation to compute whether a value is "truthy" or "falsy" (e.g., `42` and `3.14f` are truthy, but `""` and `0` are falsy).
-We can define an `AND` operation using `CoerceToBoolean` by annotating the root class with `@ShortCircuitOperation`:
-```
-@GenerateBytecode(...)
-@ShortCircuitOperation(
-    name = "BoolAnd",
-    operator = ShortCircuitOperation.Operator.AND_RETURN_CONVERTED,
-    booleanConverter = CoerceToBoolean.class
-)
-public abstract class MyBytecodeRootNode extends RootNode implements BytecodeRootNode { ... }
-```
-This specification declares a `BoolAnd` operation that executes its child operations in sequence until an operand coerces to `false`.
-It produces the converted `boolean` value of the last operand executed.
-In pseudocode:
-
-```python
-value_1 = child_1.execute()
-cond_1 = CoerceToBoolean(value_1)
-if !cond_1:
-    return false
-
-value_2 = child_2.execute()
-cond_2 = CoerceToBoolean(value_2)
-if !cond_2:
-    return false
-
-# ...
-
-return CoerceToBoolean(child_n.execute())
-```
-
-Observe that the `operator` for `BoolAnd` is `AND_RETURN_CONVERTED`.
-This indicates not only that the operation is an `AND` operation, but also that it should produce the converted `boolean` value as its result (`RETURN_CONVERTED`).
-This can be used, for example, where a `boolean` value is expected, like `a && b && c` in a Java if-statement.
-
-Short circuit operations can also produce the original operand value that caused the operation to terminate (`RETURN_VALUE`).
-For example, to emulate Python's `or` operator, where `a or b or c` evaluates to the first non-falsy operand, we can define a short-circuit operation as follows:
-
-```
-@GenerateBytecode(...)
-@ShortCircuitOperation(
-    name = "FalsyCoalesce",
-    operator = ShortCircuitOperation.Operator.OR_RETURN_VALUE,
-    booleanConverter = CoerceToBoolean.class
-)
-public abstract class MyBytecodeRootNode extends RootNode implements BytecodeRootNode { ... }
-```
-
-This `FalsyCoalesce` operation behaves like the following pseudocode:
-
-```python
-value_1 = child_1.execute()
-cond_1 = CoerceToBoolean(value_1)
-if cond_1:
-    return value_1
-
-value_2 = child_2.execute()
-cond_2 = CoerceToBoolean(value_2)
-if cond_2:
-    return value_2
-
-# ...
-
-return child_n.execute()
-```
-
-Observe how the original value is produced instead of the converted `boolean` value.
-
-The `booleanConverter` field of a `@ShortCircuitOperation` is a class – typically an existing operation class.
-If the class is not explicitly declared as an operation, Bytecode DSL will implicitly declare it as an operation and ensure it conforms to the requirements for [custom operations](#defining-custom-operations).
-A boolean converter operation must also satisfy some additional constraints:
-
-* It must have exactly 1 non-variadic value parameter.
-* It must not have any `LocalSetter` or `LocalSetterRange` parameters.
-* All of its specializations must return `boolean`.
-
+The bytecode node and the bytecode itself can change during the execution of a program for various reasons like [transitioning from uncached to cached](#cached-and-uncached-execution), [reparsing metadata](#reparsing-metadata), or [quickening](Optimization.md#quickening).
+Consequently, a bytecode index on its own does not meaningfully identify a location in the program: it only has meaning in the context of an accompanying `BytecodeNode`. The [`BytecodeLocation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/BytecodeLocation.java) abstraction comprises the bytecode index and bytecode node.
 
 ## Locals
 
-Bytecode DSL defines a `BytecodeLocal` abstraction to support local variables.
-Unlike temporary values, local variables persist for the extent of the enclosing operation.
-Parsers can allocate locals using the builder's `createLocal` method; the resulting `BytecodeLocal` can be used in `LoadLocal` and `StoreLocal` operations to access the local.
+Bytecode DSL supports local variables using its [`BytecodeLocal`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/BytecodeLocal.java) abstraction.
+You can allocate a `BytecodeLocal` in the current frame using the builder's `createLocal` method.
 
+### Accessing locals
+In bytecode, you can use `LoadLocal` and `StoreLocal` operations to access the local.
 The following code allocates a local, stores a value into it, and later loads the value back:
 ```java
 b.beginBlock();
-  var local = b.createLocal();
+  BytecodeLocal local = b.createLocal();
 
   b.beginStoreLocal(local);
     // ...
@@ -209,87 +194,80 @@ b.beginBlock();
 b.endBlock();
 ```
 
+All local accesses must be (directly or indirectly) nested within the operation that created the local.
 
-All local accesses must be (directly or indirectly) nested within the operation that creates the local.
-It is undefined behaviour to access a local outside of its creating operation, and the builder does not validate this. For example:
+`LoadLocal` and `StoreLocal` are the preferred way to access locals because they are efficient and can be [quickened](Optimization.md#quickening).
+You can also access locals using [`LocalSetter`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/LocalSetter.java), [`LocalSetterRange`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/LocalSetterRange.java), or various helper methods on the [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/BytecodeNode.java).
 
+
+### Scoping
+
+By default, interpreters use _local scoping_, in which locals are scoped to the enclosing `Root` or `Block` operation.
+When exiting the enclosing operation, locals are cleared and their frame slots are automatically reused.
+Since the set of live locals depends on the location in the code, most of the local accessor methods mentioned above are parameterized by the current `bytecodeIndex`.
+
+Interpreters can alternatively opt to use _global scoping_, in which all locals get a unique position in the frame and live for the entire extent of the root.
+The setting is controlled by the `enableLocalScoping` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
+
+### Materialized local accesses
+
+The plain `LoadLocal` and `StoreLocal` operations access locals from the current frame.
+In some cases, you may need to access locals from a different frame; for example, if root nodes are nested, an inner root may need to access locals of the outer root.
+
+The `LoadLocalMaterialized` and `StoreLocalMaterialized` operations are intended for such cases.
+They take an extra operand for the frame to read from/write to; this frame must be materialized.
+They can only access locals of the current root or an enclosing root.
+
+Below is a simple example where the inner root reads the outer local from the outer root's frame.
 ```java
-b.beginSomeOperation();
-  var local = b.createLocal();
-  // ...
-  b.beginOtherOperation();
-    b.emitLoadLocal(local); // allowed (arbitrary nesting)
-  b.endOtherOperation();
-b.endSomeOperation();
-
-b.beginSomeOperation();
-  b.beginOtherOperation();
-    var local = b.createLocal();
-  b.endOtherOperation();
-  // ...
-  b.emitLoadLocal(local); // undefined behaviour: local not in scope
-b.endSomeOperation();
-
-```
-
-Additionally, reading/writing to locals defined by other root nodes is undefined behaviour:
-
-```java
-b.beginRoot(/* ... */);
-  var local = b.createLocal();
-  // ...
-
-  b.beginRoot(/* ... */);
-    b.emitLoadLocal(local); // undefined behaviour
-  b.endRoot();
-b.endRoot();
-```
-
-### Introspecting locals
-
-TODO: getLocalIndex + getLocal, getLocals(Frame)
-
-### Using materialized local reads and writes
-
-Load/StoreLocalMaterialized can be used to access the locals of other functions (e.g., to implement lexical scoping).
-It is undefined behaviour to access a local using a materialized frame that it does not belong to; be careful to avoid this situation.
-
-```java
-b.beginRoot(/* ... */);
-  var outerLocal = b.createLocal();
-  // ...
-
+b.beginRoot(/* ... */); // outer root
   b.beginBlock();
-    var innerLocal = b.createLocal();
-
-    b.beginRoot(/* ... */);
-      // correct usage
+    var outerLocal = b.createLocal();
+    // ...
+    b.beginRoot(/* ... */); // inner root
       b.beginLoadLocalMaterialized(outerLocal);
-        b.emitGetOuterFrame();
-      b.endLoadLocalMaterialized();
-
-      // undefined behaviour
-      b.beginLoadLocalMaterialized(innerLocal);
-        b.emitGetOuterFrame();
+        b.emitGetOuterFrame(); // produces materialized frame of outer root
       b.endLoadLocalMaterialized();
     b.endRoot();
   b.endBlock();
 b.endRoot();
 ```
 
+Materialized accesses should be used carefully.
+It is undefined behaviour to access an outer local that is not currently in scope.
+The bytecode builder endeavours to prevent such errors, but it is not always possible.
+It is also undefined behaviour to access a local using a materialized frame that it does not belong to.
 
 
-## Labels
+## Control flow
 
-Bytecode DSL defines a `BytecodeLabel` abstraction to represent locations in the bytecode.
-Parsers can allocate labels using the builder's `createLabel` method.
-The label should then be emitted using `emitLabel` at some location in the program, and can be branched to using `emitBranch`.
+The `IfThen`, `IfThenElse`, `Conditional`, and `While` operations can be used for structured control flow.
+Their behaviour is as you would expect.
+
+For example, the code below declares an `IfThenElse` operation that executes different code depending on the value of argument `0`:
+```
+b.beginIfThenElse();
+  b.emitLoadArgument(0); // first child: condition
+  b.beginBlock(); // second child: positive branch
+    ...
+  b.endBlock();
+  b.beginBlock(); // third child: negative branch
+    ...
+  b.endBlock();
+b.endIfThenElse();
+```
+
+### Unstructured control flow
+
+A limited form of unstructured control flow is also possible in Bytecode DSL interpreters using labels and forward branches.
+
+Parsers can allocate a `BytecodeLabel` using the builder's `createLabel` method.
+The label should be emitted using `emitLabel` at some location in the same block, and can be branched to using `emitBranch`.
 
 The following code allocates a label, emits a branch to it, and then emits the label at the location to branch to:
 ```java
-// allowed
 b.beginBlock();
-  var label = b.createLabel();
+  BytecodeLabel label = b.createLabel();
   // ...
   b.emitBranch(label);
   // ...
@@ -297,147 +275,26 @@ b.beginBlock();
 b.endBlock();
 ```
 
-Every label must be declared once directly in its creating operation; this operation must be a Block or Root.
-Any branch to a label must be (directly or indirectly) nested in the label's creating operation.
-Furthermore, only forward branches are supported (for backward branches, prefer While operations).
-For example:
+When executed, control will jump from the branch location to the label location.
 
-```java
-// not allowed (emitted in child operation)
-b.beginBlock();
-  var label = b.createLabel();
-  b.beginSomething();
-    b.emitLabel(label);
-  b.endSomething();
-b.endBlock();
+There are some restrictions on the kinds of branches allowed:
 
-// not allowed (multiple declarations)
-b.beginBlock();
-  var label = b.createLabel();
-  b.emitLabel(label);
-  // ...
-  b.emitLabel(label);
-b.endBlock();
+1. Any branch must be (directly or indirectly) nested in the label's creating operation (a `Root` or `Block`). That is, you cannot branch into an operation, only across or out of it.
+2. Only forward branches are supported. For backward branches, use `While` operations.
 
-// not allowed (backward branch)
-b.beginBlock();
-  var label = b.createLabel();
-  b.emitLabel(label);
-  // ...
-  b.emitBranch(label);
-b.endBlock();
-```
+Unstructured control flow is useful for implementing loop breaks, continues, and other more advanced control flow.
 
-Additionally, branching to labels defined by other root nodes is not allowed:
+## Exception handling
 
-```java
-b.beginRoot(/* ... */);
-  var label = b.createLabel();
-  // ...
-  b.beginRoot(/* ... */);
-    b.emitBranch(label); // builder error
-  b.endRoot();
-b.endRoot();
-```
-
-## Translating high-level semantics into operations
-
-When writing the Bytecode DSL parser for a language, your task is to translate the semantics of your language into individual operations. This is a process called "desugaring", as it can be thought as a similar process to removing syntax sugar from a language - translating higher level language constructs into lower, more verbose level. As an example of this process, let's take a simple iterator-style `for` loop (we use `«...»` as metaqotes):
-
-```python
-for x in «iterable»:
-  «body»
-```
-
-The semantics of this language construct can be expressed as follows:
-* Evaluate the iterable
-* Get the iterator from `«iterable»`
-* As long as you can get a value from the iterator:
-  * Bind the value to the variable `x`
-  * Evaluate the `«body»`
-
-Now we need to express this in terms of operations. In general, you can think of Bytecode DSL's operations as Java with some additional features:
-* Custom operations are similar to functions, except they can also take "output" parameters (similar to by-reference C++ parameters, or `out` parameters in C#).
-  * Short-circuiting operations are the exception, as different execution order rules apply to them.
-* Blocks can appear anywhere in the expression, allowing you to insert statements in the middle of otherwise "expression" contexts (similar to blocks in Rust).
-* Currently there are no static types - everything is an `Object`.
-* TryCatch does not allow filtering exceptions based on type.
-
-Now we can write the previous semantics in this pseudo-Java language. To help us, we will introduce a temporary local, `tmpIterator`.
-
-```csharp
-var tmpIterator = GetIterator(«iterable»);
-var x;
-while (GetNextFromIterator(tmpIterator, out x)) {
-  «body»
-}
-```
-
-To implement this, we need 2 custom operations:
-
-* `GetIterator(iterable)` whilch will take an iterable, and produce the iterator from it.
-* `GetNextFromIterator(iterator, out value)` which will take an iterator and then either:
-  * Set the `value` to the next element of the iterator, and return `true`, or
-  * Return `false` once we reach the end of the iterator.
-
-These operations can easily be implemented using Bytecode DSL. For example:
-
-
-```java
-@Operation
-public static final class GetIterator {
-  @Specialization
-  public MyIterator perform(MyIterable iterable) {
-    return iterable.createIterator();
-  }
-}
-
-@Operation
-public static final class GetNextFromIterator {
-  @Specialization
-  public boolean perform(MyIterator iterator, LocalSetter value) {
-    if (iterator.hasNext()) {
-      value.setObject(iterator.getNext());
-      return true;
-    } else {
-      return false;
-    }
-  }
-}
-```
-
-Then, we need to transform the previously written "desugared" form into individual builder calls in our parser. If we are using a visitor pattern parser, this would look something like this (indented for readability):
-
-```java
-// in our ast visitor
-public void visit(ForNode node) {
-  BytecodeLocal tmpIterator = b.createLocal();
-
-  b.beginStoreLocal(tmpIterator);
-    b.beginGetIterator();
-      node.iterator.accept(this);
-    b.endGetIterator();
-  b.endStoreLocal();
-
-  b.beginWhile();
-    b.beginGetNextFromIterator(valueLocal);
-      b.emitLoadLocal(tmpIterator);
-    b.endGetNextFromIterator();
-
-    b.beginBlock();
-      // if your language supports destructuring (e.g. `for x, y in ...`)
-      // you would do that here as well
-      node.body.accept(this);
-    b.endBlock();
-  b.endWhile();
-}
-```
-
-
+TODO
 
 ## Features
 
 This section describes some of the features supported by Bytecode DSL interpreters.
+
+### Cached and uncached execution
+
+TODO
 
 ### Source information
 
@@ -478,5 +335,5 @@ For example, if a language makes frequent use of source information, it may make
 Bytecode DSL interpreters can support serialization, which allows a language to implement bytecode caching (à la Python's `.pyc` files). See the [Serialization tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/SerializationTutorial.java) for more details.
 
 ### Continuations
-Bytecode DSL supports single-method continuations, whereby a bytecode node is suspended and can be resumed at a later point in time.
+Bytecode DSL supports single-method continuations, whereby a root node is suspended and can be resumed at a later point in time.
 Continuations allow languages to implement features like coroutines and generators that require the interpreter to suspend the state of the current method. See the [Continuations guide](Continuations.md) for more details.

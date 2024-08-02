@@ -463,7 +463,7 @@ public class ParsingTutorial {
      * <p>
      * Typically, this means you should introduce new operation(s) to implement it. Sometimes one
      * new operation is sufficient, but if the node encompasses complex behaviour (e.g., it has
-     * control flow), you should try to break it down into multiple operations.
+     * control flow), you should try to break it down into multiple smaller operations.
      * <p>
      * For example, suppose we wanted to support a "for each" node that iterates over an array:
      */

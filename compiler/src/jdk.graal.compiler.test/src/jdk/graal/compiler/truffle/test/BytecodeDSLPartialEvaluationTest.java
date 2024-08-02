@@ -365,6 +365,32 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         assertPartialEvalEquals(RootNode.createConstantNode(42L), root);
     }
 
+    @Test
+    public void testVariadicLength() {
+        // The length of a variadic argument should be PE constant.
+
+        // Note: the variadic array length is not PE constant beyond 8 arguments.
+        final int NUM_VARIADIC = 8;
+        BasicInterpreter root = parseNodeForPE(interpreterClass, "variadicLength", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+
+            b.beginReturn();
+            b.beginVeryComplexOperation();
+            b.emitLoadConstant(3L);
+            for (int i = 0; i < NUM_VARIADIC; i++) {
+                b.emitLoadNull();
+            }
+            b.endVeryComplexOperation();
+            b.endReturn();
+
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertPartialEvalEquals(RootNode.createConstantNode(3L + NUM_VARIADIC), root);
+    }
+
     private static Supplier<Object> supplier(Object result) {
         return () -> result;
     }
