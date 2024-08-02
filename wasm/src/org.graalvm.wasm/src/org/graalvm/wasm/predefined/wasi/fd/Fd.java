@@ -380,6 +380,24 @@ public abstract class Fd implements Closeable {
     }
 
     /**
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#-fd_fdstat_set_rightsfd-fd-fs_rights_base-rights-fs_rights_inheriting-rights---result-errno"><code>fd_fdstat_set_rights</code></a>:
+     * adjusts the rights associated with this file descriptor.
+     *
+     * @param newFsRightsBase the desired rights of the file descriptor, bitmap of {@link Rights}
+     * @param newFsRightsInheriting the desired rights of derived file descriptors, bitmap of {@link Rights}
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     */
+    public Errno fdstatSetRights(long newFsRightsBase, long newFsRightsInheriting) {
+        if (!isSubsetOf(newFsRightsBase, fsRightsBase) || !isSubsetOf(newFsRightsInheriting, fsRightsInheriting)) {
+            return Errno.Notcapable;
+        }
+        fsRightsBase = newFsRightsBase;
+        fsRightsInheriting = newFsRightsInheriting;
+        return Errno.Success;
+    }
+
+    /**
      *
      * Implementation of WASI <a href=
      * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#fd_filestat_set_size"><code>fd_fdstat_set_size</code></a>:
