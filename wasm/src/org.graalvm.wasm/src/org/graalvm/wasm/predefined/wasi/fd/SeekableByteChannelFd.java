@@ -44,6 +44,7 @@ package org.graalvm.wasm.predefined.wasi.fd;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
+import org.graalvm.wasm.predefined.wasi.types.Fdflags;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
 import org.graalvm.wasm.predefined.wasi.types.Rights;
 import org.graalvm.wasm.predefined.wasi.types.Whence;
@@ -102,6 +103,14 @@ abstract class SeekableByteChannelFd extends Fd {
         if (!isSet(fsRightsBase, Rights.FdRead)) {
             return Errno.Notcapable;
         }
+        if (isSet(fdFlags, Fdflags.Append)) {
+            // We implement pread using seek and tell (SeekableByteChannel#position). The best way
+            // to implement pread would be to use FileChannel#read(ByteBuffer,long), which allows
+            // reading from an arbitrary position without having to mutate the file descriptor's
+            // offset. The other disadvantage of using seek and tell is that files in append mode
+            // are not supported, as append mode always forces the position to the end of the file.
+            return Errno.Nosys;
+        }
         return FdUtils.readFromStreamAt(node, memory, inputStream, iovecArrayAddress, iovecCount, channel, offset, sizeAddress);
     }
 
@@ -109,6 +118,14 @@ abstract class SeekableByteChannelFd extends Fd {
     public Errno pwrite(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, long offset, int sizeAddress) {
         if (!isSet(fsRightsBase, Rights.FdWrite)) {
             return Errno.Notcapable;
+        }
+        if (isSet(fdFlags, Fdflags.Append)) {
+            // We implement pwrite using seek and tell (SeekableByteChannel#position). The best way
+            // to implement pwrite would be to use FileChannel#write(ByteBuffer,long), which allows
+            // writing to an arbitrary position without having to mutate the file descriptor's
+            // offset. The other disadvantage of using seek and tell is that files in append mode
+            // are not supported, as append mode always forces the position to the end of the file.
+            return Errno.Nosys;
         }
         return FdUtils.writeToStreamAt(node, memory, outputStream, iovecArrayAddress, iovecCount, channel, offset, sizeAddress);
     }
