@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -202,7 +202,7 @@ class FileFd extends SeekableByteChannelFd {
                         byte[] chunk = new byte[(int) sizeDifference];
                         getOutputStream().write(chunk);
                     }
-                    getOutputStream().write(new byte[(int)(size - file.size())]);
+                    getOutputStream().write(new byte[(int) (size - file.size())]);
                 } else {
                     long currentPosition = getChannel().position();
                     try {

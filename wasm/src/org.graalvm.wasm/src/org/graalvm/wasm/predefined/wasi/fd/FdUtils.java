@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ package org.graalvm.wasm.predefined.wasi.fd;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.wasi.types.Dirent;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 import org.graalvm.wasm.predefined.wasi.types.Fdstat;
 import org.graalvm.wasm.predefined.wasi.types.Filestat;
@@ -186,6 +187,31 @@ final class FdUtils {
             return Errno.Acces;
         }
         return Errno.Success;
+    }
+
+    static int writeDirent(Node node, WasmMemory memory, int address, TruffleFile file, int nameLength, long offset) throws IOException {
+        Dirent.writeDNext(node, memory, address, offset);
+        try {
+            Dirent.writeDIno(node, memory, address, file.getAttribute(TruffleFile.UNIX_INODE));
+        } catch (UnsupportedOperationException e) {
+            // GR-29297: these attributes are currently not supported on non-Unix platforms.
+        }
+        Dirent.writeDNamlen(node, memory, address, nameLength);
+        Dirent.writeDType(node, memory, address, FdUtils.getType(file));
+        return Dirent.BYTES;
+    }
+
+    static byte[] writeDirentToByteArray(TruffleFile file, int nameLength, long offset) throws IOException {
+        byte[] buffer = new byte[Dirent.BYTES];
+        Dirent.writeDNextToByteArray(buffer, 0, offset);
+        try {
+            Dirent.writeDInoToByteArray(buffer, 0, file.getAttribute(TruffleFile.UNIX_INODE));
+        } catch (UnsupportedOperationException e) {
+            // GR-29297: these attributes are currently not supported on non-Unix platforms.
+        }
+        Dirent.writeDNamlen(buffer, 0, nameLength);
+        Dirent.writeDType(buffer, 0, FdUtils.getType(file));
+        return buffer;
     }
 
     static Filetype getType(TruffleFile file) throws IOException {

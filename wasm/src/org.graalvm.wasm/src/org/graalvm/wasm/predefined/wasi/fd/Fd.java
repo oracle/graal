@@ -45,6 +45,7 @@ import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.wasi.types.Advice;
+import org.graalvm.wasm.predefined.wasi.types.Dirent;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 import org.graalvm.wasm.predefined.wasi.types.Fdflags;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
@@ -291,6 +292,41 @@ public abstract class Fd implements Closeable {
 
     /**
      * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#-fd_readdirfd-fd-buf-pointeru8-buf_len-size-cookie-dircookie---resultsize-errno"><code>fd_readdir</code></a>:
+     * reads directory entries from a directory.
+     * <p>
+     * When successful, the contents of the output buffer consist of a sequence of directory
+     * entries. Each directory entry consists of a {@link Dirent} object, followed by
+     * {@link Dirent#writeDNamlen} bytes holding the name of the directory entry.
+     * </p>
+     * <p>
+     * This function fills the output buffer as much as possible, potentially truncating the last
+     * directory entry. This allows the caller to grow its read buffer size in case it's too small
+     * to fit a single large directory entry, or skip the oversized directory entry.
+     * </p>
+     * <p>
+     * Entries for the special {@code .} and {@code ..} directory entries are included in the
+     * sequence.
+     * </p>
+     *
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param memory the {@link WasmMemory} from which to read and write
+     * @param bufAddress {@code u8*}: the address of the buffer where directory entries are stored
+     * @param bufLength {@code u32}: the length of the buffer where directory entries are stored
+     * @param cookie {@code u64}: the location within the directory to start reading
+     * @param sizeAddress {@code u32*}: the address at which to write the number of bytes written
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     * @throws WasmException if an error happens while writing or reading to {@code memory}
+     */
+    public Errno readdir(Node node, WasmMemory memory, int bufAddress, int bufLength, long cookie, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdReaddir)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     * Implementation of WASI <a href=
      * "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#fd_seek"><code>fd_seek</code></a>:
      * moves the offset of this file descriptor.
      * <p>
@@ -317,12 +353,13 @@ public abstract class Fd implements Closeable {
      * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#fd_tell"><code>fd_tell</code></a>:
      * gets the offset of this file descriptor.
      * <p>
-     * Similar to POSIX <a href="https://linux.die.net/man/2/lseek"><code>lseek(fd, 0, SEEK_CUR)</code></a>.
+     * Similar to POSIX
+     * <a href="https://linux.die.net/man/2/lseek"><code>lseek(fd, 0, SEEK_CUR)</code></a>.
      *
      * @param node the calling node, used as location for any thrown {@link WasmException}
      * @param memory the {@link WasmMemory} from which to read and write
-     * @param offsetAddress {@code u64*}: the address at which to write the offset of this
-     *            file descriptor, relative to the start of the file.
+     * @param offsetAddress {@code u64*}: the address at which to write the offset of this file
+     *            descriptor, relative to the start of the file.
      * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
      * @throws WasmException if an error happens while writing or reading to {@code memory}
      */
@@ -385,7 +422,8 @@ public abstract class Fd implements Closeable {
      * adjusts the rights associated with this file descriptor.
      *
      * @param newFsRightsBase the desired rights of the file descriptor, bitmap of {@link Rights}
-     * @param newFsRightsInheriting the desired rights of derived file descriptors, bitmap of {@link Rights}
+     * @param newFsRightsInheriting the desired rights of derived file descriptors, bitmap of
+     *            {@link Rights}
      * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
      */
     public Errno fdstatSetRights(long newFsRightsBase, long newFsRightsInheriting) {
@@ -738,5 +776,4 @@ public abstract class Fd implements Closeable {
     @Override
     public void close() throws IOException {
     }
-
 }
