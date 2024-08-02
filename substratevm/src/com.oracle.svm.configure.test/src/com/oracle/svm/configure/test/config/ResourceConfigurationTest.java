@@ -93,36 +93,35 @@ public class ResourceConfigurationTest {
             ResourcesRegistry<UnresolvedConfigurationCondition> registry = new ResourcesRegistry<>() {
 
                 @Override
-                public void addResources(UnresolvedConfigurationCondition condition, String pattern) {
+                public void addResources(UnresolvedConfigurationCondition condition, String pattern, String reason) {
                     addedResources.add(pattern);
                 }
 
                 @Override
-                public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob) {
+                public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob, String reason) {
                     throw VMError.shouldNotReachHere("Unused function.");
                 }
 
                 @Override
-                public void addResourceEntry(Module module, String resourcePath) {
+                public void addResourceEntry(Module module, String resourcePath, String reason) {
                     throw VMError.shouldNotReachHere("Unused function.");
                 }
 
                 @Override
-                public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
+                public void injectResource(Module module, String resourcePath, byte[] resourceContent, String reason) {
                 }
 
                 @Override
-                public void ignoreResources(UnresolvedConfigurationCondition condition, String pattern) {
+                public void ignoreResources(UnresolvedConfigurationCondition condition, String pattern, String reason) {
                     ignoredResources.add(pattern);
                 }
 
                 @Override
-                public void addResourceBundles(UnresolvedConfigurationCondition condition, String name) {
+                public void addResourceBundles(UnresolvedConfigurationCondition condition, String name, String reason) {
                 }
 
                 @Override
-                public void addResourceBundles(UnresolvedConfigurationCondition condition, String basename, Collection<Locale> locales) {
-
+                public void addResourceBundles(UnresolvedConfigurationCondition condition, String basename, Collection<Locale> locales, String reason) {
                 }
 
                 @Override
@@ -131,7 +130,7 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
-                public void addClassBasedResourceBundle(UnresolvedConfigurationCondition condition, String basename, String className) {
+                public void addClassBasedResourceBundle(UnresolvedConfigurationCondition condition, String basename, String className, String reason) {
 
                 }
             };

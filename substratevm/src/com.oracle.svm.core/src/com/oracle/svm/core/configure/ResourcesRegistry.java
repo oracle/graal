@@ -38,7 +38,7 @@ public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
         return ImageSingletons.lookup(ResourcesRegistry.class);
     }
 
-    void addClassBasedResourceBundle(C condition, String basename, String className);
+    void addClassBasedResourceBundle(C condition, String basename, String className, String reason);
 
     /**
      * Although the interface-methods below are already defined in the super-interface
@@ -46,14 +46,14 @@ public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
      * reflectively.
      */
     @Override
-    void addResources(C condition, String pattern);
+    void addResources(C condition, String pattern, String reason);
 
     @Override
-    void ignoreResources(C condition, String pattern);
+    void ignoreResources(C condition, String pattern, String reason);
 
     @Override
-    void addResourceBundles(C condition, String name);
+    void addResourceBundles(C condition, String name, String reason);
 
     @Override
-    void addResourceBundles(C condition, String basename, Collection<Locale> locales);
+    void addResourceBundles(C condition, String basename, Collection<Locale> locales, String reason);
 }

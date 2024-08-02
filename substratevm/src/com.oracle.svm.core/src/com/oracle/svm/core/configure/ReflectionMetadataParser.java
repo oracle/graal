@@ -52,12 +52,12 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
     public void parseAndRegister(Object json, URI origin) {
         Object reflectionJson = getFromGlobalFile(json, combinedFileKey);
         if (reflectionJson != null) {
-            parseClassArray(asList(reflectionJson, "first level of document must be an array of class descriptors"));
+            parseClassArray(asList(reflectionJson, "first level of document must be an array of class descriptors"), "JSON: " + origin.getPath());
         }
     }
 
     @Override
-    protected void parseClass(EconomicMap<String, Object> data) {
+    protected void parseClass(EconomicMap<String, Object> data, String reason) {
         checkAttributes(data, "reflection class descriptor object", List.of(TYPE_KEY), OPTIONAL_REFLECT_METADATA_ATTRS);
 
         Optional<ConfigurationTypeDescriptor> type = parseTypeContents(data.get(TYPE_KEY));
@@ -76,7 +76,7 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
          * Even if primitives cannot be queried through Class.forName, they can be registered to
          * allow getDeclaredMethods() and similar bulk queries at run time.
          */
-        TypeResult<T> result = delegate.resolveType(condition, type.get(), true);
+        TypeResult<T> result = delegate.resolveType(condition, type.get(), true, reason);
         if (!result.isPresent()) {
             handleMissingElement("Could not resolve " + type.get() + " for reflection configuration.", result.getException());
             return;
@@ -84,28 +84,28 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
 
         C queryCondition = conditionResolver.alwaysTrue();
         T clazz = result.get();
-        delegate.registerType(conditionResult.get(), clazz);
+        delegate.registerType(conditionResult.get(), clazz, reason);
 
-        delegate.registerDeclaredClasses(queryCondition, clazz);
-        delegate.registerRecordComponents(queryCondition, clazz);
-        delegate.registerPermittedSubclasses(queryCondition, clazz);
-        delegate.registerNestMembers(queryCondition, clazz);
-        delegate.registerSigners(queryCondition, clazz);
-        delegate.registerPublicClasses(queryCondition, clazz);
-        delegate.registerDeclaredConstructors(queryCondition, true, clazz);
-        delegate.registerPublicConstructors(queryCondition, true, clazz);
-        delegate.registerDeclaredMethods(queryCondition, true, clazz);
-        delegate.registerPublicMethods(queryCondition, true, clazz);
-        delegate.registerDeclaredFields(queryCondition, true, clazz);
-        delegate.registerPublicFields(queryCondition, true, clazz);
+        delegate.registerDeclaredClasses(queryCondition, clazz, reason);
+        delegate.registerRecordComponents(queryCondition, clazz, reason);
+        delegate.registerPermittedSubclasses(queryCondition, clazz, reason);
+        delegate.registerNestMembers(queryCondition, clazz, reason);
+        delegate.registerSigners(queryCondition, clazz, reason);
+        delegate.registerPublicClasses(queryCondition, clazz, reason);
+        delegate.registerDeclaredConstructors(queryCondition, true, clazz, reason);
+        delegate.registerPublicConstructors(queryCondition, true, clazz, reason);
+        delegate.registerDeclaredMethods(queryCondition, true, clazz, reason);
+        delegate.registerPublicMethods(queryCondition, true, clazz, reason);
+        delegate.registerDeclaredFields(queryCondition, true, clazz, reason);
+        delegate.registerPublicFields(queryCondition, true, clazz, reason);
 
-        registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allDeclaredMethods", () -> delegate.registerDeclaredMethods(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allPublicMethods", () -> delegate.registerPublicMethods(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allDeclaredFields", () -> delegate.registerDeclaredFields(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "allPublicFields", () -> delegate.registerPublicFields(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "unsafeAllocated", () -> delegate.registerUnsafeAllocated(condition, clazz));
+        registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, clazz, reason));
+        registerIfNotDefault(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, clazz, reason));
+        registerIfNotDefault(data, false, clazz, "allDeclaredMethods", () -> delegate.registerDeclaredMethods(condition, false, clazz, reason));
+        registerIfNotDefault(data, false, clazz, "allPublicMethods", () -> delegate.registerPublicMethods(condition, false, clazz, reason));
+        registerIfNotDefault(data, false, clazz, "allDeclaredFields", () -> delegate.registerDeclaredFields(condition, false, clazz, reason));
+        registerIfNotDefault(data, false, clazz, "allPublicFields", () -> delegate.registerPublicFields(condition, false, clazz, reason));
+        registerIfNotDefault(data, false, clazz, "unsafeAllocated", () -> delegate.registerUnsafeAllocated(condition, clazz, reason));
 
         MapCursor<String, Object> cursor = data.getEntries();
         while (cursor.advance()) {
@@ -114,10 +114,10 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
             try {
                 switch (name) {
                     case "methods":
-                        parseMethods(condition, false, asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
+                        parseMethods(condition, false, asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz, reason);
                         break;
                     case "fields":
-                        parseFields(condition, asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz);
+                        parseFields(condition, asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz, reason);
                         break;
                 }
             } catch (LinkageError e) {

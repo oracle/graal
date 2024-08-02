@@ -65,17 +65,17 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
-        public void addResources(UnresolvedConfigurationCondition condition, String pattern) {
+        public void addResources(UnresolvedConfigurationCondition condition, String pattern, String reason) {
             configuration.classifyAndAddPattern(new ConditionalElement<>(condition, pattern));
         }
 
         @Override
-        public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob) {
+        public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob, String reason) {
             configuration.addedGlobs.add(new ConditionalElement<>(condition, new ResourceEntry(glob, module)));
         }
 
         @Override
-        public void addResourceEntry(Module module, String resourcePath) {
+        public void addResourceEntry(Module module, String resourcePath, String reason) {
             throw VMError.shouldNotReachHere("Unused function.");
         }
 
@@ -85,27 +85,27 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
-        public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
+        public void injectResource(Module module, String resourcePath, byte[] resourceContent, String reason) {
             VMError.shouldNotReachHere("Resource injection is only supported via Feature implementation");
         }
 
         @Override
-        public void ignoreResources(UnresolvedConfigurationCondition condition, String pattern) {
+        public void ignoreResources(UnresolvedConfigurationCondition condition, String pattern, String reason) {
             configuration.ignoreResourcePattern(condition, pattern);
         }
 
         @Override
-        public void addResourceBundles(UnresolvedConfigurationCondition condition, String baseName) {
+        public void addResourceBundles(UnresolvedConfigurationCondition condition, String baseName, String reason) {
             configuration.addBundle(condition, baseName);
         }
 
         @Override
-        public void addResourceBundles(UnresolvedConfigurationCondition condition, String basename, Collection<Locale> locales) {
+        public void addResourceBundles(UnresolvedConfigurationCondition condition, String basename, Collection<Locale> locales, String reason) {
             configuration.addBundle(condition, basename, locales);
         }
 
         @Override
-        public void addClassBasedResourceBundle(UnresolvedConfigurationCondition condition, String basename, String className) {
+        public void addClassBasedResourceBundle(UnresolvedConfigurationCondition condition, String basename, String className, String reason) {
             configuration.addClassResourceBundle(condition, basename, className);
         }
     }

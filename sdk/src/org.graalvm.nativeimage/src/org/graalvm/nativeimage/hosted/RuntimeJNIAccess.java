@@ -66,7 +66,8 @@ public final class RuntimeJNIAccess {
      * @since 22.3
      */
     public static void register(Class<?>... classes) {
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(ConfigurationCondition.alwaysTrue(), classes);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(ConfigurationCondition.alwaysTrue(), "Feature: " + callerClassName, classes);
     }
 
     /**
@@ -79,7 +80,8 @@ public final class RuntimeJNIAccess {
      * @since 22.3
      */
     public static void register(Executable... methods) {
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(ConfigurationCondition.alwaysTrue(), false, methods);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(ConfigurationCondition.alwaysTrue(), false, "Feature: " + callerClassName, methods);
     }
 
     /**
@@ -92,7 +94,8 @@ public final class RuntimeJNIAccess {
      * @since 22.3
      */
     public static void register(Field... fields) {
-        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(ConfigurationCondition.alwaysTrue(), false, fields);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeJNIAccessSupport.class).register(ConfigurationCondition.alwaysTrue(), false, "Feature: " + callerClassName, fields);
     }
 
     private RuntimeJNIAccess() {

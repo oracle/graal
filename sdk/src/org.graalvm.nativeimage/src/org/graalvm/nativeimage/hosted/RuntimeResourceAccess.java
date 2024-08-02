@@ -68,7 +68,8 @@ public final class RuntimeResourceAccess {
     public static void addResource(Module module, String resourcePath) {
         Objects.requireNonNull(module);
         Objects.requireNonNull(resourcePath);
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourcePath);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourcePath, "Feature: " + callerClassName);
     }
 
     /**
@@ -83,7 +84,8 @@ public final class RuntimeResourceAccess {
         Objects.requireNonNull(module);
         Objects.requireNonNull(resourcePath);
         Objects.requireNonNull(resourceContent);
-        ImageSingletons.lookup(RuntimeResourceSupport.class).injectResource(module, resourcePath, resourceContent);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
+        ImageSingletons.lookup(RuntimeResourceSupport.class).injectResource(module, resourcePath, resourceContent, "Feature: " + callerClassName);
         ImageSingletons.lookup(RuntimeResourceSupport.class).addCondition(ConfigurationCondition.alwaysTrue(), module, resourcePath);
     }
 
@@ -96,8 +98,9 @@ public final class RuntimeResourceAccess {
      */
     public static void addResourceBundle(Module module, String baseBundleName, Locale[] locales) {
         Objects.requireNonNull(locales);
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
         RuntimeResourceSupport.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(),
-                        withModuleName(module, baseBundleName), Arrays.asList(locales));
+                        withModuleName(module, baseBundleName), Arrays.asList(locales), "Feature: " + callerClassName);
     }
 
     /**
@@ -108,8 +111,9 @@ public final class RuntimeResourceAccess {
      * @since 22.3
      */
     public static void addResourceBundle(Module module, String bundleName) {
+        String callerClassName = new Throwable().getStackTrace()[1].getClassName();
         RuntimeResourceSupport.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(),
-                        withModuleName(module, bundleName));
+                        withModuleName(module, bundleName), "Feature: " + callerClassName);
     }
 
     private static String withModuleName(Module module, String str) {

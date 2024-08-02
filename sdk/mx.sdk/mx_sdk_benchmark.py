@@ -3095,7 +3095,7 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundle
         return {**os.environ, "NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL": "false"}
 
     def default_stages(self):
-        return ['instrument-image', 'instrument-run', 'image', 'run']
+        return ['agent', 'instrument-image', 'instrument-run', 'image', 'run']
 
     def uses_bundles(self):
         return True

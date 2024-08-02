@@ -180,7 +180,7 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public void addResources(ConfigurationCondition condition, String pattern) {
+        public void addResources(ConfigurationCondition condition, String pattern, String reason) {
             try {
                 resourcePatternWorkSet.add(new ConditionalPattern(condition, pattern));
             } catch (UnsupportedOperationException e) {
@@ -189,7 +189,7 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public void addGlob(ConfigurationCondition condition, String module, String glob) {
+        public void addGlob(ConfigurationCondition condition, String module, String glob, String reason) {
             String resolvedGlob = GlobUtils.transformToTriePath(glob, module);
             globWorkSet.add(new ConditionalPattern(condition, resolvedGlob));
         }
@@ -204,7 +204,7 @@ public class ResourcesFeature implements InternalFeature {
 
         /* Adds single resource defined with its module and name */
         @Override
-        public void addResourceEntry(Module module, String resourcePath) {
+        public void addResourceEntry(Module module, String resourcePath, String reason) {
             if (!shouldRegisterResource(module, resourcePath)) {
                 return;
             }
@@ -217,13 +217,13 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
+        public void injectResource(Module module, String resourcePath, byte[] resourceContent, String reason) {
             EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourcePath, "INJECTED");
             Resources.singleton().registerResource(module, resourcePath, resourceContent);
         }
 
         @Override
-        public void ignoreResources(ConfigurationCondition condition, String pattern) {
+        public void ignoreResources(ConfigurationCondition condition, String pattern, String reason) {
             registerConditionalConfiguration(condition, (cnd) -> {
                 UserError.guarantee(!sealed, "Resources ignored too late: %s", pattern);
 
@@ -232,18 +232,18 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public void addResourceBundles(ConfigurationCondition condition, String name) {
-            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, name));
+        public void addResourceBundles(ConfigurationCondition condition, String name, String reason) {
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, name, reason));
         }
 
         @Override
-        public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
-            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className));
+        public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className, String reason) {
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className, reason));
         }
 
         @Override
-        public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
-            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, basename, locales));
+        public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales, String reason) {
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(cnd, basename, locales, reason));
         }
 
         /*
@@ -561,14 +561,14 @@ public class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public void addResourceEntry(Module module, String resourceName) {
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceEntry(module, resourceName);
+        public void addResourceEntry(Module module, String resourceName, String reason) {
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceEntry(module, resourceName, reason);
         }
 
         @Override
-        public void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition) {
+        public void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition, String reason) {
             registerConditionalConfiguration(condition, cnd -> {
-                addResourceEntry(module, resourceName);
+                addResourceEntry(module, resourceName, reason);
                 ImageSingletons.lookup(RuntimeResourceSupport.class).addCondition(cnd, module, resourceName);
             });
         }

@@ -80,10 +80,10 @@ public class JmxServerFeature implements InternalFeature {
         ResourcesRegistry<ConfigurationCondition> resourcesRegistry = ResourcesRegistry.singleton();
 
         resourcesRegistry.addResourceBundles(ConfigurationCondition.alwaysTrue(),
-                        "jdk.internal.agent.resources.agent");
+                        "jdk.internal.agent.resources.agent", "jmx");
 
         resourcesRegistry.addResourceBundles(ConfigurationCondition.alwaysTrue(),
-                        "sun.security.util.Resources"); // required for password auth
+                        "sun.security.util.Resources", "jmx"); // required for password auth
     }
 
     private static void configureProxy(BeforeAnalysisAccess access) {

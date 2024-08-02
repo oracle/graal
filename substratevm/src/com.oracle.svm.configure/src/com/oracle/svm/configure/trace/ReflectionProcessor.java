@@ -37,6 +37,7 @@ import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemb
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.configure.config.TypeConfiguration;
@@ -203,8 +204,10 @@ class ReflectionProcessor extends AbstractProcessor {
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
                     parameterTypes = Collections.emptyList();
                 }
-                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), declaration, accessibility);
-                if (!clazzOrDeclaringClass.equals(clazz)) {
+                if (accessibility == ConfigurationMemberAccessibility.ACCESSED) {
+                    configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), declaration, accessibility);
+                }
+                if (accessibility == ConfigurationMemberAccessibility.QUERIED || (!trackReflectionMetadata && !clazzOrDeclaringClass.equals(clazz))) {
                     configuration.getOrCreateType(condition, clazz);
                 }
                 break;
@@ -225,7 +228,10 @@ class ReflectionProcessor extends AbstractProcessor {
                 }
                 String signature = SignatureUtil.toInternalSignature(parameterTypes);
                 assert clazz.equals(clazzOrDeclaringClass) : "Constructor can only be accessed via declaring class";
-                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, declaration, accessibility);
+                ConfigurationType configurationType = configuration.getOrCreateType(condition, clazzOrDeclaringClass);
+                if (accessibility == ConfigurationMemberAccessibility.ACCESSED) {
+                    configurationType.addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, declaration, accessibility);
+                }
                 break;
             }
 

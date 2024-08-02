@@ -219,7 +219,7 @@ public class JNIAccessFeature implements Feature {
                     implements RuntimeJNIAccessSupport {
 
         @Override
-        public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
+        public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz, String reason) {
             assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
             Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
             abortIfSealed();
@@ -227,7 +227,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
+        public void register(ConfigurationCondition condition, boolean queriedOnly, String reason, Executable... executables) {
             requireNonNull(executables, "executable");
             abortIfSealed();
             if (!queriedOnly) {
@@ -236,7 +236,7 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
+        public void register(ConfigurationCondition condition, boolean finalIsWritable, String reason, Field... fields) {
             requireNonNull(fields, "field");
             abortIfSealed();
             registerConditionalConfiguration(condition, (cnd) -> registerFields(finalIsWritable, fields));
@@ -250,36 +250,36 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void registerClassLookup(ConfigurationCondition condition, String typeName) {
+        public void registerClassLookup(ConfigurationCondition condition, String typeName, String reason) {
             try {
-                register(condition, false, Class.forName(typeName));
+                register(condition, false, Class.forName(typeName), reason);
             } catch (ClassNotFoundException e) {
                 newNegativeClassLookups.add(typeName);
             }
         }
 
         @Override
-        public void registerFieldLookup(ConfigurationCondition condition, Class<?> declaringClass, String fieldName) {
+        public void registerFieldLookup(ConfigurationCondition condition, Class<?> declaringClass, String fieldName, String reason) {
             try {
-                register(condition, false, declaringClass.getDeclaredField(fieldName));
+                register(condition, false, reason, declaringClass.getDeclaredField(fieldName));
             } catch (NoSuchFieldException e) {
                 newNegativeFieldLookups.computeIfAbsent(declaringClass, (clazz) -> new HashSet<>()).add(fieldName);
             }
         }
 
         @Override
-        public void registerMethodLookup(ConfigurationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
+        public void registerMethodLookup(ConfigurationCondition condition, Class<?> declaringClass, String methodName, String reason, Class<?>... parameterTypes) {
             try {
-                register(condition, false, declaringClass.getDeclaredMethod(methodName, parameterTypes));
+                register(condition, false, reason, declaringClass.getDeclaredMethod(methodName, parameterTypes));
             } catch (NoSuchMethodException e) {
                 newNegativeMethodLookups.computeIfAbsent(declaringClass, (clazz) -> new HashSet<>()).add(Pair.create(methodName, parameterTypes));
             }
         }
 
         @Override
-        public void registerConstructorLookup(ConfigurationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes) {
+        public void registerConstructorLookup(ConfigurationCondition condition, Class<?> declaringClass, String reason, Class<?>... parameterTypes) {
             try {
-                register(condition, false, declaringClass.getDeclaredConstructor(parameterTypes));
+                register(condition, false, reason, declaringClass.getDeclaredConstructor(parameterTypes));
             } catch (NoSuchMethodException e) {
                 newNegativeMethodLookups.computeIfAbsent(declaringClass, (clazz) -> new HashSet<>()).add(Pair.create("<init>", parameterTypes));
             }
