@@ -382,6 +382,23 @@ public abstract class Fd implements Closeable {
     /**
      *
      * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/df4d4f385ba7930d0433a504184ff94c1becbdad/legacy/preview1/docs.md#fd_filestat_set_size"><code>fd_fdstat_set_size</code></a>:
+     * adjusts the size of an open file.
+     *
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param size the desired file size
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     */
+    public Errno fdstatSetSize(Node node, long size) {
+        if (!isSet(fsRightsBase, Rights.FdFilestatSetSize)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
+     *
+     * Implementation of WASI <a href=
      * "https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#fd_filestat_set_times"><code>fd_fdstat_set_times</code></a>:
      * adjusts the times associated with this file descriptor.
      *
