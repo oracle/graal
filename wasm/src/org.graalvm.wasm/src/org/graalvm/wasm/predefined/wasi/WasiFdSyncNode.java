@@ -52,9 +52,9 @@ import org.graalvm.wasm.predefined.wasi.types.Errno;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public final class WasiFdDatasyncNode extends WasmBuiltinRootNode {
+public final class WasiFdSyncNode extends WasmBuiltinRootNode {
 
-    public WasiFdDatasyncNode(WasmLanguage language, WasmModule module) {
+    public WasiFdSyncNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
@@ -70,11 +70,11 @@ public final class WasiFdDatasyncNode extends WasmBuiltinRootNode {
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.datasync().ordinal();
+        return handle.sync().ordinal();
     }
 
     @Override
     public String builtinNodeName() {
-        return "__wasi_fd_datasync";
+        return "__wasi_fd_sync";
     }
 }
