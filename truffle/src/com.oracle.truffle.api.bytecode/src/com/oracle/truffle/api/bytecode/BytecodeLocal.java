@@ -41,7 +41,7 @@
 package com.oracle.truffle.api.bytecode;
 
 /**
- * Abstract definition of a local variables in the interpreter.
+ * Abstract definition of a local variable in the interpreter.
  * <p>
  * Local variables are stored in the frame. They are typically accessed in the bytecode using
  * {@code StoreLocal} and {@code LoadLocal} operations. For uncommon scenarios where locals need to

@@ -65,54 +65,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * This tutorial explains how to define a basic Bytecode DSL interpreter. The source code itself is
  * meant to be read in order from top to bottom.
- * <p>
- * <h1>Operations</h1> Operations are the basic unit of language semantics in Bytecode DSL. Each
- * operation performs some computation and can return a value. For example, the
- * <code>LoadArgument</code> operation loads the value of a given argument.
- * <p>
- * Operations can have child operations. For example, an <code>Equals</code> operation may have two
- * child operations. Child operations execute before their parent, and their results are passed as
- * arguments to the parent (with the exception of built-in control flow operations).
- * <p>
- * Operations nest together to form a program. Consider the following pseudocode:
- *
- * <pre>
- * if x == 42:
- *   print("success")
- * </pre>
- *
- * This code could be represented with the following "tree" of operations:
- *
- * <pre>
- * (IfThen
- *   (Equals
- *     (LoadLocal x)
- *     (LoadConstant 42))
- *   (CallFunction
- *     (LoadGlobal (LoadConstant "print"))
- *     (LoadConstant "success")))
- * </pre>
- *
- * Note that while a Bytecode DSL program can be logically represented as a tree of operations,
- * Bytecode DSL interpreters <i>do not construct or execute ASTs</i>. The bytecode builder takes an
- * operation tree specification via a sequence of method calls and automatically synthesizes a
- * bytecode program that implements the operation tree.
- *
- * <h2>Built-in and custom operations</h2> Bytecode DSL interpreters have built-in and custom
- * operations.
- * <p>
- * Built-in operations are automatically included in your interpreter. They model common language
- * primitives, such as control flow (<code>IfThen</code>, <code>While</code>, etc.), constant
- * accesses (<code>LoadConstant</code>) and local variable manipulation (<code>LoadLocal</code>,
- * <code>StoreLocal</code>). The built-in operations are listed in the User Guide and described in
- * the generated Javadoc.
- * <p>
- * Custom operations are provided by the language. They model language-specific behaviour, such as
- * arithmetic operations, value conversions, function calls, etc. In our previous example,
- * <code>Equals</code>, <code>CallFunction</code> and <code>LoadGlobal</code> are custom operations.
- * Most custom operations are {@link Operation regular operations} that eagerly evaluate their
- * children, but languages can also define {@link ShortCircuitOperation short-circuit operations} to
- * implement short-circuiting behaviour.
  *
  * @see <a href=
  *      "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">User

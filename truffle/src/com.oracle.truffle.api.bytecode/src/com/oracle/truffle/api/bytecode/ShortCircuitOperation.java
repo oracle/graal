@@ -150,7 +150,7 @@ public @interface ShortCircuitOperation {
      * node/operation must:
      * <ul>
      * <li>Only have specializations returning {@code boolean}.
-     * <li>Only have specializations that take a single parameter.
+     * <li>Only have specializations that take a single dynamic operand.
      * </ul>
      *
      * @since 24.2
