@@ -71,10 +71,18 @@ abstract class SeekableByteChannelFd extends Fd {
         setChannel(channel);
     }
 
+    protected SeekableByteChannel getChannel() {
+        return channel;
+    }
+
     protected void setChannel(SeekableByteChannel channel) {
         this.channel = channel;
         this.inputStream = Channels.newInputStream(channel);
         this.outputStream = Channels.newOutputStream(channel);
+    }
+
+    protected OutputStream getOutputStream() {
+        return outputStream;
     }
 
     @Override

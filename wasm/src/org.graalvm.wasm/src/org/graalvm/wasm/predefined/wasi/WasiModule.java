@@ -158,7 +158,7 @@ public final class WasiModule extends BuiltinModule {
         defineFunction(context, module, "fd_fdstat_set_rights", types(FD_TYPE, RIGHTS_TYPE, RIGHTS_TYPE), types(ERRNO_TYPE),
                         new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_fdstat_set_rights"));
         defineFunction(context, module, "fd_filestat_get", types(FD_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiFdFilestatGetNode(language, module));
-        defineFunction(context, module, "fd_filestat_set_size", types(FD_TYPE, FILESIZE_TYPE), types(ERRNO_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_filestat_set_size"));
+        defineFunction(context, module, "fd_filestat_set_size", types(FD_TYPE, FILESIZE_TYPE), types(ERRNO_TYPE), new WasiFdFilestatSetSizeNode(language, module));
         defineFunction(context, module, "fd_filestat_set_times", types(FD_TYPE, TIMESTAMP_TYPE, TIMESTAMP_TYPE, FSTFLAGS_TYPE), types(ERRNO_TYPE), new WasiFdFilestatSetTimesNode(language, module));
         defineFunction(context, module, "fd_pread", types(FD_TYPE, IOVEC_ARRAY_ADDRESS_TYPE, IOVEC_ARRAY_LENGTH_TYPE, FILESIZE_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE),
                         new WasiFdPreadNode(language, module));
