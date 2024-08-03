@@ -37,6 +37,7 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jni.CallVariant;
@@ -58,6 +59,10 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     public static final int INTERFACE_TYPEID_NOT_YET_COMPUTED = -2;
     public static final int INTERFACE_TYPEID_UNNEEDED = -3;
     public static final int NEW_OBJECT_INVALID_FOR_ABSTRACT_TYPE = -1;
+
+    public static JNIAccessibleMethod negativeMethodQuery(JNIAccessibleClass jniClass) {
+        return new JNIAccessibleMethod(jniClass, RuntimeMetadataDecoderImpl.NEGATIVE_FLAG_MASK);
+    }
 
     @Platforms(HOSTED_ONLY.class)
     public static ResolvedJavaField getCallVariantWrapperField(MetaAccessProvider metaAccess, CallVariant variant, boolean nonVirtual) {
@@ -106,6 +111,11 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     public JNIAccessibleMethod(JNIAccessibleClass declaringClass, int modifiers) {
         super(declaringClass);
         this.modifiers = modifiers;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isNegative() {
+        return (modifiers & RuntimeMetadataDecoderImpl.NEGATIVE_FLAG_MASK) != 0;
     }
 
     @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")

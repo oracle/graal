@@ -62,10 +62,11 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
         checkAttributes(data, "reflection class descriptor object", Collections.emptyList(), OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS);
         checkHasExactlyOneAttribute(data, "reflection class descriptor object", List.of(NAME_KEY, TYPE_KEY));
 
-        Optional<ConfigurationTypeDescriptor> type = parseTypeOrName(data, treatAllNameEntriesAsType);
+        Optional<TypeDescriptorWithOrigin> type = parseTypeOrName(data, treatAllNameEntriesAsType);
         if (type.isEmpty()) {
             return;
         }
+        ConfigurationTypeDescriptor typeDescriptor = type.get().typeDescriptor();
         /*
          * Classes registered using the old ("name") syntax requires elements (fields, methods,
          * constructors, ...) to be registered for runtime queries, whereas the new ("type") syntax
@@ -84,9 +85,9 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
          * allow getDeclaredMethods() and similar bulk queries at run time.
          */
         C condition = conditionResult.get();
-        TypeResult<T> result = delegate.resolveType(condition, type.get(), true);
+        TypeResult<T> result = delegate.resolveType(condition, typeDescriptor, true);
         if (!result.isPresent()) {
-            handleMissingElement("Could not resolve " + type.get() + " for reflection configuration.", result.getException());
+            handleMissingElement("Could not resolve " + typeDescriptor + " for reflection configuration.", result.getException());
             return;
         }
 
