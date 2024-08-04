@@ -72,6 +72,11 @@ public class WasiFdRenumberNode extends WasmBuiltinRootNode {
             if (handle == null) {
                 return Errno.Badf.ordinal();
             }
+            if (fd == to) {
+                // if fd == to, dup2 is a no-op (we only check whether fd is a valid descriptor)
+                // since the semantics of fd_renumber is based on POSIX's dup2, we do the same
+                return Errno.Success.ordinal();
+            }
             Fd toHandle = context.fdManager().get(to);
             if (toHandle == null) {
                 // do not allow renumbering to arbitrary fd values
