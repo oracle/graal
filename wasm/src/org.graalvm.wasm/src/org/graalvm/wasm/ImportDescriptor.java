@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,30 +40,23 @@
  */
 package org.graalvm.wasm;
 
-public final class ImportDescriptor {
-    public final String moduleName;
-    public final String memberName;
-    public final int identifier;
+import org.graalvm.wasm.constants.ImportIdentifier;
 
-    public ImportDescriptor(String moduleName, String memberName, int identifier) {
-        this.moduleName = moduleName;
-        this.memberName = memberName;
-        this.identifier = identifier;
-    }
-
-    @Override
-    public int hashCode() {
-        return moduleName.hashCode() ^ memberName.hashCode() ^ Integer.hashCode(identifier);
-    }
-
-    @Override
-    public boolean equals(Object object) {
-        if (!(object instanceof ImportDescriptor)) {
-            return false;
-        }
-        final ImportDescriptor that = (ImportDescriptor) object;
-        return that.moduleName.equals(this.moduleName) && that.memberName.equals(this.memberName) && that.identifier == this.identifier;
-    }
+/**
+ * Describes an imported symbol entry in the import section of a module.
+ *
+ * @param moduleName source module name
+ * @param memberName source member name
+ * @param identifier {@link ImportIdentifier}, either function, table, memory, or global
+ * @param targetIndex index of target function, table, memory, or global
+ * @param importedSymbolIndex index in imported symbols list {@link SymbolTable#importedSymbols()}
+ */
+public record ImportDescriptor(
+                String moduleName,
+                String memberName,
+                int identifier,
+                int targetIndex,
+                int importedSymbolIndex) {
 
     @Override
     public String toString() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,57 +39,12 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.parser.ir;
+package org.graalvm.wasm;
 
-import java.util.List;
+import java.util.function.Function;
 
-/**
- * Represents information about the code section of a wasm function.
- */
-public final class CodeEntry {
-    private final int functionIndex;
-    private final int maxStackSize;
-    private final byte[] localTypes;
-    private final byte[] resultTypes;
-    private final List<CallNode> callNodes;
-    private final int bytecodeStartOffset;
-    private final int bytecodeEndOffset;
+@FunctionalInterface
+public interface LinkAction {
 
-    public CodeEntry(int functionIndex, int maxStackSize, byte[] localTypes, byte[] resultTypes, List<CallNode> callNodes, int startOffset, int endOffset) {
-        this.functionIndex = functionIndex;
-        this.maxStackSize = maxStackSize;
-        this.localTypes = localTypes;
-        this.resultTypes = resultTypes;
-        this.callNodes = callNodes;
-        this.bytecodeStartOffset = startOffset;
-        this.bytecodeEndOffset = endOffset;
-    }
-
-    public int maxStackSize() {
-        return maxStackSize;
-    }
-
-    public int functionIndex() {
-        return functionIndex;
-    }
-
-    public byte[] localTypes() {
-        return localTypes;
-    }
-
-    public byte[] resultTypes() {
-        return resultTypes;
-    }
-
-    public List<CallNode> callNodes() {
-        return callNodes;
-    }
-
-    public int bytecodeStartOffset() {
-        return bytecodeStartOffset;
-    }
-
-    public int bytecodeEndOffset() {
-        return bytecodeEndOffset;
-    }
+    void accept(WasmContext context, WasmInstance instance, Function<ImportDescriptor, Object> imports);
 }

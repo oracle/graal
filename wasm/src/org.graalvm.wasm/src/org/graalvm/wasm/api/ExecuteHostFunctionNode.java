@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,8 @@ package org.graalvm.wasm.api;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -53,9 +55,7 @@ import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
@@ -66,40 +66,41 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
-public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
-    private final Object executable;
-    @CompilationFinal private int functionTypeIndex = -1;
+/**
+ * Wrapper call target for executing imported host functions in the parent context.
+ */
+public final class ExecuteHostFunctionNode extends WasmBuiltinRootNode {
+    private final int functionTypeIndex;
+    private final int functionIndex;
     private final BranchProfile errorBranch = BranchProfile.create();
     @Child private InteropLibrary functionInterop;
     @Child private InteropLibrary arrayInterop;
     @Child private InteropLibrary resultInterop;
 
-    public ExecuteInParentContextNode(WasmLanguage language, WasmModule module, Object executable, int resultCount) {
+    public ExecuteHostFunctionNode(WasmLanguage language, WasmModule module, WasmFunction fn) {
         super(language, module);
-        this.executable = executable;
-        this.functionInterop = InteropLibrary.getUncached(executable);
-        if (resultCount > 1) {
+        this.functionTypeIndex = fn.typeIndex();
+        this.functionIndex = fn.index();
+        this.functionInterop = InteropLibrary.getFactory().createDispatched(5);
+        if (fn.resultCount() > 1) {
             this.arrayInterop = InteropLibrary.getFactory().createDispatched(5);
         }
     }
 
-    void setFunctionTypeIndex(int functionTypeIndex) {
-        this.functionTypeIndex = functionTypeIndex;
-    }
-
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+    public Object execute(VirtualFrame frame) {
+        assert WasmArguments.isValid(frame.getArguments());
+        final WasmInstance instance = WasmArguments.getModuleInstance(frame.getArguments());
+
         // Imported executables come from the parent context
-        TruffleContext truffleContext = context.environment().getContext().getParent();
         Object[] arguments = WasmArguments.getArguments(frame.getArguments());
         try {
-            Object prev = truffleContext.enter(this);
             Object result;
-            try {
-                result = functionInterop.execute(executable, arguments);
-            } finally {
-                truffleContext.leave(this, prev);
-            }
+            WasmFunctionInstance functionInstance = instance.functionInstance(functionIndex);
+            assert functionInstance.context() == WasmContext.get(null);
+            Object executable = functionInstance.getImportedFunction();
+            result = functionInterop.execute(executable, arguments);
+
             int resultCount = module().symbolTable().functionTypeResultCount(functionTypeIndex);
             CompilerAsserts.partialEvaluationConstant(resultCount);
             if (resultCount == 0) {
@@ -120,7 +121,7 @@ public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
     /**
      * Convert result to a WebAssembly value. Note: In most cases, the result values will already be
      * of the correct boxed type because they're already converted on the JS side, so we only need
-     * to unbox and and can forego InteropLibrary.
+     * to unbox and can forego InteropLibrary.
      */
     private Object convertResult(Object result, byte resultType) throws UnsupportedMessageException {
         CompilerAsserts.partialEvaluationConstant(resultType);
@@ -218,7 +219,7 @@ public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
         InteropLibrary interop = resultInterop;
         if (interop == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            interop = insert(InteropLibrary.getFactory().createDispatched(5));
+            resultInterop = interop = insert(InteropLibrary.getFactory().createDispatched(5));
         }
         return interop;
     }
