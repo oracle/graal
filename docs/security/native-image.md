@@ -23,8 +23,9 @@ Developers should run the `native-image` builder in a dedicated environment, suc
 
 ## Software Bill of Materials
 
-GraalVM Native Image can embed a Software Bill of Materials (SBOM) at build time to detect any libraries that may be susceptible to known security vulnerabilities.
-Native Image provides the `--enable-sbom` option to embed an SBOM into a native executable (only available in Oracle GraalVM).
+GraalVM Native Image can assemble a Software Bill of Materials (SBOM) at build time to detect any libraries that may be susceptible to known security vulnerabilities.
+Native Image provides the `--enable-sbom` option to embed an SBOM into a native executable (only available in Oracle GraalVM). 
+In addition to being embedded, the SBOM can be added to the classpath or exported as a JSON by using `--enable-sbom=classpath,export`. 
 
 The CycloneDX format is supported and the default. 
 To embed a CycloneDX SBOM into a native executable, pass the `--enable-sbom` option to the `native-image` command. 
