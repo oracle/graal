@@ -96,7 +96,7 @@ public class TypeCheckSnippetUtils {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/8032d640c0d34fe507392a1d4faa4ff2005c771d/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4786-L4881",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/fbe8a81d1900d0de1920ad1df6ad574f3da4bd51/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4791-L4886",
               sha1 = "c0e2fdd973dc975757d58080ba94efe628d6a380")
     // @formatter:on
     static boolean checkSelfAndSupers(KlassPointer t, KlassPointer s, Counters counters) {
