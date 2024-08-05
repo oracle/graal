@@ -58,7 +58,7 @@ public abstract class CodeNames {
         return name;
     }
 
-    private static class NameImpl implements Name {
+    public static class NameImpl implements Name {
 
         private final String name;
 

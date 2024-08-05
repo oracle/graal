@@ -54,6 +54,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -63,6 +64,8 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.ModuleElement;
+import javax.lang.model.element.Name;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -82,6 +85,7 @@ import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeNames.NameImpl;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
@@ -102,7 +106,7 @@ public class ElementUtils {
         ProcessorContext context = ProcessorContext.getInstance();
         TypeElement typeElement = context.getTypeElement(type);
         for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
-            if (method.getSimpleName().toString().equals(methodName)) {
+            if (method.getSimpleName().contentEquals(methodName)) {
                 return method;
             }
         }
@@ -135,7 +139,7 @@ public class ElementUtils {
         ProcessorContext context = ProcessorContext.getInstance();
         TypeElement typeElement = context.getTypeElement(type);
         for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
-            if (method.getParameters().size() == parameterCount && method.getSimpleName().toString().equals(methodName)) {
+            if (method.getParameters().size() == parameterCount && method.getSimpleName().contentEquals(methodName)) {
                 return method;
             }
         }
@@ -144,7 +148,7 @@ public class ElementUtils {
 
     public static ExecutableElement findStaticMethod(TypeElement type, String methodName) {
         for (ExecutableElement method : ElementFilter.methodsIn(type.getEnclosedElements())) {
-            if (method.getModifiers().contains(Modifier.STATIC) && method.getSimpleName().toString().equals(methodName)) {
+            if (method.getModifiers().contains(Modifier.STATIC) && method.getSimpleName().contentEquals(methodName)) {
                 return method;
             }
         }
@@ -188,7 +192,7 @@ public class ElementUtils {
     public static ExecutableElement findExecutableElement(DeclaredType type, String name) {
         List<? extends ExecutableElement> elements = ElementFilter.methodsIn(type.asElement().getEnclosedElements());
         for (ExecutableElement executableElement : elements) {
-            if (executableElement.getSimpleName().toString().equals(name) && !isDeprecated(executableElement)) {
+            if (executableElement.getSimpleName().contentEquals(name) && !isDeprecated(executableElement)) {
                 return executableElement;
             }
         }
@@ -198,7 +202,7 @@ public class ElementUtils {
     public static ExecutableElement findExecutableElement(DeclaredType type, String name, int argumentCount) {
         List<? extends ExecutableElement> elements = ElementFilter.methodsIn(type.asElement().getEnclosedElements());
         for (ExecutableElement executableElement : elements) {
-            if (executableElement.getParameters().size() == argumentCount && executableElement.getSimpleName().toString().equals(name) && !isDeprecated(executableElement)) {
+            if (executableElement.getParameters().size() == argumentCount && executableElement.getSimpleName().contentEquals(name) && !isDeprecated(executableElement)) {
                 return executableElement;
             }
         }
@@ -212,7 +216,7 @@ public class ElementUtils {
     public static VariableElement findVariableElement(Element element, String name) {
         List<? extends VariableElement> elements = ElementFilter.fieldsIn(element.getEnclosedElements());
         for (VariableElement variableElement : elements) {
-            if (variableElement.getSimpleName().toString().equals(name)) {
+            if (variableElement.getSimpleName().contentEquals(name)) {
                 return variableElement;
             }
         }
@@ -349,9 +353,9 @@ public class ElementUtils {
     }
 
     public static boolean hasOverloads(TypeElement enclosingType, ExecutableElement e) {
-        String name = e.getSimpleName().toString();
+        Name name = e.getSimpleName();
         for (ExecutableElement otherExecutable : ElementFilter.methodsIn(enclosingType.getEnclosedElements())) {
-            if (otherExecutable.getSimpleName().toString().equals(name)) {
+            if (nameEquals(name, otherExecutable.getSimpleName())) {
                 if (!ElementUtils.elementEquals(e, otherExecutable)) {
                     return true;
                 }
@@ -954,6 +958,35 @@ public class ElementUtils {
         }
     }
 
+    public static PackageElement getPackageElement(TypeMirror mirror) {
+        switch (mirror.getKind()) {
+            case BOOLEAN:
+            case BYTE:
+            case CHAR:
+            case DOUBLE:
+            case FLOAT:
+            case SHORT:
+            case INT:
+            case LONG:
+            case VOID:
+            case NULL:
+            case TYPEVAR:
+                return null;
+            case DECLARED:
+                PackageElement pack = findPackageElement(fromTypeMirror(mirror));
+                if (pack == null) {
+                    throw new IllegalArgumentException("No package element found for declared type " + getSimpleName(mirror));
+                }
+                return pack;
+            case ARRAY:
+                return getPackageElement(((ArrayType) mirror).getComponentType());
+            case EXECUTABLE:
+                return null;
+            default:
+                throw new RuntimeException("Unknown type specified " + mirror.getKind());
+        }
+    }
+
     public static String getPackageName(TypeMirror mirror) {
         switch (mirror.getKind()) {
             case BOOLEAN:
@@ -1238,7 +1271,7 @@ public class ElementUtils {
                 TypeMirror param1 = params[i];
                 TypeMirror param2 = method.getParameters().get(i).asType();
                 if (param1 != null && param1.getKind() != TypeKind.TYPEVAR && param2 != null && param2.getKind() != TypeKind.TYPEVAR) {
-                    if (!getQualifiedName(param1).equals(getQualifiedName(param2))) {
+                    if (!typeEquals(param1, param2)) {
                         continue method;
                     }
                 }
@@ -1296,14 +1329,53 @@ public class ElementUtils {
         return false;
     }
 
+    public static boolean packageEquals(TypeMirror type1, TypeMirror type2) {
+        return packageEquals(getPackageElement(type1), getPackageElement(type2));
+    }
+
+    public static boolean packageEquals(PackageElement pack1, PackageElement pack2) {
+        return nameEquals(pack1.getQualifiedName(), pack2.getQualifiedName());
+    }
+
+    public static boolean nameEquals(Name name1, Name name2) {
+        if (name1 instanceof NameImpl) {
+            return name2.contentEquals(name1.toString());
+        } else if (name2 instanceof NameImpl) {
+            return name1.contentEquals(name2.toString());
+        }
+        return Objects.equals(name1, name2);
+    }
+
     public static boolean typeEquals(TypeMirror type1, TypeMirror type2) {
         if (type1 == type2) {
             return true;
         } else if (type1 == null || type2 == null) {
             return false;
         } else {
-            if (type1.getKind() == type2.getKind()) {
-                return getUniqueIdentifier(type1).equals(getUniqueIdentifier(type2));
+            TypeKind kind1 = type1.getKind();
+            if (kind1 == type2.getKind()) {
+                switch (kind1) {
+                    case ARRAY:
+                        return typeEquals(((ArrayType) type1).getComponentType(), ((ArrayType) type2).getComponentType());
+                    case DECLARED:
+                        TypeElement type1Element = (TypeElement) ((DeclaredType) type1).asElement();
+                        TypeElement type2Element = (TypeElement) ((DeclaredType) type2).asElement();
+                        return nameEquals(type1Element.getQualifiedName(), type2Element.getQualifiedName());
+                    case BOOLEAN:
+                    case BYTE:
+                    case CHAR:
+                    case DOUBLE:
+                    case FLOAT:
+                    case INT:
+                    case LONG:
+                    case SHORT:
+                    case VOID:
+                    case NULL:
+                    case NONE:
+                        return true;
+                    default:
+                        return getUniqueIdentifier(type1).equals(getUniqueIdentifier(type2));
+                }
             } else {
                 return false;
             }
@@ -1456,7 +1528,7 @@ public class ElementUtils {
     }
 
     public static boolean isObject(TypeMirror actualType) {
-        return actualType.getKind() == TypeKind.DECLARED && getQualifiedName(actualType).equals("java.lang.Object");
+        return actualType.getKind() == TypeKind.DECLARED && castTypeElement(actualType).getQualifiedName().contentEquals("java.lang.Object");
     }
 
     public static TypeMirror fillInGenericWildcards(TypeMirror type) {
@@ -1514,13 +1586,13 @@ public class ElementUtils {
     }
 
     public static boolean signatureEquals(ExecutableElement e1, ExecutableElement e2) {
-        if (!e1.getSimpleName().toString().equals(e2.getSimpleName().toString())) {
+        if (!nameEquals(e1.getSimpleName(), e2.getSimpleName())) {
             return false;
         }
         if (e1.getParameters().size() != e2.getParameters().size()) {
             return false;
         }
-        if (!ElementUtils.typeEquals(e1.getReturnType(), e2.getReturnType())) {
+        if (!typeEquals(e1.getReturnType(), e2.getReturnType())) {
             return false;
         }
         for (int i = 0; i < e1.getParameters().size(); i++) {
@@ -1569,9 +1641,11 @@ public class ElementUtils {
             case RECORD:
                 return typeEquals(element1.asType(), element2.asType());
             case PACKAGE:
-                return ((PackageElement) element1).getQualifiedName().equals(((PackageElement) element2).getQualifiedName());
+                return packageEquals(((PackageElement) element1), (((PackageElement) element2)));
             case TYPE_PARAMETER:
-                return element1.getSimpleName().toString().equals(element2.getSimpleName().toString());
+                return nameEquals(element1.getSimpleName(), element2.getSimpleName());
+            case MODULE:
+                return nameEquals(((ModuleElement) element1).getQualifiedName(), ((ModuleElement) element2).getQualifiedName());
             default:
                 throw new AssertionError("unsupported element type: " + element1.getKind());
         }
@@ -1650,6 +1724,7 @@ public class ElementUtils {
         }
 
         result = method1.getSimpleName().toString().compareTo(method2.getSimpleName().toString());
+
         if (result == 0) {
             // if still no difference sort by enclosing type name
             TypeElement enclosingType1 = ElementUtils.findNearestEnclosingType(method1).orElseThrow(AssertionError::new);
@@ -1706,9 +1781,9 @@ public class ElementUtils {
                     }
                 }
             }
-            String thisPackageElement = ElementUtils.getPackageName(accessingElement);
-            String otherPackageElement = ElementUtils.getPackageName(accessedElement);
-            if (otherPackageElement != null && !thisPackageElement.equals(otherPackageElement)) {
+            PackageElement thisPackageElement = ElementUtils.findPackageElement(accessingElement);
+            PackageElement otherPackageElement = ElementUtils.findPackageElement(accessedElement);
+            if (otherPackageElement != null && !ElementUtils.packageEquals(thisPackageElement, otherPackageElement)) {
                 return false;
             }
             Element enclosing = accessedElement.getEnclosingElement();

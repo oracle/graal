@@ -122,8 +122,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                 if (!element.getKind().isClass() && !element.getKind().isInterface()) {
                     continue;
                 }
-                String packageName = ElementUtils.getPackageName(element);
-                if (packageName != null && packageName.equals(ElementUtils.getPackageName(types.GenerateWrapper))) {
+                if (ElementUtils.packageEquals(element.asType(), types.GenerateWrapper)) {
                     /*
                      * Do not generate wrappers in the instrumentation package itself. For example
                      * for snippet code the annotation processor should not generate code.
