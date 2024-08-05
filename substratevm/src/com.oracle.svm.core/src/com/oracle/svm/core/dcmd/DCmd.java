@@ -23,25 +23,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
 
-import com.oracle.svm.core.dcmd.AbstractDcmd;
-import com.oracle.svm.core.dcmd.DcmdParseException;
+package com.oracle.svm.core.dcmd;
 
-public class DumpRuntimeCompilationDcmd extends AbstractDcmd {
+/** Interface for diagnostic commands. */
+public interface DCmd {
+    String parseAndExecute(String args) throws Throwable;
 
-    public DumpRuntimeCompilationDcmd() {
-        this.name = "VM.runtime_compilation";
-        this.impact = "low";
-    }
+    String getName();
 
-    @Override
-    public String parseAndExecute(String[] arguments) throws DcmdParseException {
-        if (arguments.length > 1) {
-            throw new DcmdParseException("Too many arguments specified");
-        }
+    String getDescription();
 
-        DumpRuntimeCompilationSupport.dump();
-        return "Dump created.";
+    String getHelp();
+
+    /**
+     * Describes the intrusiveness of the diagnostic command on the Java Virtual Machine behavior.
+     * Some diagnostic commands can seriously disrupt the behavior of the Java Virtual Machine while
+     * other diagnostic commands have no serious impact on the JVM.
+     */
+    enum Impact {
+        /** No safepoint needed. */
+        Low,
+
+        /**
+         * VM needs to reach a safepoint but the time spent in the safepoint is short (usually less
+         * than 10 ms).
+         */
+        Medium,
+
+        /**
+         * VM needs to reach a safepoint and the time spent in the safepoint is long (usually more
+         * than 10 ms).
+         */
+        High
     }
 }

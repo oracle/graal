@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,29 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.attach;
+package com.oracle.svm.core.dcmd;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.collections.EconomicMap;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
-/** Interface for the attach API mechanism. */
-public interface AttachApiSupport {
-    @Fold
-    static boolean isPresent() {
-        return ImageSingletons.contains(AttachApiSupport.class);
+public class DCmdArguments {
+    private final EconomicMap<DCmdOption<?>, Object> values;
+
+    public DCmdArguments() {
+        values = EconomicMap.create();
     }
 
-    @Fold
-    static AttachApiSupport singleton() {
-        return ImageSingletons.lookup(AttachApiSupport.class);
+    public boolean hasBeenSet(DCmdOption<?> option) {
+        Object value = values.get(option);
+        return value != null;
     }
 
-    void startup();
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticArgument.cpp#L54-L68")
+    public void set(DCmdOption<?> option, Object value) {
+        if (hasBeenSet(option)) {
+            throw new IllegalArgumentException("Duplicates in diagnostic command arguments");
+        }
 
-    boolean isInitTrigger();
+        assert value == null || option.getType().isAssignableFrom(value.getClass());
+        values.put(option, value);
+    }
 
-    void initialize();
-
-    void shutdown(boolean inTeardownHook);
+    @SuppressWarnings("unchecked")
+    public <T> T get(DCmdOption<T> option) {
+        Object value = values.get(option);
+        if (value == null) {
+            return option.getDefaultValue();
+        }
+        return (T) value;
+    }
 }

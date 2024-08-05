@@ -27,50 +27,51 @@ package com.oracle.svm.core;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
-import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.dcmd.DcmdSupport;
-import com.oracle.svm.core.thread.ThreadDumpStacksDcmd;
+import com.oracle.svm.core.attach.AttachApiSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.internal.misc.Signal;
 
 @AutomaticallyRegisteredFeature
-public class DumpThreadStacksOnSignalFeature implements InternalFeature {
-
+public class SigQuitFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasThreadDumpSupport();
+        return VMInspectionOptions.hasThreadDumpSupport() || VMInspectionOptions.hasJCmdSupport();
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (Platform.includedIn(WINDOWS.class) || !VMInspectionOptions.hasAttachSupport()) {
-            RuntimeSupport.getRuntimeSupport().addStartupHook(new DumpThreadStacksOnSignalStartupHook());
-        } else {
-            ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new ThreadDumpStacksDcmd());
-        }
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new RegisterSigQuitHandlerStartupHook());
     }
 }
 
-final class DumpThreadStacksOnSignalStartupHook implements RuntimeSupport.Hook {
+final class RegisterSigQuitHandlerStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
+        if (AttachApiSupport.isPresent()) {
+            /* Must be executed before we register the signal handler. */
+            AttachApiSupport.singleton().startup();
+        }
+
         if (isFirstIsolate) {
-            DumpAllStacks.install();
+            String signal = Platform.includedIn(WINDOWS.class) ? "BREAK" : "QUIT";
+            Signal.handle(new Signal(signal), new SigQuitHandler());
         }
     }
 }
 
-class DumpAllStacks implements Signal.Handler {
-    static void install() {
-        Signal.handle(Platform.includedIn(WINDOWS.class) ? new Signal("BREAK") : new Signal("QUIT"), new DumpAllStacks());
-    }
-
+class SigQuitHandler implements Signal.Handler {
     @Override
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/runtime/os.cpp#L388-L433")
     public void handle(Signal arg0) {
-        DumpThreadStacksSupport.dump();
+        if (VMInspectionOptions.hasJCmdSupport() && AttachApiSupport.singleton().isInitTrigger()) {
+            AttachApiSupport.singleton().initialize();
+        } else if (VMInspectionOptions.hasThreadDumpSupport()) {
+            DumpThreadStacksSupport.dump();
+        }
     }
 }

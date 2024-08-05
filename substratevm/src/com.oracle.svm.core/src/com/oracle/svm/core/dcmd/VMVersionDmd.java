@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2024, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,30 +23,26 @@
  * questions.
  */
 
-package com.oracle.svm.core.nmt;
+package com.oracle.svm.core.dcmd;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.VM;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
-@AutomaticallyRegisteredFeature
-public class NmtFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasNativeMemoryTrackingSupport();
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L59-L73")
+public class VMVersionDmd extends AbstractDCmd {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public VMVersionDmd() {
+        super("VM.version", "Print JVM version information.", Impact.Low);
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(NativeMemoryTracking.class, new NativeMemoryTracking());
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addInitializationHook(NativeMemoryTracking.initializationHook());
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(NativeMemoryTracking.shutdownHook());
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.cpp#L234-L246")
+    public String execute(DCmdArguments args) throws Throwable {
+        VM vm = ImageSingletons.lookup(VM.class);
+        return vm.vendorVersion + " (" + vm.info + ")" + System.lineSeparator() + "JDK " + vm.version;
     }
 }

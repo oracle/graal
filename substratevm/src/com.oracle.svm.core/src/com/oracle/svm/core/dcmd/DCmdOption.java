@@ -26,26 +26,38 @@
 
 package com.oracle.svm.core.dcmd;
 
-import org.graalvm.nativeimage.ImageSingletons;
+public class DCmdOption<T> {
+    private final Class<T> type;
+    private final String name;
+    private final String description;
+    private final boolean required;
+    private final T defaultValue;
 
-import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.thread.ThreadDumpToFileDcmd;
-
-@AutomaticallyRegisteredFeature
-public class DcmdFeature implements InternalFeature {
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasAttachSupport();
+    public DCmdOption(Class<T> type, String name, String description, boolean required, T defaultValue) {
+        this.type = type;
+        this.name = name;
+        this.description = description;
+        this.required = required;
+        this.defaultValue = defaultValue;
     }
 
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(DcmdSupport.class, new DcmdSupport());
-        ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new HelpDcmd());
-        ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new ThreadDumpToFileDcmd());
+    public Class<?> getType() {
+        return type;
     }
 
+    String getName() {
+        return name;
+    }
+
+    String getDescription() {
+        return description;
+    }
+
+    boolean isRequired() {
+        return required;
+    }
+
+    T getDefaultValue() {
+        return defaultValue;
+    }
 }

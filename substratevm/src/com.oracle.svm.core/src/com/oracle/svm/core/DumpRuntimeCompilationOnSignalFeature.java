@@ -27,9 +27,7 @@ package com.oracle.svm.core;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
-import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.dcmd.DcmdSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
@@ -39,7 +37,6 @@ import jdk.internal.misc.Signal;
 
 @AutomaticallyRegisteredFeature
 public class DumpRuntimeCompilationOnSignalFeature implements InternalFeature {
-
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return VMInspectionOptions.DumpRuntimeCompilationOnSignal.getValue() && !Platform.includedIn(WINDOWS.class) && RuntimeCompilation.isEnabled();
@@ -47,11 +44,7 @@ public class DumpRuntimeCompilationOnSignalFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (VMInspectionOptions.hasAttachSupport()) {
-            ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new DumpRuntimeCompilationDcmd());
-        } else {
-            RuntimeSupport.getRuntimeSupport().addStartupHook(new DumpRuntimeCompilationStartupHook());
-        }
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new DumpRuntimeCompilationStartupHook());
     }
 }
 
@@ -73,5 +66,4 @@ class DumpRuntimeCompilation implements Signal.Handler {
     public void handle(Signal arg0) {
         DumpRuntimeCompilationSupport.dump();
     }
-
 }

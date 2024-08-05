@@ -24,27 +24,26 @@
  * questions.
  */
 
-package com.oracle.svm.core.thread;
+package com.oracle.svm.core.dcmd;
 
-import com.oracle.svm.core.DumpThreadStacksSupport;
-import com.oracle.svm.core.dcmd.AbstractDcmd;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.dcmd.DcmdParseException;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_dcmd_AbstractDCmd;
+import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_dcmd_DCmdStart;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
-public class ThreadDumpStacksDcmd extends AbstractDcmd {
-
-    public ThreadDumpStacksDcmd() {
-        this.name = "Thread.dump_stacks";
-        this.description = "Dumps stacks of platform threads to log output.";
-        this.impact = "Medium";
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.hpp#L56-L58")
+public class JfrStartDCmd extends AbstractJfrDCmd {
+    // This constructor should be annotated with @BasedOnJDK instead of the class, see GR-59171.
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrStartDCmd() {
+        super("JFR.start", "Starts a new JFR recording.", Impact.Medium);
     }
 
     @Override
-    public String parseAndExecute(String[] arguments) throws DcmdParseException {
-        if (arguments.length > 1) {
-            throw new DcmdParseException("Too many arguments specified");
-        }
-        DumpThreadStacksSupport.dump();
-        return "Threads dumped.";
+    protected Target_jdk_jfr_internal_dcmd_AbstractDCmd createDCmd() {
+        return SubstrateUtil.cast(new Target_jdk_jfr_internal_dcmd_DCmdStart(), Target_jdk_jfr_internal_dcmd_AbstractDCmd.class);
     }
 }

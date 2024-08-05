@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2024, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,30 +23,29 @@
  * questions.
  */
 
-package com.oracle.svm.core.nmt;
+package com.oracle.svm.core.dcmd;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import java.nio.charset.StandardCharsets;
 
-import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-@AutomaticallyRegisteredFeature
-public class NmtFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasNativeMemoryTrackingSupport();
+import com.oracle.svm.core.util.BasedOnJDKFile;
+
+import jdk.internal.vm.VMSupport;
+
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L94-L110")
+public class VMSystemPropertiesDCmd extends AbstractDCmd {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public VMSystemPropertiesDCmd() {
+        super("VM.system_properties", "Print system properties.", Impact.Low);
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(NativeMemoryTracking.class, new NativeMemoryTracking());
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addInitializationHook(NativeMemoryTracking.initializationHook());
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(NativeMemoryTracking.shutdownHook());
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.cpp#L67-L109")
+    public String execute(DCmdArguments args) throws Throwable {
+        /* serializePropertiesToByteArray() explicitly returns a ISO_8859_1 encoded byte array. */
+        byte[] bytes = VMSupport.serializePropertiesToByteArray();
+        return new String(bytes, StandardCharsets.ISO_8859_1);
     }
 }

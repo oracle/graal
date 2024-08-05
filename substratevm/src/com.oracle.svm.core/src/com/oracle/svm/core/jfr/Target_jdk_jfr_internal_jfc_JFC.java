@@ -41,6 +41,7 @@ import jdk.jfr.Configuration;
 import jdk.jfr.internal.jfc.JFC;
 
 @TargetClass(value = jdk.jfr.internal.jfc.JFC.class, onlyWith = HasJfrSupport.class)
+@SuppressWarnings("unused")
 public final class Target_jdk_jfr_internal_jfc_JFC {
     @Substitute
     public static List<Configuration> getConfigurations() {
@@ -49,23 +50,23 @@ public final class Target_jdk_jfr_internal_jfc_JFC {
 
     @Substitute
     public static Configuration createKnown(String name) throws IOException, ParseException {
+        Path localPath = Paths.get(name);
+        String jfcName = JFC.nameFromPath(localPath);
+
         // Check if this is a pre-parsed known configuration.
         for (Configuration config : SubstrateJVM.getKnownConfigurations()) {
-            if (config.getName().equals(name)) {
+            if (config.getName().equals(jfcName)) {
                 return config;
             }
         }
 
-        // Assume path included in name
-        Path localPath = Paths.get(name);
-        String jfcName = JFC.nameFromPath(localPath);
+        // Try to read the configuration from a file.
         try (Reader r = Files.newBufferedReader(localPath)) {
             return Target_jdk_jfr_internal_jfc_JFCParser.createConfiguration(jfcName, r);
         }
     }
 
     @Substitute
-    @SuppressWarnings("unused")
     public static Configuration getPredefined(String name) throws IOException, ParseException {
         for (Configuration config : SubstrateJVM.getKnownConfigurations()) {
             if (config.getName().equals(name)) {

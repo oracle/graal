@@ -560,7 +560,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             return false;
         }
 
-        if (PosixUtils.readBytes(imagefd, buffer, wordSize, 0) != wordSize) {
+        if (PosixUtils.readUninterruptibly(imagefd, (Pointer) buffer, wordSize) != wordSize) {
             return false;
         }
         Word fileMagic = ((WordPointer) buffer).read();

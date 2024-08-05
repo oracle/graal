@@ -26,241 +26,131 @@
 
 package com.oracle.svm.core.attach;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.ClosedByInterruptException;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.nio.charset.StandardCharsets;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import com.oracle.svm.core.dcmd.DcmdSupport;
-import com.oracle.svm.core.dcmd.DcmdParseException;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.dcmd.DCmd;
+import com.oracle.svm.core.dcmd.DCmdSupport;
+import com.oracle.svm.core.jni.headers.JNIErrors;
+import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.StringUtil;
+
+import jdk.graal.compiler.options.Option;
 
 /**
- * This class is responsible for receiving connections and dispatching to the appropriate tool (jcmd
- * etc).
+ * A dedicated listener thread that accepts client connections and that handles diagnostic command
+ * requests. At the moment, only jcmd is supported.
  */
-public final class AttachListenerThread extends Thread {
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+2/src/hotspot/share/services/attachListener.hpp#L143") //
-    private static final int ARG_LENGTH_MAX = 1024;
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+2/src/hotspot/share/services/attachListener.hpp#L144") //
-    private static final int ARG_COUNT_MAX = 3;
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+2/src/hotspot/os/posix/attachListener_posix.cpp#L84") //
-    private static final char VERSION = '1';
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+2/src/hotspot/os/posix/attachListener_posix.cpp#L259") //
-    private static final int VERSION_SIZE = 8;
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+2/src/hotspot/os/posix/attachListener_posix.cpp#L87") //
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+2/src/jdk.attach/share/classes/sun/tools/attach/HotSpotVirtualMachine.java#L401") //
-    private static final String ATTACH_ERROR_BAD_VERSION = "101";
-    private static final String RESPONSE_CODE_OK = "0";
-    private static final String RESPONSE_CODE_BAD = "1";
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.cpp#L453-L467")
+public abstract class AttachListenerThread extends Thread {
     private static final String JCMD_COMMAND_STRING = "jcmd";
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.hpp#L142") //
+    protected static final int NAME_LENGTH_MAX = 16;
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.hpp#L143") //
+    protected static final int ARG_LENGTH_MAX = 1024;
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.hpp#L144") //
+    protected static final int ARG_COUNT_MAX = 3;
 
-    private ServerSocketChannel serverSocketChannel;
-    private volatile boolean shutdown = false;
-
-    public AttachListenerThread(ServerSocketChannel serverSocketChannel) {
-        super("AttachListener");
-        this.serverSocketChannel = serverSocketChannel;
-        setDaemon(true);
+    @SuppressWarnings("this-escape")
+    // This constructor should be annotated with @BasedOnJDK instead of the class, see GR-59171.
+    public AttachListenerThread() {
+        super(PlatformThreads.singleton().systemGroup, "Attach Listener");
+        this.setDaemon(true);
     }
 
-    /**
-     * The method is the main loop where the dedicated listener thread accepts client connections
-     * and handles commands. It is loosely based on AttachListenerThread::thread_entry in
-     * attachListener.cpp in jdk-24+2.
-     */
     @Override
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.cpp#L377-L436")
     public void run() {
-        AttachRequest request = null;
-        while (true) {
-            try {
-                // Dequeue a connection from socket. May block inside here waiting for connections.
-                request = dequeue(serverSocketChannel);
-
-                // Check if this thread been signalled to finish executing.
-                if (shutdown) {
+        try {
+            while (true) {
+                AttachOperation op = dequeue();
+                if (op == null) {
+                    /* Dequeue failed or shutdown. */
+                    AttachApiSupport.singleton().shutdown(false);
                     return;
                 }
 
-                // Find the correct handler to dispatch too.
-                if (request.name.equals(JCMD_COMMAND_STRING)) {
-                    String response = jcmd(request.arguments);
-                    sendResponse(request.clientChannel, response, RESPONSE_CODE_OK);
+                if (JCMD_COMMAND_STRING.equals(op.name)) {
+                    handleJcmd(op);
                 } else {
-                    sendResponse(request.clientChannel, "Invalid Operation. Only JCMD is supported currently.", RESPONSE_CODE_BAD);
+                    op.complete(JNIErrors.JNI_ERR(), "Invalid Operation. Only jcmd is supported currently.");
                 }
-
-                request.clientChannel.close();
-
-            } catch (IOException e) {
-                request.closeConnection();
-                AttachApiSupport.singleton().teardown();
-            } catch (DcmdParseException e) {
-                sendResponse(request.clientChannel, e.getMessage(), RESPONSE_CODE_BAD);
-                request.closeConnection();
             }
+        } catch (Throwable e) {
+            VMError.shouldNotReachHere("Exception in attach listener thread", e);
         }
     }
 
-    /**
-     * This method will loop or block until a valid actionable request is received. It is loosely
-     * based on PosixAttachListener::dequeue() in attachListener_posix.cpp in jdk-24+2.
-     */
-    private AttachRequest dequeue(ServerSocketChannel serverChannel) throws IOException {
-        AttachRequest request = new AttachRequest();
-        while (true) {
-
-            if (shutdown) {
-                return null;
-            }
-
-            try {
-                // Block waiting for a connection
-                request.clientChannel = serverChannel.accept();
-            } catch (ClosedByInterruptException e) {
-                // Allow unblocking if a teardown has been signalled.
-                return null;
-            }
-
-            readRequest(request);
-            if (request.error != null) {
-                sendResponse(request.clientChannel, null, request.error);
-                request.reset();
-            } else if (request.name == null || request.arguments == null) {
-                // Didn't get any usable request data. Try again.
-                request.reset();
-            } else {
-                return request;
-            }
-        }
-    }
-
-    /**
-     * This method reads and processes a single request from the socket. It is loosely based on
-     * PosixAttachListener::read_request in attachListener_posix.cpp in jdk-24+2.
-     */
-    private static void readRequest(AttachRequest request) throws IOException {
-        int expectedStringCount = 2 + ARG_COUNT_MAX;
-        int maxLen = (VERSION_SIZE + 1) + (ARG_LENGTH_MAX + 1) + (ARG_COUNT_MAX * (ARG_LENGTH_MAX + 1));
-        int strCount = 0;
-        long left = maxLen;
-        ByteBuffer buf = ByteBuffer.allocate(maxLen);
-
-        // The current position to inspect.
-        int bufIdx = 0;
-        // The start of the arguments.
-        int argIdx = 0;
-        // The start of the command type name.
-        int nameIdx = 0;
-
-        // Start reading messages
-        while (strCount < expectedStringCount && left > 0) {
-
-            // Do a single read.
-            int bytesRead = request.clientChannel.read(buf);
-
-            // Check if finished or error.
-            if (bytesRead < 0) {
-                break;
-            }
-
-            // Process data from a single read.
-            for (int i = 0; i < bytesRead; i++) {
-                if (buf.get(bufIdx) == 0) {
-                    if (strCount == 0) {
-                        // The first string should be the version identifier.
-                        if ((char) buf.get(bufIdx - 1) == VERSION) {
-                            nameIdx = bufIdx + 1;
-                        } else {
-                            /*
-                             * Version is no good. Drain reads to avoid "Connection reset by peer"
-                             * before sending error code and starting again.
-                             */
-                            request.error = ATTACH_ERROR_BAD_VERSION;
-                        }
-                    } else if (strCount == 1) {
-                        // The second string specifies the command type.
-                        argIdx = bufIdx + 1;
-                        request.name = StandardCharsets.UTF_8.decode(buf.slice(nameIdx, bufIdx - nameIdx)).toString();
-                    }
-                    strCount++;
-                }
-                bufIdx++;
-            }
-            left -= bytesRead;
-        }
-
-        // Only set arguments if we read real data.
-        if (argIdx > 0 && bufIdx > 0) {
-            // Remove non-printable characters from the result.
-            request.arguments = StandardCharsets.UTF_8.decode(buf.slice(argIdx, bufIdx - 1 - argIdx)).toString().replaceAll("\\P{Print}", "");
-        }
-    }
-
-    private static String jcmd(String arguments) throws DcmdParseException {
-        return ImageSingletons.lookup(DcmdSupport.class).parseAndExecute(arguments);
-    }
-
-    /**
-     * This method sends response data, or error data back to the client. It is loosely based on
-     * PosixAttachOperation::complete in in attachListener_posix.cpp in jdk-24+2.
-     */
-    private static void sendResponse(SocketChannel clientChannel, String response, String code) {
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.cpp#L205-L217")
+    private static void handleJcmd(AttachOperation op) {
         try {
-            // Send result
-            ByteBuffer buffer = ByteBuffer.allocate(32);
-            buffer.clear();
-            buffer.put((code + "\n").getBytes(StandardCharsets.UTF_8));
-            buffer.flip();
-            clientChannel.write(buffer);
-
-            if (response != null && !response.isEmpty()) {
-                // Send data
-                byte[] responseBytes = response.getBytes();
-                buffer = ByteBuffer.allocate(responseBytes.length);
-                buffer.clear();
-                buffer.put(responseBytes);
-                buffer.flip();
-                clientChannel.write(buffer);
-            }
-        } catch (IOException e) {
-            Log.log().string("Unable to send Attach API response: " + e).newline();
+            /* jcmd only uses the first argument. */
+            String response = parseAndExecute(op.arg0);
+            op.complete(JNIErrors.JNI_OK(), response);
+        } catch (Throwable e) {
+            handleException(op, e);
         }
     }
 
-    /** This method is called to notify the listener thread that it should finish. */
-    void shutdown() {
-        shutdown = true;
-        this.interrupt();
-    }
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.cpp#L383-L420")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.cpp#L422-L439")
+    private static String parseAndExecute(String input) throws Throwable {
+        String[] args = StringUtil.split(input, " ");
+        String cmdName = args[0];
 
-    /** This represents one individual connection/command request. */
-    static class AttachRequest {
-        public String name;
-        public String arguments;
-        public SocketChannel clientChannel;
-        public String error;
-
-        public void reset() {
-            closeConnection();
-            clientChannel = null;
-            error = null;
-            name = null;
-            arguments = null;
-        }
-
-        public void closeConnection() {
-            if (clientChannel != null && clientChannel.isConnected()) {
-                try {
-                    clientChannel.close();
-                } catch (IOException e) {
-                    // Do nothing.
-                }
+        /* Redirect to the help command if there is a corresponding argument in the input. */
+        for (int i = 1; i < args.length; i++) {
+            String v = args[i];
+            if ("-h".equals(v) || "--help".equals(v) || "-help".equals(v)) {
+                DCmd cmd = DCmdSupport.singleton().getCommand("help");
+                return cmd.parseAndExecute("help " + cmdName);
             }
         }
+
+        /* Pass the input to the diagnostic command. */
+        DCmd cmd = DCmdSupport.singleton().getCommand(cmdName);
+        if (cmd == null) {
+            throw new IllegalArgumentException("Unknown diagnostic command '" + cmdName + "'");
+        }
+        return cmd.parseAndExecute(input);
+    }
+
+    private static void handleException(AttachOperation op, Throwable e) {
+        if (!Options.JCmdExceptionStackTrace.getValue()) {
+            op.complete(JNIErrors.JNI_ERR(), e.toString());
+            return;
+        }
+
+        StringWriter s = new StringWriter();
+        e.printStackTrace(new PrintWriter(s));
+
+        /* jcmd swallows line breaks if JNI_ERR() is used, so use JNI_OK() instead. */
+        op.complete(JNIErrors.JNI_OK(), s.toString());
+    }
+
+    protected abstract AttachOperation dequeue();
+
+    public abstract static class AttachOperation {
+        private final String name;
+        private final String arg0;
+        @SuppressWarnings("unused") private final String arg1;
+        @SuppressWarnings("unused") private final String arg2;
+
+        public AttachOperation(String name, String arg0, String arg1, String arg2) {
+            this.name = name;
+            this.arg0 = arg0;
+            this.arg1 = arg1;
+            this.arg2 = arg2;
+        }
+
+        public abstract void complete(int code, String response);
+    }
+
+    static class Options {
+        @Option(help = "Determines if stack traces are shown if exceptions occur in diagnostic commands that were triggered via jcmd.")//
+        public static final RuntimeOptionKey<Boolean> JCmdExceptionStackTrace = new RuntimeOptionKey<>(false);
     }
 }
