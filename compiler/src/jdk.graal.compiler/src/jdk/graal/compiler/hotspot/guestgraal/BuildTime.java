@@ -31,6 +31,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -38,33 +39,25 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.code.DisassemblerProvider;
-import jdk.graal.compiler.core.common.CompilerProfiler;
+import jdk.graal.compiler.core.ArchitectureSpecific;
+import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
-import jdk.graal.compiler.core.match.MatchStatementSet;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.hotspot.EncodedSnippets;
-import jdk.graal.compiler.hotspot.HotSpotBackendFactory;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
-import jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
-import jdk.graal.compiler.hotspot.meta.HotSpotInvocationPluginProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.truffle.PartialEvaluatorConfiguration;
-import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProvider;
-import jdk.graal.compiler.truffle.substitutions.GraphDecoderInvocationPluginProvider;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.services.JVMCIServiceLocator;
-import org.graalvm.collections.EconomicMap;
 
 /**
  * This class is used at image build-time when a libgraal image gets built. Its static methods are
@@ -127,37 +120,35 @@ public class BuildTime {
         return nodeclass.getSuccessorEdges().getOffsets();
     }
 
+    @SuppressWarnings("unchecked")
+    private static void addProviders(Map<Class<?>, List<?>> services, String arch, Class<?> service) {
+        List<Object> providers = (List<Object>) services.computeIfAbsent(service, key -> new ArrayList<>());
+        for (Object provider : ServiceLoader.load(service, LOADER)) {
+            if (provider instanceof ArchitectureSpecific as && !as.getArchitecture().equals(arch)) {
+                // Skip provider for another architecture
+                continue;
+            }
+            providers.add(provider);
+        }
+    }
+
     /**
-     * This method gets called from {@code GuestGraalFeature#beforeAnalysis()}. It ensures static
-     * field {@code GraalServices#servicesCache} is set up correctly for Graal-usage needed in
-     * libgraal. It creates a new instance of EncodedSnippets exclusively from instances of
-     * GuestGraalClassLoader classes. The information how the EncodedSnippets object graph needs to
-     * look like comes from parameter encodedSnippetsData. This EncodedSnippets instance is then
-     * installed into static field {@code HotSpotReplacementsImpl#encodedSnippets} so that at
-     * libgraal run-time Graal has access to it. Finally, it passes the FoldNodePlugin Classes to
-     * the caller via a Consumer so that hosted GeneratedInvocationPlugin Graal class knows about
-     * them.
+     * Configures the static state needed for libgraal.
+     *
+     * @param arch a value compatible with {@link ArchitectureSpecific#getArchitecture()}
      */
     @SuppressWarnings({"try", "unused", "unchecked"})
     public static void configureGraalForLibGraal(String arch,
+                    List<Class<?>> guestServiceClasses,
                     Consumer<Class<?>> registerAsInHeap,
                     Consumer<List<Class<?>>> hostedGraalSetFoldNodePluginClasses,
                     String encodedGuestObjects) {
         GraalError.guarantee(VALID_LOADER_NAME.equals(LOADER.getName()),
                         "Only call this method from classloader " + VALID_LOADER_NAME);
 
-        GraalServices.setLibgraalConfig(new GraalServices.LibgraalConfig(LOADER, arch));
-        // Services that will be used in libgraal.
-        GraalServices.load(CompilerConfigurationFactory.class);
-        GraalServices.load(HotSpotBackendFactory.class);
-        GraalServices.load(GraphBuilderInvocationPluginProvider.class);
-        GraalServices.load(GraphDecoderInvocationPluginProvider.class);
-        GraalServices.load(PartialEvaluatorConfiguration.class);
-        GraalServices.load(DisassemblerProvider.class);
-        GraalServices.load(HotSpotInvocationPluginProvider.class);
-        GraalServices.load(DefaultHotSpotLoweringProvider.Extensions.class);
-        GraalServices.load(CompilerProfiler.class);
-        GraalServices.load(MatchStatementSet.class);
+        Map<Class<?>, List<?>> services = new HashMap<>();
+        guestServiceClasses.forEach(c -> addProviders(services, arch, c));
+        GraalServices.setLibgraalServices(services);
 
         try {
             Field cachedHotSpotJVMCIBackendFactoriesField = ObjectCopier.getField(HotSpotJVMCIRuntime.class, "cachedHotSpotJVMCIBackendFactories");

@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -246,6 +247,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     /**
      * Service provider interface for discovering {@link Extension}s.
      */
+    @LibGraalService
     public interface Extensions {
         /**
          * Gets the extensions provided by this object.

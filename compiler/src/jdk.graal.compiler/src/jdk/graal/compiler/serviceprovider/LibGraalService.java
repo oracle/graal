@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.truffle;
+package jdk.graal.compiler.serviceprovider;
 
-import jdk.graal.compiler.serviceprovider.LibGraalService;
-import jdk.graal.compiler.truffle.substitutions.GraphDecoderInvocationPluginProvider;
-import jdk.vm.ci.code.Architecture;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.serviceprovider.GraalServices;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-@LibGraalService
-public interface PartialEvaluatorConfiguration {
-    /**
-     * Name of this partial-evaluator configuration.
-     */
-    String name();
-
-    /**
-     * Register graph-decoding invocation plugins.
-     */
-    default void registerDecodingInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, Providers providers, Architecture arch) {
-        for (GraphDecoderInvocationPluginProvider p : GraalServices.load(GraphDecoderInvocationPluginProvider.class)) {
-            p.registerInvocationPlugins(providers, arch, name(), plugins, canDelayIntrinsification);
-        }
-    }
+/**
+ * Annotates a service type that is used in libgraal via a call to {@link GraalServices#load(Class)}
+ * or {@link GraalServices#loadSingle(Class, boolean)}}.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface LibGraalService {
 }

@@ -31,6 +31,7 @@ import java.util.List;
  * this abstraction enables avoiding a dependency to the {@code java.management} and
  * {@code jdk.management} modules.
  */
+@LibGraalService
 public abstract class JMXService {
     protected abstract long getThreadAllocatedBytes(long id);
 

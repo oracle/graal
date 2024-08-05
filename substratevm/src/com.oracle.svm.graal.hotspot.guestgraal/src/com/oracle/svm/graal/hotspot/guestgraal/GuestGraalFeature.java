@@ -50,6 +50,7 @@ import com.oracle.svm.graal.hotspot.GetJNIConfig;
 import com.oracle.svm.hosted.FeatureImpl;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -385,10 +386,15 @@ public final class GuestGraalFeature implements Feature {
 
             Consumer<List<Class<?>>> hostedGraalSetFoldNodePluginClasses = GeneratedInvocationPlugin::setFoldNodePluginClasses;
 
+            List<Class<?>> guestServiceClasses = new ArrayList<>();
+            List<Class<?>> serviceClasses = impl.getImageClassLoader().findAnnotatedClasses(LibGraalService.class, false);
+            serviceClasses.stream().map(c -> loader.loadClassOrFail(c.getName())).forEach(guestServiceClasses::add);
+
             MethodHandle configureGraalForLibGraal = mhl.findStatic(buildTimeClass,
                             "configureGraalForLibGraal",
                             methodType(void.class,
                                             String.class, // arch
+                                            List.class, // guestServiceClasses
                                             Consumer.class, // registerAsInHeap
                                             Consumer.class, // hostedGraalSetFoldNodePluginClasses
                                             String.class // encodedGuestObjects
@@ -401,6 +407,7 @@ public final class GuestGraalFeature implements Feature {
             }
 
             configureGraalForLibGraal.invoke(arch,
+                            guestServiceClasses,
                             registerAsInHeap,
                             hostedGraalSetFoldNodePluginClasses,
                             configResult.encodedConfig());

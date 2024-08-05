@@ -28,16 +28,21 @@ import java.io.PrintStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
+import jdk.graal.compiler.hotspot.GraalHotSpotVMConfigAccess;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -73,7 +78,7 @@ import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.code.DisassemblerProvider;
+import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.GraalServiceThread;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.GraalError;
@@ -86,7 +91,6 @@ import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.SnippetObjectConstant;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
-import jdk.graal.compiler.hotspot.meta.HotSpotInvocationPluginProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
 import jdk.graal.compiler.nodes.spi.SnippetParameterInfo;
@@ -99,12 +103,7 @@ import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
-import jdk.graal.compiler.truffle.PartialEvaluatorConfiguration;
-import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
-import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
-import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProvider;
-import jdk.graal.compiler.truffle.substitutions.GraphDecoderInvocationPluginProvider;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -213,44 +212,73 @@ public class LibGraalFeature implements InternalFeature {
         hotSpotSubstrateReplacements = getReplacements();
     }
 
+    /**
+     * Determines if {@code provider} should be added as a provider of a service.
+     *
+     * @param arch a value compatible with {@link ArchitectureSpecific#getArchitecture()}
+     */
+    protected boolean shouldAddProvider(Object provider, String arch) {
+        if (provider instanceof ArchitectureSpecific as) {
+            if (!as.getArchitecture().equals(arch)) {
+                return false;
+            }
+        } else {
+            String name = provider.getClass().getName();
+            for (var knownArch : GraalHotSpotVMConfigAccess.KNOWN_ARCHITECTURES) {
+                String archPackage = ".%s.".formatted(knownArch);
+                if (name.contains(archPackage)) {
+                    throw VMError.shouldNotReachHere("%s should implement %s", name, ArchitectureSpecific.class);
+                }
+            }
+        }
+        Module module = provider.getClass().getModule();
+        String name = module.getName();
+        if (name != null) {
+            // Only services in the core graal modules should be added
+            return name.equals("jdk.graal.compiler") ||
+                            name.equals("jdk.graal.compiler.management") ||
+                            name.equals("com.oracle.graal.graal_enterprise");
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addProviders(Map<Class<?>, List<?>> services, String arch, Class<?> service) {
+        List<Object> providers = (List<Object>) services.computeIfAbsent(service, key -> new ArrayList<>());
+        ModuleLayer layer = GraalServices.class.getModule().getLayer();
+        ServiceLoader.load(layer, service).stream().map(ServiceLoader.Provider::get).filter(provider -> shouldAddProvider(provider, arch)).forEach(providers::add);
+    }
+
     @SuppressWarnings({"try", "unchecked"})
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         BigBang bb = impl.getBigBang();
 
-        // Services that will not be loaded if native-image is run
-        // with -XX:-UseJVMCICompiler.
-        GraalServices.load(TruffleCallBoundaryInstrumentationFactory.class);
-        GraalServices.load(GraphBuilderInvocationPluginProvider.class);
-        GraalServices.load(GraphDecoderInvocationPluginProvider.class);
-        GraalServices.load(PartialEvaluatorConfiguration.class);
-        GraalServices.load(DisassemblerProvider.class);
-        GraalServices.load(HotSpotInvocationPluginProvider.class);
-        GraalServices.load(TruffleHostEnvironment.Lookup.class);
+        HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
+        String arch = compiler.getGraalRuntime().getTarget().arch.getName();
+
+        ImageClassLoader imageClassLoader = impl.getImageClassLoader();
+        List<Class<?>> serviceClasses = imageClassLoader.findAnnotatedClasses(LibGraalService.class, false);
+        Map<Class<?>, List<?>> services = new HashMap<>();
+        for (var c : serviceClasses) {
+            addProviders(services, arch, c);
+        }
+        GraalServices.setLibgraalServices(services);
 
         // Instantiate the truffle compiler to ensure the backends it uses are initialized.
         List<HotSpotBackend> truffleBackends = HotSpotTruffleCompilerImpl.ensureBackendsInitialized(RuntimeOptionValues.singleton());
 
         // Filter out any cached services which are for a different architecture
         try {
-            HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
-            String osArch = compiler.getGraalRuntime().getVMConfig().osArch;
-            String archPackage = "." + osArch + ".";
-
             final Field servicesCacheField = ReflectionUtil.lookupField(Services.class, "servicesCache");
             Map<Class<?>, List<?>> servicesCache = (Map<Class<?>, List<?>>) servicesCacheField.get(null);
-            filterArchitectureServices(archPackage, servicesCache);
+            filterArchitectureServices(arch, servicesCache);
             servicesCache.remove(GeneratedPluginFactory.class);
-
-            final Field graalServicesCacheField = ReflectionUtil.lookupField(GraalServices.class, "servicesCache");
-            Map<Class<?>, List<?>> graalServicesCache = (Map<Class<?>, List<?>>) graalServicesCacheField.get(null);
-            filterArchitectureServices(archPackage, graalServicesCache);
-            graalServicesCache.remove(GeneratedPluginFactory.class);
 
             Field cachedHotSpotJVMCIBackendFactoriesField = ReflectionUtil.lookupField(HotSpotJVMCIRuntime.class, "cachedHotSpotJVMCIBackendFactories");
             List<HotSpotJVMCIBackendFactory> cachedHotSpotJVMCIBackendFactories = (List<HotSpotJVMCIBackendFactory>) cachedHotSpotJVMCIBackendFactoriesField.get(null);
-            cachedHotSpotJVMCIBackendFactories.removeIf(factory -> !factory.getArchitecture().equalsIgnoreCase(osArch));
+            cachedHotSpotJVMCIBackendFactories.removeIf(factory -> !factory.getArchitecture().equalsIgnoreCase(arch));
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
