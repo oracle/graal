@@ -127,19 +127,17 @@ public abstract class AbstractBasicInterpreterTest {
 
     public static final BytecodeSerializer SERIALIZER = new BytecodeSerializer() {
         public void serialize(SerializerContext context, DataOutput buffer, Object object) throws IOException {
-            if (object == null) {
+            if (object instanceof Long num) {
                 buffer.writeByte(0);
-            } else if (object instanceof Long num) {
-                buffer.writeByte(1);
                 buffer.writeLong(num);
             } else if (object instanceof String str) {
-                buffer.writeByte(2);
+                buffer.writeByte(1);
                 buffer.writeUTF(str);
             } else if (object instanceof Boolean bool) {
-                buffer.writeByte(3);
+                buffer.writeByte(2);
                 buffer.writeBoolean(bool);
             } else if (object.getClass().isArray()) {
-                buffer.writeByte(4);
+                buffer.writeByte(3);
                 if (object instanceof long[] longs) {
                     buffer.writeByte(1);
                     buffer.writeInt(longs.length);
@@ -150,10 +148,10 @@ public abstract class AbstractBasicInterpreterTest {
                     throw new AssertionError("Serializer does not handle array of type " + object.getClass());
                 }
             } else if (object instanceof BasicInterpreter rootNode) {
-                buffer.writeByte(5);
+                buffer.writeByte(4);
                 context.writeBytecodeNode(buffer, rootNode);
             } else if (object instanceof Source source) {
-                buffer.writeByte(6);
+                buffer.writeByte(5);
                 buffer.writeUTF(source.getLanguage());
                 buffer.writeUTF(source.getName());
                 buffer.writeUTF(source.getCharacters().toString());
@@ -167,11 +165,10 @@ public abstract class AbstractBasicInterpreterTest {
         public Object deserialize(DeserializerContext context, DataInput buffer) throws IOException {
             byte objectCode = buffer.readByte();
             return switch (objectCode) {
-                case 0 -> null;
-                case 1 -> buffer.readLong();
-                case 2 -> buffer.readUTF();
-                case 3 -> buffer.readBoolean();
-                case 4 -> {
+                case 0 -> buffer.readLong();
+                case 1 -> buffer.readUTF();
+                case 2 -> buffer.readBoolean();
+                case 3 -> {
                     byte arrayCode = buffer.readByte();
                     yield switch (arrayCode) {
                         case 1 -> {
@@ -185,8 +182,8 @@ public abstract class AbstractBasicInterpreterTest {
                         default -> throw new AssertionError("Deserializer does not handle array code " + arrayCode);
                     };
                 }
-                case 5 -> context.readBytecodeNode(buffer);
-                case 6 -> {
+                case 4 -> context.readBytecodeNode(buffer);
+                case 5 -> {
                     String language = buffer.readUTF();
                     String name = buffer.readUTF();
                     String characters = buffer.readUTF();

@@ -2653,9 +2653,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             final CodeVariableElement codeCreateLabel = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_LABEL", "-2");
             final CodeVariableElement codeCreateLocal = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_LOCAL", "-3");
             final CodeVariableElement codeCreateObject = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_OBJECT", "-4");
-            final CodeVariableElement codeCreateFinallyParser = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_FINALLY_PARSER", "-5");
-            final CodeVariableElement codeEndFinallyParser = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END_FINALLY_PARSER", "-6");
-            final CodeVariableElement codeEndSerialize = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END", "-7");
+            final CodeVariableElement codeCreateNull = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_NULL", "-5");
+            final CodeVariableElement codeCreateFinallyParser = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_FINALLY_PARSER", "-6");
+            final CodeVariableElement codeEndFinallyParser = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END_FINALLY_PARSER", "-7");
+            final CodeVariableElement codeEndSerialize = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END", "-8");
 
             final CodeVariableElement buffer = addField(serializationState, Set.of(PRIVATE, FINAL), DataOutput.class, "buffer");
             final CodeVariableElement callback = addField(serializationState, Set.of(PRIVATE, FINAL), types.BytecodeSerializer, "callback");
@@ -2764,11 +2765,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startAssign(index).string("objects.size()").end();
                 b.startStatement().startCall("objects.put").string(argumentName).string(index).end(2);
 
+                b.startIf().string("object == null").end().startBlock();
+                b.startStatement();
+                b.string(buffer.getName(), ".").startCall("writeShort").string(codeCreateNull.getName()).end();
+                b.end();
+                b.end().startElseBlock();
+
                 b.startStatement();
                 b.string(buffer.getName(), ".").startCall("writeShort").string(codeCreateObject.getName()).end();
                 b.end();
                 b.statement("callback.serialize(this, buffer, object)");
                 b.end();
+
+                b.end();
+
                 b.statement("return ", index);
                 return method;
             }
@@ -3414,6 +3424,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("context.locals.add(createLocal(name, info))");
             b.statement("break");
             b.end(); // create local
+
+            b.startCase().staticReference(serializationElements.codeCreateNull).end().startBlock();
+            b.startStatement();
+            b.startCall("context.consts.add");
+            b.string("null");
+            b.end();
+            b.end();
+            b.statement("break");
+            b.end(); // create object
 
             b.startCase().staticReference(serializationElements.codeCreateObject).end().startBlock();
             b.startStatement();
