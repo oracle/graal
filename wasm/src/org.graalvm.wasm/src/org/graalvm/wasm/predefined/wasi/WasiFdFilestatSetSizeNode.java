@@ -71,7 +71,7 @@ public class WasiFdFilestatSetSizeNode extends WasmBuiltinRootNode {
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.fdstatSetSize(this, size).ordinal();
+        return handle.filestatSetSize(this, size).ordinal();
     }
 
     @Override
