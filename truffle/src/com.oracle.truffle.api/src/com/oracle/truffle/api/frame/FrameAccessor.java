@@ -58,5 +58,6 @@ final class FrameAccessor extends Accessor {
         public boolean getMaterializeCalled(FrameDescriptor descriptor) {
             return descriptor.materializeCalled;
         }
+
     }
 }

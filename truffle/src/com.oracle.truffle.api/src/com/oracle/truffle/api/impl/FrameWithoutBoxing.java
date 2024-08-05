@@ -246,7 +246,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return getIndexedTags()[slotIndex] == tag;
     }
 
-    public byte unsafeGetTag(int slotIndex) {
+    byte unsafeGetTag(int slotIndex) {
         return unsafeGetIndexedTag(slotIndex);
     }
 
@@ -323,17 +323,17 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return unsafeGetObject(getIndexedLocals(), getObjectOffset(slot), condition, OBJECT_LOCATION);
     }
 
-    public Object unsafeGetObject(int slot) throws FrameSlotTypeException {
+    Object unsafeGetObject(int slot) throws FrameSlotTypeException {
         boolean condition = unsafeVerifyIndexedGet(slot, OBJECT_TAG);
         return unsafeGetObject(getIndexedLocals(), getObjectOffset(slot), condition, OBJECT_LOCATION);
     }
 
-    public Object unsafeUncheckedGetObject(int slot) {
+    Object unsafeUncheckedGetObject(int slot) {
         assert getIndexedTagChecked(slot) == OBJECT_TAG;
         return unsafeGetObject(getIndexedLocals(), getObjectOffset(slot), true, OBJECT_LOCATION);
     }
 
-    public Object unsafeExpectObject(int slot) throws UnexpectedResultException {
+    Object unsafeExpectObject(int slot) throws UnexpectedResultException {
         boolean condition = unsafeVerifyIndexedGetUnexpected(slot, OBJECT_TAG);
         return unsafeGetObject(getIndexedLocals(), getObjectOffset(slot), condition, OBJECT_LOCATION);
     }
@@ -344,7 +344,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutObject(getIndexedLocals(), getObjectOffset(slot), value, OBJECT_LOCATION);
     }
 
-    public void unsafeSetObject(int slot, Object value) throws FrameSlotTypeException {
+    void unsafeSetObject(int slot, Object value) throws FrameSlotTypeException {
         unsafeVerifyIndexedSet(slot, OBJECT_TAG);
         unsafePutObject(getIndexedLocals(), getObjectOffset(slot), value, OBJECT_LOCATION);
     }
@@ -361,17 +361,17 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return (byte) (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
     }
 
-    public byte unsafeGetByte(int slot) throws FrameSlotTypeException {
+    byte unsafeGetByte(int slot) throws FrameSlotTypeException {
         boolean condition = unsafeVerifyIndexedGet(slot, BYTE_TAG);
         return (byte) (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
     }
 
-    public byte unsafeExpectByte(int slot) throws UnexpectedResultException {
+    byte unsafeExpectByte(int slot) throws UnexpectedResultException {
         boolean condition = unsafeVerifyIndexedGetUnexpected(slot, BYTE_TAG);
         return (byte) (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
     }
 
-    public byte unsafeUncheckedGetByte(int slot) {
+    byte unsafeUncheckedGetByte(int slot) {
         assert getIndexedTagChecked(slot) == BYTE_TAG;
         return (byte) (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), true, PRIMITIVE_LOCATION);
     }
@@ -382,7 +382,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(value), PRIMITIVE_LOCATION);
     }
 
-    public void unsafeSetByte(int slot, byte value) {
+    void unsafeSetByte(int slot, byte value) {
         unsafeVerifyIndexedSet(slot, BYTE_TAG);
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(value), PRIMITIVE_LOCATION);
     }
@@ -398,17 +398,17 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION) != 0;
     }
 
-    public boolean unsafeExpectBoolean(int slot) throws UnexpectedResultException {
+    boolean unsafeExpectBoolean(int slot) throws UnexpectedResultException {
         boolean condition = unsafeVerifyIndexedGetUnexpected(slot, BOOLEAN_TAG);
         return (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION) != 0;
     }
 
-    public boolean unsafeGetBoolean(int slot) throws FrameSlotTypeException {
+    boolean unsafeGetBoolean(int slot) throws FrameSlotTypeException {
         boolean condition = unsafeVerifyIndexedGet(slot, BOOLEAN_TAG);
         return (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION) != 0;
     }
 
-    public boolean unsafeUncheckedGetBoolean(int slot) throws FrameSlotTypeException {
+    boolean unsafeUncheckedGetBoolean(int slot) throws FrameSlotTypeException {
         assert getIndexedTagChecked(slot) == BOOLEAN_TAG;
         return (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), true, PRIMITIVE_LOCATION) != 0;
     }
@@ -419,7 +419,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(value ? 1 : 0), PRIMITIVE_LOCATION);
     }
 
-    public void unsafeSetBoolean(int slot, boolean value) {
+    void unsafeSetBoolean(int slot, boolean value) {
         unsafeVerifyIndexedSet(slot, BOOLEAN_TAG);
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value ? 1L : 0L, PRIMITIVE_LOCATION);
     }
@@ -436,17 +436,17 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return Float.intBitsToFloat((int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION));
     }
 
-    public float unsafeExpectFloat(int slot) throws UnexpectedResultException {
+    float unsafeExpectFloat(int slot) throws UnexpectedResultException {
         boolean condition = unsafeVerifyIndexedGetUnexpected(slot, FLOAT_TAG);
         return Float.intBitsToFloat((int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION));
     }
 
-    public float unsafeGetFloat(int slot) throws FrameSlotTypeException {
+    float unsafeGetFloat(int slot) throws FrameSlotTypeException {
         boolean condition = unsafeVerifyIndexedGet(slot, FLOAT_TAG);
         return Float.intBitsToFloat((int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION));
     }
 
-    public float unsafeUncheckedGetFloat(int slot) {
+    float unsafeUncheckedGetFloat(int slot) {
         assert getIndexedTagChecked(slot) == FLOAT_TAG;
         return Float.intBitsToFloat((int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), true, PRIMITIVE_LOCATION));
     }
@@ -457,7 +457,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(Float.floatToRawIntBits(value)), PRIMITIVE_LOCATION);
     }
 
-    public void unsafeSetFloat(int slot, float value) {
+    void unsafeSetFloat(int slot, float value) {
         unsafeVerifyIndexedSet(slot, FLOAT_TAG);
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(Float.floatToRawIntBits(value)), PRIMITIVE_LOCATION);
     }
@@ -474,17 +474,17 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
     }
 
-    public long unsafeGetLong(int slot) throws FrameSlotTypeException {
+    long unsafeGetLong(int slot) throws FrameSlotTypeException {
         boolean condition = unsafeVerifyIndexedGet(slot, LONG_TAG);
         return unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
     }
 
-    public long unsafeExpectLong(int slot) throws UnexpectedResultException {
+    long unsafeExpectLong(int slot) throws UnexpectedResultException {
         boolean condition = unsafeVerifyIndexedGetUnexpected(slot, LONG_TAG);
         return unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
     }
 
-    public long unsafeUncheckedGetLong(int slot) throws FrameSlotTypeException {
+    long unsafeUncheckedGetLong(int slot) throws FrameSlotTypeException {
         assert getIndexedTagChecked(slot) == LONG_TAG;
         return unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), true, PRIMITIVE_LOCATION);
     }
@@ -495,7 +495,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value, PRIMITIVE_LOCATION);
     }
 
-    public void unsafeSetLong(int slot, long value) {
+    void unsafeSetLong(int slot, long value) {
         unsafeVerifyIndexedSet(slot, LONG_TAG);
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), value, PRIMITIVE_LOCATION);
     }
@@ -512,17 +512,17 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
     }
 
-    public int unsafeGetInt(int slot) throws FrameSlotTypeException {
+    int unsafeGetInt(int slot) throws FrameSlotTypeException {
         boolean condition = unsafeVerifyIndexedGet(slot, INT_TAG);
         return (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
     }
 
-    public int unsafeExpectInt(int slot) throws UnexpectedResultException {
+    int unsafeExpectInt(int slot) throws UnexpectedResultException {
         boolean condition = unsafeVerifyIndexedGetUnexpected(slot, INT_TAG);
         return (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
     }
 
-    public int unsafeUncheckedGetInt(int slot) throws FrameSlotTypeException {
+    int unsafeUncheckedGetInt(int slot) throws FrameSlotTypeException {
         assert getIndexedTagChecked(slot) == INT_TAG;
         return (int) unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), true, PRIMITIVE_LOCATION);
     }
@@ -533,7 +533,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(value), PRIMITIVE_LOCATION);
     }
 
-    public void unsafeSetInt(int slot, int value) {
+    void unsafeSetInt(int slot, int value) {
         unsafeVerifyIndexedSet(slot, INT_TAG);
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), extend(value), PRIMITIVE_LOCATION);
     }
@@ -550,22 +550,22 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return Double.longBitsToDouble(unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION));
     }
 
-    public double unsafeGetDouble(int slot) throws FrameSlotTypeException {
+    double unsafeGetDouble(int slot) throws FrameSlotTypeException {
         boolean condition = unsafeVerifyIndexedGet(slot, DOUBLE_TAG);
         return Double.longBitsToDouble(unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION));
     }
 
-    public double unsafeExpectDouble(int slot) throws UnexpectedResultException {
+    double unsafeExpectDouble(int slot) throws UnexpectedResultException {
         boolean condition = unsafeVerifyIndexedGetUnexpected(slot, DOUBLE_TAG);
         return Double.longBitsToDouble(unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION));
     }
 
-    public double unsafeUncheckedGetDouble(int slot) throws FrameSlotTypeException {
+    double unsafeUncheckedGetDouble(int slot) throws FrameSlotTypeException {
         assert getIndexedTagChecked(slot) == DOUBLE_TAG;
         return Double.longBitsToDouble(unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), true, PRIMITIVE_LOCATION));
     }
 
-    public void unsafeUncheckedSetObject(int slot, Object value) {
+    void unsafeUncheckedSetObject(int slot, Object value) {
         assert getIndexedTagChecked(slot) == OBJECT_TAG;
         unsafePutObject(getIndexedLocals(), getObjectOffset(slot), value, OBJECT_LOCATION);
     }
@@ -576,7 +576,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), Double.doubleToRawLongBits(value), PRIMITIVE_LOCATION);
     }
 
-    public void unsafeSetDouble(int slot, double value) {
+    void unsafeSetDouble(int slot, double value) {
         unsafeVerifyIndexedSet(slot, DOUBLE_TAG);
         unsafePutLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), Double.doubleToRawLongBits(value), PRIMITIVE_LOCATION);
     }
@@ -593,7 +593,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutLong(primitiveLocals, getPrimitiveOffset(destSlot), primitiveValue, PRIMITIVE_LOCATION);
     }
 
-    public void unsafeCopy(int srcSlot, int destSlot) {
+    void unsafeCopy(int srcSlot, int destSlot) {
         byte tag = unsafeGetIndexedTag(srcSlot);
         final Object[] referenceLocals = getIndexedLocals();
         final long[] primitiveLocals = getIndexedPrimitiveLocals();
@@ -616,7 +616,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         }
     }
 
-    public void unsafeCopyObject(int srcSlot, int destSlot) {
+    void unsafeCopyObject(int srcSlot, int destSlot) {
         byte tag = unsafeGetIndexedTag(srcSlot);
         assert tag == OBJECT_TAG : "copyObject must be used with Object slots, not " + FrameSlotKind.fromTag(tag);
         Object value = unsafeGetObject(getIndexedLocals(), getObjectOffset(srcSlot), true, OBJECT_LOCATION);
@@ -637,7 +637,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafePutObject(getIndexedLocals(), getObjectOffset(destSlot), null, OBJECT_LOCATION);
     }
 
-    public void unsafeCopyPrimitive(int srcSlot, int destSlot) {
+    void unsafeCopyPrimitive(int srcSlot, int destSlot) {
         byte tag = unsafeGetIndexedTag(srcSlot);
         assert tag != OBJECT_TAG : "copyPrimitive must be used with non-Object slots";
         long primitiveValue = unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(srcSlot), true, PRIMITIVE_LOCATION);
@@ -806,7 +806,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         }
     }
 
-    public void unsafeClear(int slot) {
+    void unsafeClear(int slot) {
         unsafeVerifyIndexedSet(slot, ILLEGAL_TAG);
         unsafePutObject(getIndexedLocals(), getObjectOffset(slot), null, OBJECT_LOCATION);
         if (CompilerDirectives.inCompiledCode()) {
@@ -1093,7 +1093,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         unsafeCopyTo(srcOffset, o, dstOffset, length);
     }
 
-    public void unsafeCopyTo(int srcOffset, FrameWithoutBoxing o, int dstOffset, int length) {
+    void unsafeCopyTo(int srcOffset, FrameWithoutBoxing o, int dstOffset, int length) {
         if (length == 0) {
             return;
         }

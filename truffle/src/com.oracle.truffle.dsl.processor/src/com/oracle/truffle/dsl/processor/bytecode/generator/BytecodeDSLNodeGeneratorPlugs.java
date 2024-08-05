@@ -200,7 +200,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 if (!ElementUtils.isObject(genericType)) {
                     b.cast(expectedType);
                 }
-                b.string("ACCESS.uncheckedGetObject(" + frame + ", " + stackIndex + ")");
+                b.string(BytecodeDSLNodeFactory.uncheckedGetFrameObject(frame, stackIndex));
                 return false;
             }
         }
