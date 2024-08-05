@@ -442,8 +442,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             abstractBytecodeNode.add(createCreateStackTraceElement());
         }
 
-        CodeTypeElement cachedNode = bytecodeNodeGen.add(new AbstractCachedNode().create());
-
         // Define the generated Node classes for custom instructions.
         StaticConstants consts = new StaticConstants();
         for (InstructionModel instr : model.getInstructions()) {
@@ -456,7 +454,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, nodeConsts, plugs);
 
             CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, cachedDataClassName(instr));
-            el.setSuperClass(cachedNode.asType());
+            el.setSuperClass(types.Node);
             factory.create(el);
 
             List<ExecutableElement> cachedExecuteMethods = new ArrayList<>();
@@ -9143,82 +9141,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     }
 
-    class AbstractCachedNode {
-
-        private CodeTypeElement type;
-
-        AbstractCachedNode() {
-            type = new CodeTypeElement(Set.of(PRIVATE, STATIC, ABSTRACT),
-                            ElementKind.CLASS, null, "AbstractCachedNode");
-            type.setSuperClass(types.Node);
-            type.add(createGetSourceSection());
-            // TODO these InstrumentableNode methods should be removed
-            // the debugger currently requires these methods to be present
-            // as it does only accept source sections from instrumentable nodes.
-            // for this to work we need to capture bci locations in
-            // truffle stack trace elements
-            if (model.enableTagInstrumentation) {
-                type.getImplements().add(types.InstrumentableNode);
-                type.add(createCreateWrapper());
-                type.add(createIsInstrumentable());
-                type.add(createFindProbe());
-                type.add(createHasTag());
-            }
-        }
-
-        private CodeTypeElement create() {
-            return type;
-        }
-
-        private CodeExecutableElement createGetSourceSection() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.Node, "getSourceSection");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            ex.getModifiers().add(Modifier.FINAL);
-            CodeTreeBuilder b = ex.createBuilder();
-            b.declaration("CachedBytecodeNode", "bytecode", "(CachedBytecodeNode) getParent()");
-            b.declaration(type(int.class), "bci", "bytecode.findBytecodeIndexOfOperationNode(this)");
-            b.startReturn().string("bytecode.findSourceLocation(bci)").end();
-            return withTruffleBoundary(ex);
-        }
-
-        private CodeExecutableElement createCreateWrapper() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "createWrapper");
-            ex.renameArguments("probe");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            ex.getModifiers().add(Modifier.FINAL);
-            CodeTreeBuilder b = ex.createBuilder();
-            b.statement("return null");
-            return ex;
-        }
-
-        private CodeExecutableElement createIsInstrumentable() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "isInstrumentable");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            ex.getModifiers().add(Modifier.FINAL);
-            ex.createBuilder().returnTrue();
-            return ex;
-        }
-
-        private CodeExecutableElement createFindProbe() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "findProbe");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            ex.getModifiers().add(Modifier.FINAL);
-            CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(abstractBytecodeNode.asType(), "bytecode", "(AbstractBytecodeNode)getParent()");
-            b.statement("return bytecode.tagRoot != null ? bytecode.tagRoot.getProbe() : null");
-            return ex;
-        }
-
-        private CodeExecutableElement createHasTag() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "hasTag");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            ex.getModifiers().add(Modifier.FINAL);
-            ex.createBuilder().returnFalse();
-            return ex;
-        }
-
-    }
-
     class TagRootNodeFactory {
 
         private CodeTypeElement type;
@@ -9297,11 +9219,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (model.enableTagInstrumentation) {
-                type.getImplements().add(types.InstrumentableNode);
-                type.add(createInstrumentableNodeCreateWrapper());
-                type.add(createInstrumentableNodeIsInstrumentable());
-                type.add(createInstrumentableNodeFindProbe());
-                type.add(createInstrumentableNodeHasTag());
                 type.add(createFindInstrumentableCallNode());
             }
 
@@ -10263,40 +10180,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("return tagRoot.tagNodes[nodeId]");
             b.end();
             b.statement("return null");
-            return ex;
-        }
-
-        private CodeExecutableElement createInstrumentableNodeCreateWrapper() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "createWrapper");
-            ex.renameArguments("probe");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            ex.getModifiers().add(Modifier.FINAL);
-            CodeTreeBuilder b = ex.createBuilder();
-            b.statement("return null");
-            return ex;
-        }
-
-        private CodeExecutableElement createInstrumentableNodeIsInstrumentable() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "isInstrumentable");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            ex.getModifiers().add(Modifier.FINAL);
-            ex.createBuilder().returnTrue();
-            return ex;
-        }
-
-        private CodeExecutableElement createInstrumentableNodeFindProbe() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "findProbe");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            ex.getModifiers().add(Modifier.FINAL);
-            ex.createBuilder().statement("return this.tagRoot != null ? this.tagRoot.getProbe() : null");
-            return ex;
-        }
-
-        private CodeExecutableElement createInstrumentableNodeHasTag() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "hasTag");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            ex.getModifiers().add(Modifier.FINAL);
-            ex.createBuilder().returnFalse();
             return ex;
         }
 
