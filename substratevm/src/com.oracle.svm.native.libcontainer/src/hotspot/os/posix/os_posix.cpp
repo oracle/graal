@@ -100,6 +100,9 @@
 #endif
 
 /* Input/Output types for mincore(2) */
+
+namespace svm_container {
+
 typedef LINUX_ONLY(unsigned) char mincore_vec_t;
 
 static jlong initial_time_count = 0;
@@ -521,9 +524,15 @@ char* os::map_memory_to_file_aligned(size_t size, size_t alignment, int file_des
   MemTracker::record_virtual_memory_commit((address)aligned_base, size, CALLER_PC);
   return aligned_base;
 }
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE
 
 #ifndef NATIVE_IMAGE
+
+namespace svm_container {
+
 int os::get_fileno(FILE* fp) {
   return NOT_AIX(::)fileno(fp);
 }
@@ -2202,4 +2211,7 @@ char* os::pd_map_memory(int fd, const char* unused,
 bool os::pd_unmap_memory(char* addr, size_t bytes) {
   return munmap(addr, bytes) == 0;
 }
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE

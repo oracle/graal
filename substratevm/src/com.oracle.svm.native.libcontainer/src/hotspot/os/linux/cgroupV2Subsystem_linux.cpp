@@ -37,6 +37,9 @@
  *    -1 for no share setup
  *    OSCONTAINER_ERROR for not supported
  */
+
+namespace svm_container {
+
 int CgroupV2CpuController::cpu_shares() {
   julong shares;
   CONTAINER_READ_NUMBER_CHECKED(reader(), "/cpu.weight", "Raw value for CPU Shares", shares);
@@ -313,3 +316,6 @@ jlong CgroupV2Subsystem::pids_current() {
   CONTAINER_READ_NUMBER_CHECKED(unified(), "/pids.current", "Current number of tasks", pids_current);
   return pids_current;
 }
+
+} // namespace svm_container
+

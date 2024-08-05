@@ -26,6 +26,9 @@
 #include "memory/allocation.hpp"
 #include "runtime/os.hpp"
 
+
+namespace svm_container {
+
 char* AllocateHeap(size_t size,
                    MEMFLAGS flags,
                    AllocFailType alloc_failmode /* = AllocFailStrategy::EXIT_OOM*/) {
@@ -46,3 +49,6 @@ char* ReallocateHeap(char* old,
 void FreeHeap(void* p) {
   os::free(p);
 }
+
+} // namespace svm_container
+

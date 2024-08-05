@@ -97,9 +97,18 @@
 # include <signal.h>
 # include <errno.h>
 
+
+namespace svm_container {
+
 OSThread*         os::_starting_thread    = nullptr;
 volatile unsigned int os::_rand_seed      = 1234567;
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE
+
+namespace svm_container {
+
 int               os::_processor_count    = 0;
 #ifndef NATIVE_IMAGE
 int               os::_initial_active_processor_count = 0;
@@ -2506,3 +2515,6 @@ jint os::set_minimum_stack_sizes() {
   return JNI_OK;
 }
 #endif // !NATIVE_IMAGE
+
+} // namespace svm_container
+
