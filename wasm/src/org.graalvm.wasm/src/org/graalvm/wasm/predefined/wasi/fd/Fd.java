@@ -123,8 +123,7 @@ public abstract class Fd implements Closeable {
      * Rights that will apply to file descriptors derived from this.
      * <p>
      * This is <strong>not</strong> a subset of {@link #fsRightsBase}. This is an additional
-     * constraint. Rights of derived file descriptors are subsets of or equal to
-     * <code>({@link #fsRightsInheriting} & {@link #fsRightsBase})</code>.
+     * constraint. Rights of derived file descriptors are subsets of or equal to this set.
      */
     protected long fsRightsInheriting;
 
@@ -178,7 +177,7 @@ public abstract class Fd implements Closeable {
      */
     public Errno pathOpen(Node node, WasmMemory memory, int dirflags, int pathAddress, int pathLength, short oflags, long childFsRightsBase, long childFsRightsInheriting, short fdflags,
                     int fdAddress) {
-        if (!isSet(fsRightsBase, Rights.PathOpen) || !isSubsetOf(childFsRightsBase, fsRightsInheriting) || !isSubsetOf(childFsRightsBase, fsRightsInheriting)) {
+        if (!isSet(fsRightsBase, Rights.PathOpen)) {
             return Errno.Notcapable;
         }
         return Errno.Acces;
@@ -427,6 +426,8 @@ public abstract class Fd implements Closeable {
      * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
      */
     public Errno fdstatSetRights(long newFsRightsBase, long newFsRightsInheriting) {
+        // Note that fsRightsInheriting is not necessarily a subset of fsRightsBase.
+        // See the javadoc for fsRightsInheriting.
         if (!isSubsetOf(newFsRightsBase, fsRightsBase) || !isSubsetOf(newFsRightsInheriting, fsRightsInheriting)) {
             return Errno.Notcapable;
         }
