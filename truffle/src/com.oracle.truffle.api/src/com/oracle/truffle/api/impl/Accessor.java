@@ -111,6 +111,7 @@ import com.oracle.truffle.api.TruffleSafepoint.InterruptibleFunction;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameExtensions;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -1052,6 +1053,7 @@ public abstract class Accessor {
         public abstract void markMaterializeCalled(FrameDescriptor descriptor);
 
         public abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
+
     }
 
     public abstract static class ExceptionSupport extends Support {
@@ -1166,6 +1168,14 @@ public abstract class Accessor {
         public abstract IndirectCallNode createIndirectCallNode();
 
         public abstract DirectCallNode createDirectCallNode(CallTarget target);
+
+        public final FrameExtensions getFrameExtensionsSafe() {
+            return FrameExtensionsSafe.INSTANCE;
+        }
+
+        public final FrameExtensions getFrameExtensionsUnsafe() {
+            return FrameExtensionsUnsafe.INSTANCE;
+        }
 
         /**
          * Reports the execution count of a loop.

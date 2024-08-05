@@ -202,6 +202,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     // Singleton fields for accessing arrays and the frame.
     private final CodeVariableElement fastAccess;
     private final CodeVariableElement byteArraySupport;
+    private final CodeVariableElement frameExtensions;
 
     // Implementations of public classes that Truffle interpreters interact with.
     private final CodeTypeElement bytecodeRootNodesImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeRootNodesImpl");
@@ -246,6 +247,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         fastAccess.setInit(createFastAccessFieldInitializer(model.allowUnsafe));
         byteArraySupport = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), types.ByteArraySupport, "BYTES");
         byteArraySupport.createInitBuilder().startCall("ACCESS.getByteArraySupport").end();
+        frameExtensions = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), types.FrameExtensions, "FRAMES");
+        frameExtensions.createInitBuilder().startCall("ACCESS.getFrameExtensions").end();
     }
 
     public CodeTypeElement create() {
@@ -1043,7 +1046,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end();
         b.end();
 
-        String returnValue = getFrameObject("(state >> 16) & 0xFFFF");
+        String returnValue = uncheckedGetFrameObject("(state >> 16) & 0xFFFF");
         b.startReturn().string(returnValue).end();
 
         mergeSuppressWarnings(ex, "all");
@@ -1277,7 +1280,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.statement("Object[] result = new Object[variadicCount]");
         b.startFor().string("int i = 0; i < variadicCount; i++").end().startBlock();
         b.statement("int index = sp - variadicCount + i");
-        b.statement("result[i] = " + getFrameObject("index"));
+        b.statement("result[i] = " + uncheckedGetFrameObject("index"));
         b.statement(clearFrame("frame", "index"));
         b.end();
 
@@ -11717,7 +11720,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (model.needsBciSlot() && !model.storeBciInFrame && !tier.isUncached()) {
                 // If a bci slot is allocated but not used for non-uncached interpreters, set it to
                 // an invalid value just in case it gets read during a stack walk.
-                b.statement("ACCESS.setInt(" + localFrame() + ", " + BCI_IDX + ", -1)");
+                b.statement("FRAMES.setInt(" + localFrame() + ", " + BCI_IDX + ", -1)");
             }
 
             if (model.enableTracing) {
@@ -12024,7 +12027,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("break");
                     break;
                 case BRANCH_FALSE:
-                    String booleanValue = "(Boolean) " + getFrameObject("sp - 1") + " == Boolean.TRUE";
+                    String booleanValue = "(Boolean) " + uncheckedGetFrameObject("sp - 1") + " == Boolean.TRUE";
                     b.startIf();
                     if (tier.isUncached()) {
                         b.string(booleanValue);
@@ -12077,7 +12080,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                      * NB: Short circuit operations can evaluate to an operand or to the boolean
                      * conversion of an operand. The stack is different in either case.
                      */
-                    b.string("(boolean) ").string(getFrameObject("sp - 1"));
+                    b.string("(boolean) ").string(uncheckedGetFrameObject("sp - 1"));
 
                     b.end().startBlock();
                     if (shortCircuitInstruction.returnConvertedBoolean()) {
@@ -12289,7 +12292,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("sp += 1");
                     break;
                 case LOAD_LOCAL_MATERIALIZED:
-                    String materializedFrame = "((VirtualFrame) " + getFrameObject("sp - 1)");
+                    String materializedFrame = "((VirtualFrame) " + uncheckedGetFrameObject("sp - 1)");
                     if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
                         b.startStatement();
                         b.startCall(lookupDoLoadLocal(instr).getSimpleName().toString());
@@ -12339,7 +12342,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("sp -= 1");
                     break;
                 case STORE_LOCAL_MATERIALIZED:
-                    materializedFrame = "((VirtualFrame) " + getFrameObject("sp - 2)");
+                    materializedFrame = "((VirtualFrame) " + uncheckedGetFrameObject("sp - 2)");
 
                     if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
                         b.startStatement();
@@ -12387,7 +12390,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("sp -= 1");
                     break;
                 case THROW:
-                    b.statement("throw sneakyThrow((Throwable) " + getFrameObject("frame", "sp - 1") + ")");
+                    b.statement("throw sneakyThrow((Throwable) " + uncheckedGetFrameObject("frame", "sp - 1") + ")");
                     break;
                 case YIELD:
 
@@ -12432,7 +12435,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                     break;
                 case MERGE_VARIADIC:
-                    b.statement(setFrameObject("sp - 1", "mergeVariadic((Object[]) " + getFrameObject("sp - 1") + ")"));
+                    b.statement(setFrameObject("sp - 1", "mergeVariadic((Object[]) " + uncheckedGetFrameObject("sp - 1") + ")"));
                     break;
                 case CUSTOM:
                     buildCustomInstructionExecute(b, instr);
@@ -13028,7 +13031,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startDeclaration(types.ContinuationResult, "continuationResult");
             b.startCall("continuationRootNode.createContinuation");
             b.string(localFrame());
-            b.string(getFrameObject("sp - 1"));
+            b.string(uncheckedGetFrameObject("sp - 1"));
             b.end(2);
 
             b.statement(setFrameObject("sp - 1", "continuationResult"));
@@ -14465,7 +14468,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     if (!ElementUtils.isObject(targetType)) {
                         b.cast(targetType);
                     }
-                    b.string(getFrameObject("sp - " + (instr.signature.dynamicOperandCount - i)));
+                    b.string(uncheckedGetFrameObject("sp - " + (instr.signature.dynamicOperandCount - i)));
                     b.end();
                 }
 
@@ -14497,7 +14500,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          */
         private void storeBciInFrameIfNecessary(CodeTreeBuilder b) {
             if (tier.isUncached() || model.storeBciInFrame) {
-                b.statement("ACCESS.setInt(" + localFrame() + ", " + BCI_IDX + ", bci)");
+                b.statement("FRAMES.setInt(" + localFrame() + ", " + BCI_IDX + ", bci)");
             }
         }
 
@@ -15116,12 +15119,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return b.build();
     }
 
-    private static String getFrameObject(String index) {
-        return getFrameObject("frame", index);
+    static String uncheckedGetFrameObject(String index) {
+        return uncheckedGetFrameObject("frame", index);
     }
 
-    private static String getFrameObject(String frame, String index) {
-        return String.format("ACCESS.uncheckedGetObject(%s, %s)", frame, index);
+    static String uncheckedGetFrameObject(String frame, String index) {
+        return String.format("FRAMES.uncheckedGetObject(%s, %s)", frame, index);
     }
 
     private static CodeTreeBuilder startRequireFrame(CodeTreeBuilder b, TypeMirror type) {
@@ -15149,7 +15152,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 methodName = "requireObject";
                 break;
         }
-        b.startCall("ACCESS", methodName);
+        b.startCall("FRAMES", methodName);
         return b;
     }
 
@@ -15212,7 +15215,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 break;
         }
         if (unsafe) {
-            b.startCall("ACCESS", methodName);
+            b.startCall("FRAMES", methodName);
             b.string(frame);
         } else {
             b.startCall(frame, methodName);
@@ -15254,7 +15257,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
         }
         if (unsafe) {
-            b.startCall("ACCESS", methodName);
+            b.startCall("FRAMES", methodName);
             b.string(frame);
         } else {
             b.startCall(frame, methodName);
@@ -15280,7 +15283,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     static CodeTreeBuilder startSetFrame(CodeTreeBuilder b, TypeMirror type) {
         String methodName = getSetMethod(type);
-        b.startCall("ACCESS", methodName);
+        b.startCall("FRAMES", methodName);
         return b;
     }
 
@@ -15289,19 +15292,19 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private static String setFrameObject(String frame, String index, String value) {
-        return String.format("ACCESS.setObject(%s, %s, %s)", frame, index, value);
+        return String.format("FRAMES.setObject(%s, %s, %s)", frame, index, value);
     }
 
     private static String clearFrame(String frame, String index) {
-        return String.format("ACCESS.clear(%s, %s)", frame, index);
+        return String.format("FRAMES.clear(%s, %s)", frame, index);
     }
 
     private static String copyFrameSlot(String src, String dst) {
-        return String.format("ACCESS.copy(frame, %s, %s)", src, dst);
+        return String.format("FRAMES.copy(frame, %s, %s)", src, dst);
     }
 
     private static String copyFrameTo(String srcFrame, String srcOffset, String dstFrame, String dstOffset, String length) {
-        return String.format("ACCESS.copyTo(%s, %s, %s, %s, %s)", srcFrame, srcOffset, dstFrame, dstOffset, length);
+        return String.format("FRAMES.copyTo(%s, %s, %s, %s, %s)", srcFrame, srcOffset, dstFrame, dstOffset, length);
     }
 
     private static String cachedDataClassName(InstructionModel instr) {

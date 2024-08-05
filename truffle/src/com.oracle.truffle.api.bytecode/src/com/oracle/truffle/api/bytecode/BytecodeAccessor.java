@@ -47,6 +47,7 @@ final class BytecodeAccessor extends Accessor {
     static final BytecodeAccessor ACCESSOR = new BytecodeAccessor();
 
     static final MemorySupport MEMORY = ACCESSOR.memorySupport();
+    static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
 
     private BytecodeAccessor() {
     }
