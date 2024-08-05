@@ -21,16 +21,16 @@ public class RTAImpl extends BasicImpl<BasicImpl.ThreadContext> {
         }
 
         CausalityEvent callerEvent = callingMethod != null
-                ? CausalityEvents.InlinedMethodCode.create(callingMethod) /* TODO: Take inlining into account */
-                : CausalityEvents.RootMethodRegistration.create(invocation.getTargetMethod());
+                        /* TODO: Take inlining into account */
+                        ? CausalityEvents.InlinedMethodCode.create(callingMethod)
+                        : CausalityEvents.RootMethodRegistration.create(invocation.getTargetMethod());
 
         registerEdge(
-                callerEvent,
-                CausalityEvents.VirtualMethodInvoked.create(invocation.getTargetMethod()));
+                        callerEvent,
+                        CausalityEvents.VirtualMethodInvoked.create(invocation.getTargetMethod()));
         registerConjunctiveEdge(
-                CausalityEvents.VirtualMethodInvoked.create(invocation.getTargetMethod()),
-                CausalityEvents.TypeInstantiated.create(concreteTargetType),
-                CausalityEvents.MethodImplementationInvoked.create(concreteTargetMethod)
-        );
+                        CausalityEvents.VirtualMethodInvoked.create(invocation.getTargetMethod()),
+                        CausalityEvents.TypeInstantiated.create(concreteTargetType),
+                        CausalityEvents.MethodImplementationInvoked.create(concreteTargetMethod));
     }
 }

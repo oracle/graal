@@ -340,11 +340,13 @@ public class ReachabilityExport {
     }
 
     public Object serialize() {
-        return topLevelOrigins.values().stream().sorted(Comparator.comparing((TopLevelOrigin tlo) -> tlo.path != null ? tlo.path : "").thenComparing(tlo -> tlo.module != null ? tlo.module : "")).map(TopLevelOrigin::serialize).toArray();
+        return topLevelOrigins.values().stream().sorted(Comparator.comparing((TopLevelOrigin tlo) -> tlo.path != null ? tlo.path : "").thenComparing(tlo -> tlo.module != null ? tlo.module : ""))
+                        .map(TopLevelOrigin::serialize).toArray();
     }
 
     public static String toGraalLikeString(java.lang.reflect.Method m) {
-        return m.getDeclaringClass().getTypeName() + '.' + m.getName() + '(' + Arrays.stream(m.getParameterTypes()).map(Class::getTypeName).collect(Collectors.joining(", ")) + "):" + m.getReturnType().getTypeName();
+        return m.getDeclaringClass().getTypeName() + '.' + m.getName() + '(' + Arrays.stream(m.getParameterTypes()).map(Class::getTypeName).collect(Collectors.joining(", ")) + "):" +
+                        m.getReturnType().getTypeName();
     }
 
     public static String toGraalLikeString(java.lang.reflect.Constructor<?> c) {

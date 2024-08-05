@@ -35,7 +35,6 @@ public enum EventKinds {
     InitialRegistrations("Initial Registrations"),
     ;
 
-
     public final String name;
     public final String suffix;
 

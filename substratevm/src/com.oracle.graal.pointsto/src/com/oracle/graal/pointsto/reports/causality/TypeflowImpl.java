@@ -262,7 +262,8 @@ final class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
         Map<AnalysisMethod, Graph.FlowNode> targetMethodReceivers = new HashMap<>();
         for (var e : originalInvokeReceivers.keySet()) {
             implementationsAndTheirTypes.computeIfAbsent(e.getTargetMethod(), targetMethod -> collectImplementationWithTypes(bb, targetMethod));
-            targetMethodReceivers.computeIfAbsent(e.getTargetMethod(), targetMethod -> new Graph.FlowNode("Receiver node for " + targetMethod.getQualifiedName(), null, targetMethod.getDeclaringClass().instantiatedTypes.getState()));
+            targetMethodReceivers.computeIfAbsent(e.getTargetMethod(),
+                            targetMethod -> new Graph.FlowNode("Receiver node for " + targetMethod.getQualifiedName(), null, targetMethod.getDeclaringClass().instantiatedTypes.getState()));
         }
 
         for (var e : originalInvokeReceivers.entrySet()) {
@@ -305,26 +306,26 @@ final class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
                 }
             }
 
-                if (invokeFlow.isContextInsensitive()) {
-                    // Root invocation
-                    Graph.FlowNode rootCallFlow = new Graph.FlowNode(
-                                    "Root call to " + invokeFlow.getTargetMethod(),
-                                    CausalityEvents.RootMethodRegistration.create(invokeFlow.getTargetMethod()),
-                                    bb.getAllInstantiatedTypeFlow().getState());
+            if (invokeFlow.isContextInsensitive()) {
+                // Root invocation
+                Graph.FlowNode rootCallFlow = new Graph.FlowNode(
+                                "Root call to " + invokeFlow.getTargetMethod(),
+                                CausalityEvents.RootMethodRegistration.create(invokeFlow.getTargetMethod()),
+                                bb.getAllInstantiatedTypeFlow().getState());
 
                 g.add(new Graph.FlowEdge(
-                        flowMapper.apply(invokeFlow.getTargetMethod().getDeclaringClass().instantiatedTypes),
-                        rootCallFlow));
+                                flowMapper.apply(invokeFlow.getTargetMethod().getDeclaringClass().instantiatedTypes),
+                                rootCallFlow));
                 g.add(new Graph.FlowEdge(
-                        rootCallFlow,
-                        accumulatedReceiver));
+                                rootCallFlow,
+                                accumulatedReceiver));
             } else {
                 assert receiver != null;
                 Graph.FlowNode receiverNode = flowMapper.apply(receiver);
                 if (receiverNode != null) {
                     g.add(new Graph.FlowEdge(
-                            receiverNode,
-                            accumulatedReceiver));
+                                    receiverNode,
+                                    accumulatedReceiver));
                 }
             }
         }

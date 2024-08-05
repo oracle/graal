@@ -903,11 +903,10 @@ public class NativeImageGenerator {
                      * This cannot be done in the "CausalityExporter"-Feature since
                      * Feature-registration should already be logged by CausalityExport...
                      */
-                    CausalityExport.activate(AnalysisReportsOptions.CausalityGraphSimple.getValue(options) ?
-                            CausalityExport.ActivationLevel.ENABLED_SIMPLE :
-                            AnalysisReportsOptions.CausalityGraphWithTypeflow.getValue(options)
-                                    ? CausalityExport.ActivationLevel.ENABLED
-                                    : CausalityExport.ActivationLevel.ENABLED_WITHOUT_TYPEFLOW);
+                    CausalityExport.activate(AnalysisReportsOptions.CausalityGraphSimple.getValue(options) ? CausalityExport.ActivationLevel.ENABLED_SIMPLE
+                                    : AnalysisReportsOptions.CausalityGraphWithTypeflow.getValue(options)
+                                                    ? CausalityExport.ActivationLevel.ENABLED
+                                                    : CausalityExport.ActivationLevel.ENABLED_WITHOUT_TYPEFLOW);
                 }
 
                 ClassLoaderSupportImpl classLoaderSupport = new ClassLoaderSupportImpl(loader.classLoaderSupport);

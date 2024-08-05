@@ -14,8 +14,7 @@ public class SimpleGraphImpl extends BasicImpl<BasicImpl.ThreadContext> {
     @Override
     public void registerVirtualInvocation(PointsToAnalysis bb, AbstractVirtualInvokeTypeFlow invocation, AnalysisMethod concreteTargetMethod, AnalysisType concreteTargetType) {
         registerEdge(
-                CausalityEvents.TypeInstantiated.create(concreteTargetType),
-                CausalityEvents.MethodImplementationInvoked.create(concreteTargetMethod)
-        );
+                        CausalityEvents.TypeInstantiated.create(concreteTargetType),
+                        CausalityEvents.MethodImplementationInvoked.create(concreteTargetMethod));
     }
 }

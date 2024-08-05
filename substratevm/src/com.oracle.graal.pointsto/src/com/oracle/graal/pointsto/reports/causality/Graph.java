@@ -586,10 +586,10 @@ class Graph {
                         .map(Pair::getRight)
                         .toArray(CausalityEvent[]::new);
         var neededFlows = filterType(FlowNode.class, neededAbstractNodes.stream()).collect(Collectors.toSet());
-                        neededFlows.add(null); // Always needed
+        neededFlows.add(null); // Always needed
         interflows.removeIf(e -> !neededFlows.contains(e.from) || !neededFlows.contains(e.to));
         contractTypeflows(bb);
-                        var flowsSorted = collectFlowNodes().stream().sorted().toArray(FlowNode[]::new);
+        var flowsSorted = collectFlowNodes().stream().sorted().toArray(FlowNode[]::new);
 
         HashMap<CausalityEvent, Integer> methodIdMap = inverse(methodsSorted, 1);
         HashMap<FlowNode, Integer> flowIdMap = inverse(flowsSorted, 1);
