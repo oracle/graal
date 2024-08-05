@@ -84,7 +84,7 @@ public class CopyLocalsTest extends AbstractBasicInterpreterTest {
 
             b.beginReturn();
             b.beginCopyLocalsToFrame();
-            b.emitLoadConstant(null);
+            b.emitLoadNull();
             b.endCopyLocalsToFrame();
             b.endReturn();
 
