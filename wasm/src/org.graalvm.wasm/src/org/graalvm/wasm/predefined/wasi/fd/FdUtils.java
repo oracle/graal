@@ -115,11 +115,7 @@ final class FdUtils {
             long currentOffset = channel.position();
             try {
                 channel.position(offset);
-                Errno status = writeToStream(node, memory, stream, iovecArrayAddress, iovecCount, sizeAddress);
-                if (status != Errno.Success) {
-                    return status;
-                }
-                return Errno.Success;
+                return writeToStream(node, memory, stream, iovecArrayAddress, iovecCount, sizeAddress);
             } finally {
                 channel.position(currentOffset);
             }
@@ -133,11 +129,7 @@ final class FdUtils {
             long currentOffset = channel.position();
             try {
                 channel.position(offset);
-                Errno status = readFromStream(node, memory, stream, iovecArrayAddress, iovecCount, sizeAddress);
-                if (status != Errno.Success) {
-                    return status;
-                }
-                return Errno.Success;
+                return readFromStream(node, memory, stream, iovecArrayAddress, iovecCount, sizeAddress);
             } finally {
                 channel.position(currentOffset);
             }
