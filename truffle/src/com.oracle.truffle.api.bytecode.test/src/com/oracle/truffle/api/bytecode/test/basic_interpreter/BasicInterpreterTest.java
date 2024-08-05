@@ -1285,7 +1285,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endStoreLocalMaterialized();
 
             b.beginReturn();
-            b.emitLoadConstant(null);
+            b.emitLoadNull();
             b.endReturn();
 
             BasicInterpreter inner = b.endRoot();
