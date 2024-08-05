@@ -23,41 +23,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.dcmd;
 
-package com.oracle.svm.core.jfr.dcmd;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.dcmd.AbstractDcmd;
-import com.oracle.svm.core.dcmd.DcmdParseException;
-import jdk.jfr.FlightRecorder;
-import jdk.jfr.Recording;
+import com.oracle.svm.core.DumpRuntimeCompilationSupport;
 
-import java.util.List;
-
-public class JfrCheckDcmd extends AbstractDcmd {
-
-    public JfrCheckDcmd() {
-        this.name = "JFR.check";
-        this.description = "Checks running JFR recording(s)";
-        this.impact = "low";
+public class CompilerDumpCodeCacheDCmd extends AbstractDCmd {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public CompilerDumpCodeCacheDCmd() {
+        super("Compiler.dump_code_cache", "Print information about all compiled methods in the code cache.", Impact.Medium);
     }
 
     @Override
-    public String parseAndExecute(String[] arguments) throws DcmdParseException {
-        if (arguments.length > 1) {
-            throw new DcmdParseException("Too many arguments specified");
-        }
-        StringBuilder sb = new StringBuilder();
-        List<Recording> recordings = FlightRecorder.getFlightRecorder().getRecordings();
-
-        if (recordings.isEmpty()) {
-            return "No recordings.";
-        }
-
-        for (Recording recording : recordings) {
-            sb.append("Recording \"").append(recording.getId()).append("\": name=").append(recording.getName());
-            sb.append(" maxsize=").append(recording.getMaxSize()).append("B");
-            sb.append(" (").append(recording.getState().toString()).append(")\n");
-        }
-        return sb.toString();
+    public String execute(DCmdArguments args) throws Throwable {
+        DumpRuntimeCompilationSupport.dump();
+        return "Dump created.";
     }
 }

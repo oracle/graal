@@ -26,22 +26,47 @@
 
 package com.oracle.svm.core.dcmd;
 
-public interface Dcmd {
-    /**
-     * Parse arguments and set internal fields to be used during execution. Returns a string to
-     * later be sent through the server socket as a response.
-     */
-    String parseAndExecute(String[] arguments) throws DcmdParseException;
+import java.util.List;
 
-    String getName();
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
 
-    String getDescription();
+import com.oracle.svm.core.util.ImageHeapList;
 
-    String getImpact();
+import jdk.graal.compiler.api.replacements.Fold;
 
-    String[] getExample();
+/**
+ * Diagnostic commands can only be registered at image build-time and are effectively singletons
+ * managed by this class.
+ */
+public class DCmdSupport {
+    private final List<DCmd> commands = ImageHeapList.create(DCmd.class);
 
-    DcmdOption[] getOptions();
+    @Platforms(HOSTED_ONLY.class)
+    public DCmdSupport() {
+    }
 
-    String printHelp();
+    @Fold
+    public static DCmdSupport singleton() {
+        return ImageSingletons.lookup(DCmdSupport.class);
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    public void registerCommand(DCmd cmd) {
+        commands.add(cmd);
+    }
+
+    public DCmd getCommand(String name) {
+        for (DCmd cmd : commands) {
+            if (cmd.getName().equals(name)) {
+                return cmd;
+            }
+        }
+        return null;
+    }
+
+    public List<DCmd> getCommands() {
+        return commands;
+    }
 }

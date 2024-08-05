@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jfr;
 
-package com.oracle.svm.core.dcmd;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import com.oracle.svm.core.jdk.JDKLatest;
 
-/** For validation of input arguments. */
-public class DcmdParseException extends Exception {
-    public DcmdParseException(String message) {
-        super(message);
-    }
+@TargetClass(className = "jdk.jfr.internal.dcmd.AbstractDCmd")
+public final class Target_jdk_jfr_internal_dcmd_AbstractDCmd {
+    @Alias
+    public native String[] execute(String source, String arg, char delimiter);
 
-    private static final long serialVersionUID = 1L;
+    @Alias
+    @TargetElement(onlyWith = JDKLatest.class)
+    public native String[] getHelp();
+
+    @Alias
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
+    public native String[] printHelp();
+
+    @Alias
+    native void logWarning(String message);
 }

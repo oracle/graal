@@ -23,29 +23,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.attach;
 
-import org.graalvm.nativeimage.ImageSingletons;
+package com.oracle.svm.core.dcmd;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-/** Interface for the attach API mechanism. */
-public interface AttachApiSupport {
-    @Fold
-    static boolean isPresent() {
-        return ImageSingletons.contains(AttachApiSupport.class);
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_dcmd_AbstractDCmd;
+import com.oracle.svm.core.util.BasedOnJDKFile;
+
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.hpp#L131-L133")
+public class JfrStopDCmd extends AbstractJfrDCmd {
+    // This constructor should be annotated with @BasedOnJDK instead of the class, see GR-59171.
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrStopDCmd() {
+        super("JFR.stop", "Stops a JFR recording.", Impact.Low);
     }
 
-    @Fold
-    static AttachApiSupport singleton() {
-        return ImageSingletons.lookup(AttachApiSupport.class);
+    @Override
+    protected Target_jdk_jfr_internal_dcmd_AbstractDCmd createDCmd() {
+        return SubstrateUtil.cast(new Target_jdk_jfr_internal_dcmd_DCmdStop(), Target_jdk_jfr_internal_dcmd_AbstractDCmd.class);
     }
+}
 
-    void startup();
-
-    boolean isInitTrigger();
-
-    void initialize();
-
-    void shutdown(boolean inTeardownHook);
+@TargetClass(className = "jdk.jfr.internal.dcmd.DCmdStop")
+final class Target_jdk_jfr_internal_dcmd_DCmdStop {
+    @Alias
+    Target_jdk_jfr_internal_dcmd_DCmdStop() {
+    }
 }

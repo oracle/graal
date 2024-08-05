@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,29 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.attach;
 
-import org.graalvm.nativeimage.ImageSingletons;
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+package com.oracle.svm.core.posix.attach;
 
-import jdk.graal.compiler.api.replacements.Fold;
-
-/** Interface for the attach API mechanism. */
-public interface AttachApiSupport {
-    @Fold
-    static boolean isPresent() {
-        return ImageSingletons.contains(AttachApiSupport.class);
-    }
-
-    @Fold
-    static AttachApiSupport singleton() {
-        return ImageSingletons.lookup(AttachApiSupport.class);
-    }
-
-    void startup();
-
-    boolean isInitTrigger();
-
-    void initialize();
-
-    void shutdown(boolean inTeardownHook);
-}
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;

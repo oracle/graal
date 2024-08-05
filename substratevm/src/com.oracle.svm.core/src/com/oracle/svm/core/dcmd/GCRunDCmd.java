@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2024, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,30 +23,25 @@
  * questions.
  */
 
-package com.oracle.svm.core.nmt;
+package com.oracle.svm.core.dcmd;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
-@AutomaticallyRegisteredFeature
-public class NmtFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasNativeMemoryTrackingSupport();
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L251-L262")
+public class GCRunDCmd extends AbstractDCmd {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public GCRunDCmd() {
+        super("GC.run", "Call java.lang.System.gc().", Impact.High);
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(NativeMemoryTracking.class, new NativeMemoryTracking());
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addInitializationHook(NativeMemoryTracking.initializationHook());
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(NativeMemoryTracking.shutdownHook());
+    public String execute(DCmdArguments args) throws Throwable {
+        Heap.getHeap().getGC().collect(GCCause.DiagnosticCommand);
+        return null;
     }
 }

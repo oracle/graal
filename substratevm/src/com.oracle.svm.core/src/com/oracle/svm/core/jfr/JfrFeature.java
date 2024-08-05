@@ -32,17 +32,12 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.dcmd.DcmdSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.jfr.dcmd.JfrStartDcmd;
-import com.oracle.svm.core.jfr.dcmd.JfrStopDcmd;
-import com.oracle.svm.core.jfr.dcmd.JfrCheckDcmd;
-import com.oracle.svm.core.jfr.dcmd.JfrDumpDcmd;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.sampler.SamplerJfrStackTraceSerializer;
@@ -209,11 +204,5 @@ public class JfrFeature implements InternalFeature {
         runtime.addInitializationHook(JfrManager.initializationHook());
         runtime.addStartupHook(JfrManager.startupHook());
         runtime.addShutdownHook(JfrManager.shutdownHook());
-        if (VMInspectionOptions.hasAttachSupport()) {
-            ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new JfrStartDcmd());
-            ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new JfrStopDcmd());
-            ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new JfrCheckDcmd());
-            ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new JfrDumpDcmd());
-        }
     }
 }

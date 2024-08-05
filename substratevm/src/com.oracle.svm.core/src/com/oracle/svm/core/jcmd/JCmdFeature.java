@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,26 +22,47 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.attach;
+package com.oracle.svm.core.jcmd;
 
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SigQuitFeature;
 import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.attach.AttachApiFeature;
+import com.oracle.svm.core.attach.AttachApiSupport;
+import com.oracle.svm.core.attach.AttachListenerThread;
+import com.oracle.svm.core.dcmd.DCmd;
+import com.oracle.svm.core.dcmd.DCmdFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 
 /**
- * The attach API mechanism uses platform-specific implementation (see {@link AttachApiSupport}) and
- * a {@code SIGQUIT/SIGBREAK} signal handler (see {@link SigQuitFeature}).
+ * jcmd can be used to send diagnostic command requests to a running JVM.
+ *
+ * Below is a rough high-level overview of how the interaction between jcmd and Native Image works:
+ * <ul>
+ * <li>In a Native Image startup hook (see {@link SigQuitFeature}), we check if an old socket file
+ * exists and delete it if necessary. Then, we register a {@code SIGQUIT/SIGBREAK} signal
+ * handler.</li>
+ * <li>jcmd creates a {@code .attach_pid<pid>} file in a well-known directory and raises a
+ * {@code SIGQUIT} signal.</li>
+ * <li>Native Image handles the signal in a Java thread and initializes the {@link AttachApiSupport}
+ * if the {@code .attach_pid<pid>} file is detected:
+ * <ul>
+ * <li>A domain socket is created and bound to the file {@code .java_pid<pid>}.</li>
+ * <li>A dedicated {@link AttachListenerThread listener thread} is started that acts as a
+ * single-threaded server. It waits for a client to connect, reads a request, executes it, and
+ * returns the response to the client via the socket connection.</li>
+ * </ul>
+ * <li>Once jcmd detects the file for the domain socket, it can connect to the same socket and
+ * communicate with Native Image. It may then request the execution of {@link DCmd diagnostic
+ * commands}.</li>
+ * </ul>
  */
 @AutomaticallyRegisteredFeature
-public class AttachApiFeature implements InternalFeature {
+public class JCmdFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return VMInspectionOptions.hasJCmdSupport();
@@ -50,18 +70,6 @@ public class AttachApiFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(RuntimeSupportFeature.class);
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(new AttachApiTeardownHook());
-    }
-}
-
-final class AttachApiTeardownHook implements RuntimeSupport.Hook {
-    @Override
-    public void execute(boolean isFirstIsolate) {
-        AttachApiSupport.singleton().shutdown(true);
+        return List.of(SigQuitFeature.class, AttachApiFeature.class, DCmdFeature.class);
     }
 }

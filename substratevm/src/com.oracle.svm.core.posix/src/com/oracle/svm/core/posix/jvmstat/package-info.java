@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,34 +23,8 @@
  * questions.
  */
 
-package com.oracle.svm.core.dcmd;
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+package com.oracle.svm.core.posix.jvmstat;
 
-public class DcmdOption {
-    private String name;
-    private String description;
-    private boolean required;
-    private String defaultValue;
-
-    public DcmdOption(String name, String description, boolean required, String defaultValue) {
-        this.name = name;
-        this.description = description;
-        this.required = required;
-        this.defaultValue = defaultValue;
-    }
-
-    String getName() {
-        return name;
-    }
-
-    String getDescription() {
-        return description;
-    }
-
-    boolean isRequired() {
-        return required;
-    }
-
-    String getDefaultValue() {
-        return defaultValue;
-    }
-}
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;

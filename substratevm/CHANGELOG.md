@@ -9,6 +9,7 @@ At runtime, premain runtime options are set along with main class' arguments in 
   The warning is planned to be replaced by an error in GraalVM for JDK 25.
 * (GR-48384) Added a GDB Python script (`gdb-debughelpers.py`) to improve the Native Image debugging experience.
 * (GR-49517) Add support for emitting Windows x64 unwind info. This enables stack walking in native tooling such as debuggers and profilers.
+* (GR-56601) Together with Red Hat, we added experimental support for `jcmd` on Linux and macOS.
 * (GR-57384) Preserve the origin of a resource included in a native image. The information is included in the report produced by -H:+GenerateEmbeddedResourcesFile.
 * (GR-58000) Support for `GetStringUTFLengthAsLong` added in JNI_VERSION_24 ([JDK-8328877](https://bugs.openjdk.org/browse/JDK-8328877))
 * (GR-58383) The length of the printed stack trace when using `-XX:MissingRegistrationReportingMode=Warn` can now be set with `-XX:MissingRegistrationWarnContextLines=` and its default length is now 8.

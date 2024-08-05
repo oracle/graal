@@ -40,11 +40,9 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport;
 import com.oracle.svm.core.os.AbstractRawFileOperationSupport.RawFileOperationSupportHolder;
-import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.VMError;
@@ -152,35 +150,14 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Override
     public boolean write(RawFileDescriptor fd, Pointer data, UnsignedWord size) {
         int posixFd = getPosixFileDescriptor(fd);
-
-        Pointer position = data;
-        UnsignedWord remaining = size;
-        while (remaining.aboveThan(0)) {
-            SignedWord writtenBytes = Unistd.NoTransitions.write(posixFd, position, remaining);
-            if (writtenBytes.equal(-1)) {
-                if (LibC.errno() == Errno.EINTR()) {
-                    // Retry the write if it was interrupted before any bytes were written.
-                    continue;
-                }
-                return false;
-            }
-            position = position.add((UnsignedWord) writtenBytes);
-            remaining = remaining.subtract((UnsignedWord) writtenBytes);
-        }
-        return true;
+        return PosixUtils.writeUninterruptibly(posixFd, data, size);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public long read(RawFileDescriptor fd, Pointer buffer, UnsignedWord bufferSize) {
         int posixFd = getPosixFileDescriptor(fd);
-
-        SignedWord readBytes;
-        do {
-            readBytes = Unistd.NoTransitions.read(posixFd, buffer, bufferSize);
-        } while (readBytes.equal(-1) && LibC.errno() == Errno.EINTR());
-
-        return readBytes.rawValue();
+        return PosixUtils.readUninterruptibly(posixFd, buffer, bufferSize);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
