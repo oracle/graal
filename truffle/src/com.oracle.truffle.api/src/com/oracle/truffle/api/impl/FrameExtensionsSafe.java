@@ -58,36 +58,6 @@ final class FrameExtensionsSafe extends FrameExtensions {
     }
 
     @Override
-    public boolean uncheckedGetBoolean(Frame frame, int slot) {
-        return frame.getBoolean(slot);
-    }
-
-    @Override
-    public byte uncheckedGetByte(Frame frame, int slot) {
-        return frame.getByte(slot);
-    }
-
-    @Override
-    public int uncheckedGetInt(Frame frame, int slot) {
-        return frame.getInt(slot);
-    }
-
-    @Override
-    public long uncheckedGetLong(Frame frame, int slot) {
-        return frame.getLong(slot);
-    }
-
-    @Override
-    public double uncheckedGetDouble(Frame frame, int slot) {
-        return frame.getDouble(slot);
-    }
-
-    @Override
-    public float uncheckedGetFloat(Frame frame, int slot) {
-        return frame.getFloat(slot);
-    }
-
-    @Override
     public boolean expectBoolean(Frame frame, int slot) throws UnexpectedResultException {
         return frame.expectBoolean(slot);
     }
@@ -180,11 +150,6 @@ final class FrameExtensionsSafe extends FrameExtensions {
     @Override
     public void clear(Frame frame, int slot) {
         frame.clear(slot);
-    }
-
-    @Override
-    public void uncheckedSetObject(Frame frame, int slot, Object value) {
-        frame.setObject(slot, value);
     }
 
 }

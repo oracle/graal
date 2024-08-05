@@ -187,55 +187,6 @@ public abstract class FrameExtensions {
     public abstract Object uncheckedGetObject(Frame frame, int slot);
 
     /**
-     * Reads a boolean from the frame without checking the slot's tag.
-     *
-     * @since 24.2
-     */
-    public abstract boolean uncheckedGetBoolean(Frame frame, int slot);
-
-    /**
-     * Reads a byte from the frame without checking the slot's tag.
-     *
-     * @since 24.2
-     */
-    public abstract byte uncheckedGetByte(Frame frame, int slot);
-
-    /**
-     * Reads an int from the frame without checking the slot's tag.
-     *
-     * @since 24.2
-     */
-    public abstract int uncheckedGetInt(Frame frame, int slot);
-
-    /**
-     * Reads a long from the frame without checking the slot's tag.
-     *
-     * @since 24.2
-     */
-    public abstract long uncheckedGetLong(Frame frame, int slot);
-
-    /**
-     * Reads a float from the frame without checking the slot's tag.
-     *
-     * @since 24.2
-     */
-    public abstract float uncheckedGetFloat(Frame frame, int slot);
-
-    /**
-     * Reads a double from the frame without checking the slot's tag.
-     *
-     * @since 24.2
-     */
-    public abstract double uncheckedGetDouble(Frame frame, int slot);
-
-    /**
-     * Stores an object into the frame without checking the slot's tag.
-     *
-     * @since 24.2
-     */
-    public abstract void uncheckedSetObject(Frame frame, int slot, Object value);
-
-    /**
      * Copies a value from one slot to another.
      *
      * @since 24.2
