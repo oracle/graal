@@ -174,7 +174,7 @@ class FileFd extends SeekableByteChannelFd {
     }
 
     @Override
-    public Errno fdstatSetSize(Node node, long size) {
+    public Errno filestatSetSize(Node node, long size) {
         if (!isSet(fsRightsBase, Rights.FdFilestatSetSize)) {
             return Errno.Notcapable;
         }
@@ -220,7 +220,7 @@ class FileFd extends SeekableByteChannelFd {
     }
 
     @Override
-    public Errno fdstatSetTimes(Node node, long atim, long mtim, int fstFlags) {
+    public Errno filestatSetTimes(Node node, long atim, long mtim, int fstFlags) {
         if (!isSet(fsRightsBase, Rights.FdFilestatSetTimes)) {
             return Errno.Notcapable;
         }

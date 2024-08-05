@@ -69,11 +69,11 @@ public final class WasiClockResGetNode extends WasmBuiltinRootNode {
         final Object[] args = frame.getArguments();
         assert WasmArguments.getArgumentCount(args) == 3;
 
-        return clockTimeGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
+        return clockResGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private Object clockTimeGet(WasmMemory memory, int clockIdValue, int resultAddress) {
+    private Object clockResGet(WasmMemory memory, int clockIdValue, int resultAddress) {
         final Clockid clockId = Clockid.values()[clockIdValue];
         switch (clockId) {
             case Realtime:

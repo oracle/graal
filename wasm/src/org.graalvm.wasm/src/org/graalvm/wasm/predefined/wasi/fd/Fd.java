@@ -446,7 +446,7 @@ public abstract class Fd implements Closeable {
      * @param size the desired file size
      * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
      */
-    public Errno fdstatSetSize(Node node, long size) {
+    public Errno filestatSetSize(Node node, long size) {
         if (!isSet(fsRightsBase, Rights.FdFilestatSetSize)) {
             return Errno.Notcapable;
         }
@@ -465,7 +465,7 @@ public abstract class Fd implements Closeable {
      * @param fstFlags bitmap of {@link Fstflags}
      * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
      */
-    public Errno fdstatSetTimes(Node node, long atim, long mtim, int fstFlags) {
+    public Errno filestatSetTimes(Node node, long atim, long mtim, int fstFlags) {
         if (!isSet(fsRightsBase, Rights.FdFilestatSetTimes)) {
             return Errno.Notcapable;
         }
