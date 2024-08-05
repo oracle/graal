@@ -48,7 +48,6 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.hotspot.EncodedSnippets;
 import jdk.graal.compiler.hotspot.HotSpotBackendFactory;
-import jdk.graal.compiler.hotspot.HotSpotCodeCacheListener;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
@@ -154,7 +153,6 @@ public class BuildTime {
         GraalServices.load(GraphBuilderInvocationPluginProvider.class);
         GraalServices.load(GraphDecoderInvocationPluginProvider.class);
         GraalServices.load(PartialEvaluatorConfiguration.class);
-        GraalServices.load(HotSpotCodeCacheListener.class);
         GraalServices.load(DisassemblerProvider.class);
         GraalServices.load(HotSpotInvocationPluginProvider.class);
         GraalServices.load(DefaultHotSpotLoweringProvider.Extensions.class);

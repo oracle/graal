@@ -81,7 +81,6 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.hotspot.EncodedSnippets;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
-import jdk.graal.compiler.hotspot.HotSpotCodeCacheListener;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
@@ -226,7 +225,6 @@ public class LibGraalFeature implements InternalFeature {
         GraalServices.load(GraphBuilderInvocationPluginProvider.class);
         GraalServices.load(GraphDecoderInvocationPluginProvider.class);
         GraalServices.load(PartialEvaluatorConfiguration.class);
-        GraalServices.load(HotSpotCodeCacheListener.class);
         GraalServices.load(DisassemblerProvider.class);
         GraalServices.load(HotSpotInvocationPluginProvider.class);
         GraalServices.load(TruffleHostEnvironment.Lookup.class);

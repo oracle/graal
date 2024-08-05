@@ -557,7 +557,6 @@ suite = {
           "jdk.graal.compiler.debug.DebugHandlersFactory",
           "jdk.graal.compiler.debug.TTYStreamProvider",
           "jdk.graal.compiler.debug.PathUtilitiesProvider",
-          "jdk.graal.compiler.hotspot.HotSpotCodeCacheListener",
           "jdk.graal.compiler.hotspot.HotSpotBackendFactory",
           "jdk.graal.compiler.hotspot.meta.HotSpotInvocationPluginProvider",
           "jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginFactory",
