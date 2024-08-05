@@ -1795,32 +1795,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    private static class ImportsKey {
-
-        private final TypeElement relativeTo;
-        private final TypeElement importGuardsClass;
-        private final boolean includeConstructors;
-
-        ImportsKey(TypeElement relativeTo, TypeElement importGuardsClass, boolean includeConstructors) {
-            this.relativeTo = relativeTo;
-            this.importGuardsClass = importGuardsClass;
-            this.includeConstructors = includeConstructors;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(relativeTo, importGuardsClass, includeConstructors);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof ImportsKey) {
-                ImportsKey other = (ImportsKey) obj;
-                return Objects.equals(relativeTo, other.relativeTo) && Objects.equals(importGuardsClass, other.importGuardsClass) && Objects.equals(includeConstructors, other.includeConstructors);
-            }
-            return false;
-        }
-
+    private record ImportsKey(TypeElement relativeTo, TypeElement importGuardsClass, boolean includeConstructors) {
     }
 
     private final Map<ImportsKey, List<Element>> importCache = ProcessorContext.getInstance().getCacheMap(ImportsKey.class);
@@ -3966,7 +3941,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private ExecutableElement lookupInlineMethod(DSLExpressionResolver resolver, NodeData node, CacheExpression cache, TypeMirror type, MessageContainer errorTarget) {
-
         String inlineMethodName = ElementUtils.getAnnotationValue(String.class, cache.getMessageAnnotation(), "inlineMethod", false);
         ExecutableElement inlineMethod = null;
         if (inlineMethodName != null) {
@@ -4008,15 +3982,27 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 return null;
             }
 
-            NodeData inlinedNode = lookupNodeData(node, type, errorTarget);
-            if (inlinedNode != null && inlinedNode.isGenerateInline()) {
-                CodeExecutableElement method = NodeFactoryFactory.createInlineMethod(inlinedNode, null);
-                method.setEnclosingElement(NodeCodeGenerator.nodeElement(inlinedNode));
-                inlineMethod = method;
+            Map<String, ExecutableElement> inlineSignatureCache = context.getInlineSignatureCache();
+            String id = ElementUtils.getUniqueIdentifier(parameterType.asType());
+            ExecutableElement cachedInline;
+            if (inlineSignatureCache.containsKey(id)) {
+                cachedInline = inlineSignatureCache.get(id);
+            } else {
+                NodeData inlinedNode = lookupNodeData(node, type, errorTarget);
+                if (inlinedNode != null && inlinedNode.isGenerateInline()) {
+                    CodeExecutableElement method = NodeFactoryFactory.createInlineMethod(inlinedNode, null);
+                    method.setEnclosingElement(NodeCodeGenerator.nodeElement(inlinedNode));
+                    cachedInline = method;
+                } else {
+                    cachedInline = null;
+                }
+                inlineSignatureCache.put(id, cachedInline);
+            }
+            if (cachedInline != null) {
+                inlineMethod = cachedInline;
             }
         }
         return inlineMethod;
-
     }
 
     private static boolean hasDefaultCreateCacheMethod(TypeMirror type) {
