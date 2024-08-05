@@ -57,36 +57,6 @@ final class FrameExtensionsUnsafe extends FrameExtensions {
     }
 
     @Override
-    public byte uncheckedGetByte(Frame frame, int slot) {
-        return ((FrameWithoutBoxing) frame).unsafeUncheckedGetByte(slot);
-    }
-
-    @Override
-    public int uncheckedGetInt(Frame frame, int slot) {
-        return ((FrameWithoutBoxing) frame).unsafeUncheckedGetInt(slot);
-    }
-
-    @Override
-    public boolean uncheckedGetBoolean(Frame frame, int slot) {
-        return ((FrameWithoutBoxing) frame).unsafeUncheckedGetBoolean(slot);
-    }
-
-    @Override
-    public long uncheckedGetLong(Frame frame, int slot) {
-        return ((FrameWithoutBoxing) frame).unsafeUncheckedGetLong(slot);
-    }
-
-    @Override
-    public double uncheckedGetDouble(Frame frame, int slot) {
-        return ((FrameWithoutBoxing) frame).unsafeUncheckedGetDouble(slot);
-    }
-
-    @Override
-    public float uncheckedGetFloat(Frame frame, int slot) {
-        return ((FrameWithoutBoxing) frame).unsafeUncheckedGetFloat(slot);
-    }
-
-    @Override
     public void setObject(Frame frame, int slot, Object value) {
         ((FrameWithoutBoxing) frame).unsafeSetObject(slot, value);
     }
@@ -144,11 +114,6 @@ final class FrameExtensionsUnsafe extends FrameExtensions {
     @Override
     public void clear(Frame frame, int slot) {
         ((FrameWithoutBoxing) frame).unsafeClear(slot);
-    }
-
-    @Override
-    public void uncheckedSetObject(Frame frame, int slot, Object value) {
-        ((FrameWithoutBoxing) frame).unsafeUncheckedSetObject(slot, value);
     }
 
     @Override
