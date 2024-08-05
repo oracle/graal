@@ -78,12 +78,8 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
         rerunClassInit(a, "sun.nio.ch.FileDispatcherImpl", "sun.nio.ch.FileChannelImpl$Unmapper");
 
         if (isPosix()) {
-<<<<<<< HEAD
+            rerunClassInit(a, "sun.nio.ch.InheritedChannel");
             rerunClassInit(a, "sun.nio.ch.SimpleAsynchronousFileChannelImpl", "sun.nio.ch.SimpleAsynchronousFileChannelImpl$DefaultExecutorHolder",
-=======
-            initializeAtRunTime(a, "sun.nio.ch.InheritedChannel");
-            initializeAtRunTime(a, "sun.nio.ch.SimpleAsynchronousFileChannelImpl", "sun.nio.ch.SimpleAsynchronousFileChannelImpl$DefaultExecutorHolder",
->>>>>>> bf74c97415d (Fixed a crash in InheritedChannel.inetPeerAddress0().)
                             "sun.nio.ch.SinkChannelImpl", "sun.nio.ch.SourceChannelImpl");
             rerunClassInit(a, "sun.nio.fs.UnixNativeDispatcher", "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl");
             if (isLinux() && isJdkSctpModulePresent) {
