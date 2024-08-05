@@ -43,6 +43,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -142,7 +143,7 @@ public final class CausalityEvents {
             }
 
             if (context.isEmpty()) {
-                System.err.println("Warning: CausalityExport observed an unknown BytecodePosition!");
+                LogUtils.warning("CausalityExport observed an unknown BytecodePosition!");
                 return null;
             }
 

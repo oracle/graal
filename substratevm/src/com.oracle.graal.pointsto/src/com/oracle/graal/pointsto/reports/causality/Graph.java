@@ -459,20 +459,20 @@ class Graph {
     private static class FastSubsetChecker {
         private final int nTypes;
 
-        public FastSubsetChecker(PointsToAnalysis bb) {
+        FastSubsetChecker(PointsToAnalysis bb) {
             nTypes = bb.getAllInstantiatedTypeFlow().getState().typesCount();
         }
 
         public boolean isSubset(TypeState t1, TypeState t2) {
-            if (t1.typesCount() == 0 || t2.typesCount() == nTypes)
+            if (t1.typesCount() == 0 || t2.typesCount() == nTypes) {
                 return true;
-
-            if (t1.typesCount() == 1)
+            }
+            if (t1.typesCount() == 1) {
                 return t2.containsType(t1.exactType());
-
-            if (t2.typesCount() <= 1)
+            }
+            if (t2.typesCount() <= 1) {
                 return false;
-
+            }
             var t1m = (MultiTypeState) t1;
             var t2m = (MultiTypeState) t2;
             return TypeStateUtils.isSuperset(t2m.typesBitSet(), t1m.typesBitSet());
@@ -501,13 +501,12 @@ class Graph {
                 if (forward.size() > 1 && backward.size() > 1) {
                     continue;
                 }
-
                 if (!(f.containing == null || forward.stream().allMatch(ff -> ff.containing == f.containing) || backward.stream().allMatch(ff -> ff != null && ff.containing == f.containing))) {
                     continue;
                 }
-
-                if (!forward.stream().allMatch(ff -> subsetChecker.isSubset(ff.filter, f.filter)))
+                if (!forward.stream().allMatch(ff -> subsetChecker.isSubset(ff.filter, f.filter))) {
                     continue;
+                }
 
                 adj.remove(f);
                 for (FlowNode next : forward) {

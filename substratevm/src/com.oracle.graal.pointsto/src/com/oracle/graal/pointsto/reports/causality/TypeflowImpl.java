@@ -84,7 +84,7 @@ final class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
         }
     }
 
-    public TypeflowImpl() {
+    TypeflowImpl() {
         super(ThreadContext::new);
     }
 

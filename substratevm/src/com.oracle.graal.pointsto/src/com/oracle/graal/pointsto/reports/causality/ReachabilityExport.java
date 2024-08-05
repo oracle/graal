@@ -53,7 +53,7 @@ public class ReachabilityExport {
     // TODO: unshare counter, assign ids when writing
     private static final AtomicInteger idCounter = new AtomicInteger();
 
-    public static abstract class HierarchyNode {
+    public abstract static class HierarchyNode {
         public int id = idCounter.incrementAndGet();
 
         EconomicMap<String, Object> serialize() {
