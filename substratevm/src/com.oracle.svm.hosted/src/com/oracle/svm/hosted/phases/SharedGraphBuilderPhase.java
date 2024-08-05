@@ -43,7 +43,6 @@ import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -62,7 +61,6 @@ import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
@@ -1108,19 +1106,19 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         int parameterLength = bootstrap.getMethod().getParameters().length;
                         List<JavaConstant> staticArguments = bootstrap.getStaticArguments();
                         boolean isVarargs = bootstrap.getMethod().isVarArgs();
-                        DynamicHub typeClass = getSnippetReflection().asObject(DynamicHub.class, bootstrap.getType());
+                        Class<?> typeClass = getSnippetReflection().asObject(Class.class, bootstrap.getType());
                         boolean isPrimitive = typeClass.isPrimitive();
 
                         for (JavaConstant argument : staticArguments) {
-                            if (argument instanceof ImageHeapInstance imageHeapInstance) {
-                                Object arg = getSnippetReflection().asObject(Object.class, imageHeapInstance);
+                            if (argument.getJavaKind().isObject()) {
+                                Object arg = getSnippetReflection().asObject(Object.class, argument);
                                 if (arg instanceof UnresolvedJavaType) {
                                     return arg;
                                 }
                             }
                         }
 
-                        if (isBootstrapInvocationInvalid(bootstrap, parameterLength, staticArguments, isVarargs, typeClass.getHostedJavaClass())) {
+                        if (isBootstrapInvocationInvalid(bootstrap, parameterLength, staticArguments, isVarargs, typeClass)) {
                             /*
                              * The number of provided arguments does not match the signature of the
                              * bootstrap method or the provided type does not match the return type
@@ -1138,7 +1136,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         ValueNode resolvedObjectNode = (ValueNode) resolvedObject;
 
                         if (typeClass.isPrimitive()) {
-                            JavaKind constantKind = getMetaAccessExtensionProvider().getStorageKind(getMetaAccess().lookupJavaType(typeClass.getHostedJavaClass()));
+                            JavaKind constantKind = getMetaAccessExtensionProvider().getStorageKind(getMetaAccess().lookupJavaType(typeClass));
                             resolvedObjectNode = append(UnboxNode.create(getMetaAccess(), getConstantReflection(), resolvedObjectNode, constantKind));
                         }
 
@@ -1413,6 +1411,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             private boolean isBootstrapInvocationInvalid(BootstrapMethodInvocation bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList, boolean isVarargs, Class<?> typeClass) {
                 ResolvedJavaMethod bootstrapMethod = bootstrap.getMethod();
                 return (isVarargs && parameterLength > (3 + staticArgumentsList.size())) || (!isVarargs && parameterLength != (3 + staticArgumentsList.size())) ||
+                                (bootstrapMethod.getSignature().getReturnType(null) instanceof UnresolvedJavaType) ||
                                 !(OriginalClassProvider.getJavaClass(bootstrapMethod.getSignature().getReturnType(null)).isAssignableFrom(typeClass) || bootstrapMethod.isConstructor()) ||
                                 !checkBootstrapParameters(bootstrapMethod, bootstrap.getStaticArguments(), true);
             }
