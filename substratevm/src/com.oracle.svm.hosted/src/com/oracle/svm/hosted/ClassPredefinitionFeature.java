@@ -36,12 +36,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
@@ -100,6 +102,14 @@ public class ClassPredefinitionFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        PredefinedClassesSupport support = ImageSingletons.lookup(PredefinedClassesSupport.class);
+        support.setRegistrationValidator(clazz -> {
+            Optional<AnalysisType> analysisType = impl.getMetaAccess().optionalLookupJavaType(clazz);
+            analysisType.map(impl.getHostVM()::dynamicHub).ifPresent(
+                            hub -> VMError.guarantee(hub.isLoaded(), "Classes that should be predefined must not have a class loader."));
+        });
+
         sealed = true;
 
         List<String> skipped = new ArrayList<>();

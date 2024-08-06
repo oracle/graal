@@ -31,6 +31,7 @@ import java.security.ProtectionDomain;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -66,6 +67,8 @@ public final class PredefinedClassesSupport {
     }
 
     public static final String ENABLE_BYTECODES_OPTION = SubstrateOptionsParser.commandArgument(Options.SupportPredefinedClasses, "+");
+
+    @Platforms(Platform.HOSTED_ONLY.class) private Consumer<Class<?>> validator = null;
 
     @Fold
     public static boolean supportsBytecodes() {
@@ -112,7 +115,15 @@ public final class PredefinedClassesSupport {
     private final EconomicMap<String, Class<?>> loadedClassesByName = EconomicMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public void setRegistrationValidator(Consumer<Class<?>> consumer) {
+        validator = consumer;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerClass(String hash, Class<?> clazz) {
+        if (singleton().validator != null) {
+            singleton().validator.accept(clazz);
+        }
         Class<?> existing = singleton().predefinedClassesByHash.putIfAbsent(hash, clazz);
         if (existing != clazz) {
             VMError.guarantee(existing == null, "Can define only one class per hash");
@@ -167,6 +178,9 @@ public final class PredefinedClassesSupport {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerClass(Class<?> clazz) {
+        if (singleton().validator != null) {
+            singleton().validator.accept(clazz);
+        }
         singleton().predefinedClasses.add(clazz);
     }
 
