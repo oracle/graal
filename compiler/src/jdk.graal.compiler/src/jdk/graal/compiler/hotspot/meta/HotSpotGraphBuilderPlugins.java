@@ -212,7 +212,7 @@ public class HotSpotGraphBuilderPlugins {
                     OptionValues options,
                     TargetDescription target,
                     BarrierSet barrierSet) {
-        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(graalRuntime, config, compilerConfiguration, options);
+        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(graalRuntime, config, compilerConfiguration, options, target);
 
         Plugins plugins = new Plugins(invocationPlugins);
         plugins.appendNodePlugin(new HotSpotExceptionDispatchPlugin(config, wordTypes.getWordKind()));
