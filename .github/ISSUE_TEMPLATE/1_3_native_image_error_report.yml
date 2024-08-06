@@ -1,4 +1,4 @@
-name: 🚨 Share Native Image Error Report
+name: 💥 Share Native Image Build-Time Crash Report (svm_err_b_*.md)
 description: Share an error report for GraalVM's native image using the generated `svm_err_b_*.md` file
 title: "[Native Image] Error Report"
 labels: ["native-image", "error-report"]
