@@ -25,22 +25,27 @@
 package com.oracle.svm.core.graal.meta;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
+
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.nodes.spi.StampProvider;
+import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
+import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.nodes.spi.StampProvider;
 
 public class SubstrateStampProvider implements StampProvider {
 
     private final AbstractPointerStamp hubStamp;
     private final AbstractPointerStamp methodStamp;
+    private final AbstractPointerStamp methodAlwaysNullStamp;
 
     public SubstrateStampProvider(MetaAccessProvider metaAccess) {
         this.hubStamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(DynamicHub.class)));
         this.methodStamp = SubstrateMethodPointerStamp.methodNonNull();
+        this.methodAlwaysNullStamp = SubstrateMethodPointerStamp.methodAlwaysNull();
     }
 
     @Override
@@ -51,5 +56,15 @@ public class SubstrateStampProvider implements StampProvider {
     @Override
     public AbstractPointerStamp createMethodStamp() {
         return methodStamp;
+    }
+
+    @Override
+    public AbstractPointerStamp createMethodAlwaysNullStamp() {
+        return methodAlwaysNullStamp;
+    }
+
+    @Override
+    public Constant methodPointerAlwaysNullConstant() {
+        return SubstrateMethodPointerConstant.ALWAYS_NULL;
     }
 }

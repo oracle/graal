@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Substitutes methods declared as {@code native} with {@link CEnumLookup} annotation with a
- * synthetic graph that calls the appropriate EnumRuntimeData.convertCToJava(long) method.
+ * synthetic graph (see {@link CEnumCallWrapperMethod}).
  */
 public class CEnumCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
 
@@ -57,14 +57,6 @@ public class CEnumCallWrapperSubstitutionProcessor extends SubstitutionProcessor
         } else {
             return method;
         }
-    }
-
-    @Override
-    public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        if (method instanceof CEnumCallWrapperMethod) {
-            return ((CEnumCallWrapperMethod) method).getOriginal();
-        }
-        return method;
     }
 
     public void setNativeLibraries(NativeLibraries nativeLibs) {

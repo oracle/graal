@@ -36,10 +36,6 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -48,13 +44,18 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
+
 public class HostedOptionParser implements HostedOptionProvider {
 
     private final List<String> arguments;
-    private EconomicMap<OptionKey<?>, Object> hostedValues = OptionValues.newOptionMap();
-    private EconomicMap<OptionKey<?>, Object> runtimeValues = OptionValues.newOptionMap();
-    private EconomicMap<String, OptionDescriptor> allHostedOptions = EconomicMap.create();
-    private EconomicMap<String, OptionDescriptor> allRuntimeOptions = EconomicMap.create();
+    private final EconomicMap<OptionKey<?>, Object> hostedValues = OptionValues.newOptionMap();
+    private final EconomicMap<OptionKey<?>, Object> runtimeValues = OptionValues.newOptionMap();
+    private final EconomicMap<String, OptionDescriptor> allHostedOptions = EconomicMap.create();
+    private final EconomicMap<String, OptionDescriptor> allRuntimeOptions = EconomicMap.create();
 
     public HostedOptionParser(ClassLoader imageClassLoader, List<String> arguments) {
         this.arguments = Collections.unmodifiableList(arguments);

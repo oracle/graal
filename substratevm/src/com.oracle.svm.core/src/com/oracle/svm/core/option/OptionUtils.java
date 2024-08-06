@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,16 +25,20 @@
 package com.oracle.svm.core.option;
 
 import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.options.OptionKey;
-
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.UserError;
+
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionKey;
 
 /**
  * This class contains static helper methods related to options.
@@ -110,7 +114,7 @@ public class OptionUtils {
 
         @Override
         public String toString() {
-            return name().toLowerCase();
+            return name().toLowerCase(Locale.ROOT);
         }
     }
 
@@ -118,6 +122,15 @@ public class OptionUtils {
     public static final class InvalidMacroException extends RuntimeException {
         public InvalidMacroException(String arg0) {
             super(arg0);
+        }
+    }
+
+    public static <T extends Annotation> List<T> getAnnotationsByType(OptionDescriptor optionDescriptor, Class<T> annotationClass) {
+        try {
+            Field field = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
+            return List.of(field.getAnnotationsByType(annotationClass));
+        } catch (NoSuchFieldException e) {
+            return List.of();
         }
     }
 }

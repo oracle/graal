@@ -24,18 +24,11 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -44,23 +37,20 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.function.CEntryPointActions;
-import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.Parker;
 import com.oracle.svm.core.thread.Parker.ParkerFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
+
+import jdk.graal.compiler.core.common.NumUtil;
 
 @AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
 @Platforms(Platform.WINDOWS.class)
@@ -71,28 +61,39 @@ public final class WindowsPlatformThreads extends PlatformThreads {
 
     @Override
     protected boolean doStartThread(Thread thread, long stackSize) {
-        int threadStackSize = (int) stackSize;
-        int initFlag = Process.CREATE_SUSPENDED();
-
-        WindowsThreadStartData startData = prepareStart(thread, SizeOf.get(WindowsThreadStartData.class));
-
+        int threadStackSize = NumUtil.safeToUInt(stackSize);
+        int initFlag = 0;
         // If caller specified a stack size, don't commit it all at once.
         if (threadStackSize != 0) {
             initFlag |= Process.STACK_SIZE_PARAM_IS_A_RESERVATION();
         }
 
-        CIntPointer osThreadID = UnsafeStackValue.get(CIntPointer.class);
-        WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize,
-                        WindowsPlatformThreads.osThreadStartRoutine.getFunctionPointer(), startData, initFlag, osThreadID);
-        if (osThreadHandle.isNull()) {
-            undoPrepareStartOnError(thread, startData);
-            return false;
+        /*
+         * Prevent stack overflow errors so that starting the thread and reverting back to a safe
+         * state (in case of an error) works reliably.
+         */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            return doStartThread0(thread, threadStackSize, initFlag);
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
         }
-        startData.setOSThreadHandle(osThreadHandle);
+    }
 
-        // Start the thread running
-        Process.ResumeThread(osThreadHandle);
-        return true;
+    /** Starts a thread to the point so that it is executing. */
+    private boolean doStartThread0(Thread thread, int threadStackSize, int initFlag) {
+        ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
+        try {
+            WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize, threadStartRoutine.getFunctionPointer(), startData, initFlag, WordFactory.nullPointer());
+            if (osThreadHandle.isNull()) {
+                undoPrepareStartOnError(thread, startData);
+                return false;
+            }
+            WinBase.CloseHandle(osThreadHandle);
+            return true;
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere("No exception must be thrown after creating the thread start data.", e);
+        }
     }
 
     @Override
@@ -107,7 +108,7 @@ public final class WindowsPlatformThreads extends PlatformThreads {
 
         WinBase.HANDLE osThreadHandle = Process.NoTransitions._beginthreadex(WordFactory.nullPointer(), stackSize,
                         threadRoutine, userData, initFlag, WordFactory.nullPointer());
-        return (PlatformThreads.OSThreadHandle) osThreadHandle;
+        return (OSThreadHandle) osThreadHandle;
     }
 
     @Override
@@ -116,6 +117,10 @@ public final class WindowsPlatformThreads extends PlatformThreads {
         if (SynchAPI.NoTransitions.WaitForSingleObject((WinBase.HANDLE) threadHandle, SynchAPI.INFINITE()) != SynchAPI.WAIT_OBJECT_0()) {
             return false;
         }
+        if (threadExitStatus.isNull()) {
+            return true;
+        }
+
         // Since only an int is written, first clear word
         threadExitStatus.write(WordFactory.zero());
         return Process.NoTransitions.GetExitCodeThread((WinBase.HANDLE) threadHandle, (CIntPointer) threadExitStatus) != 0;
@@ -173,57 +178,8 @@ public final class WindowsPlatformThreads extends PlatformThreads {
     protected void yieldCurrent() {
         Process.SwitchToThread();
     }
-
-    @RawStructure
-    interface WindowsThreadStartData extends ThreadStartData {
-
-        @RawField
-        WinBase.HANDLE getOSThreadHandle();
-
-        @RawField
-        void setOSThreadHandle(WinBase.HANDLE osHandle);
-    }
-
-    private static final CEntryPointLiteral<CFunctionPointer> osThreadStartRoutine = CEntryPointLiteral.create(WindowsPlatformThreads.class, "osThreadStartRoutine", WindowsThreadStartData.class);
-
-    private static class OSThreadStartRoutinePrologue implements CEntryPointOptions.Prologue {
-        private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Failed to attach a newly launched thread.");
-
-        @SuppressWarnings("unused")
-        @Uninterruptible(reason = "prologue")
-        static void enter(WindowsThreadStartData data) {
-            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), true, false);
-            if (code != CEntryPointErrors.NO_ERROR) {
-                CEntryPointActions.failFatally(code, errorMessage.get());
-            }
-        }
-    }
-
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
-    @CEntryPointOptions(prologue = OSThreadStartRoutinePrologue.class, epilogue = LeaveDetachThreadEpilogue.class)
-    static WordBase osThreadStartRoutine(WindowsThreadStartData data) {
-        ObjectHandle threadHandle = data.getThreadHandle();
-        WinBase.HANDLE osThreadHandle = data.getOSThreadHandle();
-        freeStartData(data);
-
-        try {
-            threadStartRoutine(threadHandle);
-        } finally {
-            /*
-             * Note that there is another handle to the thread stored in VMThreads.OSThreadHandleTL.
-             * This is necessary to ensure that the operating system does not release the thread
-             * resources too early.
-             */
-            WinBase.CloseHandle(osThreadHandle);
-        }
-        return WordFactory.nullPointer();
-    }
 }
 
-/**
- * {@link WindowsParker} is based on HotSpot class {@code Parker} in {@code os_windows.cpp}, as of
- * JDK 19 (git commit hash: 967a28c3d85fdde6d5eb48aa0edd8f7597772469, JDK tag: jdk-19+36).
- */
 @Platforms(Platform.WINDOWS.class)
 class WindowsParker extends Parker {
     private static final long MAX_DWORD = (1L << 32) - 1;
@@ -252,6 +208,7 @@ class WindowsParker extends Parker {
     }
 
     @Override
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+26/src/hotspot/os/windows/os_windows.cpp#L5672-L5714")
     protected void park(boolean isAbsolute, long time) {
         assert time >= 0 && !(isAbsolute && time == 0) : "must not be called otherwise";
 
@@ -299,6 +256,7 @@ class WindowsParker extends Parker {
     }
 
     @Override
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+26/src/hotspot/os/windows/os_windows.cpp#L5716-L5719")
     protected void unpark() {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {

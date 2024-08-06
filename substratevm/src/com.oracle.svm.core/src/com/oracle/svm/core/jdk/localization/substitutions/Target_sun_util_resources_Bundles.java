@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.substitutions.modes.JvmLocaleMode;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
 
 import sun.util.resources.Bundles.Strategy;
@@ -48,9 +49,18 @@ final class Target_sun_util_resources_Bundles {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
     private static ConcurrentMap<?, ?> cacheList = new ConcurrentHashMap<>();
 
-    @TargetElement(onlyWith = OptimizedLocaleMode.class)
+    @TargetElement(name = "loadBundleOf", onlyWith = OptimizedLocaleMode.class)
     @Substitute
-    private static ResourceBundle loadBundleOf(String baseName, Locale targetLocale, Strategy strategy) {
+    private static ResourceBundle loadBundleOfOptimized(String baseName, Locale targetLocale, Strategy strategy) {
         return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
+    }
+
+    @TargetElement(onlyWith = JvmLocaleMode.class)
+    @Alias
+    private static native ResourceBundle loadBundleOf(String baseName, Locale targetLocale, Strategy strategy);
+
+    @Substitute
+    public static ResourceBundle of(String baseName, Locale locale, Strategy strategy) {
+        return ImageSingletons.lookup(LocalizationSupport.class).jvmMode() ? loadBundleOf(baseName, locale, strategy) : loadBundleOfOptimized(baseName, locale, strategy);
     }
 }

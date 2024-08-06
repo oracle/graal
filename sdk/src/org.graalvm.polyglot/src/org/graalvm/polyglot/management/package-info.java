@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,15 @@
  */
 /*
  @ApiInfo(
- group="GraalVM SDK"
+ group="Polyglot"
  )
  */
 /**
  * The management package provides tools that monitor and instrument the behavior of guest language
  * programs.
  * <p>
- * See <link <a href="http://www.graalvm.org/docs/graalvm-as-a-platform/embed/">graalvm.org</a> for
- * more examples on how to use this API.
+ * See <a href="http://www.graalvm.org/docs/graalvm-as-a-platform/embed/">graalvm.org</a> for more
+ * examples on how to use this API.
  *
  * @see org.graalvm.polyglot.management.ExecutionListener Execution listeners allow to instrument
  *      the execution of guest languages.

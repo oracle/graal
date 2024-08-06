@@ -32,7 +32,7 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.util.Objects;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

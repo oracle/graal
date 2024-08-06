@@ -67,6 +67,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.io.MessageTransport;
 
@@ -92,9 +94,6 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 
 /**
  * Central coordinator class for the Truffle instrumentation framework. Allocated once per
@@ -878,8 +877,13 @@ final class InstrumentationHandler {
         }
 
         if (!NodeUtil.isReplacementSafe(parent, node, wrapperNode)) {
+            String wrapperClass = wrapperNode.getClass().getName();
+            String nodeClass = node.getClass().getName();
+            String fieldName = NodeUtil.findChildFieldName(parent, node);
             throw new IllegalStateException(
-                            String.format("WrapperNode implementation %s cannot be safely replaced in parent node class %s.", wrapperNode.getClass().getName(), parent.getClass().getName()));
+                            String.format("Cannot insert wrapper %s for node %s because the field %s#%s cannot be assigned with a %s.%nAt %s%nYou might want to widen the field type to %s or generate a different wrapper for %s.",
+                                            wrapperClass, nodeClass, parent.getClass().getName(), fieldName, wrapperClass, node.getSourceSection(), wrapperNode.getClass().getSuperclass().getName(),
+                                            nodeClass));
         }
         return wrapperNode;
     }
@@ -1004,79 +1008,105 @@ final class InstrumentationHandler {
 
     void notifyContextCreated(TruffleContext context) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
-            binding.getElement().onContextCreated(context);
+            if (binding.getInstrumenter().isReadyForContextEvents()) {
+                binding.getElement().onContextCreated(context);
+            }
         }
     }
 
     void notifyContextClosed(TruffleContext context) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
-            binding.getElement().onContextClosed(context);
+            if (binding.getInstrumenter().isReadyForContextEvents()) {
+                binding.getElement().onContextClosed(context);
+            }
         }
     }
 
     void notifyContextResetLimit(TruffleContext context) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
-            binding.getElement().onContextResetLimits(context);
+            if (binding.getInstrumenter().isReadyForContextEvents()) {
+                binding.getElement().onContextResetLimits(context);
+            }
         }
     }
 
     void notifyLanguageContextCreate(TruffleContext context, LanguageInfo language) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
-            binding.getElement().onLanguageContextCreate(context, language);
+            if (binding.getInstrumenter().isReadyForContextEvents()) {
+                binding.getElement().onLanguageContextCreate(context, language);
+            }
         }
     }
 
     void notifyLanguageContextCreated(TruffleContext context, LanguageInfo language) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
-            binding.getElement().onLanguageContextCreated(context, language);
+            if (binding.getInstrumenter().isReadyForContextEvents()) {
+                binding.getElement().onLanguageContextCreated(context, language);
+            }
         }
     }
 
     void notifyLanguageContextCreateFailed(TruffleContext context, LanguageInfo language) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
-            binding.getElement().onLanguageContextCreateFailed(context, language);
+            if (binding.getInstrumenter().isReadyForContextEvents()) {
+                binding.getElement().onLanguageContextCreateFailed(context, language);
+            }
         }
     }
 
     void notifyLanguageContextInitialize(TruffleContext context, LanguageInfo language) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
-            binding.getElement().onLanguageContextInitialize(context, language);
+            if (binding.getInstrumenter().isReadyForContextEvents()) {
+                binding.getElement().onLanguageContextInitialize(context, language);
+            }
         }
     }
 
     void notifyLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
-            binding.getElement().onLanguageContextInitialized(context, language);
+            if (binding.getInstrumenter().isReadyForContextEvents()) {
+                binding.getElement().onLanguageContextInitialized(context, language);
+            }
         }
     }
 
     void notifyLanguageContextInitializeFailed(TruffleContext context, LanguageInfo language) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
-            binding.getElement().onLanguageContextInitializeFailed(context, language);
+            if (binding.getInstrumenter().isReadyForContextEvents()) {
+                binding.getElement().onLanguageContextInitializeFailed(context, language);
+            }
         }
     }
 
     void notifyLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
-            binding.getElement().onLanguageContextFinalized(context, language);
+            if (binding.getInstrumenter().isReadyForContextEvents()) {
+                binding.getElement().onLanguageContextFinalized(context, language);
+            }
         }
     }
 
     void notifyLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
         for (EventBinding<? extends ContextsListener> binding : contextsBindings) {
-            binding.getElement().onLanguageContextDisposed(context, language);
+            if (binding.getInstrumenter().isReadyForContextEvents()) {
+                binding.getElement().onLanguageContextDisposed(context, language);
+            }
         }
     }
 
     void notifyThreadStarted(TruffleContext context, Thread thread) {
         for (EventBinding<? extends ThreadsListener> binding : threadsBindings) {
-            binding.getElement().onThreadInitialized(context, thread);
+            if (binding.getInstrumenter().isReadyForContextEvents()) {
+                binding.getElement().onThreadInitialized(context, thread);
+            }
         }
     }
 
     void notifyThreadFinished(TruffleContext context, Thread thread) {
         for (EventBinding<? extends ThreadsListener> binding : threadsBindings) {
-            binding.getElement().onThreadDisposed(context, thread);
+            if (binding.getInstrumenter().isReadyForContextEvents()) {
+                binding.getElement().onThreadDisposed(context, thread);
+            }
         }
     }
 
@@ -2193,6 +2223,11 @@ final class InstrumentationHandler {
         }
 
         @Override
+        boolean isReadyForContextEvents() {
+            return InstrumentAccessor.engineAccess().isInstrumentReadyForContextEvents(env.getPolyglotInstrument());
+        }
+
+        @Override
         boolean isInstrumentableSource(Source source) {
             return true;
         }
@@ -2316,6 +2351,11 @@ final class InstrumentationHandler {
     final class EngineInstrumenter extends AbstractInstrumenter {
 
         @Override
+        boolean isReadyForContextEvents() {
+            return true;
+        }
+
+        @Override
         void doFinalize() {
         }
 
@@ -2375,6 +2415,11 @@ final class InstrumentationHandler {
         LanguageClientInstrumenter(TruffleLanguage<?> language) {
             this.language = language;
             this.languageInfo = InstrumentAccessor.langAccess().getLanguageInfo(language);
+        }
+
+        @Override
+        boolean isReadyForContextEvents() {
+            return true;
         }
 
         @Override
@@ -2470,6 +2515,8 @@ final class InstrumentationHandler {
      * privileges may vary.
      */
     abstract class AbstractInstrumenter extends Instrumenter {
+
+        abstract boolean isReadyForContextEvents();
 
         abstract void doFinalize();
 

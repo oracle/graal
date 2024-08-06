@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -27,6 +27,7 @@
 package com.oracle.svm.core.monitor;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.AbstractQueuedLongSynchronizer;
 import java.util.concurrent.locks.LockSupport;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -34,19 +35,19 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.util.BasedOnJDKClass;
 
 import jdk.internal.misc.Unsafe;
 
 /**
  * {@link JavaMonitorQueuedSynchronizer} is based on the code of
- * {@link java.util.concurrent.locks.AbstractQueuedLongSynchronizer} as of JDK 19 (git commit hash:
- * f640fc5a1eb876a657d0de011dcd9b9a42b88eec, JDK tag: jdk-19+30). This class could be merged with
- * {@link JavaMonitor} but we keep it separate because that way diffing against the JDK sources is
- * easier.
- * 
+ * {@link java.util.concurrent.locks.AbstractQueuedLongSynchronizer} as of JDK 21+26. This class
+ * could be merged with {@link JavaMonitor} but we keep it separate because that way diffing against
+ * the JDK sources is easier.
+ *
  * Only the relevant methods from the JDK sources have been kept. Some additional Native
  * Image-specific functionality has been added.
- * 
+ *
  * Main differences to the JDK implementation:
  * <ul>
  * <li>No need to store an owner {@linkplain Thread thread object}.</li>
@@ -57,6 +58,7 @@ import jdk.internal.misc.Unsafe;
  * {@link java.util.concurrent.ForkJoinPool#managedBlock}).</li>
  * </ul>
  */
+@BasedOnJDKClass(AbstractQueuedLongSynchronizer.class)
 abstract class JavaMonitorQueuedSynchronizer {
     // Node.status field values
     static final int WAITING = 1; // must be 1
@@ -67,6 +69,7 @@ abstract class JavaMonitorQueuedSynchronizer {
     protected static final int SPIN_SUCCESS = -1;
 
     // see AbstractQueuedLongSynchronizer.Node
+    @BasedOnJDKClass(value = AbstractQueuedLongSynchronizer.class, innerClass = "Node")
     abstract static class Node {
         volatile Node prev;
         volatile Node next;
@@ -75,12 +78,12 @@ abstract class JavaMonitorQueuedSynchronizer {
 
         // see AbstractQueuedLongSynchronizer.Node.casPrev(Node, Node)
         final boolean casPrev(Node c, Node v) {
-            return weakCompareAndSetReference(this, PREV, c, v);
+            return U.weakCompareAndSetReference(this, PREV, c, v);
         }
 
         // see AbstractQueuedLongSynchronizer.Node.casNext(Node, Node)
         final boolean casNext(Node c, Node v) {
-            return weakCompareAndSetReference(this, NEXT, c, v);
+            return U.weakCompareAndSetReference(this, NEXT, c, v);
         }
 
         // see AbstractQueuedLongSynchronizer.Node.getAndUnsetStatus(int)
@@ -90,7 +93,7 @@ abstract class JavaMonitorQueuedSynchronizer {
 
         // see AbstractQueuedLongSynchronizer.Node.setPrevRelaxed(Node)
         final void setPrevRelaxed(Node p) {
-            putReference(this, PREV, p);
+            U.putReference(this, PREV, p);
         }
 
         // see AbstractQueuedLongSynchronizer.Node.setStatusRelaxed(int)
@@ -109,10 +112,12 @@ abstract class JavaMonitorQueuedSynchronizer {
     }
 
     // see AbstractQueuedLongSynchronizer.ExclusiveNode
+    @BasedOnJDKClass(value = AbstractQueuedLongSynchronizer.class, innerClass = "ExclusiveNode")
     static final class ExclusiveNode extends Node {
     }
 
     // see AbstractQueuedLongSynchronizer.ConditionNode
+    @BasedOnJDKClass(value = AbstractQueuedLongSynchronizer.class, innerClass = "ConditionNode")
     static final class ConditionNode extends Node {
         ConditionNode nextWaiter;
         long notifierJfrTid;
@@ -169,32 +174,51 @@ abstract class JavaMonitorQueuedSynchronizer {
 
     // see AbstractQueuedLongSynchronizer.casTail(Node, Node)
     private boolean casTail(Node c, Node v) {
-        return compareAndSetReference(this, TAIL, c, v);
+        return U.compareAndSetReference(this, TAIL, c, v);
     }
 
     // see AbstractQueuedLongSynchronizer.tryInitializeHead()
-    private void tryInitializeHead() {
-        Node h = new ExclusiveNode();
-        if (compareAndSetReference(this, HEAD, null, h)) {
-            tail = h;
+    private Node tryInitializeHead() {
+        for (Node h = null, t;;) {
+            if ((t = tail) != null) {
+                return t;
+            } else if (head != null) {
+                Thread.onSpinWait();
+            } else {
+                if (h == null) {
+                    try {
+                        h = new ExclusiveNode();
+                    } catch (OutOfMemoryError oome) {
+                        return null;
+                    }
+                }
+                if (U.compareAndSetReference(this, HEAD, null, h)) {
+                    return tail = h;
+                }
+            }
         }
     }
 
     // see AbstractQueuedLongSynchronizer.enqueue(Node)
-    final void enqueue(Node node) {
+    final void enqueue(ConditionNode node) {
         if (node != null) {
-            for (;;) {
-                Node t = tail;
-                node.setPrevRelaxed(t); // avoid unnecessary fence
-                if (t == null) { // initialize
-                    tryInitializeHead();
-                } else if (casTail(t, node)) {
+            boolean unpark = false;
+            for (Node t;;) {
+                if ((t = tail) == null && (t = tryInitializeHead()) == null) {
+                    unpark = true;             // wake up to spin on OOME
+                    break;
+                }
+                node.setPrevRelaxed(t);        // avoid unnecessary fence
+                if (casTail(t, node)) {
                     t.next = node;
-                    if (t.status < 0) { // wake up to clean link
-                        LockSupport.unpark(node.waiter);
+                    if (t.status < 0) {        // wake up to clean link
+                        unpark = true;
                     }
                     break;
                 }
+            }
+            if (unpark) {
+                LockSupport.unpark(node.waiter);
             }
         }
     }
@@ -298,15 +322,21 @@ abstract class JavaMonitorQueuedSynchronizer {
                     return 1;
                 }
             }
-            if (node == null) { // allocate; retry before enqueue
-                node = new ExclusiveNode();
+            Node t;
+            if ((t = tail) == null) {           // initialize queue
+                if (tryInitializeHead() == null) {
+                    return acquireOnOOME(arg);
+                }
+            } else if (node == null) {          // allocate; retry before enqueue
+                try {
+                    node = new ExclusiveNode();
+                } catch (OutOfMemoryError oome) {
+                    return acquireOnOOME(arg);
+                }
             } else if (pred == null) { // try to enqueue
                 node.waiter = current;
-                Node t = tail;
                 node.setPrevRelaxed(t); // avoid unnecessary fence
-                if (t == null) {
-                    tryInitializeHead();
-                } else if (!casTail(t, node)) {
+                if (!casTail(t, node)) {
                     node.setPrevRelaxed(null); // back out
                 } else {
                     t.next = node;
@@ -320,6 +350,19 @@ abstract class JavaMonitorQueuedSynchronizer {
                 spins = getSpinAttempts(parks);
                 LockSupport.park(this);
                 node.clearStatus();
+            }
+        }
+    }
+
+    // see AbstractQueuedLongSynchronizer.acquireOnOOME(boolean, long)
+    private int acquireOnOOME(long arg) {
+        for (long nanos = 1L;;) {
+            if (tryAcquire(arg)) {
+                return 1;
+            }
+            U.park(false, nanos);               // must use Unsafe park to sleep
+            if (nanos < 1L << 30) {             // max about 1 second
+                nanos <<= 1;
             }
         }
     }
@@ -396,9 +439,12 @@ abstract class JavaMonitorQueuedSynchronizer {
     }
 
     // see AbstractQueuedLongSynchronizer.ConditionObject
+    @BasedOnJDKClass(value = AbstractQueuedLongSynchronizer.class, innerClass = "ConditionObject")
     public final class JavaMonitorConditionObject {
         private transient ConditionNode firstWaiter;
         private transient ConditionNode lastWaiter;
+
+        static final long OOME_COND_WAIT_DELAY = 10L * 1000L * 1000L; // 10 ms
 
         // see AbstractQueuedLongSynchronizer.ConditionObject.doSignal(ConditionNode, boolean)
         @SuppressWarnings("all")
@@ -407,6 +453,8 @@ abstract class JavaMonitorQueuedSynchronizer {
                 ConditionNode next = first.nextWaiter;
                 if ((firstWaiter = next) == null) {
                     lastWaiter = null;
+                } else {
+                    first.nextWaiter = null; // GC assistance
                 }
                 if ((first.getAndUnsetStatus(COND) & COND) != 0) {
                     first.notifierJfrTid = SubstrateJVM.getCurrentThreadId();
@@ -424,8 +472,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             ConditionNode first = firstWaiter;
             if (!isHeldExclusively()) {
                 throw new IllegalMonitorStateException();
-            }
-            if (first != null) {
+            } else if (first != null) {
                 doSignal(first, false);
             }
         }
@@ -435,8 +482,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             ConditionNode first = firstWaiter;
             if (!isHeldExclusively()) {
                 throw new IllegalMonitorStateException();
-            }
-            if (first != null) {
+            } else if (first != null) {
                 doSignal(first, true);
             }
         }
@@ -495,6 +541,24 @@ abstract class JavaMonitorQueuedSynchronizer {
             }
         }
 
+        // see AbstractQueuedLongSynchronizer.ConditionObject.newConditionNode()
+        private ConditionNode newConditionNode() {
+            long savedState;
+            if (tryInitializeHead() != null) {
+                try {
+                    return new ConditionNode();
+                } catch (OutOfMemoryError oome) {
+                }
+            }
+            // fall through if encountered OutOfMemoryError
+            if (!isHeldExclusively() || !release(savedState = getState())) {
+                throw new IllegalMonitorStateException();
+            }
+            U.park(false, OOME_COND_WAIT_DELAY);
+            acquireOnOOME(savedState);
+            return null;
+        }
+
         // see AbstractQueuedLongSynchronizer.ConditionObject.await()
         @SuppressWarnings("all")
         public void await(Object obj) throws InterruptedException {
@@ -503,7 +567,10 @@ abstract class JavaMonitorQueuedSynchronizer {
                 JavaMonitorWaitEvent.emit(startTicks, obj, 0, 0L, false);
                 throw new InterruptedException();
             }
-            ConditionNode node = new ConditionNode();
+            ConditionNode node = newConditionNode();
+            if (node == null) {
+                return;
+            }
             long savedAcquisitions = enableWait(node);
             boolean interrupted = false;
             boolean cancelled = false;
@@ -540,7 +607,10 @@ abstract class JavaMonitorQueuedSynchronizer {
                 JavaMonitorWaitEvent.emit(startTicks, obj, 0, 0L, false);
                 throw new InterruptedException();
             }
-            ConditionNode node = new ConditionNode();
+            ConditionNode node = newConditionNode();
+            if (node == null) {
+                return false;
+            }
             long savedAcquisitions = enableWait(node);
             long nanos = (nanosTimeout < 0L) ? 0L : nanosTimeout;
             long deadline = System.nanoTime() + nanos;
@@ -569,21 +639,6 @@ abstract class JavaMonitorQueuedSynchronizer {
             }
             return !cancelled;
         }
-    }
-
-    @SuppressWarnings("deprecation")
-    static boolean compareAndSetReference(Object object, long offset, Node expected, Node newValue) {
-        return U.compareAndSetObject(object, offset, expected, newValue);
-    }
-
-    @SuppressWarnings("deprecation")
-    static boolean weakCompareAndSetReference(Object object, long offset, Node expected, Node newValue) {
-        return U.weakCompareAndSetObject(object, offset, expected, newValue);
-    }
-
-    @SuppressWarnings("deprecation")
-    static void putReference(Object object, long offset, Node p) {
-        U.putObject(object, offset, p);
     }
 
     // Unsafe

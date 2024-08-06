@@ -109,11 +109,11 @@ public interface DynamicConstant extends PoolConstant {
         }
 
         @Override
-        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             Meta meta = accessingKlass.getMeta();
 
             // Condy constant resolving.
-            BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) ((ObjectKlass) accessingKlass).getAttribute(BootstrapMethodsAttribute.NAME);
+            BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) accessingKlass.getAttribute(BootstrapMethodsAttribute.NAME);
 
             assert (bms != null);
             // TODO(garcia) cache bootstrap method resolution

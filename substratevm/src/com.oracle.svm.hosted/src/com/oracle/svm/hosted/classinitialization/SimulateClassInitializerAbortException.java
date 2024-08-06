@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
-import org.graalvm.compiler.core.common.GraalBailoutException;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.core.common.GraalBailoutException;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
 
 /**
  * Exception used to abort a simulation when it is known that simulation cannot succeed. This avoids

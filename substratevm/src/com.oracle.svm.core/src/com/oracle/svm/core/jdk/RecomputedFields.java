@@ -33,13 +33,8 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.charset.CharsetDecoder;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.security.AccessControlContext;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
@@ -55,8 +50,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
 
@@ -194,7 +187,7 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater
 
 }
 
-@TargetClass(className = "java.util.concurrent.atomic.AtomicLongFieldUpdater$LockedUpdater")
+@TargetClass(className = "java.util.concurrent.atomic.AtomicLongFieldUpdater$LockedUpdater", onlyWith = JDK21OrEarlier.class)
 final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpdater {
     @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset) //
     private long offset;
@@ -231,72 +224,12 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpda
     }
 }
 
-/**
- * The atomic field updaters access fields using {@code Unsafe}. The static analysis needs to know
- * about all these fields, so we need to find the original field (the updater only stores the field
- * offset) and mark it as unsafe accessed.
- */
-@AutomaticallyRegisteredFeature
-class AtomicFieldUpdaterFeature implements InternalFeature {
-
-    private final ConcurrentMap<Object, Boolean> processedUpdaters = new ConcurrentHashMap<>();
-    private Consumer<Field> markAsUnsafeAccessed;
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(this::processObject);
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        markAsUnsafeAccessed = (field -> access.registerAsUnsafeAccessed(field));
-    }
-
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        markAsUnsafeAccessed = null;
-    }
-
-    private Object processObject(Object obj) {
-        if (obj instanceof AtomicReferenceFieldUpdater || obj instanceof AtomicIntegerFieldUpdater || obj instanceof AtomicLongFieldUpdater) {
-            if (processedUpdaters.putIfAbsent(obj, true) == null) {
-                processFieldUpdater(obj);
-            }
-        }
-        return obj;
-    }
-
-    /*
-     * This code runs multi-threaded during the static analysis. It must not be called after static
-     * analysis, because that would mean that we missed an atomic field updater during static
-     * analysis.
-     */
-    private void processFieldUpdater(Object updater) {
-        VMError.guarantee(markAsUnsafeAccessed != null, "New atomic field updater found after static analysis");
-
-        Class<?> updaterClass = updater.getClass();
-        Class<?> tclass = ReflectionUtil.readField(updaterClass, "tclass", updater);
-        long searchOffset = ReflectionUtil.readField(updaterClass, "offset", updater);
-        // search the declared fields for a field with a matching offset
-        for (Field f : tclass.getDeclaredFields()) {
-            if (!Modifier.isStatic(f.getModifiers())) {
-                long fieldOffset = Unsafe.getUnsafe().objectFieldOffset(f);
-                if (fieldOffset == searchOffset) {
-                    markAsUnsafeAccessed.accept(f);
-                    return;
-                }
-            }
-        }
-        throw VMError.shouldNotReachHere("unknown field offset class: " + tclass + ", offset = " + searchOffset);
-    }
-}
-
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 class InnocuousForkJoinWorkerThreadFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.concurrent.ForkJoinWorkerThread$InnocuousForkJoinWorkerThread"),
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtRunTime(access.findClassByName("java.util.concurrent.ForkJoinWorkerThread$InnocuousForkJoinWorkerThread"),
                         "innocuousThreadGroup must be initialized at run time");
     }
 }
@@ -376,6 +309,15 @@ class ForkJoinPoolCommonAccessor {
         }
         return result;
     }
+}
+
+@TargetClass(value = java.util.concurrent.ForkJoinPool.class, innerClass = "DefaultForkJoinWorkerThreadFactory", onlyWith = JDKLatest.class)
+@SuppressWarnings("removal")
+final class Target_java_util_concurrent_ForkJoinPool_DefaultForkJoinWorkerThreadFactory {
+    @Alias @RecomputeFieldValue(kind = Reset) //
+    static AccessControlContext regularACC;
+    @Alias @RecomputeFieldValue(kind = Reset) //
+    static AccessControlContext commonACC;
 }
 
 /** Dummy class to have a class with the file's name. */

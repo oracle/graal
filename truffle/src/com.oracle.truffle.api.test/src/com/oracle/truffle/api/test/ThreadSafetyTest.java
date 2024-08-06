@@ -49,6 +49,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -152,6 +153,7 @@ public class ThreadSafetyTest {
         int execute(VirtualFrame frame) {
             boolean replace = random.nextBoolean();
             if (replace) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 ValueNode newNode = this.replace(new OtherRewritingNode(child, random));
                 return newNode.execute(frame);
             }
@@ -173,6 +175,7 @@ public class ThreadSafetyTest {
         int execute(VirtualFrame frame) {
             boolean replace = random.nextBoolean();
             if (replace) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 ValueNode newNode = this.replace(new RewritingNode(child, random));
                 return newNode.execute(frame);
             }

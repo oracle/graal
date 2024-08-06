@@ -28,7 +28,7 @@ import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-class MethodHandleInvokerSubstitutionType extends CustomSubstitutionType {
+public class MethodHandleInvokerSubstitutionType extends CustomSubstitutionType {
     private final String stableName;
 
     MethodHandleInvokerSubstitutionType(ResolvedJavaType original, String stableName) {

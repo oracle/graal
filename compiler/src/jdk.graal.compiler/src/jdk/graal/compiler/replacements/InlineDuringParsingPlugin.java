@@ -1,0 +1,103 @@
+/*
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package jdk.graal.compiler.replacements;
+
+import static jdk.graal.compiler.core.common.GraalOptions.TrivialInliningSize;
+import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
+import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
+import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+
+import jdk.graal.compiler.java.BytecodeParserOptions;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+
+import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+public final class InlineDuringParsingPlugin implements InlineInvokePlugin {
+
+    private static int getInteger(String name, int def) {
+        String value = GraalServices.getSavedProperty(name);
+        if (value != null) {
+            return Integer.parseInt(value);
+        }
+        return def;
+    }
+
+    /**
+     * Budget which when exceeded reduces the effective value of
+     * {@link BytecodeParserOptions#InlineDuringParsingMaxDepth} to
+     * {@link #MaxDepthAfterBudgetExceeded}.
+     */
+    private static final int NodeBudget = getInteger("InlineDuringParsingPlugin.NodeBudget", 2000);
+
+    private static final int MaxDepthAfterBudgetExceeded = getInteger("InlineDuringParsingPlugin.MaxDepthAfterBudgetExceeded", 3);
+
+    @Override
+    public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        if (!InlineDuringParsing.getValue(b.getOptions())) {
+            return null;
+        }
+        // @formatter:off
+        if (method.hasBytecodes() &&
+            method.getDeclaringClass().isLinked() &&
+            method.canBeInlined()) {
+
+            // Test force inlining first
+            if (method.shouldBeInlined() && checkInliningDepth(b)) {
+                return createStandardInlineInfo(method);
+            }
+
+            if (!method.isSynchronized() &&
+                checkSize(method, args, b.getGraph()) &&
+                checkInliningDepth(b)) {
+                return createStandardInlineInfo(method);
+            }
+        }
+        // @formatter:on
+        return null;
+    }
+
+    private static boolean checkInliningDepth(GraphBuilderContext b) {
+        int nodeCount = b.getGraph().getNodeCount();
+        int maxDepth = InlineDuringParsingMaxDepth.getValue(b.getOptions());
+        if (nodeCount > NodeBudget && MaxDepthAfterBudgetExceeded < maxDepth) {
+            maxDepth = MaxDepthAfterBudgetExceeded;
+        }
+        return b.getDepth() < maxDepth;
+    }
+
+    private static boolean checkSize(ResolvedJavaMethod method, ValueNode[] args, StructuredGraph graph) {
+        int bonus = 1;
+        for (ValueNode v : args) {
+            if (v.isConstant()) {
+                bonus++;
+            }
+        }
+        return method.getCode().length <= TrivialInliningSize.getValue(graph.getOptions()) * bonus;
+    }
+}

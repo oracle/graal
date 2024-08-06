@@ -29,8 +29,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
-
-import org.graalvm.compiler.options.OptionType;
+import java.util.regex.PatternSyntaxException;
 
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.OptionOrigin;
@@ -38,6 +37,8 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.options.OptionType;
 
 class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -114,15 +115,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--exclude-config":
                 args.poll();
-                String excludeJar = args.poll();
-                if (excludeJar == null) {
-                    NativeImage.showError(headArg + " requires two arguments: a jar regular expression and a resource regular expression");
-                }
-                String excludeConfig = args.poll();
-                if (excludeConfig == null) {
-                    NativeImage.showError(headArg + " requires resource regular expression");
-                }
-                nativeImage.addExcludeConfig(Pattern.compile(excludeJar), Pattern.compile(excludeConfig));
+                handleExcludeConfigOption(headArg, args);
                 return true;
             case VERBOSE_OPTION:
                 args.poll();
@@ -167,7 +160,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             /* Using agentlib to allow interoperability with other agents */
             nativeImage.addImageBuilderJavaArgs("-agentlib:jdwp=transport=dt_socket,server=y,address=" + address + ",suspend=y");
             /* Disable watchdog mechanism */
-            nativeImage.addPlainImageBuilderArg(nativeImage.oHDeadlockWatchdogInterval + "0");
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHDeadlockWatchdogInterval + "0", OptionOrigin.originDriver);
             return true;
         }
 
@@ -186,6 +179,30 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         return false;
+    }
+
+    private void handleExcludeConfigOption(String headArg, ArgumentQueue args) {
+        String excludeJar = args.poll();
+        if (excludeJar == null) {
+            NativeImage.showError(headArg + " requires two arguments: a jar regular expression and a resource regular expression");
+        }
+        Pattern jarPattern;
+        try {
+            jarPattern = Pattern.compile(excludeJar);
+        } catch (final PatternSyntaxException pse) {
+            throw NativeImage.showError(headArg + " was used with an invalid jar regular expression: %s", pse);
+        }
+        String excludeConfig = args.poll();
+        if (excludeConfig == null) {
+            NativeImage.showError(headArg + " requires resource regular expression");
+        }
+        Pattern excludeConfigPattern;
+        try {
+            excludeConfigPattern = Pattern.compile(excludeConfig);
+        } catch (final PatternSyntaxException pse) {
+            throw NativeImage.showError(headArg + " was used with an invalid resource regular expression: %s", pse);
+        }
+        nativeImage.addExcludeConfig(jarPattern, excludeConfigPattern);
     }
 
     /**

@@ -26,8 +26,6 @@ package com.oracle.svm.core.os;
 
 import java.io.File;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -40,6 +38,9 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 public abstract class AbstractRawFileOperationSupport implements RawFileOperationSupport {
     private final boolean useNativeByteOrder;

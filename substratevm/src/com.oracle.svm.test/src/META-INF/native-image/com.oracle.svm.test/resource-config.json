@@ -1,0 +1,13 @@
+{
+  "bundles": [],
+  "resources": {
+    "includes": [
+      {
+        "condition": {
+          "typeReachable": "java.lang.String"
+        },
+        "pattern": "resourcesFromDir"
+      }
+    ]
+  }
+}

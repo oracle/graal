@@ -44,6 +44,7 @@ import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
+import org.graalvm.nativebridge.In;
 import org.graalvm.nativebridge.Out;
 import org.graalvm.nativebridge.processor.test.OutParameterService;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
@@ -93,4 +94,7 @@ abstract class HSOutParameterService extends HSObject implements OutParameterSer
 
     @Override
     public abstract Map<String, String> mixedParametersCustom(List<String> p1, @Out List<String> p2, List<String> p3, @Out List<String> p4);
+
+    @Override
+    public abstract void exchangeArrayWithMarshalledParameter(@In @Out int[] arr, List<String> list);
 }

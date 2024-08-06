@@ -25,21 +25,23 @@
 package com.oracle.svm.hosted.c.query;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
-import static com.oracle.svm.hosted.c.query.QueryParserUtil.parseHexToLong;
-import static com.oracle.svm.hosted.c.query.QueryParserUtil.parseSigned;
-import static com.oracle.svm.hosted.c.query.QueryParserUtil.unsignedExtendToSize;
 
 import java.io.InputStream;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.graalvm.nativeimage.c.constant.CConstant;
+import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
+import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumConstantInfo;
+import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
 import com.oracle.svm.hosted.c.info.PropertyInfo;
@@ -53,7 +55,9 @@ import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Parses query result described in {@link QueryResultFormat}.
@@ -83,47 +87,55 @@ public final class QueryResultParser extends NativeInfoTreeVisitor {
     @Override
     protected void visitConstantInfo(ConstantInfo constantInfo) {
         switch (constantInfo.getKind()) {
-            case INTEGER:
+            case INTEGER -> {
                 parseIntegerProperty(constantInfo.getSizeInfo());
                 parseSignedness(constantInfo.getSignednessInfo());
                 parseIntegerConstantValue(constantInfo.getValueInfo());
-
-                /*
-                 * From the point of view of the C compiler, plain #define constants have the type
-                 * int and therefore size 4. But sometimes we want to access such values as short or
-                 * byte to avoid casts. Check the actual value of the constant, and if it fits the
-                 * declared type of the constant, then change the actual size to the declared size.
-                 */
-                JavaKind returnKind = AccessorInfo.getReturnType(constantInfo.getAnnotatedElement()).getJavaKind();
-                if (returnKind == JavaKind.Object) {
-                    returnKind = nativeLibs.getTarget().wordJavaKind;
-                }
-                int declaredSize = getSizeInBytes(returnKind);
-                int actualSize = constantInfo.getSizeInfo().getProperty();
-                if (declaredSize != actualSize) {
-                    long value = (long) constantInfo.getValueInfo().getProperty();
-                    if (value >= returnKind.getMinValue() && value <= returnKind.getMaxValue()) {
-                        constantInfo.getSizeInfo().setProperty(declaredSize);
-                    }
-                }
-
-                break;
-            case POINTER:
+                tryChangeSizeToDeclaredReturnType(constantInfo);
+            }
+            case POINTER -> {
                 parseIntegerProperty(constantInfo.getSizeInfo());
                 parseIntegerConstantValue(constantInfo.getValueInfo());
-                break;
-            case FLOAT:
+            }
+            case FLOAT -> {
                 parseIntegerProperty(constantInfo.getSizeInfo());
                 parseFloatValue(constantInfo.getValueInfo());
-                break;
-            case STRING:
-                parseStringValue(constantInfo.getValueInfo());
-                break;
-            case BYTEARRAY:
-                parseByteArrayValue(constantInfo.getValueInfo());
-                break;
-            default:
-                throw shouldNotReachHereUnexpectedInput(constantInfo.getKind()); // ExcludeFromJacocoGeneratedReport
+            }
+            case STRING -> parseStringValue(constantInfo.getValueInfo());
+            case BYTEARRAY -> parseByteArrayValue(constantInfo.getValueInfo());
+            default -> throw shouldNotReachHereUnexpectedInput(constantInfo.getKind()); // ExcludeFromJacocoGeneratedReport
+        }
+    }
+
+    /**
+     * When a {@link CConstant} is accessed with a non-matching Java type (e.g., a C int is accessed
+     * as a Java short or Java long), then we try to implicitly cast the constant to the Java type.
+     * This implicit cast avoids the need for {@link AllowNarrowingCast}/{@link AllowWideningCast}.
+     */
+    private void tryChangeSizeToDeclaredReturnType(ConstantInfo constantInfo) {
+        ResolvedJavaType javaReturnType = AccessorInfo.getReturnType(constantInfo.getAnnotatedElement());
+        JavaKind javaReturnKind = nativeLibs.getWordTypes().asKind(javaReturnType);
+        int bytesInJava = javaReturnKind.getByteCount();
+
+        int bytesInC = constantInfo.getSizeInBytes();
+        long cValue = (long) constantInfo.getValue();
+        if (javaReturnKind == JavaKind.Boolean) {
+            /* Casts to boolean are always allowed because we convert the value to 0 or 1. */
+            long newValue = cValue != 0L ? 1L : 0L;
+            constantInfo.getValueInfo().setProperty(newValue);
+            constantInfo.getSizeInfo().setProperty(bytesInJava);
+        } else if (bytesInJava != bytesInC) {
+            /*
+             * Only allow casts if the constant can be represented accurately. Note that a simple
+             * range check is not enough because we store the value of the C constant as a Java
+             * long, which will overflow if we have a large unsigned 64-bit value.
+             */
+            boolean withinRange = cValue >= javaReturnKind.getMinValue() && cValue <= javaReturnKind.getMaxValue();
+            boolean negativeCValueAsUnsigned64BitValue = !constantInfo.isUnsigned() && cValue < 0 && !nativeLibs.isSigned(javaReturnType) && javaReturnKind.getBitCount() == Long.SIZE;
+            boolean largeUnsignedCValue = constantInfo.isUnsigned() && cValue < 0;
+            if (withinRange && !negativeCValueAsUnsigned64BitValue && !largeUnsignedCValue) {
+                constantInfo.getSizeInfo().setProperty(bytesInJava);
+            }
         }
     }
 
@@ -173,6 +185,15 @@ public final class QueryResultParser extends NativeInfoTreeVisitor {
     }
 
     @Override
+    protected void visitEnumInfo(EnumInfo info) {
+        assert info.getKind() == ElementKind.INTEGER;
+        parseIntegerProperty(info.getSizeInfo());
+        parseSignedness(info.getSignednessInfo());
+
+        super.visitEnumInfo(info);
+    }
+
+    @Override
     protected void visitEnumConstantInfo(EnumConstantInfo constantInfo) {
         assert constantInfo.getKind() == ElementKind.INTEGER;
         parseIntegerProperty(constantInfo.getSizeInfo());
@@ -185,20 +206,29 @@ public final class QueryResultParser extends NativeInfoTreeVisitor {
     }
 
     private void parseIntegerConstantValue(PropertyInfo<Object> info) {
-        boolean isUnsigned = ((SizableInfo) info.getParent()).isUnsigned();
-        int size = ((SizableInfo) info.getParent()).getSizeInfo().getProperty();
         String hex = idToResult.get(info.getUniqueID());
-        int hexSize = hex.length() / 2;
+        long value = parseHexToLong(hex);
 
-        if (hexSize < size) {
-            hex = unsignedExtendToSize(size, hex);
+        SizableInfo parent = (SizableInfo) info.getParent();
+        int bitsInC = parent.getSizeInBytes() * Byte.SIZE;
+        if (bitsInC < Long.SIZE) {
+            value = parent.isUnsigned() ? CodeUtil.zeroExtend(value, bitsInC) : CodeUtil.signExtend(value, bitsInC);
         }
 
-        if (isUnsigned) {
-            parseHexToLong(info, hex);
-        } else {
-            parseSigned(info, hex);
+        info.setProperty(value);
+    }
+
+    private static long parseHexToLong(String hex) {
+        assert hex.length() <= 16;
+
+        if (hex.length() > 8) {
+            String msb = hex.substring(0, hex.length() - 8);
+            String lsb = hex.substring(hex.length() - 8);
+            long msbValue = Long.parseLong(msb, 16);
+            long lsbValue = Long.parseLong(lsb, 16);
+            return msbValue << 32 | lsbValue;
         }
+        return Long.parseLong(hex, 16);
     }
 
     private void parseFloatValue(PropertyInfo<Object> info) {
@@ -228,7 +258,7 @@ public final class QueryResultParser extends NativeInfoTreeVisitor {
     private byte[] byteArrayLiteral(ElementInfo info) {
         String str = stringLiteral(info);
         if (!str.isEmpty()) {
-            return str.getBytes(Charset.forName("UTF-8"));
+            return str.getBytes(StandardCharsets.UTF_8);
         } else {
             return new byte[0];
         }

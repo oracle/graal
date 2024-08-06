@@ -28,9 +28,7 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
 
-/**
- * Reduced version of {@link CodeInfoQueryResult} as a stack-allocatable (C memory) structure.
- */
+/** Reduced version of {@link CodeInfoQueryResult} as a stack-allocatable (C memory) structure. */
 @RawStructure
 public interface SimpleCodeInfoQueryResult extends PointerBase {
 

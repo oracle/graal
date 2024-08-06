@@ -38,19 +38,22 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.nodes.BciProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
+import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
-@GenerateWrapper
+@GenerateWrapper(yieldExceptions = UnwindContinuationException.class)
 @ExportLibrary(NodeLibrary.class)
 public abstract class BaseQuickNode extends EspressoNode implements BciProvider, InstrumentableNode {
 
-    public abstract int execute(VirtualFrame frame);
+    public static final BaseQuickNode[] EMPTY_ARRAY = new BaseQuickNode[0];
 
-    public final boolean isInstrumentable() {
+    public abstract int execute(VirtualFrame frame, boolean isContinuationResume);
+
+    public boolean isInstrumentable() {
         return true;
     }
 
     @Override
-    public final WrapperNode createWrapper(ProbeNode probeNode) {
+    public WrapperNode createWrapper(ProbeNode probeNode) {
         return new BaseQuickNodeWrapper(this, probeNode);
     }
 

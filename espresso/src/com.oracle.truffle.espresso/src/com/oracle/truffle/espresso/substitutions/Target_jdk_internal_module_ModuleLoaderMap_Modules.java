@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.util.ArrayList;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -30,10 +31,10 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -48,49 +49,42 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
         public abstract void execute();
 
         @Specialization
-        public void clinit(
+        public static void clinit(
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jdk_internal_module_ModuleLoaderMap_Modules_clinit.getCallTargetNoSubstitution())") DirectCallNode original) {
             Meta meta = context.getMeta();
             assert meta.getJavaVersion().java17OrLater();
             original.call();
 
-            ModuleExtension[] toAdd = ModuleExtension.get(context);
-            if (toAdd.length == 0) {
-                return;
+            ModuleExtension[] bootExtensions = ModuleExtension.getBootExtensions(context);
+            if (bootExtensions.length > 0) {
+                /*
+                 * Spoof the statically stored boot module set.
+                 */
+                spoofModules(Name.bootModules, meta, bootExtensions);
             }
-            /*
-             * Spoof the statically stored boot module set.
-             */
-            spoofBootModules(meta, toAdd);
+            ModuleExtension[] platformExtensions = ModuleExtension.getPlatformExtensions(context);
+            if (platformExtensions.length > 0) {
+                /*
+                 * Spoof the statically stored platform module set.
+                 */
+                spoofModules(Name.platformModules, meta, platformExtensions);
+            }
         }
 
         @TruffleBoundary
-        private void spoofBootModules(Meta meta, ModuleExtension[] toAdd) {
-            EspressoLanguage language = getLanguage();
-
-            Field bootModulesField = meta.jdk_internal_module_ModuleLoaderMap_Modules.lookupDeclaredField(Symbol.Name.bootModules, Symbol.Type.java_util_Set);
-            Method setOf = meta.java_util_Set.lookupMethod(Symbol.Name.of, Symbol.Signature.java_util_Set_Object_array);
+        private static void spoofModules(Symbol<Name> fieldName, Meta meta, ModuleExtension[] toAdd) {
+            Field field = meta.jdk_internal_module_ModuleLoaderMap_Modules.lookupDeclaredField(fieldName, Type.java_util_Set);
 
             StaticObject staticStorage = meta.jdk_internal_module_ModuleLoaderMap_Modules.tryInitializeAndGetStatics();
             @JavaType(Set.class)
-            StaticObject originalResult = bootModulesField.getObject(staticStorage);
-            Method toArray = originalResult.getKlass().lookupMethod(meta.getNames().getOrCreate("toArray"), Symbol.Signature.Object_array_Object_array);
+            StaticObject originalResult = field.getObject(staticStorage);
 
-            StaticObject array = (StaticObject) toArray.invokeDirect(originalResult, meta.java_lang_String.allocateReferenceArray(0));
-            assert array.isArray();
-            StaticObject[] unwrapped = array.unwrap(language);
-
-            StaticObject resultArray = meta.java_lang_String.allocateReferenceArray(unwrapped.length + toAdd.length);
-            StaticObject[] unwrappedResult = resultArray.unwrap(language);
-
-            System.arraycopy(unwrapped, 0, unwrappedResult, toAdd.length, unwrapped.length);
-
-            for (int i = 0; i < toAdd.length; i++) {
-                unwrappedResult[i] = meta.toGuestString(toAdd[i].moduleName());
+            ArrayList<String> moduleNames = new ArrayList<>(toAdd.length);
+            for (ModuleExtension moduleExtension : toAdd) {
+                moduleNames.add(moduleExtension.moduleName());
             }
-
-            bootModulesField.setObject(staticStorage, setOf.invokeDirect(null, resultArray));
+            field.setObject(staticStorage, meta.extendedStringSet(originalResult, moduleNames));
         }
     }
 

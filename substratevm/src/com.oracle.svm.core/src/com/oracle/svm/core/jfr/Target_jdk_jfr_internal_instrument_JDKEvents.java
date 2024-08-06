@@ -27,20 +27,29 @@ package com.oracle.svm.core.jfr;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 
 import jdk.jfr.events.ActiveRecordingEvent;
 import jdk.jfr.events.ActiveSettingEvent;
 
-@TargetClass(className = "jdk.jfr.internal.instrument.JDKEvents", onlyWith = HasJfrSupport.class)
+@TargetClass(classNameProvider = Name_jdk_jfr_internal_JDKEvents_helper.class, onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_instrument_JDKEvents {
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) private static Class<?>[] eventClasses = {
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) //
+    private static Class<?>[] eventClasses = {
                     ActiveSettingEvent.class,
                     ActiveRecordingEvent.class
     };
 
     // This is a list of the classes with instrumentation code that should be applied.
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) private static Class<?>[] instrumentationClasses = new Class<?>[]{};
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) //
+    @TargetElement(onlyWith = JDK21OrEarlier.class) private static Class<?>[] instrumentationClasses = new Class<?>[]{};
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) private static Class<?>[] mirrorEventClasses = new Class<?>[]{};
+    @Alias //
+    @TargetElement(onlyWith = JDK21OrEarlier.class) //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) //
+    private static Class<?>[] mirrorEventClasses = new Class<?>[]{};
 }

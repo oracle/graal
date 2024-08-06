@@ -44,7 +44,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo;
@@ -70,13 +69,14 @@ public final class TraceCompilationPolymorphismListener extends AbstractGraalTru
         if (target.getOptionValue(OptimizedRuntimeOptions.TraceCompilationPolymorphism)) {
             target.accept(new NodeVisitor() {
                 @Override
+                @SuppressWarnings("deprecation")
                 public boolean visit(Node node) {
-                    if (node != null && (node.getCost() == NodeCost.MEGAMORPHIC || node.getCost() == NodeCost.POLYMORPHIC)) {
-                        NodeCost cost = node.getCost();
+                    if (node != null && (node.getCost() == com.oracle.truffle.api.nodes.NodeCost.MEGAMORPHIC || node.getCost() == com.oracle.truffle.api.nodes.NodeCost.POLYMORPHIC)) {
+                        com.oracle.truffle.api.nodes.NodeCost cost = node.getCost();
                         Map<String, Object> props = new LinkedHashMap<>();
                         props.put("simpleName", node.getClass().getSimpleName());
                         props.put("subtree", "\n" + NodeUtil.printCompactTreeToString(node));
-                        String msg = cost == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
+                        String msg = cost == com.oracle.truffle.api.nodes.NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
                         runtime.logEvent(target, 0, msg, node.toString(), props, null);
                     }
                     return true;

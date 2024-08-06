@@ -27,11 +27,11 @@ package com.oracle.svm.hosted.code;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.c.function.CFunction;
 
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
@@ -41,9 +41,10 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.util.ClassUtil;
 
-import jdk.vm.ci.meta.JavaType;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.Signature;
 
 /**
  * Call stub for invoking C functions via methods annotated with {@link CFunction}.
@@ -82,31 +83,26 @@ public final class CFunctionCallStubMethod extends CCallStubMethod {
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         assert purpose != Purpose.PREPARE_RUNTIME_COMPILATION || allowRuntimeCompilation();
 
         return super.buildGraph(debug, method, providers, purpose);
     }
 
     @Override
-    protected ValueNode createTargetAddressNode(HostedGraphKit kit, HostedProviders providers, List<ValueNode> arguments) {
+    protected ValueNode createTargetAddressNode(HostedGraphKit kit, List<ValueNode> arguments) {
         return kit.unique(new CGlobalDataLoadAddressNode(linkage));
     }
 
     @Override
-    protected JavaType[] getParameterTypesForLoad(ResolvedJavaMethod method) {
-        return method.toParameterTypes(); // include a potential receiver
-    }
-
-    @Override
-    protected Signature adaptSignatureAndConvertArguments(HostedProviders providers, NativeLibraries nativeLibraries,
-                    HostedGraphKit kit, ResolvedJavaMethod method, JavaType returnType, JavaType[] paramTypes, List<ValueNode> arguments) {
-        JavaType[] adaptedParamTypes = paramTypes;
+    protected ResolvedSignature<AnalysisType> adaptSignatureAndConvertArguments(NativeLibraries nativeLibraries,
+                    HostedGraphKit kit, AnalysisMethod method, AnalysisType returnType, AnalysisType[] paramTypes, List<ValueNode> arguments) {
+        var adaptedParamTypes = paramTypes;
         if (method.hasReceiver()) {
             // For non-static methods, we ignore the receiver.
             arguments.remove(0);
             adaptedParamTypes = Arrays.copyOfRange(adaptedParamTypes, 1, adaptedParamTypes.length);
         }
-        return super.adaptSignatureAndConvertArguments(providers, nativeLibraries, kit, method, returnType, adaptedParamTypes, arguments);
+        return super.adaptSignatureAndConvertArguments(nativeLibraries, kit, method, returnType, adaptedParamTypes, arguments);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,36 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
-import static com.oracle.truffle.api.impl.asm.Opcodes.AASTORE;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_FINAL;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_PUBLIC;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_SUPER;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_VARARGS;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ALOAD;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ANEWARRAY;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ARETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ASTORE;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ATHROW;
-import static com.oracle.truffle.api.impl.asm.Opcodes.BIPUSH;
-import static com.oracle.truffle.api.impl.asm.Opcodes.CHECKCAST;
-import static com.oracle.truffle.api.impl.asm.Opcodes.DLOAD;
-import static com.oracle.truffle.api.impl.asm.Opcodes.DRETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.DUP;
-import static com.oracle.truffle.api.impl.asm.Opcodes.FLOAD;
-import static com.oracle.truffle.api.impl.asm.Opcodes.FRETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.GETFIELD;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ICONST_0;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ILOAD;
-import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESPECIAL;
-import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESTATIC;
-import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKEVIRTUAL;
-import static com.oracle.truffle.api.impl.asm.Opcodes.IRETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.LLOAD;
-import static com.oracle.truffle.api.impl.asm.Opcodes.LRETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.NEW;
-import static com.oracle.truffle.api.impl.asm.Opcodes.POP;
-import static com.oracle.truffle.api.impl.asm.Opcodes.RETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.SIPUSH;
-import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.AASTORE;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ACC_FINAL;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ACC_SUPER;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ACC_VARARGS;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ALOAD;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ANEWARRAY;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ARETURN;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ASTORE;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ATHROW;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.BIPUSH;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.CHECKCAST;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.DLOAD;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.DRETURN;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.DUP;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.FLOAD;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.FRETURN;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ICONST_0;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ILOAD;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.INVOKESPECIAL;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.INVOKESTATIC;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.INVOKEVIRTUAL;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.IRETURN;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.LLOAD;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.LRETURN;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.NEW;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.POP;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.RETURN;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.SIPUSH;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.V1_8;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -67,10 +66,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.impl.asm.ClassWriter;
-import com.oracle.truffle.api.impl.asm.Label;
-import com.oracle.truffle.api.impl.asm.MethodVisitor;
-import com.oracle.truffle.api.impl.asm.Type;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
@@ -86,6 +81,10 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shadowed.asm.ClassWriter;
+import com.oracle.truffle.espresso.shadowed.asm.Label;
+import com.oracle.truffle.espresso.shadowed.asm.MethodVisitor;
+import com.oracle.truffle.espresso.shadowed.asm.Type;
 import com.oracle.truffle.espresso.vm.ModulesHelperVM;
 
 /**
@@ -99,7 +98,6 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     private static final String JL_OBJECT = "java/lang/Object";
     private static final String JL_THROWABLE = "java/lang/Throwable";
     private static final String JLR_UNDECLARED_THROWABLE_EX = "java/lang/reflect/UndeclaredThrowableException";
-    private static final String FOREIGN_OBJECT_FIELD_NAME = "foreignObject";
     private static final int VARARGS = 0x00000080;
 
     private final Meta meta;
@@ -115,8 +113,6 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     private final ObjectKlass[] interfaces;
 
     private final ObjectKlass superKlass;
-
-    private final boolean hasForeignObjectField;
 
     /* proxy class access flags */
     private final int accessFlags;
@@ -147,45 +143,24 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         this.context = context;
         this.interfaces = parents;
         this.superKlass = superKlass;
-        this.hasForeignObjectField = superKlass == meta.polyglot.EspressoForeignList;
         this.accessFlags = ACC_PUBLIC | ACC_FINAL | ACC_SUPER;
         this.proxyClassLoader = context.getBindingsLoader();
         this.className = nextClassName(proxyClassContext(referencedTypes()));
     }
 
-    private enum ProxyType {
-        WRAPPED,
-        UNWRAPPED
-    }
-
     public static class GeneratedProxyBytes {
         public final byte[] bytes;
         public final String name;
-        private final ProxyType proxyType;
         private final ObjectKlass superklass;
 
         GeneratedProxyBytes(byte[] bytes, String name, ObjectKlass superKlass) {
             this.bytes = bytes;
             this.name = name;
             this.superklass = superKlass;
-            this.proxyType = getProxyType(superKlass);
         }
 
-        private static ProxyType getProxyType(ObjectKlass klass) {
-            return klass == klass.getMeta().polyglot.EspressoForeignList ? ProxyType.WRAPPED : ProxyType.UNWRAPPED;
-        }
-
-        public ProxyKlass getProxyKlass(EspressoContext context, ObjectKlass proxyKlass) {
-            switch (proxyType) {
-                case WRAPPED: {
-                    return new WrappedProxyKlass(proxyKlass, context, superklass);
-                }
-                case UNWRAPPED: {
-                    return new ProxyKlass(proxyKlass);
-                }
-                default:
-                    throw EspressoError.shouldNotReachHere();
-            }
+        public WrappedProxyKlass getProxyKlass(ObjectKlass proxyKlass) {
+            return new WrappedProxyKlass(proxyKlass);
         }
 
         public ObjectKlass getSuperklass() {
@@ -489,9 +464,6 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         mv.visitLabel(startBlock);
 
         mv.visitVarInsn(ALOAD, 0);
-        if (hasForeignObjectField) {
-            mv.visitFieldInsn(GETFIELD, superKlass.getNameAsString(), FOREIGN_OBJECT_FIELD_NAME, "Ljava/lang/Object;");
-        }
 
         mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop",
                         "toDisplayString",
@@ -755,7 +727,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             Label throwableHandler = new Label();
 
             List<Klass> catchList = computeUniqueCatchList(exceptionTypes);
-            if (catchList.size() > 0) {
+            if (!catchList.isEmpty()) {
                 for (Klass ex : catchList) {
                     mv.visitTryCatchBlock(startBlock, endBlock, runtimeHandler,
                                     dotToSlash(ex.getNameAsString()));
@@ -766,17 +738,29 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             }
             mv.visitLabel(startBlock);
 
+            String invokeName;
+            String invokeSig;
+
             if (returnType.isPrimitive()) {
                 JavaKind kind = returnType.getJavaKind();
-                mv.visitLdcInsn(Type.getType(kind.toBoxedJavaClass()));
+                if (kind == JavaKind.Char) {
+                    mv.visitLdcInsn(Type.getType(kind.toBoxedJavaClass()));
+                    invokeName = "invokeMemberWithCast";
+                    invokeSig = "(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/String;" +
+                                    "[Ljava/lang/Object;)Ljava/lang/Object;";
+                } else {
+                    invokeName = "invokeMember";
+                    invokeSig = "(Ljava/lang/Object;Ljava/lang/String;" +
+                                    "[Ljava/lang/Object;)Ljava/lang/Object;";
+                }
             } else {
                 mv.visitLdcInsn(Type.getType(returnType.getTypeAsString()));
+                invokeName = "invokeMemberWithCast";
+                invokeSig = "(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/String;" +
+                                "[Ljava/lang/Object;)Ljava/lang/Object;";
             }
 
             mv.visitVarInsn(ALOAD, 0);
-            if (hasForeignObjectField) {
-                mv.visitFieldInsn(GETFIELD, superKlass.getNameAsString(), FOREIGN_OBJECT_FIELD_NAME, "Ljava/lang/Object;");
-            }
             mv.visitLdcInsn(Mangle.truffleJniMethodName(methodName, signature));
 
             if (parameterTypes.length > 0) {
@@ -795,9 +779,8 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                 mv.visitTypeInsn(ANEWARRAY, JL_OBJECT);
             }
             mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop",
-                            "invokeMemberWithCast",
-                            "(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/String;" +
-                                            "[Ljava/lang/Object;)Ljava/lang/Object;",
+                            invokeName,
+                            invokeSig,
                             false);
 
             if (returnType == meta._void) {
@@ -870,27 +853,42 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         private void codeUnwrapReturnValue(MethodVisitor mv, Klass type) {
             if (type.isPrimitive()) {
                 JavaKind kind = JavaKind.fromTypeString(type.getTypeAsString());
-                String wrapperClassName = dotToSlash(kind.toBoxedJavaClass().getName());
-                mv.visitTypeInsn(CHECKCAST, wrapperClassName);
-                mv.visitMethodInsn(INVOKEVIRTUAL,
-                                wrapperClassName,
-                                kind.getUnwrapMethodName(), kind.getUnwrapMethodDesc(), false);
 
                 switch (kind) {
-                    case Int:
-                    case Boolean:
-                    case Byte:
-                    case Short:
                     case Char:
+                        String wrapperClassName = dotToSlash(kind.toBoxedJavaClass().getName());
+                        mv.visitTypeInsn(CHECKCAST, wrapperClassName);
+                        mv.visitMethodInsn(INVOKEVIRTUAL,
+                                        wrapperClassName,
+                                        kind.getUnwrapMethodName(), kind.getUnwrapMethodDesc(), false);
+                        mv.visitInsn(IRETURN);
+                        break;
+                    case Int:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asInt", "(Ljava/lang/Object;)I", false);
+                        mv.visitInsn(IRETURN);
+                        break;
+                    case Boolean:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asBoolean", "(Ljava/lang/Object;)Z", false);
+                        mv.visitInsn(IRETURN);
+                        break;
+                    case Byte:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asByte", "(Ljava/lang/Object;)B", false);
+                        mv.visitInsn(IRETURN);
+                        break;
+                    case Short:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asShort", "(Ljava/lang/Object;)S", false);
                         mv.visitInsn(IRETURN);
                         break;
                     case Long:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asLong", "(Ljava/lang/Object;)J", false);
                         mv.visitInsn(LRETURN);
                         break;
                     case Float:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asFloat", "(Ljava/lang/Object;)F", false);
                         mv.visitInsn(FRETURN);
                         break;
                     case Double:
+                        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop", "asDouble", "(Ljava/lang/Object;)D", false);
                         mv.visitInsn(DRETURN);
                         break;
                     default:

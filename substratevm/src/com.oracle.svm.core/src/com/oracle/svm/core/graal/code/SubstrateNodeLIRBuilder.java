@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import org.graalvm.compiler.lir.Variable;
+import jdk.graal.compiler.lir.Variable;
 
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 

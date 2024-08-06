@@ -29,6 +29,9 @@ import java.util.Collections;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.option.SubstrateOptionsParser;
+
+import jdk.graal.compiler.options.OptionKey;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -48,12 +51,21 @@ public class UserError {
         static final long serialVersionUID = 75431290632980L;
         private final Iterable<String> messages;
 
-        protected UserException(String msg) {
+        public UserException(String msg) {
             this(Collections.singletonList(msg));
         }
 
         protected UserException(Iterable<String> messages) {
             super(String.join(System.lineSeparator(), messages));
+            this.messages = messages;
+        }
+
+        public UserException(String msg, Throwable throwable) {
+            this(Collections.singletonList(msg), throwable);
+        }
+
+        protected UserException(Iterable<String> messages, Throwable throwable) {
+            super(String.join(System.lineSeparator(), messages), throwable);
             this.messages = messages;
         }
 
@@ -124,5 +136,31 @@ public class UserError {
      */
     public static UserException abort(Iterable<String> messages) {
         throw new UserException(messages);
+    }
+
+    /**
+     * Stop compilation immediately and report the invalid use of an option to the user.
+     *
+     * @param option the option incorrectly used.
+     * @param value the value passed to the option, possibly invalid.
+     * @param reason the reason why the option-value pair is rejected that can be understood by the
+     *            user.
+     */
+    public static UserException invalidOptionValue(OptionKey<?> option, String value, String reason) {
+        return abort("Invalid option '%s'. %s.", SubstrateOptionsParser.commandArgument(option, value), reason);
+    }
+
+    /**
+     * @see #invalidOptionValue(OptionKey, String, String)
+     */
+    public static UserException invalidOptionValue(OptionKey<?> option, Boolean value, String reason) {
+        return invalidOptionValue(option, value ? "+" : "-", reason);
+    }
+
+    /**
+     * @see #invalidOptionValue(OptionKey, String, String)
+     */
+    public static UserException invalidOptionValue(OptionKey<?> option, Number value, String reason) {
+        return invalidOptionValue(option, String.valueOf(value), reason);
     }
 }

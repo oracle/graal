@@ -26,23 +26,62 @@ package com.oracle.svm.core.os;
 
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
+import static com.oracle.svm.core.util.PointerUtils.roundUp;
 
-import org.graalvm.compiler.word.Word;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.word.Word;
 
 public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static UnsignedWord getImageHeapAddressSpaceSize() {
-        UnsignedWord imageHeapSizeInFile = getImageHeapSizeInFile();
-        return imageHeapSizeInFile.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
+    protected UnsignedWord getTotalRequiredAddressSpaceSize() {
+        UnsignedWord size = getImageHeapAddressSpaceSize();
+        if (DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
+            size = size.add(getPreHeapAlignedSizeForDynamicMethodAddressResolver());
+        }
+        return size;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected UnsignedWord getImageHeapAddressSpaceSize() {
+        UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
+        int imageHeapOffset = Heap.getHeap().getImageHeapOffsetInAddressSpace();
+        assert imageHeapOffset >= 0;
+        UnsignedWord size = WordFactory.unsigned(imageHeapOffset);
+        size = size.add(getImageHeapSizeInFile(IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get()));
+        size = UnsignedUtils.roundUp(size, pageSize);
+        return size;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected static UnsignedWord getImageHeapSizeInFile(Word beginAddress, Word endAddress) {
+        assert endAddress.aboveOrEqual(endAddress);
+        return endAddress.subtract(beginAddress);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static UnsignedWord getImageHeapSizeInFile() {
-        Word imageHeapBegin = IMAGE_HEAP_BEGIN.get();
-        return IMAGE_HEAP_END.get().subtract(imageHeapBegin);
+        return getImageHeapSizeInFile(IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected static Pointer getImageHeapBegin(Pointer heapBase) {
+        return heapBase.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected static UnsignedWord getPreHeapAlignedSizeForDynamicMethodAddressResolver() {
+        UnsignedWord requiredPreHeapMemoryInBytes = DynamicMethodAddressResolutionHeapSupport.get().getRequiredPreHeapMemoryInBytes();
+        /* Ensure there is enough space to properly align the heap */
+        UnsignedWord heapAlignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
+        return roundUp((PointerBase) requiredPreHeapMemoryInBytes, heapAlignment);
     }
 }

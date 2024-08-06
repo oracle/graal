@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -48,7 +48,7 @@ public interface MethodTypeConstant extends PoolConstant {
         return Tag.METHODTYPE;
     }
 
-    static StaticObject signatureToMethodType(Symbol<Symbol.Type>[] signature, Klass accessingKlass, boolean failWithBME, Meta meta) {
+    static StaticObject signatureToMethodType(Symbol<Symbol.Type>[] signature, ObjectKlass accessingKlass, boolean failWithBME, Meta meta) {
         Symbol<Symbol.Type> rt = Signatures.returnType(signature);
         int pcount = Signatures.parameterCount(signature);
 
@@ -109,7 +109,7 @@ public interface MethodTypeConstant extends PoolConstant {
         }
 
         @Override
-        public Resolved resolve(RuntimeConstantPool pool, int index, Klass accessingKlass) {
+        public Resolved resolve(RuntimeConstantPool pool, int index, ObjectKlass accessingKlass) {
             Symbol<Signature> sig = getSignature(pool);
             Meta meta = accessingKlass.getContext().getMeta();
             return new Resolved(signatureToMethodType(meta.getSignatures().parsed(sig), accessingKlass, false, meta));

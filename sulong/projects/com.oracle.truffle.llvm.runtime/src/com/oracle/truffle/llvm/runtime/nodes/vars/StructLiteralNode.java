@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -58,7 +58,7 @@ public abstract class StructLiteralNode extends LLVMExpressionNode {
         for (int i = 0; i < offsets.length; i++) {
             LLVMPointer currentAddr = address.increment(offsets[i]);
             Object value = values[i] == null ? null : values[i].executeGeneric(frame);
-            elementWriteNodes[i].executeWithTarget(currentAddr, value);
+            elementWriteNodes[i].executeWithTarget(frame, currentAddr, value);
         }
         return address;
     }

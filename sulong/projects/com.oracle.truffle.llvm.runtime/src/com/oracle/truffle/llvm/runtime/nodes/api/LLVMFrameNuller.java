@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,14 +33,11 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
 
 /**
  * Nulls out the given set of frame slots after evaluating the given statement.
  */
-@NodeInfo(cost = NodeCost.NONE) // this node reduces the compiled code size
 public abstract class LLVMFrameNuller extends LLVMStatementNode {
 
     @CompilationFinal(dimensions = 1) private final int[] frameSlots;

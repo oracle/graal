@@ -367,29 +367,6 @@ public final class Support {
         return jniFunctions().getCallStaticObjectMethodA().invoke(env, clazz, method, args);
     }
 
-    public static JNIObjectHandle callStaticObjectMethodLLLL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method,
-                    JNIObjectHandle l0, JNIObjectHandle l1, JNIObjectHandle l2, JNIObjectHandle l3) {
-
-        JNIValue args = StackValue.get(4, JNIValue.class);
-        args.addressOf(0).setObject(l0);
-        args.addressOf(1).setObject(l1);
-        args.addressOf(2).setObject(l2);
-        args.addressOf(3).setObject(l3);
-        return jniFunctions().getCallStaticObjectMethodA().invoke(env, clazz, method, args);
-    }
-
-    public static JNIObjectHandle callStaticObjectMethodLLLLL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method,
-                    JNIObjectHandle l0, JNIObjectHandle l1, JNIObjectHandle l2, JNIObjectHandle l3, JNIObjectHandle l4) {
-
-        JNIValue args = StackValue.get(5, JNIValue.class);
-        args.addressOf(0).setObject(l0);
-        args.addressOf(1).setObject(l1);
-        args.addressOf(2).setObject(l2);
-        args.addressOf(3).setObject(l3);
-        args.addressOf(4).setObject(l4);
-        return jniFunctions().getCallStaticObjectMethodA().invoke(env, clazz, method, args);
-    }
-
     public static void callStaticVoidMethodLL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, JNIObjectHandle l0, JNIObjectHandle l1) {
         JNIValue args = StackValue.get(2, JNIValue.class);
         args.addressOf(0).setObject(l0);
@@ -405,6 +382,12 @@ public final class Support {
 
     public static boolean callBooleanMethod(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method) {
         return jniFunctions().getCallBooleanMethodA().invoke(env, obj, method, nullPointer());
+    }
+
+    public static boolean callBooleanMethodL(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, JNIObjectHandle l0) {
+        JNIValue args = StackValue.get(1, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        return jniFunctions().getCallBooleanMethodA().invoke(env, obj, method, args);
     }
 
     public static long callLongMethodL(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, JNIObjectHandle l0) {

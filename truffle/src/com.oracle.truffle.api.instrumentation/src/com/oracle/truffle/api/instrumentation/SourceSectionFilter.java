@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -311,6 +311,7 @@ public final class SourceSectionFilter {
     public final class Builder {
         private List<EventFilterExpression> expressions = new ArrayList<>();
         private boolean includeInternal = true;
+        private boolean availableSections = false;
 
         private Builder() {
         }
@@ -422,6 +423,23 @@ public final class SourceSectionFilter {
         public Builder sourceSectionEquals(SourceSection... section) {
             verifyNotNull(section);
             expressions.add(new EventFilterExpression.SourceSectionEquals(section));
+            return this;
+        }
+
+        /**
+         * Add a filter for available source sections. By default all locations with or without
+         * available source sections are provided. If this flag is set to {@code true} then
+         * {@code null} and not {@link SourceSection#isAvailable() available} source sections are
+         * filtered out.
+         *
+         * @param availableOnly {@code true} to include only non-null and
+         *            {@link SourceSection#isAvailable() available} source sections, {@code false}
+         *            to include all.
+         * @return the builder to chain calls
+         * @since 24.1
+         */
+        public Builder sourceSectionAvailableOnly(boolean availableOnly) {
+            this.availableSections = availableOnly;
             return this;
         }
 
@@ -685,6 +703,9 @@ public final class SourceSectionFilter {
             if (!includeInternal) {
                 expressions.add(new EventFilterExpression.IgnoreInternal());
             }
+            if (availableSections) {
+                expressions.add(new EventFilterExpression.AvailableSections());
+            }
             Collections.sort(expressions);
             return new SourceSectionFilter(expressions.toArray(new EventFilterExpression[0]));
         }
@@ -741,7 +762,7 @@ public final class SourceSectionFilter {
         /**
          * Constructs a new index range between one a first index inclusive and a second index
          * exclusive. Parameters must comply <code>startIndex >= 0</code> and
-         * <code>startIndex <= endIndex</code>.
+         * <code>startIndex &lt;= endIndex</code>.
          *
          * @param startIndex the start index (inclusive)
          * @param endIndex the end index (exclusive)
@@ -1597,6 +1618,33 @@ public final class SourceSectionFilter {
             @Override
             public String toString() {
                 return "ignore internal";
+            }
+
+        }
+
+        private static final class AvailableSections extends EventFilterExpression {
+
+            AvailableSections() {
+            }
+
+            @Override
+            boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection s) {
+                return s != null && s.isAvailable();
+            }
+
+            @Override
+            boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection, RootNode rootNode, int rootNodeBits) {
+                return true;
+            }
+
+            @Override
+            protected int getOrder() {
+                return 1;
+            }
+
+            @Override
+            public String toString() {
+                return "available source sections";
             }
 
         }

@@ -26,6 +26,7 @@
 package com.oracle.objectfile;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import com.oracle.objectfile.ObjectFile.Format;
@@ -125,7 +126,7 @@ public abstract class SectionName {
         // default implementation
         switch (f) {
             case MACH_O:
-                return getFormatDependentName(f).toUpperCase();
+                return getFormatDependentName(f).toUpperCase(Locale.ROOT);
             default:
             case ELF:
                 return null;

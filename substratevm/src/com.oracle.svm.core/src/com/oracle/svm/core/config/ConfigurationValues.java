@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.core.config;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Accessors for important configuration objects that are always accessible via the
@@ -43,5 +45,10 @@ public final class ConfigurationValues {
     @Fold
     public static ObjectLayout getObjectLayout() {
         return ImageSingletons.lookup(ObjectLayout.class);
+    }
+
+    @Fold
+    public static JavaKind getWordKind() {
+        return getTarget().wordJavaKind;
     }
 }

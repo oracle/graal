@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.os;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
@@ -34,15 +33,16 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.heap.Heap;
 
+import jdk.graal.compiler.api.replacements.Fold;
+
 /**
  * Provides new instances of the image heap for creating isolates. The same image heap provider
  * implementation can be shared by different garbage collectors.
  * <p>
  * When a heap base is used, then the image heap is always mapped in a way that the memory at the
- * heap base is protected and marked as inaccessible. Depending on the specific scenario, that
- * memory may or may not be part of the Native Image file (see
- * {@link Heap#getImageHeapNullRegionSize()} and {@link Heap#getImageHeapOffsetInAddressSpace()} for
- * more details). This is done regardless of the used GC, platform, or CPU architecture:
+ * heap base is protected and marked as inaccessible (see
+ * {@link Heap#getImageHeapOffsetInAddressSpace()} for more details). This is done regardless of the
+ * used GC, platform, or CPU architecture:
  *
  * <pre>
  * | protected memory | image heap |
@@ -55,14 +55,6 @@ public interface ImageHeapProvider {
     static ImageHeapProvider get() {
         return ImageSingletons.lookup(ImageHeapProvider.class);
     }
-
-    /**
-     * Returns whether this provider, when not already supplied a reserved address space by
-     * {@link CommittedMemoryProvider}, will always ensure a heap address space alignment of
-     * {@link Heap#getPreferredAddressSpaceAlignment()} at image runtime.
-     */
-    @Fold
-    boolean guaranteesHeapPreferredAddressSpaceAlignment();
 
     /**
      * Creates a new instance of the image heap.

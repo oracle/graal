@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.toolchain.launchers.common;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -39,6 +40,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class Driver {
 
@@ -173,8 +175,8 @@ public class Driver {
         toolArgs.addAll(sulongArgs);
         // add user flags
         toolArgs.addAll(userArgs);
-        printInfos(verbose, help, earlyExit, toolArgs);
         if (earlyExit) {
+            printInfos(verbose, help, earlyExit, toolArgs);
             return 0;
         }
         ProcessBuilder pb = new ProcessBuilder(toolArgs);
@@ -194,16 +196,17 @@ public class Driver {
             }
             // wait for process termination
             p.waitFor();
+            printInfos(verbose, help, earlyExit, toolArgs);
             // set exit code
             int exitCode = p.exitValue();
             if (verbose) {
-                System.out.println("exit code: " + exitCode);
+                System.err.println("exit code: " + exitCode);
             }
             return exitCode;
         } catch (IOException ioe) {
             // can only occur on ProcessBuilder#start, no destroying necessary
             if (isBundledTool) {
-                printMissingToolMessage();
+                printMissingToolMessage(Optional.ofNullable(new File(this.exe).toPath().getParent()).map(Path::getParent).map(Path::toString).orElse("<invalid>"));
             }
             throw ioe;
         } catch (Exception e) {
@@ -230,8 +233,8 @@ public class Driver {
         return pb.inheritIO();
     }
 
-    public static void printMissingToolMessage() {
-        System.err.println("Tool execution failed. Are you sure the toolchain is available at " + getLLVMBinDir().getParent());
+    public static void printMissingToolMessage(String llvmRoot) {
+        System.err.println("Tool execution failed. Are you sure the toolchain is available at " + llvmRoot);
         System.err.println();
         System.err.println("More infos: https://www.graalvm.org/docs/reference-manual/languages/llvm/");
     }
@@ -248,9 +251,9 @@ public class Driver {
             System.out.println("GraalVM version: " + getVersion());
         }
         if (verbose) {
-            System.out.println("GraalVM wrapper script for " + getTool());
-            System.out.println("GraalVM version: " + getVersion());
-            System.out.println("running: " + String.join(" ", toolArgs));
+            System.err.println("GraalVM wrapper script for " + getTool());
+            System.err.println("GraalVM version: " + getVersion());
+            System.err.println("running: " + String.join(" ", toolArgs));
         }
         if (help) {
             if (!earlyExit) {

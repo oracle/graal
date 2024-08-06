@@ -34,8 +34,8 @@ public final class JDWPSetup {
     private DebuggerController controller;
 
     public void setup(Debugger debugger, DebuggerController control, JDWPOptions options, JDWPContext context, Object mainThread, VMEventListener vmEventListener) {
-        control.initialize(debugger, options, context, mainThread, vmEventListener);
         this.controller = control;
+        control.initialize(debugger, options, context, mainThread, vmEventListener);
     }
 
     public void finalizeSession() {

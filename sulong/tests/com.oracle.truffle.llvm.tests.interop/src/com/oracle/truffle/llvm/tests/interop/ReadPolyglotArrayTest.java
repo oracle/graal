@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -64,9 +64,7 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -1122,7 +1120,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
 
     @Parameterized.Parameter(0) public String function;
     @Parameterized.Parameter(1) public ResultConsumer assertion;
-    @Parameterized.Parameter(2) public ExpectedExceptionConsumer expectedException;
+    @Parameterized.Parameter(2) public TestRunnableConsumer expectedException;
     /**
      * This parameter is only used to indicate whether the call is expected to work or not.
      */
@@ -1153,14 +1151,13 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         return pointerTypeId;
     }
 
-    @Rule public ExpectedException thrown = ExpectedException.none();
-
     @Test
     public void test() {
         Value read = polyglotReadPointerLibrary.getMember(function);
         Assert.assertNotNull("Function not found: " + function, read);
-        expectedException.accept(thrown);
-        Value ret = read.execute(parameters.getArguments());
-        assertion.accept(ret);
+        expectedException.accept(() -> {
+            Value ret = read.execute(parameters.getArguments());
+            assertion.accept(ret);
+        });
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -510,6 +510,24 @@ public class NodeData extends Template implements Comparable<NodeData> {
             }
         }
         return null;
+    }
+
+    public boolean needsState(ProcessorContext context) {
+        int count = 0;
+        for (SpecializationData specialization : getSpecializations()) {
+            if (specialization.getMethod() == null) {
+                continue;
+            }
+            if (count == 1) {
+                return true;
+            }
+            if (specialization.needsState(context)) {
+                return true;
+            }
+            count++;
+        }
+
+        return false;
     }
 
     public boolean needsRewrites(ProcessorContext context) {

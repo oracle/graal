@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -98,6 +98,10 @@ double sumDoublesLLVM(int count, va_list args) {
     return sum;
 }
 
+double sumDoublesLLVMStructWrapper(int count, struct Varargs *varargs) {
+    return sumDoublesLLVM(count, ((struct VarargsV *) varargs)->args);
+}
+
 double sumDoublesLLVMWithPtr(int count, va_list *args) {
     double sum = 0;
     for (int i = 0; i < count; ++i) {
@@ -159,6 +163,17 @@ double testVACopy(vahandler vaHandler1, vahandler vaHandler2, int count, ...) {
     double res2 = (*vaHandler2)(count / 2, args2);
     va_end(args1);
     va_end(args2);
+    return res1 + res2;
+}
+
+double testVACopyIntoStruct(struct_varargs_handler vaHandler1, struct_varargs_handler vaHandler2, int count, ...) {
+    va_list args;
+    va_start(args, count);
+    struct VarargsV varargs = { { NULL } };
+    va_copy(varargs.args, args);
+    double res1 = (*vaHandler1)(count / 2, (struct Varargs *) &varargs);
+    double res2 = (*vaHandler1)(count / 2, (struct Varargs *) &varargs);
+    va_end(varargs.args);
     return res1 + res2;
 }
 
@@ -279,6 +294,8 @@ int main(void) {
     printf("VACopy test (native, native) : %f\n",
            testVACopy(sumDoublesNative, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
 #endif
+    printf("VACopyIntoStruct test (LLVM, LLVM)     : %f\n", testVACopyIntoStruct(sumDoublesLLVMStructWrapper, sumDoublesLLVMStructWrapper, 16, 1., 2.,
+                                                                                 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
     printf("Delayed VACopy test (LLVM, LLVM)     : %f\n",
            testDelayedVACopy(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
 #ifndef NO_NATIVE_TESTS

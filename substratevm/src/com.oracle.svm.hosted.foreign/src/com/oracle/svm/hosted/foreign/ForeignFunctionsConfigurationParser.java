@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -38,11 +39,14 @@ import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.svm.core.configure.ConfigurationParser;
 
+import jdk.graal.compiler.util.json.JsonParserException;
+
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
     private static final String DOWNCALL_OPTION_CAPTURE_CALL_STATE = "captureCallState";
     private static final String DOWNCALL_OPTION_FIRST_VARIADIC_ARG = "firstVariadicArg";
-    private static final String DOWNCALL_OPTION_TRIVIAL = "trivial";
+    private static final String DOWNCALL_OPTION_CRITICAL = "critical";
+    private static final String DOWNCALL_OPTION_ALLOW_HEAP_ACCESS = "allowHeapAccess";
 
     private final RuntimeForeignAccessSupport accessSupport;
 
@@ -59,6 +63,11 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
         var downcalls = asList(topLevel.get("downcalls", List.of()), "downcalls must be an array of method signatures");
         for (Object downcall : downcalls) {
             parseAndRegisterForeignCall(downcall, (descriptor, options) -> accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), descriptor, options));
+        }
+
+        var upcalls = asList(topLevel.get("upcalls", List.of()), "upcalls must be an array of method signatures");
+        for (Object upcall : upcalls) {
+            parseAndRegisterForeignCall(upcall, (descriptor, options) -> accessSupport.registerForUpcall(ConfigurationCondition.alwaysTrue(), descriptor, options));
         }
     }
 
@@ -82,7 +91,7 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
 
         ArrayList<Linker.Option> res = new ArrayList<>();
         var map = asMap(options, "options must be a map");
-        checkAttributes(map, "options", List.of(), List.of(DOWNCALL_OPTION_FIRST_VARIADIC_ARG, DOWNCALL_OPTION_CAPTURE_CALL_STATE, DOWNCALL_OPTION_TRIVIAL));
+        checkAttributes(map, "options", List.of(), List.of(DOWNCALL_OPTION_FIRST_VARIADIC_ARG, DOWNCALL_OPTION_CAPTURE_CALL_STATE, DOWNCALL_OPTION_CRITICAL));
 
         if (map.containsKey(DOWNCALL_OPTION_FIRST_VARIADIC_ARG)) {
             int firstVariadic = (int) asLong(map.get(DOWNCALL_OPTION_FIRST_VARIADIC_ARG), "");
@@ -97,9 +106,23 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
                 res.add(Linker.Option.captureCallState("errno"));
             }
         }
-        if (map.containsKey(DOWNCALL_OPTION_TRIVIAL)) {
-            if (asBoolean(map.get(DOWNCALL_OPTION_TRIVIAL, ""), DOWNCALL_OPTION_TRIVIAL)) {
-                res.add(Linker.Option.isTrivial());
+        if (map.containsKey(DOWNCALL_OPTION_CRITICAL)) {
+            var criticalOpt = map.get(DOWNCALL_OPTION_CRITICAL, "");
+            if (criticalOpt instanceof Boolean b) {
+                if (b) {
+                    res.add(Linker.Option.critical(false));
+                }
+            } else if (criticalOpt instanceof EconomicMap<?, ?>) {
+                @SuppressWarnings("unchecked")
+                var criticalMap = (EconomicMap<String, Object>) criticalOpt;
+                checkAttributes(criticalMap, DOWNCALL_OPTION_CRITICAL, List.of(), List.of(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS));
+                var allowHeapAccess = false;
+                if (criticalMap.containsKey(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS)) {
+                    allowHeapAccess = asBoolean(criticalMap.get(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS), DOWNCALL_OPTION_ALLOW_HEAP_ACCESS);
+                }
+                res.add(Linker.Option.critical(allowHeapAccess));
+            } else {
+                throw new JsonParserException(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS + " should be a boolean or a map");
             }
         }
 

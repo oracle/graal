@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.phases.Phase;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.phases.Phase;
 
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.util.ImageBuildStatistics.CheckCountLocation;

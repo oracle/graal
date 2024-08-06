@@ -34,6 +34,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 public class JNIThreadLocalPendingException {
     private static final FastThreadLocalObject<Throwable> pendingException = FastThreadLocalFactory.createObject(Throwable.class, "JNIThreadLocalPendingException.pendingException");
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Throwable get() {
         return pendingException.get();
     }
@@ -43,6 +44,7 @@ public class JNIThreadLocalPendingException {
         pendingException.set(t);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void clear() {
         set(null);
     }

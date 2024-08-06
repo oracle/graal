@@ -26,8 +26,8 @@ package com.oracle.svm.core.graal.code;
 
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.asm.Assembler.CodeAnnotation;
-import org.graalvm.compiler.code.CompilationResult;
+import jdk.graal.compiler.asm.Assembler.CodeAnnotation;
+import jdk.graal.compiler.code.CompilationResult;
 import org.graalvm.nativeimage.ImageSingletons;
 
 public abstract class PatchConsumerFactory {

@@ -33,6 +33,7 @@ import os
 import mx
 import mx_unittest
 import mx_sulong
+import mx_truffle
 
 _suite = mx.suite('sulong')
 
@@ -184,3 +185,22 @@ def get_vm_args_for_native():
     cfg = SulongInternalUnittestConfig()
     (extraVmArgs, _, _) = cfg.apply(([], None, []), overrideSulongConfig=_sulong_test_configs["Native"])
     return extraVmArgs
+
+
+class _LLVMNFITestConfig(mx_truffle.NFITestConfig):
+
+    def __init__(self):
+        super(_LLVMNFITestConfig, self).__init__('llvm', ['SULONG_NFI', 'SULONG_NATIVE'])
+
+    def vm_args(self):
+        testPath = mx.distribution('SULONG_NFI_TESTS').output
+        sulongHome = mx.distribution('SULONG_HOME').output
+        args = [
+            '-Dnative.test.backend=llvm',
+            '-Dnative.test.path.llvm=' + testPath,
+            '-Dorg.graalvm.language.llvm.home=' + sulongHome
+        ]
+        return args
+
+
+mx_truffle.register_nfi_test_config(_LLVMNFITestConfig())

@@ -51,7 +51,7 @@ public interface InlineVerifier {
      *
      * @param languageId the snippet language
      * @param inlineSnippet the snippet to parse
-     * @param verifier the {@link InlineResultVerifier} to verify the inline execution result.
+     * @param verifier the {@link ResultVerifier} to verify the inline execution result.
      */
     void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, ResultVerifier verifier);
 

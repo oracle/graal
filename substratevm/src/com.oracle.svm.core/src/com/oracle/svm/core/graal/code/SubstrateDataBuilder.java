@@ -28,18 +28,16 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.nio.ByteBuffer;
 
-import org.graalvm.compiler.code.DataSection.Data;
-import org.graalvm.compiler.code.DataSection.Patches;
-import org.graalvm.compiler.core.common.type.CompressibleConstant;
-import org.graalvm.compiler.core.common.type.TypedConstant;
-import org.graalvm.compiler.lir.asm.DataBuilder;
-
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
+import jdk.graal.compiler.code.DataSection.Data;
+import jdk.graal.compiler.code.DataSection.Patches;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.lir.asm.DataBuilder;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -51,7 +49,7 @@ public class SubstrateDataBuilder extends DataBuilder {
     public Data createDataItem(Constant constant) {
         int size;
         if (constant instanceof VMConstant vmConstant) {
-            assert constant instanceof JavaConstant && constant instanceof CompressibleConstant && constant instanceof TypedConstant : constant;
+            assert constant instanceof JavaConstant && constant instanceof CompressibleConstant : constant;
             return new ObjectData(vmConstant);
         } else if (JavaConstant.isNull(constant)) {
             if (SubstrateObjectConstant.isCompressed((JavaConstant) constant)) {

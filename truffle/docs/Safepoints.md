@@ -101,6 +101,45 @@ Note that precise timing can depend on CPU and interruptions by the GC.
 Since GC times are included in the safepoint interval times, it is expected that the maximum is close to the maximum GC interruption time.
 Future versions of this tool will be able to exclude GC interruption times from this statistic.
 
+### Find missing safepoint polls
+
+The option `TraceMissingSafepointPollInterval` helps to find missing safepoint polls, use it like:
+
+```
+$ bin/js --experimental-options --engine.TraceMissingSafepointPollInterval=20 -e 'print(6*7)'
+...
+42
+[engine] No TruffleSafepoint.poll() for 36ms on main (stacktrace 1ms after the last poll)
+	at java.base/java.lang.StringLatin1.replace(StringLatin1.java:312)
+	at java.base/java.lang.String.replace(String.java:2933)
+	at java.base/jdk.internal.loader.BuiltinClassLoader.defineClass(BuiltinClassLoader.java:801)
+	at java.base/jdk.internal.loader.BuiltinClassLoader.findClassInModuleOrNull(BuiltinClassLoader.java:741)
+	at java.base/jdk.internal.loader.BuiltinClassLoader.loadClassOrNull(BuiltinClassLoader.java:665)
+	at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:639)
+	at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:188)
+	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:526)
+	at org.graalvm.truffle/com.oracle.truffle.polyglot.PolyglotValueDispatch.createInteropValue(PolyglotValueDispatch.java:1694)
+	at org.graalvm.truffle/com.oracle.truffle.polyglot.PolyglotLanguageInstance$1.apply(PolyglotLanguageInstance.java:149)
+	at org.graalvm.truffle/com.oracle.truffle.polyglot.PolyglotLanguageInstance$1.apply(PolyglotLanguageInstance.java:147)
+	at java.base/java.util.concurrent.ConcurrentHashMap.computeIfAbsent(ConcurrentHashMap.java:1708)
+	at org.graalvm.truffle/com.oracle.truffle.polyglot.PolyglotLanguageInstance.lookupValueCacheImpl(PolyglotLanguageInstance.java:147)
+	at org.graalvm.truffle/com.oracle.truffle.polyglot.PolyglotLanguageInstance.lookupValueCache(PolyglotLanguageInstance.java:137)
+	at org.graalvm.truffle/com.oracle.truffle.polyglot.PolyglotLanguageContext.asValue(PolyglotLanguageContext.java:948)
+	at org.graalvm.truffle/com.oracle.truffle.polyglot.PolyglotContextImpl.eval(PolyglotContextImpl.java:1686)
+	at org.graalvm.truffle/com.oracle.truffle.polyglot.PolyglotContextDispatch.eval(PolyglotContextDispatch.java:60)
+	at org.graalvm.polyglot/org.graalvm.polyglot.Context.eval(Context.java:402)
+	at org.graalvm.js.launcher/com.oracle.truffle.js.shell.JSLauncher.executeScripts(JSLauncher.java:365)
+	at org.graalvm.js.launcher/com.oracle.truffle.js.shell.JSLauncher.launch(JSLauncher.java:93)
+	at org.graalvm.launcher/org.graalvm.launcher.AbstractLanguageLauncher.launch(AbstractLanguageLauncher.java:296)
+	at org.graalvm.launcher/org.graalvm.launcher.AbstractLanguageLauncher.launch(AbstractLanguageLauncher.java:121)
+	at org.graalvm.launcher/org.graalvm.launcher.AbstractLanguageLauncher.runLauncher(AbstractLanguageLauncher.java:168)
+...
+```
+
+It prints host stacktraces when there was not a safepoint poll in the last N milliseconds, N being the argument to `TraceMissingSafepointPollInterval`.
+
+On HotSpot there can be long delays between guest safepoints due to classloading, so it makes sense to run this with a native image or focus on non-classloading stacktraces. 
+
 ### Trace thread local actions
 
 The option `--engine.TraceThreadLocalActions` allows to trace all thread local actions of any origin.

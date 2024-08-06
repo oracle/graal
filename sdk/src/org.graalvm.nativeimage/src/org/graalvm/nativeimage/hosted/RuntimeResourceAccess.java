@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package org.graalvm.nativeimage.hosted;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -69,8 +68,7 @@ public final class RuntimeResourceAccess {
     public static void addResource(Module module, String resourcePath) {
         Objects.requireNonNull(module);
         Objects.requireNonNull(resourcePath);
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(),
-                        withModuleName(module, Pattern.quote(resourcePath)));
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourcePath);
     }
 
     /**
@@ -85,8 +83,8 @@ public final class RuntimeResourceAccess {
         Objects.requireNonNull(module);
         Objects.requireNonNull(resourcePath);
         Objects.requireNonNull(resourceContent);
-        ImageSingletons.lookup(RuntimeResourceSupport.class).injectResource(
-                        module, resourcePath, resourceContent);
+        ImageSingletons.lookup(RuntimeResourceSupport.class).injectResource(module, resourcePath, resourceContent);
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addCondition(ConfigurationCondition.alwaysTrue(), module, resourcePath);
     }
 
     /**
@@ -98,7 +96,7 @@ public final class RuntimeResourceAccess {
      */
     public static void addResourceBundle(Module module, String baseBundleName, Locale[] locales) {
         Objects.requireNonNull(locales);
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(),
+        RuntimeResourceSupport.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(),
                         withModuleName(module, baseBundleName), Arrays.asList(locales));
     }
 
@@ -110,7 +108,7 @@ public final class RuntimeResourceAccess {
      * @since 22.3
      */
     public static void addResourceBundle(Module module, String bundleName) {
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(),
+        RuntimeResourceSupport.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(),
                         withModuleName(module, bundleName));
     }
 

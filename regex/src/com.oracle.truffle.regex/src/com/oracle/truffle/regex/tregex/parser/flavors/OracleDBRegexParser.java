@@ -47,21 +47,36 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
+import com.oracle.truffle.regex.charset.Constants;
+import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.errors.OracleDBErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData.CaseFoldAlgorithm;
+import com.oracle.truffle.regex.tregex.parser.MultiCharacterCaseFolding;
 import com.oracle.truffle.regex.tregex.parser.RegexASTBuilder;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.Token;
+import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public final class OracleDBRegexParser implements RegexParser {
+
+    private static final CodePointSet UPPER_CASE = OracleDBConstants.POSIX_CHAR_CLASSES.get("upper");
 
     private final RegexSource source;
     private final OracleDBFlags flags;
     private final OracleDBRegexLexer lexer;
     private final RegexASTBuilder astBuilder;
+    private final OracleDBCharClassTrieNode curCharClass = OracleDBCharClassTrieNode.createTreeRoot();
+    private final CodePointSetAccumulator charClassTmpCaseClosure = new CodePointSetAccumulator();
+    private final CodePointSetAccumulator charClassTmp2 = new CodePointSetAccumulator();
 
     @TruffleBoundary
     public OracleDBRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
@@ -91,54 +106,70 @@ public final class OracleDBRegexParser implements RegexParser {
     @Override
     @TruffleBoundary
     public RegexAST parse() throws RegexSyntaxException {
+        IntArrayBuffer literalStringBuffer = new IntArrayBuffer();
         astBuilder.pushRootGroup();
         Token token = null;
         Token.Kind prevKind;
         while (lexer.hasNext()) {
             prevKind = token == null ? null : token.kind;
             token = lexer.next();
+            if (token.kind != Token.Kind.literalChar && !literalStringBuffer.isEmpty()) {
+                int last = -1;
+                if (token.kind == Token.Kind.quantifier) {
+                    last = literalStringBuffer.removeLast();
+                }
+                addLiteralString(literalStringBuffer);
+                if (last >= 0) {
+                    assert literalStringBuffer.isEmpty();
+                    literalStringBuffer.add(last);
+                    addLiteralString(literalStringBuffer);
+                }
+            }
             switch (token.kind) {
                 case A, z:
                     astBuilder.addPositionAssertion(token);
                     break;
                 case caret:
-                    if (prevKind != Token.Kind.caret) {
-                        if (flags.isMultiline()) {
-                            // (?:^|(?<=\n))
-                            astBuilder.pushGroup();
-                            astBuilder.addCaret();
-                            astBuilder.nextSequence();
-                            astBuilder.pushLookBehindAssertion(false);
-                            astBuilder.addCharClass(CodePointSet.create('\n'));
-                            astBuilder.popGroup();
-                            astBuilder.popGroup();
-                        } else {
-                            astBuilder.addPositionAssertion(token);
-                        }
+                    if (flags.isMultiline()) {
+                        // (?:^|_MATCH_BEGIN_(?<=\n))
+                        astBuilder.pushGroup();
+                        astBuilder.addCaret();
+                        astBuilder.nextSequence();
+                        astBuilder.addPositionAssertion(PositionAssertion.Type.MATCH_BEGIN);
+                        astBuilder.pushLookBehindAssertion(false);
+                        astBuilder.addCharClass(CodePointSet.create('\n'));
+                        astBuilder.popGroup();
+                        astBuilder.popGroup();
+                    } else {
+                        astBuilder.addPositionAssertion(token);
                     }
                     break;
                 case dollar, Z:
-                    if (prevKind != Token.Kind.dollar) {
-                        // multiline mode:
-                        // (?:$|(?=\n))
-                        // otherwise:
-                        // (?:$|(?=\n$))
-                        astBuilder.pushGroup();
+                    // multiline mode:
+                    // (?:$|(?=\n)_MATCH_END_)
+                    // otherwise:
+                    // (?:$|(?=\n$))
+                    astBuilder.pushGroup();
+                    astBuilder.addDollar();
+                    astBuilder.nextSequence();
+                    astBuilder.pushLookAheadAssertion(false);
+                    astBuilder.addCharClass(CodePointSet.create('\n'));
+                    if (token.kind == Token.Kind.Z || !flags.isMultiline()) {
                         astBuilder.addDollar();
-                        astBuilder.nextSequence();
-                        astBuilder.pushLookAheadAssertion(false);
-                        astBuilder.addCharClass(CodePointSet.create('\n'));
-                        if (token.kind == Token.Kind.Z || !flags.isMultiline()) {
-                            astBuilder.addDollar();
-                        }
-                        astBuilder.popGroup();
-                        astBuilder.popGroup();
                     }
+                    astBuilder.popGroup();
+                    if (token.kind == Token.Kind.dollar && flags.isMultiline()) {
+                        astBuilder.addPositionAssertion(PositionAssertion.Type.MATCH_END);
+                    }
+                    astBuilder.popGroup();
                     break;
                 case backReference:
                     astBuilder.addBackReference((Token.BackReference) token, flags.isIgnoreCase());
                     break;
                 case quantifier:
+                    if (prevKind == Token.Kind.quantifier) {
+                        throw syntaxError(OracleDBErrorMessages.NESTED_QUANTIFIER);
+                    }
                     if (astBuilder.getCurTerm() == null || prevKind == Token.Kind.captureGroupBegin) {
                         // quantifiers without target are ignored
                         break;
@@ -149,7 +180,12 @@ public final class OracleDBRegexParser implements RegexParser {
                     astBuilder.nextSequence();
                     break;
                 case captureGroupBegin:
-                    astBuilder.pushCaptureGroup(token);
+                    if (lexer.numberOfCaptureGroupsSoFar() <= 10) {
+                        // oracledb only tracks capture groups 0 - 9
+                        astBuilder.pushCaptureGroup(token);
+                    } else {
+                        astBuilder.pushGroup(token);
+                    }
                     break;
                 case groupEnd:
                     if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
@@ -157,8 +193,25 @@ public final class OracleDBRegexParser implements RegexParser {
                     }
                     astBuilder.popGroup(token);
                     break;
+                case literalChar:
+                    literalStringBuffer.add(((Token.LiteralCharacter) token).getCodePoint());
+                    break;
                 case charClass:
                     astBuilder.addCharClass((Token.CharacterClass) token);
+                    break;
+                case charClassBegin:
+                    curCharClass.clear();
+                    break;
+                case charClassAtom:
+                    ClassSetContents contents = ((Token.CharacterClassAtom) token).getContents();
+                    if (flags.isIgnoreCase()) {
+                        addCCAtomIgnoreCase(contents);
+                    } else {
+                        addCCAtom(contents);
+                    }
+                    break;
+                case charClassEnd:
+                    addCharClass(token);
                     break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
@@ -167,7 +220,139 @@ public final class OracleDBRegexParser implements RegexParser {
         if (!astBuilder.curGroupIsRoot()) {
             throw syntaxError(OracleDBErrorMessages.UNTERMINATED_GROUP);
         }
+        if (!literalStringBuffer.isEmpty()) {
+            addLiteralString(literalStringBuffer);
+        }
         return astBuilder.popRootGroup();
+    }
+
+    private void addCCAtom(ClassSetContents contents) {
+        if (contents.isPosixCollationEquivalenceClass()) {
+            addCCAtomMultiCharExpansion(contents, CaseFoldAlgorithm.OracleDBAI);
+        } else {
+            addCCAtomCodePointSet(contents.getCodePointSet());
+        }
+    }
+
+    private void addCCAtomCodePointSet(CodePointSet codePointSet) {
+        if (!codePointSet.isEmpty()) {
+            for (OracleDBCharClassTrieNode child : curCharClass.getOrAddChildren(codePointSet, true, lexer.getCompilationBuffer())) {
+                child.setEndOfString();
+            }
+        }
+    }
+
+    private void addCCAtomIgnoreCase(ClassSetContents contents) {
+        if (contents.isPosixCollationEquivalenceClass()) {
+            addCCAtomMultiCharExpansion(contents, CaseFoldAlgorithm.OracleDBAI);
+        } else if (contents.isRange()) {
+            CodePointSet range = ccAtomRangeIgnoreCase(contents.getCodePointSet());
+            addCCAtomCodePointSet(range);
+        } else if (contents.isCharacterClass()) {
+            addCCAtomCodePointSet(contents.getCodePointSet());
+        } else {
+            assert contents.isCharacter() || contents.isPosixCollationElement();
+            addCCAtomMultiCharExpansion(contents, CaseFoldAlgorithm.OracleDB);
+        }
+    }
+
+    private void addCCAtomMultiCharExpansion(ClassSetContents contents, CaseFoldAlgorithm algorithm) {
+        caseClosure(algorithm, contents.getCodePointSet());
+        addCCAtomCodePointSet(charClassTmpCaseClosure.toCodePointSet());
+        assert contents.isCharacter() || contents.isPosixCollationElement() || contents.isPosixCollationEquivalenceClass();
+        assert contents.getCodePointSet().matchesSingleChar();
+        // No transitive closure
+        CaseFoldData.getTable(algorithm).caseFold(contents.getCodePointSet(), (codepoint, caseFolded) -> {
+            if (caseFolded.length > 1) {
+                CodePointSet encodingRange = Encodings.UTF_8.getFullSet();
+                CompilationBuffer compilationBuffer = lexer.getCompilationBuffer();
+                MultiCharacterCaseFolding.caseFoldUnfoldString(algorithm, caseFolded, encodingRange, false, false, null, curCharClass, compilationBuffer);
+            }
+        });
+    }
+
+    private void caseClosure(CaseFoldAlgorithm algorithm, CodePointSet codePointSet) {
+        charClassTmpCaseClosure.clear();
+        charClassTmpCaseClosure.addSet(codePointSet);
+        MultiCharacterCaseFolding.caseClosure(algorithm, charClassTmpCaseClosure, charClassTmp2, (a, b) -> true, Encodings.UTF_8.getFullSet(), false);
+    }
+
+    private CodePointSet ccAtomRangeIgnoreCase(CodePointSet parsedRange) {
+        assert parsedRange.size() == 1;
+        assert flags.isIgnoreCase();
+        int lo = parsedRange.getMin();
+        int hi = parsedRange.getMax();
+        CaseFoldData.CaseFoldTable caseFoldTable = CaseFoldData.getTable(CaseFoldAlgorithm.OracleDBSimple);
+        int loLC = caseFoldSingle(caseFoldTable, lo);
+        int hiLC = caseFoldSingle(caseFoldTable, hi);
+        CodePointSetAccumulator toAdd = new CodePointSetAccumulator();
+        CodePointSetAccumulator toRemove = new CodePointSetAccumulator();
+        if (UPPER_CASE.contains(lo) != UPPER_CASE.contains(hi)) {
+            // oracledb-specific quirk: if range bounds are not of the same case, the range
+            // comparison flips from
+            // lowercase(lo) <= chr && chr <= lowercase(hi)
+            // to
+            // lowercase(lo) <= chr || chr <= lowercase(hi)
+            if (loLC <= hiLC || hiLC == loLC - 1) {
+                return Encodings.UTF_8.getFullSet();
+            } else {
+                CodePointSet ret = CodePointSet.create(Character.MIN_CODE_POINT, hiLC, loLC, Character.MAX_CODE_POINT);
+                caseFoldTable.caseFold(ret, (codePoint, caseFolded) -> {
+                    if (!(loLC <= caseFolded[0] || caseFolded[0] <= hiLC)) {
+                        toRemove.addCodePoint(codePoint);
+                    }
+                });
+                caseFoldTable.caseFold(new Range(hiLC, loLC), (codePoint, caseFolded) -> {
+                    if (loLC <= caseFolded[0] || caseFolded[0] <= hiLC) {
+                        toAdd.addCodePoint(codePoint);
+                    }
+                });
+                return ret.subtract(toRemove.toCodePointSet()).union(toAdd.toCodePointSet());
+            }
+        } else {
+            final CodePointSet range;
+            if (loLC > hiLC) {
+                range = CodePointSet.create(loLC);
+            } else {
+                range = CodePointSet.create(loLC, hiLC);
+            }
+            caseFoldTable.caseFold(Constants.ALL_WITHOUT_SURROGATES.subtract(range), (codePoint, caseFolded) -> {
+                if (loLC <= caseFolded[0] && caseFolded[0] <= hiLC) {
+                    toAdd.addCodePoint(codePoint);
+                }
+            });
+            caseFoldTable.caseFold(range, (codePoint, caseFolded) -> {
+                if (caseFolded[0] < loLC || caseFolded[0] > hiLC) {
+                    toRemove.addCodePoint(codePoint);
+                }
+            });
+            return range.subtract(toRemove.toCodePointSet()).union(toAdd.toCodePointSet());
+        }
+    }
+
+    private static int caseFoldSingle(CaseFoldData.CaseFoldTable caseFoldTable, int codepoint) {
+        int[] caseFolded = caseFoldTable.caseFold(codepoint);
+        return caseFolded == null ? codepoint : caseFolded[0];
+    }
+
+    private void addCharClass(Token ccEnd) {
+        astBuilder.setOverrideSourceSection(ccEnd.getSourceSection());
+        curCharClass.generateAST(astBuilder, lexer.isCurCharClassInverted());
+        astBuilder.clearOverrideSourceSection();
+    }
+
+    private void addLiteralString(IntArrayBuffer literalStringBuffer) {
+        if (flags.isIgnoreCase()) {
+            int[] codepoints = literalStringBuffer.toArray();
+            CodePointSet encodingRange = Encodings.UTF_8.getFullSet();
+            CompilationBuffer compilationBuffer = lexer.getCompilationBuffer();
+            MultiCharacterCaseFolding.caseFoldUnfoldString(CaseFoldAlgorithm.OracleDB, codepoints, encodingRange, false, false, astBuilder, null, compilationBuffer);
+        } else {
+            for (int i = 0; i < literalStringBuffer.length(); i++) {
+                astBuilder.addCharClass(CodePointSet.create(literalStringBuffer.get(i)), true);
+            }
+        }
+        literalStringBuffer.clear();
     }
 
     private RegexSyntaxException syntaxError(String msg) {

@@ -69,6 +69,7 @@ public class RegexProperties implements JsonConvertible {
     private static final int FLAG_NESTED_LOOK_BEHIND_ASSERTIONS = 1 << 18;
     private static final int FLAG_CONDITIONAL_BACKREFERENCES = 1 << 19;
     private static final int FLAG_CONDITIONAL_REFERENCES_INTO_LOOK_AHEADS = 1 << 20;
+    private static final int FLAG_MATCH_BOUNDARY_ASSERTIONS = 1 << 21;
 
     private int flags = FLAG_CHAR_CLASSES_CAN_BE_MATCHED_WITH_MASK | FLAG_FIXED_CODEPOINT_WIDTH;
     private int innerLiteralStart = -1;
@@ -277,6 +278,14 @@ public class RegexProperties implements JsonConvertible {
 
     public void setConditionalReferencesIntoLookAheads() {
         setFlag(FLAG_CONDITIONAL_REFERENCES_INTO_LOOK_AHEADS);
+    }
+
+    public boolean hasMatchBoundaryAssertions() {
+        return getFlag(FLAG_MATCH_BOUNDARY_ASSERTIONS);
+    }
+
+    public void setMatchBoundaryAssertions() {
+        setFlag(FLAG_MATCH_BOUNDARY_ASSERTIONS);
     }
 
     @TruffleBoundary

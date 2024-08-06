@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,9 +45,11 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.wasi.WasiClockTimeGetNode;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 import org.graalvm.wasm.predefined.wasi.types.Fdflags;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
+import org.graalvm.wasm.predefined.wasi.types.Fstflags;
 import org.graalvm.wasm.predefined.wasi.types.Oflags;
 import org.graalvm.wasm.predefined.wasi.types.Rights;
 
@@ -56,8 +58,10 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.FileTime;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.graalvm.wasm.predefined.wasi.FlagUtils.isSet;
 
@@ -163,4 +167,29 @@ class FileFd extends SeekableByteChannelFd {
         }
     }
 
+    @Override
+    public Errno fdstatSetTimes(Node node, long atim, long mtim, int fstFlags) {
+        if (!isSet(fsRightsBase, Rights.FdFilestatSetTimes)) {
+            return Errno.Notcapable;
+        }
+        try {
+            if (isSet(fstFlags, Fstflags.Atim)) {
+                file.setLastAccessTime(FileTime.from(atim, TimeUnit.NANOSECONDS));
+            }
+            if (isSet(fstFlags, Fstflags.AtimNow)) {
+                file.setLastAccessTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS));
+            }
+            if (isSet(fstFlags, Fstflags.Mtim)) {
+                file.setLastModifiedTime(FileTime.from(mtim, TimeUnit.NANOSECONDS));
+            }
+            if (isSet(fstFlags, Fstflags.MtimNow)) {
+                file.setLastModifiedTime(FileTime.from(WasiClockTimeGetNode.realtimeNow(), TimeUnit.NANOSECONDS));
+            }
+        } catch (IOException e) {
+            return Errno.Io;
+        } catch (SecurityException e) {
+            return Errno.Acces;
+        }
+        return Errno.Success;
+    }
 }

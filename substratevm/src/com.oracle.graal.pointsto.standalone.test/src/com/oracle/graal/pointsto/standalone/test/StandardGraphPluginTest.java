@@ -26,8 +26,8 @@
 
 package com.oracle.graal.pointsto.standalone.test;
 
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 import org.junit.Test;
 
 import java.lang.reflect.Array;

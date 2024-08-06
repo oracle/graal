@@ -65,6 +65,10 @@ public class OptionClassFilter {
     }
 
     public Set<OptionOrigin> isPackageOrClassIncluded(String packageName) {
+        if (requireCompleteAll) {
+            return reasonCommandLine;
+        }
+
         return requireCompletePackageOrClass.get(packageName);
     }
 

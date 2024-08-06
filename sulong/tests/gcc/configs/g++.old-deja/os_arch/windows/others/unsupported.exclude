@@ -1,0 +1,21 @@
+# missing __muldc3
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.brendan/complex1.C
+
+# unsupported __null
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.ext/null1.C
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.other/crash22.C
+
+# incompatible puts declaration
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.law/except1.C
+
+# incompatible printf declaration
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.other/vbase5.C
+
+# incompatible size_t declaration
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.other/debug1.C
+
+# incompatible mbstate_t declaration
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.other/init14.C
+
+# error: expected unqualified-id
+gcc-5.2.0/gcc/testsuite/g++.old-deja/g++.other/lookup3.C

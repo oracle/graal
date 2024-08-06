@@ -49,13 +49,19 @@ public class HostedConstantFieldProvider extends SharedConstantFieldProvider {
     @Override
     public boolean isFinalField(ResolvedJavaField f, ConstantFieldTool<?> tool) {
         HostedField field = (HostedField) f;
+        if (isFinalField(field)) {
+            return true;
+        }
+        return super.isFinalField(field, tool);
+    }
 
+    public static boolean isFinalField(HostedField field) {
         if (field.location == HostedField.LOC_UNMATERIALIZED_STATIC_CONSTANT) {
             return true;
         } else if (!field.isWritten() && field.isValueAvailable()) {
             return true;
         }
-        return super.isFinalField(field, tool);
+        return false;
     }
 
     @Override

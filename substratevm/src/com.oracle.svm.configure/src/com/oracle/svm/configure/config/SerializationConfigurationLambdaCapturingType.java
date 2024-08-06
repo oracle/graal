@@ -28,17 +28,18 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.Objects;
 
-import com.oracle.svm.core.util.json.JsonPrintable;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonWriter;
+
 public class SerializationConfigurationLambdaCapturingType implements JsonPrintable {
-    private final ConfigurationCondition condition;
+    private final UnresolvedConfigurationCondition condition;
     private final String qualifiedJavaName;
 
-    public SerializationConfigurationLambdaCapturingType(ConfigurationCondition condition, String qualifiedJavaName) {
+    public SerializationConfigurationLambdaCapturingType(UnresolvedConfigurationCondition condition, String qualifiedJavaName) {
         assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not the internal representation";
         Objects.requireNonNull(condition);
         this.condition = condition;
@@ -46,7 +47,7 @@ public class SerializationConfigurationLambdaCapturingType implements JsonPrinta
         this.qualifiedJavaName = qualifiedJavaName;
     }
 
-    public ConfigurationCondition getCondition() {
+    public UnresolvedConfigurationCondition getCondition() {
         return condition;
     }
 

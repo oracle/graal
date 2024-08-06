@@ -92,6 +92,7 @@ public final class EspressoEnv {
     public final boolean SoftExit;
     public final boolean AllowHostExit;
     public final boolean Polyglot;
+    public final boolean Continuum;
     public final boolean BuiltInPolyglotCollections;
     public final boolean HotSwapAPI;
     public final boolean UseBindingsLoader;
@@ -101,6 +102,7 @@ public final class EspressoEnv {
     public final boolean EnableAgents;
     public final int TrivialMethodSize;
     public final boolean UseHostFinalReference;
+    public final boolean RegexSubstitutions;
     public final EspressoOptions.JImageMode JImageMode;
     private final PolyglotTypeMappings polyglotTypeMappings;
     private final HashMap<String, EspressoForeignProxyGenerator.GeneratedProxyBytes> proxyCache;
@@ -119,8 +121,6 @@ public final class EspressoEnv {
 
         this.SoftExit = env.getOptions().get(EspressoOptions.SoftExit);
         this.AllowHostExit = env.getOptions().get(EspressoOptions.ExitHost);
-
-        context.getLanguage().initializeGuestAllocator(env);
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
 
         // null if not specified
@@ -135,6 +135,12 @@ public final class EspressoEnv {
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = env.getOptions().get(EspressoOptions.EnableAgents);
         this.TrivialMethodSize = env.getOptions().get(EspressoOptions.TrivialMethodSize);
+        boolean regexSubstitutions = env.getOptions().get(EspressoOptions.UseTRegex);
+        if (regexSubstitutions && !env.getInternalLanguages().containsKey("regex")) {
+            context.getLogger().warning("UseTRegex is set to true but the 'regex' language is not available. Ignoring UseTRegex.");
+            regexSubstitutions = false;
+        }
+        this.RegexSubstitutions = regexSubstitutions;
         boolean useHostFinalReferenceOption = env.getOptions().get(EspressoOptions.UseHostFinalReference);
         this.UseHostFinalReference = useHostFinalReferenceOption && FinalizationSupport.canUseHostFinalReference();
         if (useHostFinalReferenceOption && !FinalizationSupport.canUseHostFinalReference()) {
@@ -162,6 +168,7 @@ public final class EspressoEnv {
         this.multiThreadingDisabled = multiThreadingDisabledReason;
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
+        this.Continuum = env.getOptions().get(EspressoOptions.Continuum);
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
         this.BuiltInPolyglotCollections = env.getOptions().get(EspressoOptions.BuiltInPolyglotCollections);
         this.polyglotTypeMappings = new PolyglotTypeMappings(env.getOptions().get(EspressoOptions.PolyglotInterfaceMappings), env.getOptions().get(EspressoOptions.PolyglotTypeConverters),

@@ -28,11 +28,12 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.ObjectConstantEquality;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.Constant;
@@ -84,6 +85,8 @@ final class IsolateAwareObjectConstantEqualityFeature implements InternalFeature
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ObjectConstantEquality.class, new IsolateAwareObjectConstantEquality());
+        if (RuntimeCompilation.isEnabled()) {
+            ImageSingletons.add(ObjectConstantEquality.class, new IsolateAwareObjectConstantEquality());
+        }
     }
 }

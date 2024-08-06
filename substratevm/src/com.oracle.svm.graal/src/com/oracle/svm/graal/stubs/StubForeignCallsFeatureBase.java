@@ -29,9 +29,9 @@ import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Function;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -101,10 +101,10 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
                 Set<?> minimumFeatures = getMinimumRequiredFeatures(call);
                 boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumFeatures) || isJITCompilationEnabled && !minimumFeatures.equals(runtimeCheckedCPUFeatures);
                 if (generateBaseline) {
-                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName(), call.isReexecutable()));
+                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName(), call.getSideEffect()));
                 }
                 if (generateRuntimeChecked) {
-                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, call.isReexecutable()));
+                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, call.getSideEffect()));
                 }
             }
             return ret.toArray(new SnippetRuntime.SubstrateForeignCallDescriptor[0]);

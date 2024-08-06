@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
@@ -113,7 +114,7 @@ public interface MethodHandleConstant extends PoolConstant {
         }
 
         @Override
-        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             Meta meta = pool.getContext().getMeta();
             if (meta.getLanguage().getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.STRICT || meta.getJavaVersion().java9OrLater()) {
                 return specCompliantResolution(pool, accessingKlass, meta);
@@ -122,7 +123,7 @@ public interface MethodHandleConstant extends PoolConstant {
             }
         }
 
-        private ResolvedConstant specCompliantResolution(RuntimeConstantPool pool, Klass accessingKlass, Meta meta) {
+        private ResolvedConstant specCompliantResolution(RuntimeConstantPool pool, ObjectKlass accessingKlass, Meta meta) {
             StaticObject mtype;
             Klass mklass;
             Symbol<Name> refName;
@@ -159,7 +160,7 @@ public interface MethodHandleConstant extends PoolConstant {
          * <p>
          * see {@code JDK-8188145}
          */
-        private ResolvedConstant hotspotResolutionBehavior(RuntimeConstantPool pool, Klass accessingKlass, Meta meta) {
+        private ResolvedConstant hotspotResolutionBehavior(RuntimeConstantPool pool, ObjectKlass accessingKlass, Meta meta) {
             StaticObject mtype;
             Klass mklass;
             Symbol<Name> refName;

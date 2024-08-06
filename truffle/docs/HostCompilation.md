@@ -27,10 +27,10 @@ Truffle host inlining leverages these properties and forces inlining during host
 The general assumption is that code important for runtime compilation is also important for interpreter execution.
 Whenever a PE boundary is detected, the host inlining phase no longer makes any inlining decisions and defers them to later inlining phases better suited for regular Java code.
 
-The source code for this phase can be found in [HostInliningPhase](https://github.com/oracle/graal/blob/master/compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/truffle/compiler/host/HostInliningPhase.java).
+The source code for this phase can be found in [HostInliningPhase](../../compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/truffle/host/HostInliningPhase.java).
 
 Truffle host inlining is applied when compiling a method annotated with `@HostCompilerDirectives.BytecodeInterpreterSwitch`.
-The maximum node cost for such methods can be configured using `-H:TruffleHostInliningByteCodeInterpreterBudget=100000` for native images and `-Dgraal.TruffleHostInliningByteCodeInterpreterBudget=100000` on HotSpot. 
+The maximum node cost for such methods can be configured using `-H:TruffleHostInliningByteCodeInterpreterBudget=100000` for native images and `-Djdk.graal.TruffleHostInliningByteCodeInterpreterBudget=100000` on HotSpot. 
 If a method that is annotated with  `@BytecodeInterpreterSwitch` calls a method with the same annotation then the method is directly inlined as long as the cost of both methods do not exceed the budget.
 In other words, any such method will be treated by the inlining phase just as if they would be part of the root bytecode switch method.
 This allows bytecode interpreter switches to be composed of multiple methods if needed.
@@ -52,8 +52,8 @@ If a method exceeds the limit, it is likely that the same code also has a high c
 
 ## Debugging Host Inlining
 
-The inlining decisions performed by this phase is best debugged with `-H:Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` for native images or  `-Dgraal.Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` on HotSpot.
-You can redirect the output to a file with `-Dgraal.LogFile=FILE` (works for both).
+The inlining decisions performed by this phase is best debugged with `-H:Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` for native images or  `-Djdk.graal.Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` on HotSpot.
+You can redirect the output to a file with `-Djdk.graal.LogFile=FILE` (works for both).
 
 Consider the following example, which shows previously described common patterns of partial evaluatable code in Truffle interpreters:
 
@@ -159,7 +159,7 @@ class BytecodeNode extends Node {
 We can run this as a unittest in the Graal repository (see class `HostInliningBytecodeInterpreterExampleTest`) by running the following command line in `graal/compiler`:
 
 ```
-mx unittest  -Dgraal.Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase -Dgraal.Dump=:3  HostInliningBytecodeInterpreterExampleTest
+mx unittest  -Djdk.graal.Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase -Djdk.graal.Dump=:3  HostInliningBytecodeInterpreterExampleTest
 ```
 
 This prints:
@@ -171,26 +171,26 @@ This prints:
   Context: StructuredGraph:1{HotSpotMethod<HostInliningBytecodeInterpreterExampleTest$BytecodeNode.execute()>}
       [thread:1] scope: main.Testing.EnterpriseHighTier.HostInliningPhase
       Truffle host inlining completed after 2 rounds. Graph cost changed from 136 to 137 after inlining:
-      Root[org.graalvm.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.execute]
-          INLINE org.graalvm.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.add(int, int)                      [inlined    2, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    0, subTreeCost    8, incomplete false,  reason null]
-          CUTOFF org.graalvm.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.truffleBoundary()                  [inlined   -1, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    1, subTreeCost    0, incomplete false,  reason truffle boundary]
+      Root[jdk.graal.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.execute]
+          INLINE jdk.graal.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.add(int, int)                      [inlined    2, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    0, subTreeCost    8, incomplete false,  reason null]
+          CUTOFF jdk.graal.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.truffleBoundary()                  [inlined   -1, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    1, subTreeCost    0, incomplete false,  reason truffle boundary]
           INLINE com.oracle.truffle.api.CompilerDirectives.inInterpreter()                                                                    [inlined    0, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    0, subTreeCost    6, incomplete false,  reason null]
-          CUTOFF org.graalvm.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.protectedByInIntepreter()          [inlined   -1, monomorphic false, deopt false, inInterpreter  true, propDeopt false, subTreeInvokes    1, subTreeCost    0, incomplete false,  reason protected by inInterpreter()]
+          CUTOFF jdk.graal.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.protectedByInIntepreter()          [inlined   -1, monomorphic false, deopt false, inInterpreter  true, propDeopt false, subTreeInvokes    1, subTreeCost    0, incomplete false,  reason protected by inInterpreter()]
           INLINE com.oracle.truffle.api.CompilerDirectives.transferToInterpreterAndInvalidate()                                               [inlined    3, monomorphic false, deopt  true, inInterpreter false, propDeopt false, subTreeInvokes    0, subTreeCost   32, incomplete false,  reason null]
             INLINE com.oracle.truffle.api.CompilerDirectives.inInterpreter()                                                                  [inlined    3, monomorphic false, deopt  true, inInterpreter false, propDeopt false, subTreeInvokes    0, subTreeCost    6, incomplete false,  reason null]
             CUTOFF com.oracle.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime.traceTransferToInterpreter()                              [inlined   -1, monomorphic false, deopt  true, inInterpreter  true, propDeopt false, subTreeInvokes    0, subTreeCost    0, incomplete false,  reason dominated by transferToInterpreter()]
-          CUTOFF org.graalvm.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.dominatedByTransferToInterpreter() [inlined   -1, monomorphic false, deopt  true, inInterpreter false, propDeopt false, subTreeInvokes    0, subTreeCost    0, incomplete false,  reason dominated by transferToInterpreter()]
-          INLINE org.graalvm.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.recursive(int)                     [inlined    4, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    1, subTreeCost   20, incomplete false,  reason null]
-            CUTOFF org.graalvm.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.recursive(int)                   [inlined   -1, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    1, subTreeCost    0, incomplete false,  reason recursive]
-          INLINE org.graalvm.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode$SubNode1.execute()                 [inlined    1, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    0, subTreeCost    6, incomplete false,  reason null]
-          CUTOFF org.graalvm.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode$BaseNode.execute()                 [inlined   -1, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    1, subTreeCost    0, incomplete false,  reason not direct call: no type profile]
+          CUTOFF jdk.graal.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.dominatedByTransferToInterpreter() [inlined   -1, monomorphic false, deopt  true, inInterpreter false, propDeopt false, subTreeInvokes    0, subTreeCost    0, incomplete false,  reason dominated by transferToInterpreter()]
+          INLINE jdk.graal.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.recursive(int)                     [inlined    4, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    1, subTreeCost   20, incomplete false,  reason null]
+            CUTOFF jdk.graal.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.recursive(int)                   [inlined   -1, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    1, subTreeCost    0, incomplete false,  reason recursive]
+          INLINE jdk.graal.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode$SubNode1.execute()                 [inlined    1, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    0, subTreeCost    6, incomplete false,  reason null]
+          CUTOFF jdk.graal.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode$BaseNode.execute()                 [inlined   -1, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    1, subTreeCost    0, incomplete false,  reason not direct call: no type profile]
           CUTOFF com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere()                                                               [inlined   -1, monomorphic false, deopt false, inInterpreter false, propDeopt  true, subTreeInvokes    0, subTreeCost   98, incomplete false,  reason propagates transferToInterpreter]
 ```
 
-Note that we have also used the `-Dgraal.Dump=:3 ` option, which sends the graphs to any running `IdealGraphVisualizer` instance for further inspection.
+Note that we have also used the `-Djdk.graal.Dump=:3 ` option, which sends the graphs to any running `IdealGraphVisualizer` instance for further inspection.
 On Native Image, use `-H:Dump=:2 -H:MethodFilter=...` to dump host compilation graphs of a given method.
 
-To debug CUTOFF decisions for incomplete exploration (entries with `incomplete  true`) use the `-Dgraal.TruffleHostInliningPrintExplored=true` option to see all incomplete subtrees in the log.
+To debug CUTOFF decisions for incomplete exploration (entries with `incomplete  true`) use the `-Djdk.graal.TruffleHostInliningPrintExplored=true` option to see all incomplete subtrees in the log.
 
 ## Tuning Host Inlining
 
@@ -217,7 +217,7 @@ CUTOFF com.oracle.truffle.espresso.nodes.BytecodeNode.putPoolConstant(VirtualFra
 ```
 
 This indicates that there are too many fast-path invokes (by default 10) in the subtree, it also stops exploring after that number.
-The `-Dgraal.TruffleHostInliningPrintExplored=true` flag may be provided to see the entire subtree for the decision.
+The `-Djdk.graal.TruffleHostInliningPrintExplored=true` flag may be provided to see the entire subtree for the decision.
 The following calls are considered fast-path invokes:
 
 * Invokes where the target method is annotated by `@TruffleBoundary`.
@@ -374,4 +374,3 @@ RuntimeException invalidZeroArgument(int argument) {
 }
 
 ```
-

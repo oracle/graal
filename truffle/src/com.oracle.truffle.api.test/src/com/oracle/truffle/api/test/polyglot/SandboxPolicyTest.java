@@ -40,9 +40,20 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import static org.junit.Assert.assertTrue;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.Set;
+
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -65,24 +76,17 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.URI;
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.Set;
-
-import static org.junit.Assert.assertTrue;
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
 @RunWith(Parameterized.class)
 public class SandboxPolicyTest {
 
     private static final String MISSING_ISOLATE_LIBRARY_MESSAGE = "No native isolate library found for language";
-    private static final String UNSUPPORTED_ISOLATE_POLICY_MESSAGE = "the GraalVM community edition supports only sandbox policy TRUSTED or CONSTRAINED.";
+    private static final String UNSUPPORTED_ISOLATE_POLICY_MESSAGE = "but the current Truffle runtime only supports the TRUSTED or CONSTRAINED sandbox policies.";
 
     private final Configuration configuration;
 
@@ -144,7 +148,9 @@ public class SandboxPolicyTest {
 
     private static boolean supportsSandboxInstrument() {
         try (Engine engine = Engine.create()) {
-            return engine.getInstruments().containsKey("sandbox");
+            // Polyglot sandbox limits can only be used with runtimes that support enterprise
+            // extensions.
+            return engine.getInstruments().containsKey("sandbox") && TruffleTestAssumptions.isEnterpriseRuntime();
         }
     }
 
@@ -964,6 +970,36 @@ public class SandboxPolicyTest {
                 assertSandboxPolicyException(iae,
                                 "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowMapAccess(boolean) set to true");
                 assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testCompilationFailureAction() {
+        Assume.assumeTrue(configuration.hasIsolateLibrary() || !(Truffle.getRuntime() instanceof DefaultTruffleRuntime));
+        if (configuration.sandboxPolicy.isStricterOrEqual(SandboxPolicy.CONSTRAINED) &&
+                        (SandboxPolicy.ISOLATED.isStricterThan(configuration.sandboxPolicy) || configuration.hasIsolateLibrary())) {
+            for (String exceptionAction : new String[]{"Silent", "Print", "Throw", "Diagnose", "ExitVM"}) {
+                try (Engine engine = newEngineBuilder(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).option("engine.CompilationFailureAction",
+                                exceptionAction).build()) {
+                    assertTrue("Silent".equals(exceptionAction) || "Print".equals(exceptionAction));
+                } catch (IllegalArgumentException iae) {
+                    assertTrue(!"Silent".equals(exceptionAction) && !"Print".equals(exceptionAction));
+                    assertTrue(iae.getMessage().contains("is set to " + exceptionAction + ", but must be set to Silent or Print"));
+                }
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings({"try"})
+    public void testCompilerThreads() {
+        Assume.assumeTrue(configuration.hasIsolateLibrary() || !(Truffle.getRuntime() instanceof DefaultTruffleRuntime));
+        if (configuration.sandboxPolicy.isStricterOrEqual(SandboxPolicy.CONSTRAINED) &&
+                        (SandboxPolicy.ISOLATED.isStricterThan(configuration.sandboxPolicy) || configuration.hasIsolateLibrary())) {
+            try (Engine engine = newEngineBuilder(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).option("engine.CompilerThreads", "1").build()) {
+                // deliberately empty
             }
         }
     }

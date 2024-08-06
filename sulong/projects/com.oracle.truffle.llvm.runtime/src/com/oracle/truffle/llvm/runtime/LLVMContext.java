@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -328,7 +328,7 @@ public final class LLVMContext {
             if (language.isDefaultInternalLibraryCacheEmpty()) {
                 for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
                     String libraryName = sulongLibraryNames[i];
-                    Source librarySource = internalLibraryLocator.locateSource(this, sulongLibraryNames[i], "<default bitcode library>");
+                    Source librarySource = internalLibraryLocator.locateSource(this, libraryName, "<default bitcode library>");
                     if (librarySource == null) {
                         throw new InternalError("Could not locate library " + libraryName + " with locator " + internalLibraryLocator + ".");
                     }
@@ -601,14 +601,26 @@ public final class LLVMContext {
         // join all created pthread - threads
         pThreadContext.joinAllThreads();
 
-        // Ensure that thread destructors are run before global memory blocks
-        // have been deallocated by cleanUpNoGuestCode. Otherwise disposeThread
-        // will be called after finalizeContext when it is too late. [GR-39952]
-        language.disposeThread(this, Thread.currentThread());
+        boolean cancelling = env.getContext().isCancelling();
+
+        /*
+         * If the context is being cancelled, we must not run any guest code.
+         * 'LLVMLanguage.disposeThread' may call e.g. pthread destructors which can be arbitrary
+         * guest code.
+         */
+        if (!cancelling) {
+            // Ensure that thread destructors are run before global memory blocks
+            // have been deallocated by cleanUpNoGuestCode. Otherwise disposeThread
+            // will be called after finalizeContext when it is too late. [GR-39952]
+            language.disposeThread(this, Thread.currentThread());
+        }
 
         TruffleSafepoint sp = TruffleSafepoint.getCurrent();
         boolean prev = sp.setAllowActions(false);
         try {
+            if (cancelling) {
+                language.disposeThreadNoGuestCode(this, Thread.currentThread());
+            }
             cleanUpNoGuestCode();
         } finally {
             sp.setAllowActions(prev);
@@ -815,6 +827,13 @@ public final class LLVMContext {
                 return symbolFinalStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
                 exception.enter();
+                if (LibraryLocator.loggingEnabled()) {
+                    loaderLogger.log(Level.FINEST, Arrays.toString(e.getStackTrace()));
+                    loaderLogger.log(Level.FINEST, "symbol is: " + symbol.getName());
+                    loaderLogger.log(Level.FINEST, "id is: " + id);
+                    loaderLogger.log(Level.FINEST, "id name is: " + bitcodeID.getName());
+                    loaderLogger.log(Level.FINEST, "index is: " + index);
+                }
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         } else {
@@ -822,6 +841,13 @@ public final class LLVMContext {
                 return symbolDynamicStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
                 exception.enter();
+                if (LibraryLocator.loggingEnabled()) {
+                    loaderLogger.log(Level.FINEST, Arrays.toString(e.getStackTrace()));
+                    loaderLogger.log(Level.FINEST, "symbol is: " + symbol.getName());
+                    loaderLogger.log(Level.FINEST, "id is: " + id);
+                    loaderLogger.log(Level.FINEST, "id name is: " + bitcodeID.getName());
+                    loaderLogger.log(Level.FINEST, "index is: " + index);
+                }
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         }

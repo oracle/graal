@@ -53,9 +53,8 @@ import java.util.function.Supplier;
  * Annotates methods associated with both ends of a libgraal to HotSpot call. This annotation
  * simplifies navigating between these methods in an IDE.
  *
- * The
- * {@code org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor.TruffleFromLibGraalProcessor}
- * processor will produce a helper method for marshaling arguments and making the JNI call.
+ * The {@code com.oracle.truffle.libgraal.processor.TruffleFromLibGraalProcessor} processor will
+ * produce a helper method for marshaling arguments and making the JNI call.
  */
 @Repeatable(TruffleFromLibGraalRepeated.class)
 @Retention(RetentionPolicy.RUNTIME)
@@ -163,7 +162,7 @@ public @interface TruffleFromLibGraal {
         OnCompilationFailed,
         @Signature({void.class, Object.class, Object.class, Object.class})
         OnCompilationRetry,
-        @Signature({void.class, Object.class, Object.class, String.class, boolean.class, boolean.class, int.class})
+        @Signature({void.class, Object.class, Object.class, String.class, boolean.class, boolean.class, int.class, long.class})
         OnFailure,
         @Signature({void.class, Object.class, Object.class, long.class})
         OnGraalTierFinished,

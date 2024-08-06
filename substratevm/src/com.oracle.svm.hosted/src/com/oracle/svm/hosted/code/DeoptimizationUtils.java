@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
-import static com.oracle.svm.common.meta.MultiMethod.DEOPT_TARGET_METHOD;
+import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 
 import java.lang.reflect.Modifier;
 import java.util.Collection;
@@ -35,42 +35,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.lir.RedundantMoveElimination;
-import org.graalvm.compiler.lir.alloc.RegisterAllocationPhase;
-import org.graalvm.compiler.lir.phases.LIRPhase;
-import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeNode;
-import org.graalvm.compiler.nodes.StartNode;
-import org.graalvm.compiler.nodes.StateSplit;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
-import org.graalvm.compiler.phases.common.FixReadsPhase;
-import org.graalvm.compiler.phases.common.FloatingReadPhase;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.phases.tiers.LowTierContext;
-import org.graalvm.compiler.phases.tiers.MidTierContext;
-import org.graalvm.compiler.phases.tiers.Suites;
-import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.deopt.DeoptTest;
@@ -85,6 +55,38 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.iterators.NodePredicate;
+import jdk.graal.compiler.graph.iterators.NodePredicates;
+import jdk.graal.compiler.lir.RedundantMoveElimination;
+import jdk.graal.compiler.lir.alloc.RegisterAllocationPhase;
+import jdk.graal.compiler.lir.phases.LIRPhase;
+import jdk.graal.compiler.lir.phases.LIRSuites;
+import jdk.graal.compiler.lir.phases.PostAllocationOptimizationPhase;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeNode;
+import jdk.graal.compiler.nodes.StartNode;
+import jdk.graal.compiler.nodes.StateSplit;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.PhaseSuite;
+import jdk.graal.compiler.phases.common.BoxNodeOptimizationPhase;
+import jdk.graal.compiler.phases.common.FixReadsPhase;
+import jdk.graal.compiler.phases.common.FloatingReadPhase;
+import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.phases.tiers.LowTierContext;
+import jdk.graal.compiler.phases.tiers.MidTierContext;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.replacements.nodes.MacroInvokable;
+import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
+import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.site.Call;
@@ -124,7 +126,7 @@ public class DeoptimizationUtils {
      *
      * Note this should only be called within CompileQueue#parseAheadOfTimeCompiledMethods
      */
-    public static boolean canDeoptForTesting(AnalysisMethod method, boolean deoptimizeAll, Supplier<Boolean> containsStackValueNodes) {
+    public static boolean canDeoptForTesting(AnalysisMethod method, boolean deoptimizeAll, Supplier<Boolean> graphChecker) {
         if (SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method)) {
             return true;
         }
@@ -143,16 +145,7 @@ public class DeoptimizationUtils {
             return false;
         }
 
-        if (containsStackValueNodes.get()) {
-            /*
-             * Stack allocated memory is not seen by the deoptimization code, i.e., it is not copied
-             * in case of deoptimization. Also, pointers to it can be used for arbitrary address
-             * arithmetic, so we would not know how to update derived pointers into stack memory
-             * during deoptimization. Therefore, we cannot allow methods that allocate stack memory
-             * for runtime compilation. To remove this limitation, we would need to change how we
-             * handle stack allocated memory in Graal.
-             */
-
+        if (!graphChecker.get()) {
             return false;
         }
 
@@ -259,7 +252,7 @@ public class DeoptimizationUtils {
         }
         assert rootFrame.getMethod().equals(method);
 
-        boolean isBciDeoptEntry = method.compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
+        boolean isBciDeoptEntry = method.compilationInfo.isDeoptEntry(rootFrame.getBCI(), FrameState.StackState.of(rootFrame));
         if (isBciDeoptEntry) {
             /*
              * When an infopoint's bci corresponds to a deoptimization entrypoint, it does not
@@ -297,7 +290,7 @@ public class DeoptimizationUtils {
         /*
          * No deopt targets can have a StackValueNode in the graph.
          */
-        assert graph.getNodes(StackValueNode.TYPE).isEmpty() : "No stack value nodes must be present in deopt target.";
+        assert createGraphChecker(graph, AOT_COMPILATION_INVALID_NODES).get() : "Invalid nodes in deopt target: " + graph;
 
         for (Infopoint infopoint : result.getInfopoints()) {
             if (infopoint.debugInfo != null) {
@@ -308,7 +301,7 @@ public class DeoptimizationUtils {
 
                 if (isDeoptEntry(method, result, infopoint)) {
                     BytecodeFrame frame = debugInfo.frame();
-                    long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), frame.duringCall, frame.rethrowException);
+                    long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), FrameState.StackState.of(frame));
 
                     BytecodeFrame previous = encodedBciMap.put(encodedBci, frame);
                     assert previous == null : "duplicate encoded bci " + encodedBci + " in deopt target " + method + " found.\n\n" + frame +
@@ -355,7 +348,7 @@ public class DeoptimizationUtils {
         }
 
         if (caller.isDeoptTarget()) {
-            if (caller.compilationInfo.isDeoptEntry(bci, true, false)) {
+            if (caller.compilationInfo.isDeoptEntry(bci, FrameState.StackState.AfterPop)) {
                 /*
                  * The call can be on the stack for a deoptimization, so we need an actual
                  * non-inlined invoke to deoptimize too.
@@ -410,7 +403,7 @@ public class DeoptimizationUtils {
          * If new frame states are found, then redo the type flow.
          */
         for (ResolvedJavaMethod method : recomputeMethods) {
-            assert MultiMethod.isDeoptTarget(method);
+            assert SubstrateCompilationDirectives.isDeoptTarget(method);
             ((PointsToAnalysisMethod) method).getTypeFlow().updateFlowsGraph(bb, MethodFlowsGraph.GraphKind.FULL, null, true);
         }
     }
@@ -430,12 +423,12 @@ public class DeoptimizationUtils {
                      * disappears. Therefore, this frame state cannot be a deoptimization target.
                      */
                     continue;
-                } else if (usage instanceof Invoke && ((Invoke) usage).stateAfter() == frameState) {
+                } else if (usage instanceof Invoke invoke && invoke.stateAfter() == frameState) {
                     /*
                      * If the FrameState is followed immediately by a dead end, then this state can
                      * never be reached and does not need to be registered.
                      */
-                    FixedNode next = ((Invoke) usage).next();
+                    FixedNode next = invoke.next();
                     while (next instanceof AbstractBeginNode) {
                         next = ((AbstractBeginNode) next).next();
                     }
@@ -463,20 +456,28 @@ public class DeoptimizationUtils {
             /*
              * graph.getInvokes() only iterates invokes that have a MethodCallTarget, so by using it
              * we would miss invocations that are already intrinsified to an indirect call.
+             *
+             * The FrameState for the invoke (which is visited by the above loop) is the state after
+             * the call (where deoptimization that happens after the call has returned will continue
+             * execution). We also need to register the state during the call (where deoptimization
+             * while the call is on the stack will continue execution).
+             *
+             * MacroInvokable nodes may revert back to an invoke; therefore we must also register
+             * the state during the reverted call.
+             *
+             * Note that the bci of the Invoke and the bci of the FrameState of the Invoke are
+             * different: the Invoke has the bci of the invocation bytecode, the FrameState has the
+             * bci of the next bytecode after the invoke.
              */
+            FrameState stateDuring = null;
             if (n instanceof Invoke invoke) {
-                /*
-                 * The FrameState for the invoke (which is visited by the above loop) is the state
-                 * after the call (where deoptimization that happens after the call has returned
-                 * will continue execution). We also need to register the state during the call
-                 * (where deoptimization while the call is on the stack will continue execution).
-                 *
-                 * Note that the bci of the Invoke and the bci of the FrameState of the Invoke are
-                 * different: the Invoke has the bci of the invocation bytecode, the FrameState has
-                 * the bci of the next bytecode after the invoke.
-                 */
-                FrameState stateDuring = invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), invoke.asNode().getStackKind());
-                assert stateDuring.duringCall() && !stateDuring.rethrowException();
+                stateDuring = invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), invoke.asNode().getStackKind());
+            } else if (n instanceof MacroInvokable macro) {
+                stateDuring = macro.stateAfter().duplicateModifiedDuringCall(macro.bci(), macro.asNode().getStackKind());
+            }
+
+            if (stateDuring != null) {
+                assert stateDuring.getStackState() == FrameState.StackState.AfterPop : stateDuring;
                 ResolvedJavaMethod method = deoptRetriever.getDeoptTarget(stateDuring.getMethod());
                 if (SubstrateCompilationDirectives.singleton().registerDeoptEntry(stateDuring, method)) {
                     changedMethods.add(method);
@@ -485,5 +486,41 @@ public class DeoptimizationUtils {
         }
 
         return changedMethods;
+    }
+
+    /*
+     * Stack allocated memory is not seen by the deoptimization code, i.e., it is not copied in case
+     * of deoptimization. Also, pointers to it can be used for arbitrary address arithmetic, so we
+     * would not know how to update derived pointers into stack memory during deoptimization.
+     * Therefore, we cannot allow methods that allocate stack memory for runtime compilation. To
+     * remove this limitation, we would need to change how we handle stack allocated memory in
+     * Graal.
+     *
+     * We also do not allow class initialization at run time to ensure the partial evaluator does
+     * not constant fold uninitialized fields.
+     */
+    public static final NodePredicate RUNTIME_COMPILATION_INVALID_NODES = n -> NodePredicates.isA(StackValueNode.class).or(NodePredicates.isA(EnsureClassInitializedNode.class)).test(n);
+
+    public static final NodePredicate AOT_COMPILATION_INVALID_NODES = n -> NodePredicates.isA(StackValueNode.class).test(n);
+
+    /**
+     * @return Supplier which returns true if the graph does not violate the checks.
+     */
+    public static Supplier<Boolean> createGraphChecker(StructuredGraph graph, NodePredicate invalidNodes) {
+        return () -> {
+            if (!graph.method().getDeclaringClass().isInitialized()) {
+                /*
+                 * All types which are used at run time should build-time initialized. This ensures
+                 * the partial evaluator does not constant fold uninitialized fields.
+                 */
+                return false;
+            }
+
+            if (graph.getNodes().filter(invalidNodes).isNotEmpty()) {
+                return false;
+            }
+
+            return true;
+        };
     }
 }

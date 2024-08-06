@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ package org.graalvm.wasm;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
@@ -103,7 +102,7 @@ public class WasmInstantiator {
         instance.createLinkActions();
         int binarySize = instance.module().bytecodeLength();
         final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
-        if (binarySize < asyncParsingBinarySize) {
+        if (binarySize < asyncParsingBinarySize || !context.environment().isCreateThreadAllowed()) {
             instantiateCodeEntries(context, instance);
         } else {
             final Runnable parsing = () -> instantiateCodeEntries(context, instance);
@@ -111,7 +110,8 @@ public class WasmInstantiator {
             final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions()) * 1000;
             final int defaultSize = Math.max(MIN_DEFAULT_STACK_SIZE, Math.min(2 * binarySize, MAX_DEFAULT_ASYNC_STACK_SIZE));
             final int stackSize = requestedSize != 0 ? requestedSize : defaultSize;
-            final Thread parsingThread = new Thread(null, parsing, name, stackSize);
+            final Thread parsingThread = context.environment().newTruffleThreadBuilder(parsing).stackSize(stackSize).build();
+            parsingThread.setName(name);
             final ParsingExceptionHandler handler = new ParsingExceptionHandler();
             parsingThread.setUncaughtExceptionHandler(handler);
             parsingThread.start();
@@ -127,18 +127,22 @@ public class WasmInstantiator {
         return instance;
     }
 
-    static List<BiConsumer<WasmContext, WasmInstance>> recreateLinkActions(WasmModule module) {
-        List<BiConsumer<WasmContext, WasmInstance>> linkActions = new ArrayList<>();
+    static List<LinkAction> recreateLinkActions(WasmModule module) {
+        List<LinkAction> linkActions = new ArrayList<>();
 
         for (int i = 0; i < module.numFunctions(); i++) {
             final WasmFunction function = module.function(i);
             if (function.isImported()) {
-                linkActions.add((context, instance) -> context.linker().resolveFunctionImport(context, instance, function));
+                linkActions.add((context, instance, imports) -> {
+                    context.linker().resolveFunctionImport(context, instance, function, imports);
+                });
             }
             final String exportName = module.exportedFunctionName(i);
             if (exportName != null) {
                 final int functionIndex = i;
-                linkActions.add((context, instance) -> context.linker().resolveFunctionExport(instance.module(), functionIndex, exportName));
+                linkActions.add((context, instance, imports) -> {
+                    context.linker().resolveFunctionExport(instance.module(), functionIndex, exportName);
+                });
             }
         }
 
@@ -149,28 +153,24 @@ public class WasmInstantiator {
             final byte globalMutability = module.globalMutability(globalIndex);
             if (importedGlobals.containsKey(globalIndex)) {
                 final ImportDescriptor globalDescriptor = importedGlobals.get(globalIndex);
-                linkActions.add((context, instance) -> instance.setGlobalAddress(globalIndex, SymbolTable.UNINITIALIZED_ADDRESS));
-                linkActions.add((context, instance) -> context.linker().resolveGlobalImport(context, instance, globalDescriptor, globalIndex, globalValueType, globalMutability));
+                linkActions.add((context, instance, imports) -> {
+                    instance.setGlobalAddress(globalIndex, SymbolTable.UNINITIALIZED_ADDRESS);
+                });
+                linkActions.add((context, instance, imports) -> {
+                    context.linker().resolveGlobalImport(context, instance, globalDescriptor, globalIndex, globalValueType, globalMutability, imports);
+                });
             } else {
                 final boolean initialized = module.globalInitialized(globalIndex);
-                final boolean isReference = module.globalIsReference(globalIndex);
                 final byte[] initBytecode = module.globalInitializerBytecode(globalIndex);
-                final long initialValue = module.globalInitialValue(globalIndex);
-                linkActions.add((context, instance) -> {
+                final Object initialValue = module.globalInitialValue(globalIndex);
+                linkActions.add((context, instance, imports) -> {
                     final GlobalRegistry registry = context.globals();
                     final int address = registry.allocateGlobal();
                     instance.setGlobalAddress(globalIndex, address);
                 });
-                linkActions.add((context, instance) -> {
-                    final GlobalRegistry registry = context.globals();
-                    final int address = instance.globalAddress(globalIndex);
+                linkActions.add((context, instance, imports) -> {
                     if (initialized) {
-                        if (isReference) {
-                            // Only null is possible
-                            registry.storeReference(address, WasmConstant.NULL);
-                        } else {
-                            registry.storeLong(address, initialValue);
-                        }
+                        context.globals().store(globalValueType, instance.globalAddress(globalIndex), initialValue);
                         context.linker().resolveGlobalInitialization(instance, globalIndex);
                     } else {
                         context.linker().resolveGlobalInitialization(context, instance, globalIndex, initBytecode);
@@ -182,7 +182,9 @@ public class WasmInstantiator {
         while (exportedGlobals.advance()) {
             final String globalName = exportedGlobals.getKey();
             final int globalIndex = exportedGlobals.getValue();
-            linkActions.add((context, instance) -> context.linker().resolveGlobalExport(instance.module(), globalName, globalIndex));
+            linkActions.add((context, instance, imports) -> {
+                context.linker().resolveGlobalExport(instance.module(), globalName, globalIndex);
+            });
         }
 
         for (int i = 0; i < module.tableCount(); i++) {
@@ -192,10 +194,14 @@ public class WasmInstantiator {
             final byte tableElemType = module.tableElementType(tableIndex);
             final ImportDescriptor tableDescriptor = module.importedTable(tableIndex);
             if (tableDescriptor != null) {
-                linkActions.add((context, instance) -> instance.setTableAddress(tableIndex, SymbolTable.UNINITIALIZED_ADDRESS));
-                linkActions.add((context, instance) -> context.linker().resolveTableImport(context, instance, tableDescriptor, tableIndex, tableMinSize, tableMaxSize, tableElemType));
+                linkActions.add((context, instance, imports) -> {
+                    instance.setTableAddress(tableIndex, SymbolTable.UNINITIALIZED_ADDRESS);
+                });
+                linkActions.add((context, instance, imports) -> {
+                    context.linker().resolveTableImport(context, instance, tableDescriptor, tableIndex, tableMinSize, tableMaxSize, tableElemType, imports);
+                });
             } else {
-                linkActions.add((context, instance) -> {
+                linkActions.add((context, instance, imports) -> {
                     final ModuleLimits limits = instance.module().limits();
                     final int maxAllowedSize = WasmMath.minUnsigned(tableMaxSize, limits.tableInstanceSizeLimit());
                     limits.checkTableInstanceSize(tableMinSize);
@@ -209,7 +215,9 @@ public class WasmInstantiator {
         while (exportedTables.advance()) {
             final String tableName = exportedTables.getKey();
             final int tableIndex = exportedTables.getValue();
-            linkActions.add((context, instance) -> context.linker().resolveTableExport(instance.module(), tableIndex, tableName));
+            linkActions.add((context, instance, imports) -> {
+                context.linker().resolveTableExport(instance.module(), tableIndex, tableName);
+            });
         }
 
         for (int i = 0; i < module.memoryCount(); i++) {
@@ -220,10 +228,11 @@ public class WasmInstantiator {
             final boolean memoryShared = module.memoryIsShared(memoryIndex);
             final ImportDescriptor memoryDescriptor = module.importedMemory(memoryIndex);
             if (memoryDescriptor != null) {
-                linkActions.add((context, instance) -> context.linker().resolveMemoryImport(context, instance, memoryDescriptor, memoryIndex, memoryMinSize, memoryMaxSize, memoryIndexType64,
-                                memoryShared));
+                linkActions.add((context, instance, imports) -> {
+                    context.linker().resolveMemoryImport(context, instance, memoryDescriptor, memoryIndex, memoryMinSize, memoryMaxSize, memoryIndexType64, memoryShared, imports);
+                });
             } else {
-                linkActions.add((context, instance) -> {
+                linkActions.add((context, instance, imports) -> {
                     final ModuleLimits limits = instance.module().limits();
                     final long maxAllowedSize = WasmMath.minUnsigned(memoryMaxSize, limits.memoryInstanceSizeLimit());
                     limits.checkMemoryInstanceSize(memoryMinSize, memoryIndexType64);
@@ -239,7 +248,9 @@ public class WasmInstantiator {
         while (exportedMemories.advance()) {
             final String memoryName = exportedMemories.getKey();
             final int memoryIndex = exportedMemories.getValue();
-            linkActions.add((context, instance) -> context.linker().resolveMemoryExport(instance, memoryIndex, memoryName));
+            linkActions.add((context, instance, imports) -> {
+                context.linker().resolveMemoryExport(instance, memoryIndex, memoryName);
+            });
         }
 
         final byte[] bytecode = module.bytecode();
@@ -333,11 +344,15 @@ public class WasmInstantiator {
                 }
 
                 final int dataBytecodeOffset = effectiveOffset;
-                linkActions.add((context, instance) -> context.linker().resolveDataSegment(context, instance, dataIndex, memoryIndex, dataOffsetAddress, dataOffsetBytecode, dataLength,
-                                dataBytecodeOffset, instance.droppedDataInstanceOffset()));
+                linkActions.add((context, instance, imports) -> {
+                    context.linker().resolveDataSegment(context, instance, dataIndex, memoryIndex, dataOffsetAddress, dataOffsetBytecode, dataLength,
+                                    dataBytecodeOffset, instance.droppedDataInstanceOffset());
+                });
             } else {
                 final int dataBytecodeOffset = effectiveOffset;
-                linkActions.add((context, instance) -> context.linker().resolvePassiveDataSegment(context, instance, dataIndex, dataBytecodeOffset, dataLength));
+                linkActions.add((context, instance, imports) -> {
+                    context.linker().resolvePassiveDataSegment(context, instance, dataIndex, dataBytecodeOffset, dataLength);
+                });
             }
         }
 
@@ -438,10 +453,14 @@ public class WasmInstantiator {
                         throw CompilerDirectives.shouldNotReachHere();
                 }
                 final int bytecodeOffset = effectiveOffset;
-                linkActions.add((context, instance) -> context.linker().resolveElemSegment(context, instance, tableIndex, elemIndex, offsetAddress, offsetBytecode, bytecodeOffset, elemCount));
+                linkActions.add((context, instance, imports) -> {
+                    context.linker().resolveElemSegment(context, instance, tableIndex, elemIndex, offsetAddress, offsetBytecode, bytecodeOffset, elemCount);
+                });
             } else {
                 final int bytecodeOffset = effectiveOffset;
-                linkActions.add((context, instance) -> context.linker().resolvePassiveElemSegment(context, instance, elemIndex, bytecodeOffset, elemCount));
+                linkActions.add((context, instance, imports) -> {
+                    context.linker().resolvePassiveElemSegment(context, instance, elemIndex, bytecodeOffset, elemCount);
+                });
             }
         }
 
@@ -501,8 +520,9 @@ public class WasmInstantiator {
         int childIndex = 0;
         for (CallNode callNode : childNodeList) {
             Node child;
+            final int bytecodeIndex = callNode.getBytecodeOffset();
             if (callNode.isIndirectCall()) {
-                child = WasmIndirectCallNode.create();
+                child = WasmIndirectCallNode.create(bytecodeIndex);
             } else {
                 // We deliberately do not create the call node during instantiation.
                 //
@@ -513,12 +533,14 @@ public class WasmInstantiator {
 
                 final WasmFunction resolvedFunction = module.function(callNode.getFunctionIndex());
                 if (resolvedFunction.isImported()) {
-                    child = WasmIndirectCallNode.create();
+                    child = WasmIndirectCallNode.create(bytecodeIndex);
                 } else {
                     child = new WasmCallStubNode(resolvedFunction);
                 }
                 final int stubIndex = childIndex;
-                instance.addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentFunction, stubIndex, resolvedFunction));
+                instance.addLinkAction((ctx, inst, imports) -> {
+                    ctx.linker().resolveCallsite(inst, currentFunction, stubIndex, bytecodeIndex, resolvedFunction);
+                });
             }
             callNodes[childIndex++] = child;
         }

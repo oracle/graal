@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -660,9 +660,9 @@ public final class Context implements AutoCloseable {
      * assert context.asValue("42").isString();
      * assert context.asValue('c').isString();
      * assert context.asValue(new String[0]).hasArrayElements();
-     * assert context.asValue(new ArrayList<>()).isHostObject();
-     * assert context.asValue(new ArrayList<>()).hasArrayElements();
-     * assert context.asValue((Supplier<Integer>) () -> 42).execute().asInt() == 42;
+     * assert context.asValue(new ArrayList&lt;&gt;()).isHostObject();
+     * assert context.asValue(new ArrayList&lt;&gt;()).hasArrayElements();
+     * assert context.asValue((Supplier&lt;Integer&gt;) () -> 42).execute().asInt() == 42;
      * </pre>
      *
      * <h1>Mapping to Java methods and fields</h1>
@@ -887,8 +887,8 @@ public final class Context implements AutoCloseable {
 
     /**
      * Polls safepoints events and executes them for the current thread. This allows guest languages
-     * to run actions between long running host method calls. Polyglot embeddings that rely on
-     * cancellation should call this method whenev a potentially long running host operation is
+     * to run actions between long-running host method calls. Polyglot embeddings that rely on
+     * cancellation should call this method whenever a potentially long-running host operation is
      * executed. For example, iterating an unbounded array. Guest language code and operations
      * automatically poll safepoints regularly.
      *

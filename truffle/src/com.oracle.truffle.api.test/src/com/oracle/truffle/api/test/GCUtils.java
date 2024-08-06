@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.test;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.ref.Reference;
@@ -48,6 +50,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -56,6 +59,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.zip.GZIPOutputStream;
 
 import com.sun.management.HotSpotDiagnosticMXBean;
 
@@ -84,6 +88,14 @@ import javax.management.MBeanServer;
 public final class GCUtils {
 
     private static final boolean PRESERVE_HEAP_DUMP_ON_FAILURE = Boolean.parseBoolean(System.getProperty(GCUtils.class.getSimpleName() + ".preserveHeapDumpOnFailure", "true"));
+
+    /**
+     * When set, and if the {@link #PRESERVE_HEAP_DUMP_ON_FAILURE} system property is set to
+     * {@code true}, {@code GCUtils} relocates the heap dump to the designated folder. The target
+     * heap dump file has the pattern {@code gcutils_heapdump_.+\.hprof} as produced by
+     * {@link Files#createTempFile(Path, String, String, FileAttribute[])}.
+     */
+    private static final String SAVE_HEAP_DUMP_TO = System.getProperty(GCUtils.class.getSimpleName() + ".saveHeapDumpTo");
 
     private static final ReachabilityAnalyser<?> analyser = selectAnalyser();
 
@@ -406,6 +418,14 @@ public final class GCUtils {
 
     private static final class HeapDumpAnalyser extends ReachabilityAnalyser<HeapDumpAnalyser.State> {
 
+        /**
+         * The size of the buffer used for copying heap dump files is set at 16KB. This size is
+         * chosen to accommodate the variability in file system block sizes, which can range from
+         * 4KB to 16KB. The upper bound of 16KB is selected, considering that heap dumps are
+         * frequently large in size.
+         */
+        private static final int BLOCK_SIZE = 16384;
+
         private static volatile HotSpotDiagnosticMXBean hotSpotDiagnosticMBean;
         private static volatile Reference<?>[] todo;
 
@@ -432,23 +452,54 @@ public final class GCUtils {
             try {
                 Result result = null;
                 Path tmpDirectory = Files.createTempDirectory(GCUtils.class.getSimpleName().toLowerCase());
+                Path heapDumpFile = tmpDirectory.resolve("heapdump.hprof");
+                Path targetFile = null;
+                boolean copyHeapDump = false;
                 try {
-                    Path heapDumpFile = tmpDirectory.resolve("heapdump.hprof");
                     System.gc();    // Perform GC to minimize heap size and speed up heap queries.
                     Map<Reference<?>, Integer> todoIndexes = prepareTodoAndTakeHeapDump(references, heapDumpFile);
                     Heap heap = HeapFactory.createHeap(heapDumpFile.toFile());
                     JavaClass trackableReferenceClass = heap.getJavaClassByName(HeapDumpAnalyser.class.getName());
                     ObjectArrayInstance todoArray = (ObjectArrayInstance) trackableReferenceClass.getValueOfStaticField("todo");
                     List<Instance> instances = todoArray.getValues();
-                    result = testCollected.apply(new State(collectGCRootPath, preserveHeapDumpIfNonCollectable ? heapDumpFile : null, heap, instances, todoIndexes));
+                    if (preserveHeapDumpIfNonCollectable) {
+                        if (SAVE_HEAP_DUMP_TO != null) {
+                            Path targetFolder = Path.of(SAVE_HEAP_DUMP_TO);
+                            targetFile = Files.createTempFile(targetFolder, "gcutils_heapdump_", ".hprof.gz");
+                            copyHeapDump = true;
+                        } else {
+                            targetFile = heapDumpFile;
+                        }
+                    }
+                    result = testCollected.apply(new State(collectGCRootPath, targetFile, heap, instances, todoIndexes));
                 } finally {
-                    if (result == null || result.isCollected() || !preserveHeapDumpIfNonCollectable) {
+                    if (targetFile == null) {
+                        delete(tmpDirectory);
+                    } else if (result == null || result.isCollected()) {
+                        delete(targetFile);
+                        delete(tmpDirectory);
+                    } else if (copyHeapDump) {
+                        compress(heapDumpFile, targetFile);
                         delete(tmpDirectory);
                     }
                 }
                 return result;
             } catch (IOException ioe) {
                 throw new RuntimeException(ioe);
+            }
+        }
+
+        private static void compress(Path src, Path target) throws IOException {
+            try (BufferedInputStream in = new BufferedInputStream(Files.newInputStream(src));
+                            GZIPOutputStream out = new GZIPOutputStream(new BufferedOutputStream(Files.newOutputStream(target)))) {
+                byte[] buffer = new byte[BLOCK_SIZE];
+                while (true) {
+                    int count = in.read(buffer, 0, buffer.length);
+                    if (count < 0) {
+                        break;
+                    }
+                    out.write(buffer, 0, count);
+                }
             }
         }
 

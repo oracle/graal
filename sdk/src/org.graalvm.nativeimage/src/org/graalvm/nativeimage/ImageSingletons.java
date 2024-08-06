@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,7 +94,12 @@ public final class ImageSingletons {
      * The method returns {@code false} since 19.3.0 when not used in the context of a native image.
      * As such it is safe to write:
      *
-     * {@snippet file="org/graalvm/nativeimage/ImageSingletonsTest.java" region="ImageSingletonsTest"}
+     * <pre>
+     * if (ImageSingletons.contains(MyService.class)) {
+     *     MyService myService = ImageSingletons.lookup(MyService.class);
+     *     myService.useMyService();
+     * }
+     * </pre>
      *
      * and let such code run fine in the context of {@link ImageInfo#inImageCode() native image} as
      * well as outside of it.

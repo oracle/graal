@@ -79,14 +79,17 @@ public class IndexedFrameTest {
     }
 
     private static void assertIsType(Frame frame, int slot, FrameSlotKind k) {
-        assertEquals(k == FrameSlotKind.Boolean, frame.isBoolean(slot));
-        assertEquals(k == FrameSlotKind.Byte, frame.isByte(slot));
-        assertEquals(k == FrameSlotKind.Int, frame.isInt(slot));
-        assertEquals(k == FrameSlotKind.Long, frame.isLong(slot));
-        assertEquals(k == FrameSlotKind.Double, frame.isDouble(slot));
-        assertEquals(k == FrameSlotKind.Float, frame.isFloat(slot));
-        assertEquals(k == FrameSlotKind.Object, frame.isObject(slot));
-        assertEquals(k == FrameSlotKind.Static, frame.isStatic(slot));
+        if (k == FrameSlotKind.Static) {
+            assertTrue(frame.isStatic(slot));
+        } else {
+            assertEquals(k == FrameSlotKind.Boolean, frame.isBoolean(slot));
+            assertEquals(k == FrameSlotKind.Byte, frame.isByte(slot));
+            assertEquals(k == FrameSlotKind.Int, frame.isInt(slot));
+            assertEquals(k == FrameSlotKind.Long, frame.isLong(slot));
+            assertEquals(k == FrameSlotKind.Double, frame.isDouble(slot));
+            assertEquals(k == FrameSlotKind.Float, frame.isFloat(slot));
+            assertEquals(k == FrameSlotKind.Object, frame.isObject(slot));
+        }
     }
 
     @Test
@@ -147,6 +150,12 @@ public class IndexedFrameTest {
             for (int slot = 0; slot < descriptor.getNumberOfSlots(); slot++) {
                 assertIsType(frame, slot, FrameSlotKind.Static);
                 assertSame(DEFAULT, frame.getObjectStatic(slot));
+                assertEquals((byte) 0, frame.getByteStatic(slot));
+                assertEquals(false, frame.getBooleanStatic(slot));
+                assertEquals(0, frame.getIntStatic(slot));
+                assertEquals(0.0f, frame.getFloatStatic(slot), 0);
+                assertEquals(0L, frame.getLongStatic(slot));
+                assertEquals(0.0d, frame.getDoubleStatic(slot), 0);
             }
         });
     }

@@ -24,13 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -39,15 +33,14 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -55,14 +48,23 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.stack.JavaFrame;
+import com.oracle.svm.core.stack.JavaFrames;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
-import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.ContinuationInternals;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.Word;
 
 /** Helper for allocating and accessing {@link StoredContinuation} instances. */
 public final class StoredContinuationAccess {
@@ -102,44 +104,24 @@ public final class StoredContinuationAccess {
         return Word.objectToUntrackedPointer(s).add(baseOffset);
     }
 
+    @Uninterruptible(reason = "Prevent GC during accesses via object address.", callerMustBe = true)
+    public static Pointer getFramesEnd(StoredContinuation s) {
+        return getFramesStart(s).add(getFramesSizeInBytes(s));
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CodePointer getIP(StoredContinuation s) {
         return s.ip;
     }
 
-    public static int allocateToYield(Continuation c, Pointer baseSp, Pointer sp, CodePointer ip) {
-        assert sp.isNonNull() && ip.isNonNull();
-        return allocateFromStack(c, baseSp, sp, ip, WordFactory.nullPointer());
-    }
+    public static int allocateToYield(Target_jdk_internal_vm_Continuation c, Pointer baseSp, Pointer sp, CodePointer ip) {
+        assert baseSp.isNonNull() && sp.isNonNull() && ip.isNonNull();
 
-    public static int allocateToPreempt(Continuation c, Pointer baseSp, IsolateThread targetThread) {
-        return allocateFromStack(c, baseSp, WordFactory.nullPointer(), WordFactory.nullPointer(), targetThread);
-    }
-
-    private static int allocateFromStack(Continuation cont, Pointer baseSp, Pointer sp, CodePointer ip, IsolateThread targetThread) {
-        boolean yield = sp.isNonNull();
-        assert yield == ip.isNonNull() && yield == targetThread.isNull();
-        assert baseSp.isNonNull();
-
-        Pointer startSp = sp;
-        CodePointer startIp = ip;
-        if (!yield) {
-            PreemptVisitor visitor = new PreemptVisitor(baseSp);
-            JavaStackWalker.walkThread(targetThread, visitor);
-            if (visitor.preemptStatus != Continuation.FREEZE_OK) {
-                return visitor.preemptStatus;
-            }
-            startSp = visitor.leafSP;
-            startIp = visitor.leafIP;
-        }
-
-        VMError.guarantee(startSp.isNonNull());
-
-        int framesSize = UnsignedUtils.safeToInt(baseSp.subtract(startSp));
+        int framesSize = UnsignedUtils.safeToInt(baseSp.subtract(sp));
         StoredContinuation instance = allocate(framesSize);
-        fillUninterruptibly(instance, startIp, startSp, framesSize);
-        cont.stored = instance;
-        return Continuation.FREEZE_OK;
+        fillUninterruptibly(instance, ip, sp, framesSize);
+        ContinuationInternals.setStoredContinuation(c, instance);
+        return ContinuationSupport.FREEZE_OK;
     }
 
     @Uninterruptible(reason = "Prevent modifications to the stack while initializing instance and copying frames.")
@@ -188,105 +170,72 @@ public final class StoredContinuationAccess {
     }
 
     @AlwaysInline("De-virtualize calls to ObjectReferenceVisitor")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkReferences(Object obj, ObjectReferenceVisitor visitor) {
-        assert !Heap.getHeap().isInImageHeap(obj) : "StoredContinuations in the image heap are read-only and don't need to be visited";
+    @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
+    public static boolean walkReferences(StoredContinuation s, ObjectReferenceVisitor visitor) {
+        assert !Heap.getHeap().isInImageHeap(s) : "StoredContinuations in the image heap are read-only and don't need to be visited";
 
-        StoredContinuation s = (StoredContinuation) obj;
-        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
-        if (!initWalk(s, walk)) {
-            return true; // uninitialized, ignore
-        }
+        JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
+        JavaStackWalker.initializeForContinuation(walk, s);
 
-        SimpleCodeInfoQueryResult queryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
-        do {
-            UntetheredCodeInfo untetheredCodeInfo = walk.getIPCodeInfo();
+        while (JavaStackWalker.advanceForContinuation(walk, s)) {
+            JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
+            VMError.guarantee(!JavaFrames.isEntryPoint(frame), "Entry point frames are not supported");
+            VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Stack walk must not encounter unknown frame");
+            VMError.guarantee(Deoptimizer.checkDeoptimized(frame) == null, "Deoptimized frames are not supported");
+
+            UntetheredCodeInfo untetheredCodeInfo = frame.getIPCodeInfo();
             Object tether = CodeInfoAccess.acquireTether(untetheredCodeInfo);
             try {
                 CodeInfo codeInfo = CodeInfoAccess.convert(untetheredCodeInfo, tether);
-                walkFrameReferences(walk, codeInfo, queryResult, visitor, s);
+                walkFrameReferences(frame, codeInfo, visitor, s);
             } finally {
                 CodeInfoAccess.releaseTether(untetheredCodeInfo, tether);
             }
-        } while (JavaStackWalker.continueWalk(walk, queryResult, null));
+        }
 
         return true;
     }
 
     @AlwaysInline("De-virtualize calls to visitor.")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean walkFrames(StoredContinuation s, ContinuationStackFrameVisitor visitor, ContinuationStackFrameVisitorData data) {
+    @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
+    public static void walkFrames(StoredContinuation s, ContinuationStackFrameVisitor visitor, ContinuationStackFrameVisitorData data) {
         assert !Heap.getHeap().isInImageHeap(s) : "StoredContinuations in the image heap are read-only and don't need to be visited";
 
-        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
-        if (!initWalk(s, walk)) {
-            return true; // uninitialized, ignore
-        }
+        JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
+        JavaStackWalker.initializeForContinuation(walk, s);
 
-        SimpleCodeInfoQueryResult queryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
-        do {
-            UntetheredCodeInfo untetheredCodeInfo = walk.getIPCodeInfo();
+        while (JavaStackWalker.advanceForContinuation(walk, s)) {
+            JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
+            VMError.guarantee(!JavaFrames.isEntryPoint(frame), "Entry point frames are not supported");
+            VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Stack walk must not encounter unknown frame");
+            VMError.guarantee(Deoptimizer.checkDeoptimized(frame) == null, "Deoptimized frames are not supported");
+
+            UntetheredCodeInfo untetheredCodeInfo = frame.getIPCodeInfo();
             Object tether = CodeInfoAccess.acquireTether(untetheredCodeInfo);
             try {
-                CodeInfo codeInfo = CodeInfoAccess.convert(untetheredCodeInfo);
-                queryFrameCodeInfo(walk, codeInfo, queryResult);
-
+                CodeInfo codeInfo = CodeInfoAccess.convert(untetheredCodeInfo, tether);
                 NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
-                long referenceMapIndex = queryResult.getReferenceMapIndex();
+                long referenceMapIndex = frame.getReferenceMapIndex();
                 if (referenceMapIndex != ReferenceMapIndex.NO_REFERENCE_MAP) {
-                    visitor.visitFrame(data, walk.getSP(), referenceMapEncoding, referenceMapIndex, visitor);
+                    visitor.visitFrame(data, frame.getSP(), referenceMapEncoding, referenceMapIndex, visitor);
                 }
             } finally {
                 CodeInfoAccess.releaseTether(untetheredCodeInfo, tether);
             }
-        } while (JavaStackWalker.continueWalk(walk, queryResult, null));
-
-        return true;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void queryFrameCodeInfo(JavaStackWalk walk, CodeInfo codeInfo, SimpleCodeInfoQueryResult queryResult) {
-        Pointer sp = walk.getSP();
-        CodePointer ip = walk.getPossiblyStaleIP();
-
-        if (codeInfo.isNull()) {
-            throw JavaStackWalker.reportUnknownFrameEncountered(sp, ip, null);
         }
-        VMError.guarantee(codeInfo.equal(CodeInfoTable.getImageCodeInfo()));
-        VMError.guarantee(Deoptimizer.checkDeoptimized(sp) == null);
-
-        CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), queryResult);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean initWalk(StoredContinuation s, JavaStackWalk walk) {
-        CodePointer startIp = getIP(s);
-        if (startIp.isNull()) {
-            return false; // uninitialized
-        }
-        initWalk(s, walk, startIp);
-        return true;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void initWalk(StoredContinuation s, JavaStackWalk walk, CodePointer startIp) {
-        Pointer startSp = getFramesStart(s);
-        Pointer endSp = getFramesStart(s).add(getSizeInBytes(s));
-        JavaStackWalker.initWalkStoredContinuation(walk, startSp, endSp, startIp);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void walkFrameReferences(JavaStackWalk walk, CodeInfo codeInfo, SimpleCodeInfoQueryResult queryResult, ObjectReferenceVisitor visitor, Object holderObject) {
-        queryFrameCodeInfo(walk, codeInfo, queryResult);
-
+    @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
+    public static void walkFrameReferences(JavaFrame frame, CodeInfo codeInfo, ObjectReferenceVisitor visitor, Object holderObject) {
         NonmovableArray<Byte> referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(codeInfo);
-        long referenceMapIndex = queryResult.getReferenceMapIndex();
+        long referenceMapIndex = frame.getReferenceMapIndex();
         if (referenceMapIndex != ReferenceMapIndex.NO_REFERENCE_MAP) {
-            CodeReferenceMapDecoder.walkOffsetsFromPointer(walk.getSP(), referenceMapEncoding, referenceMapIndex, visitor, holderObject);
+            CodeReferenceMapDecoder.walkOffsetsFromPointer(frame.getSP(), referenceMapEncoding, referenceMapIndex, visitor, holderObject);
         }
     }
 
     public abstract static class ContinuationStackFrameVisitor {
+        @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
         public abstract void visitFrame(ContinuationStackFrameVisitorData data, Pointer sp, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ContinuationStackFrameVisitor visitor);
     }
 
@@ -294,20 +243,21 @@ public final class StoredContinuationAccess {
     public interface ContinuationStackFrameVisitorData extends PointerBase {
     }
 
+    @SuppressWarnings("unused")
     private static final class PreemptVisitor extends StackFrameVisitor {
         private final Pointer endSP;
         private boolean startFromNextFrame = false;
 
         Pointer leafSP;
         CodePointer leafIP;
-        int preemptStatus = Continuation.FREEZE_OK;
+        int preemptStatus = ContinuationSupport.FREEZE_OK;
 
         PreemptVisitor(Pointer endSP) {
             this.endSP = endSP;
         }
 
         @Override
-        protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
+        protected boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
             if (sp.aboveOrEqual(endSP)) {
                 return false;
             }
@@ -315,7 +265,7 @@ public final class StoredContinuationAccess {
             FrameInfoQueryResult frameInfo = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip).getFrameInfo();
             if (frameInfo.getSourceClass().equals(StoredContinuationAccess.class) && frameInfo.getSourceMethodName().equals("allocateToYield")) {
                 // Continuation is already in the process of yielding, cancel preemption.
-                preemptStatus = Continuation.YIELDING;
+                preemptStatus = ContinuationSupport.FREEZE_YIELDING;
                 return false;
             }
 
@@ -332,9 +282,14 @@ public final class StoredContinuationAccess {
                 }
             }
 
-            VMError.guarantee(codeInfo.equal(CodeInfoTable.getImageCodeInfo()));
+            VMError.guarantee(CodeInfoAccess.isAOTImageCode(codeInfo));
 
             return true;
+        }
+
+        @Override
+        protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
+            throw VMError.shouldNotReachHere("Continuations can't contain JIT compiled code.");
         }
     }
 }

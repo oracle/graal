@@ -46,7 +46,7 @@ public final class ReferenceArrayLoadQuickNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
         int index = EspressoFrame.popInt(frame, top - 1);
         StaticObject array = nullCheck(EspressoFrame.popObject(frame, top - 2));
         StaticObject result = objectArrayLoad.execute(array, index);

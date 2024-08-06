@@ -34,19 +34,14 @@ import static com.oracle.truffle.espresso.verifier.MethodVerifier.isType2;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.verifyGuarantee;
 
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
-class StackFrame {
+class StackFrame implements StackMapFrameParser.FrameState {
     final Operand[] stack;
     final int stackSize;
     final int top;
     final Operand[] locals;
     final SubroutineModificationStack subroutineModificationStack;
-
-    /*
-     * For stackMap extraction. Points to the last occupied slot of a stack frame, or -1 if there is
-     * no local.
-     */
-    int lastLocal;
 
     StackFrame(OperandStack stack, Locals locals) {
         this.stack = stack.extract();
@@ -57,11 +52,7 @@ class StackFrame {
     }
 
     StackFrame(OperandStack stack, Operand[] locals) {
-        this.stack = stack.extract();
-        this.stackSize = stack.size;
-        this.top = stack.top;
-        this.locals = locals;
-        this.subroutineModificationStack = null;
+        this(stack, locals, null);
     }
 
     StackFrame(OperandStack stack, Operand[] locals, SubroutineModificationStack sms) {
@@ -74,13 +65,6 @@ class StackFrame {
 
     StackFrame(MethodVerifier mv) {
         this(new OperandStack(mv.getMaxStack()), new Locals(mv));
-        int last = (mv.isStatic() ? 0 : 1);
-        for (int i = 0; i < mv.getSig().length - 1; i++) {
-            if (isType2(locals[last++])) {
-                last++;
-            }
-        }
-        this.lastLocal = last - 1;
     }
 
     StackFrame(Operand[] stack, int stackSize, int top, Operand[] locals) {
@@ -121,6 +105,59 @@ class StackFrame {
             return;
         }
         subroutineModificationStack.merge(other);
+    }
+
+    @Override
+    public StackFrame sameNoStack() {
+        return new StackFrame(Operand.EMPTY_ARRAY, 0, 0, locals);
+    }
+
+    @Override
+    public StackFrame sameLocalsWith1Stack(VerificationTypeInfo vfi, StackMapFrameParser.FrameBuilder<?> builder) {
+        if (builder instanceof MethodVerifier verifier) {
+            Operand op = verifier.getOperandFromVerificationType(vfi);
+            formatGuarantee(op.slots() <= verifier.getMaxStack(), "Stack map entry requires more stack than allowed by maxStack.");
+            OperandStack newStack = new OperandStack(2);
+            newStack.push(op);
+            return new StackFrame(newStack, locals);
+        }
+        throw EspressoError.shouldNotReachHere();
+    }
+
+    @Override
+    public StackMapFrameParser.FrameAndLocalEffect chop(int chop, int lastLocal) {
+        Operand[] newLocals = locals.clone();
+        int pos = lastLocal;
+        for (int i = 0; i < chop; i++) {
+            formatGuarantee(pos >= 0, "Chop frame entry chops more locals than existing.");
+            Operand op = newLocals[pos];
+            if (op.isTopOperand() && (pos > 0)) {
+                if (isType2(newLocals[pos - 1])) {
+                    pos--;
+                }
+            }
+            newLocals[pos] = Invalid;
+            pos--;
+        }
+        return new StackMapFrameParser.FrameAndLocalEffect(new StackFrame(Operand.EMPTY_ARRAY, 0, 0, newLocals), pos - lastLocal);
+    }
+
+    @Override
+    public StackMapFrameParser.FrameAndLocalEffect append(VerificationTypeInfo[] vfis, StackMapFrameParser.FrameBuilder<?> builder, int lastLocal) {
+        if (builder instanceof MethodVerifier verifier) {
+            verifyGuarantee(vfis.length > 0, "Empty Append Frame in the StackmapTable");
+            Operand[] newLocals = locals.clone();
+            int pos = lastLocal;
+            for (VerificationTypeInfo vti : vfis) {
+                Operand op = verifier.getOperandFromVerificationType(vti);
+                MethodVerifier.setLocal(newLocals, op, ++pos, "Append frame entry in stack map appends more locals than allowed.");
+                if (isType2(op)) {
+                    MethodVerifier.setLocal(newLocals, Invalid, ++pos, "Append frame entry in stack map appends more locals than allowed.");
+                }
+            }
+            return new StackMapFrameParser.FrameAndLocalEffect(new StackFrame(Operand.EMPTY_ARRAY, 0, 0, newLocals), pos - lastLocal);
+        }
+        throw EspressoError.shouldNotReachHere();
     }
 }
 

@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.redefinition;
 
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -33,7 +32,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 // Represents ClassInfo instances for classes about to be hotswapped
 public final class HotSwapClassInfo extends ClassInfo {
 
-    private WeakReference<ObjectKlass> thisKlass;
+    private ObjectKlass thisKlass;
     private byte[] bytes;
     private byte[] patchedBytes;
     private final StaticObject classLoader;
@@ -59,7 +58,7 @@ public final class HotSwapClassInfo extends ClassInfo {
                     String enclosingMethodFingerprint,
                     ArrayList<HotSwapClassInfo> inners, byte[] bytes, boolean isEnumSwitchmapHelper, boolean isNewInnerTestKlass) {
         super(isEnumSwitchmapHelper, isNewInnerTestKlass);
-        this.thisKlass = new WeakReference<>(klass);
+        this.thisKlass = klass;
         this.originalName = originalName;
         this.classLoader = classLoader;
         this.classFingerprint = classFingerprint;
@@ -81,11 +80,11 @@ public final class HotSwapClassInfo extends ClassInfo {
 
     @Override
     public ObjectKlass getKlass() {
-        return thisKlass.get();
+        return thisKlass;
     }
 
     public void setKlass(ObjectKlass klass) {
-        thisKlass = new WeakReference<>(klass);
+        thisKlass = klass;
     }
 
     @Override

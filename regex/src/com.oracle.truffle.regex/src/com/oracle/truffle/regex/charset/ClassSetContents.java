@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.regex.charset;
 
-import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
+import org.graalvm.collections.EconomicSet;
+
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-import org.graalvm.collections.EconomicSet;
 
 public final class ClassSetContents implements JsonConvertible {
 
@@ -93,7 +94,7 @@ public final class ClassSetContents implements JsonConvertible {
     }
 
     public static ClassSetContents createPOSIXCollationElement(int codePoint) {
-        return new ClassSetContents(Kind.POSIXCollationElement, CodePointSet.create(codePoint), EconomicSet.create(), true);
+        return new ClassSetContents(Kind.POSIXCollationElement, CodePointSet.create(codePoint), EconomicSet.create(), false);
     }
 
     public static ClassSetContents createPOSIXCollationElement(String string) {
@@ -103,7 +104,7 @@ public final class ClassSetContents implements JsonConvertible {
     }
 
     public static ClassSetContents createPOSIXCollationEquivalenceClass(int codePoint) {
-        return new ClassSetContents(Kind.POSIXCollationEquivalenceClass, CodePointSet.create(codePoint), EconomicSet.create(), true);
+        return new ClassSetContents(Kind.POSIXCollationEquivalenceClass, CodePointSet.create(codePoint), EconomicSet.create(), false);
     }
 
     public static ClassSetContents createPOSIXCollationEquivalenceClass(String string) {
@@ -112,12 +113,19 @@ public final class ClassSetContents implements JsonConvertible {
         return new ClassSetContents(Kind.POSIXCollationEquivalenceClass, CodePointSet.getEmpty(), strings, true);
     }
 
+    public ClassSetContents unionUnicodePropertyOfStrings(ClassSetContents other) {
+        EconomicSet<String> unionStrings = EconomicSet.create();
+        unionStrings.addAll(strings);
+        unionStrings.addAll(other.strings);
+        return new ClassSetContents(Kind.Class, codePointSet.union(other.codePointSet), unionStrings, mayContainStrings || other.mayContainStrings);
+    }
+
     public ClassSetContents caseFold(CodePointSetAccumulator tmp) {
         EconomicSet<String> foldedStrings = EconomicSet.create(strings.size());
         for (String string : strings) {
-            foldedStrings.add(CaseFoldTable.simpleCaseFold(string));
+            foldedStrings.add(CaseFoldData.icuSimpleCaseFold(string));
         }
-        return new ClassSetContents(kind, CaseFoldTable.simpleCaseFold(codePointSet, tmp), foldedStrings, mayContainStrings);
+        return new ClassSetContents(kind, CaseFoldData.simpleCaseFold(codePointSet, tmp), foldedStrings, mayContainStrings);
     }
 
     public EconomicSet<String> getStrings() {
@@ -132,12 +140,24 @@ public final class ClassSetContents implements JsonConvertible {
         return kind == Kind.Character;
     }
 
+    public boolean isCharacterClass() {
+        return kind == Kind.Class;
+    }
+
     public boolean isRange() {
         return kind == Kind.Range;
     }
 
+    public boolean isPosixCollationElement() {
+        return kind == Kind.POSIXCollationElement;
+    }
+
+    public boolean isPosixCollationEquivalenceClass() {
+        return kind == Kind.POSIXCollationEquivalenceClass;
+    }
+
     public boolean isAllowedInRange() {
-        return kind == Kind.Character || kind == Kind.POSIXCollationElement || kind == Kind.POSIXCollationEquivalenceClass;
+        return kind == Kind.Character || ((kind == Kind.POSIXCollationElement || kind == Kind.POSIXCollationEquivalenceClass) && isCodePointSetOnly());
     }
 
     public int getCodePoint() {

@@ -33,6 +33,7 @@ char **getEnviron() {
 #else
 
 #include <windows.h>
+#include <stdio.h>
 
 static char **envptr = NULL; 
 static char *env = NULL;

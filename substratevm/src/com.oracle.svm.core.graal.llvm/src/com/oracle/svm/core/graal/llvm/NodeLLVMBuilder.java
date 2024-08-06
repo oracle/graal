@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
-import static org.graalvm.compiler.debug.GraalError.unimplemented;
-import static org.graalvm.compiler.debug.GraalError.unimplementedOverride;
+import static jdk.graal.compiler.debug.GraalError.shouldNotReachHere;
+import static jdk.graal.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
+import static jdk.graal.compiler.debug.GraalError.unimplemented;
+import static jdk.graal.compiler.debug.GraalError.unimplementedOverride;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,57 +38,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.calc.Condition;
-import org.graalvm.compiler.core.common.cfg.BasicBlock;
-import org.graalvm.compiler.core.common.cfg.BlockMap;
-import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.gen.DebugInfoBuilder;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.GraalGraphError;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeInputList;
-import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.lir.ConstantValue;
-import org.graalvm.compiler.lir.LIRFrameState;
-import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.AbstractEndNode;
-import org.graalvm.compiler.nodes.AbstractMergeNode;
-import org.graalvm.compiler.nodes.BreakpointNode;
-import org.graalvm.compiler.nodes.DeoptimizingNode;
-import org.graalvm.compiler.nodes.DirectCallTargetNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.FullInfopointNode;
-import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.IndirectCallTargetNode;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.LogicConstantNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.LoopEndNode;
-import org.graalvm.compiler.nodes.LoweredCallTargetNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.SafepointNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.calc.CompareNode;
-import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.nodes.calc.IntegerTestNode;
-import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
-import org.graalvm.compiler.nodes.extended.ForeignCall;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.extended.SwitchNode;
-import org.graalvm.compiler.nodes.java.TypeSwitchNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
@@ -110,7 +59,6 @@ import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMVariable;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
-import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -123,6 +71,57 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.gen.DebugInfoBuilder;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.GraalGraphError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeInputList;
+import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.lir.ConstantValue;
+import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.AbstractEndNode;
+import jdk.graal.compiler.nodes.AbstractMergeNode;
+import jdk.graal.compiler.nodes.BreakpointNode;
+import jdk.graal.compiler.nodes.DeoptimizingNode;
+import jdk.graal.compiler.nodes.DirectCallTargetNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.FullInfopointNode;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.IndirectCallTargetNode;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.LogicConstantNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.LoopEndNode;
+import jdk.graal.compiler.nodes.LoweredCallTargetNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.SafepointNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
+import jdk.graal.compiler.nodes.calc.CompareNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.IntegerTestNode;
+import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.extended.ForeignCall;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallWithExceptionNode;
+import jdk.graal.compiler.nodes.extended.SwitchNode;
+import jdk.graal.compiler.nodes.java.TypeSwitchNode;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
@@ -149,7 +148,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     protected NodeLLVMBuilder(StructuredGraph graph, LLVMGenerator gen) {
         this.gen = gen;
         this.builder = gen.getBuilder();
-        this.debugInfoBuilder = new SubstrateDebugInfoBuilder(graph, gen.getProviders().getSnippetReflection(), gen.getProviders().getMetaAccessExtensionProvider(), this);
+        this.debugInfoBuilder = new SubstrateDebugInfoBuilder(graph, gen.getProviders().getMetaAccessExtensionProvider(), this);
         setCompilationResultMethod(gen.getCompilationResult(), graph);
 
         for (HIRBlock block : graph.getLastSchedule().getCFG().getBlocks()) {
@@ -193,7 +192,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             builder.buildStackmap(builder.constantLong(startPatchpointID));
             gen.getCompilationResult().recordInfopoint(NumUtil.safeToInt(startPatchpointID), null, InfopointReason.METHOD_START);
 
-            if (gen.isEntryPoint() && SubstrateOptions.SpawnIsolates.getValue()) {
+            if (gen.isEntryPoint()) {
                 /*
                  * In entry points, we want to restore the heap base register on return. For
                  * example, in Isolate creation, this allows the current thread to get back its heap
@@ -499,7 +498,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
             ComputedIndirectCallTargetNode computedIndirectCallTargetNode = (ComputedIndirectCallTargetNode) callTarget;
             LLVMValueRef computedAddress = llvmOperand(computedIndirectCallTargetNode.getAddressBase());
-            CompressEncoding compressEncoding = ReferenceAccess.singleton().getCompressEncoding();
+            int compressionShift = ReferenceAccess.singleton().getCompressionShift();
             boolean nextMemoryAccessNeedsDecompress = false;
 
             for (var computation : computedIndirectCallTargetNode.getAddressComputation()) {
@@ -510,7 +509,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                     if (nextMemoryAccessNeedsDecompress) {
                         computedAddress = builder.buildAddrSpaceCast(computedAddress, builder.objectType(true));
                         LLVMValueRef heapBase = ((LLVMVariable) gen.emitReadRegister(ReservedRegisters.singleton().getHeapBaseRegister(), null)).get();
-                        computedAddress = builder.buildUncompress(computedAddress, heapBase, true, compressEncoding.getShift());
+                        computedAddress = builder.buildUncompress(computedAddress, heapBase, true, compressionShift);
                     }
 
                     computedAddress = builder.buildGEP(computedAddress, builder.constantInt(field.getOffset()));
@@ -612,13 +611,11 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         Register stackPointer = gen.getRegisterConfig().getFrameRegister();
         builder.buildStore(builder.buildReadRegister(builder.register(stackPointer.name)), builder.buildBitcast(lastSPAddr, builder.pointerType(builder.wordType())));
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            LLVMValueRef threadLocalArea = gen.buildInlineGetRegister(ReservedRegisters.singleton().getThreadRegister().name);
-            LLVMValueRef statusIndex = builder.constantInt(KnownOffsets.singleton().getVMThreadStatusOffset());
-            LLVMValueRef statusAddress = builder.buildGEP(builder.buildIntToPtr(threadLocalArea, builder.rawPointerType()), statusIndex);
-            LLVMValueRef newThreadStatus = builder.constantInt(SubstrateBackend.getNewThreadStatus(callTarget));
-            builder.buildVolatileStore(newThreadStatus, builder.buildBitcast(statusAddress, builder.pointerType(builder.intType())), Integer.BYTES);
-        }
+        LLVMValueRef threadLocalArea = gen.buildInlineGetRegister(ReservedRegisters.singleton().getThreadRegister().name);
+        LLVMValueRef statusIndex = builder.constantInt(KnownOffsets.singleton().getVMThreadStatusOffset());
+        LLVMValueRef statusAddress = builder.buildGEP(builder.buildIntToPtr(threadLocalArea, builder.rawPointerType()), statusIndex);
+        LLVMValueRef newThreadStatus = builder.constantInt(SubstrateBackend.getNewThreadStatus(callTarget));
+        builder.buildVolatileStore(newThreadStatus, builder.buildBitcast(statusAddress, builder.pointerType(builder.intType())), Integer.BYTES);
 
         LLVMValueRef wrapper = gen.createJNIWrapper(callee, nativeABI, args.length, KnownOffsets.singleton().getJavaFrameAnchorLastIPOffset());
 

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jvmstat;
 
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Class representing the 2.0 version of the HotSpot PerfData instrumentation buffer header.

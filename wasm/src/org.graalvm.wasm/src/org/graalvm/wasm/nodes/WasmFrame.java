@@ -42,6 +42,7 @@ package org.graalvm.wasm.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.api.Vector128;
 
 public abstract class WasmFrame {
 
@@ -56,7 +57,7 @@ public abstract class WasmFrame {
         }
     }
 
-    public static void dropReference(VirtualFrame frame, int slot) {
+    public static void dropObject(VirtualFrame frame, int slot) {
         frame.clearObjectStatic(slot);
     }
 
@@ -68,7 +69,7 @@ public abstract class WasmFrame {
         frame.copyPrimitiveStatic(sourceSlot, targetSlot);
     }
 
-    public static void copyReference(VirtualFrame frame, int sourceSlot, int targetSlot) {
+    public static void copyObject(VirtualFrame frame, int sourceSlot, int targetSlot) {
         frame.copyObjectStatic(sourceSlot, targetSlot);
     }
 
@@ -135,6 +136,16 @@ public abstract class WasmFrame {
 
     public static void pushDouble(VirtualFrame frame, int slot, double value) {
         frame.setDoubleStatic(slot, value);
+    }
+
+    public static Vector128 popVector128(VirtualFrame frame, int slot) {
+        Vector128 result = (Vector128) frame.getObjectStatic(slot);
+        frame.clearObjectStatic(slot);
+        return result;
+    }
+
+    public static void pushVector128(VirtualFrame frame, int slot, Vector128 value) {
+        frame.setObjectStatic(slot, value);
     }
 
     public static Object popReference(VirtualFrame frame, int slot) {

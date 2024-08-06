@@ -40,6 +40,20 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+
+import java.util.ArrayList;
+import java.util.Collection;
+
+import org.hamcrest.MatcherAssert;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -48,16 +62,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.nfi.test.interop.NativeVector;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-import java.util.ArrayList;
-import java.util.Collection;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
@@ -116,7 +120,7 @@ public class PointerNFITest extends NFITest {
 
             Object ret = fold.call(testVector, testVector.getArraySize());
 
-            Assert.assertThat("return type", ret, is(instanceOf(Double.class)));
+            MatcherAssert.assertThat("return type", ret, is(instanceOf(Double.class)));
             double retValue = (Double) ret;
 
             Assert.assertEquals("return value", sumBefore, retValue, Double.MIN_VALUE);
@@ -235,7 +239,7 @@ public class PointerNFITest extends NFITest {
         try (NativeVector testVector = prepareVector()) {
             Object ret = test.call(testVector);
 
-            Assert.assertThat("return type", ret, is(instanceOf(Double.class)));
+            MatcherAssert.assertThat("return type", ret, is(instanceOf(Double.class)));
             double retValue = (Double) ret;
 
             Assert.assertEquals("return value", testVector.readArrayElement(0), retValue, Double.MIN_VALUE);

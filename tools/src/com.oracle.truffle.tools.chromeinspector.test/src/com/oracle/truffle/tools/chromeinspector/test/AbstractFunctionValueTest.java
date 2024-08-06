@@ -65,7 +65,8 @@ public abstract class AbstractFunctionValueTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
-        assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        tester.receiveMessages(
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
         tester.sendMessage("{\"id\":3,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":3,\"url\":\"" + FILE_NAME + "\",\"columnNumber\":0,\"condition\":\"\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"breakpointId\":\"1\",\"locations\":[]},\"id\":3}\n"));

@@ -66,7 +66,7 @@ public class StackTraceTests {
                 assertSame(B.class, callerClass);
             }
             if (type == Type.GET_STACKTRACE) {
-                StackTraceElement[] stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer(), WordFactory.nullPointer());
+                StackTraceElement[] stackTrace = StackTraceUtils.getCurrentThreadStackTrace(true, KnownIntrinsics.readCallerStackPointer(), WordFactory.nullPointer());
                 assertTrue(stackTrace.length > 0);
                 assertSame(B.class.getName(), stackTrace[0].getClassName());
                 assertSame(A.class.getName(), stackTrace[1].getClassName());

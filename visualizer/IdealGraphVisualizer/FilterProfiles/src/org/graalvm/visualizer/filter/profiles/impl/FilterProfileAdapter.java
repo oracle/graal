@@ -477,7 +477,7 @@ public class FilterProfileAdapter implements FilterProfile {
         try {
             DataShadow.create(dFolder, filter.getName(), DataObject.find(original));
         } catch (IOException ex) {
-            throw new IllegalArgumentException(Bundle.PROFILE_CannotAddFilter(ex.getLocalizedMessage()), ex);
+            throw new IllegalArgumentException(Bundle.PROFILE_CannotAddFilter(ex.toString()), ex);
         }
     }
 

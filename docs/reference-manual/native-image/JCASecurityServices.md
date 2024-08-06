@@ -10,7 +10,7 @@ redirect_from:
 
 # JCA Security Services in Native Image
 
-This page explains Native Image support of the [Java Cryptography Architecture (JCA)](https://docs.oracle.com/en/java/javase/17/security/java-cryptography-architecture-jca-reference-guide.html) framework.
+This page explains Native Image support of the [Java Cryptography Architecture (JCA)](https://docs.oracle.com/en/java/javase/22/security/java-cryptography-architecture-jca-reference-guide.html) framework.
 
 The JCA framework uses a provider architecture to access security services such as digital signatures, message digests, certificates and certificate validation, encryption (symmetric/asymmetric block/stream ciphers), key generation and management, and secure random number generation, etc.
 To achieve algorithm independence and extensibility it relies on reflection, therefore it requires a custom configuration in Native Image.
@@ -31,7 +31,7 @@ The `native-image` builder uses static analysis to discover which of these servi
 It does so by registering reachability handlers for each of the `getInstance()` factory methods.
 When it determines that a `getInstance()` method is reachable at run time, it automatically performs the reflection registration for all the concrete implementations of the corresponding service type.
 
-Tracing of the security services automatic registation can be enabled with `-H:+TraceSecurityServices`.
+Tracing of the security services automatic registration can be enabled with `-H:+TraceSecurityServices`.
 The report will detail all registered service classes, the API methods that triggered registration, and the parsing context for each reachable API method.
 
 > Note: The `--enable-all-security-services` option is now deprecated and it will be removed in a future release.
@@ -39,7 +39,7 @@ The report will detail all registered service classes, the API methods that trig
 ## Provider Registration
 
 The `native-image` builder captures the list of providers and their preference order from the underlying JVM.
-The provider order is specified in the `java.security` file under `<java-home>/lib/security/java.security`.
+The provider order is specified in the `java.security` file under `<java-home>/conf/security/java.security`.
 New security providers cannot be registered at run time; all providers must be statically configured at executable build time.
 
 ## Providers Reordering at Run Time

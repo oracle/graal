@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.hamcrest.CoreMatchers;
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -81,7 +82,7 @@ public class SecurityServiceTest {
         Assert.assertNotNull("Provider is not registered", registered);
         final Object impl = registered.getService("NoOp", "no-op-algo").newInstance(null);
         Assert.assertNotNull("No service instance was created", impl);
-        Assert.assertThat("Unexpected service implementation class", impl, CoreMatchers.instanceOf(NoOpImpl.class));
+        MatcherAssert.assertThat("Unexpected service implementation class", impl, CoreMatchers.instanceOf(NoOpImpl.class));
     }
 
     @Test
@@ -89,7 +90,7 @@ public class SecurityServiceTest {
         try {
             JCACompliantNoOpService service = JCACompliantNoOpService.getInstance("no-op-algo-two");
             Assert.assertNotNull("No service instance was created", service);
-            Assert.assertThat("Unexpected service implementation class", service, CoreMatchers.instanceOf(JcaCompliantNoOpServiceImpl.class));
+            MatcherAssert.assertThat("Unexpected service implementation class", service, CoreMatchers.instanceOf(JcaCompliantNoOpServiceImpl.class));
         } catch (NoSuchAlgorithmException e) {
             Assert.fail("Failed to fetch noop service with exception: " + e);
         }

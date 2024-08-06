@@ -37,6 +37,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
@@ -449,25 +450,75 @@ public abstract class ClassRegistry {
 
         if (superKlass != null) {
             if (!Klass.checkAccess(superKlass, klass, true)) {
-                throw EspressoClassLoadingException.illegalAccessError("class " + type + " cannot access its superclass " + superKlassType);
+                StringBuilder sb = new StringBuilder().append("class ").append(klass.getExternalName()).append(" cannot access its superclass ").append(superKlass.getExternalName());
+                superTypeAccessMessage(klass, superKlass, sb, context);
+                throw EspressoClassLoadingException.illegalAccessError(sb.toString());
             }
             if (!superKlass.permittedSubclassCheck(klass)) {
-                throw EspressoClassLoadingException.incompatibleClassChangeError("class " + type + " is not a permitted subclass of class " + superKlassType);
+                throw EspressoClassLoadingException.incompatibleClassChangeError("class " + klass.getExternalName() + " is not a permitted subclass of class " + superKlass.getExternalName());
             }
         }
 
         for (ObjectKlass interf : superInterfaces) {
             if (interf != null) {
                 if (!Klass.checkAccess(interf, klass, true)) {
-                    throw EspressoClassLoadingException.illegalAccessError("class " + type + " cannot access its superinterface " + interf.getType());
+                    StringBuilder sb = new StringBuilder().append("class ").append(klass.getExternalName()).append(" cannot access its superinterface ").append(interf.getExternalName());
+                    superTypeAccessMessage(klass, interf, sb, context);
+                    throw EspressoClassLoadingException.illegalAccessError(sb.toString());
                 }
                 if (!interf.permittedSubclassCheck(klass)) {
-                    throw EspressoClassLoadingException.incompatibleClassChangeError("class " + type + " is not a permitted subclass of interface " + superKlassType);
+                    throw EspressoClassLoadingException.incompatibleClassChangeError("class " + klass.getExternalName() + " is not a permitted subclass of interface " + interf.getExternalName());
                 }
             }
         }
 
         return klass;
+    }
+
+    private static void superTypeAccessMessage(ObjectKlass sub, ObjectKlass sup, StringBuilder sb, EspressoContext context) {
+        if (context.getJavaVersion().modulesEnabled()) {
+            sb.append(" (");
+            Meta meta = context.getMeta();
+            if (sup.module() == sub.module()) {
+                sb.append(sub.getExternalName());
+                sb.append(" and ");
+                classInModuleOfLoader(sup, true, sb, meta);
+            } else {
+                classInModuleOfLoader(sub, false, sb, meta);
+                sb.append("; ");
+                classInModuleOfLoader(sup, false, sb, meta);
+            }
+            sb.append(")");
+        }
+    }
+
+    public static void classInModuleOfLoader(ObjectKlass klass, boolean plural, StringBuilder sb, Meta meta) {
+        assert meta.getJavaVersion().modulesEnabled() && meta.java_lang_ClassLoader_nameAndId != null;
+        sb.append(klass.getExternalName());
+        if (plural) {
+            sb.append(" are in ");
+        } else {
+            sb.append(" is in ");
+        }
+        ModuleEntry module = klass.module();
+        if (module.isNamed()) {
+            sb.append("module ").append(module.getNameAsString());
+            // TODO version
+        } else {
+            sb.append("unnamed module");
+        }
+        sb.append(" of loader ");
+        StaticObject loader = klass.getDefiningClassLoader();
+        if (StaticObject.isNull(loader)) {
+            sb.append("bootstrap");
+        } else {
+            StaticObject nameAndId = meta.java_lang_ClassLoader_nameAndId.getObject(loader);
+            if (StaticObject.isNull(nameAndId)) {
+                sb.append(loader.getKlass().getExternalName());
+            } else {
+                sb.append(meta.toHostString(nameAndId));
+            }
+        }
     }
 
     private void registerKlass(ObjectKlass klass, Symbol<Type> type) {

@@ -1,0 +1,6 @@
+# size_t redefined as int
+gcc-5.2.0/gcc/testsuite/g++.dg/lto/20101010-2_0.C
+gcc-5.2.0/gcc/testsuite/g++.dg/lto/20101010-1_0.C
+
+# uintptr_t defined as unsigned long (32 bits)
+gcc-5.2.0/gcc/testsuite/g++.dg/lto/pr63270_0.C

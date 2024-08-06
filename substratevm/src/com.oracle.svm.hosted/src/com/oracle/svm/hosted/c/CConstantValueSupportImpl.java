@@ -24,70 +24,65 @@
  */
 package com.oracle.svm.hosted.c;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
 
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
+import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@Platforms(Platform.HOSTED_ONLY.class)
 public final class CConstantValueSupportImpl implements CConstantValueSupport {
     private final NativeLibraries nativeLibraries;
     private final MetaAccessProvider metaAccess;
 
-    public CConstantValueSupportImpl(NativeLibraries nativeLibraries, MetaAccessProvider metaAccess) {
+    public CConstantValueSupportImpl(NativeLibraries nativeLibraries) {
         this.nativeLibraries = nativeLibraries;
-        this.metaAccess = metaAccess;
+        this.metaAccess = nativeLibraries.getMetaAccess();
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T> T getCConstantValue(Class<?> declaringClass, String methodName, Class<T> returnType) {
+        ResolvedJavaMethod method = getAnnotatedMethod(declaringClass, methodName);
+        ConstantInfo constantInfo = (ConstantInfo) nativeLibraries.findElementInfo(method);
+        Object value = constantInfo.getValue();
+
+        switch (constantInfo.getKind()) {
+            case INTEGER, POINTER -> {
+                return (T) CInterfaceInvocationPlugin.convertCIntegerToMethodReturnType(nativeLibraries, returnType, (long) value, constantInfo.getSizeInBytes() * Byte.SIZE,
+                                constantInfo.isUnsigned());
+            }
+            case FLOAT -> {
+                if (returnType == Float.class) {
+                    return returnType.cast(((Double) value).floatValue());
+                }
+                return returnType.cast(value);
+            }
+            case STRING, BYTEARRAY -> {
+                return returnType.cast(value);
+            }
+            default -> throw VMError.shouldNotReachHere("Unexpected returnType: " + returnType.getName());
+        }
+    }
+
+    private ResolvedJavaMethod getAnnotatedMethod(Class<?> declaringClass, String methodName) {
         ResolvedJavaMethod method;
         try {
-            method = metaAccess.lookupJavaMethod(declaringClass.getMethod(methodName));
-        } catch (NoSuchMethodException | SecurityException e) {
+            method = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(declaringClass, methodName));
+        } catch (ReflectionUtil.ReflectionUtilError e) {
             throw VMError.shouldNotReachHere("Method not found: " + declaringClass.getName() + "." + methodName);
         }
+
         if (method.getAnnotation(CConstant.class) == null) {
             throw VMError.shouldNotReachHere("Method " + declaringClass.getName() + "." + methodName + " is not annotated with @" + CConstant.class.getSimpleName());
         }
-
-        ConstantInfo constantInfo = (ConstantInfo) nativeLibraries.findElementInfo(method);
-        Object value = constantInfo.getValueInfo().getProperty();
-        switch (constantInfo.getKind()) {
-            case INTEGER:
-            case POINTER:
-                Long longValue = (Long) value;
-                if (returnType == Boolean.class) {
-                    return returnType.cast(Boolean.valueOf(longValue.longValue() != 0));
-                } else if (returnType == Integer.class) {
-                    return returnType.cast(Integer.valueOf((int) longValue.longValue()));
-                } else if (returnType == Long.class) {
-                    return returnType.cast(value);
-                }
-                break;
-
-            case FLOAT:
-                if (returnType == Double.class) {
-                    return returnType.cast(value);
-                }
-                break;
-
-            case STRING:
-                if (returnType == String.class) {
-                    return returnType.cast(value);
-                }
-                break;
-
-            case BYTEARRAY:
-                if (returnType == byte[].class) {
-                    return returnType.cast(value);
-                }
-                break;
-        }
-
-        throw VMError.shouldNotReachHere("Unexpected returnType: " + returnType.getName());
+        return method;
     }
 }

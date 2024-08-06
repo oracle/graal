@@ -24,12 +24,11 @@
  */
 package com.oracle.svm.polyglot.scala;
 
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -57,7 +56,7 @@ public final class ScalaAnalysisPlugin implements NodePlugin {
                 AnalysisType type = (AnalysisType) b.getConstantReflection().asJavaType(clazzConstant);
                 for (int i = 0; i < SUPPORTED_LEVEL_OF_NESTED_ARRAYS; i++) {
                     type = type.getArrayClass();
-                    type.registerAsInHeap(b.getGraph().currentNodeSourcePosition());
+                    type.registerAsInstantiated(b.getGraph().currentNodeSourcePosition());
                 }
             }
         }

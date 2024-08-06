@@ -36,7 +36,7 @@ final class PECoffRelocTableStruct {
     PECoffRelocTableStruct(int numsects) {
         relocEntries = new ArrayList<>(numsects);
         for (int i = 0; i < numsects; i++) {
-            relocEntries.add(new ArrayList<PECoffRelocStruct>());
+            relocEntries.add(new ArrayList<>());
         }
     }
 

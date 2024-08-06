@@ -37,6 +37,7 @@ import static com.oracle.svm.graal.hotspot.libgraal.truffle.HSTruffleCompilerLis
 import static org.graalvm.jniutils.JNIUtil.createHSString;
 
 import java.io.Closeable;
+import java.util.function.Supplier;
 
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JNIEnv;
@@ -98,11 +99,13 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
 
     @TruffleFromLibGraal(OnFailure)
     @Override
-    public void onFailure(TruffleCompilable compilable, String serializedException, boolean bailout, boolean permanentBailout, int tier) {
-        JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
-        JNIEnv env = JNIMethodScope.env();
-        JString hsReason = createHSString(env, serializedException);
-        callOnFailure(calls, env, getHandle(), hsCompilable, hsReason, bailout, permanentBailout, tier);
+    public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
+        try (LibGraalObjectHandleScope lazyStackTraceScope = lazyStackTrace != null ? LibGraalObjectHandleScope.forObject(lazyStackTrace) : null) {
+            JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
+            JNIEnv env = JNIMethodScope.env();
+            JString hsReason = createHSString(env, reason);
+            callOnFailure(calls, env, getHandle(), hsCompilable, hsReason, bailout, permanentBailout, tier, lazyStackTraceScope != null ? lazyStackTraceScope.getHandle() : 0L);
+        }
     }
 
     @TruffleFromLibGraal(OnCompilationRetry)

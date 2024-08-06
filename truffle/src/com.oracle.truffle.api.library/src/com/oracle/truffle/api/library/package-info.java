@@ -38,6 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+/*
+ @ApiInfo(
+ group="Truffle"
+ )
+ */
 /**
  * Truffle Libraries allow language implementations to use polymorphic dispatch for receiver types
  * with support for implementation specific caching/profiling and customization of the dispatch.

@@ -24,10 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.reflect.Method;
 import java.util.EnumSet;
 
-import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -37,9 +35,8 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.riscv64.RISCV64CPUFeatureAccess;
 import com.oracle.svm.core.riscv64.RISCV64LibCHelper;
-import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.riscv64.RISCV64;
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.RISCV64.class)
@@ -48,13 +45,9 @@ class RISCV64CPUFeatureAccessFeature extends CPUFeatureAccessFeatureBase impleme
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
         var targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
-        Method getFeatures = ReflectionUtil.lookupMethod(Architecture.class, "getFeatures");
-        var buildtimeCPUFeatures = RISCV64ReflectionUtil.invokeMethod(getFeatures, targetDescription.arch);
-        Class<?> riscv64CPUFeature = RISCV64ReflectionUtil.lookupClass(false, RISCV64ReflectionUtil.featureClass);
-        Method values = ReflectionUtil.lookupMethod(riscv64CPUFeature, "values");
-        Method initializeCPUFeatureAccessData = ReflectionUtil.lookupMethod(CPUFeatureAccessFeatureBase.class,
-                        "initializeCPUFeatureAccessData", Enum[].class, EnumSet.class, Class.class, FeatureImpl.BeforeAnalysisAccessImpl.class);
-        RISCV64ReflectionUtil.invokeMethod(initializeCPUFeatureAccessData, this, RISCV64ReflectionUtil.invokeMethod(values, null), buildtimeCPUFeatures, RISCV64LibCHelper.CPUFeatures.class, arg);
+        var arch = (RISCV64) targetDescription.arch;
+        var buildtimeCPUFeatures = arch.getFeatures();
+        initializeCPUFeatureAccessData(RISCV64.CPUFeature.values(), buildtimeCPUFeatures, RISCV64LibCHelper.CPUFeatures.class, (FeatureImpl.BeforeAnalysisAccessImpl) arg);
     }
 
     @Override

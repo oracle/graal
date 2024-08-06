@@ -30,9 +30,12 @@ import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterHeapLayout;
+import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.CGlobalDataImpl;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.util.VMError;
 
 public final class CGlobalDataInfo {
@@ -42,10 +45,10 @@ public final class CGlobalDataInfo {
     private final CGlobalDataImpl<?> data;
     private final boolean isSymbolReference;
 
-    private boolean isGlobalSymbol;
-    private boolean isHiddenSymbol;
-    private int offset = -1;
-    private int size = -1;
+    @UnknownPrimitiveField(availability = AfterHostedUniverse.class) private boolean isGlobalSymbol;
+    @UnknownPrimitiveField(availability = AfterHostedUniverse.class) private boolean isHiddenSymbol;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int offset = -1;
+    @UnknownPrimitiveField(availability = AfterHeapLayout.class) private int size = -1;
 
     /** Cache until writing the image in case the {@link Supplier} is costly or has side-effects. */
     @Platforms(HOSTED_ONLY.class) private byte[] bytes;

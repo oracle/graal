@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://raw.githubusercontent.com/oracle/graal/master/docs/reference-manual/native-image/assets/config-type-schema-v1.0.0.json",
+  "oneOf": [
+    {
+      "type": "string"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "proxy": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "title": "Name of the interfaces defining the proxy class that should be registered for reflection"
+          },
+          "title": "List of interfaces defining the proxy class that should be registered for reflection"
+        },
+        "required": "proxy"
+      },
+      "additionalProperties": false
+    }
+  ],
+  "title": "JSON schema for the type descriptors GraalVM Native Image configuration files use"
+}

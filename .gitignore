@@ -22,6 +22,7 @@
 *.swo
 *.swp
 *.zip
+*.bgv
 .DS_Store
 .checkstyle
 .classpath
@@ -61,3 +62,4 @@ visualizer/IdealGraphVisualizer/nbplatform/
 /.src-rev
 *.interp
 *.tokens
+/vm/tests/gh_workflows/CDTInspectorTest/target/

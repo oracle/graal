@@ -118,7 +118,7 @@ public abstract class BacktraceDecoder {
         frameInfoCursor.initialize(tetheredCodeInfo, ip, true);
         while (frameInfoCursor.advance()) {
             FrameInfoQueryResult frameInfo = frameInfoCursor.get();
-            if (!StackTraceUtils.shouldShowFrame(frameInfo, false, true, false)) {
+            if (!StackTraceUtils.shouldShowFrame(frameInfo)) {
                 /* Always ignore the frame. It is an internal frame of the VM. */
                 continue;
             }

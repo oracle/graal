@@ -28,30 +28,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.ReplacementsUtil;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
-import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -67,6 +49,24 @@ import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.InvokeNode;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
 
 /**
  * Snippets for calling from Java to C. This is the inverse of {@link CEntryPointSnippets}.
@@ -119,16 +119,12 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
     @Snippet
     private static void epilogueSnippet(@ConstantParameter int oldThreadStatus) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            if (oldThreadStatus == StatusSupport.STATUS_IN_NATIVE) {
-                Safepoint.transitionNativeToJava(true);
-            } else if (oldThreadStatus == StatusSupport.STATUS_IN_VM) {
-                Safepoint.transitionVMToJava(true);
-            } else {
-                ReplacementsUtil.staticAssert(false, "Unexpected thread status");
-            }
+        if (oldThreadStatus == StatusSupport.STATUS_IN_NATIVE) {
+            Safepoint.transitionNativeToJava(true);
+        } else if (oldThreadStatus == StatusSupport.STATUS_IN_VM) {
+            Safepoint.transitionVMToJava(true);
         } else {
-            JavaFrameAnchors.popFrameAnchor();
+            ReplacementsUtil.staticAssert(false, "Unexpected thread status");
         }
 
         /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,16 +66,17 @@ public class WasiPathReadLinkNode extends WasmBuiltinRootNode {
                         (int) WasmArguments.getArgument(args, 1),
                         (int) WasmArguments.getArgument(args, 2),
                         (int) WasmArguments.getArgument(args, 3),
-                        (int) WasmArguments.getArgument(args, 4));
+                        (int) WasmArguments.getArgument(args, 4),
+                        (int) WasmArguments.getArgument(args, 5));
     }
 
     @TruffleBoundary
-    private int pathReadLink(WasmContext context, WasmMemory memory, int fd, int pathAddress, int pathLength, int buf, int bufLen) {
+    private int pathReadLink(WasmContext context, WasmMemory memory, int fd, int pathAddress, int pathLength, int buf, int bufLen, int sizeAddress) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.pathReadLink(this, memory, pathAddress, pathLength, buf, bufLen);
+        return handle.pathReadLink(this, memory, pathAddress, pathLength, buf, bufLen, sizeAddress);
     }
 
     @Override

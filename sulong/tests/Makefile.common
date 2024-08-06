@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2023, Oracle and/or its affiliates.
+# Copyright (c) 2018, 2024, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -89,7 +89,7 @@ LDFLAGS+= $(SUITE_LDFLAGS)
 ifeq ($(OS), darwin)
 # NOTE: the darwin linker refuses bundle bitcode if any of the dependencies do not have a bundle section.
 #   However, it does include the bundle if linked with -flto, although the warning still says otherwise.
-EMBED_BC=-flto -Wl,-bitcode_bundle,-lto_library,$(shell ${LLVM_CONFIG} --libdir)/libLTO.dylib -Wno-everything
+EMBED_BC=-fuse-ld=lld -flto -Wl,-bitcode_bundle,-lto_library,$(shell ${LLVM_CONFIG} --libdir)/libLTO.dylib -Wno-everything
 else
 EMBED_BC=-fembed-bitcode
 endif

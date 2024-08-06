@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+
 import java.util.HashSet;
 import java.util.Set;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -56,6 +56,9 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
+
 /**
  * Utility class for deoptimization stress test. Used if the DeoptimizeAll option is set.
  */
@@ -66,7 +69,7 @@ public class DeoptTester {
         public static final HostedOptionKey<Boolean> DeoptimizeAll = new HostedOptionKey<>(false);
     }
 
-    public static final SubstrateForeignCallDescriptor DEOPTTEST = SnippetRuntime.findForeignCall(DeoptTester.class, "deoptTest", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor DEOPTTEST = SnippetRuntime.findForeignCall(DeoptTester.class, "deoptTest", HAS_SIDE_EFFECT, LocationIdentity.any());
 
     private static final Set<Long> handledPCs = new HashSet<>();
 
@@ -76,8 +79,14 @@ public class DeoptTester {
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Only deals with IPs, not Objects.")
-        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
+        public boolean visitRegularFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo) {
             handledPCs.add(ip.rawValue());
+            return true;
+        }
+
+        @Override
+        protected boolean visitDeoptimizedFrame(Pointer originalSP, CodePointer deoptStubIP, DeoptimizedFrame deoptimizedFrame) {
+            /* Nothing to do. */
             return true;
         }
     };

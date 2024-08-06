@@ -40,7 +40,7 @@ import com.oracle.svm.core.util.VMError;
  * during image generation. They are initialized during startup of the VM, i.e., every VM condition
  * consumes resources and contributes to VM startup time.
  */
-public class VMCondition {
+public class VMCondition extends VMLockingPrimitive {
     protected final VMMutex mutex;
 
     @Platforms(Platform.HOSTED_ONLY.class) //

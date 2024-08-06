@@ -26,11 +26,11 @@ package com.oracle.svm.core.jdk;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -40,6 +40,8 @@ import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * This class maintains the system properties at run time.
@@ -117,7 +119,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         initializeProperty("java.vendor", vm.vendor);
         initializeProperty("java.vendor.url", vm.vendorUrl);
         initializeProperty("java.vendor.version", vm.vendorVersion);
-        assert vm.info.equals(vm.info.toLowerCase()) : "java.vm.info should not contain uppercase characters";
+        assert vm.info.equals(vm.info.toLowerCase(Locale.ROOT)) : "java.vm.info should not contain uppercase characters";
         initializeProperty("java.vm.info", vm.info);
         initializeProperty("java.vm.name", "Substrate VM");
         initializeProperty("java.vm.vendor", vm.vendor);

@@ -272,7 +272,7 @@ public interface TruffleCompilerRuntime {
      * trace line is shown below:
      *
      * <pre>
-     * opt queued       :anonymous <split-1563da5>                                  |ASTSize      20/   20 |Calls/Thres    7723/    3 |CallsAndLoop/Thres    7723/ 1000 |Inval#              0
+     * opt queued       :anonymous &lt;split-1563da5>                                  |ASTSize      20/   20 |Calls/Thres    7723/    3 |CallsAndLoop/Thres    7723/ 1000 |Inval#              0
      * </pre>
      *
      * @param depth nesting depth of the event (subject column is indented @{code depth * 2})

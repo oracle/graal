@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
 public abstract class SubstrateBackendFactory {

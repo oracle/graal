@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,17 +39,23 @@ public final class IDGenerater {
     private final ReferenceQueue<BitcodeID> refQueue = new ReferenceQueue<>();
     private final IDReference first = new IDReference();
 
-    public static final BitcodeID INVALID_ID = new BitcodeID(-1);
+    public static final BitcodeID INVALID_ID = new BitcodeID(-1, "");
 
     public static final class BitcodeID {
         private final int id;
+        private final String name;
 
-        private BitcodeID(int id) {
+        private BitcodeID(int id, String name) {
             this.id = id;
+            this.name = name;
         }
 
         public int getId() {
             return id;
+        }
+
+        public String getName() {
+            return name;
         }
 
         public boolean same(BitcodeID other) {
@@ -96,19 +102,19 @@ public final class IDGenerater {
         allocation.prev = null;
     }
 
-    public BitcodeID generateID() {
+    public BitcodeID generateID(String name) {
         IDReference ref = (IDReference) refQueue.poll();
         if (ref != null) {
             // To see if any ids are really being reused. It is possible to log all reused ids with
             // the TruffleLogger.
             remove(ref);
-            return createID(ref.id);
+            return createID(ref.id, name);
         }
-        return createID(nextID.getAndIncrement());
+        return createID(nextID.getAndIncrement(), name);
     }
 
-    private BitcodeID createID(int id) {
-        BitcodeID bitcodeID = new BitcodeID(id);
+    private BitcodeID createID(int id, String name) {
+        BitcodeID bitcodeID = new BitcodeID(id, name);
         IDReference ref = new IDReference(bitcodeID);
         add(ref);
         return bitcodeID;

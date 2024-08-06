@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.function.Predicate;
 
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * A filter to limit the suspension locations. An instance of this filter can be provided to
@@ -57,17 +58,20 @@ public final class SuspensionFilter {
 
     private final boolean ignoreLanguageContextInitialization;
     private final boolean includeInternal;
+    private final boolean includeAvailableSourceSectionsOnly;
     private final Predicate<Source> sourcePredicate;
 
     private SuspensionFilter() {
         this.ignoreLanguageContextInitialization = false;
         this.includeInternal = false;
+        this.includeAvailableSourceSectionsOnly = false;
         this.sourcePredicate = null;
     }
 
-    private SuspensionFilter(boolean ignoreLanguageContextInitialization, boolean includeInternal, Predicate<Source> sourcePredicate) {
+    private SuspensionFilter(boolean ignoreLanguageContextInitialization, boolean includeInternal, boolean includeAvailableSourceSectionsOnly, Predicate<Source> sourcePredicate) {
         this.ignoreLanguageContextInitialization = ignoreLanguageContextInitialization;
         this.includeInternal = includeInternal;
+        this.includeAvailableSourceSectionsOnly = includeAvailableSourceSectionsOnly;
         this.sourcePredicate = sourcePredicate;
     }
 
@@ -97,6 +101,13 @@ public final class SuspensionFilter {
     }
 
     /**
+     * Test if only available source sections are included.
+     */
+    boolean isIncludeAvailableSourceSectionsOnly() {
+        return includeAvailableSourceSectionsOnly;
+    }
+
+    /**
      * Get a {@link Predicate} that filters based on a {@link Source}.
      */
     Predicate<Source> getSourcePredicate() {
@@ -112,6 +123,7 @@ public final class SuspensionFilter {
 
         private boolean ignoreLanguageContextInitialization;
         private boolean includeInternal = false;
+        private boolean includeAvailableSourceSectionsOnly = false;
         private Predicate<Source> sourcePredicate;
 
         private Builder() {
@@ -144,6 +156,23 @@ public final class SuspensionFilter {
         }
 
         /**
+         * Set to suspend on available source sections only. By default all locations with or
+         * without available source sections are suspended. If this flag is set to {@code true} then
+         * {@code null} and not {@link SourceSection#isAvailable() available} source sections are
+         * not suspended.
+         *
+         * @param availableOnly <code>true</code> to include only non-null and
+         *            {@link SourceSection#isAvailable() available}
+         *            {@link SuspendedEvent#getSourceSection() SourceSection}, <code>false</code> to
+         *            include all.
+         * @since 24.1
+         */
+        public Builder sourceSectionAvailableOnly(boolean availableOnly) {
+            this.includeAvailableSourceSectionsOnly = availableOnly;
+            return this;
+        }
+
+        /**
          * Set a {@link Predicate} that filters based on a {@link Source}. The predicate must always
          * return the same result for a source instance otherwise the behavior is undefined. The
          * predicate should be able run on multiple threads at the same time.
@@ -162,7 +191,7 @@ public final class SuspensionFilter {
          * @since 0.26
          */
         public SuspensionFilter build() {
-            return new SuspensionFilter(ignoreLanguageContextInitialization, includeInternal, sourcePredicate);
+            return new SuspensionFilter(ignoreLanguageContextInitialization, includeInternal, includeAvailableSourceSectionsOnly, sourcePredicate);
         }
     }
 }

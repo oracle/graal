@@ -30,44 +30,63 @@ import static com.oracle.svm.core.posix.PosixSubstrateSigprofHandler.Options.Sig
 
 import java.util.List;
 
-import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.IsolateListenerSupportFeature;
 import com.oracle.svm.core.RegisterDumper;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.posix.headers.Signal;
-import com.oracle.svm.core.posix.headers.Time;
+import com.oracle.svm.core.posix.linux.LinuxSubstrateSigprofHandler;
+import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
-import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 
-public final class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
+import jdk.graal.compiler.options.Option;
+
+/**
+ * <p>
+ * This class serves as the core for POSIX-based SIGPROF signal handlers.
+ * </p>
+ *
+ * <p>
+ * POSIX supports two types of timers: the global timer and per-thread timer. Both timers can
+ * interrupt threads that are blocked. This may result in situations where the VM operation changes
+ * unexpectedly while a thread executes signal handler code:
+ * <ul>
+ * <li>Thread A requests a safepoint.
+ * <li>Thread B is blocked because of the safepoint but the VM did not start executing the VM
+ * operation yet (i.e., there is no VM operation in progress).
+ * <li>Thread B receives a SIGPROF signal and starts executing the signal handler.
+ * <li>The VM reaches a safepoint and thread A starts executing the VM operation.
+ * <li>Thread B continues executing the signal handler while the VM operation is now suddenly in
+ * progress.
+ * </ul>
+ * </p>
+ */
+public abstract class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
     private static final CEntryPointLiteral<Signal.AdvancedSignalDispatcher> advancedSignalDispatcher = CEntryPointLiteral.create(PosixSubstrateSigprofHandler.class,
                     "dispatch", int.class, Signal.siginfo_t.class, Signal.ucontext_t.class);
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public PosixSubstrateSigprofHandler() {
-    }
 
     @SuppressWarnings("unused")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
@@ -79,44 +98,13 @@ public final class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler 
         if (tryEnterIsolate()) {
             CodePointer ip = (CodePointer) RegisterDumper.singleton().getIP(uContext);
             Pointer sp = (Pointer) RegisterDumper.singleton().getSP(uContext);
-            tryUninterruptibleStackWalk(ip, sp);
+            tryUninterruptibleStackWalk(ip, sp, true);
         }
-    }
-
-    private static void registerSigprofSignal(Signal.AdvancedSignalDispatcher dispatcher) {
-        PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPROF, dispatcher, Signal.SA_NODEFER() | Signal.SA_RESTART());
-    }
-
-    @Override
-    protected void updateInterval() {
-        updateInterval(TimeUtils.millisToMicros(newIntervalMillis));
-    }
-
-    public static void updateInterval(long us) {
-        Time.itimerval newValue = UnsafeStackValue.get(Time.itimerval.class);
-        newValue.it_value().set_tv_sec(us / TimeUtils.microsPerSecond);
-        newValue.it_value().set_tv_usec(us % TimeUtils.microsPerSecond);
-        newValue.it_interval().set_tv_sec(us / TimeUtils.microsPerSecond);
-        newValue.it_interval().set_tv_usec(us % TimeUtils.microsPerSecond);
-
-        int status = Time.NoTransitions.setitimer(Time.TimerTypeEnum.ITIMER_PROF, newValue, WordFactory.nullPointer());
-        PosixUtils.checkStatusIs0(status, "setitimer(which, newValue, oldValue): wrong arguments.");
     }
 
     @Override
     protected void installSignalHandler() {
-        registerSigprofSignal(advancedSignalDispatcher.getFunctionPointer());
-        updateInterval();
-    }
-
-    @Override
-    protected void uninstallSignalHandler() {
-        /*
-         * Only disable the sampling but do not replace the signal handler with the default one
-         * because a signal might be pending for some thread (the default signal handler would print
-         * "Profiling timer expired" to the output).
-         */
-        updateInterval(0);
+        PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPROF, advancedSignalDispatcher.getFunctionPointer(), Signal.SA_RESTART());
     }
 
     static boolean isSignalHandlerBasedExecutionSamplerEnabled() {
@@ -128,7 +116,7 @@ public final class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler 
     }
 
     private static boolean isPlatformSupported() {
-        return Platform.includedIn(Platform.LINUX.class);
+        return (Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class)) && SubstrateOptions.EnableSignalHandling.getValue();
     }
 
     private static void validateSamplerOption(HostedOptionKey<Boolean> isSamplerEnabled) {
@@ -149,18 +137,36 @@ public final class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler 
 class PosixSubstrateSigProfHandlerFeature implements InternalFeature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(IsolateListenerSupportFeature.class, JfrFeature.class);
+        return List.of(ThreadListenerSupportFeature.class, IsolateListenerSupportFeature.class, JfrFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (JfrFeature.isExecutionSamplerSupported() && isSignalHandlerBasedExecutionSamplerEnabled()) {
-            SubstrateSigprofHandler sampler = new PosixSubstrateSigprofHandler();
+        if (JfrExecutionSamplerSupported.isSupported() && isSignalHandlerBasedExecutionSamplerEnabled() && useAsyncSampler()) {
+            SubstrateSigprofHandler sampler = makeNewSigprofHandler();
             ImageSingletons.add(JfrExecutionSampler.class, sampler);
             ImageSingletons.add(SubstrateSigprofHandler.class, sampler);
 
             ThreadListenerSupport.get().register(sampler);
             IsolateListenerSupport.singleton().register(sampler);
+        }
+    }
+
+    private static boolean useAsyncSampler() {
+        return !ImageSingletons.contains(ProfilingSampler.class) || ImageSingletons.lookup(ProfilingSampler.class).isAsyncSampler();
+    }
+
+    private static SubstrateSigprofHandler makeNewSigprofHandler() {
+        /*
+         * For JFR, we should employ a global timer instead of a per-thread timer to adhere to the
+         * sampling frequency specified in .jfc.
+         */
+        if (Platform.includedIn(Platform.DARWIN.class) || HasJfrSupport.get()) {
+            return new PosixSubstrateGlobalSigprofHandler();
+        } else if (Platform.includedIn(Platform.LINUX.class)) {
+            return new LinuxSubstrateSigprofHandler();
+        } else {
+            throw VMError.shouldNotReachHere("The JFR-based sampler is not supported on this platform.");
         }
     }
 }

@@ -468,7 +468,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
      * {@link #wrapAndThrowPendingJNIException(JNI.JNIEnv)} or
      * {@link #wrapAndThrowPendingJNIException(JNI.JNIEnv, ExceptionHandler)} in {@code stackTrace}.
      *
-     * @returns {@code 0} if no caller found
+     * @return {@code 0} if no caller found
      */
     private static int getIndexOfPropagateJNIExceptionFrame(StackTraceElement[] stackTrace) {
         int state = 0;
@@ -485,7 +485,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
     /**
      * Gets the index of the first frame denoting the native method call.
      *
-     * @returns {@code 0} if no caller found
+     * @return {@code 0} if no caller found
      */
     private static int getIndexOfTransitionToNativeFrame(StackTraceElement[] stackTrace) {
         for (int i = 0; i < stackTrace.length; i++) {

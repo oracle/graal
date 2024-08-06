@@ -27,52 +27,16 @@ package com.oracle.svm.core.graal.meta;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.core.common.memory.BarrierType;
-import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.DeadEndNode;
-import org.graalvm.compiler.nodes.FieldLocationIdentity;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.AndNode;
-import org.graalvm.compiler.nodes.calc.LeftShiftNode;
-import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
-import org.graalvm.compiler.nodes.extended.LoadHubNode;
-import org.graalvm.compiler.nodes.extended.LoadMethodNode;
-import org.graalvm.compiler.nodes.memory.FloatingReadNode;
-import org.graalvm.compiler.nodes.memory.ReadNode;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
-import org.graalvm.compiler.nodes.type.NarrowOopStamp;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.DefaultJavaLoweringProvider;
-import org.graalvm.compiler.replacements.IsArraySnippets;
-import org.graalvm.compiler.replacements.SnippetCounter.Group;
-import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
+import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
@@ -84,12 +48,50 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
 import com.oracle.svm.core.snippets.SubstrateIsArraySnippets;
 
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
+import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.CompressionNode.CompressionOp;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.DeadEndNode;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.AndNode;
+import jdk.graal.compiler.nodes.calc.LeftShiftNode;
+import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
+import jdk.graal.compiler.nodes.extended.LoadHubNode;
+import jdk.graal.compiler.nodes.extended.LoadMethodNode;
+import jdk.graal.compiler.nodes.memory.FloatingReadNode;
+import jdk.graal.compiler.nodes.memory.ReadNode;
+import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
+import jdk.graal.compiler.nodes.type.NarrowOopStamp;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
+import jdk.graal.compiler.replacements.IsArraySnippets;
+import jdk.graal.compiler.replacements.SnippetCounter.Group;
+import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -144,29 +146,51 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof DeadEndNode) {
             lowerDeadEnd((DeadEndNode) n);
         } else if (n instanceof LoadMethodNode) {
-            lowerLoadMethodNode((LoadMethodNode) n);
+            lowerLoadMethodNode((LoadMethodNode) n, tool);
         } else {
             super.lower(n, tool);
         }
     }
 
-    private void lowerLoadMethodNode(LoadMethodNode loadMethodNode) {
+    private void lowerLoadMethodNode(LoadMethodNode loadMethodNode, LoweringTool tool) {
         StructuredGraph graph = loadMethodNode.graph();
         SharedMethod method = (SharedMethod) loadMethodNode.getMethod();
-        ReadNode methodPointer = createReadVirtualMethod(graph, loadMethodNode.getHub(), method);
-        graph.replaceFixed(loadMethodNode, methodPointer);
-    }
+        ValueNode hub = loadMethodNode.getHub();
 
-    private ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, SharedMethod method) {
-        int vtableEntryOffset = knownOffsets.getVTableOffset(method.getVTableIndex());
-        assert vtableEntryOffset > 0;
-        /*
-         * Method pointer will always exist in the vtable due to the fact that all reachable methods
-         * through method pointer constant references will be compiled.
-         */
-        Stamp methodStamp = SubstrateMethodPointerStamp.methodNonNull();
-        AddressNode address = createOffsetAddress(graph, hub, vtableEntryOffset);
-        return graph.add(new ReadNode(address, SubstrateBackend.getVTableIdentity(), methodStamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
+        if (SubstrateOptions.closedTypeWorld()) {
+
+            int vtableEntryOffset = knownOffsets.getVTableOffset(method.getVTableIndex(), true);
+            assert vtableEntryOffset > 0;
+            /*
+             * Method pointer will always exist in the vtable due to the fact that all reachable
+             * methods through method pointer constant references will be compiled.
+             */
+            AddressNode address = createOffsetAddress(graph, hub, vtableEntryOffset);
+            ReadNode virtualMethod = graph.add(new ReadNode(address, SubstrateBackend.getVTableIdentity(), loadMethodNode.stamp(NodeView.DEFAULT), BarrierType.NONE, MemoryOrderMode.PLAIN));
+            graph.replaceFixed(loadMethodNode, virtualMethod);
+
+        } else {
+            // First compute the dispatch table starting offset
+            LoadOpenTypeWorldDispatchTableStartingOffset tableStartingOffset = graph.add(new LoadOpenTypeWorldDispatchTableStartingOffset(hub, method));
+
+            // Add together table starting offset and index offset
+            ValueNode methodAddress = graph.unique(
+                            new AddNode(tableStartingOffset, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), knownOffsets.getVTableOffset(method.getVTableIndex(), false), graph)));
+
+            // The load the method address for the dispatch table
+            AddressNode dispatchTableAddress = graph.unique(new OffsetAddressNode(hub, methodAddress));
+            ReadNode virtualMethod = graph
+                            .add(new ReadNode(dispatchTableAddress, SubstrateBackend.getVTableIdentity(), loadMethodNode.stamp(NodeView.DEFAULT), BarrierType.NONE, MemoryOrderMode.PLAIN));
+
+            // wire in the new nodes
+            FixedWithNextNode predecessor = (FixedWithNextNode) loadMethodNode.predecessor();
+            predecessor.setNext(tableStartingOffset);
+            tableStartingOffset.setNext(virtualMethod);
+            graph.replaceFixed(loadMethodNode, virtualMethod);
+
+            // Lower logic associated with loading starting offset
+            tableStartingOffset.lower(tool);
+        }
     }
 
     @Override
@@ -178,7 +202,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     public ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f) {
         SharedField field = (SharedField) f;
         assert field.isStatic();
-        return graph.unique(StaticFieldsSupport.createStaticFieldBaseNode(field.getStorageKind() != JavaKind.Object));
+        return graph.unique(StaticFieldsSupport.createStaticFieldBaseNode(field));
     }
 
     private static ValueNode maybeUncompress(ValueNode node) {
@@ -228,7 +252,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
             // get rid of the reserved header bits and extract the actual pointer to the hub
             assert CodeUtil.isPowerOf2(reservedBitsMask + 1) : "only the lowest bits may be set";
             int numReservedBits = CodeUtil.log2(reservedBitsMask + 1);
-            int compressionShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
+            int compressionShift = ReferenceAccess.singleton().getCompressionShift();
             int numAlignmentBits = CodeUtil.log2(objectLayout.getAlignment());
             assert compressionShift <= numAlignmentBits : "compression discards bits";
             if (numReservedBits == numAlignmentBits && compressionShift == 0) {

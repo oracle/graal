@@ -38,7 +38,7 @@ In addition to IDE debugging, there is support for *printf* style debugging.
 The simplest is to place temporary usages of `System.out` where ever you need them.
 
 For more permanent logging statements, use the `log(...)` methods in
-[`DebugContext`](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/DebugContext.java).
+[`DebugContext`](../src/jdk.graal.compiler.debug/src/jdk/graal/compiler/debug/DebugContext.java).
 A (nestable) debug scope is entered via one of the `scope(...)` methods in that class. For example:
 
 ```java
@@ -53,12 +53,12 @@ try (Scope s = debug.scope("CodeInstall", method)) {
 ```
 
 The `debug.log` statement will send output to the console if `CodeInstall` is matched by the
-`-Dgraal.Log` option. The matching logic for this option is implemented in
-[DebugFilter](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/DebugFilter.java#L31-L82)
+`-Djdk.graal.Log` option. The matching logic for this option is implemented in
+[DebugFilter](../src/jdk.graal.compiler/src/jdk/graal/compiler/debug/DebugFilter.java)
 and documented in the
-[Dump help message](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/doc-files/DumpHelp.txt). As
-mentioned in the javadoc, the same matching logic also applies to the `-Dgraal.Dump`,
-`-Dgraal.Time`, `-Dgraal.Count` and `-Dgraal.TrackMemUse` options.
+[Dump help message](../src/jdk.graal.compiler/src/jdk/graal/compiler/debug/doc-files/DumpHelp.txt). As
+mentioned in the javadoc, the same matching logic also applies to the `-Djdk.graal.Dump`,
+`-Djdk.graal.Time`, `-Djdk.graal.Count` and `-Djdk.graal.TrackMemUse` options.
 
 Since `DebugContext` objects are thread local, they need to be passed around as parameters.  For
 convenience, they may be available from objects such as a `Graph` or a `Node` but care needs to be
@@ -78,9 +78,9 @@ obtained with `-XX:+JVMCIPrintProperties`.
 The compiler supports metrics in the form of counters, timers and memory trackers.
 Each metric has a unique name. Metrics are collected per-compilation.
 At shutdown, they are aggregated across all compilations and reported to the console.
-This ouput can be redirected to a file via the `-Dgraal.AggregatedMetricsFile` option.
+This ouput can be redirected to a file via the `-Djdk.graal.AggregatedMetricsFile` option.
 
-To list the per-compilation metrics, use the `-Dgraal.MetricsFile` option. If not specified,
+To list the per-compilation metrics, use the `-Djdk.graal.MetricsFile` option. If not specified,
 per-compilation metrics are not reported.
 
 Metrics are represented in the code via fields or variables of type `CounterKey`, `TimerKey` or `MemUseTrackerKey`.
@@ -136,11 +136,11 @@ CompilationMemory_Accm=100000 bytes
 CompilationMemory_Flat=1000 bytes
 ```
 
-For both the `-Dgraal.AggregatedMetricsFile` and the `-Dgraal.MetricsFile` option, the output format
+For both the `-Djdk.graal.AggregatedMetricsFile` and the `-Djdk.graal.MetricsFile` option, the output format
 is determined by the file name suffix. A `.csv` suffix produces a semi-colon separated format that
 is amenable to automatic data processing.
 
-The columns in the `-Dgraal.MetricsFile` CSV output are:
+The columns in the `-Djdk.graal.MetricsFile` CSV output are:
 * **compilable**: A textual label such as the fully qualified name of the method being compiled.
 For Truffle compilations, this will be a name describing the guest language function/method being compiled.
 * **compilable_identity**: The identity hash code of the **compilable**. This is useful when the
@@ -156,7 +156,7 @@ but its identity will.
 * **metric_value**: The metric value being reported.
 * **metric_unit**: The unit of measurement for the value being reported. This will be the empty string for a counter.
 
-Example `-Dgraal.MetricsFile` output:
+Example `-Djdk.graal.MetricsFile` output:
 ```
 java.lang.String.hashCode()int;1272077530;0;HotSpotCompilation-95;PhaseNodes_PhaseSuite;1
 java.lang.String.hashCode()int;1272077530;0;HotSpotCompilation-95;PhaseNodes_GraphBuilderPhase;1
@@ -167,12 +167,12 @@ java.lang.String.hashCode()int;1272077530;0;HotSpotCompilation-95;PhaseTime_Grap
 java.lang.String.hashCode()int;1272077530;0;HotSpotCompilation-95;PhaseTime_GraphBuilderPhase_Flat;27724000
 ```
 
-The columns in the `-Dgraal.AggregatedMetricsFile` CSV output are:
+The columns in the `-Djdk.graal.AggregatedMetricsFile` CSV output are:
 * **metric_name**: The name of the metric being reported.
 * **metric_value**: The metric value being reported.
 * **metric_unit**: The unit of measurement for the value being reported. This will be the empty string for a counter.
 
-Example `-Dgraal.AggregatedMetricsFile` output:
+Example `-Djdk.graal.AggregatedMetricsFile` output:
 ```
 AllocationsRemoved;6446;
 BackEnd_Accm;7931303;us
@@ -183,30 +183,30 @@ LIRPhaseMemUse_AllocationStage_Accm;499763160;bytes
 LIRPhaseMemUse_AllocationStage_Flat;17354112;bytes
 ```
 
-Note that `-Dgraal.MetricsFile` produces per-compilation output, not per-method output.
+Note that `-Djdk.graal.MetricsFile` produces per-compilation output, not per-method output.
 If a method is compiled multiple times, post-processing of the CSV output will be required
 to obtain per-method metric values.
 
 ## Method filtering
 
-Specifying one of the debug scope options (i.e., `-Dgraal.Log`, `-Dgraal.Dump`, `-Dgraal.Count`,
-`-Dgraal.Time`, or `-Dgraal.TrackMemUse`) can generate a lot of output. Typically, you are only
+Specifying one of the debug scope options (i.e., `-Djdk.graal.Log`, `-Djdk.graal.Dump`, `-Djdk.graal.Count`,
+`-Djdk.graal.Time`, or `-Djdk.graal.TrackMemUse`) can generate a lot of output. Typically, you are only
 interesting in compiler output related to a single or few methods. In this case, use the
-`-Dgraal.MethodFilter` option to specify a method filter. The matching logic for this option is
+`-Djdk.graal.MethodFilter` option to specify a method filter. The matching logic for this option is
 described in
-[MethodFilter](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/MethodFilter.java#L33-L92)
+[MethodFilter](../src/jdk.graal.compiler/src/jdk/graal/compiler/debug/MethodFilter.java#L33-L92)
 and documented in the
-[MethodFilter help message](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/doc-files/MethodFilterHelp.txt).
+[MethodFilter help message](../src/jdk.graal.compiler/src/jdk/graal/compiler/debug/doc-files/MethodFilterHelp.txt).
 
 ## Metric filtering
 
-Alternatively, you may only want to see certain metrics. The `-Dgraal.Timers`, `-Dgraal.Counters`
-and `-Dgraal.MemUseTrackers` exist for this purpose.  These options take a comma separated list of
+Alternatively, you may only want to see certain metrics. The `-Djdk.graal.Timers`, `-Djdk.graal.Counters`
+and `-Djdk.graal.MemUseTrackers` exist for this purpose.  These options take a comma separated list of
 metrics names. Only the named metrics will be activated and reported. To see the available metric
-names, specify `-Dgraal.ListMetrics=true`. At VM shutdown this option lists all the metrics that
+names, specify `-Djdk.graal.ListMetrics=true`. At VM shutdown this option lists all the metrics that
 were encountered during the VM execution. It does not list metrics registered on non-executed paths
 since metric registration is lazy.  For example, to see all the metrics available in a boot strap:
-``` mx vm -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI -Dgraal.ListMetrics=true -version ```
+``` mx vm -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI -Djdk.graal.ListMetrics=true -version ```
 
 ## Dumping
 
@@ -214,23 +214,23 @@ In addition to logging, there is support for generating (or dumping) more detail
 visualizations of certain compiler data structures. Currently, there is support for dumping:
 
 * HIR graphs (i.e., instances of
-  [Graph](../src/org.graalvm.compiler.graph/src/org/graalvm/compiler/graph/Graph.java)) to the
+  [Graph](../src/jdk.graal.compiler/src/jdk/graal/compiler/graph/Graph.java)) to the
   [Ideal Graph Visualizer (IGV)](../../docs/tools/ideal-graph-visualizer.md), and
 * LIR register allocation and generated code to the [C1Visualizer](https://github.com/zakkak/c1visualizer)
 
-Dumping is enabled via the `-Dgraal.Dump` option. The dump handler for generating C1Visualizer
-output will also generate output for LIR graphs if the `-Dgraal.PrintBackendCFG=true` option is specified
-(in addition to the `-Dgraal.Dump` option).
+Dumping is enabled via the `-Djdk.graal.Dump` option. The dump handler for generating C1Visualizer
+output will also generate output for LIR graphs if the `-Djdk.graal.PrintBackendCFG=true` option is specified
+(in addition to the `-Djdk.graal.Dump` option).
 
-By default, `-Dgraal.Dump` output is written to the local file system in a directory determined
-by the `-Dgraal.DumpPath` option (default is `$CWD/graal_dumps`). You can send dumps directly to
-the IGV over a network socket with the `-Dgraal.PrintGraph=Network` option. The `-Dgraal.PrintGraphHost`
-and `-Dgraal.PrintGraphPort` options determine where the dumps are sent. By default, they are
+By default, `-Djdk.graal.Dump` output is written to the local file system in a directory determined
+by the `-Djdk.graal.DumpPath` option (default is `$CWD/graal_dumps`). You can send dumps directly to
+the IGV over a network socket with the `-Djdk.graal.PrintGraph=Network` option. The `-Djdk.graal.PrintGraphHost`
+and `-Djdk.graal.PrintGraphPort` options determine where the dumps are sent. By default, they are
 sent to _127.0.0.1:4445_ and IGV listens on port 4445 by default.
 
 By default, the graph dumping code dumps every graph at a particular level even if the graph hasn't
 changed since the previous dump.  Internally the compiler tracks when changes are made to the edges
-of the graph and setting the flag `-Dgraal.PrintUnmodifiedGraphs=false` will cause it to elide graph
+of the graph and setting the flag `-Djdk.graal.PrintUnmodifiedGraphs=false` will cause it to elide graph
 dumps when no edges have changed since the previous dump.  This can greatly reduce the number of
 graphs dumped at high dump levels, though the resulting output can be a little harder to understand
 without the context of the other graph names.
@@ -243,7 +243,7 @@ The IGV can be launched with `mx igv` and the C1Visualizer can be launched via `
 
 Various other VM options are of interest to see activity related to compilation:
 
-- `-XX:+PrintCompilation` or `-Dgraal.PrintCompilation=true` for notification and brief info about each compilation
+- `-XX:+PrintCompilation` or `-Djdk.graal.PrintCompilation=true` for notification and brief info about each compilation
 - `-XX:+TraceDeoptimization` can be useful to see if excessive compilation is occurring
 
 ## Examples
@@ -251,23 +251,23 @@ Various other VM options are of interest to see activity related to compilation:
 
 To see the compiler data structures used while compiling `Node.updateUsages`, use the following command:
 ```
-> mx vm -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI -XX:-TieredCompilation -Dgraal.Dump= -Dgraal.MethodFilter=Node.updateUsages -version
+> mx vm -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI -XX:-TieredCompilation -Djdk.graal.Dump= -Djdk.graal.MethodFilter=Node.updateUsages -version
 Bootstrapping JVMCI....Dumping debug output in /Users/dsimon/graal/graal/compiler/dumps/1497910458736
 ................................................ in 38177 ms (compiled 5206 methods)
 java version "1.8.0_212"
 Java(TM) SE Runtime Environment (build 1.8.0_212-b31)
 Java HotSpot(TM) 64-Bit Server VM (build 25.212-b31-jvmci-20-b01, mixed mode)
 > find dumps/1497910458736 -type f
-dumps/1497910458736/HotSpotCompilation-539[org.graalvm.compiler.graph.Node.updateUsages(Node, Node)].bgv
-dumps/1497910458736/HotSpotCompilation-539[org.graalvm.compiler.graph.Node.updateUsages(Node, Node)].cfg
+dumps/1497910458736/HotSpotCompilation-539[jdk.graal.compiler.graph.Node.updateUsages(Node, Node)].bgv
+dumps/1497910458736/HotSpotCompilation-539[jdk.graal.compiler.graph.Node.updateUsages(Node, Node)].cfg
 ```
 
-As you become familiar with the scope names used in the compiler, you can refine the `-Dgraal.Dump` option
+As you become familiar with the scope names used in the compiler, you can refine the `-Djdk.graal.Dump` option
 to limit the amount of dump output generated. For example, the `"CodeGen"` and `"CodeInstall"`
 scopes are active during code generation and installation respectively. To see the machine code (in
 the C1Visualizer) produced during these scopes:
 ```
- mx vm -Dgraal.Dump=CodeGen,CodeInstall -Dgraal.MethodFilter=NodeClass.get -version
+ mx vm -Djdk.graal.Dump=CodeGen,CodeInstall -Djdk.graal.MethodFilter=NodeClass.get -version
 ```
 You will notice that no IGV output is generated by this command.
 

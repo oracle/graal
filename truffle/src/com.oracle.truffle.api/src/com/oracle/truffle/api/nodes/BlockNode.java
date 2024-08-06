@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,11 +72,15 @@ import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
  * <p>
  * <h3>Simple Usage:</h3> The following example shows how a language with untyped execute methods,
  * but with blocks that return values would use the block node.
- * {@link com.oracle.truffle.api.nodes.BlockNodeSnippets.LanguageBlockNode}
+ *
+ * {@snippet file = "com/oracle/truffle/api/nodes/BlockNode.java" region =
+ * "com.oracle.truffle.api.nodes.BlockNodeSnippets.LanguageBlockNode"}
  *
  * <h3>Resumable Usage:</h3> The following example shows how the block node can be used to implement
  * resumable blocks, e.g. for generator implementations:
- * {@link com.oracle.truffle.api.nodes.BlockNodeSnippets.ResumableBlockNode}
+ *
+ * {@snippet file = "com/oracle/truffle/api/nodes/BlockNode.java" region =
+ * "com.oracle.truffle.api.nodes.BlockNodeSnippets.ResumableBlockNode"}
  *
  * @param <T> the type of the block element node
  * @since 19.3
@@ -240,18 +244,6 @@ public abstract class BlockNode<T extends Node> extends Node {
      */
     public final T[] getElements() {
         return elements;
-    }
-
-    /**
-     * Block nodes always have {@link NodeCost#NONE}.
-     *
-     * {@inheritDoc}
-     *
-     * @since 19.3
-     */
-    @Override
-    public final NodeCost getCost() {
-        return NodeCost.NONE;
     }
 
     /**
@@ -432,7 +424,7 @@ public abstract class BlockNode<T extends Node> extends Node {
 
 @SuppressWarnings("serial")
 class BlockNodeSnippets {
-    // BEGIN: com.oracle.truffle.api.nodes.BlockNodeSnippets.LanguageBlockNode
+    // @start region = "com.oracle.truffle.api.nodes.BlockNodeSnippets.LanguageBlockNode"
     // language base node
     abstract class LanguageNode extends Node {
 
@@ -466,9 +458,9 @@ class BlockNodeSnippets {
             return block.executeGeneric(frame, 0);
         }
     }
-    // END: com.oracle.truffle.api.nodes.BlockNodeSnippets.LanguageBlockNode
+    // @end region = "com.oracle.truffle.api.nodes.BlockNodeSnippets.LanguageBlockNode"
 
-    // BEGIN: com.oracle.truffle.api.nodes.BlockNodeSnippets.ResumableBlockNode
+    // @start region = "com.oracle.truffle.api.nodes.BlockNodeSnippets.ResumableBlockNode"
     final class YieldException extends ControlFlowException {
 
         final Object result;
@@ -537,5 +529,5 @@ class BlockNodeSnippets {
         }
 
     }
-    // END: com.oracle.truffle.api.nodes.BlockNodeSnippets.ResumableBlockNode
+    // @end region = "com.oracle.truffle.api.nodes.BlockNodeSnippets.ResumableBlockNode"
 }

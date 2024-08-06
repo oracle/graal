@@ -46,7 +46,7 @@ public final class LongArrayLoadQuickNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
         int index = EspressoFrame.popInt(frame, top - 1);
         StaticObject array = nullCheck(EspressoFrame.popObject(frame, top - 2));
         EspressoFrame.putLong(frame, top - 2, longArrayLoad.execute(array, index));

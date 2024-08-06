@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,11 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
-import java.util.BitSet;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -58,14 +59,20 @@ import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.TruffleWeakReference;
 
+// Information attached by context to each thread which entered the context
 final class PolyglotThreadInfo {
 
-    static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null, null, false);
+    static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null, null, null);
     private static final Object NULL_CLASS_LOADER = new Object();
 
     final PolyglotContextImpl context;
     @CompilationFinal private final TruffleWeakReference<Thread> thread;
-    final PolyglotContextImpl polyglotThreadOwnerContext;
+    private final boolean polyglotThread;
+    /**
+     * Only true if the thread was created "inside" exitContext, i.e. created from the thread
+     * running exitContext(), or transitively from such a thread created inside exitContext.
+     */
+    final boolean createdInExitContext;
 
     /*
      * Only modify if Thread.currentThread() == thread.get().
@@ -73,6 +80,7 @@ final class PolyglotThreadInfo {
     private volatile int enteredCount;
     private volatile TruffleSafepoint.Interrupter leaveAndEnterInterrupter;
     final LinkedList<Object[]> explicitContextStack = new LinkedList<>();
+    boolean interruptSent;
     volatile boolean cancelled;
     volatile boolean leaveAndEnterInterrupted;
     private Object originalContextClassLoader = NULL_CLASS_LOADER;
@@ -99,23 +107,11 @@ final class PolyglotThreadInfo {
         ASSERT_ENTER_RETURN_PARITY = assertsOn;
     }
 
-    PolyglotThreadInfo(PolyglotContextImpl context, Thread thread, boolean polyglotThreadFirstEnter) {
+    PolyglotThreadInfo(PolyglotContextImpl context, Thread thread, PolyglotThreadTask polyglotThreadTask) {
         this.context = context;
         this.thread = new TruffleWeakReference<>(thread);
-        if (thread instanceof PolyglotThread) {
-            assert !polyglotThreadFirstEnter || ((PolyglotThread) thread).getOwnerContext() == context;
-            this.polyglotThreadOwnerContext = ((PolyglotThread) thread).getOwnerContext();
-        } else if (polyglotThreadFirstEnter) {
-            /*
-             * This branch is only for host thread created for a host call from a polyglot thread in
-             * a polyglot isolate. First enters for threads that are instances of PolyglotThread
-             * also have polyglotThreadFirstEnter == true, but they are handled by the first branch
-             * of this if statement.
-             */
-            this.polyglotThreadOwnerContext = context;
-        } else {
-            this.polyglotThreadOwnerContext = null;
-        }
+        this.polyglotThread = polyglotThreadTask != null;
+        this.createdInExitContext = isCreatedInExitContext(context, polyglotThreadTask);
         if (context == null) {
             this.encapsulatingNodeReference = null;
             this.fastThreadLocals = null;
@@ -129,6 +125,23 @@ final class PolyglotThreadInfo {
             initializedLanguageContexts = null;
         }
         this.probesEnterList = initProbesEnterList(context);
+    }
+
+    private static boolean isCreatedInExitContext(PolyglotContextImpl context, PolyglotThreadTask polyglotThreadTask) {
+        if (polyglotThreadTask == null || polyglotThreadTask == PolyglotThreadTask.ISOLATE_POLYGLOT_THREAD) {
+            return false;
+        }
+        Thread parentThread = polyglotThreadTask.parentThread;
+        Thread hardExitTriggeringThread = context.closeExitedTriggerThread;
+        if (hardExitTriggeringThread != null) {
+            if (hardExitTriggeringThread == parentThread) {
+                return true;
+            } else {
+                PolyglotThreadInfo parentInfo = context.getThreadInfo(parentThread);
+                return parentInfo.isPolyglotThread() && parentInfo.createdInExitContext;
+            }
+        }
+        return false;
     }
 
     private static List<ProbeNode> initProbesEnterList(PolyglotContextImpl context) {
@@ -171,9 +184,13 @@ final class PolyglotThreadInfo {
         return finalizationComplete;
     }
 
-    void setFinalizationComplete() {
+    void setFinalizationComplete(PolyglotEngineImpl engine, boolean mustSucceed) {
         assert Thread.holdsLock(context);
         this.finalizationComplete = true;
+        // Assert only when !mustSucceed, partity might not be met on cancellation.
+        if (ASSERT_ENTER_RETURN_PARITY && !mustSucceed && engine.probeAssertionsEnabled) {
+            assertProbeThreadFinalized();
+        }
     }
 
     boolean isSafepointActive() {
@@ -218,13 +235,10 @@ final class PolyglotThreadInfo {
      * {@link PolyglotEngineImpl#enter(PolyglotContextImpl, boolean, Node, boolean)} instead.
      */
     @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
-    Object[] enterInternal(PolyglotEngineImpl engine) {
+    Object[] enterInternal() {
         Object[] prev = PolyglotFastThreadLocals.enter(this);
         assert Thread.currentThread() == getThread() : "Volatile increment is safe on a single thread only.";
         enteredCount++;
-        if (ASSERT_ENTER_RETURN_PARITY && engine.probeAssertionsEnabled) {
-            assertProbeThreadEnter();
-        }
         return prev;
     }
 
@@ -238,12 +252,9 @@ final class PolyglotThreadInfo {
      * {@link PolyglotEngineImpl#leave(PolyglotContextImpl, PolyglotContextImpl)} instead.
      */
     @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
-    void leaveInternal(PolyglotEngineImpl engine, Object[] prev) {
+    void leaveInternal(Object[] prev) {
         assert Thread.currentThread() == getThread() : "Volatile decrement is safe on a single thread only.";
         enteredCount--;
-        if (ASSERT_ENTER_RETURN_PARITY && engine.probeAssertionsEnabled) {
-            assertProbeThreadLeave();
-        }
         PolyglotFastThreadLocals.leave(prev);
     }
 
@@ -259,8 +270,14 @@ final class PolyglotThreadInfo {
         }
     }
 
-    boolean isPolyglotThread(PolyglotContextImpl c) {
-        return polyglotThreadOwnerContext == c;
+    /**
+     * Returns true if and only if the thread is a polyglot thread created by {@link #context}. For
+     * example it is false if context 1 created this polyglot thread but we are calling this method
+     * in an inner context 2. {@link PolyglotThreadInfo} are stored per context in
+     * {@code PolyglotContextImpl#threads}.
+     */
+    boolean isPolyglotThread() {
+        return polyglotThread;
     }
 
     void notifyLeave(PolyglotEngineImpl engine, PolyglotContextImpl profiledContext) {
@@ -282,33 +299,38 @@ final class PolyglotThreadInfo {
     }
 
     @TruffleBoundary
-    private void assertProbeThreadEnter() {
+    private void assertProbeThreadFinalized() {
         if (probesEnterList != null) {
-            probesEnterList.add(null);
+            assert probesEnterList.isEmpty() : getEnteredProbesMessage(probesEnterList);
         }
     }
 
-    @TruffleBoundary
-    private void assertProbeThreadLeave() {
-        if (probesEnterList != null) {
-            int size = probesEnterList.size();
-            assert size > 0 : "Leave of polyglot thread does not have a preceding enter.";
-            ProbeNode probe = probesEnterList.remove(size - 1);
-            assert probe == null : "Found an entered probe without return: " + probe + " with parent node " + probe.getParent().getClass() + "\n" +
-                            "Specifically, a call to ProbeNode.onEnter()/onResume() does not have a corresponding call to ProbeNode.onReturnValue()/onReturnExceptionalOrUnwind()/onYield().";
+    private static String getEnteredProbesMessage(List<ProbeNode> probes) {
+        StringBuilder sb = new StringBuilder("Found entered probes without return: ");
+        sb.append(probes);
+        sb.append("\nSpecifically, a call to ProbeNode.onEnter()/onResume() does not have a corresponding call to ProbeNode.onReturnValue()/onReturnExceptionalOrUnwind()/onYield().");
+        for (ProbeNode probe : probes) {
+            sb.append("\n  probe ");
+            sb.append(probe);
+            sb.append(" with parent node ");
+            sb.append(probe.getParent().getClass());
         }
+        sb.append('\n');
+        return sb.toString();
     }
 
     @TruffleBoundary
     void assertProbeEntered(ProbeNode probe) {
+        Objects.requireNonNull(probe);
         probesEnterList.add(probe);
     }
 
     @TruffleBoundary
     void assertProbeReturned(ProbeNode probe) {
-        assert !probesEnterList.isEmpty() : "ProbeNode exited without enter";
+        assert !probesEnterList.isEmpty() : "ProbeNode " + probe + " with parent " + probe.getParent().getClass() + " exited without enter";
         ProbeNode lastProbe = probesEnterList.remove(probesEnterList.size() - 1);
-        assert probe == lastProbe : "Entered probe " + lastProbe + " differs from the returned probe " + probe + " with parent " + probe.getParent().getClass() + "\n" +
+        assert probe == lastProbe : "Entered probe " + lastProbe + " with parent " + lastProbe.getParent().getClass() + " differs from the returned probe " +
+                        probe + " with parent " + probe.getParent().getClass() + "\n" +
                         "Specifically, a call to onEnter()/onResume() on " + lastProbe + " was not followed by a call to onReturnValue()/onReturnExceptionalOrUnwind()/onYield() on the same probe, " +
                         "but on " + probe + " instead.";
     }

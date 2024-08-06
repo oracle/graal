@@ -25,19 +25,20 @@
 package com.oracle.svm.configure.config;
 
 import static com.oracle.svm.core.configure.ConfigurationParser.CONDITIONAL_KEY;
-import static com.oracle.svm.core.configure.ConfigurationParser.TYPE_REACHABLE_KEY;
+import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
+import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
 
 import java.io.IOException;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.core.util.json.JsonWriter;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 final class ConfigurationConditionPrintable {
-    static void printConditionAttribute(ConfigurationCondition condition, JsonWriter writer) throws IOException {
-        if (!condition.equals(ConfigurationCondition.alwaysTrue())) {
+    static void printConditionAttribute(UnresolvedConfigurationCondition condition, JsonWriter writer) throws IOException {
+        if (!condition.isAlwaysTrue()) {
             writer.quote(CONDITIONAL_KEY).append(":{");
-            writer.quote(TYPE_REACHABLE_KEY).append(':').quote(condition.getTypeName());
+            writer.quote(condition.isRuntimeChecked() ? TYPE_REACHED_KEY : TYPE_REACHABLE_KEY).append(':').quote(condition.getTypeName());
             writer.append("},").newline();
         }
     }

@@ -49,6 +49,10 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         if (!field.isWritten()) {
             return field.registerAsWritten(reason);
         }
+        if (fieldValue.isNonNull()) {
+            FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
+            return fieldTypeFlow.addState(getAnalysis(), TypeState.anyPrimitiveState());
+        }
         return false;
     }
 
@@ -72,6 +76,16 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         /* Add the new constant to the field's flow state. */
         CausalityExport.registerTypeEntering(analysis, CausalityExport.getHeapFieldAssigner(analysis, receiver, field, fieldValue), fieldTypeFlow, fieldType);
         return fieldTypeFlow.addState(analysis, bb.analysisPolicy().constantTypeState(analysis, fieldValue, fieldType));
+    }
+
+    @Override
+    public boolean forPrimitiveFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+        PointsToAnalysis analysis = getAnalysis();
+
+        /* Add the constant value object to the field's type flow. */
+        FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
+        /* Add the new constant to the field's flow state. */
+        return fieldTypeFlow.addState(analysis, TypeState.forPrimitiveConstant(fieldValue.asLong()));
     }
 
     /**
@@ -132,7 +146,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         var inHeap = CausalityEvents.TypeInHeap.create(type);
         CausalityExport.registerEdgeFromHeapObject(analysis, value, reason, inHeap);
         try (var ignored = CausalityExport.setCause(inHeap)) {
-            type.registerAsInHeap(reason);
+            type.registerAsInstantiated(reason);
         }
     }
 

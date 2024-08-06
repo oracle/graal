@@ -91,7 +91,7 @@ public class RenameFilterAction extends AbstractAction {
             doRenameFilter(il.getInputText().trim());
         } catch (IOException ex) {
             NotifyDescriptor err = new DialogDescriptor.Message(
-                            Bundle.ERROR_CouldNotRenameFilter(il.getInputText(), ex.getLocalizedMessage()), 
+                            Bundle.ERROR_CouldNotRenameFilter(il.getInputText(), ex.toString()), 
                             DialogDescriptor.ERROR_MESSAGE);
             DialogDisplayer.getDefault().notifyLater(err);
         }

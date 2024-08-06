@@ -1,0 +1,120 @@
+/*
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package jdk.graal.compiler.nodes;
+
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
+/**
+ * A marker interface for nodes that represent calls to other methods.
+ */
+public interface Invokable extends DeoptBciSupplier {
+    ResolvedJavaMethod getTargetMethod();
+
+    /**
+     * Returns the {@linkplain ResolvedJavaMethod method} from which the call is executed.
+     *
+     * @return the method from which the call is executed.
+     */
+    ResolvedJavaMethod getContextMethod();
+
+    /**
+     * Returns the {@linkplain ResolvedJavaType type} from which this invoke is executed. This is
+     * the declaring type of the caller method.
+     *
+     * @return the type from which this invoke is executed.
+     */
+    default ResolvedJavaType getContextType() {
+        ResolvedJavaMethod contextMethod = getContextMethod();
+        if (contextMethod == null) {
+            return null;
+        }
+        return contextMethod.getDeclaringClass();
+    }
+
+    /**
+     * Returns the receiver cast to {@link FixedNode}, or null if this invokable is a placeholder.
+     */
+    default FixedNode asFixedNodeOrNull() {
+        return this instanceof FixedNode ? (FixedNode) this : null;
+    }
+
+    /**
+     * Called on a {@link Invokable} node after it is registered with a graph.
+     *
+     * To override the default functionality, code that creates an {@link Invokable} should set the
+     * updating logic by calling {@link InliningLog#openUpdateScope}.
+     */
+    default void updateInliningLogAfterRegister(StructuredGraph newGraph) {
+        InliningLog log = newGraph.getInliningLog();
+        if (log != null) {
+            if (log.getUpdateScope() != null) {
+                log.getUpdateScope().accept(null, this);
+            } else {
+                assert !log.containsLeafCallsite(this);
+                log.trackNewCallsite(this);
+            }
+        }
+    }
+
+    /**
+     * Called on a {@link Invokable} node after it was cloned from another node.
+     *
+     * This call is always preceded with a call to {@link Invokable#updateInliningLogAfterRegister}.
+     *
+     * To override the default functionality, code that creates an {@link Invokable} should set the
+     * updating logic by calling {@link InliningLog#openUpdateScope}.
+     */
+    default void updateInliningLogAfterClone(Node other) {
+        StructuredGraph graph = asFixedNodeOrNull().graph();
+        if (graph == null) {
+            return;
+        }
+        InliningLog log = graph.getInliningLog();
+        if (log != null) {
+            // At this point, the invokable node was already added to the inlining log
+            // in the call to updateInliningLogAfterRegister, so we need to remove it.
+            assert other instanceof Invokable : Assertions.errorMessage(other);
+            if (log.getUpdateScope() != null) {
+                // InliningLog.UpdateScope determines how to update the log.
+                log.getUpdateScope().accept((Invokable) other, this);
+            } else if (other.graph() == graph) {
+                // This node was cloned as part of duplication.
+                // We need to add it as a sibling of the node other.
+                assert log.containsLeafCallsite(this) : "Node " + this + " not contained in the log.";
+                assert log.containsLeafCallsite((Invokable) other) : "Sibling " + other + " not contained in the log.";
+                log.removeLeafCallsite(this);
+                log.trackDuplicatedCallsite((Invokable) other, this, null);
+            } else {
+                // This node was added from a different graph.
+                // The adder is responsible for providing a context.
+                throw GraalError.shouldNotReachHere("No InliningLog.Update scope provided."); // ExcludeFromJacocoGeneratedReport
+            }
+        }
+    }
+}

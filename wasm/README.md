@@ -1,12 +1,10 @@
 # GraalWasm
 
-GraalWasm is a WebAssembly engine implemented in GraalVM.
-It can interpret and compile WebAssembly programs in the binary format,
-or be embedded into other programs.
+GraalWasm is an open source WebAssembly runtime.
+It runs WebAssembly programs in the binary format and can be used to embed and leverage WebAssembly modules in Java applications.
 
-We are working hard towards making GraalWasm more stable and more efficient,
-as well as to implement various WebAssembly extensions.
-Feedback, bug reports, and open-source contributions are welcome!
+GraalWasm is a work in progress and is tracking the development of a number of WebAssembly extensions. 
+Feedback, bug reports, and contributions are welcome.
 
 ## Building GraalWasm
 
@@ -23,40 +21,34 @@ To build GraalWasm, you need to follow the standard workflow for Graal projects.
 We summarize the basic steps below:
 
 1. Create a new folder where your repositories `mx` and `graal` should be located:
-
-```bash
-$ mkdir graalvm
-$ cd graalvm
-```
+    ```bash
+    $ mkdir graalvm
+    $ cd graalvm
+    ```
 
 2. Clone `mx` and add it to the `PATH`:
-
-```bash
-$ git clone https://github.com/graalvm/mx.git
-$ export PATH=$PWD/mx:$PATH
-```
+    ```bash
+    $ git clone https://github.com/graalvm/mx.git
+    $ export PATH=$PWD/mx:$PATH
+    ```
 
 3. Clone the `graal` repository and enter the wasm directory:
-
-```bash
-$ git clone https://github.com/oracle/graal.git
-$ cd graal/wasm
-```
+    ```bash
+    $ git clone https://github.com/oracle/graal.git
+    $ cd graal/wasm
+    ```
 
 4. Set `JAVA_HOME`:
-
-```bash
-$ export JAVA_HOME=[path to JDK]
-```
+    ```bash
+    $ export JAVA_HOME=[path to JDK]
+    ```
 
 5. Build the project:
+    ```bash
+    $ mx --dy /truffle,/compiler build
+    ```
 
-```bash
-$ mx --dy /truffle,/compiler build
-```
-
-These steps will build the `wasm.jar` file in the `mxbuild/dists/jdk<version>` directory,
-which contains the GraalWasm implementation.
+These steps will build the `wasm.jar` file in the `mxbuild/dists/jdk<version>` directory, which contains GraalWasm.
 
 ## Tests and Benchmarks
 
@@ -66,11 +58,11 @@ The `build` command will also create the `wasm-tests.jar`, which contains the ma
 WebAssembly binary toolkit is needed.
 
 1. Download the binary of the [WebAssembly binary toolkit(wabt)](https://github.com/WebAssembly/wabt) and extract it.
-2. Set `WABT_DIR`:
 
-```bash
-$ export WABT_DIR=[path to wabt]/bin
-```
+2. Set `WABT_DIR`:
+    ```bash
+    $ export WABT_DIR=[path to wabt]/bin
+    ```
 
 ### Run Basic Tests
 
@@ -115,47 +107,42 @@ To compile these programs, you will need to install additional dependencies on y
 
 To build these additional tests and benchmarks, you need to:
 
-1. Install the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html). We currently test against
-   Emscripten **1.39.13**.
+1. Install the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html). We currently test against  Emscripten **1.39.13**.
+    ```bash
+    $ cd [preferred emsdk install location]
 
-```bash
-$ cd [preferred emsdk install location]
+    # Clone repository
+    $ git clone https://github.com/emscripten-core/emsdk.git
 
-# Clone repository
-$ git clone https://github.com/emscripten-core/emsdk.git
+    # Move to folder
+    $ cd emsdk
 
-# Move to folder
-$ cd emsdk
+    # Install sdk
+    $ ./emsdk install [version number]
 
-# Install sdk
-$ ./emsdk install [version number]
+    # Activate sdk
+    $ ./emsdk activate [version number]
 
-# Activate sdk
-$ ./emsdk activate [version number]
-
-# Set up environment
-$ source ./emsdk_env.sh
-```
+    # Set up environment
+    $ source ./emsdk_env.sh
+    ```
 
 2. Set `EMCC_DIR` and `GCC_DIR`:
-
-```bash
-$ export EMCC_DIR=[path to emsdk]/upstream/emscripten
-$ export GCC_DIR=[path to gcc (usually /usr/bin)]
-```
+    ```bash
+    $ export EMCC_DIR=[path to emsdk]/upstream/emscripten
+    $ export GCC_DIR=[path to gcc (usually /usr/bin)]
+    ```
 
 3. Run `emscripten-init`:
-
-```bash
-$ cd grallvm/graal/wasm
-$ mx emscripten-init ~/.emscripten [path to emsdk] --local
-```
+    ```bash
+    $ cd grallvm/graal/wasm
+    $ mx emscripten-init ~/.emscripten [path to emsdk] --local
+    ```
 
 4. Build with additional dependencies:
-
-```bash
-$ mx --dy /truffle,/compiler build --all
-```
+    ```bash
+    $ mx --dy /truffle,/compiler build --all
+    ```
 
 This will build several additional JARs in `mxbuild/dists/jdk<version>`:
 `wasm-testcases.jar` and `wasm-benchmarkcases.jar`.
@@ -186,7 +173,6 @@ Finished running: CSuite
 ```
 
 We currently have the following extra test suites:
-
 - `CSuite` -- set of programs written in the C language
 - `WatSuite` -- set of programs written in textual WebAssembly
 
@@ -198,15 +184,13 @@ The benchmark programs consist of several special functions,
 most notably `benchmarkRun`, which runs the body of the benchmark.
 The benchmarks are kept in the `src/com.oracle.truffle.wasm.benchcases` MX project.
 
-For the benchmarks to run `NODE_DIR` has to be set. You can use the node version that is part of Emscripten, for
-example:
+For the benchmarks to run `NODE_DIR` has to be set. You can use the node version that is part of Emscripten, for example:
 
 ```bash
 $ export NODE_DIR=[path to emsdk]/node/14.15.5_64bit/bin
 ```
 
-After building the additional benchmarks, as described in the last section,
-they can be executed as follows:
+After building the additional benchmarks, as described in the last section, they can be executed as follows:
 
 ```bash
 $ mx --dy /compiler benchmark wasm:WASM_BENCHMARKCASES -- \
@@ -305,12 +289,25 @@ The **values** next to the names represent the absolute amount of memory in byte
 the relative contribution to the overall memory overhead.
 **Names** with indices represent array entries such as `table[0]`.
 
-## Running WebAssembly Programs Using a Native Launcher
+## GraalWasm Standalone Distribution
 
-As of GraalVM for JDK 21, GraalWasm is available as a standalone distribution. 
-You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
+You can run WebAssembly programs in the binary format on GraalWasm.
+GraalWasm is also available as a standalone distribution.
+You can download the distribution based on Oracle GraalVM or GraalVM Community Edition.
 
-1. Navigate to the [latest GraalVM release on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases) and download the Wasm standalone for your operating system. 
+1. Download the distribution for your operating system:
+   - Native standalone
+      * [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-linux-amd64.tar.gz)
+      * [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-linux-aarch64.tar.gz)
+      * [macOS x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-macos-amd64.tar.gz)
+      * [macOS AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-macos-aarch64.tar.gz)
+      * [Windows x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.1-windows-amd64.zip)
+   - JVM standalone
+      * [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-linux-amd64.tar.gz)
+      * [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-linux-aarch64.tar.gz)
+      * [macOS x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-macos-amd64.tar.gz)
+      * [macOS AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-macos-aarch64.tar.gz)
+      * [Windows x64](https://gds.oracle.com/download/wasm/archive/graalwasm-jvm-24.0.1-windows-amd64.zip)
 
 2. Unzip the archive:
 
@@ -319,111 +316,109 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
     sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
     ```
 
-    Extact:
+    Extract:
     ```shell
     tar -xzf <archive>.tar.gz
     ```
    
-3. A standalone comes with a JVM in addition to its native launcher. Check the version to see GraalWasm is active:
+3. The standalone runtime comes with a JVM in addition to its native launcher. Check the version to see if it is active:
     ```bash
     ./path/to/bin/wasm --version
     ```
 
-Now you have the launcher which can run WebAssembly modules.
-For example, assuming that compiled the following C program with Emscripten:
-
+Now you have the launcher which can run WebAssembly programs directly.
+For example, assuming you have the following C program:
 ```c
 #include <stdio.h>
 
-int main() {
-  int number = 1;
-  int rows = 10;
-  for (int i = 1; i <= rows; i++) {
-    for (int j = 1; j <= i; j++) {
-      printf("%d ", number);
-      ++number;
+void floyd() {
+    int number = 1;
+    int rows = 10;
+    for (int i = 1; i <= rows; i++) {
+        for (int j = 1; j <= i; j++) {
+            printf("%d ", number);
+            ++number;
+        }
+        printf(".\n");
     }
-    printf(".\n");
-  }
-  return 0;
+}
+
+int main() {
+    floyd();
+    return 0;
 }
 ```
 
-You can run the compiled WebAssembly binary as follows:
+The `floyd` function is defined as separate and can be later exported.
 
-```bash
-$ ./path/to/bin/wasm --Builtins=memory,env:emscripten floyd.wasm
-```
+1. Compile _floyd.c_ using the most recent version of the [Emscripten compiler frontend](https://emscripten.org/docs/tools_reference/emcc.html):
+    ```shell
+    $ emcc -o floyd.wasm floyd.c
+    ```
+    It produces a standalone _floyd.wasm_ file in the current working directory.
 
-In this example, the flag `--Builtins` specifies built-in modules that the Emscripten toolchain assumes.
+2. Now you can run the compiled WebAssembly binary as follows:
+    ```bash
+    $ ./path/to/bin/wasm --Builtins=wasi_snapshot_preview1 floyd.wasm
+    ```
+    The option `--Builtins` specifies built-in modules that the Emscripten toolchain assumes.
 
-## Embedding GraalWasm Inside Other Programs
+## Embedding GraalWasm in Java
 
-GraalWasm can be accessed programmatically with the Polyglot API, which allows embedding GraalWasm into user programs.
+GraalWasm can be accessed programmatically with the [GraalVM SDK Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html), which allows embedding GraalWasm into user applications.
 
-The Polyglot API is not available by default, but can be easily added as a Maven dependency to your Java project.  
+GraalVM SDK Polyglot API is not available by default, but can be easily added as a Maven dependency to your Java project.  
 The GraalWasm artifact should be on the Java module or class path too.
 
 Add the following set of dependencies to the project configuration file (_pom.xml_ in case of Maven).
+  - To enable the polyglot runtime:
+    ```xml
+    <dependency>
+        <groupId>org.graalvm.polyglot</groupId>
+        <artifactId>polyglot</artifactId> 
+        <version>${graalvm.polyglot.version}</version>
+    </dependency>
+    ```
+  - To enable GraalWasm:
+    ```xml
+    <dependency>
+        <groupId>org.graalvm.polyglot</groupId>
+        <artifactId>wasm</artifactId> 
+        <version>${graalvm.polyglot.version}</version>
+    </dependency>
+    ```
+  - To enable the Truffle tools:
+    ```xml
+    <dependency>
+        <groupId>org.graalvm.polyglot</groupId>
+        <artifactId>tools</artifactId>
+        <version>${graalvm.polyglot.version}</version>
+    </dependency>
+    ```
 
-To enable the polyglot runtime:
-```xml
-<dependency>
-    <groupId>org.graalvm.polyglot</groupId>
-    <artifactId>polyglot</artifactId> 
-    <version>${graalvm.version}</version>
-</dependency>
-```
-To enable GraalWasm:
-```xml
-<dependency>
-    <groupId>org.graalvm.polyglot</groupId>
-    <artifactId>wasm</artifactId> 
-    <version>${graalvm.version}</version>
-</dependency>
-```
-To enable the Truffle tools:
-```xml
-<dependency>
-    <groupId>org.graalvm.polyglot</groupId>
-    <artifactId>tools</artifactId>
-    <version>${graalvm.version}</version>
-</dependency>
-```
-
-Now you can embed a WebAssembly program in a Java application, for example:
-
-```java
-import org.graalvm.polyglot.*;
-import org.graalvm.polyglot.io.ByteSequence;
-
-byte[]binary=readBytes("example.wasm"); // You need to load the .wasm contents into a byte array.
-        Context.Builder contextBuilder=Context.newBuilder("wasm");
-        Source.Builder sourceBuilder=Source.newBuilder("wasm",ByteSequence.create(binary),"example");
-        Source source=sourceBuilder.build();
-        Context context=contextBuilder.build();
-
-        context.eval(source);
-
-        Value mainFunction=context.getBindings("wasm").getMember("example").getMember("_main");
-        mainFunction.execute();
-```
-
-To learn more, see the [Embedding Languages documentation](https://www.graalvm.org/latest/reference-manual/embed-languages/).
+Now you can embed WebAssembly in a Java application. 
+To learn more, see [Running WebAssembly Embedded in Java](https://www.graalvm.org/reference-manual/wasm/).
 
 ## Compiling C Files with WASI_SDK
 
 1. Download the [`wasi-sdk`](https://github.com/WebAssembly/wasi-sdk/releases) and unpack it.
+
 2. Set `WASI_SDK`:
    ```bash
    $ export WASI_SDK=[path to wasi-sdk]
    ```
+
 3. Compile the C files:
    ```bash
    $ $WASI_SDK/bin/clang -O3 -o test.wasm test.c
    ```
    To export a specific function use the linker flag `-Wl,--export="[function name]"`.
+
 4. Most applications compiled with the wasi-sdk require WASI. To run a file with WASI enabled use the following command:
    ```bash
    $ ./bin/wasm --Builtins=wasi_snapshot_preview1 test.wasm 
    ```
+
+## License
+
+GraalWasm is licensed under the [Universal Permissive License](https://oss.oracle.com/licenses/upl/).

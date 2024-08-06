@@ -31,7 +31,7 @@ console.log("Server running at http://localhost:8000/");
 $JAVA_HOME/bin/node --inspect HelloWorld.js
 Debugger listening on ws://127.0.0.1:9229/SBqxI5YIqtREaDrXkFr8hLE0HL1AfKx8TjkI8qPMq2s
 For help, see: https://www.graalvm.org/tools/chrome-debugger
-E.g. in Chrome open: devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229/SBqxI5YIqtREaDrXkFr8hLE0HL1AfKx8TjkI8qPMq2s
+For example, in Chrome open: devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229/SBqxI5YIqtREaDrXkFr8hLE0HL1AfKx8TjkI8qPMq2s
 ```
 
 2. Navigate to `http://localhost:8000/` in your browser to launch the node application.
@@ -82,7 +82,7 @@ All launchers also accept the following additional options:
 The paths are delimited by `:` on UNIX systems and by `;` on MS Windows.
 * `--inspect.Secure=(true|false)` when true, use TLS/SSL to secure the debugging protocol. Besides changing the WS
 (web socket) protocol to WSS, the HTTP endpoint that serves metadata about the debuggee
-is also changed to HTTPS. This is not compatible, e.g., with a
+is also changed to HTTPS. This is not compatible, with a
 [chrome://inspect](chrome://inspect) page, which is not able to provide the debuggee
 information and launch the debugger. Launch debugging via the printed WSS URL directly. Use the standard `javax.net.ssl.*` system options to provide information about keystore with the TLS/SSL encryption keys, or the following options:
     * `--inspect.KeyStore` - keystore file path
@@ -92,6 +92,7 @@ information and launch the debugger. Launch debugging via the printed WSS URL di
 * `--inspect.WaitAttached=(true|false)` when true, no guest language source code is executed until the inspector client is attached. Unlike `--inspect.Suspend=true`, the execution is resumed right
 after the client is attached. This assures that no execution is missed by the
 inspector client. It is `false` by default.
+* `--inspect.SuspensionTimeout` sets a timeout of a debugger suspension. The debugger session is disconnected after the timeout expires. The timeout value consists of a positive integer value followed by a chronological time unit. For example, '15m' or '10s'. Valid time units are 'ms' for milliseconds, 's' for seconds, 'm' for minutes, 'h' for hours, and 'd' for days. There is no timeout set by default.
 
 ### Advanced Debug Options
 The following options are for language experts and language developers:

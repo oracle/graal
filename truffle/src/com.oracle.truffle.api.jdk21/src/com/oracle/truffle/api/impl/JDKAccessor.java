@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,10 @@ public abstract class JDKAccessor {
 
     public static boolean isVirtualThread(Thread t) {
         return t.isVirtual();
+    }
+
+    public static Thread newVirtualThread(String name, Runnable runnable) {
+        return Thread.ofVirtual().name(name).unstarted(runnable);
     }
 
 }

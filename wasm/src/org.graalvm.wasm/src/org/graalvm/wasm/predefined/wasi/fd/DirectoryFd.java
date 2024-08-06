@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -315,7 +315,7 @@ class DirectoryFd extends Fd {
     }
 
     @Override
-    public int pathReadLink(Node node, WasmMemory memory, int pathAddress, int pathLength, int buf, int bufLen) {
+    public int pathReadLink(Node node, WasmMemory memory, int pathAddress, int pathLength, int buf, int bufLen, int sizeAddress) {
         if (!isSet(fsRightsBase, Rights.PathReadlink)) {
             return Errno.Notcapable.ordinal();
         }
@@ -330,7 +330,9 @@ class DirectoryFd extends Fd {
                 return Errno.Noent.ordinal();
             }
             final String content = virtualLink.getPath();
-            return memory.writeString(node, content, buf, bufLen);
+            int bytesWritten = memory.writeString(node, content, buf, bufLen);
+            memory.store_i32(node, sizeAddress, bytesWritten);
+            return Errno.Success.ordinal();
         } catch (NotLinkException e) {
             return Errno.Nolink.ordinal();
         } catch (IOException | UnsupportedOperationException e) {

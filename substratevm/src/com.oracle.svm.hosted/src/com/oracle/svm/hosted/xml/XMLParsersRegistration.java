@@ -34,8 +34,8 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
-import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
+import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -133,9 +133,22 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
             ClassInitializationSupport classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
             classInitializationSupport.setConfigurationSealed(false);
 
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.utils.SerializerMessages");
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xalan.internal.xsltc.compiler.util.ErrorMessages");
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "com.sun.*.properties");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.utils.SerializerMessages");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xalan.internal.xsltc.compiler.util.ErrorMessages");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.Encodings");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.HTMLEntities");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.XMLEntities");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.xpath.regex.message");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.DOMMessages");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.DatatypeMessages");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.JAXPValidationMessages");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.SAXMessages");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XIncludeMessages");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XMLMessages");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XMLSchemaMessages");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XMLSerializerMessages");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xerces.internal.impl.msg.XPointerMessages");
+            ResourcesRegistry.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xalan.internal.res.XSLTInfo");
 
             classInitializationSupport.setConfigurationSealed(true);
         }

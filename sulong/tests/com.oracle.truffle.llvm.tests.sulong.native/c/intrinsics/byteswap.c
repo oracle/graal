@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define SWAP(n) (((n) << 24) | (((n) &0xff00) << 8) | (((n) >> 8) & 0xff00) | ((n) >> 24))
+#define SWAP(n) (((n) << 24) | (((n) & 0xff00) << 8) | (((n) >> 8) & 0xff00) | ((n) >> 24))
 
 int main(void) {
     // Avoid LLVM pre-calculating everything at compile time.

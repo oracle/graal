@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,6 +67,10 @@ int get_cpuid (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned
     return (get_cpuid_count(leaf, 0, eax, ebx, ecx, edx));
 }
 
+int get_cpuid_ecx_1 (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned int *ecx, unsigned int *edx) {
+    return (get_cpuid_count(leaf, 1, eax, ebx, ecx, edx));
+}
+
 #else
 
 #include <intrin.h>
@@ -103,6 +107,10 @@ int get_cpuid_count (unsigned int leaf, unsigned int subleaf, unsigned int *eax,
 
 int get_cpuid (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned int *ecx, unsigned int *edx) {
     return (get_cpuid_count(leaf, 0, eax, ebx, ecx, edx));
+}
+
+int get_cpuid_ecx_1 (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned int *ecx, unsigned int *edx) {
+    return (get_cpuid_count(leaf, 1, eax, ebx, ecx, edx));
 }
 
 #endif
@@ -301,6 +309,10 @@ static void initialize_cpuinfo(CpuidInfo *_cpuid_info)
     _cpuid_info->sef_cpuid7_ebx.value = ebx;
     _cpuid_info->sef_cpuid7_ecx.value = ecx;
     _cpuid_info->sef_cpuid7_edx.value = edx;
+
+    get_cpuid_ecx_1(7, &eax, &ebx, &ecx, &edx);
+    _cpuid_info->sefsl1_cpuid7_eax.value = eax;
+    _cpuid_info->sefsl1_cpuid7_edx.value = edx;
   }
 
   // topology
@@ -430,6 +442,8 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
       features->fF16C = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx2 != 0)
       features->fAVX2 = 1;
+      if (_cpuid_info->sefsl1_cpuid7_eax.bits.avx_ifma != 0)
+        features->fAVX_IFMA = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx512f != 0 &&
         _cpuid_info->xem_xcr0_eax.bits.opmask != 0 &&
         _cpuid_info->xem_xcr0_eax.bits.zmm512 != 0 &&
@@ -500,6 +514,9 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
     features->fRDTSCP = 1;
   if (_cpuid_info->sef_cpuid7_ecx.bits.rdpid != 0)
     features->fRDPID = 1;
+  if (_cpuid_info->sefsl1_cpuid7_edx.bits.apx_f != 0 &&
+      _cpuid_info->xem_xcr0_eax.bits.apx_f != 0)
+    features->fAPX_F = 1;
 
   // AMD|Hygon features.
   if (is_amd_family(_cpuid_info))
@@ -516,19 +533,16 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
   // Intel features.
   if (is_intel(_cpuid_info))
   {
-    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt_intel != 0)
+    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt != 0) {
       features->fLZCNT = 1;
-    // for Intel, ecx.bits.misalignsse bit (bit 8) indicates support for prefetchw
-    if (_cpuid_info->ext_cpuid1_ecx.bits.misalignsse != 0)
-    {
+    }
+    if (_cpuid_info->ext_cpuid1_ecx.bits.prefetchw != 0) {
       features->fAMD_3DNOW_PREFETCH = 1;
     }
-    if (_cpuid_info->sef_cpuid7_ebx.bits.clwb != 0)
-    {
+    if (_cpuid_info->sef_cpuid7_ebx.bits.clwb != 0) {
       features->fCLWB = 1;
     }
-    if (_cpuid_info->sef_cpuid7_edx.bits.serialize != 0)
-    {
+    if (_cpuid_info->sef_cpuid7_edx.bits.serialize != 0) {
       features->fSERIALIZE = 1;
     }
   }
@@ -536,11 +550,10 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
   // ZX features.
   if (is_zx(_cpuid_info))
   {
-    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt_intel != 0)
+    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt != 0) {
       features->fLZCNT = 1;
-    // for ZX, ecx.bits.misalignsse bit (bit 8) indicates support for prefetchw
-    if (_cpuid_info->ext_cpuid1_ecx.bits.misalignsse != 0)
-    {
+    }
+    if (_cpuid_info->ext_cpuid1_ecx.bits.prefetchw != 0) {
       features->fAMD_3DNOW_PREFETCH = 1;
     }
   }

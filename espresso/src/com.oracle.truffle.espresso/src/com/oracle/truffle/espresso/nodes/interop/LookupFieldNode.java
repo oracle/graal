@@ -27,6 +27,8 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
@@ -54,8 +56,12 @@ public abstract class LookupFieldNode extends EspressoNode {
     @TruffleBoundary
     @Specialization(replaces = "doCached")
     Field doUncached(Klass klass, String name, boolean onlyStatic) {
+        Symbol<Name> nameSymbol = klass.getNames().lookup(name);
+        if (nameSymbol == null) {
+            return null;
+        }
         for (Field f : klass.getDeclaredFields()) {
-            if (f.isPublic() && (!onlyStatic || f.isStatic()) && name.equals(f.getNameAsString())) {
+            if (f.isPublic() && (!onlyStatic || f.isStatic()) && f.getName() == nameSymbol) {
                 return f;
             }
         }

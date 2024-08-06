@@ -1,3 +1,10 @@
+# Version 24.0.0
+
+Compatibility:
+
+* Use ld64.lld instead of system linker on Darwin.
+  This fixes problems with the LLVM toolchain wrappers with Xcode 15.
+
 # Version 23.1.0
 
 Changes:

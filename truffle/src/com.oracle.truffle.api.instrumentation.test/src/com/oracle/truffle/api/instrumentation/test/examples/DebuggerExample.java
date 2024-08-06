@@ -61,7 +61,7 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
  * {@link DebuggerExampleTest clients} can use to talk to the debugger is exposed in a separate
  * {@link DebuggerController} interface.
  */
-// BEGIN: DebuggerExample
+// @start region = "DebuggerExample"
 @Registration(id = DebuggerExample.ID, services = DebuggerController.class)
 public final class DebuggerExample extends TruffleInstrument {
     private Controller controller;
@@ -82,7 +82,7 @@ public final class DebuggerExample extends TruffleInstrument {
             this.instrumenter = instrumenter;
         }
 
-        // FINISH: DebuggerExample
+        // @end region = "DebuggerExample"
 
         @Override
         public void installBreakpoint(int line, final Callback callback) {

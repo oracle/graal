@@ -36,7 +36,7 @@ import java.util.StringTokenizer;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.core.util.json.JsonWriter;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 /** Represents a rule that includes or excludes a set of Java classes. */
 public final class HierarchyFilterNode implements ConfigurationFilter {
@@ -68,6 +68,8 @@ public final class HierarchyFilterNode implements ConfigurationFilter {
 
     public static HierarchyFilterNode createInclusiveRoot() {
         HierarchyFilterNode root = new HierarchyFilterNode("");
+        /* Needed to ensure that the empty string is matched by the filter as well. */
+        root.inclusion = Inclusion.Include;
         root.addOrGetChildren("**", ConfigurationFilter.Inclusion.Include);
         return root;
     }

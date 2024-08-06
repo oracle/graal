@@ -25,7 +25,7 @@
 package com.oracle.svm.core.option;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionKey;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -58,9 +58,10 @@ public final class XOptions {
     }
 
     /**
-     * Sets an XOption from a name and a value (e.g., from "mx2g"). Returns true if successful,
-     * false otherwise. Throws an exception if the option was recognized, but the value was not a
-     * number.
+     * Sets an XOption from a name and a value (e.g., from "mx2g"). Returns true if
+     * {@code keyAndValue} denotes an existing XOption, false otherwise.
+     *
+     * @throws IllegalArgumentException if the option was recognized, but the value was not a number
      */
     public static boolean setOption(String keyAndValue) {
         XFlag xFlag = findXFlag(keyAndValue);

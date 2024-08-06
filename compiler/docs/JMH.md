@@ -23,7 +23,7 @@ If you want to run a Truffle JMH benchmark, try:
 
 ```
 cd compiler
-mx benchmark truffle:JMH_1_21 -- -Dgraal.CompileGraalWithC1Only=false -- BenchmarkName
+mx benchmark truffle:JMH_1_21 -- -Djdk.graal.CompileGraalWithC1Only=false -- BenchmarkName
 ```
 
 If you do not know or want to learn more, continue reading.
@@ -133,7 +133,7 @@ mx benchmark jmh-whitebox:* --results-file=results.json -- --jvm-config=graal-co
 
 The command above runs all *whitebox* benchmarks.
 That are all benchmark distributions that have either a dependency on a `GRAAL*` distribution,
-or include projects starting with `org.graalvm.compiler` in their distribution jar.
+or include projects starting with `jdk.graal.compiler` in their distribution jar.
 
 
 Refer to the [mx documentation][mx in-repo] for further information.

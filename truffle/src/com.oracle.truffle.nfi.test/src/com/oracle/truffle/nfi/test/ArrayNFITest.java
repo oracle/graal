@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -121,7 +123,7 @@ public class ArrayNFITest extends NFITest {
             int length = Array.getLength(array);
             for (int i = 0; i < length; i++) {
                 Object elem = Array.get(array, i);
-                Assert.assertThat("array element", elem, is(instanceOf(javaType)));
+                MatcherAssert.assertThat("array element", elem, is(instanceOf(javaType)));
                 long actual = 0;
                 long expected = i + 1;
                 if (elem instanceof Number) {
@@ -161,7 +163,7 @@ public class ArrayNFITest extends NFITest {
     private static void testSumArray(CallTarget callTarget, Object array, Object wrappedArray) {
         int arrayLength = Array.getLength(array);
         Object ret = callTarget.call(array, wrappedArray);
-        Assert.assertThat("return value", ret, is(instanceOf(Number.class)));
+        MatcherAssert.assertThat("return value", ret, is(instanceOf(Number.class)));
         Assert.assertEquals("return value", arrayLength * (arrayLength + 1) / 2, ((Number) ret).intValue());
     }
 

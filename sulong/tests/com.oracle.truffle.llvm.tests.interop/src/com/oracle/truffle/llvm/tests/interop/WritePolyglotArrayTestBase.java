@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,7 +41,7 @@ public class WritePolyglotArrayTestBase extends PolyglotArrayTestBase {
 
     // create test entries
 
-    protected static void addTestIntern(Collection<Object[]> configs, String function, InputConsumer assertion, ExpectedExceptionConsumer expectedException, ExpectedResultMarker support,
+    protected static void addTestIntern(Collection<Object[]> configs, String function, InputConsumer assertion, TestRunnableConsumer expectedException, ExpectedResultMarker support,
                     Object... parameters) {
         configs.add(new Object[]{function, assertion, expectedException, support, new ParameterArray(parameters)});
     }
@@ -49,7 +49,7 @@ public class WritePolyglotArrayTestBase extends PolyglotArrayTestBase {
     /**
      * Adds a test that is expected to fail.
      */
-    protected static void addUnsupported(Collection<Object[]> configs, String function, Object object, int index, Object value, ExpectedExceptionConsumer expectedException) {
+    protected static void addUnsupported(Collection<Object[]> configs, String function, Object object, int index, Object value, TestRunnableConsumer expectedException) {
         addTestIntern(configs, function, InputConsumer::doNothing, expectedException, ExpectedResultMarker.UNSUPPORTED, object, index, value);
     }
 
@@ -57,7 +57,7 @@ public class WritePolyglotArrayTestBase extends PolyglotArrayTestBase {
      * Adds a test that is expected to succeed.
      */
     protected static void addSupported(Collection<Object[]> configs, String function, Object object, int index, Object value, InputConsumer assertion) {
-        addTestIntern(configs, function, assertion, PolyglotArrayTestBase::doNothing, ExpectedResultMarker.SUPPORTED, object, index, value);
+        addTestIntern(configs, function, assertion, PolyglotArrayTestBase.expectNoException(), ExpectedResultMarker.SUPPORTED, object, index, value);
     }
 
     @FunctionalInterface

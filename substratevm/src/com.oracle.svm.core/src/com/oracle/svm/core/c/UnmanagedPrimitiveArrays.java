@@ -24,6 +24,11 @@
  */
 package com.oracle.svm.core.c;
 
+import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -32,17 +37,13 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Support for allocating and accessing primitive element arrays created in unmanaged memory. They
@@ -57,11 +58,11 @@ public final class UnmanagedPrimitiveArrays {
 
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T extends UnmanagedPrimitiveArray<?>> T createArray(int length, Class<?> arrayType) {
+    public static <T extends UnmanagedPrimitiveArray<?>> T createArray(int length, Class<?> arrayType, NmtCategory nmtCategory) {
         DynamicHub hub = SubstrateUtil.cast(arrayType, DynamicHub.class);
         VMError.guarantee(LayoutEncoding.isPrimitiveArray(hub.getLayoutEncoding()));
         UnsignedWord size = WordFactory.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(hub.getLayoutEncoding()));
-        Pointer array = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(size);
+        Pointer array = NullableNativeMemory.calloc(size, nmtCategory);
         if (array.isNull()) {
             throw OUT_OF_MEMORY_ERROR;
         }
@@ -88,7 +89,7 @@ public final class UnmanagedPrimitiveArrays {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void releaseUnmanagedArray(UnmanagedPrimitiveArray<?> array) {
         untrackUnmanagedArray(array);
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(array);
+        NullableNativeMemory.free(array);
     }
 
     /** Returns a pointer to the address of the given index of an array. */

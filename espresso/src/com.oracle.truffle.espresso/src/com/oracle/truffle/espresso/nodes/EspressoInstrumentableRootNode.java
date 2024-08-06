@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,14 +27,14 @@ import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
 /**
  * All methods in this class that can be overridden in subclasses must be abstract. If a generic
  * implementation should be provided it should be in {@link EspressoInstrumentableRootNodeImpl}.
  */
-@GenerateWrapper
+@GenerateWrapper(yieldExceptions = UnwindContinuationException.class)
 public abstract class EspressoInstrumentableRootNode extends EspressoInstrumentableNode {
-    abstract void beforeInstumentation(VirtualFrame frame);
 
     abstract Object execute(VirtualFrame frame);
 
@@ -55,4 +55,7 @@ public abstract class EspressoInstrumentableRootNode extends EspressoInstrumenta
     public WrapperNode createWrapper(ProbeNode probeNode) {
         return new EspressoInstrumentableRootNodeWrapper(this, probeNode);
     }
+
+    @Override
+    public abstract String toString();
 }

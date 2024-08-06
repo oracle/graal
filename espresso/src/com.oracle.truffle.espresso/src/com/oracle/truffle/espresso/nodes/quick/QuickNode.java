@@ -29,8 +29,6 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public abstract class QuickNode extends BaseQuickNode {
 
-    public static final QuickNode[] EMPTY_ARRAY = new QuickNode[0];
-
     protected final int top;
 
     private final int callerBCI;
@@ -41,7 +39,7 @@ public abstract class QuickNode extends BaseQuickNode {
     }
 
     @Override
-    public abstract int execute(VirtualFrame frame);
+    public abstract int execute(VirtualFrame frame, boolean isContinuationResume);
 
     protected final StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {

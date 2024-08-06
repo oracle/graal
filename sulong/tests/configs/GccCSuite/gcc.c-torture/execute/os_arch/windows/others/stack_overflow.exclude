@@ -1,0 +1,2 @@
+# the following test fails because of a stack overflow, but otherwise works fine with a lower return depth
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/nestfunc-4.c.dir

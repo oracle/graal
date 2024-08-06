@@ -26,24 +26,24 @@ package com.oracle.svm.core.genscavenge.graal;
 
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.GraphState;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
-import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.SnippetAnchorNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.AllocationSnippets;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
-import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.SnippetAnchorNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.AllocationSnippets;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 
@@ -58,7 +58,6 @@ import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.thread.ContinuationSupport;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -130,7 +129,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
             this.baseTemplates = baseTemplates;
             formatObject = snippet(providers, GenScavengeAllocationSnippets.class, "formatObjectSnippet");
             formatArray = snippet(providers, GenScavengeAllocationSnippets.class, "formatArraySnippet");
-            formatStoredContinuation = Continuation.isSupported() ? snippet(providers, GenScavengeAllocationSnippets.class, "formatStoredContinuation") : null;
+            formatStoredContinuation = ContinuationSupport.isSupported() ? snippet(providers, GenScavengeAllocationSnippets.class, "formatStoredContinuation") : null;
             formatPod = Pod.RuntimeSupport.isPresent() ? snippet(providers,
                             GenScavengeAllocationSnippets.class,
                             "formatPodSnippet",
@@ -141,7 +140,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
         public void registerLowering(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
             lowerings.put(FormatObjectNode.class, new FormatObjectLowering());
             lowerings.put(FormatArrayNode.class, new FormatArrayLowering());
-            if (Continuation.isSupported()) {
+            if (ContinuationSupport.isSupported()) {
                 lowerings.put(FormatStoredContinuationNode.class, new FormatStoredContinuationLowering());
             }
             if (Pod.RuntimeSupport.isPresent()) {

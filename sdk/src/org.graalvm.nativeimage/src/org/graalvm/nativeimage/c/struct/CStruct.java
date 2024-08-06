@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,22 @@ import org.graalvm.word.PointerBase;
  * with the appropriate memory or address arithmetic operations. Here is an example to define a
  * complex number structure:
  *
- * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="ComplexValue"}
+ * <pre>
+ * &#64;CStruct
+ * interface ComplexValue extends PointerBase {
+ *     &#64;CField("re")
+ *     double realPart();
+ *
+ *     &#64;CField("re")
+ *     void realPart(double re);
+ *
+ *     &#64;CField("im")
+ *     double imagineryPart();
+ *
+ *     &#64;CField("im")
+ *     void imagineryPart(double im);
+ * }
+ * </pre>
  *
  * The annotated interface, or an outer class that contains the interface, must be annotated with
  * {@link CContext}. Allocate an instances of the {@code struct} either by
@@ -67,13 +82,39 @@ import org.graalvm.word.PointerBase;
  * To access an array of structs one can define a special {@code addressOf} method:
  * <p>
  *
- * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="IntOrDouble"}
+ * <pre>
+ * &#64;CStruct("int_double")
+ * interface IntOrDouble extends PointerBase {
+ *     // allows access to individual structs in an array
+ *     IntOrDouble addressOf(int index);
+ *
+ *     &#64;CField
+ *     int i();
+ *
+ *     &#64;CField
+ *     void i(int i);
+ *
+ *     &#64;CField
+ *     double d();
+ *
+ *     &#64;CField
+ *     void d(double d);
+ *
+ * }
+ * </pre>
  *
  * Implementation of such method then allows one to do <em>array arithmetics</em> - e.g. obtain
  * pointer to the first element of the array and then access the others:
  * <p>
  *
- * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="acceptIntIntDouble"}
+ * <pre>
+ * private static double acceptIntIntDouble(IntOrDouble arr) {
+ *     IntOrDouble firstInt = arr.addressOf(0);
+ *     IntOrDouble secondInt = arr.addressOf(1);
+ *     IntOrDouble thirdDouble = arr.addressOf(2);
+ *     return firstInt.i() + secondInt.i() + thirdDouble.d();
+ * }
+ * </pre>
  *
  * @since 19.0
  * @see org.graalvm.nativeimage.StackValue

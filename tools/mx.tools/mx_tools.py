@@ -75,7 +75,7 @@ def javadoc(args):
         projectNames = []
         for p in mx.projects(True, True):
             projectNames.append(p.name)
-        mx.javadoc(['--unified', '--projects', ','.join(projectNames)], includeDeps=False)
+        mx.javadoc(['--unified', '--disallow-all-warnings', '--projects', ','.join(projectNames)], includeDeps=False)
     else:
         mx.javadoc(['--unified'] + args)
     javadocDir = os.sep.join([_suite.dir, 'javadoc'])
@@ -125,6 +125,8 @@ def checkLinks(javadocDir):
             content = open(referencedfile, 'r').read()
             for path, s in sections:
                 if not s is None:
+                    s = s.replace("%3C", "&lt;")
+                    s = s.replace("%3E", "&gt;")
                     whereName = content.find('name="' + s + '"')
                     whereId = content.find('id="' + s + '"')
                     if whereName == -1 and whereId == -1:
@@ -184,15 +186,21 @@ def dap_types_gen(args):
     mx.run(['patch', '-p1', '-s', '-i', join(generators_dir, 'resources', 'DAP_patch.diff')], nonZeroIsFatal=True, cwd=out)
     mx.log('DAP types generated to: ' + out)
 
-def _unittest_config_participant(config):
-    vmArgs, mainClass, mainClassArgs = config
-    # This is required to access jdk.internal.module.Modules which
-    # in turn allows us to dynamically open fields/methods to reflection.
-    vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
-    vmArgs = vmArgs + ['--add-modules=ALL-MODULE-PATH']
-    return (vmArgs, mainClass, mainClassArgs)
 
-mx_unittest.add_config_participant(_unittest_config_participant)
+class ToolsUnittestConfig(mx_unittest.MxUnittestConfig):
+
+    def __init__(self):
+        super(ToolsUnittestConfig, self).__init__('tools')
+
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = config
+        # This is required to access jdk.internal.module.Modules which
+        # in turn allows us to dynamically open fields/methods to reflection.
+        vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
+        vmArgs = vmArgs + ['--add-modules=ALL-MODULE-PATH']
+        return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.register_unittest_config(ToolsUnittestConfig())
 
 def _tools_gate_runner(args, tasks):
     with Task('Tools Signature Tests', tasks) as t:

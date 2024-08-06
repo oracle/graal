@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,12 @@
 package com.oracle.truffle.api.instrumentation.test;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -96,8 +99,11 @@ public final class InstrumentSystemThreadTest extends AbstractInstrumentationTes
             started.await();
             assertFails((Runnable) engine::close, PolyglotException.class, (pe) -> {
                 Assert.assertTrue(pe.isInternalError());
-                Assert.assertEquals(String.format("java.lang.IllegalStateException: The engine has an alive system thread Forgotten thread created by instrument %s.", ProxyInstrument.ID),
-                                pe.getMessage());
+                String message = pe.getMessage();
+                Assert.assertTrue(message, message.startsWith("java.lang.IllegalStateException: Alive system thread 'Forgotten thread'"));
+                // There is a system thread dump:
+                Assert.assertTrue(message, message.contains("com.oracle.truffle.polyglot.SystemThread.run"));
+                Assert.assertTrue(message, message.endsWith(String.format("The engine has an alive system thread 'Forgotten thread' created by instrument %s.", ProxyInstrument.ID)));
             });
         } finally {
             closed.countDown();
@@ -146,5 +152,47 @@ public final class InstrumentSystemThreadTest extends AbstractInstrumentationTes
         Throwable exception = exceptionRef.get();
         Assert.assertTrue(exception instanceof IllegalStateException);
         Assert.assertEquals("Context cannot be entered on system threads.", exception.getMessage());
+    }
+
+    @Test
+    public void testEngineCloseJoiningSystemThread() {
+        Context ctx = Context.newBuilder().allowAllAccess(true).build();
+        try {
+            setupEnv(ctx, null, new JoiningSystemThreadInstrument());
+            context.getEngine().close(true);
+            context = null;
+        } finally {
+            assertFails(() -> ctx.close(), PolyglotException.class);
+        }
+    }
+
+    private static final class JoiningSystemThreadInstrument extends ProxyInstrument {
+
+        private volatile Thread systemThread;
+        private final Semaphore disposed = new Semaphore(0);
+
+        @Override
+        protected void onCreate(TruffleInstrument.Env env) {
+            systemThread = env.createSystemThread(this::threadMain);
+            systemThread.start();
+        }
+
+        @Override
+        protected void onDispose(TruffleInstrument.Env env) {
+            disposed.release();
+            try {
+                systemThread.join();
+            } catch (InterruptedException ie) {
+                throw new AssertionError(ie);
+            }
+        }
+
+        private void threadMain() {
+            try {
+                disposed.acquire();
+            } catch (InterruptedException ie) {
+                throw new AssertionError(ie);
+            }
+        }
     }
 }

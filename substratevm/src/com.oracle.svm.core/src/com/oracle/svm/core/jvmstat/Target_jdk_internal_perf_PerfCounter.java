@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.jvmstat;
 
+import java.nio.LongBuffer;
+
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -34,6 +37,9 @@ import com.oracle.svm.core.annotate.TargetClass;
  */
 @TargetClass(className = "jdk.internal.perf.PerfCounter")
 final class Target_jdk_internal_perf_PerfCounter {
+    @Delete //
+    private LongBuffer lb;
+
     @Substitute
     @SuppressWarnings("static-method")
     public long get() {

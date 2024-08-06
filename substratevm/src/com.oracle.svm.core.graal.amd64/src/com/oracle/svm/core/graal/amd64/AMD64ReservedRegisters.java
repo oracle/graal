@@ -37,11 +37,11 @@ import jdk.vm.ci.code.Register;
 
 public final class AMD64ReservedRegisters extends ReservedRegisters {
 
-    public static final Register THREAD_REGISTER_CANDIDATE = r15;
+    public static final Register THREAD_REGISTER = r15;
     public static final Register HEAP_BASE_REGISTER_CANDIDATE = r14;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     AMD64ReservedRegisters() {
-        super(AMD64.rsp, THREAD_REGISTER_CANDIDATE, HEAP_BASE_REGISTER_CANDIDATE);
+        super(AMD64.rsp, THREAD_REGISTER, HEAP_BASE_REGISTER_CANDIDATE);
     }
 }

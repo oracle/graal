@@ -1,5 +1,0 @@
-DYNAMIC_IMPORTS=/compiler,/regex,/sdk,/substratevm,/sulong,/tools,/truffle,truffleruby
-COMPONENTS=antlr4,cmp,cov,dap,gvm,icu4j,ins,insight,insightheap,lg,llp,llrc,llrn,lsp,nfi-libffi,pro,rby,rbyl,rgx,sdk,sdkl,tfl,tfla,tflc,tflm,truffle-json
-EXCLUDE_COMPONENTS=libpoly
-NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-flang,graalvm-native-ld,lib:jvmcicompiler,lib:rubyvm
-DISABLE_INSTALLABLES=False

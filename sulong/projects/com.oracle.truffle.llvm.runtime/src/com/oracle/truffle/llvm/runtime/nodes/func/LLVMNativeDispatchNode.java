@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
 
 public abstract class LLVMNativeDispatchNode extends LLVMNode {
 
@@ -117,17 +118,34 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
         return fromNative.executeConvert(returnValue);
     }
 
-    @Specialization(replaces = "doCached", guards = "!function.isNull()")
+    @TruffleBoundary
+    protected Object createSignature(NativeContextExtension ctxExt) {
+        return ctxExt.createSignature(signatureSource);
+    }
+
+    @Specialization(replaces = "doCached", guards = {"!function.isNull()", "isSingleContext($node)"})
+    @GenerateAOT.Exclude
+    protected Object doGenericSingleContext(LLVMNativePointer function, Object[] arguments,
+                    @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
+                    @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
+                    @Cached("createSignature(getNativeCtxExt())") Object signature,
+                    @CachedLibrary("signature") SignatureLibrary signatureLib,
+                    @Cached("nativeCallStatisticsEnabled()") boolean statistics) {
+        Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
+        Object returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, signatureLib, signature, function, nativeArgs, null);
+        return fromNative.executeConvert(returnValue);
+    }
+
+    @Specialization(replaces = "doGenericSingleContext", guards = "!function.isNull()")
     @GenerateAOT.Exclude
     protected Object doGeneric(LLVMNativePointer function, Object[] arguments,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
-                    @CachedLibrary(limit = "5") InteropLibrary nativeCall,
+                    @CachedLibrary(limit = "1") SignatureLibrary signatureLib,
                     @Cached("nativeCallStatisticsEnabled()") boolean statistics) {
         Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
-        Object returnValue;
-        Object bound = bindSignature(getNativeCtxExt(), function.asNative());
-        returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, nativeCall, bound, nativeArgs, null);
+        Object signature = createSignature(getNativeCtxExt());
+        Object returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, signatureLib, signature, function, nativeArgs, null);
         return fromNative.executeConvert(returnValue);
     }
 

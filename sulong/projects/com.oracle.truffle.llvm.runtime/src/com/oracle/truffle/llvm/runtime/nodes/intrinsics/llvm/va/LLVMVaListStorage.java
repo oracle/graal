@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -67,7 +67,6 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode.LLVMPointerDat
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Array;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -79,6 +78,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorag
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.PointerConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.ShortConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport.ToNativePointerNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMoveToNative;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode.LLVMDoubleOffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMFloatLoadNode.LLVMFloatOffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode.LLVMI16OffsetLoadNode;
@@ -227,14 +227,14 @@ public class LLVMVaListStorage implements TruffleObject {
         return (((LLVMHasDatalayoutNode) callTarget.getRootNode())).getDatalayout();
     }
 
-    public static long storeArgument(LLVMPointer ptr, long offset, LLVMMemMoveNode memmove, LLVMI64OffsetStoreNode storeI64Node,
+    public static long storeArgument(LLVMNativePointer ptr, long offset, NativeProfiledMemMoveToNative memmove, LLVMI64OffsetStoreNode storeI64Node,
                     LLVMI32OffsetStoreNode storeI32Node, LLVM80BitFloatOffsetStoreNode storeFP80Node, LLVMPointerOffsetStoreNode storePointerNode, Object object, int stackStep) {
         if (object instanceof Number) {
             return doPrimitiveWrite(ptr, offset, storeI64Node, object, stackStep);
         } else if (object instanceof LLVMVarArgCompoundValue) {
             LLVMVarArgCompoundValue obj = (LLVMVarArgCompoundValue) object;
-            Object currentPtr = ptr.increment(offset);
-            memmove.executeWithTarget(currentPtr, obj.getAddr(), obj.getSize());
+            LLVMNativePointer currentPtr = ptr.increment(offset);
+            memmove.executeNative(currentPtr, obj.getAddr(), obj.getSize());
             return obj.getSize();
         } else if (LLVMPointer.isInstance(object)) {
             storePointerNode.executeWithTarget(ptr, offset, object);

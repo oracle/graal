@@ -50,7 +50,7 @@ class PolyglotListAndFunction<T> extends PolyglotList<T> implements Function<Obj
     }
 
     public Object apply(Object t) {
-        return cache.apply.call(languageContext, guestObject, t);
+        return cache.apply.call(null, languageContext, guestObject, t);
     }
 
 }

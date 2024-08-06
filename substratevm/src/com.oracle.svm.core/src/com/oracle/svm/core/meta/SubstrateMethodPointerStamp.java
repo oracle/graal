@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.meta;
 
-import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.spi.LIRKindTool;
-import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.spi.LIRKindTool;
+import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -48,6 +48,10 @@ public class SubstrateMethodPointerStamp extends AbstractPointerStamp {
 
     public static SubstrateMethodPointerStamp methodNonNull() {
         return METHOD_NON_NULL;
+    }
+
+    public static SubstrateMethodPointerStamp methodAlwaysNull() {
+        return METHOD_ALWAYS_NULL;
     }
 
     @Override

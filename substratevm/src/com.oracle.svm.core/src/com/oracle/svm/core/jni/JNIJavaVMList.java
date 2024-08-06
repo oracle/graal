@@ -29,8 +29,6 @@ import static org.graalvm.word.WordFactory.nullPointer;
 import static org.graalvm.word.WordFactory.unsigned;
 import static org.graalvm.word.WordFactory.zero;
 
-import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -42,6 +40,10 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNIJavaVMPointer;
+import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * A process-global, lock-free list of JavaVM pointers. Implemented as arrays in native memory which
@@ -76,7 +78,7 @@ public final class JNIJavaVMList {
             Pointer p = nextPointer.readWord(0);
             if (p.isNull()) { // No empty slots, create new array
                 UnsignedWord newCapacity = capacity.notEqual(0) ? capacity.multiply(2) : INITIAL_CAPACITY;
-                Pointer newArray = UnmanagedMemory.calloc(newCapacity.add(2 /* capacity and next */).multiply(wordSize));
+                Pointer newArray = NativeMemory.calloc(newCapacity.add(2 /* capacity and next */).multiply(wordSize), NmtCategory.JNI);
                 newArray.writeWord(0, newCapacity);
                 newArray.writeWord(wordSize, newEntry);
                 p = nextPointer.compareAndSwapWord(0, nullPointer(), newArray, ANY_LOCATION);
@@ -84,7 +86,7 @@ public final class JNIJavaVMList {
                     return;
                 }
                 // Another thread already created and linked a new array, continue in that array
-                UnmanagedMemory.free(newArray);
+                NativeMemory.free(newArray);
             }
             capacity = p.readWord(0);
             p = p.add(wordSize);

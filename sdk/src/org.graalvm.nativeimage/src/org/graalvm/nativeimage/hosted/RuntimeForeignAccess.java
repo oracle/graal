@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,15 +50,11 @@ import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 public final class RuntimeForeignAccess {
 
     /**
-     * Registers the provided descriptor and options pair for foreign downcalls at runtime. Needed
-     * in order to get a method handle using <a href=
-     * "https://download.java.net/java/early_access/jdk21/docs/api/java.base/java/lang/foreign/Linker.html#downcallHandle(java.lang.foreign.FunctionDescriptor,java.lang.foreign.Linker.Option...)">downcallHandle</a>
+     * Registers the provided function descriptor and options pair at image build time for downcalls
+     * into foreign code. Required to get a downcall method handle using
+     * {@link java.lang.foreign.Linker#downcallHandle} for the same descriptor and options at
+     * runtime.
      * <p>
-     * Since the foreign functions feature is currently a preview of the Java platform (as part of
-     * <a href="https://openjdk.org/projects/panama/">Project Panama</a>), this API is itself a
-     * preview subject to changes following changes in the feature itself. This also means that this
-     * feature must be manually enabled, using '--enable-preview'.
-     *
      * Even though this method is weakly typed for compatibility reasons, runtime checks will be
      * performed to ensure that the arguments have the expected type. It will be deprecated in favor
      * of strongly typed variant as soon as possible.
@@ -70,6 +66,24 @@ public final class RuntimeForeignAccess {
      */
     public static void registerForDowncall(Object desc, Object... options) {
         ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDowncall(ConfigurationCondition.alwaysTrue(), desc, options);
+    }
+
+    /**
+     * Registers the provided function descriptor and options pair at image build time for upcalls
+     * from foreign code. Required to get an upcall stub function pointer using
+     * {@link java.lang.foreign.Linker#upcallStub} for the same descriptor and options at runtime.
+     * <p>
+     * Even though this method is weakly typed for compatibility reasons, runtime checks will be
+     * performed to ensure that the arguments have the expected type. It will be deprecated in favor
+     * of strongly typed variant as soon as possible.
+     *
+     * @param desc A {@link java.lang.foreign.FunctionDescriptor} to register for upcalls.
+     * @param options An array of {@link java.lang.foreign.Linker.Option} used for the upcalls.
+     *
+     * @since 24.1
+     */
+    public static void registerForUpcall(Object desc, Object... options) {
+        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForUpcall(ConfigurationCondition.alwaysTrue(), desc, options);
     }
 
     private RuntimeForeignAccess() {

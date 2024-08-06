@@ -24,20 +24,18 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
-import org.graalvm.compiler.asm.aarch64.AArch64Address;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.aarch64.AArch64LIRInstruction;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 
+import jdk.graal.compiler.asm.aarch64.AArch64Address;
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.aarch64.AArch64LIRInstruction;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.code.Register;
 
 /**
@@ -53,7 +51,6 @@ public class AArch64SafepointCheckOp extends AArch64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        assert SubstrateOptions.MultiThreaded.getValue();
         int safepointSize = 32; // safepoint is an integer
         AArch64Address safepointAddress = AArch64Address.createImmediateAddress(safepointSize, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED,
                         ReservedRegisters.singleton().getThreadRegister(),

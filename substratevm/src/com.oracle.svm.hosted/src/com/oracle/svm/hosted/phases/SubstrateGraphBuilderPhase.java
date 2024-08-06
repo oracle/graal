@@ -24,26 +24,24 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.word.WordTypes;
-
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
+import jdk.graal.compiler.java.BytecodeParser;
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
 
     public SubstrateGraphBuilderPhase(CoreProviders providers,
-                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes) {
-        super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
+                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+        super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
     }
 
     @Override

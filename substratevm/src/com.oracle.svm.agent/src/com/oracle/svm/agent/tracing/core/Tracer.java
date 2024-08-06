@@ -74,6 +74,14 @@ public abstract class Tracer {
         traceEntry(entry);
     }
 
+    public void traceTrackReflectionMetadata(boolean trackReflectionMetadata) {
+        EconomicMap<String, Object> entry = EconomicMap.create();
+        entry.put("tracer", "meta");
+        entry.put("event", "track_reflection_metadata");
+        entry.put("track", trackReflectionMetadata);
+        traceEntry(entry);
+    }
+
     /**
      * Trace a call to a function or method. {@link Object} arguments are represented as strings by
      * calling {@link Object#toString()} on them unless they are {@link #EXPLICIT_NULL},
@@ -86,7 +94,8 @@ public abstract class Tracer {
      * @param declaringClass If the traced call resolves a member of {@code clazz}, this can be
      *            specified to provide the (super)class which actually declares that member.
      * @param callerClass The class on the call stack which performed the call.
-     * @param result The result of the call.
+     * @param result The result of the call or an indication on whether to handle the call if the
+     *            result is not required in the processor.
      * @param stackTrace Full stack trace leading to (and including) the call, or null if not
      *            available. The first element of this array represents the top of the stack.
      *

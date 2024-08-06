@@ -26,7 +26,6 @@ package com.oracle.svm.core.thread;
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -34,6 +33,9 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredImageSingleton
 public class ThreadListenerSupport {
@@ -60,27 +62,36 @@ public class ThreadListenerSupport {
 
     @Uninterruptible(reason = "Force that all listeners are uninterruptible.")
     public void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
-        for (int i = 0; i < listeners.length; i++) {
-            listeners[i].beforeThreadStart(isolateThread, javaThread);
+        for (ThreadListener listener : listeners) {
+            listener.beforeThreadStart(isolateThread, javaThread);
         }
     }
 
     public void beforeThreadRun() {
-        for (int i = 0; i < listeners.length; i++) {
-            listeners[i].beforeThreadRun();
+        for (ThreadListener listener : listeners) {
+            listener.beforeThreadRun();
         }
     }
 
+    @Uninterruptible(reason = "Force that all listeners are uninterruptible.")
     public void afterThreadRun() {
-        for (int i = 0; i < listeners.length; i++) {
-            listeners[i].afterThreadRun();
+        for (int i = listeners.length - 1; i >= 0; i--) {
+            try {
+                listeners[i].afterThreadRun();
+            } catch (Throwable e) {
+                throw VMError.shouldNotReachHere(e);
+            }
         }
     }
 
     @Uninterruptible(reason = "Force that all listeners are uninterruptible.")
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
         for (int i = listeners.length - 1; i >= 0; i--) {
-            listeners[i].afterThreadExit(isolateThread, javaThread);
+            try {
+                listeners[i].afterThreadExit(isolateThread, javaThread);
+            } catch (Throwable e) {
+                throw VMError.shouldNotReachHere(e);
+            }
         }
     }
 }

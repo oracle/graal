@@ -23,10 +23,16 @@
 
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.JSR;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.JSR_W;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.MONITORENTER;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.MONITOREXIT;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.RET;
 import static com.oracle.truffle.espresso.classfile.ClassfileParser.JAVA_6_VERSION;
 
 import java.io.PrintStream;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -53,6 +59,11 @@ public final class CodeAttribute extends Attribute {
 
     @CompilationFinal(dimensions = 1) //
     private final Attribute[] attributes;
+
+    private static final int FLAGS_READY = 0x1;
+    private static final int FLAGS_HAS_JSR = 0x2;
+    private static final int FLAGS_USES_MONITORS = 0x4;
+    @CompilationFinal byte flags;
 
     public CodeAttribute(Symbol<Name> name, int maxStack, int maxLocals, byte[] code, ExceptionHandler[] exceptionHandlerEntries, Attribute[] attributes, int majorVersion) {
         super(name, null);
@@ -96,6 +107,44 @@ public final class CodeAttribute extends Attribute {
             }
         }
         return null;
+    }
+
+    /**
+     * Returns true if this method uses the JSR/RET bytecodes.
+     */
+    public boolean hasJsr() {
+        return (getFlags() & FLAGS_HAS_JSR) != 0;
+    }
+
+    public boolean usesMonitors() {
+        return (getFlags() & FLAGS_USES_MONITORS) != 0;
+    }
+
+    private byte getFlags() {
+        byte localFlags = flags;
+        if (localFlags == 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            flags = localFlags = computeFlags(originalCode);
+            assert localFlags != 0;
+        }
+        return localFlags;
+    }
+
+    private static byte computeFlags(byte[] code) {
+        BytecodeStream bs = new BytecodeStream(code);
+        int bci = 0;
+        int flags = FLAGS_READY;
+        while (bci < bs.endBCI()) {
+            int opcode = bs.opcode(bci);
+            switch (opcode) {
+                case JSR, JSR_W, RET ->
+                    flags |= FLAGS_HAS_JSR;
+                case MONITORENTER, MONITOREXIT ->
+                    flags |= FLAGS_USES_MONITORS;
+            }
+            bci = bs.nextBCI(bci);
+        }
+        return (byte) flags;
     }
 
     public LineNumberTableAttribute getLineNumberTableAttribute() {

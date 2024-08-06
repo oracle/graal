@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 #if defined(_WIN32)
 // Workaround for static linking. See comment in ffi.h, line 115.
-#define FFI_BUILDING
+#define FFI_STATIC_BUILD
 #endif
 
 #include "trufflenfi.h"
@@ -168,6 +168,7 @@ static void invoke_closure_buffer_ret(ffi_cif *cif, void *ret, void **args, void
     (*env)->PushLocalFrame(env, 8);
 
     retBuffer = (*env)->AllocObject(env, ctx->NativeArgumentBuffer_Pointer);
+    *((ffi_arg *) ret) = 0;
     (*env)->SetLongField(env, retBuffer, ctx->NativeArgumentBuffer_Pointer_pointer, (jlong) (intptr_t) ret);
 
     argBuffers = create_arg_buffers(ctx, env, data, cif, args, retBuffer);

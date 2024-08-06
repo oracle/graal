@@ -38,10 +38,6 @@ public final class ConfigurationTypeResolver {
         this.classLoader = classLoader;
     }
 
-    public Class<?> resolveConditionType(String typeName) {
-        return resolveType(typeName, false);
-    }
-
     public Class<?> resolveType(String typeName) {
         return resolveType(typeName, true);
     }

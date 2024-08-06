@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,10 +43,10 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMStringHelper extends LLVMNode {
 
-    public abstract void execute(LLVMPointer dst, long bufLength, String src);
+    public abstract long execute(LLVMPointer dst, long bufLength, String src);
 
     @Specialization
-    void doNative(LLVMNativePointer dst, long bufLength, String src) {
+    long doNative(LLVMNativePointer dst, long bufLength, String src) {
         LLVMMemory memory = getLanguage().getLLVMMemory();
         byte[] bytes = getBytes(src);
         long ptr = dst.asNative();
@@ -54,11 +54,12 @@ public abstract class LLVMStringHelper extends LLVMNode {
             memory.putI8(this, ptr++, bytes[i]);
         }
         memory.putI8(this, ptr++, (byte) 0);
+        return ptr - dst.asNative();
     }
 
     @Specialization(limit = "3")
     @GenerateAOT.Exclude
-    void doManaged(LLVMManagedPointer dst, long bufLength, String src,
+    long doManaged(LLVMManagedPointer dst, long bufLength, String src,
                     @Bind("dst.getObject()") Object obj,
                     @CachedLibrary("obj") LLVMManagedWriteLibrary write) {
         byte[] bytes = getBytes(src);
@@ -67,6 +68,7 @@ public abstract class LLVMStringHelper extends LLVMNode {
             write.writeI8(obj, offset++, bytes[i]);
         }
         write.writeI8(obj, offset++, (byte) 0);
+        return offset - dst.getOffset();
     }
 
     @TruffleBoundary

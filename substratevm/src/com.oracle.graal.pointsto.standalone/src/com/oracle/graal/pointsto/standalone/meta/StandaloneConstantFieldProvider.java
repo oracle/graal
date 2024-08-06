@@ -28,7 +28,7 @@ package com.oracle.graal.pointsto.standalone.meta;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import org.graalvm.compiler.core.common.spi.JavaConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.JavaConstantFieldProvider;
 
 public class StandaloneConstantFieldProvider extends JavaConstantFieldProvider {
 

@@ -7,20 +7,20 @@ permalink: /reference-manual/native-image/guides/build-polyglot-native-executabl
 
 # Build a Polyglot Native Executable (Java and JavaScript)
 
-With [GraalVM Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html) you can embed and run code from a guest language in a Java-based host application.
-GraalVM makes it possible to ahead-of-time compile a Java application with embedded JavaScript and to create a polyglot native executable. 
-See the [Embedding Languages documentation](../../embedding/embed-languages.md) for more information on how a Java host application can interact with a guest language like JavaScript.
+With the [GraalVM Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html) you can embed and run code from a guest language in a Java-based host application.
+GraalVM makes it possible to compile a Java application ahead-of-time with embedded JavaScript and to create a polyglot native executable. 
+See the [Embedding Languages documentation](../../embedding/embed-languages.md) for more information about how a Java host application can interact with a guest language like JavaScript.
 
-This guide will show how to build a polyglot native executable with Java as a host language and JavaScript as a guest language. 
+This guide demonstrates how to build a polyglot native executable with Java as a host language and JavaScript as a guest language. 
 
-For the demo part, you will use a simple JSON Pretty Printer Java application that prints the output in the JSON format.
+For the demo part, you will use a simple JSON Pretty Printer Java application that prints the output in JSON format.
 
-1. Make sure you have installed a GraalVM JDK.
+### Prerequisite 
+Make sure you have installed a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-2. Create a Maven project and replace the default _Application.java_ file with a file named _PrettyPrintJSON.java_. 
-Copy paste the following content into the file:
+1. Create a Maven project and replace the default _Application.java_ file with a file named _PrettyPrintJSON.java_. Copy and paste the following contents into the file:
 
     ```java
     import java.io.*;
@@ -67,7 +67,6 @@ Copy paste the following content into the file:
     ```
 
 4. Build a native executable:
-
     ```shell
     native-image PrettyPrintJSON
     ```
@@ -78,7 +77,6 @@ Copy paste the following content into the file:
     > Note: Building a polyglot native executable requires more physical memory because the Truffle framework is included.
 
 5. Run the resulting executable and perform some pretty-printing:
-
     ```shell
     ./prettyprintjson <<EOF
     {"GraalVM":{"description":"Language Abstraction Platform","supports":["combining languages","embedding languages","creating native images"],"languages": ["Java","JavaScript","Node.js", "Python", "Ruby","R","LLVM"]}}
@@ -108,7 +106,7 @@ Copy paste the following content into the file:
     }
     ```
 
-The native executable version runs faster than running the same application on the JVM.
+The native executable version runs faster than running the same application on the GraalVM JDK.
 
 > Note: JavaScript support by GraalVM Native Image is considered general availability. The remaining languages support is experimental.
 

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.c.libc;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 public interface LibCBase {

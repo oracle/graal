@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
 // Checkstyle: stop
@@ -88,6 +89,13 @@ public class SysinfoAPI {
         @CField
         short wProcessorRevision();
     }
+
+    /**
+     * Retrieves the current system date and time. The information is in Coordinated Universal Time
+     * (UTC) format.
+     */
+    @CFunction(transition = NO_TRANSITION)
+    public static native void GetSystemTimeAsFileTime(FILETIME lpSystemTimeAsFileTime);
 
     /** Retrieves the path of the Windows directory. */
     @CFunction(transition = NO_TRANSITION)

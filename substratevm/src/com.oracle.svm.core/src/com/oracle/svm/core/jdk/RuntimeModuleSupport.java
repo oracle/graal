@@ -33,13 +33,23 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.heap.UnknownObjectField;
 
+/**
+ * Runtime module support singleton, containing the runtime boot module layer. The boot module layer
+ * is synthesized by a feature during native image generation, after analysis (as module layer
+ * synthesizing requires analysis information). For convenience, this singleton also contains
+ * hosted-only hosted-to-runtime module mappers used by other parts of the module system during the
+ * image build. These are important, as every hosted module has its own synthesized runtime
+ * counterpart. The lookup function is implemented inside the module layer synthesis feature. See
+ * {@code ModuleLayerFeature} for more information.
+ */
 public final class RuntimeModuleSupport {
 
     public static RuntimeModuleSupport instance() {
         return ImageSingletons.lookup(RuntimeModuleSupport.class);
     }
 
-    @UnknownObjectField(availability = AfterHostedUniverse.class) private ModuleLayer bootLayer;
+    @UnknownObjectField(availability = AfterHostedUniverse.class) //
+    private ModuleLayer bootLayer;
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private Function<Module, Module> hostedToRuntimeModuleMapper;

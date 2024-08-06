@@ -259,6 +259,9 @@ public final class Bytecodes {
     // Espresso quickened bytecodes.
     public static final int QUICK                = 203; // 0xCB
     public static final int SLIM_QUICK           = 204; // 0xCC
+    // Espresso special bytecodes.
+    public static final int RETURN_VALUE         = 205; // 0xCD
+    public static final int THROW_VALUE          = 206; // 0xCE
 
     public static final int ILLEGAL = 255;
     public static final int END = 256;

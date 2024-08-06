@@ -57,11 +57,16 @@ public interface StronglyTypedRuntimeForeignAccessSupport extends RuntimeForeign
         void apply(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options);
     }
 
-    static StronglyTypedRuntimeForeignAccessSupport make(Recorder forDowncalls) {
+    static StronglyTypedRuntimeForeignAccessSupport make(Recorder forDowncalls, Recorder forUpcalls) {
         return new StronglyTypedRuntimeForeignAccessSupport() {
             @Override
             public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
                 forDowncalls.apply(condition, desc, options);
+            }
+
+            @Override
+            public void registerForUpcall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
+                forUpcalls.apply(condition, desc, options);
             }
         };
     }
@@ -72,4 +77,11 @@ public interface StronglyTypedRuntimeForeignAccessSupport extends RuntimeForeign
     }
 
     void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options);
+
+    @Override
+    default void registerForUpcall(ConfigurationCondition condition, Object descO, Object... optionsO) {
+        registerForUpcall(condition, castDesc(descO), castOptions(optionsO));
+    }
+
+    void registerForUpcall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options);
 }

@@ -44,7 +44,8 @@ public class WindowsDirectives implements CContext.Directives {
                     "<stdio.h>",
                     "<stdlib.h>",
                     "<string.h>",
-                    "<io.h>"
+                    "<io.h>",
+                    "<math.h>"
     };
 
     @Override
@@ -55,8 +56,7 @@ public class WindowsDirectives implements CContext.Directives {
     @Override
     public List<String> getHeaderFiles() {
         if (Platform.includedIn(Platform.WINDOWS.class)) {
-            List<String> result = new ArrayList<>(Arrays.asList(windowsLibs));
-            return result;
+            return new ArrayList<>(Arrays.asList(windowsLibs));
         } else {
             throw VMError.shouldNotReachHere("Unsupported OS");
         }

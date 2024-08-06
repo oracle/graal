@@ -29,12 +29,10 @@ import static com.oracle.svm.core.jvmstat.PerfManager.Options.PerfDataMemoryMapp
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
@@ -45,6 +43,10 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jdk.Target_java_nio_Buffer;
+import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Provides access to the underlying OS-specific memory that stores the performance data.
@@ -148,7 +150,7 @@ public class PerfMemory {
         if (used + size >= capacity) {
             PerfMemoryPrologue.addOverflow(rawMemory, size);
             // Always return a valid pointer (external tools won't see this memory though).
-            Word result = UnmanagedMemory.calloc(size);
+            Word result = NativeMemory.calloc(size, NmtCategory.JvmStat);
             addOverflowMemory(result);
             return result;
         }
@@ -198,7 +200,7 @@ public class PerfMemory {
 
         if (overflowMemory != null) {
             for (int i = 0; i < overflowMemory.length; i++) {
-                UnmanagedMemory.free(overflowMemory[i]);
+                NativeMemory.free(overflowMemory[i]);
             }
             overflowMemory = null;
         }

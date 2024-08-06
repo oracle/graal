@@ -24,21 +24,23 @@
  */
 package com.oracle.graal.pointsto.heap;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import org.graalvm.compiler.core.common.type.CompressibleConstant;
-import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.ObjectScanner;
-import com.oracle.graal.pointsto.util.AtomicUtils;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.VMConstant;
 
 /**
@@ -49,80 +51,163 @@ import jdk.vm.ci.meta.VMConstant;
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, CompressibleConstant, VMConstant {
-    /** Stores the type of this object. */
-    protected ResolvedJavaType type;
-    /**
-     * Stores the hosted object, already processed by the object transformers. It is null for
-     * instances of partially evaluated classes.
-     */
-    protected final JavaConstant hostedObject;
-    protected final int identityHashCode;
 
+    private static final AtomicInteger currentId = new AtomicInteger(0);
+
+    public static final VarHandle isReachableHandle = ReflectionUtil.unreflectField(ConstantData.class, "isReachable", MethodHandles.lookup());
+
+    abstract static class ConstantData {
+        /**
+         * Stores the type of this object.
+         */
+        protected final AnalysisType type;
+        /**
+         * Stores the hosted object, already processed by the object transformers. It is null for
+         * instances of partially evaluated classes.
+         */
+        private final JavaConstant hostedObject;
+        /**
+         * The identity hash code for the heap object. This field is only used if
+         * {@link #hostedObject} is null, i.e., for objects without a backing object in the heap of
+         * the image builder VM. We create a "virtual" identity hash code that has the same
+         * properties as the image builder VM by using the identity hash code of a new and otherwise
+         * unused object in the image builder VM.
+         */
+        private final int identityHashCode;
+        /**
+         * Unique id.
+         */
+        protected final int id;
+        /**
+         * A future that reads the hosted field or array elements values lazily only when the
+         * receiver object is used. This way the shadow heap can contain hosted only objects, i.e.,
+         * objects that cannot be reachable at run time but are processed ahead-of-time.
+         */
+        AnalysisFuture<Void> hostedValuesReader;
+        /**
+         * A constant is marked as reachable only when it is decided that it can be used at run-time
+         * and its field values/array elements need to be processed. The value of the field is
+         * initially null, then it stores the reason why this constant became reachable.
+         */
+        @SuppressWarnings("unused") private volatile Object isReachable;
+        /**
+         * A boolean allowing to distinguish a constant that was persisted from a base layer and a
+         * constant created in the current layer.
+         */
+        private boolean isInBaseLayer;
+
+        ConstantData(AnalysisType type, JavaConstant hostedObject, int identityHashCode) {
+            Objects.requireNonNull(type);
+            this.type = type;
+            this.hostedObject = CompressibleConstant.uncompress(hostedObject);
+
+            if (hostedObject == null) {
+                if (identityHashCode == -1) {
+                    /*
+                     * No backing object in the heap of the image builder VM. We want a "virtual"
+                     * identity hash code that has the same properties as the image builder VM, so
+                     * we use the identity hash code of a new and otherwise unused object in the
+                     * image builder VM.
+                     */
+                    this.identityHashCode = System.identityHashCode(new Object());
+                } else {
+                    this.identityHashCode = identityHashCode;
+                }
+            } else {
+                /* This value must never be used later on. */
+                this.identityHashCode = -1;
+            }
+            this.id = currentId.getAndIncrement();
+        }
+
+        @Override
+        public int hashCode() {
+            return hostedObject != null ? hostedObject.hashCode() : super.hashCode();
+        }
+    }
+
+    protected final ConstantData constantData;
     protected final boolean compressed;
 
-    @SuppressWarnings("unused") private volatile Object isReachable;
-
-    private static final AtomicReferenceFieldUpdater<ImageHeapConstant, Object> isReachableUpdater = AtomicReferenceFieldUpdater
-                    .newUpdater(ImageHeapConstant.class, Object.class, "isReachable");
-
-    ImageHeapConstant(ResolvedJavaType type, JavaConstant object, int identityHashCode, boolean compressed) {
-        this.type = type;
-        this.hostedObject = object;
-        this.identityHashCode = identityHashCode;
+    ImageHeapConstant(ConstantData constantData, boolean compressed) {
+        this.constantData = constantData;
         this.compressed = compressed;
     }
 
-    public boolean markReachable(ObjectScanner.ScanReason reason) {
-        return AtomicUtils.atomicSet(this, reason, isReachableUpdater);
+    public ConstantData getConstantData() {
+        return constantData;
+    }
+
+    public void ensureReaderInstalled() {
+        if (constantData.hostedValuesReader != null) {
+            constantData.hostedValuesReader.ensureDone();
+        }
+    }
+
+    /**
+     * A regular image heap constant starts off without any fields or array elements installed. It
+     * instead contains a future task, the hostedValuesReader, which creates the tasks that read the
+     * hosted values. It must be executed before any values can be accessed. This ensures that the
+     * hosted values are only read when the constant is indeed used, i.e., it was not eliminated by
+     * constant folding.
+     *
+     * Simulated constants are fully initialized when they are created.
+     */
+    protected boolean isReaderInstalled() {
+        return constantData.hostedValuesReader == null || constantData.hostedValuesReader.isDone();
+    }
+
+    /** Intentionally package private. Should only be set via ImageHeapScanner.markReachable. */
+    boolean markReachable(ObjectScanner.ScanReason reason) {
+        ensureReaderInstalled();
+        return isReachableHandle.compareAndSet(constantData, null, reason);
     }
 
     public boolean isReachable() {
-        return AtomicUtils.isSet(this, isReachableUpdater);
+        return isReachableHandle.get(constantData) != null;
     }
 
-    static int createIdentityHashCode(JavaConstant object) {
-        if (object == null) {
-            /*
-             * No backing object in the heap of the image builder VM. We want a "virtual" identity
-             * hash code that has the same properties as the image builder VM, so we use the
-             * identity hash code of a new and otherwise unused object in the image builder VM.
-             */
-            return System.identityHashCode(new Object());
-        } else {
-            /* Lazily looked up from the hostedObject when requested. */
-            return -1;
-        }
+    public boolean allowConstantFolding() {
+        /*
+         * An object whose type is initialized at run time does not have hosted field values. Only
+         * simulated objects can be used for constant folding.
+         */
+        return constantData.type.isInitialized() || constantData.hostedObject == null;
     }
 
-    @Override
+    public Object getReachableReason() {
+        return constantData.isReachable;
+    }
+
+    public boolean hasIdentityHashCode() {
+        return constantData.identityHashCode > 0;
+    }
+
     public int getIdentityHashCode() {
-        if (hostedObject != null) {
-            if (hostedObject.isNull()) {
-                /*
-                 * According to the JavaDoc of System.identityHashCode, the identity hash code of
-                 * null is 0.
-                 */
-                return 0;
-            } else {
-                return ((TypedConstant) hostedObject).getIdentityHashCode();
-            }
-        } else {
-            /*
-             * No backing object in the heap of the image builder VM. We want a "virtual" identity
-             * hash code that has the same properties as the image builder VM, so we use the
-             * identity hash code of a new and otherwise unused object in the image builder VM.
-             */
-            assert identityHashCode > 0 : "The Java HotSpot VM only returns positive numbers for the identity hash code, so we want to have the same restriction on Substrate VM in order to not surprise users";
-            return identityHashCode;
-        }
+        AnalysisError.guarantee(constantData.hostedObject == null, "ImageHeapConstant only stores the identity hash code when there is no hosted object.");
+        AnalysisError.guarantee(constantData.identityHashCode > 0, "The provided identity hashcode value must be a positive number to be on par with the Java HotSpot VM.");
+        return constantData.identityHashCode;
+    }
+
+    public void markInBaseLayer() {
+        constantData.isInBaseLayer = true;
+    }
+
+    public boolean isInBaseLayer() {
+        return constantData.isInBaseLayer;
     }
 
     public JavaConstant getHostedObject() {
-        return hostedObject;
+        AnalysisError.guarantee(!CompressibleConstant.isCompressed(constantData.hostedObject), "References to hosted objects should never be compressed.");
+        return constantData.hostedObject;
     }
 
     public boolean isBackedByHostedObject() {
-        return hostedObject != null;
+        return constantData.hostedObject != null;
+    }
+
+    public static int getConstantID(ImageHeapConstant constant) {
+        return constant.getConstantData().id;
     }
 
     @Override
@@ -141,12 +226,8 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     }
 
     @Override
-    public ResolvedJavaType getType(MetaAccessProvider provider) {
-        return type;
-    }
-
-    public void setType(ResolvedJavaType type) {
-        this.type = type;
+    public AnalysisType getType() {
+        return constantData.type;
     }
 
     @Override
@@ -186,12 +267,19 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     @Override
     public String toValueString() {
-        return type.getName();
+        if (constantData.type.getJavaClass() == String.class && constantData.hostedObject != null) {
+            String valueString = constantData.hostedObject.toValueString();
+            /* HotSpotObjectConstantImpl.toValueString() puts the string between quotes. */
+            return valueString.substring(1, valueString.length() - 1);
+        }
+        return constantData.type.getName();
     }
 
     /**
      * Returns a new image heap instance, as if {@link Object#clone} was called on the original
      * object. If the type is not cloneable, then null is returned.
+     * <p>
+     * The new constant is never backed by a hosted object, regardless of the input object.
      */
     public abstract ImageHeapConstant forObjectClone();
 
@@ -203,13 +291,19 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
              * the previous behavior where the raw object was extracted and used as a key when
              * constructing the image heap map.
              */
-            return Objects.equals(this.type, other.type) && Objects.equals(this.hostedObject, other.hostedObject);
+            return this.constantData == other.constantData && this.compressed == other.compressed;
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return hostedObject != null ? hostedObject.hashCode() : 0;
+        return constantData.hashCode() + (compressed ? 1 : 0);
+    }
+
+    @Override
+    public String toString() {
+        return "ImageHeapConstant<" + constantData.type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() +
+                        ", compressed: " + compressed + ", backed: " + isBackedByHostedObject() + ">";
     }
 }

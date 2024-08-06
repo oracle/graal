@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.reflect;
 
+import static com.oracle.svm.core.MissingRegistrationUtils.ERROR_EMPHASIS_INDENT;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -47,11 +49,28 @@ public final class MissingReflectionRegistrationUtils {
         report(exception);
     }
 
+    public static void forUnsafeAllocation(String className) {
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("unsafe instantiate class", className),
+                        Class.class, null, className, null);
+        report(exception);
+    }
+
     public static void forField(Class<?> declaringClass, String fieldName) {
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access field",
                         declaringClass.getTypeName() + "#" + fieldName),
                         Field.class, declaringClass, fieldName, null);
         report(exception);
+    }
+
+    public static MissingReflectionRegistrationError errorForQueriedOnlyField(Field field) {
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("read or write field", field.toString()),
+                        field.getClass(), field.getDeclaringClass(), field.getName(), null);
+        report(exception);
+        /*
+         * If report doesn't throw, we throw the exception anyway since this is a Native
+         * Image-specific error that is unrecoverable in any case.
+         */
+        return exception;
     }
 
     public static void forMethod(Class<?> declaringClass, String methodName, Class<?>[] paramTypes) {
@@ -67,7 +86,7 @@ public final class MissingReflectionRegistrationUtils {
         report(exception);
     }
 
-    public static void forQueriedOnlyExecutable(Executable executable) {
+    public static MissingReflectionRegistrationError errorForQueriedOnlyExecutable(Executable executable) {
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("invoke method", executable.toString()),
                         executable.getClass(), executable.getDeclaringClass(), executable.getName(), executable.getParameterTypes());
         report(exception);
@@ -75,7 +94,7 @@ public final class MissingReflectionRegistrationUtils {
          * If report doesn't throw, we throw the exception anyway since this is a Native
          * Image-specific error that is unrecoverable in any case.
          */
-        throw exception;
+        return exception;
     }
 
     public static void forBulkQuery(Class<?> declaringClass, String methodName) {
@@ -85,7 +104,7 @@ public final class MissingReflectionRegistrationUtils {
         report(exception);
     }
 
-    public static void forProxy(Class<?>... interfaces) {
+    public static MissingReflectionRegistrationError errorForProxy(Class<?>... interfaces) {
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access the proxy class inheriting",
                         Arrays.toString(Arrays.stream(interfaces).map(Class::getTypeName).toArray()),
                         "The order of interfaces used to create proxies matters.", "dynamic-proxy"),
@@ -95,7 +114,20 @@ public final class MissingReflectionRegistrationUtils {
          * If report doesn't throw, we throw the exception anyway since this is a Native
          * Image-specific error that is unrecoverable in any case.
          */
-        throw exception;
+        return exception;
+    }
+
+    public static MissingReflectionRegistrationError errorForArray(Class<?> elementClass, int dimension) {
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("instantiate the array class",
+                        elementClass.getTypeName() + "[]".repeat(dimension),
+                        "Add \"unsafeAllocated\" to the array class registration to enable runtime instantiation.", "reflection"),
+                        null, null, null, null);
+        report(exception);
+        /*
+         * If report doesn't throw, we throw the exception anyway since this is a Native
+         * Image-specific error that is unrecoverable in any case.
+         */
+        return exception;
     }
 
     private static String errorMessage(String failedAction, String elementDescriptor) {
@@ -103,8 +135,14 @@ public final class MissingReflectionRegistrationUtils {
     }
 
     private static String errorMessage(String failedAction, String elementDescriptor, String note, String helpLink) {
-        return "The program tried to reflectively " + failedAction + " " + elementDescriptor +
-                        " without it being registered for runtime reflection. Add " + elementDescriptor + " to the " + helpLink + " metadata to solve this problem. " +
+        /* Can't use multi-line strings as they pull in format and bloat "Hello, World!" */
+        return "The program tried to reflectively " + failedAction +
+                        System.lineSeparator() +
+                        System.lineSeparator() +
+                        ERROR_EMPHASIS_INDENT + elementDescriptor +
+                        System.lineSeparator() +
+                        System.lineSeparator() +
+                        "without it being registered for runtime reflection. Add " + elementDescriptor + " to the " + helpLink + " metadata to solve this problem. " +
                         (note != null ? "Note: " + note + " " : "") +
                         "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#" + helpLink + " for help.";
     }
@@ -149,7 +187,7 @@ public final class MissingReflectionRegistrationUtils {
                     "jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods"),
                     "sun.misc.Unsafe", Set.of("allocateInstance"),
                     /* For jdk.internal.misc.Unsafe.allocateInstance(), which is intrinsified */
-                    SubstrateAllocationSnippets.class.getName(), Set.of("instanceHubErrorStub"));
+                    SubstrateAllocationSnippets.class.getName(), Set.of("slowPathHubOrUnsafeInstantiationError"));
 
     private static StackTraceElement getResponsibleClass(Throwable t) {
         StackTraceElement[] stackTrace = t.getStackTrace();

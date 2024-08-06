@@ -31,14 +31,11 @@ import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import org.graalvm.compiler.core.common.type.TypedConstant;
-
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -71,17 +68,6 @@ public abstract class UniverseMetaAccess implements WrappedMetaAccess {
         return universe;
     }
 
-    @Override
-    public ResolvedJavaType lookupJavaType(JavaConstant constant) {
-        if (constant.getJavaKind() != JavaKind.Object || constant.isNull()) {
-            return null;
-        }
-        if (constant instanceof TypedConstant) {
-            return ((TypedConstant) constant).getType(this);
-        }
-        return universe.lookup(wrapped.lookupJavaType(constant));
-    }
-
     private final ConcurrentHashMap<Class<?>, ResolvedJavaType> typeCache = new ConcurrentHashMap<>(AnalysisUniverse.ESTIMATED_NUMBER_OF_TYPES);
 
     @Override
@@ -90,7 +76,7 @@ public abstract class UniverseMetaAccess implements WrappedMetaAccess {
     }
 
     public boolean isInstanceOf(JavaConstant constant, Class<?> clazz) {
-        if (constant == null || constant.isNull()) {
+        if (constant == null || constant.isNull() || constant.getJavaKind().isPrimitive()) {
             return false;
         }
         return lookupJavaType(clazz).isAssignableFrom(lookupJavaType(constant));

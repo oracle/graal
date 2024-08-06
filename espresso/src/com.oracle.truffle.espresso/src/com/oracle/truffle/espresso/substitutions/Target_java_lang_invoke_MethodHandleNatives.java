@@ -89,7 +89,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
      */
     @Substitution
     public static void init(@JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self, @JavaType(Object.class) StaticObject ref,
-                    @Inject Meta meta) {
+                    @Inject Meta meta, @Inject EspressoLanguage language) {
         Klass targetKlass = ref.getKlass();
 
         if (targetKlass.getType() == Type.java_lang_reflect_Method) {
@@ -101,7 +101,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         } else if (targetKlass.getType() == Type.java_lang_reflect_Field) {
             // Actual planting
             Field field = Field.getReflectiveFieldRoot(ref, meta);
-            plantResolvedField(self, field, getRefKind(meta.java_lang_invoke_MemberName_flags.getInt(self)), meta);
+            plantResolvedField(self, field, getRefKind(meta.java_lang_invoke_MemberName_flags.getInt(self)), meta, language);
             // Finish the job
             Klass fieldKlass = meta.java_lang_reflect_Field_class.getObject(ref).getMirrorKlass(meta);
             meta.java_lang_invoke_MemberName_clazz.setObject(self, fieldKlass.mirror());
@@ -117,7 +117,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static void expand(@JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
-                    @Inject Meta meta,
+                    @Inject Meta meta, @Inject EspressoLanguage language,
                     @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(self)) {
             profiler.profile(0);
@@ -154,7 +154,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
                 }
                 Klass holder = clazz.getMirrorKlass(meta);
-                int slot = Target_sun_misc_Unsafe.safetyOffsetToSlot((long) meta.HIDDEN_VMINDEX.getHiddenObject(self));
+                int slot = Target_sun_misc_Unsafe.guestOffsetToSlot((long) meta.HIDDEN_VMINDEX.getHiddenObject(self), language);
                 boolean isStatic = (flags & ACC_STATIC) != 0;
                 Field f;
                 try {
@@ -477,7 +477,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 }
             }
 
-            Klass callerKlass = StaticObject.isNull(caller) ? null : caller.getMirrorKlass(meta);
+            ObjectKlass callerKlass = StaticObject.isNull(caller) ? null : (ObjectKlass) caller.getMirrorKlass(meta);
 
             boolean doAccessChecks = callerKlass != null;
             boolean doConstraintsChecks = (callerKlass != null && ((lookupMode & LM_UNCONDITIONAL) == 0));
@@ -536,7 +536,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     if (t == null) {
                         throw meta.throwException(meta.java_lang_NoSuchFieldException);
                     }
-                    plantFieldMemberName(memberName, resolutionKlass, methodName, t, refKind, callerKlass, doConstraintsChecks, meta);
+                    plantFieldMemberName(memberName, resolutionKlass, methodName, t, refKind, callerKlass, doConstraintsChecks, meta, getLanguage());
                     break;
                 default:
                     throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Member name resolution failed");
@@ -578,7 +578,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     // region MemberName planting
 
-    private static void plantInvokeBasic(StaticObject memberName, Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig, Klass callerKlass, boolean accessCheck, Meta meta) {
+    private static void plantInvokeBasic(StaticObject memberName, Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig, ObjectKlass callerKlass, boolean accessCheck, Meta meta) {
         assert (name == Name.invokeBasic);
         Method target = resolutionKlass.lookupMethod(name, sig);
         if (accessCheck) {
@@ -591,7 +591,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static void plantMethodMemberName(StaticObject memberName,
                     Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig,
                     int refKind,
-                    Klass callerKlass,
+                    ObjectKlass callerKlass,
                     boolean accessCheck, boolean constraintsChecks,
                     Meta meta) {
         // TODO this needs to be the correct lookup (static, interface, virtual etc.)
@@ -634,7 +634,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     int refKind,
                     Klass callerKlass,
                     boolean constraintsCheck,
-                    Meta meta) {
+                    Meta meta, EspressoLanguage language) {
         Field field = doFieldLookup(resolutionKlass, name, type);
         if (field == null) {
             throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, cat("Failed lookup for field ", resolutionKlass.getName(), "#", name, ":", type));
@@ -642,12 +642,12 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (constraintsCheck) {
             field.checkLoadingConstraints(callerKlass.getDefiningClassLoader(), resolutionKlass.getDefiningClassLoader());
         }
-        plantResolvedField(memberName, field, refKind, meta);
+        plantResolvedField(memberName, field, refKind, meta, language);
     }
 
-    private static void plantResolvedField(StaticObject memberName, Field field, int refKind, Meta meta) {
+    private static void plantResolvedField(StaticObject memberName, Field field, int refKind, Meta meta, EspressoLanguage language) {
         meta.HIDDEN_VMTARGET.setHiddenObject(memberName, field.getDeclaringKlass());
-        meta.HIDDEN_VMINDEX.setHiddenObject(memberName, Target_sun_misc_Unsafe.slotToSafetyOffset(field.getSlot(), field.isStatic()));
+        meta.HIDDEN_VMINDEX.setHiddenObject(memberName, Target_sun_misc_Unsafe.slotToGuestOffset(field.getSlot(), field.isStatic(), language));
         meta.java_lang_invoke_MemberName_flags.setInt(memberName, getFieldFlags(refKind, field));
         meta.java_lang_invoke_MemberName_clazz.setObject(memberName, field.getDeclaringKlass().mirror());
     }

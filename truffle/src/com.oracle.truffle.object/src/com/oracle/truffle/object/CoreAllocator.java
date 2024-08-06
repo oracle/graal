@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,8 @@ import com.oracle.truffle.object.CoreLocations.ObjectLocation;
 import com.oracle.truffle.object.CoreLocations.PrimitiveLocationDecorator;
 import com.oracle.truffle.object.CoreLocations.TypedLocation;
 import com.oracle.truffle.object.CoreLocations.ValueLocation;
+
+import sun.misc.Unsafe;
 
 @SuppressWarnings("deprecation")
 class CoreAllocator extends ShapeImpl.BaseAllocator {
@@ -130,7 +132,8 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
             if (com.oracle.truffle.object.ObjectStorageOptions.InObjectFields && primitiveFieldSize + getLayout().getLongFieldSize() <= getLayout().getPrimitiveFieldCount()) {
                 return advance(new IntLocationDecorator(getLayout().getPrimitiveFieldLocation(primitiveFieldSize)));
             } else if (getLayout().hasPrimitiveExtensionArray()) {
-                return advance(new IntLocationDecorator(new LongArrayLocation(primitiveArraySize)));
+                int alignedIndex = alignArrayIndex(primitiveArraySize, Long.BYTES);
+                return advance(new IntLocationDecorator(new LongArrayLocation(alignedIndex)));
             }
         }
         return newObjectLocation(useFinal, true);
@@ -146,7 +149,8 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
             if (com.oracle.truffle.object.ObjectStorageOptions.InObjectFields && primitiveFieldSize + getLayout().getLongFieldSize() <= getLayout().getPrimitiveFieldCount()) {
                 return advance(new DoubleLocationDecorator(getLayout().getPrimitiveFieldLocation(primitiveFieldSize), allowedIntToDouble));
             } else if (getLayout().hasPrimitiveExtensionArray()) {
-                return advance(new DoubleLocationDecorator(new LongArrayLocation(primitiveArraySize), allowedIntToDouble));
+                int alignedIndex = alignArrayIndex(primitiveArraySize, Long.BYTES);
+                return advance(new DoubleLocationDecorator(new LongArrayLocation(alignedIndex), allowedIntToDouble));
             }
         }
         return newObjectLocation(useFinal, true);
@@ -162,7 +166,8 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
             if (com.oracle.truffle.object.ObjectStorageOptions.InObjectFields && primitiveFieldSize + getLayout().getLongFieldSize() <= getLayout().getPrimitiveFieldCount()) {
                 return advance((Location) CoreLocations.createLongLocation(getLayout().getPrimitiveFieldLocation(primitiveFieldSize), allowedIntToLong));
             } else if (getLayout().hasPrimitiveExtensionArray()) {
-                return advance(new LongArrayLocation(primitiveArraySize, allowedIntToLong));
+                int alignedIndex = alignArrayIndex(primitiveArraySize, Long.BYTES);
+                return advance(new LongArrayLocation(alignedIndex, allowedIntToLong));
             }
         }
         return newObjectLocation(useFinal, true);
@@ -183,7 +188,7 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
         return locationForValue(value, useFinal, nonNull, 0);
     }
 
-    Location locationForValue(Object value, boolean useFinal, boolean nonNull, long putFlags) {
+    Location locationForValue(Object value, boolean useFinal, boolean nonNull, int putFlags) {
         if (Flags.isConstant(putFlags)) {
             return constantLocation(value);
         } else if (Flags.isDeclaration(putFlags)) {
@@ -221,7 +226,7 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
     }
 
     @Override
-    protected Location locationForValueUpcast(Object value, Location oldLocation, long putFlags) {
+    protected Location locationForValueUpcast(Object value, Location oldLocation, int putFlags) {
         assert !oldLocation.canStore(value);
 
         if (oldLocation instanceof ConstantLocation && Flags.isConstant(putFlags)) {
@@ -242,5 +247,26 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
             return newObjectLocation(oldLocation.isFinal(), value != null);
         }
         return locationForValue(value, false, value != null);
+    }
+
+    /**
+     * Adjust index to ensure alignment for slots larger than the array element size, e.g. long and
+     * double slots in an int[] array. Note that array element 0 is not necessarily 8-byte aligned.
+     */
+    private static int alignArrayIndex(int index, int bytes) {
+        assert bytes > 0 && (bytes & (bytes - 1)) == 0;
+        final int baseOffset = Unsafe.ARRAY_INT_BASE_OFFSET;
+        final int indexScale = Unsafe.ARRAY_INT_INDEX_SCALE;
+        if (bytes <= indexScale) {
+            // Always aligned.
+            return index;
+        } else {
+            int misalignment = (baseOffset + indexScale * index) & (bytes - 1);
+            if (misalignment == 0) {
+                return index;
+            } else {
+                return index + ((bytes - misalignment) / indexScale);
+            }
+        }
     }
 }

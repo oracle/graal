@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "6.43.0",
+  "mxversion": "7.28.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
   "groupId": "org.graalvm.llvm",
@@ -91,7 +91,7 @@ suite = {
         "windows": {
           "<others>" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
         },
         "<others>": {"<others>" : {"optional": True}},
@@ -967,31 +967,31 @@ suite = {
       "ninja_install_targets" : ["install-cxx"],
       "os" : {
         "<others>" : {
-          "ninja_targets" : ["cxxabi"],
-          "ninja_install_targets" : ["install-cxxabi"],
+          "ninja_targets" : ["cxxabi", "unwind"],
+          "ninja_install_targets" : ["install-cxxabi", "install-unwind"],
           "results" : ["native"],
           "cmakeConfig" : {
             "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
-            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
+            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
           },
         },
         "linux-musl" : {
-          "ninja_targets" : ["cxxabi"],
-          "ninja_install_targets" : ["install-cxxabi"],
+          "ninja_targets" : ["cxxabi", "unwind"],
+          "ninja_install_targets" : ["install-cxxabi", "install-unwind"],
           "results" : ["native"],
           "cmakeConfig" : {
             "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
-            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
+            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
             "LIBCXX_HAS_MUSL_LIBC" : "YES",
           },
         },
         "darwin" : {
-          "ninja_targets" : ["cxxabi"],
-          "ninja_install_targets" : ["install-cxxabi"],
+          "ninja_targets" : ["cxxabi", "unwind"],
+          "ninja_install_targets" : ["install-cxxabi", "install-unwind"],
           "results" : ["native"],
           "cmakeConfig" : {
             "CMAKE_INSTALL_RPATH" : "@loader_path/",
-            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
+            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi;libunwind",
             "CMAKE_LIBTOOL" : "<path:LLVM_TOOLCHAIN>/bin/llvm-libtool-darwin",
           },
         },
@@ -1468,10 +1468,19 @@ suite = {
       "fileExts" : [".c"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["executable-O0"],
+      "variants" : ["toolchain-O0"],
       "buildRef" : True,
-      "cmakeConfig" : {
-        "CMAKE_C_FLAGS" : "-Wno-everything",
+      "os" : {
+        "windows" : {
+          "cmakeConfig" : {
+            "CMAKE_C_FLAGS" : "-Wno-everything -include stdio.h",
+          },
+        },
+        "<others>": {
+          "cmakeConfig" : {
+            "CMAKE_C_FLAGS" : "-Wno-everything",
+          },
+        },
       },
       "dependencies" : ["SULONG_TEST"],
       "buildDependencies" : [
@@ -1488,10 +1497,19 @@ suite = {
       "fileExts" : [".cpp", ".C", ".cc"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["executable-O0"],
+      "variants" : ["toolchain-O0"],
       "buildRef" : True,
-      "cmakeConfig" : {
-        "CMAKE_CXX_FLAGS" : "-Wno-everything",
+      "os" : {
+        "windows" : {
+          "cmakeConfig" : {
+            "CMAKE_CXX_FLAGS" : "-Wno-everything -include stdio.h",
+          },
+        },
+        "<others>": {
+          "cmakeConfig" : {
+            "CMAKE_CXX_FLAGS" : "-Wno-everything",
+          },
+        },
       },
       "dependencies" : ["SULONG_TEST"],
       "buildDependencies" : [
@@ -1551,7 +1569,7 @@ suite = {
       "fileExts" : [".c", ".cpp", ".C", ".cc", ".m"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["executable-O0"],
+      "variants" : ["toolchain-O0"],
       "buildRef" : True,
       "os_arch" : {
         "darwin": {
@@ -1665,6 +1683,10 @@ suite = {
           "com.oracle.truffle.llvm.runtime.config.ConfigurationFactory",
           "com.oracle.truffle.llvm.spi.internal.LLVMResourceProvider",
         ],
+        "requires": [
+          "org.graalvm.collections",
+          "org.graalvm.polyglot",
+        ],
       },
       "useModulePath" : True,
       "subDir" : "projects",
@@ -1699,7 +1721,6 @@ suite = {
         "truffle:TRUFFLE_RUNTIME",
       ],
       "maven": {
-        "groupId": "org.graalvm.polyglot",
         "artifactId": "llvm-native-community",
         "tag": ["default", "public"],
       },
@@ -1713,7 +1734,6 @@ suite = {
         "LLVM_NATIVE_COMMUNITY",
       ],
       "maven": {
-        "groupId": "org.graalvm.polyglot",
         "artifactId": "llvm-community",
         "tag": ["default", "public"],
       },
@@ -1751,6 +1771,11 @@ suite = {
         "name" : "org.graalvm.llvm.nativemode_community",
         "exports" : [
           "* to org.graalvm.llvm.nativemode",
+        ],
+        "requires": [
+          "org.graalvm.collections",
+          "org.graalvm.polyglot",
+          "org.graalvm.truffle",
         ],
       },
       "useModulePath" : True,
@@ -1799,7 +1824,10 @@ suite = {
       "useModulePath" : True,
       "subDir" : "projects",
       "dependencies" : ["com.oracle.truffle.llvm.nfi"],
-      "distDependencies" : ["truffle:TRUFFLE_NFI"],
+      "distDependencies" : [
+        "truffle:TRUFFLE_NFI",
+        "SULONG_CORE",  # The SULONG_NFI in the runtime needs llvm language
+      ],
       "maven" : {
         "artifactId" : "llvm-language-nfi",
         "tag": ["default", "public"],
@@ -1812,6 +1840,9 @@ suite = {
         "name" : "org.graalvm.llvm.launcher",
         "exports" : [
           "com.oracle.truffle.llvm.launcher to org.graalvm.launcher",
+        ],
+        "requires": [
+          "org.graalvm.polyglot",
         ],
       },
       "useModulePath" : True,

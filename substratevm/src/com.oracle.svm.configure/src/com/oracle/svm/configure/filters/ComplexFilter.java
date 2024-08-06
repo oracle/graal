@@ -28,7 +28,7 @@ import java.io.IOException;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.core.util.json.JsonWriter;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class ComplexFilter implements ConfigurationFilter {
     private HierarchyFilterNode hierarchyFilterNode;

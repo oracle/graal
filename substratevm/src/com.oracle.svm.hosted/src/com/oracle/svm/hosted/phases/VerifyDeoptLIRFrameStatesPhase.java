@@ -27,14 +27,15 @@ package com.oracle.svm.hosted.phases;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.core.common.cfg.BasicBlock;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.lir.LIR;
-import org.graalvm.compiler.lir.LIRFrameState;
-import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.framemap.FrameMap;
-import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase;
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.lir.LIR;
+import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.framemap.FrameMap;
+import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.lir.phases.FinalCodeAnalysisPhase;
+import jdk.graal.compiler.nodes.FrameState;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.graal.lir.DeoptEntryOp;
@@ -120,7 +121,7 @@ class Instance {
              * A state is an implicit deoptimization entrypoint if it corresponds to a call which is
              * valid for deoptimization and is registered as a deopt entry.
              */
-            return state.validForDeoptimization && ((HostedMethod) frame.getMethod()).compilationInfo.isDeoptEntry(frame.getBCI(), frame.duringCall, frame.rethrowException);
+            return state.validForDeoptimization && ((HostedMethod) frame.getMethod()).compilationInfo.isDeoptEntry(frame.getBCI(), FrameState.StackState.of(frame));
         }
 
         return false;

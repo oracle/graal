@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,7 +39,22 @@
  * SOFTWARE.
  */
 #include "common.h"
+#include <trufflenfi.h>
 
 EXPORT void native_just_call(void (*callback)()) {
     callback();
+}
+
+EXPORT void native_just_call_2(void (*callback1)(), void (*callback2)()) {
+    callback1();
+    callback2();
+}
+
+EXPORT void native_check_exception(TruffleEnv *env, void (*callback)(), void (*onSuccess)()) {
+    callback();
+    if ((*env)->exceptionCheck(env)) {
+        return;
+    }
+
+    onSuccess();
 }

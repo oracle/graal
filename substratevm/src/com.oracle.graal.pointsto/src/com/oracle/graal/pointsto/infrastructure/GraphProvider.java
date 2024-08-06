@@ -24,21 +24,19 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.StructuredGraph;
-
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
 
 public interface GraphProvider {
     enum Purpose {
         ANALYSIS,
-        AOT_COMPILATION,
         PREPARE_RUNTIME_COMPILATION,
     }
 
-    StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose);
+    StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose);
 
     /**
      * Returns true if a graph can be provided for {@link Purpose#PREPARE_RUNTIME_COMPILATION}. Note

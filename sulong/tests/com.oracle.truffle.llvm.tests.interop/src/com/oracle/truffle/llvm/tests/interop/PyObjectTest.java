@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,11 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+
 import org.graalvm.polyglot.Value;
 import org.hamcrest.Description;
 import org.hamcrest.TypeSafeMatcher;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -144,18 +145,18 @@ public class PyObjectTest extends InteropTestBase {
     @Test
     public void testImplicitType() {
         Value obj = getPyObjectImplicitType.execute(); // should be of type PyObject
-        Assert.assertThat(obj, new MemberMatcher("ob_refcnt", new IntMatcher(1)));
-        Assert.assertThat(obj, new NotExistingMatcher("base"));
-        Assert.assertThat(obj, new NotExistingMatcher("flags"));
+        assertThat(obj, new MemberMatcher("ob_refcnt", new IntMatcher(1)));
+        assertThat(obj, new NotExistingMatcher("base"));
+        assertThat(obj, new NotExistingMatcher("flags"));
         freePyObject.execute(obj);
     }
 
     @Test
     public void testExplicitType() {
         Value obj = getPyObjectExplicitType.execute(); // should be of type PyMemoryViewObject
-        Assert.assertThat(obj, new NotExistingMatcher("ob_refcnt"));
-        Assert.assertThat(obj, new MemberMatcher("base", new MemberMatcher("ob_refcnt", new IntMatcher(1))));
-        Assert.assertThat(obj, new MemberMatcher("flags", new IntMatcher(42)));
+        assertThat(obj, new NotExistingMatcher("ob_refcnt"));
+        assertThat(obj, new MemberMatcher("base", new MemberMatcher("ob_refcnt", new IntMatcher(1))));
+        assertThat(obj, new MemberMatcher("flags", new IntMatcher(42)));
         freePyObject.execute(obj);
     }
 }

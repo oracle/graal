@@ -40,7 +40,7 @@ import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
 import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
@@ -445,21 +445,16 @@ public abstract class AnalysisElement implements AnnotatedElement {
         }
 
         private boolean typeReason(AnalysisType type) {
-            if (type.isInHeap()) {
-                return maybeExpandReasonStack(type.getInHeapReason());
-            } else if (type.isAllocated()) {
-                return maybeExpandReasonStack(type.getAllocatedReason());
+            if (type.isInstantiated()) {
+                return maybeExpandReasonStack(type.getInstantiatedReason());
             } else {
                 return maybeExpandReasonStack(type.getReachableReason());
             }
         }
 
         private static String typeReasonStr(AnalysisType type) {
-            if (type.isInHeap()) {
-                return "is marked as in-heap";
-            }
-            if (type.isAllocated()) {
-                return "is marked as allocated";
+            if (type.isInstantiated()) {
+                return "is marked as instantiated";
             }
             return "is reachable";
         }
@@ -535,7 +530,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
                     } else {
                         /* For virtual methods we follow back type reachability. */
                         AnalysisType declaringClass = aMethod.getDeclaringClass();
-                        assert declaringClass.isInstantiated() || declaringClass.isInHeap() || declaringClass.isAbstract() ||
+                        assert declaringClass.isInstantiated() || declaringClass.isAbstract() ||
                                         (declaringClass.isInterface() && aMethod.isDefault()) || declaringClass.isReachable() : declaringClass + " is not reachable";
                         return "implementation invoked";
                     }
@@ -544,7 +539,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
                         return "inlined";
                     } else {
                         AnalysisType declaringClass = aMethod.getDeclaringClass();
-                        assert declaringClass.isInstantiated() || declaringClass.isInHeap() || declaringClass.isAbstract() ||
+                        assert declaringClass.isInstantiated() || declaringClass.isAbstract() ||
                                         (declaringClass.isInterface() && aMethod.isDefault()) || declaringClass.isReachable() : declaringClass + " is not reachable";
                         return "inlined";
                     }

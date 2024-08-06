@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
@@ -463,10 +462,6 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             }
         }
 
-        CodeExecutableElement delegateNodeCost = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost"));
-        delegateNodeCost.createBuilder().startReturn().staticReference(types.NodeCost, "NONE").end();
-        delegateClass.add(delegateNodeCost);
-
         CodeExecutableElement delegateIsAdoptable = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable"));
         delegateIsAdoptable.createBuilder().startReturn().string("this.delegateLibrary.isAdoptable()").end();
         delegateClass.add(delegateIsAdoptable);
@@ -475,8 +470,6 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         // CachedToUncachedDispatchNode
         final CodeTypeElement cachedToUncached = createClass(model, null, modifiers(PRIVATE, STATIC, FINAL), "CachedToUncachedDispatch", libraryTypeMirror);
-        CodeExecutableElement getCost = cachedToUncached.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost")));
-        getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(types.NodeCost, "MEGAMORPHIC")).end();
 
         for (MessageObjects message : methods) {
             CodeExecutableElement execute = cachedToUncached.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
@@ -516,8 +509,6 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         // UncachedDispatch
         final CodeTypeElement uncachedDispatch = createClass(model, null, modifiers(PRIVATE, STATIC, FINAL), "UncachedDispatch", libraryTypeMirror);
         uncachedDispatch.addAnnotationMirror(new CodeAnnotationMirror(types.DenyReplace));
-        getCost = uncachedDispatch.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost")));
-        getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(types.NodeCost, "MEGAMORPHIC")).end();
 
         for (MessageObjects message : methods) {
             CodeExecutableElement execute = uncachedDispatch.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
@@ -540,8 +531,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         }
         uncachedDispatch.addOptional(createGenericCastMethod(model));
 
-        CodeExecutableElement isAdoptable = uncachedDispatch.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "isAdoptable")));
-        isAdoptable.createBuilder().returnFalse();
+        uncachedDispatch.getImplements().add(types.UnadoptableNode);
 
         genClass.add(uncachedDispatch);
 
@@ -626,10 +616,6 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             builder = isAOTImpl.createBuilder();
             builder.tree(GeneratorUtils.createShouldNotReachHere());
         }
-
-        DeclaredType nodeCost = types.NodeCost;
-        getCost = cachedDispatchNext.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost")));
-        getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(nodeCost, "NONE")).end();
 
         // specialize
 
@@ -743,21 +729,6 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             builder.statement("this.aot_ = true");
         }
 
-        getCost = cachedDispatchFirst.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost")));
-        builder = getCost.createBuilder();
-        builder.startIf().string("this.library").instanceOf(cachedToUncached.asType()).end().startBlock();
-        builder.startReturn().staticReference(ElementUtils.findVariableElement(nodeCost, "MEGAMORPHIC")).end();
-        builder.end();
-        builder.declaration(cachedDispatch.asType(), "current", "this");
-        builder.statement("int count = 0");
-        builder.startDoBlock();
-        builder.startIf().string("current.library != null").end().startBlock();
-        builder.statement("count++");
-        builder.end();
-        builder.statement("current = current.next");
-        builder.end().startDoWhile().string("current != null").end().end();
-        builder.startReturn().startStaticCall(nodeCost, "fromCount").string("count").end().end();
-
         genClass.add(cachedDispatch);
 
         CodeExecutableElement createCachedDispatch = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryFactory, "createDispatchImpl"));
@@ -779,14 +750,13 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder = implConstructor.createBuilder();
         builder.startStatement();
         builder.startSuperCall().staticReference(libraryClassLiteral);
-        builder.startStaticCall(context.getType(Collections.class), "unmodifiableList");
-        builder.startStaticCall(context.getType(Arrays.class), "asList");
+        builder.startStaticCall(context.getType(List.class), "of");
         for (MessageObjects message : methods) {
             if (message.messageField != null) {
                 builder.field(null, message.messageField);
             }
         }
-        builder.end().end(); // unmodfiiableList, asList
+        builder.end(); // of
         builder.end(); // superCall
         builder.end(); // statement
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,7 +95,8 @@ import com.oracle.truffle.sl.builtins.SLWrapPrimitiveBuiltinFactory;
 
 /**
  * The run-time state of SL during execution. The context is created by the {@link SLLanguage}. It
- * is used, for example, by {@link SLBuiltinNode#getContext() builtin functions}.
+ * is used, for example, by the {@link com.oracle.truffle.sl.builtins.SLEvalBuiltin eval builtin
+ * function}.
  * <p>
  * It would be an error to have two different context instances during the execution of one script.
  * However, if two separate scripts run in one Java VM at the same time, they have a different

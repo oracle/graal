@@ -24,30 +24,38 @@
  */
 package com.oracle.svm.configure.config;
 
+import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 
 public final class FieldInfo {
-    private static final FieldInfo[] FINAL_NOT_WRITABLE_CACHE;
+    private static final FieldInfo[][] FINAL_NOT_WRITABLE_CACHE;
     static {
-        ConfigurationMemberDeclaration[] values = ConfigurationMemberDeclaration.values();
-        FINAL_NOT_WRITABLE_CACHE = new FieldInfo[values.length];
-        for (ConfigurationMemberDeclaration value : values) {
-            FINAL_NOT_WRITABLE_CACHE[value.ordinal()] = new FieldInfo(value, false);
+        ConfigurationMemberDeclaration[] declarations = ConfigurationMemberDeclaration.values();
+        ConfigurationMemberAccessibility[] accessibilities = ConfigurationMemberAccessibility.values();
+        FINAL_NOT_WRITABLE_CACHE = new FieldInfo[declarations.length][accessibilities.length];
+        for (ConfigurationMemberDeclaration declaration : declarations) {
+            for (ConfigurationMemberAccessibility accessibility : accessibilities) {
+                FINAL_NOT_WRITABLE_CACHE[declaration.ordinal()][accessibility.ordinal()] = new FieldInfo(declaration, accessibility, false);
+            }
         }
     }
 
-    static FieldInfo get(ConfigurationMemberDeclaration kind, boolean finalButWritable) {
+    static FieldInfo get(ConfigurationMemberInfo kind, boolean finalButWritable) {
+        return get(kind.getDeclaration(), kind.getAccessibility(), finalButWritable);
+    }
+
+    static FieldInfo get(ConfigurationMemberDeclaration declaration, ConfigurationMemberAccessibility accessibility, boolean finalButWritable) {
         if (finalButWritable) { // assumed to be rare
-            return new FieldInfo(kind, finalButWritable);
+            return new FieldInfo(declaration, accessibility, finalButWritable);
         }
-        return FINAL_NOT_WRITABLE_CACHE[kind.ordinal()];
+        return FINAL_NOT_WRITABLE_CACHE[declaration.ordinal()][accessibility.ordinal()];
     }
 
-    private final ConfigurationMemberDeclaration kind;
+    private final ConfigurationMemberInfo kind;
     private final boolean finalButWritable;
 
-    private FieldInfo(ConfigurationMemberDeclaration kind, boolean finalButWritable) {
-        this.kind = kind;
+    private FieldInfo(ConfigurationMemberDeclaration declaration, ConfigurationMemberAccessibility accessibility, boolean finalButWritable) {
+        this.kind = ConfigurationMemberInfo.get(declaration, accessibility);
         this.finalButWritable = finalButWritable;
     }
 
@@ -74,7 +82,7 @@ public final class FieldInfo {
         return get(kind, newFinalButWritable);
     }
 
-    public ConfigurationMemberDeclaration getKind() {
+    public ConfigurationMemberInfo getKind() {
         return kind;
     }
 

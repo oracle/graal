@@ -42,23 +42,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
-public final class ImageClassLoader {
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.word.Word;
 
-    /*
-     * This cannot be a HostedOption because the option parsing already relies on the list of loaded
-     * classes.
-     */
-    private static final int CLASS_LOADING_MAX_SCALING = 8;
-    private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
+public final class ImageClassLoader {
 
     static {
         /*
@@ -86,21 +81,20 @@ public final class ImageClassLoader {
         this.watchdog = new DeadlockWatchdog(watchdogInterval, watchdogExitOnTimeout);
     }
 
+    @SuppressWarnings("unused")
     public void loadAllClasses() throws InterruptedException {
-        ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING)) {
-            @Override
-            public void execute(Runnable task) {
-                super.execute(() -> {
-                    task.run();
-                    watchdog.recordActivity();
-                });
-            }
-        };
+        ForkJoinPool executor = ForkJoinPool.commonPool();
         try {
             classLoaderSupport.loadAllClasses(executor, this);
         } finally {
-            executor.shutdown();
-            executor.awaitTermination(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
+            boolean isQuiescence = false;
+            while (!isQuiescence) {
+                isQuiescence = executor.awaitQuiescence(10, TimeUnit.MINUTES);
+                if (!isQuiescence) {
+                    LogUtils.warning("Class loading is slow. Waiting for tasks to complete...");
+                    /* DeadlockWatchdog should fail the build eventually. */
+                }
+            }
         }
         classLoaderSupport.reportBuilderClassesInApplication();
     }
@@ -234,7 +228,7 @@ public final class ImageClassLoader {
     }
 
     public Enumeration<URL> findResourcesByName(String resource) throws IOException {
-        return classLoaderSupport.getClassLoader().getResources(resource);
+        return getClassLoader().getResources(resource);
     }
 
     /**
@@ -272,25 +266,9 @@ public final class ImageClassLoader {
     public TypeResult<Class<?>> findClass(String name, boolean allowPrimitives) {
         try {
             if (allowPrimitives && name.indexOf('.') == -1) {
-                switch (name) {
-                    case "boolean":
-                        return TypeResult.forClass(boolean.class);
-                    case "char":
-                        return TypeResult.forClass(char.class);
-                    case "float":
-                        return TypeResult.forClass(float.class);
-                    case "double":
-                        return TypeResult.forClass(double.class);
-                    case "byte":
-                        return TypeResult.forClass(byte.class);
-                    case "short":
-                        return TypeResult.forClass(short.class);
-                    case "int":
-                        return TypeResult.forClass(int.class);
-                    case "long":
-                        return TypeResult.forClass(long.class);
-                    case "void":
-                        return TypeResult.forClass(void.class);
+                Class<?> primitive = forPrimitive(name);
+                if (primitive != null) {
+                    return TypeResult.forClass(primitive);
                 }
             }
             return TypeResult.forClass(forName(name));
@@ -299,12 +277,27 @@ public final class ImageClassLoader {
         }
     }
 
+    public static Class<?> forPrimitive(String name) {
+        return switch (name) {
+            case "boolean" -> boolean.class;
+            case "char" -> char.class;
+            case "float" -> float.class;
+            case "double" -> double.class;
+            case "byte" -> byte.class;
+            case "short" -> short.class;
+            case "int" -> int.class;
+            case "long" -> long.class;
+            case "void" -> void.class;
+            default -> null;
+        };
+    }
+
     public Class<?> forName(String className) throws ClassNotFoundException {
         return forName(className, false);
     }
 
     public Class<?> forName(String className, boolean initialize) throws ClassNotFoundException {
-        return Class.forName(className, initialize, classLoaderSupport.getClassLoader());
+        return Class.forName(className, initialize, getClassLoader());
     }
 
     public Class<?> forName(String className, Module module) throws ClassNotFoundException {

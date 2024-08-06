@@ -29,6 +29,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -70,7 +71,9 @@ public final class Arguments {
     private static final Set<String> IGNORED_XX_OPTIONS = Set.of(
                     "ReservedCodeCacheSize",
                     // `TieredStopAtLevel=0` is handled separately, other values are ignored
-                    "TieredStopAtLevel");
+                    "TieredStopAtLevel",
+                    "MaxMetaspaceSize",
+                    "HeapDumpOnOutOfMemoryError");
 
     private static final Map<String, String> MAPPED_XX_OPTIONS = Map.of(
                     "TieredCompilation", "engine.MultiTier");
@@ -86,6 +89,8 @@ public final class Arguments {
         List<String> jvmArgs = new ArrayList<>();
 
         boolean ignoreUnrecognized = false;
+        boolean autoAdjustHeapSize = true;
+        List<String> xOptions = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
             JNIJavaVMOption option = (JNIJavaVMOption) p.add(i * SizeOf.get(JNIJavaVMOption.class));
@@ -169,15 +174,19 @@ public final class Arguments {
                     } else if (optionString.startsWith("--enable-native-access=")) {
                         handler.enableNativeAccess(optionString.substring("--enable-native-access=".length()));
                     } else if (optionString.startsWith("--module-path=")) {
-                        builder.option(JAVA_PROPS + "jdk.module.path", optionString.substring("--module-path=".length()));
+                        builder.option("java.ModulePath", optionString.substring("--module-path=".length()));
                     } else if (optionString.startsWith("--upgrade-module-path=")) {
                         builder.option(JAVA_PROPS + "jdk.module.upgrade.path", optionString.substring("--upgrade-module-path=".length()));
                     } else if (optionString.startsWith("--limit-modules=")) {
                         builder.option(JAVA_PROPS + "jdk.module.limitmods", optionString.substring("--limit-modules=".length()));
                     } else if (optionString.equals("--enable-preview")) {
                         builder.option("java.EnablePreview", "true");
+                    } else if (optionString.equals("-XX:-AutoAdjustHeapSize")) {
+                        autoAdjustHeapSize = false;
+                    } else if (optionString.equals("-XX:+AutoAdjustHeapSize")) {
+                        autoAdjustHeapSize = true;
                     } else if (isXOption(optionString)) {
-                        RuntimeOptions.set(optionString.substring("-X".length()), null);
+                        xOptions.add(optionString);
                     } else if (optionString.equals("-XX:+IgnoreUnrecognizedVMOptions")) {
                         ignoreUnrecognized = true;
                     } else if (optionString.equals("-XX:-IgnoreUnrecognizedVMOptions")) {
@@ -223,6 +232,14 @@ public final class Arguments {
             }
         }
 
+        for (String xOption : xOptions) {
+            var opt = xOption;
+            if (autoAdjustHeapSize) {
+                opt = maybeAdjustMaxHeapSize(xOption);
+            }
+            RuntimeOptions.set(opt.substring(2 /* drop the -X */), null);
+        }
+
         if (bootClasspathPrepend != null) {
             builder.option("java.BootClasspathPrepend", bootClasspathPrepend);
         }
@@ -230,18 +247,9 @@ public final class Arguments {
             builder.option("java.BootClasspathAppend", bootClasspathAppend);
         }
 
-        // classpath provenance order:
-        // (1) the java.class.path property
-        if (classpath == null) {
-            // (2) the environment variable CLASSPATH
-            classpath = System.getenv("CLASSPATH");
-            if (classpath == null) {
-                // (3) the current working directory only
-                classpath = ".";
-            }
+        if (classpath != null) {
+            builder.option("java.Classpath", classpath);
         }
-
-        builder.option("java.Classpath", classpath);
 
         for (int i = 0; i < jvmArgs.size(); i++) {
             builder.option("java.VMArguments." + i, jvmArgs.get(i));
@@ -249,6 +257,45 @@ public final class Arguments {
 
         handler.argumentProcessingDone();
         return JNIErrors.JNI_OK();
+    }
+
+    private static String maybeAdjustMaxHeapSize(String optionString) {
+        // (Jun 2024) Espresso uses more memory than HotSpot does, so if the user has set a very
+        // small heap size that would work on HotSpot then we have to bump it up. 64mb is too small
+        // to run Gradle's wrapper program which is required to use Espresso with Gradle, so, we
+        // go to the next power of two beyond that. This number can be reduced in future when
+        // memory efficiency is better.
+        if (!optionString.startsWith("-Xmx")) {
+            return optionString;
+        }
+        long maxHeapSizeBytes = parseLong(optionString.substring(4));
+        final int floorMB = 128;
+        if (maxHeapSizeBytes < floorMB * 1024 * 1024) {
+            return "-Xmx" + floorMB + "m";
+        } else {
+            return optionString;
+        }
+    }
+
+    private static long parseLong(String v) {
+        String valueString = v.trim().toLowerCase(Locale.ROOT);
+        long scale = 1;
+        if (valueString.endsWith("k")) {
+            scale = 1024L;
+        } else if (valueString.endsWith("m")) {
+            scale = 1024L * 1024L;
+        } else if (valueString.endsWith("g")) {
+            scale = 1024L * 1024L * 1024L;
+        } else if (valueString.endsWith("t")) {
+            scale = 1024L * 1024L * 1024L * 1024L;
+        }
+
+        if (scale != 1) {
+            /* Remove trailing scale character. */
+            valueString = valueString.substring(0, valueString.length() - 1);
+        }
+
+        return Long.parseLong(valueString) * scale;
     }
 
     private static void buildJvmArg(List<String> jvmArgs, String optionString) {

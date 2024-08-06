@@ -47,7 +47,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.profiler.impl.CPUTracerInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
@@ -60,7 +59,8 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
  * The tracer counts how many times each of the elements of interest (e.g. functions, statements,
  * etc.) are executed.
  * <p>
- * Usage example: {@codesnippet CPUTracerSnippets#example}
+ * Usage example: {@snippet file = "com/oracle/truffle/tools/profiler/CPUTracer.java" region =
+ * "CPUTracerSnippets#example"}
  *
  * @since 0.30
  */
@@ -301,10 +301,6 @@ public final class CPUTracer implements Closeable {
             }
         }
 
-        @Override
-        public NodeCost getCost() {
-            return NodeCost.NONE;
-        }
     }
 
     static ProfilerToolFactory<CPUTracer> createFactory() {
@@ -321,8 +317,8 @@ class CPUTracerSnippets {
 
     @SuppressWarnings("unused")
     public void example() {
-        // @formatter:off
-        // BEGIN: CPUTracerSnippets#example
+        // @formatter:off // @replace regex='.*' replacement=''
+        // @start region="CPUTracerSnippets#example"
         Context context = Context.create();
         CPUTracer tracer = CPUTracer.find(context.getEngine());
         tracer.setCollecting(true);
@@ -334,7 +330,7 @@ class CPUTracerSnippets {
             final String rootName = p.getRootName();
             final long count = p.getCount();
         }
-        // END: CPUTracerSnippets#example
-        // @formatter:on
+        // @end region="CPUTracerSnippets#example"
+        // @formatter:on // @replace regex='.*' replacement=''
     }
 }

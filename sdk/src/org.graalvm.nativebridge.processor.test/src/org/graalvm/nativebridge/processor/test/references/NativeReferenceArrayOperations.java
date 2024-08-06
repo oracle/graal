@@ -137,4 +137,7 @@ abstract class NativeReferenceArrayOperations extends NativeObject implements Re
     @Override
     @ByReference(NativeRecord.class)
     public abstract Record[] getGuestObjects();
+
+    @Override
+    public abstract void fillHostWithMarshalledInOutParameter(@Out @ByReference(HSHandler.class) Handler[] handlers, @In @Out List<String> list);
 }

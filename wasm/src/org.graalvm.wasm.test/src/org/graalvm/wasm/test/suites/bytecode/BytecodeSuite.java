@@ -83,7 +83,7 @@ public class BytecodeSuite {
 
     @Test
     public void testLabelU8ResultRef() {
-        test(b -> b.addLabel(1, 0, WasmType.REF_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0xC0});
+        test(b -> b.addLabel(1, 0, WasmType.OBJ_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0xC0});
     }
 
     @Test
@@ -98,7 +98,7 @@ public class BytecodeSuite {
 
     @Test
     public void testLabelU16ResultRef() {
-        test(b -> b.addLabel(2, 0, WasmType.REF_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U16, Bytecode.LABEL_U16, (byte) 0x82, 0x00});
+        test(b -> b.addLabel(2, 0, WasmType.OBJ_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U16, Bytecode.LABEL_U16, (byte) 0x82, 0x00});
     }
 
     @Test
@@ -113,7 +113,7 @@ public class BytecodeSuite {
 
     @Test
     public void testLabelI32ResultRef() {
-        test(b -> b.addLabel(64, 0, WasmType.REF_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_I32, Bytecode.LABEL_I32, 0x02, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
+        test(b -> b.addLabel(64, 0, WasmType.OBJ_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_I32, Bytecode.LABEL_I32, 0x02, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00});
     }
 
     @Test

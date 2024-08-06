@@ -53,7 +53,7 @@ import com.oracle.truffle.regex.util.EmptyArrays;
  *
  * <pre>
  * ByteArrayBuffer buf = new ByteArrayBuffer();
- * List<byte[]> results = new ArrayList<>();
+ * List&lt;byte[]> results = new ArrayList&lt;>();
  * for (Object obj : listOfThingsToProcess) {
  *     for (Object x : obj.thingsThatShouldBecomeBytes()) {
  *         buf.add(someCalculation(x));

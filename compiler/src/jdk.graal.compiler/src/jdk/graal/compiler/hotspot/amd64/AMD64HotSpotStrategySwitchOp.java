@@ -1,0 +1,75 @@
+/*
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package jdk.graal.compiler.hotspot.amd64;
+
+import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.LabelRef;
+import jdk.graal.compiler.lir.SwitchStrategy;
+import jdk.graal.compiler.lir.amd64.AMD64ControlFlow;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.hotspot.HotSpotConstant;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+
+final class AMD64HotSpotStrategySwitchOp extends AMD64ControlFlow.StrategySwitchOp {
+    public static final LIRInstructionClass<AMD64HotSpotStrategySwitchOp> TYPE = LIRInstructionClass.create(AMD64HotSpotStrategySwitchOp.class);
+
+    AMD64HotSpotStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, AllocatableValue scratch) {
+        super(TYPE, strategy, keyTargets, defaultTarget, key, scratch);
+    }
+
+    @Override
+    public void emitCode(final CompilationResultBuilder crb, final AMD64MacroAssembler masm) {
+        strategy.run(new HotSpotSwitchClosure(ValueUtil.asRegister(key), crb, masm));
+    }
+
+    public class HotSpotSwitchClosure extends SwitchClosure {
+
+        protected HotSpotSwitchClosure(Register keyRegister, CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            super(keyRegister, crb, masm);
+        }
+
+        @Override
+        protected void emitComparison(Constant c) {
+            if (c instanceof HotSpotConstant) {
+                HotSpotConstant meta = (HotSpotConstant) c;
+                if (meta.isCompressed()) {
+                    crb.recordInlineDataInCode(meta);
+                    masm.cmpl(keyRegister, 0xDEADDEAD);
+                } else {
+                    AMD64Address addr = (AMD64Address) crb.recordDataReferenceInCode(meta, 8);
+                    masm.cmpq(keyRegister, addr);
+                }
+            } else {
+                super.emitComparison(c);
+            }
+        }
+    }
+}

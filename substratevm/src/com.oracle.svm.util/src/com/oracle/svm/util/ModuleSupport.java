@@ -131,7 +131,7 @@ public final class ModuleSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static void accessModuleByClass(Access access, Class<?> accessingClass, Module declaringModule, String packageName) {
+    public static void accessModuleByClass(Access access, Class<?> accessingClass, Module declaringModule, String packageName) {
         Module namedAccessingModule = null;
         if (accessingClass != null) {
             Module accessingModule = accessingClass.getModule();
@@ -140,5 +140,10 @@ public final class ModuleSupport {
             }
         }
         access.giveAccess(namedAccessingModule, declaringModule, packageName);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void accessModule(Access access, Module accessingModule, Module declaringModule, String packageName) {
+        access.giveAccess(accessingModule, declaringModule, packageName);
     }
 }

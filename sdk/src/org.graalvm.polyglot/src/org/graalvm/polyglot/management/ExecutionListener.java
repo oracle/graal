@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,7 +66,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
  *                  e.getLocation().getCharacters()))
  *          .statements(true)
  *          .attach(context.getEngine());
- * context.eval("js", "for (var i = 0; i < 2; i++);");
+ * context.eval("js", "for (var i = 0; i &lt; 2; i++);");
  * listener.close();
  * </pre>
  * </code>
@@ -75,11 +75,11 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
  *
  * <pre>
  * i = 0
- * i < 2
+ * i &lt; 2
  * i++
- * i < 2
+ * i &lt; 2
  * i++
- * i < 2
+ * i &lt; 2
  * </pre>
  *
  * <h3>Creation and Closing</h3>

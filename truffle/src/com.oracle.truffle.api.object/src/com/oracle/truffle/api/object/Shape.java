@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.object;
 
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -78,10 +77,13 @@ import com.oracle.truffle.api.dsl.NonIdempotent;
  * @since 0.8 or earlier
  */
 public abstract class Shape {
-    static final int OBJECT_FLAGS_MASK = 0x0000_00ff;
+    static final int OBJECT_FLAGS_MASK = 0x0000_ffff;
     static final int OBJECT_FLAGS_SHIFT = 0;
     static final int OBJECT_SHARED = 1 << 16;
     static final int OBJECT_PROPERTY_ASSUMPTIONS = 1 << 17;
+
+    // keep in sync with Flags.java
+    static final int PUT_CONSTANT = 1 << 5;
 
     /**
      * Creates a new initial shape builder.
@@ -116,11 +118,11 @@ public abstract class Shape {
         public abstract T dynamicType(Object dynamicType);
 
         /**
-         * Sets initial shape flags (default: 0). Currently limited to 8 bits.
+         * Sets initial shape flags (default: 0). Currently limited to 16 bits.
          *
          * See {@link DynamicObjectLibrary#setShapeFlags(DynamicObject, int)} for more information.
          *
-         * @param flags an int value in the range from 0 to 255 (inclusive)
+         * @param flags an int value in the range from 0 to 65535 (inclusive)
          * @throws IllegalArgumentException if the flags value is not in the supported range
          * @since 20.2.0
          */
@@ -147,7 +149,7 @@ public abstract class Shape {
 
         static int checkShapeFlags(int flags) {
             if ((flags & ~OBJECT_FLAGS_MASK) != 0) {
-                throw new IllegalArgumentException("flags must be in the range (0, 255)");
+                throw new IllegalArgumentException("flags must be in the range [0, 0xffff]");
             }
             return flags;
         }
@@ -225,7 +227,6 @@ public abstract class Shape {
          * {@inheritDoc}
          *
          * @throws NullPointerException {@inheritDoc}
-         * @throws IllegalArgumentException {@inheritDoc}
          * @see DynamicObjectLibrary#getDynamicType(DynamicObject)
          * @see DynamicObjectLibrary#setDynamicType(DynamicObject, Object)
          * @since 20.2.0
@@ -416,7 +417,7 @@ public abstract class Shape {
         private final Shape baseShape;
         private Object dynamicType;
         private int shapeFlags;
-        private EconomicMap<Object, Property> properties;
+        private EconomicMap<Object, Pair<Object, Integer>> properties;
 
         DerivedBuilder(Shape baseShape) {
             this.baseShape = baseShape;
@@ -428,7 +429,6 @@ public abstract class Shape {
          * {@inheritDoc}
          *
          * @throws NullPointerException {@inheritDoc}
-         * @throws IllegalArgumentException {@inheritDoc}
          * @see DynamicObjectLibrary#getDynamicType(DynamicObject)
          * @see DynamicObjectLibrary#setDynamicType(DynamicObject, Object)
          * @since 20.2.0
@@ -474,8 +474,7 @@ public abstract class Shape {
             if (baseShape.getProperty(key) != null || properties.containsKey(key)) {
                 throw new IllegalArgumentException(String.format("Property already exists: %s.", key));
             }
-            Location location = baseShape.allocator().constantLocation(value);
-            properties.put(key, Property.create(key, location, flags));
+            properties.put(key, Pair.create(value, flags));
             return this;
         }
 
@@ -496,8 +495,9 @@ public abstract class Shape {
                 derivedShape = derivedShape.setFlags(shapeFlags);
             }
             if (properties != null) {
-                for (Property property : properties.getValues()) {
-                    derivedShape = derivedShape.addProperty(property);
+                var cursor = properties.getEntries();
+                while (cursor.advance()) {
+                    derivedShape = derivedShape.defineConstantProperty(cursor.getKey(), cursor.getValue().getLeft(), cursor.getValue().getRight());
                 }
             }
             return derivedShape;
@@ -527,11 +527,8 @@ public abstract class Shape {
      * @param property the property to add
      * @return the new Shape
      * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#put} or {@link DynamicObjectLibrary#putWithFlags}
-     *             to add properties to an object.
      */
-    @Deprecated(since = "22.2")
-    public abstract Shape addProperty(Property property);
+    protected abstract Shape addProperty(Property property);
 
     /**
      * Add or change property in the map, yielding a new or cached Shape object.
@@ -542,19 +539,24 @@ public abstract class Shape {
      *             {@link DynamicObjectLibrary#putWithFlags(DynamicObject, Object, Object, int)}.
      */
     @Deprecated(since = "22.2")
-    public abstract Shape defineProperty(Object key, Object value, int flags);
+    public abstract Shape defineProperty(Object key, Object value, int propertyFlags);
 
     /**
      * Add or change property in the map, yielding a new or cached Shape object.
      *
      * @return the shape after defining the property
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)} or
-     *             {@link DynamicObjectLibrary#putWithFlags(DynamicObject, Object, Object, int)} or
-     *             {@link DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)}
+     * @since 24.1
      */
-    @Deprecated(since = "20.2")
-    public abstract Shape defineProperty(Object key, Object value, int flags, @SuppressWarnings("deprecation") LocationFactory locationFactory);
+    protected abstract Shape defineProperty(Object key, Object value, int propertyFlags, int putFlags);
+
+    /**
+     * Add or replace shape-constant property.
+     *
+     * @return the shape after defining the property
+     */
+    final Shape defineConstantProperty(Object key, Object value, int propertyFlags) {
+        return defineProperty(key, value, propertyFlags, PUT_CONSTANT);
+    }
 
     /**
      * An {@link Iterable} over the shape's properties in insertion order.
@@ -632,14 +634,6 @@ public abstract class Shape {
     public abstract boolean isLeaf();
 
     /**
-     * @return the parent shape or {@code null} if none.
-     * @since 0.8 or earlier
-     * @deprecated no replacement, do not rely on a specific parent shape
-     */
-    @Deprecated(since = "20.2")
-    public abstract Shape getParent();
-
-    /**
      * Check whether the shape has a property with the given key.
      *
      * @since 0.8 or earlier
@@ -650,19 +644,15 @@ public abstract class Shape {
      * Remove the given property from the shape.
      *
      * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#removeKey} to remove properties from an object.
      */
-    @Deprecated(since = "20.2")
-    public abstract Shape removeProperty(Property property);
+    protected abstract Shape removeProperty(Property property);
 
     /**
      * Replace a property in the shape.
      *
      * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#put} to replace properties in an object.
      */
-    @Deprecated(since = "20.2")
-    public abstract Shape replaceProperty(Property oldProperty, Property newProperty);
+    protected abstract Shape replaceProperty(Property oldProperty, Property newProperty);
 
     /**
      * Get the last property.
@@ -694,7 +684,7 @@ public abstract class Shape {
     /**
      * Returns a copy of the shape, with the shape flags set to {@code newFlags}.
      *
-     * @param newFlags the new shape flags; an int value in the range from 0 to 255 (inclusive)
+     * @param newFlags the new shape flags; an int value in the range from 0 to 65535 (inclusive)
      * @throws IllegalArgumentException if the flags value is not in the supported range
      * @see Shape.Builder#shapeFlags(int)
      * @since 20.2.0
@@ -705,31 +695,11 @@ public abstract class Shape {
     }
 
     /**
-     * Obtain an {@link Allocator} instance for the purpose of allocating locations.
-     *
-     * @since 0.8 or earlier
-     * @deprecated no replacement.
-     */
-    @Deprecated(since = "22.2")
-    public abstract Allocator allocator();
-
-    /**
      * Returns the number of properties in this shape.
      *
      * @since 0.8 or earlier
      */
     public abstract int getPropertyCount();
-
-    /**
-     * Get the shape's object type info.
-     *
-     * @since 0.8 or earlier
-     * @see #getDynamicType()
-     * @deprecated Deprecated since 20.3.0. Replaced by {@link #getDynamicType()}.
-     */
-    @Deprecated(since = "20.3")
-    @SuppressWarnings("deprecation")
-    public abstract ObjectType getObjectType();
 
     /**
      * Get the shape's dynamic object type identifier.
@@ -777,11 +747,9 @@ public abstract class Shape {
      *
      * @see Shape.Builder#layout(Class)
      * @since 0.8 or earlier
-     * @deprecated since 21.1. You can get the shape's layout class using {@link #getLayoutClass()}.
      */
-    @Deprecated(since = "21.1")
     @SuppressWarnings("deprecation")
-    public abstract Layout getLayout();
+    protected abstract Layout getLayout();
 
     /**
      * Get the shape's layout class.
@@ -801,45 +769,6 @@ public abstract class Shape {
      * @since 0.8 or earlier
      */
     public abstract Object getSharedData();
-
-    /**
-     * Change the shape's type, yielding a new shape.
-     *
-     * @since 0.8 or earlier
-     * @deprecated No replacement. Use {@link DynamicObjectLibrary#setDynamicType} instead.
-     */
-    @Deprecated(since = "22.2")
-    public abstract Shape changeType(@SuppressWarnings("deprecation") ObjectType newOps);
-
-    /**
-     * Create a new {@link DynamicObject} instance with this shape.
-     *
-     * @throws UnsupportedOperationException if this layout does not support construction
-     * @since 0.8 or earlier
-     * @deprecated no replacement.
-     */
-    @Deprecated(since = "22.2")
-    public abstract DynamicObject newInstance();
-
-    /**
-     * Create a {@link DynamicObjectFactory} for creating instances of this shape.
-     *
-     * @throws UnsupportedOperationException if this layout does not support construction
-     * @since 0.8 or earlier
-     * @deprecated no replacement.
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated(since = "22.2")
-    public abstract DynamicObjectFactory createFactory();
-
-    /**
-     * Get mutex object shared by related shapes, i.e. shapes with a common root.
-     *
-     * @since 0.8 or earlier
-     * @deprecated no replacement.
-     */
-    @Deprecated(since = "22.2")
-    public abstract Object getMutex();
 
     /**
      * Try to merge two related shapes to a more general shape that has the same properties and can
@@ -942,119 +871,5 @@ public abstract class Shape {
             return null;
         }
         return new PropertyGetter(this, property);
-    }
-
-    /**
-     * Utility class to allocate locations in an object layout.
-     *
-     * @since 0.8 or earlier
-     * @deprecated since 22.1, without replacement. Property locations are automatically allocated
-     *             by {@link DynamicObjectLibrary} methods; there's no need for manual allocation.
-     */
-    @Deprecated(since = "22.2")
-    public abstract static class Allocator {
-        /**
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "22.2")
-        protected Allocator() {
-        }
-
-        /** @since 0.8 or earlier */
-        @Deprecated(since = "19.3")
-        protected abstract Location locationForValue(Object value, boolean useFinal, boolean nonNull);
-
-        /**
-         * Create a new location compatible with the given initial value.
-         *
-         * Use {@link #locationForType(Class)} or {@link Shape#defineProperty(Object, Object, int)}
-         * instead.
-         *
-         * @param value the initial value this location is going to be assigned
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "20.2")
-        public final Location locationForValue(Object value) {
-            return locationForValue(value, false, value != null);
-        }
-
-        /**
-         * Create a new location compatible with the given initial value.
-         *
-         * @param value the initial value this location is going to be assigned
-         * @param modifiers additional restrictions and semantics
-         * @since 0.8 or earlier
-         * @deprecated use {@link #locationForType(Class, EnumSet)} or
-         *             {@link Shape#defineProperty(Object, Object, int)} instead
-         */
-        @SuppressWarnings("deprecation")
-        @Deprecated(since = "19.3")
-        public final Location locationForValue(Object value, EnumSet<LocationModifier> modifiers) {
-            assert value != null || !modifiers.contains(LocationModifier.NonNull);
-            return locationForValue(value, modifiers.contains(LocationModifier.Final), modifiers.contains(LocationModifier.NonNull));
-        }
-
-        /** @since 0.8 or earlier */
-        @Deprecated(since = "22.2")
-        protected abstract Location locationForType(Class<?> type, boolean useFinal, boolean nonNull);
-
-        /**
-         * Create a new location for a fixed type. It can only be assigned to values of this type.
-         *
-         * @param type the Java type this location must be compatible with (may be primitive)
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "22.2")
-        public final Location locationForType(Class<?> type) {
-            return locationForType(type, false, false);
-        }
-
-        /**
-         * Create a new location for a fixed type.
-         *
-         * @param type the Java type this location must be compatible with (may be primitive)
-         * @param modifiers additional restrictions and semantics
-         * @since 0.8 or earlier
-         */
-        @SuppressWarnings("deprecation")
-        @Deprecated(since = "22.2")
-        public final Location locationForType(Class<?> type, EnumSet<LocationModifier> modifiers) {
-            return locationForType(type, modifiers.contains(LocationModifier.Final), modifiers.contains(LocationModifier.NonNull));
-        }
-
-        /**
-         * Creates a new location from a constant value. The value is stored in the shape rather
-         * than in the object.
-         *
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "22.2")
-        public abstract Location constantLocation(Object value);
-
-        /**
-         * Creates a new declared location with a default value. A declared location only assumes a
-         * type after the first set (initialization).
-         *
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "22.2")
-        public abstract Location declaredLocation(Object value);
-
-        /**
-         * Reserves space for the given location, so that it will not be available to subsequently
-         * allocated locations.
-         *
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "22.2")
-        public abstract Allocator addLocation(Location location);
-
-        /**
-         * Creates an copy of this allocator state.
-         *
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "22.2")
-        public abstract Allocator copy();
     }
 }

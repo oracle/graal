@@ -233,6 +233,15 @@ meth public java.lang.String getElementName()
 supr java.lang.Error
 hfds declaringClass,elementName,elementType,parameterTypes,serialVersionUID
 
+CLSS public final org.graalvm.nativeimage.MissingJNIRegistrationError
+cons public init(java.lang.String,java.lang.Class<?>,java.lang.Class<?>,java.lang.String,java.lang.String)
+meth public java.lang.Class<?> getDeclaringClass()
+meth public java.lang.Class<?> getElementType()
+meth public java.lang.String getSignature()
+meth public java.lang.String getElementName()
+supr java.lang.Error
+hfds declaringClass,elementName,elementType,signature,serialVersionUID
+
 CLSS public abstract interface org.graalvm.nativeimage.ObjectHandle
 intf org.graalvm.word.ComparableWord
 
@@ -1001,6 +1010,7 @@ meth public abstract !varargs void registerReachabilityHandler(java.util.functio
 meth public abstract void registerAsAccessed(java.lang.reflect.Field)
 meth public abstract void registerAsInHeap(java.lang.Class<?>)
 meth public abstract void registerAsUnsafeAccessed(java.lang.reflect.Field)
+meth public abstract void registerAsUnsafeAllocated(java.lang.Class<?>)
 meth public abstract void registerAsUsed(java.lang.Class<?>)
 meth public abstract void registerClassInitializerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.Class<?>)
 meth public abstract void registerFieldValueTransformer(java.lang.reflect.Field,org.graalvm.nativeimage.hosted.FieldValueTransformer)
@@ -1077,6 +1087,7 @@ supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeForeignAccess
 meth public !varargs static void registerForDowncall(java.lang.Object,java.lang.Object[])
+meth public !varargs static void registerForUpcall(java.lang.Object,java.lang.Object[])
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeJNIAccess

@@ -26,8 +26,6 @@ package com.oracle.svm.core.reflect.target;
 
 import java.lang.reflect.Field;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 
 public class FieldOffsetComputer implements FieldValueTransformerWithAvailability {
@@ -39,6 +37,6 @@ public class FieldOffsetComputer implements FieldValueTransformerWithAvailabilit
 
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        return ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset((Field) receiver, true);
+        return ReflectionSubstitutionSupport.singleton().getFieldOffset((Field) receiver, true);
     }
 }

@@ -47,7 +47,7 @@ public final class CheckCastQuickNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame, boolean isContinuationResume) {
         BytecodeNode root = getBytecodeNode();
         StaticObject receiver = EspressoFrame.peekObject(frame, top - 1);
         if (StaticObject.isNull(receiver) || instanceOf.execute(receiver.getKlass())) {

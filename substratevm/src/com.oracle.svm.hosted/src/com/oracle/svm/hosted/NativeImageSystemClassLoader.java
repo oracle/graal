@@ -65,6 +65,10 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         systemIOWrappers.replaceSystemOutErr();
     }
 
+    /*
+     * Note this is not an image singleton; this ClassLoader is installed while starting
+     * NativeImageGeneratorRunner.
+     */
     public static NativeImageSystemClassLoader singleton() {
         ClassLoader loader = ClassLoader.getSystemClassLoader();
         if (loader instanceof NativeImageSystemClassLoader) {
@@ -87,14 +91,17 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         this.nativeImageClassLoader = nativeImageClassLoader;
     }
 
-    private boolean isNativeImageClassLoader(ClassLoader current, ClassLoader c) {
-        ClassLoader loader = current;
+    /**
+     * Checks class loaders match. {@code start} is searched up to the system class loader.
+     */
+    private boolean matchesClassLoaderOrParent(ClassLoader start, ClassLoader candidate) {
+        ClassLoader current = start;
         do {
-            if (loader == c) {
+            if (current == candidate) {
                 return true;
             }
-            loader = loader.getParent();
-        } while (loader != defaultSystemClassLoader);
+            current = current.getParent();
+        } while (current != defaultSystemClassLoader);
         return false;
     }
 
@@ -103,12 +110,12 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         if (loader == null) {
             return false;
         }
-        return isNativeImageClassLoader(nativeImageClassLoader, c);
+        return matchesClassLoaderOrParent(nativeImageClassLoader, c);
     }
 
     public boolean isDisallowedClassLoader(ClassLoader c) {
         for (ClassLoader disallowedClassLoader : disallowedClassLoaders) {
-            if (isNativeImageClassLoader(disallowedClassLoader, c)) {
+            if (matchesClassLoaderOrParent(disallowedClassLoader, c)) {
                 return true;
             }
         }
@@ -130,73 +137,19 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     private static final Method defineClass = ReflectionUtil.lookupMethod(ClassLoader.class, "defineClass",
                     String.class, byte[].class, int.class, int.class);
 
-    private static Class<?> loadClass(ClassLoader loader, String name, boolean resolve) throws ClassNotFoundException {
-        ClassNotFoundException classNotFoundException = null;
-        try {
-            /* invoke the "loadClass" method on the current class loader */
-            return ((Class<?>) loadClass.invoke(loader, name, resolve));
-        } catch (Exception e) {
-            if (e.getCause() instanceof ClassNotFoundException) {
-                classNotFoundException = ((ClassNotFoundException) e.getCause());
-            } else {
-                String message = String.format("Can not load class: %s, with class loader: %s", name, loader);
-                VMError.shouldNotReachHere(message, e);
-            }
-        }
-        VMError.guarantee(classNotFoundException != null);
-        throw classNotFoundException;
-    }
-
-    private static URL findResource(ClassLoader loader, String name) {
-        try {
-            // invoke the "findResource" method on the current class loader
-            Object url = findResource.invoke(loader, name);
-            if (url != null) {
-                return (URL) url;
-            }
-        } catch (ReflectiveOperationException | ClassCastException e) {
-            String message = String.format("Can not find resource: %s using class loader: %s", name, loader);
-            VMError.shouldNotReachHere(message, e);
-        }
-        return null;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Enumeration<URL> findResources(ClassLoader classLoader, String name) {
-        try {
-            // invoke the "findResources" method on the current class loader
-            return (Enumeration<URL>) findResources.invoke(classLoader, name);
-        } catch (ReflectiveOperationException e) {
-            String message = String.format("Can not find resources: %s using class loader: %s", name, classLoader);
-            VMError.shouldNotReachHere(message, e);
-        }
-
-        return null;
-    }
-
-    static Class<?> defineClass(ClassLoader classLoader, String name, byte[] b, int offset, int length) {
-        try {
-            return (Class<?>) defineClass.invoke(classLoader, name, b, offset, length);
-        } catch (ReflectiveOperationException e) {
-            String message = String.format("Cannot define class %s from byte[%d..%d] using class loader: %s", name, offset, offset + length, classLoader);
-            VMError.shouldNotReachHere(message, e);
-        }
-        return null;
-    }
-
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        return loadClass(getActiveClassLoader(), name, resolve);
+        return ReflectionUtil.invokeMethod(loadClass, getActiveClassLoader(), name, resolve);
     }
 
     @Override
     protected URL findResource(String name) {
-        return findResource(getActiveClassLoader(), name);
+        return ReflectionUtil.invokeMethod(findResource, getActiveClassLoader(), name);
     }
 
     @Override
     protected Enumeration<URL> findResources(String name) throws IOException {
-        return findResources(getActiveClassLoader(), name);
+        return ReflectionUtil.invokeMethod(findResources, getActiveClassLoader(), name);
     }
 
     public Class<?> forNameOrNull(String name, boolean initialize) {
@@ -212,7 +165,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         if (forNameOrNull(name, false) != null) {
             throw VMError.shouldNotReachHere("The class loader hierarchy already provides a class with the same name as the class submitted for predefinition: " + name);
         }
-        return defineClass(getActiveClassLoader(), name, array, offset, length);
+        return ReflectionUtil.invokeMethod(defineClass, getActiveClassLoader(), name, array, offset, length);
     }
 
     @Override
@@ -242,12 +195,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
      */
     @SuppressWarnings("unused") // no direct use from Java
     private void appendToClassPathForInstrumentation(String classPathEntry) {
-        try {
-            Method method = ReflectionUtil.lookupMethod(getParent().getClass(), "appendToClassPathForInstrumentation", String.class);
-            method.invoke(getParent(), classPathEntry);
-        } catch (ReflectiveOperationException e) {
-            String message = String.format("Can not add jar: %s to class path. Due to %s", classPathEntry, e);
-            VMError.shouldNotReachHere(message, e);
-        }
+        Method method = ReflectionUtil.lookupMethod(getParent().getClass(), "appendToClassPathForInstrumentation", String.class);
+        ReflectionUtil.invokeMethod(method, getParent(), classPathEntry);
     }
 }

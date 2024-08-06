@@ -14,22 +14,23 @@ This allows seamless interoperability with the dynamic languages supported by Gr
 
 ## Getting Started
 
-As of GraalVM for JDK 21, the GraalVM LLVM runtime is available as a standalone distribution. 
+The GraalVM LLVM runtime is available as a standalone distribution.
 You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
-1. Download the LLVM standalone for your operating system:
+1. Download the LLVM 24.0 standalone for your operating system:
+
    - Native standalone
-      * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/05013E46CB6993C6E0631818000A2314/content)
-      * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/04F488A0621A4081E0631818000A781E/content)
-      * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/04F488A0621F4081E0631818000A781E/content)
-      * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/04F488A062244081E0631818000A781E/content)
-      * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/04F488A062294081E0631818000A781E/content)
+      * [Linux x64](https://gds.oracle.com/download/llvm/archive/llvm-24.0.1-linux-amd64.tar.gz)
+      * [Linux AArch64](https://gds.oracle.com/download/llvm/archive/llvm-24.0.1-linux-aarch64.tar.gz)
+      * [macOS x64](https://gds.oracle.com/download/llvm/archive/llvm-24.0.1-macos-amd64.tar.gz)
+      * [macOS AArch64](https://gds.oracle.com/download/llvm/archive/llvm-24.0.1-macos-aarch64.tar.gz)
+      * [Windows x64](https://gds.oracle.com/download/llvm/archive/llvm-24.0.1-windows-amd64.zip)
    - JVM standalone
-      * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/04F488A0622E4081E0631818000A781E/content)
-      * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/05013E46CB5D93C6E0631818000A2314/content)
-      * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/04F488A062384081E0631818000A781E/content)
-      * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/04F488A0623D4081E0631818000A781E/content)
-      * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/04F556B005683A58E0631818000A322D/content)
+      * [Linux x64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-24.0.1-linux-amd64.tar.gz)
+      * [Linux AArch64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-24.0.1-linux-aarch64.tar.gz)
+      * [macOS x64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-24.0.1-macos-amd64.tar.gz)
+      * [macOS AArch64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-24.0.1-macos-aarch64.tar.gz)
+      * [Windows x64](https://gds.oracle.com/download/llvm/archive/llvm-jvm-24.0.1-windows-amd64.zip)
 
 2. Unzip the archive:
 
@@ -38,7 +39,7 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
     sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
     ```
     
-    Extact:
+    Extract:
     ```shell
     tar -xzf <archive>.tar.gz
     ```
@@ -69,14 +70,14 @@ Additionally, a prebuilt LLVM toolchain is bundled with the GraalVM LLVM runtime
     ls $LLVM_TOOLCHAIN
     ```
 
-Now you can compile C/C++ code to LLVM bitcode using `clang` shipped with GraalVM via the LLVM toolchain.
+Now you can compile C/C++ code to LLVM bitcode using `clang` from the GraalVM LLVM toolchain.
 
-## Run LLVM Bitcode on GraalVM
+## Run LLVM Bitcode
 
-To run LLVM-based languages on GraalVM, the binaries need to be compiled with embedded bitcode.
+To run LLVM-based languages on the GraalVM LLVM runtime, the binaries need to be compiled with embedded bitcode.
 The [Compiling](Compiling.md) guide provides information on how to compile a program to LLVM bitcode and what file format is expected.
 
-The syntax to execute programs in LLVM bitcode format on GraalVM is:
+The syntax to execute programs in LLVM bitcode format is:
 ```shell
 lli [LLI options] [GraalVM options] [polyglot options] <bitcode file> [program args]
 ```

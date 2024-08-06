@@ -30,49 +30,38 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.code.UntetheredCodeInfo;
+import com.oracle.svm.core.heap.StoredContinuation;
 
 /**
- * An in-progress Java stack walk.
+ * An in-progress stack walk over physical Java frames. The size of this data structure can be
+ * queried via {@link JavaStackWalker#sizeOfJavaStackWalk}. Only some fields of this data structure
+ * may be accessed directly (see helper methods in {@link JavaStackWalker}).
  */
 @RawStructure
 public interface JavaStackWalk extends PointerBase {
+}
+
+/**
+ * The actual implementation. Most stack-walk related fields may only be accessed in
+ * {@link JavaStackWalker}.
+ *
+ * Note that this data structure stores some information about the current physical stack frame (see
+ * {@link JavaFrame}) and also some state that is only needed for the stack walk.
+ *
+ * If interruptible code is executed while a stack walk is in progress, IP and code-related fields
+ * in this data structure may contain stale/outdated values (code may get deoptimized).
+ *
+ * If interruptible code is executed while doing a stack walk for a {@link StoredContinuation}, all
+ * SP-related fields may contain stale/outdated values (the GC may move the
+ * {@link StoredContinuation}).
+ */
+@RawStructure
+interface JavaStackWalkImpl extends JavaStackWalk {
     @RawField
-    Pointer getSP();
+    boolean getStarted();
 
     @RawField
-    void setSP(Pointer sp);
-
-    /**
-     * The IP can be stale (outdated) if since its retrieval, {@linkplain Uninterruptible
-     * interruptible} code has executed, during which a deoptimization can have happened.
-     */
-    @RawField
-    CodePointer getPossiblyStaleIP();
-
-    @RawField
-    void setPossiblyStaleIP(CodePointer ip);
-
-    @RawField
-    UntetheredCodeInfo getIPCodeInfo();
-
-    @RawField
-    void setIPCodeInfo(UntetheredCodeInfo codeInfo);
-
-    @RawField
-    JavaFrameAnchor getAnchor();
-
-    @RawField
-    void setAnchor(JavaFrameAnchor anchor);
-
-    @RawField
-    Pointer getEndSP();
-
-    @RawField
-    void setEndSP(Pointer sp);
-
-    // these fields are for diagnostics
+    void setStarted(boolean value);
 
     @RawField
     Pointer getStartSP();
@@ -81,8 +70,26 @@ public interface JavaStackWalk extends PointerBase {
     void setStartSP(Pointer sp);
 
     @RawField
+    Pointer getEndSP();
+
+    @RawField
+    void setEndSP(Pointer sp);
+
+    @RawField
     CodePointer getStartIP();
 
     @RawField
     void setStartIP(CodePointer ip);
+
+    @RawField
+    JavaFrameAnchor getFrameAnchor();
+
+    @RawField
+    void setFrameAnchor(JavaFrameAnchor anchor);
+
+    /*
+     * Fields for the current Java frame - co-located in the same struct. Note that this data is
+     * updated in-place when moving to a new frame.
+     */
+    /* JavaFrame frame; */
 }

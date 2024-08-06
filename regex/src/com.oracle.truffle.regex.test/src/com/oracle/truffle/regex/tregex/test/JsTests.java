@@ -73,6 +73,7 @@ public class JsTests extends RegexTestBase {
         test("(x??)?", "", "x", 1, true, 1, 1, -1, -1);
         test("(x??)*", "", "x", 0, true, 0, 1, 0, 1);
         test("(x??)*", "", "x", 1, true, 1, 1, -1, -1);
+        test("X(.?){8,8}Y", "", "X1234567Y", 0, true, 0, 9, 8, 8);
     }
 
     @Test
@@ -262,5 +263,48 @@ public class JsTests extends RegexTestBase {
                         "{0}0{1,4}|(0{1,4}:){1}:(0{1,4}:){0}0{1,4}):(0{0,3}1))(?=[^\\w\\:]|[^A-Fa-f0-9:]|$)", "i", "::1", 0,
                         true, 0, 3, 0, 3, 0, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
                         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 2, 3);
+    }
+
+    @Test
+    public void gr50807() {
+        test("(?<=%b{1,4}?)foo", "", "%bbbbfoo", 0, true, 5, 8);
+    }
+
+    @Test
+    public void gr51523() {
+        test("(?:^|\\.?)([A-Z])", "g", "desktopBrowser", 0, true, 7, 8, 7, 8);
+        test("(?:^|\\.?)([A-Z])", "g", "locationChanged", 0, true, 8, 9, 8, 9);
+        test("(?:^|\\.?)([A-Z]|(?<=[a-z])\\d(?=\\d+))", "g", "helloWorld", 0, true, 5, 6, 5, 6);
+    }
+
+    @Test
+    public void mergedLookAheadLiteral() {
+        test("(?:(?=(abc)))a", "", "abc", 0, true, 0, 1, 0, 3);
+    }
+
+    @Test
+    public void innerLiteralSurrogates() {
+        test("\\udf06", "", "\uD834\uDF06", 0, true, 1, 2);
+        test("x?\\udf06", "", "\uD834\uDF06", 0, true, 1, 2);
+        test("\\udf06", "u", "\uD834\uDF06", 0, false);
+        test("x?\\udf06", "u", "\uD834\uDF06", 0, false);
+    }
+
+    @Test
+    public void gr52906() {
+        // Original test case
+        test("\\b(((.*?)){67108860})\\b|(?=(?=(?!.).\\b(\\d))){0,4}", "yi", "L1O\n\n\n11\n  \n\n11\n  \uD091  1aa\uFCDB=\n ", 0, true, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1);
+        // Minimized version
+        test("(.*?){67108863}", "", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx", 0, true, 0, 0, 0, 0);
+
+        // Linked issue
+        test("(?=(?=(\\W)\u008e+|\\uC47A|(\\s)))+?|((((?:(\\\u0015)))+?))|(?:\\r|[^]+?[^])|\\3{3,}", "gyim", "", 0, true, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
+        // Minimized version
+        test("()\\1{3,}", "", "", 0, true, 0, 0, 0, 0);
+    }
+
+    @Test
+    public void gr56676() {
+        test("(?<!a)", "digyus", "x\uDE40", 2, true, 2, 2);
     }
 }

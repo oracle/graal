@@ -73,6 +73,7 @@ public class InstanceReferenceMapDecoder {
         return true;
     }
 
+    @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
     private static boolean callVisitor(ObjectReferenceVisitor visitor, Object holderObject, boolean compressed, Pointer objRef) {
         return visitor.visitObjectReferenceInline(objRef, 0, compressed, holderObject);

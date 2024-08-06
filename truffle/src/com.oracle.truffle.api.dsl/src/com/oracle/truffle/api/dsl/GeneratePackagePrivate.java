@@ -51,7 +51,7 @@ import java.lang.annotation.Target;
  *
  * @since 22.1
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
 public @interface GeneratePackagePrivate {
 }

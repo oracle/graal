@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,14 @@ import jdk.jfr.FlightRecorder;
 public final class ProviderImpl implements EventFactory.Provider {
     @Override
     public EventFactory getEventFactory() {
-        return FlightRecorder.isAvailable() ? new EventFactoryImpl() : null;
+        return hasJFRModule() && supportsJFR() ? new EventFactoryImpl() : null;
+    }
+
+    private static boolean hasJFRModule() {
+        return ModuleLayer.boot().findModule("jdk.jfr").isPresent();
+    }
+
+    private static boolean supportsJFR() {
+        return FlightRecorder.isAvailable();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,37 +45,28 @@ import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 
 import sun.misc.Unsafe;
 
-class NativeWasmMemory extends WasmMemory {
-    private static final Unsafe unsafe = initUnsafe();
+final class NativeWasmMemory extends WasmMemory {
 
     private long startAddress;
     private long size;
 
-    private static Unsafe initUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException se) {
-            try {
-                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafe.setAccessible(true);
-                return (Unsafe) theUnsafe.get(Unsafe.class);
-            } catch (Exception e) {
-                throw new RuntimeException("exception while trying to get Unsafe", e);
-            }
-        }
-    }
+    private static final Unsafe unsafe;
+    private static final VarHandle SIZE_FIELD;
 
     private NativeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
         super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, shared);
@@ -99,8 +90,8 @@ class NativeWasmMemory extends WasmMemory {
     }
 
     @Override
-    public synchronized long size() {
-        return size;
+    public long size() {
+        return (long) SIZE_FIELD.getVolatile(this);
     }
 
     @Override
@@ -108,27 +99,30 @@ class NativeWasmMemory extends WasmMemory {
         return size * MEMORY_PAGE_SIZE;
     }
 
+    @TruffleBoundary
     @Override
-    public synchronized boolean grow(long extraPageSize) {
+    public synchronized long grow(long extraPageSize) {
+        final long previousSize = size();
         if (extraPageSize == 0) {
             invokeGrowCallback();
-            return true;
-        } else if (Long.compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && Long.compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
+            return previousSize;
+        } else if (Long.compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && Long.compareUnsigned(previousSize + extraPageSize, maxAllowedSize) <= 0) {
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
             // computation of targetByteSize does not overflow.
-            final long targetByteSize = Math.multiplyExact(Math.addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
+            final long targetByteSize = Math.multiplyExact(Math.addExact(previousSize, extraPageSize), MEMORY_PAGE_SIZE);
+            final long updatedSize = previousSize + extraPageSize;
             try {
                 startAddress = unsafe.reallocateMemory(startAddress, targetByteSize);
                 unsafe.setMemory(startAddress + byteSize(), targetByteSize - byteSize(), (byte) 0);
             } catch (OutOfMemoryError error) {
                 throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
             }
-            size += extraPageSize;
-            currentMinSize = size;
+            currentMinSize = updatedSize;
+            SIZE_FIELD.setVolatile(this, updatedSize);
             invokeGrowCallback();
-            return true;
+            return previousSize;
         } else {
-            return false;
+            return -1;
         }
     }
 
@@ -242,6 +236,14 @@ class NativeWasmMemory extends WasmMemory {
     }
 
     @Override
+    public Vector128 load_i128(Node node, long address) {
+        validateAddress(node, address, Vector128.BYTES);
+        byte[] bytes = new byte[Vector128.BYTES];
+        unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, Vector128.BYTES);
+        return new Vector128(bytes);
+    }
+
+    @Override
     public void store_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         unsafe.putInt(startAddress + address, value);
@@ -293,6 +295,12 @@ class NativeWasmMemory extends WasmMemory {
     public void store_i64_32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         unsafe.putInt(startAddress + address, value);
+    }
+
+    @Override
+    public void store_i128(Node node, long address, Vector128 value) {
+        validateAddress(node, address, 16);
+        unsafe.copyMemory(value.getBytes(), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
     }
 
     @Override
@@ -884,29 +892,29 @@ class NativeWasmMemory extends WasmMemory {
         if (!this.isShared()) {
             return 0;
         }
-        return invokeNotifyCallback(address, count);
+        return invokeNotifyCallback(node, address, count);
     }
 
     @Override
     @TruffleBoundary
     public int atomic_wait32(Node node, long address, int expected, long timeout) {
-        validateAtomicAddress(node, address, 4);
+        validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
-        return invokeWaitCallback(address, expected, timeout, false);
+        return invokeWaitCallback(node, address, expected, timeout, false);
     }
 
     @Override
     @TruffleBoundary
     public int atomic_wait64(Node node, long address, long expected, long timeout) {
-        validateAtomicAddress(node, address, 8);
+        validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
-        return invokeWaitCallback(address, expected, timeout, true);
+        return invokeWaitCallback(node, address, expected, timeout, true);
     }
 
     @Override
@@ -997,7 +1005,28 @@ class NativeWasmMemory extends WasmMemory {
     }
 
     @Override
+    public void copyToBuffer(Node node, byte[] dst, long srcOffset, int dstOffset, int length) {
+        if (outOfBounds(srcOffset, length)) {
+            throw trapOutOfBounds(node, srcOffset, length);
+        }
+        unsafe.copyMemory(null, startAddress + srcOffset, dst, Unsafe.ARRAY_BYTE_BASE_OFFSET + (long) dstOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, length);
+    }
+
+    @Override
     public boolean isUnsafe() {
         return true;
+    }
+
+    static {
+        try {
+            var lookup = MethodHandles.lookup();
+            SIZE_FIELD = lookup.findVarHandle(NativeWasmMemory.class, "size", long.class);
+
+            final Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            unsafe = (Unsafe) f.get(null);
+        } catch (Exception e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
     }
 }

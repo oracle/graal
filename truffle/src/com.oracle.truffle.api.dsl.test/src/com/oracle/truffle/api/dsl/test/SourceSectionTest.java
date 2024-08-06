@@ -45,7 +45,7 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.createRootPrefix;
 import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.sameInstance;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoints;
@@ -98,7 +98,6 @@ public class SourceSectionTest {
 
     @NodeChild("a")
     static class MutableSourceSectionNode extends ValueNode {
-        // BEGIN: MutableSourceSectionNode
         @CompilerDirectives.CompilationFinal private SourceSection section;
 
         final void changeSourceSection(SourceSection sourceSection) {
@@ -110,8 +109,6 @@ public class SourceSectionTest {
         public SourceSection getSourceSection() {
             return section;
         }
-
-        // END: MutableSourceSectionNode
 
         @Specialization(guards = "a == 1")
         int do1(int a) {
@@ -145,7 +142,6 @@ public class SourceSectionTest {
 
     @NodeChild("a")
     static class NodeWithFixedSourceSection extends ValueNode {
-        // BEGIN: NodeWithFixedSourceSection
         private final SourceSection section;
 
         NodeWithFixedSourceSection(SourceSection section) {
@@ -156,8 +152,6 @@ public class SourceSectionTest {
         public SourceSection getSourceSection() {
             return section;
         }
-
-        // END: NodeWithFixedSourceSection
 
         @CreateCast("a")
         public ValueNode cast(ValueNode node) {

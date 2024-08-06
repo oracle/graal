@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.runtime.hotspot;
 
-import java.lang.invoke.MethodHandle;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.runtime.OptimizedFastThreadLocal;
 
@@ -51,21 +49,7 @@ final class HotSpotFastThreadLocal extends OptimizedFastThreadLocal {
 
     static final HotSpotFastThreadLocal SINGLETON = new HotSpotFastThreadLocal();
 
-    static final MethodHandle FALLBACK_SET = HotSpotTruffleRuntime.getRuntime().getSetThreadLocalObject();
-    static final MethodHandle FALLBACK_GET = HotSpotTruffleRuntime.getRuntime().getGetThreadLocalObject();
-
-    /*
-     * This threshold determines how many recursive invocations of a no fallback method need to
-     * occur until we detect that Java debug stepping is active.
-     */
-    private static final int DEBUG_STEPPING_DETECTION_THRESHOLD = 10;
-
-    private static final ThreadLocal<MutableInt> fallbackThreadLocal = new ThreadLocal<>() {
-        @Override
-        protected MutableInt initialValue() {
-            return new MutableInt();
-        }
-    };
+    private static final ThreadLocal<Object[]> VIRTUAL_THREADS_THREAD_LOCAL = new ThreadLocal<>();
 
     HotSpotFastThreadLocal() {
     }
@@ -97,27 +81,13 @@ final class HotSpotFastThreadLocal extends OptimizedFastThreadLocal {
      *
      * See HotSpotTruffleRuntime.installReservedOopMethods
      */
-    @SuppressWarnings("cast")
     static Object[] getJVMCIReservedReference() {
-        boolean waitForInstall = FALLBACK_GET == null;
-        if (HotSpotTruffleRuntime.getRuntime().bypassedReservedOop(waitForInstall)) {
-            if (waitForInstall) {
-                /*
-                 * No JVMCI fallback: We waited for the stub installation therefore we should be
-                 * able to call recursively and get to call the stub.
-                 */
-                return getJVMCIReservedReferenceNoFallback();
-            } else {
-                /*
-                 * JVMCI fallback: Just call the fallback method while the compiler is initializing.
-                 * We do not want to stall guest code execution for this.
-                 */
-                try {
-                    return (Object[]) (Object) FALLBACK_GET.invokeExact(HotSpotJVMCIRuntime.runtime(), 0);
-                } catch (Throwable e) {
-                    throw CompilerDirectives.shouldNotReachHere(e);
-                }
-            }
+        if (HotSpotTruffleRuntime.getRuntime().bypassedReservedOop()) {
+            /*
+             * JVMCI fallback: Just call the fallback method while the compiler is initializing. We
+             * do not want to stall guest code execution for this.
+             */
+            return (Object[]) RUNTIME.getThreadLocalObject(0);
         } else {
             /*
              * We can assume the current context is null as setJVMCIReservedReference was not yet
@@ -126,19 +96,6 @@ final class HotSpotFastThreadLocal extends OptimizedFastThreadLocal {
              * assert this though.
              */
             return null;
-        }
-    }
-
-    private static Object[] getJVMCIReservedReferenceNoFallback() {
-        MutableInt value = fallbackThreadLocal.get();
-        if (value.value > DEBUG_STEPPING_DETECTION_THRESHOLD) {
-            throw failDebugStepping();
-        }
-        value.value++;
-        try {
-            return SINGLETON.get();
-        } finally {
-            value.value--;
         }
     }
 
@@ -152,56 +109,32 @@ final class HotSpotFastThreadLocal extends OptimizedFastThreadLocal {
      * See HotSpotTruffleRuntime.installReservedOopMethods
      */
     static void setJVMCIReservedReference(Object[] v) {
-        boolean waitForInstall = FALLBACK_SET == null;
-        if (HotSpotTruffleRuntime.getRuntime().bypassedReservedOop(waitForInstall)) {
-            if (waitForInstall) {
-                /*
-                 * No JVMCI fallback: We waited for the stub installation therefore we should be
-                 * able to call recursively and get to call the stub.
-                 */
-                setJVMCIReservedReferenceNoFallback(v);
-            } else {
-                /*
-                 * JVMCI fallback: Just call the fallback method while the compiler is initializing.
-                 * We do not want to stall guest code execution for this.
-                 */
-                try {
-                    FALLBACK_SET.invokeExact(HotSpotJVMCIRuntime.runtime(), 0, (Object) v);
-                } catch (Throwable e) {
-                    throw CompilerDirectives.shouldNotReachHere(e);
-                }
-            }
+        if (HotSpotTruffleRuntime.getRuntime().bypassedReservedOop()) {
+            /*
+             * JVMCI fallback: Just call the fallback method while the compiler is initializing. We
+             * do not want to stall guest code execution for this.
+             */
+            RUNTIME.setThreadLocalObject(0, v);
         } else {
             throw CompilerDirectives.shouldNotReachHere("Bypassed reserved oop without compiler initialization triggered.");
         }
     }
 
-    private static void setJVMCIReservedReferenceNoFallback(Object[] v) {
-        MutableInt invocations = fallbackThreadLocal.get();
-        if (invocations.value > DEBUG_STEPPING_DETECTION_THRESHOLD) {
-            throw failDebugStepping();
-        }
-        invocations.value++;
-        try {
-            SINGLETON.set(v);
-        } finally {
-            invocations.value--;
-        }
+    // We do not want any synchronization or park during JVMTI hooks
+    private static final HotSpotJVMCIRuntime RUNTIME = HotSpotJVMCIRuntime.runtime();
+
+    // We do not use getJVMCIReservedReference() here, we want to avoid any potential park() and
+    // control what Java code is run
+    static void unmount() {
+        Object[] threadLocals = (Object[]) RUNTIME.getThreadLocalObject(0);
+        VIRTUAL_THREADS_THREAD_LOCAL.set(threadLocals);
     }
 
-    static final class MutableInt {
-        int value;
-    }
-
-    private static RuntimeException failDebugStepping() {
-        /*
-         * This might happen if you single step through this method as the debugger will ignore the
-         * installed code and just run this code in the host interpreter.
-         */
-        throw new UnsupportedOperationException("Cannot step through the fast thread local with the debugger without JVMCI API fallback methods. " +
-                        "Make sure the JVMCI version is up-to-date or switch to a runtime without Truffle compilation for debugging to resolve this. " +
-                        "Use -Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime to switch to a runtime without compilation. " +
-                        "Remember to remove this option again after debugging.");
+    // We do not use setJVMCIReservedReference() here, we want to avoid any potential park() and
+    // control what Java code is run
+    static void mount() {
+        Object[] threadLocals = VIRTUAL_THREADS_THREAD_LOCAL.get();
+        RUNTIME.setThreadLocalObject(0, threadLocals);
     }
 
 }

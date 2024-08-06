@@ -24,30 +24,24 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
-import java.lang.management.MemoryPoolMXBean;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.GCRelatedMXBeans;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapLayouter;
-import com.oracle.svm.core.genscavenge.CompleteGarbageCollectorMXBean;
-import com.oracle.svm.core.genscavenge.EpsilonGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans;
 import com.oracle.svm.core.genscavenge.HeapImpl;
-import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
+import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
-import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
-import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
+import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.jvmstat.EpsilonGCPerfData;
 import com.oracle.svm.core.genscavenge.jvmstat.SerialGCPerfData;
 import com.oracle.svm.core.genscavenge.remset.CardTableBasedRememberedSet;
@@ -63,12 +57,13 @@ import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.RuntimeSupportFeature;
-import com.oracle.svm.core.jdk.management.ManagementFeature;
-import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfManager;
-import com.sun.management.GarbageCollectorMXBean;
+
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 
 @AutomaticallyRegisteredFeature
 class GenScavengeGCFeature implements InternalFeature {
@@ -79,7 +74,7 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(RuntimeSupportFeature.class, ManagementFeature.class, PerfDataFeature.class, AllocationFeature.class);
+        return Arrays.asList(RuntimeSupportFeature.class, PerfDataFeature.class, AllocationFeature.class);
     }
 
     @Override
@@ -87,40 +82,31 @@ class GenScavengeGCFeature implements InternalFeature {
         RememberedSet rememberedSet = createRememberedSet();
         ImageSingletons.add(RememberedSet.class, rememberedSet);
         ImageSingletons.add(BarrierSetProvider.class, rememberedSet);
+
+        GenScavengeMemoryPoolMXBeans memoryPoolMXBeans = new GenScavengeMemoryPoolMXBeans();
+        ImageSingletons.add(GenScavengeMemoryPoolMXBeans.class, memoryPoolMXBeans);
+        ImageSingletons.add(GCRelatedMXBeans.class, new GenScavengeRelatedMXBeans(memoryPoolMXBeans));
     }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        HeapImpl heap = new HeapImpl(SubstrateOptions.getPageSize());
+        HeapImpl heap = new HeapImpl();
         ImageSingletons.add(Heap.class, heap);
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 
-        List<MemoryPoolMXBean> memoryPools = Arrays.asList(GenScavengeMemoryPoolMXBeans.createMemoryPoolMXBeans());
-        List<GarbageCollectorMXBean> garbageCollectors;
-        if (SubstrateOptions.UseEpsilonGC.getValue()) {
-            garbageCollectors = Arrays.asList(new EpsilonGarbageCollectorMXBean());
-        } else {
-            garbageCollectors = Arrays.asList(new IncrementalGarbageCollectorMXBean(), new CompleteGarbageCollectorMXBean());
-        }
-
-        ManagementSupport managementSupport = ManagementSupport.getSingleton();
-        managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
-        managementSupport.addPlatformManagedObjectList(java.lang.management.MemoryPoolMXBean.class, memoryPools);
-        managementSupport.addPlatformManagedObjectList(com.sun.management.GarbageCollectorMXBean.class, garbageCollectors);
-        /* Not supported yet. */
-        managementSupport.addPlatformManagedObjectList(java.lang.management.BufferPoolMXBean.class, Collections.emptyList());
-
         if (ImageSingletons.contains(PerfManager.class)) {
             ImageSingletons.lookup(PerfManager.class).register(createPerfData());
+        }
+
+        if (SubstrateGCOptions.VerifyHeap.getValue()) {
+            ImageSingletons.add(HeapVerifier.class, new HeapVerifier());
         }
     }
 
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        if (SubstrateOptions.useRememberedSet()) {
-            // Even though I don't hold on to this instance, it is preserved because it becomes the
-            // enclosing instance for the lowerings registered within it.
+        if (SerialGCOptions.useRememberedSet()) {
             BarrierSnippets barrierSnippets = new BarrierSnippets(options, providers);
             barrierSnippets.registerLowerings(providers.getMetaAccess(), lowerings);
         }
@@ -141,19 +127,13 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        ImageHeapLayouter heapLayouter;
-        int imageHeapNullRegionSize = Heap.getHeap().getImageHeapNullRegionSize();
-        if (HeapImpl.usesImageHeapChunks()) { // needs CommittedMemoryProvider: registered late
-            heapLayouter = new ChunkedImageHeapLayouter(HeapImpl.getImageHeapInfo(), 0, imageHeapNullRegionSize);
-        } else {
-            heapLayouter = new LinearImageHeapLayouter(HeapImpl.getImageHeapInfo(), 0, imageHeapNullRegionSize);
-        }
+        ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(HeapImpl.getFirstImageHeapInfo(), Heap.getHeap().getImageHeapOffsetInAddressSpace());
         ImageSingletons.add(ImageHeapLayouter.class, heapLayouter);
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
+        ImageHeapInfo imageHeapInfo = HeapImpl.getFirstImageHeapInfo();
         access.registerAsImmutable(imageHeapInfo);
     }
 
@@ -163,7 +143,7 @@ class GenScavengeGCFeature implements InternalFeature {
     }
 
     private static RememberedSet createRememberedSet() {
-        if (SubstrateOptions.useRememberedSet()) {
+        if (SerialGCOptions.useRememberedSet()) {
             return new CardTableBasedRememberedSet();
         } else {
             return new NoRememberedSet();
@@ -171,10 +151,10 @@ class GenScavengeGCFeature implements InternalFeature {
     }
 
     private static PerfDataHolder createPerfData() {
-        if (SubstrateOptions.UseSerialGC.getValue()) {
+        if (SubstrateOptions.useSerialGC()) {
             return new SerialGCPerfData();
         } else {
-            assert SubstrateOptions.UseEpsilonGC.getValue();
+            assert SubstrateOptions.useEpsilonGC();
             return new EpsilonGCPerfData();
         }
     }

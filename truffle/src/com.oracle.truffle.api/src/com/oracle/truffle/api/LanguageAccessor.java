@@ -462,11 +462,12 @@ final class LanguageAccessor extends Accessor {
 
         @Override
         public void configureLoggers(Object vmObject, Map<String, Level> logLevels, Object... loggers) {
-            for (Object loggerCache : loggers) {
+            for (Object logger : loggers) {
+                TruffleLogger.LoggerCache loggerCache = (TruffleLogger.LoggerCache) logger;
                 if (logLevels == null) {
-                    ((TruffleLogger.LoggerCache) loggerCache).removeLogLevelsForVMObject(vmObject);
-                } else {
-                    ((TruffleLogger.LoggerCache) loggerCache).addLogLevelsForVMObject(vmObject, logLevels);
+                    loggerCache.removeLogLevelsForVMObject(vmObject);
+                } else if (!logLevels.isEmpty() || !ENGINE.isContextBoundLogger(loggerCache.getSPI())) {
+                    loggerCache.addLogLevelsForVMObject(vmObject, logLevels);
                 }
             }
         }

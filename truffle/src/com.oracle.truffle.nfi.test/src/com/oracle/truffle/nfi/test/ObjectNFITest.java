@@ -40,6 +40,16 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
@@ -48,13 +58,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
 
 @RunWith(TruffleRunner.class)
 public class ObjectNFITest extends NFITest {
@@ -98,14 +101,14 @@ public class ObjectNFITest extends NFITest {
     public static void initEnv() {
         Object createNewObject = new TestCallback(0, (args) -> new TestObject());
         Object readIntField = new TestCallback(2, (args) -> {
-            Assert.assertThat("args[0]", args[0], is(instanceOf(TestObject.class)));
-            Assert.assertThat("args[1]", args[1], is(instanceOf(String.class)));
+            assertThat("args[0]", args[0], is(instanceOf(TestObject.class)));
+            assertThat("args[1]", args[1], is(instanceOf(String.class)));
             return ((TestObject) args[0]).readField((String) args[1]);
         });
         Object writeIntField = new TestCallback(3, (args) -> {
-            Assert.assertThat("args[0]", args[0], is(instanceOf(TestObject.class)));
-            Assert.assertThat("args[1]", args[1], is(instanceOf(String.class)));
-            Assert.assertThat("args[2]", args[2], is(instanceOf(Integer.class)));
+            assertThat("args[0]", args[0], is(instanceOf(TestObject.class)));
+            assertThat("args[1]", args[1], is(instanceOf(String.class)));
+            assertThat("args[2]", args[2], is(instanceOf(Integer.class)));
             ((TestObject) args[0]).writeField((String) args[1], (Integer) args[2]);
             return null;
         });
@@ -143,7 +146,7 @@ public class ObjectNFITest extends NFITest {
         TestObject testObj = new TestObject(42);
 
         Object ret = callTarget.call(nativeAPI, testObj);
-        Assert.assertThat("return value", ret, is(instanceOf(TestObject.class)));
+        assertThat("return value", ret, is(instanceOf(TestObject.class)));
 
         TestObject testRet = (TestObject) ret;
         Assert.assertNotSame("return value", testObj, testRet);
@@ -190,7 +193,7 @@ public class ObjectNFITest extends NFITest {
 
         Object finalRet = callTarget.call(testArg);
 
-        Assert.assertThat("return value", finalRet, is(instanceOf(TestObject.class)));
+        assertThat("return value", finalRet, is(instanceOf(TestObject.class)));
         Assert.assertSame("return value", testArg, finalRet);
     }
 
@@ -213,7 +216,7 @@ public class ObjectNFITest extends NFITest {
     public void testKeepNewObject(@Inject(TestKeepNewObjectNode.class) CallTarget callTarget) {
         Object ret = callTarget.call();
 
-        Assert.assertThat("return value", ret, is(instanceOf(TestObject.class)));
+        assertThat("return value", ret, is(instanceOf(TestObject.class)));
         Assert.assertEquals("intField", 8472, ((TestObject) ret).intField);
     }
 

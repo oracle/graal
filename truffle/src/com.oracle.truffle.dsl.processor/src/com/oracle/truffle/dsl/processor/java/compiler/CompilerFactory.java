@@ -61,7 +61,7 @@ public class CompilerFactory {
             return javac;
         } else if (JDTCompiler.isValidElement(currentElement)) {
             if (jdt == null) {
-                jdt = new JDTCompiler();
+                jdt = new JDTCompiler(currentElement);
             }
             return jdt;
         } else {

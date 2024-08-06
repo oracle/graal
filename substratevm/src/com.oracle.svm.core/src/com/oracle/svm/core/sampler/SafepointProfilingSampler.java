@@ -29,12 +29,13 @@ import java.io.OutputStreamWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.LongSummaryStatistics;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.collections.LockFreePrefixTree;
-import org.graalvm.compiler.options.Option;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.Threading;
@@ -58,7 +59,7 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
     private final SamplingStackVisitor samplingStackVisitor = new SamplingStackVisitor();
     private final LockFreePrefixTree prefixTree = new LockFreePrefixTree(new LockFreePrefixTree.ObjectPoolingAllocator());
 
-    private final List<SamplerStats> statsList = new ArrayList<>();
+    private final List<SamplerStats> statsList = Collections.synchronizedList(new ArrayList<>());
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SafepointProfilingSampler() {
@@ -88,7 +89,9 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
     public void beforeThreadRun() {
         SamplingStackVisitor.StackTrace stackTrace = new SamplingStackVisitor.StackTrace(DEFAULT_STACK_SIZE);
         SamplerStats samplerStats = new SamplerStats();
-        statsList.add(samplerStats);
+        if (Options.SafepointSamplerStats.hasBeenSet()) {
+            statsList.add(samplerStats);
+        }
         Threading.registerRecurringCallback(10, TimeUnit.MILLISECONDS, access -> sampleThreadStack(stackTrace, samplerStats));
     }
 
@@ -100,6 +103,11 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
     @Override
     public void reset() {
         prefixTree.reset();
+    }
+
+    @Override
+    public boolean isAsyncSampler() {
+        return false;
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate inside the safepoint sampler.")

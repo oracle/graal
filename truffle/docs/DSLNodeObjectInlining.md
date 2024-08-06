@@ -615,3 +615,7 @@ public abstract static class LazyInitExample extends Node {
 Unless `LazyRaiseNode.execute` gets called, the cost of the wrapper is single reference field
 and one bit from the bitset of `LazyInitExample` node. Except for the extra bit, it is the same as
 with the lazy initialized `@Child` node field.
+
+Note that, at the moment, the lazy initialization pattern cannot be fully inlined by
+[host inlining](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md),
+and it is therefore not recommended to be used on interpreter hot code-paths.

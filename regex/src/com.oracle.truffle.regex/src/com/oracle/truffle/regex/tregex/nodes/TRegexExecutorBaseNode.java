@@ -115,5 +115,5 @@ public abstract class TRegexExecutorBaseNode extends Node implements Instrumenta
      */
     public abstract boolean writesCaptureGroups();
 
-    public abstract TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int index, int maxIndex);
+    public abstract TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index);
 }

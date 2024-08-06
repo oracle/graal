@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -42,7 +42,7 @@ dynLink/cycle/libA$(SO_EXT): dynLink/cycle/a.c dynLink/cycle/Makefile fake/libB$
 
 dynLink/cycle/libB$(SO_EXT): dynLink/cycle/b.c dynLink/cycle/Makefile dynLink/cycle/libC$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -LdynLink/cycle -lC -o $@ $<
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -LdynLink/cycle -Lfake -lC -o $@ $<
 
 dynLink/cycle/libC$(SO_EXT): dynLink/cycle/c.c dynLink/cycle/Makefile dynLink/cycle/libA$(SO_EXT)
 	@mkdir -p $(shell dirname $@)

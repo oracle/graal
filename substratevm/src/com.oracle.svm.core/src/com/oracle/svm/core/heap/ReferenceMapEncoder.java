@@ -33,12 +33,13 @@ import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
 import java.util.Set;
 
-import org.graalvm.compiler.core.common.util.TypeConversion;
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
-
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.ByteArrayReader;
+
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 
 public abstract class ReferenceMapEncoder {
     public interface OffsetIterator extends PrimitiveIterator.OfInt {
@@ -99,7 +100,7 @@ public abstract class ReferenceMapEncoder {
         encodeAll(sortedEntries);
 
         int length = TypeConversion.asS4(writeBuffer.getBytesWritten());
-        NonmovableArray<Byte> array = NonmovableArrays.createByteArray(length);
+        NonmovableArray<Byte> array = NonmovableArrays.createByteArray(length, NmtCategory.Code);
         writeBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(array));
         return array;
     }

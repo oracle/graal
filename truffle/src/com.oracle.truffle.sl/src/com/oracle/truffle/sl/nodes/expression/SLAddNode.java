@@ -77,7 +77,7 @@ public abstract class SLAddNode extends SLBinaryNode {
     /**
      * Specialization for primitive {@code long} values. This is the fast path of the
      * arbitrary-precision arithmetic. We need to check for overflows of the addition, and switch to
-     * the {@link #add(SLBigInteger, SLBigInteger) slow path}. Therefore, we use an
+     * the {@link #doSLBigInteger(SLBigInteger, SLBigInteger) slow path}. Therefore, we use an
      * {@link Math#addExact(long, long) addition method that throws an exception on overflow}. The
      * {@code rewriteOn} attribute on the {@link Specialization} annotation automatically triggers
      * the node rewriting on the exception.
@@ -102,7 +102,7 @@ public abstract class SLAddNode extends SLBinaryNode {
      * operand are {@link SLBigInteger} values. Because the type system defines an
      * {@link ImplicitCast implicit conversion} from {@code long} to {@link SLBigInteger} in
      * {@link SLTypes#castBigNumber(long)}, this specialization is also taken if the left or the
-     * right operand is a {@code long} value. Because the {@link #add(long, long) long}
+     * right operand is a {@code long} value. Because the {@link #doLong(long, long) long}
      * specialization} has the {@code rewriteOn} attribute, this specialization is also taken if
      * both input values are {@code long} values but the primitive addition overflows.
      */

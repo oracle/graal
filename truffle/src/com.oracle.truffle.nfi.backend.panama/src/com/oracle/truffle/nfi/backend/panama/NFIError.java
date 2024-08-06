@@ -41,6 +41,8 @@
 package com.oracle.truffle.nfi.backend.panama;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.impl.Accessor.ForeignSupport;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("serial")
@@ -51,7 +53,30 @@ final class NFIError extends AbstractTruffleException {
     }
 
     NFIError(String message, Node location) {
-        super(message, location);
+        super(message, resolveLocation(location));
+    }
+
+    private static Node resolveLocation(Node node) {
+        if (node == null || node.isAdoptable()) {
+            return node;
+        } else {
+            return EncapsulatingNodeReference.getCurrent().get();
+        }
+    }
+
+    static NFIError illegalNativeAccess(Node location) {
+        Module truffleModule = ForeignSupport.class.getModule();
+        String targetModule;
+        String error;
+        if (truffleModule.isNamed()) {
+            targetModule = truffleModule.getName();
+            error = String.format("Illegal native access from module %s.", targetModule);
+        } else {
+            targetModule = "ALL-UNNAMED";
+            error = "Illegal native access from an unnamed module.";
+        }
+        return new NFIError(String.format("%s To enable the native access required by the NFI Panama backend, please add '--enable-native-access=%s' to the JVM command line options.",
+                        error, targetModule), location);
     }
 
 }

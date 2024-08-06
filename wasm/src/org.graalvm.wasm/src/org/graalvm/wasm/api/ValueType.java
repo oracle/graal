@@ -51,6 +51,7 @@ public enum ValueType {
     i64(WasmType.I64_TYPE),
     f32(WasmType.F32_TYPE),
     f64(WasmType.F64_TYPE),
+    v128(WasmType.V128_TYPE),
     anyfunc(WasmType.FUNCREF_TYPE),
     externref(WasmType.EXTERNREF_TYPE);
 
@@ -71,6 +72,8 @@ public enum ValueType {
                 return f32;
             case WasmType.F64_TYPE:
                 return f64;
+            case WasmType.V128_TYPE:
+                return v128;
             case WasmType.FUNCREF_TYPE:
                 return anyfunc;
             case WasmType.EXTERNREF_TYPE:
@@ -86,6 +89,10 @@ public enum ValueType {
 
     public static boolean isNumberType(ValueType valueType) {
         return valueType == i32 || valueType == i64 || valueType == f32 || valueType == f64;
+    }
+
+    public static boolean isVectorType(ValueType valueType) {
+        return valueType == v128;
     }
 
     public static boolean isReferenceType(ValueType valueType) {

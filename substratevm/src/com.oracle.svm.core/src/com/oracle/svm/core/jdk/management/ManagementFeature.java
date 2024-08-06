@@ -88,7 +88,7 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         for (Class<? extends PlatformManagedObject> clazz : Arrays.asList(ClassLoadingMXBean.class, CompilationMXBean.class, RuntimeMXBean.class,
                         ThreadMXBean.class, OperatingSystemMXBean.class, MemoryMXBean.class)) {
             PlatformManagedObject source = ManagementFactory.getPlatformMXBean(clazz);
-            PlatformManagedObject target = (PlatformManagedObject) ManagementSupport.getSingleton().platformManagedObjectsMap.get(clazz);
+            PlatformManagedObject target = ManagementSupport.getSingleton().getPlatformMXBeanRaw(clazz);
             if (source != null && target != null) {
                 platformManagedObjectReplacements.put(source, target);
             }
@@ -125,6 +125,7 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         access.registerReachabilityHandler(ManagementFeature::registerMXBeanMappingMakeOpenClass, method(access, "com.sun.jmx.mbeanserver.MXBeanMapping", "makeOpenClass", Type.class, OpenType.class));
 
         assert verifyMemoryManagerBeans();
+        assert ManagementSupport.getSingleton().verifyNoOverlappingMxBeans();
     }
 
     private static boolean verifyMemoryManagerBeans() {

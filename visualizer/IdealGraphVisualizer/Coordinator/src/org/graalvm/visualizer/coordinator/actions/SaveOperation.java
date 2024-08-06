@@ -596,7 +596,7 @@ class SaveOperation {
                 // no op            }
             } catch (IOException ex) {
                 DialogDisplayer.getDefault().notifyLater(new NotifyDescriptor.Message(
-                                Bundle.ERR_Save(ex.getLocalizedMessage()),
+                                Bundle.ERR_Save(ex.toString()),
                                 NotifyDescriptor.ERROR_MESSAGE));
             }
         }
@@ -626,7 +626,7 @@ class SaveOperation {
                             f.delete();
                         } else {
                             DialogDisplayer.getDefault().notifyLater(new NotifyDescriptor.Message(
-                                            Bundle.ERR_Save(e.getLocalizedMessage()),
+                                            Bundle.ERR_Save(e.toString()),
                                             NotifyDescriptor.ERROR_MESSAGE));
                         }
                     }

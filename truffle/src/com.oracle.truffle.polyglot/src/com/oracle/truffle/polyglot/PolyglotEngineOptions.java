@@ -87,15 +87,27 @@ final class PolyglotEngineOptions {
                     "Do not use in production environments.")//
     static final OptionKey<Boolean> SpecializationStatistics = new OptionKey<>(false);
 
-    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Traces thread local events and when they are processed on the individual threads." +
-                    "Prints messages with the [engine] [tl] prefix. ")//
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Traces thread local events and when they are processed on the individual threads. " +
+                    "Prints messages with the [engine] [tl] prefix.")//
     static final OptionKey<Boolean> TraceThreadLocalActions = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "How long to wait for other threads to reach a synchronous ThreadLocalAction before cancelling it, in seconds. 0 means no limit.", usageSyntax = "[0, inf)")//
+    static final OptionKey<Integer> SynchronousThreadLocalActionMaxWait = new OptionKey<>(60);
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Print thread stacktraces when a synchronous ThreadLocalAction is waiting for more than SynchronousThreadLocalActionMaxWait seconds.")//
+    static final OptionKey<Boolean> SynchronousThreadLocalActionPrintStackTraces = new OptionKey<>(false);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "Repeadly submits thread local actions and collects statistics about safepoint intervals in the process. " +
                     "Prints event and interval statistics when the context is closed for each thread. " +
                     "This option significantly slows down execution and is therefore intended for testing purposes only.")//
     static final OptionKey<Boolean> SafepointALot = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Show Java stacktraces for missing polls longer than the supplied number of milliseconds. Implies SafepointALot.", usageSyntax = "[0, inf)")//
+    static final OptionKey<Integer> TraceMissingSafepointPollInterval = new OptionKey<>(0);
 
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "Prints the stack trace for all threads for a time interval. By default 0, which disables the output.", usageSyntax = "[1, inf)")//
@@ -108,6 +120,10 @@ final class PolyglotEngineOptions {
     @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "" +
                     "Print warning when a deprecated option is used (default: true).", usageSyntax = "true|false", sandbox = SandboxPolicy.UNTRUSTED)//
     static final OptionKey<Boolean> WarnOptionDeprecation = new OptionKey<>(true);
+
+    @Option(category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Warn that the virtual thread support is experimental (default: true).", usageSyntax = "true|false", sandbox = SandboxPolicy.UNTRUSTED)//
+    static final OptionKey<Boolean> WarnVirtualThreadSupport = new OptionKey<>(true);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "Use pre-initialized context when it's available (default: true).", usageSyntax = "true|false")//
@@ -132,6 +148,12 @@ final class PolyglotEngineOptions {
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, sandbox = SandboxPolicy.UNTRUSTED, usageSyntax = "true|false", help = "" +
                     "Asserts that enter and return are always called in pairs on ProbeNode, verifies correct behavior of wrapper nodes. Java asserts need to be turned on for this option to have an effect. (default: false)")//
     static final OptionKey<Boolean> AssertProbes = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Print information for source cache misses/evictions/failures.")//
+    static final OptionKey<Boolean> TraceSourceCache = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Print information for all source cache events including hits and uncached misses.")//
+    static final OptionKey<Boolean> TraceSourceCacheDetails = new OptionKey<>(false);
 
     enum StaticObjectStorageStrategies {
         DEFAULT,

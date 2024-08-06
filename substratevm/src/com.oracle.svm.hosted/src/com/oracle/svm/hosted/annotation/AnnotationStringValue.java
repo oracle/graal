@@ -25,8 +25,6 @@
 package com.oracle.svm.hosted.annotation;
 
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 
 import jdk.internal.reflect.ConstantPool;
@@ -45,11 +43,6 @@ public final class AnnotationStringValue extends AnnotationMemberValue {
 
     public String getValue() {
         return value;
-    }
-
-    @Override
-    public List<String> getStrings() {
-        return Collections.singletonList(value);
     }
 
     @Override

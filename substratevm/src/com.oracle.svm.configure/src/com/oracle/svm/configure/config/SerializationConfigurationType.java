@@ -28,18 +28,19 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.Objects;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import com.oracle.svm.core.util.json.JsonPrintable;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonWriter;
+
 public class SerializationConfigurationType implements JsonPrintable, Comparable<SerializationConfigurationType> {
-    private final ConfigurationCondition condition;
+    private final UnresolvedConfigurationCondition condition;
     private final String qualifiedJavaName;
     private final String qualifiedCustomTargetConstructorJavaName;
 
-    public SerializationConfigurationType(ConfigurationCondition condition, String qualifiedJavaName, String qualifiedCustomTargetConstructorJavaName) {
+    public SerializationConfigurationType(UnresolvedConfigurationCondition condition, String qualifiedJavaName, String qualifiedCustomTargetConstructorJavaName) {
         assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not the internal representation";
         assert !qualifiedJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
         assert qualifiedCustomTargetConstructorJavaName == null || qualifiedCustomTargetConstructorJavaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
@@ -59,7 +60,7 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
         return qualifiedCustomTargetConstructorJavaName;
     }
 
-    public ConfigurationCondition getCondition() {
+    public UnresolvedConfigurationCondition getCondition() {
         return condition;
     }
 
@@ -67,7 +68,7 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
         ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
-        writer.quote(SerializationConfigurationParser.NAME_KEY).append(':').quote(qualifiedJavaName);
+        writer.quote(SerializationConfigurationParser.TYPE_KEY).append(':').quote(qualifiedJavaName);
         if (qualifiedCustomTargetConstructorJavaName != null) {
             writer.append(',').newline();
             writer.quote(SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY).append(':')

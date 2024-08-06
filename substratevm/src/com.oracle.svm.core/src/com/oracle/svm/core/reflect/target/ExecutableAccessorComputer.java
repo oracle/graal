@@ -26,7 +26,6 @@ package com.oracle.svm.core.reflect.target;
 
 import java.lang.reflect.Executable;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -40,6 +39,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 public final class ExecutableAccessorComputer implements FieldValueTransformer {
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        return ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getOrCreateAccessor((Executable) receiver);
+        return ReflectionSubstitutionSupport.singleton().getOrCreateAccessor((Executable) receiver);
     }
 }

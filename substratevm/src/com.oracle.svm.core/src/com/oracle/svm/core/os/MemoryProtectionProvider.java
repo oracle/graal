@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.os;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolates.ProtectionDomain;
 import org.graalvm.word.PointerBase;

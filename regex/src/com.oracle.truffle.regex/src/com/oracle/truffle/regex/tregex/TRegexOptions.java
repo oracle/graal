@@ -109,7 +109,7 @@ public class TRegexOptions {
      * <pre>
      *     [\u1000-\u1020], [\u1030-\u1040], [\u1050-\u1060]
      *     are three ranges that have the same high byte (0x10).
-     *     if TRegexRangeToBitSetConversionThreshold is <= 3, they will be converted to a
+     *     if TRegexRangeToBitSetConversionThreshold is &lt;= 3, they will be converted to a
      *     bit set if they appear in a RangeList or RangeTree matcher.
      * </pre>
      */
@@ -231,13 +231,19 @@ public class TRegexOptions {
      * Maximum number of {@link PureNFA} states allowed to be exploded in
      * {@link TRegexBacktrackingNFAExecutorNode}.
      */
-    public static final int TRegexMaxBackTrackerMergeExplodeSize = 300;
+    public static final int TRegexMaxBackTrackerMergeExplodeSize = 200;
 
     /**
      * Maximum number of {@link TRegexExecutorNode#getNumberOfTransitions() transitions} for a
      * {@link TRegexExecutorNode} to be considered trivial.
      */
     public static final int TRegexMaxTransitionsInTrivialExecutor = 100;
+
+    /**
+     * Don't force evaluation of {@link com.oracle.truffle.api.strings.TruffleString.CodeRange} if
+     * the input string's byte length is greater than this threshold.
+     */
+    public static final int CODE_RANGE_EVALUATION_THRESHOLD = 2048;
 
     static {
         assert TRegexTraceFinderMaxNumberOfResults <= 254;

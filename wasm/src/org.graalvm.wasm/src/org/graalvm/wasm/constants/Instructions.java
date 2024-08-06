@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -344,13 +344,263 @@ public final class Instructions {
     public static final int ATOMIC_I64_RMW8_U_CMPXCHG = 0x4C;
     public static final int ATOMIC_I64_RMW16_U_CMPXCHG = 0x4D;
     public static final int ATOMIC_I64_RMW32_U_CMPXCHG = 0x4E;
-    // GraalWasm specific opcodes (these are reserved for future webassembly extensions and might be
-    // used in other ways in the future)
 
-    public static final int DROP_REF = 0x19;
-    public static final int LOCAL_GET_REF = 0x1D;
-    public static final int LOCAL_SET_REF = 0x1E;
-    public static final int LOCAL_TEE_REF = 0x1F;
+    public static final int VECTOR = 0xFD;
+
+    public static final int VECTOR_V128_LOAD = 0x00;
+    public static final int VECTOR_V128_LOAD8X8_S = 0x01;
+    public static final int VECTOR_V128_LOAD8X8_U = 0x02;
+    public static final int VECTOR_V128_LOAD16X4_S = 0x03;
+    public static final int VECTOR_V128_LOAD16X4_U = 0x04;
+    public static final int VECTOR_V128_LOAD32X2_S = 0x05;
+    public static final int VECTOR_V128_LOAD32X2_U = 0x06;
+    public static final int VECTOR_V128_LOAD8_SPLAT = 0x07;
+    public static final int VECTOR_V128_LOAD16_SPLAT = 0x08;
+    public static final int VECTOR_V128_LOAD32_SPLAT = 0x09;
+    public static final int VECTOR_V128_LOAD64_SPLAT = 0x0A;
+    public static final int VECTOR_V128_LOAD32_ZERO = 0x5C;
+    public static final int VECTOR_V128_LOAD64_ZERO = 0x5D;
+    public static final int VECTOR_V128_STORE = 0x0B;
+    public static final int VECTOR_V128_LOAD8_LANE = 0x54;
+    public static final int VECTOR_V128_LOAD16_LANE = 0x55;
+    public static final int VECTOR_V128_LOAD32_LANE = 0x56;
+    public static final int VECTOR_V128_LOAD64_LANE = 0x57;
+    public static final int VECTOR_V128_STORE8_LANE = 0x58;
+    public static final int VECTOR_V128_STORE16_LANE = 0x59;
+    public static final int VECTOR_V128_STORE32_LANE = 0x5A;
+    public static final int VECTOR_V128_STORE64_LANE = 0x5B;
+
+    public static final int VECTOR_V128_CONST = 0x0C;
+
+    public static final int VECTOR_I8X16_SHUFFLE = 0x0D;
+
+    public static final int VECTOR_I8X16_EXTRACT_LANE_S = 0x15;
+    public static final int VECTOR_I8X16_EXTRACT_LANE_U = 0x16;
+    public static final int VECTOR_I8X16_REPLACE_LANE = 0x17;
+    public static final int VECTOR_I16X8_EXTRACT_LANE_S = 0x18;
+    public static final int VECTOR_I16X8_EXTRACT_LANE_U = 0x19;
+    public static final int VECTOR_I16X8_REPLACE_LANE = 0x1A;
+    public static final int VECTOR_I32X4_EXTRACT_LANE = 0x1B;
+    public static final int VECTOR_I32X4_REPLACE_LANE = 0x1C;
+    public static final int VECTOR_I64X2_EXTRACT_LANE = 0x1D;
+    public static final int VECTOR_I64X2_REPLACE_LANE = 0x1E;
+    public static final int VECTOR_F32X4_EXTRACT_LANE = 0x1F;
+    public static final int VECTOR_F32X4_REPLACE_LANE = 0x20;
+    public static final int VECTOR_F64X2_EXTRACT_LANE = 0x21;
+    public static final int VECTOR_F64X2_REPLACE_LANE = 0x22;
+
+    public static final int VECTOR_I8X16_SWIZZLE = 0x0E;
+    public static final int VECTOR_I8X16_SPLAT = 0x0F;
+    public static final int VECTOR_I16X8_SPLAT = 0x10;
+    public static final int VECTOR_I32X4_SPLAT = 0x11;
+    public static final int VECTOR_I64X2_SPLAT = 0x12;
+    public static final int VECTOR_F32X4_SPLAT = 0x13;
+    public static final int VECTOR_F64X2_SPLAT = 0x14;
+
+    public static final int VECTOR_I8X16_EQ = 0x23;
+    public static final int VECTOR_I8X16_NE = 0x24;
+    public static final int VECTOR_I8X16_LT_S = 0x25;
+    public static final int VECTOR_I8X16_LT_U = 0x26;
+    public static final int VECTOR_I8X16_GT_S = 0x27;
+    public static final int VECTOR_I8X16_GT_U = 0x28;
+    public static final int VECTOR_I8X16_LE_S = 0x29;
+    public static final int VECTOR_I8X16_LE_U = 0x2A;
+    public static final int VECTOR_I8X16_GE_S = 0x2B;
+    public static final int VECTOR_I8X16_GE_U = 0x2C;
+
+    public static final int VECTOR_I16X8_EQ = 0x2D;
+    public static final int VECTOR_I16X8_NE = 0x2E;
+    public static final int VECTOR_I16X8_LT_S = 0x2F;
+    public static final int VECTOR_I16X8_LT_U = 0x30;
+    public static final int VECTOR_I16X8_GT_S = 0x31;
+    public static final int VECTOR_I16X8_GT_U = 0x32;
+    public static final int VECTOR_I16X8_LE_S = 0x33;
+    public static final int VECTOR_I16X8_LE_U = 0x34;
+    public static final int VECTOR_I16X8_GE_S = 0x35;
+    public static final int VECTOR_I16X8_GE_U = 0x36;
+
+    public static final int VECTOR_I32X4_EQ = 0x37;
+    public static final int VECTOR_I32X4_NE = 0x38;
+    public static final int VECTOR_I32X4_LT_S = 0x39;
+    public static final int VECTOR_I32X4_LT_U = 0x3A;
+    public static final int VECTOR_I32X4_GT_S = 0x3B;
+    public static final int VECTOR_I32X4_GT_U = 0x3C;
+    public static final int VECTOR_I32X4_LE_S = 0x3D;
+    public static final int VECTOR_I32X4_LE_U = 0x3E;
+    public static final int VECTOR_I32X4_GE_S = 0x3F;
+    public static final int VECTOR_I32X4_GE_U = 0x40;
+
+    public static final int VECTOR_I64X2_EQ = 0xD6;
+    public static final int VECTOR_I64X2_NE = 0xD7;
+    public static final int VECTOR_I64X2_LT_S = 0xD8;
+    public static final int VECTOR_I64X2_GT_S = 0xD9;
+    public static final int VECTOR_I64X2_LE_S = 0xDA;
+    public static final int VECTOR_I64X2_GE_S = 0xDB;
+
+    public static final int VECTOR_F32X4_EQ = 0x41;
+    public static final int VECTOR_F32X4_NE = 0x42;
+    public static final int VECTOR_F32X4_LT = 0x43;
+    public static final int VECTOR_F32X4_GT = 0x44;
+    public static final int VECTOR_F32X4_LE = 0x45;
+    public static final int VECTOR_F32X4_GE = 0x46;
+
+    public static final int VECTOR_F64X2_EQ = 0x47;
+    public static final int VECTOR_F64X2_NE = 0x48;
+    public static final int VECTOR_F64X2_LT = 0x49;
+    public static final int VECTOR_F64X2_GT = 0x4A;
+    public static final int VECTOR_F64X2_LE = 0x4B;
+    public static final int VECTOR_F64X2_GE = 0x4C;
+
+    public static final int VECTOR_V128_NOT = 0x4D;
+    public static final int VECTOR_V128_AND = 0x4E;
+    public static final int VECTOR_V128_ANDNOT = 0x4F;
+    public static final int VECTOR_V128_OR = 0x50;
+    public static final int VECTOR_V128_XOR = 0x51;
+    public static final int VECTOR_V128_BITSELECT = 0x52;
+    public static final int VECTOR_V128_ANY_TRUE = 0x53;
+
+    public static final int VECTOR_I8X16_ABS = 0x60;
+    public static final int VECTOR_I8X16_NEG = 0x61;
+    public static final int VECTOR_I8X16_POPCNT = 0x62;
+    public static final int VECTOR_I8X16_ALL_TRUE = 0x63;
+    public static final int VECTOR_I8X16_BITMASK = 0x64;
+    public static final int VECTOR_I8X16_NARROW_I16X8_S = 0x65;
+    public static final int VECTOR_I8X16_NARROW_I16X8_U = 0x66;
+    public static final int VECTOR_I8X16_SHL = 0x6B;
+    public static final int VECTOR_I8X16_SHR_S = 0x6C;
+    public static final int VECTOR_I8X16_SHR_U = 0x6D;
+    public static final int VECTOR_I8X16_ADD = 0x6E;
+    public static final int VECTOR_I8X16_ADD_SAT_S = 0x6F;
+    public static final int VECTOR_I8X16_ADD_SAT_U = 0x70;
+    public static final int VECTOR_I8X16_SUB = 0x71;
+    public static final int VECTOR_I8X16_SUB_SAT_S = 0x72;
+    public static final int VECTOR_I8X16_SUB_SAT_U = 0x73;
+    public static final int VECTOR_I8X16_MIN_S = 0x76;
+    public static final int VECTOR_I8X16_MIN_U = 0x77;
+    public static final int VECTOR_I8X16_MAX_S = 0x78;
+    public static final int VECTOR_I8X16_MAX_U = 0x79;
+    public static final int VECTOR_I8X16_AVGR_U = 0x7B;
+
+    public static final int VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S = 0x7C;
+    public static final int VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U = 0x7D;
+    public static final int VECTOR_I16X8_ABS = 0x80;
+    public static final int VECTOR_I16X8_NEG = 0x81;
+    public static final int VECTOR_I16X8_Q15MULR_SAT_S = 0x82;
+    public static final int VECTOR_I16X8_ALL_TRUE = 0x83;
+    public static final int VECTOR_I16X8_BITMASK = 0x84;
+    public static final int VECTOR_I16X8_NARROW_I32X4_S = 0x85;
+    public static final int VECTOR_I16X8_NARROW_I32X4_U = 0x86;
+    public static final int VECTOR_I16X8_EXTEND_LOW_I8X16_S = 0x87;
+    public static final int VECTOR_I16X8_EXTEND_HIGH_I8X16_S = 0x88;
+    public static final int VECTOR_I16X8_EXTEND_LOW_I8X16_U = 0x89;
+    public static final int VECTOR_I16X8_EXTEND_HIGH_I8X16_U = 0x8A;
+    public static final int VECTOR_I16X8_SHL = 0x8B;
+    public static final int VECTOR_I16X8_SHR_S = 0x8C;
+    public static final int VECTOR_I16X8_SHR_U = 0x8D;
+    public static final int VECTOR_I16X8_ADD = 0x8E;
+    public static final int VECTOR_I16X8_ADD_SAT_S = 0x8F;
+    public static final int VECTOR_I16X8_ADD_SAT_U = 0x90;
+    public static final int VECTOR_I16X8_SUB = 0x91;
+    public static final int VECTOR_I16X8_SUB_SAT_S = 0x92;
+    public static final int VECTOR_I16X8_SUB_SAT_U = 0x93;
+    public static final int VECTOR_I16X8_MUL = 0x95;
+    public static final int VECTOR_I16X8_MIN_S = 0x96;
+    public static final int VECTOR_I16X8_MIN_U = 0x97;
+    public static final int VECTOR_I16X8_MAX_S = 0x98;
+    public static final int VECTOR_I16X8_MAX_U = 0x99;
+    public static final int VECTOR_I16X8_AVGR_U = 0x9B;
+    public static final int VECTOR_I16X8_EXTMUL_LOW_I8X16_S = 0x9C;
+    public static final int VECTOR_I16X8_EXTMUL_HIGH_I8X16_S = 0x9D;
+    public static final int VECTOR_I16X8_EXTMUL_LOW_I8X16_U = 0x9E;
+    public static final int VECTOR_I16X8_EXTMUL_HIGH_I8X16_U = 0x9F;
+
+    public static final int VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S = 0x7E;
+    public static final int VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U = 0x7F;
+    public static final int VECTOR_I32X4_ABS = 0xA0;
+    public static final int VECTOR_I32X4_NEG = 0xA1;
+    public static final int VECTOR_I32X4_ALL_TRUE = 0xA3;
+    public static final int VECTOR_I32X4_BITMASK = 0xA4;
+    public static final int VECTOR_I32X4_EXTEND_LOW_I16X8_S = 0xA7;
+    public static final int VECTOR_I32X4_EXTEND_HIGH_I16X8_S = 0xA8;
+    public static final int VECTOR_I32X4_EXTEND_LOW_I16X8_U = 0xA9;
+    public static final int VECTOR_I32X4_EXTEND_HIGH_I16X8_U = 0xAA;
+    public static final int VECTOR_I32X4_SHL = 0xAB;
+    public static final int VECTOR_I32X4_SHR_S = 0xAC;
+    public static final int VECTOR_I32X4_SHR_U = 0xAD;
+    public static final int VECTOR_I32X4_ADD = 0xAE;
+    public static final int VECTOR_I32X4_SUB = 0xB1;
+    public static final int VECTOR_I32X4_MUL = 0xB5;
+    public static final int VECTOR_I32X4_MIN_S = 0xB6;
+    public static final int VECTOR_I32X4_MIN_U = 0xB7;
+    public static final int VECTOR_I32X4_MAX_S = 0xB8;
+    public static final int VECTOR_I32X4_MAX_U = 0xB9;
+    public static final int VECTOR_I32X4_DOT_I16X8_S = 0xBA;
+    public static final int VECTOR_I32X4_EXTMUL_LOW_I16X8_S = 0xBC;
+    public static final int VECTOR_I32X4_EXTMUL_HIGH_I16X8_S = 0xBD;
+    public static final int VECTOR_I32X4_EXTMUL_LOW_I16X8_U = 0xBE;
+    public static final int VECTOR_I32X4_EXTMUL_HIGH_I16X8_U = 0xBF;
+
+    public static final int VECTOR_I64X2_ABS = 0xC0;
+    public static final int VECTOR_I64X2_NEG = 0xC1;
+    public static final int VECTOR_I64X2_ALL_TRUE = 0xC3;
+    public static final int VECTOR_I64X2_BITMASK = 0xC4;
+    public static final int VECTOR_I64X2_EXTEND_LOW_I32X4_S = 0xC7;
+    public static final int VECTOR_I64X2_EXTEND_HIGH_I32X4_S = 0xC8;
+    public static final int VECTOR_I64X2_EXTEND_LOW_I32X4_U = 0xC9;
+    public static final int VECTOR_I64X2_EXTEND_HIGH_I32X4_U = 0xCA;
+    public static final int VECTOR_I64X2_SHL = 0xCB;
+    public static final int VECTOR_I64X2_SHR_S = 0xCC;
+    public static final int VECTOR_I64X2_SHR_U = 0xCD;
+    public static final int VECTOR_I64X2_ADD = 0xCE;
+    public static final int VECTOR_I64X2_SUB = 0xD1;
+    public static final int VECTOR_I64X2_MUL = 0xD5;
+    public static final int VECTOR_I64X2_EXTMUL_LOW_I32X4_S = 0xDC;
+    public static final int VECTOR_I64X2_EXTMUL_HIGH_I32X4_S = 0xDD;
+    public static final int VECTOR_I64X2_EXTMUL_LOW_I32X4_U = 0xDE;
+    public static final int VECTOR_I64X2_EXTMUL_HIGH_I32X4_U = 0xDF;
+
+    public static final int VECTOR_F32X4_CEIL = 0x67;
+    public static final int VECTOR_F32X4_FLOOR = 0x68;
+    public static final int VECTOR_F32X4_TRUNC = 0x69;
+    public static final int VECTOR_F32X4_NEAREST = 0x6A;
+    public static final int VECTOR_F32X4_ABS = 0xE0;
+    public static final int VECTOR_F32X4_NEG = 0xE1;
+    public static final int VECTOR_F32X4_SQRT = 0xE3;
+    public static final int VECTOR_F32X4_ADD = 0xE4;
+    public static final int VECTOR_F32X4_SUB = 0xE5;
+    public static final int VECTOR_F32X4_MUL = 0xE6;
+    public static final int VECTOR_F32X4_DIV = 0xE7;
+    public static final int VECTOR_F32X4_MIN = 0xE8;
+    public static final int VECTOR_F32X4_MAX = 0xE9;
+    public static final int VECTOR_F32X4_PMIN = 0xEA;
+    public static final int VECTOR_F32X4_PMAX = 0xEB;
+
+    public static final int VECTOR_F64X2_CEIL = 0x74;
+    public static final int VECTOR_F64X2_FLOOR = 0x75;
+    public static final int VECTOR_F64X2_TRUNC = 0x7A;
+    public static final int VECTOR_F64X2_NEAREST = 0x94;
+    public static final int VECTOR_F64X2_ABS = 0xEC;
+    public static final int VECTOR_F64X2_NEG = 0xED;
+    public static final int VECTOR_F64X2_SQRT = 0xEF;
+    public static final int VECTOR_F64X2_ADD = 0xF0;
+    public static final int VECTOR_F64X2_SUB = 0xF1;
+    public static final int VECTOR_F64X2_MUL = 0xF2;
+    public static final int VECTOR_F64X2_DIV = 0xF3;
+    public static final int VECTOR_F64X2_MIN = 0xF4;
+    public static final int VECTOR_F64X2_MAX = 0xF5;
+    public static final int VECTOR_F64X2_PMIN = 0xF6;
+    public static final int VECTOR_F64X2_PMAX = 0xF7;
+
+    public static final int VECTOR_I32X4_TRUNC_SAT_F32X4_S = 0xF8;
+    public static final int VECTOR_I32X4_TRUNC_SAT_F32X4_U = 0xF9;
+    public static final int VECTOR_F32X4_CONVERT_I32X4_S = 0xFA;
+    public static final int VECTOR_F32X4_CONVERT_I32X4_U = 0xFB;
+    public static final int VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO = 0xFC;
+    public static final int VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO = 0xFD;
+    public static final int VECTOR_F64X2_CONVERT_LOW_I32X4_S = 0xFE;
+    public static final int VECTOR_F64X2_CONVERT_LOW_I32X4_U = 0xFF;
+    public static final int VECTOR_F32X4_DEMOTE_F64X2_ZERO = 0x5E;
+    public static final int VECTOR_F64X2_PROMOTE_LOW_F32X4 = 0x5F;
 
     private static String[] decodingTable = new String[256];
 

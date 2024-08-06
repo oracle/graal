@@ -41,17 +41,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Activation;
-import org.graalvm.compiler.debug.DebugContext.Scope;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Activation;
+import jdk.graal.compiler.debug.DebugContext.Scope;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -213,8 +213,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
         accessImpl = (AfterImageWriteAccessImpl) access;
         try (Scope s = accessImpl.getDebugContext().scope("JDKLibs")) {
-            /* On Windows, JDK libraries are in `<java.home>\bin` directory. */
-            Path jdkLibDir = Path.of(System.getProperty("java.home"), isWindows() ? "bin" : "lib");
+            Path jdkLibDir = JDKLibDirectoryProvider.singleton().getJDKLibDirectory();
             /* Copy JDK libraries needed to run the native image. */
             copyJDKLibraries(jdkLibDir);
             /*

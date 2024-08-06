@@ -26,15 +26,15 @@
 
 package com.oracle.graal.pointsto.standalone;
 
+import java.util.function.Predicate;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.JavaConstant;
 
-import java.util.function.Predicate;
+import jdk.vm.ci.meta.JavaConstant;
 
 public class StandaloneObjectScanner extends ObjectScanner {
 
@@ -49,7 +49,7 @@ public class StandaloneObjectScanner extends ObjectScanner {
     }
 
     @Override
-    protected void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
+    protected void scanEmbeddedRoot(JavaConstant root, Object position) {
         if (shouldScanConstant.test(root)) {
             super.scanEmbeddedRoot(root, position);
         }

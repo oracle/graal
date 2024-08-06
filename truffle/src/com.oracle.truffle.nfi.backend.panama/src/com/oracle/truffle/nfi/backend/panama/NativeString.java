@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import java.lang.foreign.MemorySegment;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-
-import java.lang.foreign.MemorySegment;
 
 @ExportLibrary(InteropLibrary.class)
 class NativeString implements TruffleObject {
@@ -69,9 +69,8 @@ class NativeString implements TruffleObject {
     }
 
     @ExportMessage
-    @SuppressWarnings("preview")
     String asString() {
-        return MemorySegment.ofAddress(this.nativePointer).getUtf8String(0);
+        return MemorySegment.ofAddress(this.nativePointer).getString(0);
     }
 
     @ExportMessage

@@ -32,6 +32,8 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
  * Reset an array field to a new empty array of the same type and length.
  */
 public final class NewEmptyArrayFieldValueTransformer implements FieldValueTransformer {
+    public static final FieldValueTransformer INSTANCE = new NewEmptyArrayFieldValueTransformer();
+
     @Override
     public Object transform(Object receiver, Object originalValue) {
         if (originalValue == null) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,8 @@ import java.io.PrintWriter;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
@@ -308,15 +310,22 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
         @Override
         public HttpResponse apply(HttpRequest request) {
             if ("GET".equals(request.getMethod())) {
-                String uri = request.getUri();
+                String uriStr = request.getUri();
+                URI uri;
+                try {
+                    uri = new URI(uriStr);
+                } catch (URISyntaxException ex) {
+                    return null;
+                }
+                String uriPath = uri.getPath();
                 String responseJson = null;
-                if ("/json/version".equals(uri)) {
+                if ("/json/version".equals(uriPath)) {
                     JSONObject version = new JSONObject();
                     version.put("Browser", "GraalVM");
                     version.put("Protocol-Version", "1.2");
                     responseJson = version.toString();
                 }
-                if ("/json".equals(uri)) {
+                if ("/json".equals(uriPath) || "/json/list".equals(uriPath)) {
                     JSONArray json = new JSONArray();
                     for (ServerPathSession serverPathSession : sessions.values()) {
                         final String path = serverPathSession.pathContainingToken;
@@ -371,7 +380,7 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
             if (iss == null) {
                 // Do the initial break for the first time only, do not break on reconnect
                 boolean debugBreak = Boolean.TRUE.equals(session.getDebugBrkAndReset());
-                iss = InspectServerSession.create(session.getContext(), debugBreak, session.getConnectionWatcher());
+                iss = InspectServerSession.create(session.getContext(), debugBreak, session.getConnectionWatcher(), () -> doClose(token));
             }
             InspectWebSocketHandler iws = new InspectWebSocketHandler(token, conn, iss, session.getConnectionWatcher());
             session.activeWS = iws;
@@ -461,6 +470,7 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
             if (iws != null) {
                 iws.connection.close(1001 /* Going Away */);
             }
+            sps.dispose();
         }
         if (sessions.isEmpty()) {
             try {
@@ -468,6 +478,14 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
             } catch (InterruptedException ex) {
                 throw new IOException(ex);
             }
+        }
+    }
+
+    private void doClose(Token token) {
+        try {
+            close(token);
+        } catch (IOException e) {
+            // Ignore, we're closing on dispose here
         }
     }
 
@@ -516,6 +534,18 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
 
         ConnectionWatcher getConnectionWatcher() {
             return connectionWatcher;
+        }
+
+        void dispose() {
+            InspectServerSession iss = serverSession.getAndSet(null);
+            if (iss != null) {
+                iss.dispose();
+            } else {
+                InspectWebSocketHandler iws = activeWS;
+                if (iws != null) {
+                    iws.disposeSession();
+                }
+            }
         }
     }
 
@@ -602,6 +632,10 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
 
         void onPong() {
             iss.context.logMessage("CLIENT: ", "PONG");
+        }
+
+        void disposeSession() {
+            iss.dispose();
         }
     }
 

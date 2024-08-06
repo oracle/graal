@@ -55,7 +55,8 @@ public final class ConcurrentLightHashSet {
 
     }
 
-    public static int size(Object elements) {
+    public static <U> int size(U holder, AtomicReferenceFieldUpdater<U, Object> updater) {
+        Object elements = updater.get(holder);
         if (elements == null) {
             /* No elements. */
             return 0;

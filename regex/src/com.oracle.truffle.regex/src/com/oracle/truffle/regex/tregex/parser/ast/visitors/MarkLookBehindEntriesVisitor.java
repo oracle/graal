@@ -54,13 +54,13 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
  * For all lookbehind assertions, mark all states where the assertion may begin. If an assertion may
  * begin before the root of the AST, the AST is wrapped into a non-capturing group and prepended
  * with a sequence of optional and non-optional any-char matchers, as shown in the following
- * example: /(?<=ab)/ is transformed to /(?:[_any_][_any_](?:|[_any_](?:|[_any_])))(?<=ab)/. The
- * sequence of non-optional any-char matchers is called "prefix", and is necessary for cases where
- * we want to start searching for a regex match on a random position in a string. When starting on
- * any other index than 0, we decrease the index by the length of the prefix (but stop at position
- * 0) and thereby guarantee that lookbehind matches are found, but no regex match prior to the
- * actual starting index is found. When starting at index 0, the prefix is ignored. When starting at
- * index 1, just the last element of the prefix is used, and so on.
+ * example: /(?&lt;=ab)/ is transformed to /(?:[_any_][_any_](?:|[_any_](?:|[_any_])))(?&lt;=ab)/.
+ * The sequence of non-optional any-char matchers is called "prefix", and is necessary for cases
+ * where we want to start searching for a regex match on a random position in a string. When
+ * starting on any other index than 0, we decrease the index by the length of the prefix (but stop
+ * at position 0) and thereby guarantee that lookbehind matches are found, but no regex match prior
+ * to the actual starting index is found. When starting at index 0, the prefix is ignored. When
+ * starting at index 1, just the last element of the prefix is used, and so on.
  * <p>
  * This entire mechanism assumes that all lookbehind assertion have a fixed length!
  *
@@ -80,7 +80,8 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
         curLookAheadBoundariesHit = StateSet.create(ast);
         newLookAheadBoundariesHit = StateSet.create(ast);
         setCanTraverseCaret(false);
-        setReverse();
+        setIgnoreMatchBoundaryAssertions(true);
+        setReverse(true);
     }
 
     public void run() {
@@ -162,5 +163,10 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
     @Override
     protected boolean isBuildingDFA() {
         return true;
+    }
+
+    @Override
+    protected boolean canPruneAfterUnconditionalFinalState() {
+        return false;
     }
 }

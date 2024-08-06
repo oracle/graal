@@ -101,7 +101,7 @@ You should wait for the GUI to appear before running the second command.
 
 ```bash
 $ $GRAALVM_EE_HOME/bin/idealgraphvisualizer &
-mx unittest -Dgraal.Dump BC_athrow0
+mx unittest -Djdk.graal.Dump BC_athrow0
 ```
 
 If you added `-XX:+UseJVMCICompiler` as described above, you will see IR for compilations requested by the VM itself in addition to compilations requested by the unit test.
@@ -122,7 +122,7 @@ complicate fine tuning options such as `-Xmx` and `-Xms` which now need to take 
 heap usage of the compiler into account. Secondly, the compiler will initially be executed
 in the interpreter and only get faster over time as its hot methods are JIT
 compiled. This is mitigated to some degree by forcing the GraalVM compiler
-to only be compiled by C1 (i.e., `-Dgraal.CompileGraalWithC1Only=true`) but this comes at the cost
+to only be compiled by C1 (i.e., `-Djdk.graal.CompileGraalWithC1Only=true`) but this comes at the cost
 of slower compilation speed.
 
 To address these issues, the GraalVM compiler can be deployed as a native shared library. The shared

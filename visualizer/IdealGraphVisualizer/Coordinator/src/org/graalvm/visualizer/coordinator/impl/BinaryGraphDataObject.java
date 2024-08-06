@@ -98,7 +98,7 @@ public class BinaryGraphDataObject extends MultiDataObject {
             FileImporter.asyncImportDocument(f.toPath(), true, true, null);
         } catch (IOException ex) {
             Exceptions.printStackTrace(
-                Exceptions.attachLocalizedMessage(ex, Bundle.ERR_OpeningFile(f.toPath(), ex.getLocalizedMessage()))
+                Exceptions.attachLocalizedMessage(ex, Bundle.ERR_OpeningFile(f.toPath(), ex.toString()))
             );
         }
     }

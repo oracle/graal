@@ -24,12 +24,9 @@
  */
 package com.oracle.svm.core.jdk;
 
-import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
-
-import org.graalvm.nativeimage.Platform;
-
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.container.Container;
 
 @TargetClass(className = "jdk.internal.platform.CgroupMetrics", onlyWith = PlatformHasClass.class)
 final class Target_jdk_internal_platform_CgroupMetrics {
@@ -40,6 +37,6 @@ final class Target_jdk_internal_platform_CgroupMetrics {
          * i.e., only relies on hosted options and other conditions that are constant. Inlining
          * before analysis ensures that the constant is propagated out to call sites.
          */
-        return UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class);
+        return Container.isSupported();
     }
 }

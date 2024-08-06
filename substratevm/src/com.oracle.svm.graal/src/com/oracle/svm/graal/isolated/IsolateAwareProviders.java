@@ -24,22 +24,12 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.graal.hosted.SubstrateProviders;
+import com.oracle.svm.graal.hosted.runtimecompilation.SubstrateProviders;
 import com.oracle.svm.graal.meta.SubstrateConstantFieldProvider;
 
 public final class IsolateAwareProviders extends SubstrateProviders {
-    private final SnippetReflectionProvider snippetReflection;
-
     public IsolateAwareProviders(AnalysisMetaAccess aMetaAccess, IsolateAwareMetaAccess sMetaAccess) {
-        super(sMetaAccess, new SubstrateConstantFieldProvider(aMetaAccess), new IsolateAwareConstantReflectionProvider(sMetaAccess));
-        this.snippetReflection = new IsolateAwareSnippetReflectionProvider();
-    }
-
-    @Override
-    public SnippetReflectionProvider getSnippetReflectionProvider() {
-        return snippetReflection;
+        super(sMetaAccess, new SubstrateConstantFieldProvider(aMetaAccess), new IsolateAwareConstantReflectionProvider(sMetaAccess), new IsolateAwareSnippetReflectionProvider());
     }
 }

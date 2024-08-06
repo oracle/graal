@@ -44,6 +44,7 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
@@ -105,6 +106,7 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
         }
     }
 
+    @Override
     @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
     protected void uninstall(IsolateThread thread) {
         assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
@@ -139,7 +141,7 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
         public void run(Threading.RecurringCallbackAccess access) {
             Pointer sp = readCallerStackPointer();
             CodePointer ip = readReturnAddress();
-            tryUninterruptibleStackWalk(ip, sp);
+            tryUninterruptibleStackWalk(ip, sp, false);
         }
     }
 }
@@ -153,7 +155,7 @@ class JfrRecurringCallbackExecutionSamplerFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (JfrFeature.isExecutionSamplerSupported() && !ImageSingletons.contains(JfrExecutionSampler.class)) {
+        if (JfrExecutionSamplerSupported.isSupported() && !ImageSingletons.contains(JfrExecutionSampler.class)) {
             JfrRecurringCallbackExecutionSampler sampler = new JfrRecurringCallbackExecutionSampler();
             ImageSingletons.add(JfrExecutionSampler.class, sampler);
 

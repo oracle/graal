@@ -24,31 +24,13 @@
  */
 package com.oracle.svm.core.cpufeature;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Set;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
-import org.graalvm.compiler.core.riscv64.ShadowedRISCV64;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node.InjectedNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.nodes.calc.IntegerTestNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -64,12 +46,26 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.IntegerTestNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.riscv64.RISCV64;
 
 @AutomaticallyRegisteredFeature
 class RuntimeCPUFeatureCheckFeature implements InternalFeature {
@@ -267,8 +263,8 @@ public final class RuntimeCPUFeatureCheckImpl {
         return EnumSet.of(first, rest);
     }
 
-    public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter SnippetReflectionProvider snippetReflection, Enum<?> first, Enum<?>... rest) {
-        return buildRuntimeCPUFeatureCheck(b, snippetReflection, toEnumSet(first, rest));
+    public static boolean intrinsify(GraphBuilderContext b, Enum<?> first, Enum<?>... rest) {
+        return buildRuntimeCPUFeatureCheck(b, toEnumSet(first, rest));
     }
 
     /**
@@ -281,7 +277,7 @@ public final class RuntimeCPUFeatureCheckImpl {
      * The root node built by this intrinsic includes a branch probability annotation. It must be
      * used directly as the condition of an {@code if} statement.
      */
-    private static boolean buildRuntimeCPUFeatureCheck(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, EnumSet<?> allFeatures) {
+    private static boolean buildRuntimeCPUFeatureCheck(GraphBuilderContext b, EnumSet<?> allFeatures) {
         // remove static features from the set
         EnumSet<?> features = removeStaticFeatures(allFeatures);
         if (features.isEmpty()) {
@@ -303,7 +299,7 @@ public final class RuntimeCPUFeatureCheckImpl {
              */
             MetaAccessProvider metaAccess = b.getMetaAccess();
             ResolvedJavaField field = getMaskField(metaAccess);
-            ConstantNode object = b.add(ConstantNode.forConstant(snippetReflection.forObject(instance()), metaAccess));
+            ConstantNode object = b.add(ConstantNode.forConstant(b.getSnippetReflection().forObject(instance()), metaAccess));
             ValueNode featureMask = b.add(LoadFieldNode.create(null, object, field));
             int mask = instance().computeFeatureMask(features);
             GraalError.guarantee(JavaKind.Int.equals(field.getType().getJavaKind()), "Expected field to be an int");
@@ -367,10 +363,8 @@ public final class RuntimeCPUFeatureCheckImpl {
             return ((AMD64) arch).getFeatures();
         } else if (arch instanceof AArch64) {
             return ((AArch64) arch).getFeatures();
-        } else if (ShadowedRISCV64.instanceOf(arch)) {
-            Method getFeatures = RISCV64ReflectionUtil.lookupMethod(ShadowedRISCV64.riscv64OrNull, "getFeatures");
-            getFeatures.setAccessible(true);
-            return (EnumSet<?>) RISCV64ReflectionUtil.invokeMethod(getFeatures, arch);
+        } else if (arch instanceof RISCV64) {
+            return ((RISCV64) arch).getFeatures();
         } else {
             throw GraalError.shouldNotReachHere("unsupported architecture"); // ExcludeFromJacocoGeneratedReport
         }

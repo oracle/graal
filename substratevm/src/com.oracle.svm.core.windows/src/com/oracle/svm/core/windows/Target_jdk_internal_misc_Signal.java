@@ -28,6 +28,7 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
 import java.util.Hashtable;
+import java.util.Locale;
 
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.word.WordFactory;
@@ -117,7 +118,7 @@ class SignalDispatcher implements Runnable {
         if (signalDispatcherThread.getState() == Thread.State.NEW) {
             if (!jdkMiscSignalInit()) {
                 VMError.shouldNotReachHere("Native state initialization for jdk.internal.misc.Signal failed with error code: 0x" +
-                                Integer.toUnsignedString(WinBase.GetLastError(), 16).toUpperCase());
+                                Integer.toUnsignedString(WinBase.GetLastError(), 16).toUpperCase(Locale.ROOT));
             }
             RuntimeSupport.getRuntimeSupport().addTearDownHook(isFirstIsolate -> osTerminateSignalThread());
             signalDispatcherThread.start();

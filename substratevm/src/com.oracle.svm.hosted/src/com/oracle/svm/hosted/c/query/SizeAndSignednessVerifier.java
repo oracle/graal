@@ -25,27 +25,30 @@
 package com.oracle.svm.hosted.c.query;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Array;
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.constant.CEnumConstant;
 import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
 import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 
-import com.oracle.svm.core.c.enums.EnumArrayLookup;
-import com.oracle.svm.core.c.enums.EnumMapLookup;
-import com.oracle.svm.core.c.enums.EnumNoLookup;
-import com.oracle.svm.core.c.enums.EnumRuntimeData;
+import com.oracle.svm.core.c.enums.CEnumArrayLookup;
+import com.oracle.svm.core.c.enums.CEnumMapLookup;
+import com.oracle.svm.core.c.enums.CEnumNoLookup;
+import com.oracle.svm.core.c.enums.CEnumRuntimeData;
 import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumConstantInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
-import com.oracle.svm.hosted.c.info.EnumValueInfo;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
@@ -53,6 +56,10 @@ import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.util.ClassUtil;
 
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -73,7 +80,7 @@ public final class SizeAndSignednessVerifier extends NativeInfoTreeVisitor {
         if (constantInfo.getKind() != ElementKind.STRING && constantInfo.getKind() != ElementKind.BYTEARRAY) {
             ResolvedJavaMethod method = constantInfo.getAnnotatedElement();
             ResolvedJavaType returnType = AccessorInfo.getReturnType(method);
-            checkSizeAndSignedness(constantInfo, returnType, method, true);
+            verifySize(constantInfo, returnType, method, true);
         }
     }
 
@@ -95,8 +102,7 @@ public final class SizeAndSignednessVerifier extends NativeInfoTreeVisitor {
     private void checkAccessorLocationIdentity(List<ElementInfo> children) {
         AccessorInfo firstAccessorInfo = null;
         for (ElementInfo child : children) {
-            if (child instanceof AccessorInfo) {
-                AccessorInfo accessorInfo = (AccessorInfo) child;
+            if (child instanceof AccessorInfo accessorInfo) {
                 if (accessorInfo.getAccessorKind() != AccessorInfo.AccessorKind.OFFSET) {
                     if (firstAccessorInfo == null) {
                         firstAccessorInfo = accessorInfo;
@@ -118,64 +124,60 @@ public final class SizeAndSignednessVerifier extends NativeInfoTreeVisitor {
         ResolvedJavaType returnType = accessorInfo.getReturnType();
 
         if (accessorInfo.getParent() instanceof StructBitfieldInfo) {
-            StructBitfieldInfo bitfieldInfo = (StructBitfieldInfo) accessorInfo.getParent();
-            switch (accessorInfo.getAccessorKind()) {
-                case GETTER:
-                case SETTER:
-                    checkSignedness(bitfieldInfo.isUnsigned(), returnType, method);
-                    break;
-                default:
-                    assert false;
-            }
+            assert accessorInfo.getAccessorKind() == AccessorInfo.AccessorKind.GETTER || accessorInfo.getAccessorKind() == AccessorInfo.AccessorKind.SETTER;
         } else {
             SizableInfo sizableInfo = (SizableInfo) accessorInfo.getParent();
             switch (accessorInfo.getAccessorKind()) {
-                case ADDRESS:
+                case ADDRESS -> {
                     assert nativeLibs.isPointerBase(returnType);
-                    break;
-                case OFFSET:
-                    assert returnType.getJavaKind().isNumericInteger() || nativeLibs.isUnsigned(returnType);
-                    break;
-                case GETTER:
-                    checkSizeAndSignedness(sizableInfo, returnType, method, true);
-                    break;
-                case SETTER:
+                }
+                case OFFSET -> {
+                    assert nativeLibs.isIntegerType(returnType);
+                }
+                case GETTER -> {
+                    verifySize(sizableInfo, returnType, method, true);
+                    verifySignedness(sizableInfo, returnType, method);
+                }
+                case SETTER -> {
                     assert returnType.getJavaKind() == JavaKind.Void;
                     ResolvedJavaType valueType = accessorInfo.getValueParameterType();
-                    checkSizeAndSignedness(sizableInfo, valueType, method, false);
-                    break;
+                    verifySize(sizableInfo, valueType, method, false);
+                    verifySignedness(sizableInfo, valueType, method);
+                }
             }
         }
     }
 
     @Override
     protected void visitEnumInfo(EnumInfo enumInfo) {
-        super.visitEnumInfo(enumInfo);
+        verifyCEnumValueMethodReturnTypes(enumInfo);
+        verifyCEnumLookupMethodArguments(enumInfo);
 
+        CEnumRuntimeData runtimeData = createCEnumRuntimeData(enumInfo);
+        enumInfo.setRuntimeData(runtimeData);
+
+        super.visitEnumInfo(enumInfo);
+    }
+
+    private CEnumRuntimeData createCEnumRuntimeData(EnumInfo enumInfo) {
         Map<Enum<?>, Long> javaToC = new HashMap<>();
         Map<Long, Enum<?>> cToJava = new HashMap<>();
 
-        @SuppressWarnings("rawtypes")
-        Class<? extends Enum> enumClass = null;
         long minLookupValue = Long.MAX_VALUE;
         long maxLookupValue = Long.MIN_VALUE;
 
+        /* Collect all the CEnumConstants. */
         for (ElementInfo child : enumInfo.getChildren()) {
-            if (child instanceof EnumConstantInfo) {
-                EnumConstantInfo valueInfo = (EnumConstantInfo) child;
-                long cValue = (Long) valueInfo.getValueInfo().getProperty();
+            if (child instanceof EnumConstantInfo valueInfo) {
+                long cValue = limitValueToEnumBytes(enumInfo, valueInfo);
                 Enum<?> javaValue = valueInfo.getEnumValue();
+                assert !javaToC.containsKey(javaValue);
+                javaToC.put(javaValue, cValue);
 
-                assert enumClass == null || enumClass == javaValue.getClass();
-                enumClass = javaValue.getClass();
-
-                assert javaToC.get(javaValue) == null;
-                javaToC.put(javaValue, Long.valueOf(cValue));
-
-                if (enumInfo.getNeedsLookup() && valueInfo.getIncludeInLookup()) {
-                    if (cToJava.get(cValue) != null) {
-                        addError("C value is not unique, so reverse lookup from C to Java is not possible: " + cToJava.get(cValue) + " and " + javaValue + " hava same C value " + cValue,
-                                        valueInfo.getAnnotatedElement());
+                if (enumInfo.hasCEnumLookupMethods() && valueInfo.getIncludeInLookup()) {
+                    if (cToJava.containsKey(cValue)) {
+                        addError("C value is not unique, so reverse lookup from C to Java is not possible: " + cToJava.get(cValue) + " and " + javaValue + " have the same C value " + cValue + ". " +
+                                        "Please exclude one of the values from the lookup (see @" + CEnumConstant.class.getSimpleName() + " for more details).", valueInfo.getAnnotatedElement());
                     }
                     cToJava.put(cValue, javaValue);
                     minLookupValue = Math.min(minLookupValue, cValue);
@@ -184,6 +186,7 @@ public final class SizeAndSignednessVerifier extends NativeInfoTreeVisitor {
             }
         }
 
+        /* Create a long[] that contains the values for the C enum constants. */
         long[] javaToCArray = new long[javaToC.size()];
         for (Map.Entry<Enum<?>, Long> entry : javaToC.entrySet()) {
             int idx = entry.getKey().ordinal();
@@ -191,76 +194,126 @@ public final class SizeAndSignednessVerifier extends NativeInfoTreeVisitor {
             javaToCArray[idx] = entry.getValue();
         }
 
-        EnumRuntimeData runtimeData;
-        if (cToJava.size() > 0) {
-            assert minLookupValue <= maxLookupValue;
-            long spread = maxLookupValue - minLookupValue;
-            assert spread >= cToJava.size() - 1;
-
-            /*
-             * We have a choice between an array-based lookup and keeping the HashMap. Since HashMap
-             * has a quite high memory footprint, an array is more compact even when most array
-             * elements are null.
-             */
-            if (spread < cToJava.size() * 5L && spread >= 0 && spread < Integer.MAX_VALUE) {
-                long offset = minLookupValue;
-                Enum<?>[] cToJavaArray = (Enum[]) Array.newInstance(enumClass, (int) spread + 1);
-
-                for (Map.Entry<Long, Enum<?>> entry : cToJava.entrySet()) {
-                    long idx = entry.getKey() - offset;
-                    assert idx >= 0 && idx < cToJavaArray.length;
-                    assert cToJavaArray[(int) idx] == null;
-                    cToJavaArray[(int) idx] = entry.getValue();
-                }
-
-                runtimeData = new EnumArrayLookup(javaToCArray, offset, cToJavaArray);
-            } else {
-                runtimeData = new EnumMapLookup(javaToCArray, cToJava);
-            }
-        } else {
-            runtimeData = new EnumNoLookup(javaToCArray);
+        int enumBytesInC = enumInfo.getSizeInBytes();
+        boolean isCEnumUnsigned = enumInfo.isUnsigned();
+        if (cToJava.isEmpty()) {
+            return new CEnumNoLookup(javaToCArray, enumBytesInC, isCEnumUnsigned);
         }
-        enumInfo.setRuntimeData(runtimeData);
+
+        /* Compute how spread out the C enum values are. */
+        assert minLookupValue <= maxLookupValue;
+        BigInteger bigIntSpread = BigInteger.valueOf(maxLookupValue).subtract(BigInteger.valueOf(minLookupValue));
+        assert bigIntSpread.compareTo(BigInteger.valueOf(cToJava.size() - 1)) >= 0;
+        long spread = bigIntSpread.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0 ? Long.MAX_VALUE : bigIntSpread.longValue();
+
+        /*
+         * Decide between array- and hash-map-based lookup. A hash map has a high memory footprint,
+         * so an array is more compact even if most elements are null.
+         */
+        if (spread < cToJava.size() * 5L && spread < Integer.MAX_VALUE - 10) {
+            int arraySize = NumUtil.safeToInt(spread + 1);
+            Enum<?>[] cToJavaArray = new Enum<?>[arraySize];
+            for (Map.Entry<Long, Enum<?>> entry : cToJava.entrySet()) {
+                int idx = NumUtil.safeToInt(entry.getKey() - minLookupValue);
+                assert idx >= 0 && idx < cToJavaArray.length;
+                assert cToJavaArray[idx] == null;
+                cToJavaArray[idx] = entry.getValue();
+            }
+            return new CEnumArrayLookup(javaToCArray, enumBytesInC, isCEnumUnsigned, minLookupValue, cToJavaArray);
+        }
+        return new CEnumMapLookup(javaToCArray, enumBytesInC, isCEnumUnsigned, Map.copyOf(cToJava));
     }
 
-    @Override
-    protected void visitEnumValueInfo(EnumValueInfo valueInfo) {
-        ResolvedJavaMethod method = valueInfo.getAnnotatedElement();
-        ResolvedJavaType returnType = AccessorInfo.getReturnType(method);
-
-        EnumInfo enumInfo = (EnumInfo) valueInfo.getParent();
-        for (ElementInfo info : enumInfo.getChildren()) {
-            if (info instanceof EnumConstantInfo) {
-                EnumConstantInfo constantInfo = (EnumConstantInfo) info;
-                checkSizeAndSignedness(constantInfo, returnType, method, true);
-            }
+    private void verifyCEnumValueMethodReturnTypes(EnumInfo enumInfo) {
+        for (ResolvedJavaMethod method : enumInfo.getCEnumValueMethods()) {
+            ResolvedJavaType returnType = AccessorInfo.getReturnType(method);
+            verifySize(enumInfo, returnType, method, true);
         }
     }
 
-    private void checkSizeAndSignedness(SizableInfo sizableInfo, ResolvedJavaType type, ResolvedJavaMethod method, boolean isReturn) {
+    private void verifyCEnumLookupMethodArguments(EnumInfo enumInfo) {
+        for (ResolvedJavaMethod method : enumInfo.getCEnumLookupMethods()) {
+            ResolvedJavaType arg0 = AccessorInfo.getParameterType(method, 0);
+            verifySize(enumInfo, arg0, method, false);
+        }
+    }
+
+    private void verifySize(SizableInfo sizableInfo, ResolvedJavaType type, ResolvedJavaMethod method, boolean isReturn) {
         int declaredSize = getSizeInBytes(type);
-        int actualSize = sizableInfo.isObject() ? getSizeInBytes(JavaKind.Object) : sizableInfo.getSizeInfo().getProperty();
-        if (declaredSize != actualSize) {
-            Class<? extends Annotation> supressionAnnotation = (declaredSize > actualSize) ^ isReturn ? AllowNarrowingCast.class : AllowWideningCast.class;
-            if (method.getAnnotation(supressionAnnotation) == null) {
-                addError("Type " + type.toJavaName(false) + " has a size of " + declaredSize + " bytes, but accessed C value has a size of " + actualSize +
-                                " bytes; to suppress this error, use the annotation @" + ClassUtil.getUnqualifiedName(supressionAnnotation), method);
+
+        boolean allowNarrowingCast = AnnotationAccess.isAnnotationPresent(method, AllowNarrowingCast.class);
+        if (allowNarrowingCast) {
+            if (sizableInfo.isObject()) {
+                addError(ClassUtil.getUnqualifiedName(AllowNarrowingCast.class) + " cannot be used on fields that have an object type.", method);
+            } else if (sizableInfo.getKind() == ElementKind.FLOAT) {
+                addError(ClassUtil.getUnqualifiedName(AllowNarrowingCast.class) + " cannot be used on fields of type float or double.", method);
             }
         }
 
-        checkSignedness(sizableInfo.isUnsigned(), type, method);
+        boolean allowWideningCast = AnnotationAccess.isAnnotationPresent(method, AllowWideningCast.class);
+        if (allowWideningCast) {
+            if (sizableInfo.isObject()) {
+                addError(ClassUtil.getUnqualifiedName(AllowWideningCast.class) + " cannot be used on fields that have an object type.", method);
+            } else if (sizableInfo.getKind() == ElementKind.FLOAT) {
+                addError(ClassUtil.getUnqualifiedName(AllowWideningCast.class) + " cannot be used on fields of type float or double.", method);
+            }
+        }
+
+        int actualSize = sizableInfo.isObject() ? getSizeInBytes(JavaKind.Object) : sizableInfo.getSizeInBytes();
+        if (declaredSize != actualSize) {
+            boolean narrow = declaredSize > actualSize;
+            if (isReturn) {
+                narrow = !narrow;
+            }
+
+            Class<? extends Annotation> suppressionAnnotation = narrow ? AllowNarrowingCast.class : AllowWideningCast.class;
+            if (method.getAnnotation(suppressionAnnotation) == null) {
+                addError("Type " + type.toJavaName(false) + " has a size of " + declaredSize + " bytes, but accessed C value has a size of " + actualSize +
+                                " bytes; to suppress this error, use the annotation @" + ClassUtil.getUnqualifiedName(suppressionAnnotation), method);
+            }
+        }
     }
 
-    private void checkSignedness(boolean isUnsigned, ResolvedJavaType type, ResolvedJavaMethod method) {
-        if (isSigned(type)) {
-            if (isUnsigned) {
-                addError("Type " + type.toJavaName(false) + " is signed, but accessed C value is unsigned", method);
-            }
-        } else if (nativeLibs.isWordBase(type)) {
-            /* every Word type other than Signed is assumed to be unsigned. */
-            if (!isUnsigned) {
-                addError("Type " + type.toJavaName(false) + " is unsigned, but accessed C value is signed", method);
+    private void verifySignedness(SizableInfo sizableInfo, ResolvedJavaType type, ResolvedJavaMethod method) {
+        if (Options.VerifyCInterfaceSignedness.getValue() && sizableInfo.getKind() == ElementKind.INTEGER) {
+            boolean isJavaTypeSigned = nativeLibs.isSigned(type);
+            boolean isCTypeSigned = sizableInfo.getSignednessInfo().getProperty() == SizableInfo.SignednessValue.SIGNED;
+            if (isJavaTypeSigned != isCTypeSigned) {
+                addError("Java type " + type.toJavaName(false) + " is " + (isJavaTypeSigned ? "signed" : "unsigned") +
+                                ", while the accessed C value is " + (isCTypeSigned ? "signed" : "unsigned"), method);
             }
         }
+    }
+
+    /**
+     * The value of the constant was already sign- or zero-extended to 64-bit when it was parsed
+     * (based on the size and signedness of the constant itself). However, it can happen that the
+     * data type of the C enum is smaller than the data type of the constant. Therefore, we
+     * explicitly limit the bits of the constant to the bits that fit into the type of the C enum.
+     */
+    private long limitValueToEnumBytes(EnumInfo enumInfo, EnumConstantInfo constantInfo) {
+        int enumBits = enumInfo.getSizeInBytes() * Byte.SIZE;
+
+        long result = constantInfo.getValue();
+        if (constantInfo.isUnsigned()) {
+            result = CodeUtil.zeroExtend(result, enumBits);
+        } else {
+            result = CodeUtil.signExtend(result, enumBits);
+        }
+
+        if (result != constantInfo.getValue()) {
+            addError("The value of a C constant does not fit into the C data type of the @" + CEnum.class.getSimpleName() + " ('" + enumInfo.getName() + "'). " +
+                            "Please specify a larger C data type in @" + CEnum.class.getSimpleName() + "(value = \"...\").", enumInfo, constantInfo);
+        }
+        return result;
+    }
+
+    public static class Options {
+        /**
+         * Only verifies the signedness of accessors at the moment. The signedness of constants and
+         * enums in C is often just up to the compiler and therefore not particularly useful.
+         */
+        @Option(help = "Verify the signedness of Java and C types that are used in the C interface.", type = OptionType.Debug)//
+        public static final HostedOptionKey<Boolean> VerifyCInterfaceSignedness = new HostedOptionKey<>(false);
     }
 }

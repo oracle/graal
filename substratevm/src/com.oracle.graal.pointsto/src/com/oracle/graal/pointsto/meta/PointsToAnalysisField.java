@@ -27,9 +27,9 @@ package com.oracle.graal.pointsto.meta;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeFlow;
+import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -55,7 +55,7 @@ public class PointsToAnalysisField extends AnalysisField {
     /** Create an unique, per field, context insensitive store. */
     private StoreInstanceFieldTypeFlow createContextInsensitiveStore(PointsToAnalysis bb, BytecodePosition originalLocation) {
         /* The receiver object flow is the field declaring type flow. */
-        AllInstantiatedTypeFlow objectFlow = declaringClass.getTypeFlow(bb, false);
+        var objectFlow = declaringClass.getTypeFlow(bb, false);
         /*
          * The context insensitive store doesn't have a value flow, it will instead be linked with
          * the value flows at all the locations where it is swapped in.
@@ -77,5 +77,29 @@ public class PointsToAnalysisField extends AnalysisField {
     public void cleanupAfterAnalysis() {
         super.cleanupAfterAnalysis();
         contextInsensitiveStore.set(null);
+    }
+
+    @Override
+    public boolean registerAsUnsafeAccessed(Object reason) {
+        if (super.registerAsUnsafeAccessed(reason)) {
+            if (fieldType.getStorageKind().isPrimitive()) {
+                /*
+                 * Primitive type states are not propagated through unsafe loads/stores. Instead,
+                 * both primitive fields that are unsafe written and all unsafe loads for primitives
+                 * are pre-saturated.
+                 */
+                saturatePrimitiveField();
+            }
+            ((PointsToAnalysis) getUniverse().getBigbang()).forceUnsafeUpdate(this);
+            return true;
+        }
+        return false;
+    }
+
+    public void saturatePrimitiveField() {
+        assert fieldType.isPrimitive() || fieldType.isWordType() : this;
+        var bb = ((PointsToAnalysis) getUniverse().getBigbang());
+        initialFlow.addState(bb, TypeState.anyPrimitiveState());
+        sinkFlow.addState(bb, TypeState.anyPrimitiveState());
     }
 }

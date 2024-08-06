@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr.logging;
 
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -92,7 +93,7 @@ final class JfrLogConfiguration {
         for (JfrLogSelection selection : selections) {
             if (!selection.matchesATagSet) {
                 throw new IllegalArgumentException("No tag set matches tag combination " +
-                                selection.tags.toString().toLowerCase() + (selection.wildcard ? "*" : "") + " for FlightRecorderLogging");
+                                selection.tags.toString().toLowerCase(Locale.ROOT) + (selection.wildcard ? "*" : "") + " for FlightRecorderLogging");
             }
         }
     }
@@ -135,7 +136,7 @@ final class JfrLogConfiguration {
             if ((equalsIndex = str.indexOf('=')) > 0) {
                 String value = str.substring(equalsIndex + 1);
                 try {
-                    level = JfrLogLevel.valueOf(value.toUpperCase());
+                    level = JfrLogLevel.valueOf(value.toUpperCase(Locale.ROOT));
                 } catch (IllegalArgumentException | NullPointerException e) {
                     throw new IllegalArgumentException("Invalid log level '" + value + "' for FlightRecorderLogging.", e);
                 }
@@ -155,7 +156,7 @@ final class JfrLogConfiguration {
 
             for (String s : tagsStr.split("\\+")) {
                 try {
-                    tags.add(JfrLogTag.valueOf(s.toUpperCase()));
+                    tags.add(JfrLogTag.valueOf(s.toUpperCase(Locale.ROOT)));
                 } catch (IllegalArgumentException | NullPointerException e) {
                     throw new IllegalArgumentException("Invalid log tag '" + s + "' for FlightRecorderLogging.", e);
                 }

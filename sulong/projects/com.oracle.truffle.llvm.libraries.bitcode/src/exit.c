@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -68,9 +68,6 @@ void __clear_exit_handlers() {
     }
     head.next = NULL;
 }
-
-// for now, treat everything running under Sulong as a single dynamic shared object
-void *__dso_handle = NULL;
 
 int __cxa_atexit(void (*func)(void *), void *arg, void *dso) {
     struct entry *entry = entry = (struct entry *) malloc(sizeof(struct entry));

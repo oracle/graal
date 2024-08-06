@@ -24,18 +24,24 @@
  */
 package com.oracle.svm.configure.config;
 
+import static com.oracle.svm.core.configure.ConfigurationParser.JNI_KEY;
+import static com.oracle.svm.core.configure.ConfigurationParser.REFLECTION_KEY;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
-import com.oracle.svm.core.util.json.JsonPrintable;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class ConfigurationSet {
     @FunctionalInterface
@@ -66,7 +72,7 @@ public class ConfigurationSet {
     }
 
     public ConfigurationSet() {
-        this(new TypeConfiguration(), new TypeConfiguration(), new ResourceConfiguration(), new ProxyConfiguration(), new SerializationConfiguration(),
+        this(new TypeConfiguration(REFLECTION_KEY), new TypeConfiguration(JNI_KEY), new ResourceConfiguration(), new ProxyConfiguration(), new SerializationConfiguration(),
                         new PredefinedClassesConfiguration(new Path[0], hash -> false));
     }
 
@@ -147,13 +153,47 @@ public class ConfigurationSet {
     }
 
     public static List<Path> writeConfiguration(Function<ConfigurationFile, Path> configFilePathResolver, Function<ConfigurationFile, JsonPrintable> configSupplier) throws IOException {
+        return writeConfigurationToAllPaths(cf -> Collections.singleton(configFilePathResolver.apply(cf)), configSupplier);
+    }
+
+    public static List<Path> writeConfigurationToAllPaths(Function<ConfigurationFile, Set<Path>> configFilePathResolver, Function<ConfigurationFile, JsonPrintable> configSupplier) throws IOException {
         List<Path> writtenFiles = new ArrayList<>();
-        for (ConfigurationFile configFile : ConfigurationFile.agentGeneratedFiles()) {
-            Path path = configFilePathResolver.apply(configFile);
+        ConfigurationFile reachabilityMetadataFile = ConfigurationFile.REACHABILITY_METADATA;
+        for (Path path : configFilePathResolver.apply(reachabilityMetadataFile)) {
             writtenFiles.add(path);
             JsonWriter writer = new JsonWriter(path);
-            configSupplier.apply(configFile).printJson(writer);
-            writer.newline();
+            writer.appendObjectStart().indent().newline();
+            boolean first = true;
+            for (ConfigurationFile configFile : ConfigurationFile.agentGeneratedFiles()) {
+                JsonPrintable configuration = configSupplier.apply(configFile);
+                if (configuration instanceof ConfigurationBase<?, ?> configurationBase && !configurationBase.supportsCombinedFile()) {
+                    if (!configurationBase.isEmpty()) {
+                        /* Fallback to legacy printing */
+                        for (Path specificPath : configFilePathResolver.apply(configFile)) {
+                            writtenFiles.add(specificPath);
+                            JsonWriter specificWriter = new JsonWriter(specificPath);
+                            configurationBase.printLegacyJson(specificWriter);
+                            specificWriter.newline();
+                            specificWriter.close();
+                        }
+                    }
+                } else {
+                    if (first) {
+                        first = false;
+                    } else {
+                        writer.appendSeparator().newline();
+                    }
+                    if (!configFile.equals(ConfigurationFile.RESOURCES)) {
+                        /*
+                         * Resources are printed at the top level of the object, not in a defined
+                         * field
+                         */
+                        writer.quote(configFile.getFieldName()).appendFieldSeparator();
+                    }
+                    configSupplier.apply(configFile).printJson(writer);
+                }
+            }
+            writer.unindent().newline().appendObjectEnd();
             writer.close();
         }
         return writtenFiles;

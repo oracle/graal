@@ -41,6 +41,9 @@
 package com.oracle.truffle.regex.errors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.parser.flavors.PythonREMode;
+
+import java.util.regex.Pattern;
 
 public interface PyErrorMessages {
 
@@ -72,6 +75,7 @@ public interface PyErrorMessages {
     String UNTERMINATED_NAME = "missing ), unterminated name";
     String UNTERMINATED_NAME_ANGLE_BRACKET = "missing >, unterminated name";
     String UNTERMINATED_SUBPATTERN = "missing ), unterminated subpattern";
+    String GLOBAL_FLAGS_NOT_AT_START = "global flags not at the start of the expression";
 
     @TruffleBoundary
     static String badCharacterInGroupName(String name) {
@@ -143,8 +147,29 @@ public interface PyErrorMessages {
         return "unknown extension ?" + new String(Character.toChars(chr));
     }
 
+    Pattern NON_ASCII_CHARACTERS = Pattern.compile("\\P{ASCII}");
+    Pattern NON_PRINTABLE_CHARACTERS = Pattern.compile("\\P{Print}", Pattern.UNICODE_CHARACTER_CLASS);
+
     @TruffleBoundary
-    static String unknownGroupName(String name) {
-        return "unknown group name '" + name + "'";
+    private static String repr(String str, PythonREMode mode) {
+        Pattern charsToReplace = switch (mode) {
+            case Bytes -> NON_ASCII_CHARACTERS;
+            case Str -> NON_PRINTABLE_CHARACTERS;
+        };
+        return charsToReplace.matcher(str).replaceAll(res -> {
+            int cp = res.group().codePointAt(0);
+            if (cp <= 0xff) {
+                return String.format("\\\\x%02x", cp);
+            } else if (cp <= 0xffff) {
+                return String.format("\\\\u%04x", cp);
+            } else {
+                return String.format("\\\\U%08x", cp);
+            }
+        });
+    }
+
+    @TruffleBoundary
+    static String unknownGroupName(String name, PythonREMode mode) {
+        return "unknown group name '" + repr(name, mode) + "'";
     }
 }

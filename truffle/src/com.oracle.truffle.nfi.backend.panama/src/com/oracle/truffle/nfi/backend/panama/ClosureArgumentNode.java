@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import java.lang.foreign.MemorySegment;
+
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-
-import java.lang.foreign.MemorySegment;
 
 abstract class ClosureArgumentNode extends Node {
 
@@ -117,9 +117,8 @@ abstract class ClosureArgumentNode extends Node {
         }
 
         @Fallback
-        @SuppressWarnings("preview")
         Object doString(Object arg) {
-            return ((MemorySegment) arg).getUtf8String(0);
+            return ((MemorySegment) arg).getString(0);
         }
     }
 }

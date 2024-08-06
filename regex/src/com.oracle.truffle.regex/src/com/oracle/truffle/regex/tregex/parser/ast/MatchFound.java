@@ -79,6 +79,11 @@ public class MatchFound extends Term {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
+    /**
+     * Points to the body of a regular expression when this node is treated as an initial state of
+     * an NFA. If this node represents an initial state, then this points to the first expression.
+     * If this node represents a final state, then this points to the last expression.
+     */
     public RegexASTNode getNext() {
         return next;
     }

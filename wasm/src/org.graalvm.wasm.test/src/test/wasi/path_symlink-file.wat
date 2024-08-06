@@ -46,7 +46,7 @@
     (data (i32.const 8) "link")
     (export "memory" (memory 0))
     (func (export "_main") (result i32) (local $ret i32)
-        ;; Create a hard link
+        ;; Create a symbolic link
         (call $path_symlink
             (i32.const 0) ;; pointer to "file.txt"
             (i32.const 8) ;; pointer length
@@ -63,7 +63,7 @@
             return
         end
 
-        ;; Remove hard link
+        ;; Remove symbolic link
         (call $path_unlink_file
             (i32.const 3) ;; pre-opened "test" directory fd
             (i32.const 8) ;; pointer to "link"

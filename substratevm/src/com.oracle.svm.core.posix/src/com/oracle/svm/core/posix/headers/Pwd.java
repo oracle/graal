@@ -49,15 +49,15 @@ public class Pwd {
 
         @CField
         CCharPointer pw_dir();
+
+        @CField
+        int pw_gid();
     }
 
     @CPointerTo(passwd.class)
     public interface passwdPointer extends Pointer {
         passwd read();
     }
-
-    @CFunction
-    public static native passwd getpwuid(int __uid);
 
     @CFunction
     public static native int getpwuid_r(int __uid, passwd pwd, CCharPointer buf, UnsignedWord buflen, passwdPointer result);

@@ -123,7 +123,7 @@ public final class ImportAction extends SystemAction {
                     FileImporter.asyncImportDocument(file.toPath(), true, true, null);
                 } catch (IOException ex) {
                     Exceptions.printStackTrace(
-                        Exceptions.attachLocalizedMessage(ex, Bundle.ERR_OpeningFile(file.toPath(), ex.getLocalizedMessage()))
+                        Exceptions.attachLocalizedMessage(ex, Bundle.ERR_OpeningFile(file.toPath(), ex.toString()))
                     );
                 }
             }

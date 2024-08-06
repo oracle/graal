@@ -24,26 +24,30 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.StandardOp;
-import org.graalvm.compiler.lir.amd64.AMD64BlockEndOp;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.StandardOp;
+import jdk.graal.compiler.lir.amd64.AMD64BlockEndOp;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.meta.Value;
 
 @Opcode("RETURN")
-public final class AMD64ReturnOp extends AMD64BlockEndOp implements StandardOp.BlockEndOp {
+public class AMD64ReturnOp extends AMD64BlockEndOp implements StandardOp.BlockEndOp {
     public static final LIRInstructionClass<AMD64ReturnOp> TYPE = LIRInstructionClass.create(AMD64ReturnOp.class);
     @Use({REG, ILLEGAL}) protected Value x;
 
-    public AMD64ReturnOp(Value x) {
-        super(TYPE);
+    protected AMD64ReturnOp(LIRInstructionClass<? extends AMD64BlockEndOp> type, Value x) {
+        super(type);
         this.x = x;
+    }
+
+    public AMD64ReturnOp(Value x) {
+        this(TYPE, x);
     }
 
     @Override
@@ -57,7 +61,11 @@ public final class AMD64ReturnOp extends AMD64BlockEndOp implements StandardOp.B
              */
             masm.vzeroupper();
         }
-        masm.ret(0);
+        emitReturn(masm);
         crb.frameContext.returned(crb);
+    }
+
+    protected void emitReturn(AMD64MacroAssembler masm) {
+        masm.ret(0);
     }
 }

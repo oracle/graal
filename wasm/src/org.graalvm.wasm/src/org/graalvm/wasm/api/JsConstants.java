@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,7 +67,7 @@ public final class JsConstants {
     private static final int TABLE_SIZE_LIMIT = 10000000;
     private static final int MEMORY_SIZE_LIMIT = 32767;
 
-    static final ModuleLimits JS_LIMITS = new ModuleLimits(
+    public static final ModuleLimits JS_LIMITS = new ModuleLimits(
                     MODULE_SIZE_LIMIT,
                     TYPE_COUNT_LIMIT,
                     FUNCTION_COUNT_LIMIT,

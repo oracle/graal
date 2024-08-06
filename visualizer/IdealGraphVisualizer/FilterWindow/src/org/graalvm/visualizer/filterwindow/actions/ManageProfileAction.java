@@ -250,7 +250,7 @@ public class ManageProfileAction extends AbstractAction implements ActionListene
             }
         } catch (IOException ex) {
             NotifyDescriptor.Message msg = new NotifyDescriptor.Message(
-                Bundle.PROFILE_ErrorSavingProfile(ex.getLocalizedMessage())
+                Bundle.PROFILE_ErrorSavingProfile(ex.toString())
             );
             DialogDisplayer.getDefault().notifyLater(msg);
         }

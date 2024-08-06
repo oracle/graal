@@ -62,6 +62,11 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
         return original;
     }
 
+    @Override
+    public ResolvedJavaType unwrapTowardsOriginalType() {
+        return original;
+    }
+
     public void addInjectedField(ResolvedJavaField field) {
         for (int i = 0; i < instanceFields.length; i++) {
             ResolvedJavaField[] newFields = Arrays.copyOf(instanceFields[i], instanceFields[i].length + 1, ResolvedJavaField[].class);
@@ -291,11 +296,6 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     @Override
     public ResolvedJavaType getHostClass() {
         return original.getHostClass();
-    }
-
-    @Override
-    public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(original);
     }
 
     @Override

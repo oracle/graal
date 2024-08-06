@@ -24,20 +24,11 @@
  */
 package com.oracle.svm.hosted.thread;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -45,33 +36,17 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 public class CEntryPointFeature implements InternalFeature {
-
-    private int vmThreadSize = -1;
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            return Arrays.asList(VMThreadMTFeature.class);
-        }
-        return Collections.emptyList();
-    }
-
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess config) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreadMTFeature threadFeature = ImageSingletons.lookup(VMThreadMTFeature.class);
-            vmThreadSize = threadFeature.getVMThreadSize();
-        }
-    }
-
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-
-        CEntryPointSnippets.registerLowerings(options, providers, vmThreadSize, lowerings);
+        CEntryPointSnippets.registerLowerings(options, providers, lowerings);
     }
 
     @Override

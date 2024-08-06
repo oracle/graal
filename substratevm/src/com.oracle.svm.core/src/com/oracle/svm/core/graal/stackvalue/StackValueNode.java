@@ -24,35 +24,24 @@
  */
 package com.oracle.svm.core.graal.stackvalue;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.PermanentBailoutException;
-import org.graalvm.compiler.core.common.calc.UnsignedMath;
-import org.graalvm.compiler.graph.IterableNodeType;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.AbstractStateSplit;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryKill;
-import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.thread.VirtualThreads;
 
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /** @see LoweredStackValueNode */
 @NodeInfo(cycles = NodeCycles.CYCLES_4, size = NodeSize.SIZE_8)
-public class StackValueNode extends AbstractStateSplit implements MemoryAccess, Lowerable, IterableNodeType {
+public class StackValueNode extends AbstractStackValueNode {
     public static final NodeClass<StackValueNode> TYPE = NodeClass.create(StackValueNode.class);
 
     /*
@@ -61,12 +50,7 @@ public class StackValueNode extends AbstractStateSplit implements MemoryAccess, 
      */
     static final int MAX_SIZE = 10 * 1024 * 1024;
 
-    @OptionalInput(Memory) MemoryKill lastLocationAccess;
-
     protected final int sizeInBytes;
-    protected final int alignmentInBytes;
-    protected final StackSlotIdentity slotIdentity;
-    protected final boolean checkVirtualThread;
 
     public static class StackSlotIdentity {
         /**
@@ -92,38 +76,12 @@ public class StackValueNode extends AbstractStateSplit implements MemoryAccess, 
     }
 
     protected StackValueNode(NodeClass<? extends StackValueNode> type, int sizeInBytes, int alignmentInBytes, StackSlotIdentity slotIdentity, boolean checkVirtualThread) {
-        super(type, FrameAccess.getWordStamp());
+        super(type, alignmentInBytes, slotIdentity, checkVirtualThread);
         this.sizeInBytes = sizeInBytes;
-        this.alignmentInBytes = alignmentInBytes;
-        this.slotIdentity = slotIdentity;
-        this.checkVirtualThread = checkVirtualThread;
     }
 
     public int getSizeInBytes() {
         return sizeInBytes;
-    }
-
-    public int getAlignmentInBytes() {
-        return alignmentInBytes;
-    }
-
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        if (checkVirtualThread) {
-            return LocationIdentity.any();
-        }
-        return MemoryKill.NO_LOCATION;
-    }
-
-    @Override
-    public MemoryKill getLastLocationAccess() {
-        return lastLocationAccess;
-    }
-
-    @Override
-    public void setLastLocationAccess(MemoryKill lla) {
-        updateUsagesInterface(lastLocationAccess, lla);
-        lastLocationAccess = lla;
     }
 
     /**
@@ -144,17 +102,8 @@ public class StackValueNode extends AbstractStateSplit implements MemoryAccess, 
     }
 
     public static StackValueNode create(int sizeInBytes, ResolvedJavaMethod method, int bci, boolean disallowVirtualThread) {
-        String name = method.asStackTraceElement(bci).toString();
-        StackSlotIdentity slotIdentity = new StackSlotIdentity(name, false);
-
-        /*
-         * We should actually not allow @Uninterruptible(calleeMustBe=false) since it enables
-         * yielding and blocking in callees, or mayBeInlined=true because things might be shuffled
-         * around in a caller, but these are difficult to ensure across multiple callers and
-         * callees.
-         */
-        boolean checkVirtualThread = disallowVirtualThread && VirtualThreads.isSupported() && !Uninterruptible.Utils.isUninterruptible(method);
-        return create(sizeInBytes, slotIdentity, checkVirtualThread);
+        StackSlotIdentity slotIdentity = createStackSlotIdentity(method, bci);
+        return create(sizeInBytes, slotIdentity, needsVirtualThreadCheck(method, disallowVirtualThread));
     }
 
     public static StackValueNode create(int sizeInBytes, StackSlotIdentity slotIdentity, boolean checkVirtualThread) {

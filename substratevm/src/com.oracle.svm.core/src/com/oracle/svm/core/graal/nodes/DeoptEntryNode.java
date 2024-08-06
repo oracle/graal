@@ -24,22 +24,22 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.gen.NodeLIRBuilder;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.LabelRef;
-import org.graalvm.compiler.nodeinfo.InputType;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.DeoptimizingNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.UnreachableBeginNode;
-import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.gen.NodeLIRBuilder;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.LabelRef;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.DeoptimizingNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.UnreachableBeginNode;
+import jdk.graal.compiler.nodes.WithExceptionNode;
+import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.graal.lir.DeoptEntryOp;
@@ -80,7 +80,9 @@ public final class DeoptEntryNode extends WithExceptionNode implements DeoptEntr
             exceptionRef = null;
         } else {
             /* Only register exception handler if it is meaningful. */
-            exceptionRef = ((NodeLIRBuilder) gen).getLIRBlock(exceptionNode);
+            NodeLIRBuilder nodeLIRBuilder = (NodeLIRBuilder) gen;
+            exceptionRef = nodeLIRBuilder.getLIRBlock(exceptionNode);
+            exceptionRef.getTargetBlock().setIndirectBranchTarget();
         }
         gen.getLIRGeneratorTool().append(new DeoptEntryOp(((NodeLIRBuilder) gen).stateForWithExceptionEdge(this, stateAfter(), exceptionRef)));
 

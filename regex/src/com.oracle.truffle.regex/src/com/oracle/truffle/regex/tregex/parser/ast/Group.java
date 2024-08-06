@@ -76,6 +76,7 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     private ArrayList<Sequence> alternatives = new ArrayList<>();
     private short visitorIterationIndex = 0;
     private short groupNumber = -1;
+    private short groupsWithGuardsIndex = -1;
     private short enclosedCaptureGroupsLow;
     private short enclosedCaptureGroupsHigh;
 
@@ -213,6 +214,19 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
         this.groupNumber = (short) groupNumber;
     }
 
+    public boolean hasGroupWithGuardsIndex() {
+        return groupsWithGuardsIndex >= 0;
+    }
+
+    public int getGroupsWithGuardsIndex() {
+        return groupsWithGuardsIndex;
+    }
+
+    public void setGroupsWithGuardsIndex(int groupsWithGuardsIndex) {
+        assert groupsWithGuardsIndex <= Short.MAX_VALUE;
+        this.groupsWithGuardsIndex = (short) groupsWithGuardsIndex;
+    }
+
     /**
      * Marks this {@link Group} as non-capturing and clears its group number.
      */
@@ -228,6 +242,15 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     }
 
     /**
+     * Gets the (inclusive) lower bound of the range of capture groups in this term. In contrast to
+     * {@link #getEnclosedCaptureGroupsLow()}, this range contains the group itself if it is a
+     * capturing group.
+     */
+    public int getCaptureGroupsLow() {
+        return isCapturing() ? getGroupNumber() : enclosedCaptureGroupsLow;
+    }
+
+    /**
      * Sets the (inclusive) lower bound of the range of capture groups contained within this group.
      */
     public void setEnclosedCaptureGroupsLow(int enclosedCaptureGroupsLow) {
@@ -239,6 +262,13 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
      * Gets the (exclusive) upper bound of the range of capture groups contained within this group.
      */
     public int getEnclosedCaptureGroupsHigh() {
+        return enclosedCaptureGroupsHigh;
+    }
+
+    /**
+     * Gets the (exclusive) upper bound of the range of capture groups in this term.
+     */
+    public int getCaptureGroupsHigh() {
         return enclosedCaptureGroupsHigh;
     }
 

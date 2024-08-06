@@ -28,7 +28,6 @@ import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
@@ -37,6 +36,7 @@ import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ProfilingInfo;
@@ -58,6 +58,11 @@ public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, Gr
     }
 
     @Override
+    public ResolvedJavaMethod unwrapTowardsOriginalMethod() {
+        return original;
+    }
+
+    @Override
     public boolean allowRuntimeCompilation() {
         /*
          * The safe default for all methods with manually generated graphs is that such methods are
@@ -75,7 +80,42 @@ public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, Gr
 
     @Override
     public Signature getSignature() {
-        return original.getSignature();
+        /*
+         * When the substitution method injects a different declaringClass, then type resolution
+         * with that new declaringClass could fail due to class visibility differences. We try to
+         * resolve with the original declaringClass, for which the resolving can then succeed.
+         */
+        return new Signature() {
+            private final Signature wrapped = original.getSignature();
+
+            @Override
+            public int getParameterCount(boolean receiver) {
+                return wrapped.getParameterCount(receiver);
+            }
+
+            @Override
+            public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
+                JavaType result = wrapped.getParameterType(index, accessingClass);
+                if (accessingClass != null && !(result instanceof ResolvedJavaType)) {
+                    result = wrapped.getParameterType(index, original.getDeclaringClass());
+                }
+                return result;
+            }
+
+            @Override
+            public JavaType getReturnType(ResolvedJavaType accessingClass) {
+                JavaType result = wrapped.getReturnType(accessingClass);
+                if (accessingClass != null && !(result instanceof ResolvedJavaType)) {
+                    result = wrapped.getReturnType(original.getDeclaringClass());
+                }
+                return result;
+            }
+
+            @Override
+            public String toString() {
+                return "CustomSubstitutionMethod.Signature<" + wrapped + ">";
+            }
+        };
     }
 
     @Override
@@ -230,10 +270,5 @@ public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, Gr
     @Override
     public SpeculationLog getSpeculationLog() {
         throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
-    }
-
-    @Override
-    public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(original);
     }
 }

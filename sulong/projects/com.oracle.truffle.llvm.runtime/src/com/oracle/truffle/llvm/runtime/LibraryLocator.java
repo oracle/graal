@@ -29,15 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.logging.Level;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.logging.Level;
 
 /**
  * Encapsulates logic for locating libraries.
@@ -120,9 +120,9 @@ public abstract class LibraryLocator {
         }
     }
 
-    public static void traceParseBitcode(LLVMContext context, Object path) {
+    public static void traceParseBitcode(LLVMContext context, Object path, IDGenerater.BitcodeID bitcodeID, Source source) {
         if (loggingEnabled()) {
-            traceLoader(context, "parse bitcode=%s", path);
+            traceLoader(context, "parse bitcode=%s (bitcode id=%s, %s) (source = %s, %s)", path, bitcodeID.getName(), bitcodeID.getId(), source.getName(), source.toString());
         }
     }
 
@@ -170,6 +170,12 @@ public abstract class LibraryLocator {
     private static void traceLoader(LLVMContext context, String format, Object arg0, Object arg1, Object arg2) {
         LLVMContext.loaderLogger().log(LOADER_LOGGING_LEVEL,
                         String.format("lli(%x): " + format, prefix(context), arg0, arg1, arg2));
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static void traceLoader(LLVMContext context, String format, Object arg0, Object arg1, Object arg2, Object arg3, Object arg4) {
+        LLVMContext.loaderLogger().log(LOADER_LOGGING_LEVEL,
+                        String.format("lli(%x): " + format, prefix(context), arg0, arg1, arg2, arg3, arg4));
     }
 
     private static int prefix(LLVMContext context) {

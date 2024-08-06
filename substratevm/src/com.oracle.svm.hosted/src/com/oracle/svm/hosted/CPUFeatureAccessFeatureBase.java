@@ -31,7 +31,6 @@ import java.util.Arrays;
 import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -45,6 +44,8 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
+
+import jdk.graal.compiler.debug.GraalError;
 
 public abstract class CPUFeatureAccessFeatureBase {
     /**
@@ -80,7 +81,7 @@ public abstract class CPUFeatureAccessFeatureBase {
                 var field = ((StructFieldInfo) entry);
                 var fieldName = field.getName();
                 int offset = field.getOffsetInfo().getProperty();
-                int size = field.getSizeInfo().getProperty();
+                int size = field.getSizeInBytes();
                 GraalError.guarantee(size == Byte.BYTES, "Expected field %s to be byte sized, but was %s", field.getName(), size);
                 GraalError.guarantee(fieldName.startsWith("f"), "Unexpected field name in %s: %s", cpuFeatureStructClass.getName(), fieldName);
                 fieldToOffset.put(fieldName.substring(1), offset);
@@ -89,7 +90,7 @@ public abstract class CPUFeatureAccessFeatureBase {
 
         // Initialize CPUFeatures struct.
         // Over-allocate to a multiple of 64 bit.
-        int structSize = ((cpuFeatureStructInfo.getSizeInfo().getProperty() + Long.BYTES - 1) / Long.BYTES) * Long.BYTES;
+        int structSize = ((cpuFeatureStructInfo.getSizeInBytes() + Long.BYTES - 1) / Long.BYTES) * Long.BYTES;
         byte[] requiredFeaturesStruct = new byte[structSize];
         // Data is stored in bitwise negated form, thus initialize to all 1s.
         Arrays.fill(requiredFeaturesStruct, (byte) 0xff);

@@ -52,6 +52,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -129,7 +130,9 @@ import com.oracle.truffle.api.source.Source;
  * used after disposal.
  * <p>
  * <h4>Example for a simple expression coverage instrument:</h4>
- * {@codesnippet com.oracle.truffle.api.instrumentation.test.examples.CoverageExample}
+ * 
+ * {@snippet file="com/oracle/truffle/api/instrumentation/test/examples/CoverageExample.java"
+ * region="com.oracle.truffle.api.instrumentation.test.examples.CoverageExample"}
  *
  * @since 0.12
  */
@@ -286,7 +289,7 @@ public abstract class TruffleInstrument {
          *
          *         ExampleLocal(TruffleContext context, Thread thread) {
          *             this.context = context;
-         *             this.thread = new WeakReference<>(thread);
+         *             this.thread = new WeakReference&lt;&gt;(thread);
          *         }
          *     }
          *
@@ -328,14 +331,16 @@ public abstract class TruffleInstrument {
      * one could define an abstract debugger controller:
      * </p>
      *
-     * {@codesnippet DebuggerController}
+     * {@snippet file="com/oracle/truffle/api/instrumentation/test/examples/DebuggerController.java"
+     * region="DebuggerController"}
      *
      * and declare it as a {@link Registration#services() service} associated with the instrument,
      * implement it, instantiate and {@link Env#registerService(java.lang.Object) register} in own's
      * instrument {@link #onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
      * onCreate} method:
      *
-     * {@codesnippet DebuggerExample}
+     * {@snippet file="com/oracle/truffle/api/instrumentation/test/examples/DebuggerExample.java"
+     * region="DebuggerExample"}
      * <p>
      * If this method throws an {@link com.oracle.truffle.api.exception.AbstractTruffleException}
      * the exception interop messages are executed without a context being entered.
@@ -417,7 +422,7 @@ public abstract class TruffleInstrument {
      * final class MyContext {
      *
      *     &#64;Option(category = OptionCategory.EXPERT, help = "Description...")
-     *     static final OptionKey<Boolean> MyContextOption = new OptionKey<>(Boolean.FALSE);
+     *     static final OptionKey<Boolean> MyContextOption = new OptionKey&lt;&gt;(Boolean.FALSE);
      * }
      *
      * &#64;Registration(...)
@@ -778,6 +783,7 @@ public abstract class TruffleInstrument {
          * @throws SecurityException
          * @since 0.12
          */
+        @SuppressWarnings("unused")
         public CallTarget parse(Source source, String... argumentNames) throws IOException {
             try {
                 TruffleLanguage.Env env = InstrumentAccessor.ENGINE.getEnvForInstrument(source.getLanguage(), source.getMimeType());
@@ -855,6 +861,10 @@ public abstract class TruffleInstrument {
          *            context.
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
+         * @throws UnsupportedOperationException when the {@link FileSystem} supports only
+         *             {@link URI}
+         * @throws IllegalArgumentException if the {@code path} string cannot be converted to a
+         *             {@link Path}
          * @since 23.0
          */
         public TruffleFile getTruffleFile(TruffleContext context, String path) {
@@ -872,6 +882,10 @@ public abstract class TruffleInstrument {
          *            context.
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
+         * @throws UnsupportedOperationException when {@link URI} scheme is not supported
+         * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
+         * @throws java.nio.file.FileSystemNotFoundException is the file system, identified by the
+         *             {@code uri}, does not exist and cannot be created automatically
          * @since 23.0
          */
         public TruffleFile getTruffleFile(TruffleContext context, URI uri) {
@@ -1076,6 +1090,8 @@ public abstract class TruffleInstrument {
          * unpacking would be repeated once per operating system user. When the language was
          * compiled using native-image internal resources are unpacked at native-image compile time
          * and stored relative to the native-image.
+         * <p>
+         * The caller thread must be entered in a context.
          *
          * @param resource the resource class to load
          * @throws IllegalArgumentException if {@code resource} is not associated with this
@@ -1361,7 +1377,9 @@ public abstract class TruffleInstrument {
          * Thread termination as the system thread may be cancelled before executing the executor
          * worker.<br/>
          * A typical implementation looks like:
-         * {@link TruffleInstrumentSnippets.SystemThreadInstrument}
+         *
+         * {@snippet file="com/oracle/truffle/api/instrumentation/TruffleInstrument.java"
+         * region="TruffleInstrumentSnippets.SystemThreadInstrument"}
          *
          * @param runnable the runnable to run on this thread.
          * @param threadGroup the thread group, passed on to the underlying {@link Thread}.
@@ -1545,7 +1563,7 @@ public abstract class TruffleInstrument {
 
 class TruffleInstrumentSnippets {
     abstract
-    // BEGIN: TruffleInstrumentSnippets.SystemThreadInstrument
+    // @start region = "TruffleInstrumentSnippets.SystemThreadInstrument"
     class SystemThreadInstrument extends TruffleInstrument {
 
         private volatile Thread systemThread;
@@ -1592,5 +1610,5 @@ class TruffleInstrumentSnippets {
             }
         }
     }
-    // END: TruffleInstrumentSnippets.SystemThreadInstrument
+    // @end region = "TruffleInstrumentSnippets.SystemThreadInstrument"
 }

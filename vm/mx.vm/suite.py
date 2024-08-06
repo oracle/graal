@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
-    "version" : "24.0.0",
-    "mxversion": "6.41.0",
+    "version" : "24.2.0",
+    "mxversion": "7.28.0",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -33,7 +33,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "e0f922185f627f2bf8e3d9117996a698c7f8980b",
+                "version": "698f12ddc8452ded090663f9698892a003c5f815",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -42,14 +42,14 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "e0f922185f627f2bf8e3d9117996a698c7f8980b",
+                "version": "698f12ddc8452ded090663f9698892a003c5f815",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
             },
             {
                 "name": "truffleruby",
-                "version": "cf372f0e33c02604c9b70008f93f7bfe3b3077cd",
+                "version": "a9674eee98f7a9239adcec84ee095fb8e0b1ea3e",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "1fb09547278fce242be7f24b23dc2c3e5a9343bf",
+                "version": "dbc2cb268c287ce9d3fac57ccbbe23076b90d10a",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -65,7 +65,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "adf88b676ba8dc20b90370c216ab363f02d75318",
+                "version": "0a015a52e92dc40e312aa1ecd1f9e402a5244dce",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -83,36 +83,12 @@ suite = {
     },
 
     "projects": {
-        "org.graalvm.component.installer" : {
-            "subDir" : "src",
-            "sourceDirs" : ["src"],
-            "javaCompliance" : "17+",
-            "license" : "GPLv2-CPE",
-            "checkstyleVersion" : "10.7.0",
-            "dependencies": [
-                "sdk:LAUNCHER_COMMON",
-                "truffle:TRUFFLE_JSON",
-            ],
-            "requires" : ["java.logging"],
-        },
-        "org.graalvm.component.installer.test" : {
-            "subDir" : "src",
-            "sourceDirs" : ["src"],
-            "dependencies": [
-                "mx:JUNIT",
-                "org.graalvm.component.installer"
-            ],
-            "javaCompliance" : "17+",
-            "checkstyle": "org.graalvm.component.installer",
-            "license" : "GPLv2-CPE",
-            "requires" : ["java.logging"],
-        },
         "org.graalvm.polybench" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
-            "checkstyle": "org.graalvm.component.installer",
+            "checkstyleVersion" : "10.7.0",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
                 "sdk:POLYGLOT",
@@ -128,7 +104,7 @@ suite = {
             "sourceDirs" : ["src"],
             "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
-            "checkstyle": "org.graalvm.component.installer",
+            "checkstyle": "org.graalvm.polybench",
             "dependencies": [
                 "truffle:TRUFFLE_API",
             ],
@@ -142,7 +118,7 @@ suite = {
             "sourceDirs" : ["src"],
             "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
-            "checkstyle": "org.graalvm.component.installer",
+            "checkstyle": "org.graalvm.polybench",
             "dependencies": [
                 "truffle:TRUFFLE_API",
             ],
@@ -180,73 +156,9 @@ suite = {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-944-linux-amd64.tar.gz"],
             "digest" : "sha512:72982ca01cce9dfa876687ec7b9627b81e241e6cddc8dedb976a5d06d058a067f83f5c063dc07d7ed19730ffb54af8343eae8ca0cc156353f7b18530eef73c50"
         },
-        "ORG_NETBEANS_API_ANNOTATIONS_COMMON" : {
-           "digest" : "sha512:37e9cee0756a3f84e3e6352ed3d358169855d16cdda2300eb5041219c867abf886db2de41fe79c37f39123eaac310041f9a2e65aa1b9a7e8384528cfbd40de5b",
-            "maven" : {
-                "groupId" : "org.netbeans.api",
-                "artifactId" : "org-netbeans-api-annotations-common",
-                "version" : "RELEASE123",
-            },
-        },
     },
 
     "distributions": {
-        "INSTALLER": {
-            "subDir": "src",
-            "mainClass": "org.graalvm.component.installer.ComponentInstaller",
-            "dependencies": [
-                "org.graalvm.component.installer",
-            ],
-            "distDependencies": [
-                "sdk:LAUNCHER_COMMON",
-                "truffle:TRUFFLE_JSON",
-            ],
-            "maven" : False,
-        },
-        "INSTALLER_TESTS": {
-            "subDir": "src",
-            "dependencies": ["org.graalvm.component.installer.test"],
-            "exclude": [
-                "mx:HAMCREST",
-                "mx:JUNIT",
-            ],
-            "distDependencies": [
-                "INSTALLER",
-            ],
-            "maven": False,
-        },
-        "INSTALLER_GRAALVM_SUPPORT": {
-            "native": True,
-            "platformDependent": True,
-            "description": "GraalVM Installer support distribution for the GraalVM",
-            "layout": {
-                "components/polyglot/.registry" : "string:",
-            },
-            "maven": False,
-        },
-        "INSTALLER_DEPRECATED_GRAALVM_SUPPORT": {
-            "native": True,
-            "description": "Deprecated GraalVM Updater launchers support for the GraalVM",
-            "platformDependent": True,
-            "os": {
-                "linux": {
-                    "layout": {
-                        "bin/gu": "file:mx.vm/gu-deprecated",
-                    },
-                },
-                "darwin": {
-                    "layout": {
-                        "bin/gu": "file:mx.vm/gu-deprecated",
-                    },
-                },
-                "windows": {
-                    "layout": {
-                        "bin/gu.cmd": "file:mx.vm/gu-deprecated.cmd",
-                    },
-                },
-            },
-            "maven": False,
-        },
         "VM_GRAALVM_SUPPORT": {
             "native": True,
             "description": "VM support distribution for the GraalVM",

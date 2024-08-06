@@ -100,6 +100,11 @@ public final class UntetheredCodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
+    public static boolean isAOTImageCode(UntetheredCodeInfo info) {
+        return cast(info).getIsAOTImageCode();
+    }
+
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
     private static CodeInfoImpl cast(UntetheredCodeInfo info) {
         assert info.isNonNull();
         return (CodeInfoImpl) info;

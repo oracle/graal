@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,33 +29,33 @@
  */
 package com.oracle.truffle.llvm.tests.internal.types;
 
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.StringContains;
 import org.junit.Assert;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 
 public class VariableBitLimitsTest {
 
-    @Rule public ExpectedException exception = ExpectedException.none();
-
     @Test
     public void allocaVarWidthUnderflow() {
         // we cannot easily create an out-of-range bitcode -- testing the constructor instead
-        exception.expect(LLVMParserException.class);
-        exception.expectMessage("out of range");
-        VariableBitWidthType varWidth = new VariableBitWidthType(VariableBitWidthType.MIN_INT_BITS - 1);
-        Assert.assertNotNull(varWidth);
+        LLVMParserException exception = Assert.assertThrows(LLVMParserException.class, () -> {
+            VariableBitWidthType varWidth = new VariableBitWidthType(VariableBitWidthType.MIN_INT_BITS - 1);
+            Assert.assertNotNull(varWidth);
+        });
+        MatcherAssert.assertThat(exception.getMessage(), StringContains.containsString("out of range"));
     }
 
     @Test
     public void allocaVarWidthOverflow() {
         // we cannot easily create an out-of-range bitcode -- testing the constructor instead
-        exception.expect(LLVMParserException.class);
-        exception.expectMessage("out of range");
-        VariableBitWidthType varWidth = new VariableBitWidthType(VariableBitWidthType.MAX_INT_BITS + 1);
-        Assert.assertNotNull(varWidth);
+        LLVMParserException exception = Assert.assertThrows(LLVMParserException.class, () -> {
+            VariableBitWidthType varWidth = new VariableBitWidthType(VariableBitWidthType.MAX_INT_BITS + 1);
+            Assert.assertNotNull(varWidth);
+        });
+        MatcherAssert.assertThat(exception.getMessage(), StringContains.containsString("out of range"));
     }
 }

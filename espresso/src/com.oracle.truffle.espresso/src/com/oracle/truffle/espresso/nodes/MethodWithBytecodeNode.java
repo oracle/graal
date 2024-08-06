@@ -58,11 +58,6 @@ final class MethodWithBytecodeNode extends EspressoInstrumentableRootNodeImpl {
     }
 
     @Override
-    void beforeInstumentation(VirtualFrame frame) {
-        EspressoFrame.setBCI(frame, -1);
-    }
-
-    @Override
     Object execute(VirtualFrame frame) {
         bytecodeNode.initializeFrame(frame);
         return bytecodeNode.execute(frame);

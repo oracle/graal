@@ -24,16 +24,14 @@
  */
 package com.oracle.svm.truffle;
 
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -65,18 +63,6 @@ public final class HostedTruffleConstantFieldProvider implements ConstantFieldPr
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
         boolean hasTruffleFoldedAnnotation = field.isAnnotationPresent(CompilationFinal.class) || field.isAnnotationPresent(Child.class) || field.isAnnotationPresent(Children.class);
         if (hasTruffleFoldedAnnotation) {
-            if ((!SubstrateOptions.parseOnce()) && field instanceof AnalysisField) {
-                /*
-                 * Without ParseOnce, this field might only be read within runtime graphs (it might
-                 * be folded during static analysis and also in AOT compilation).
-                 *
-                 * Therefore, we explicitly mark the field as read.
-                 *
-                 * When using ParseOnce, this precaution is unnecessary, as runtime graphs are
-                 * properly integrated into analysis.
-                 */
-                ((AnalysisField) field).registerAsRead("it is annotated with a Truffle folded annotation (@CompilationFinal, @Children, or @Child)");
-            }
             return null;
         }
 

@@ -53,12 +53,14 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     private final DFACaptureGroupPartialTransition anchoredFinalStateTransition;
     private final DFACaptureGroupPartialTransition unAnchoredFinalStateTransition;
     private final DFACaptureGroupPartialTransition cgLoopToSelf;
+    private final boolean cgLoopToSelfHasDependency;
 
     public CGTrackingDFAStateNode(short id,
                     byte flags,
                     short loopTransitionIndex,
                     short indexOfNodeId,
-                    byte indexOfIsFast, short[] successors,
+                    byte indexOfIsFast,
+                    short[] successors,
                     Matchers matchers,
                     short[] lastTransitionIndex,
                     DFACaptureGroupLazyTransition[] lazyTransitions,
@@ -66,7 +68,8 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
                     DFACaptureGroupLazyTransition preUnAnchoredFinalStateTransition,
                     DFACaptureGroupPartialTransition anchoredFinalStateTransition,
                     DFACaptureGroupPartialTransition unAnchoredFinalStateTransition,
-                    DFACaptureGroupPartialTransition cgLoopToSelf) {
+                    DFACaptureGroupPartialTransition cgLoopToSelf,
+                    boolean cgLoopToSelfHasDependency) {
         super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, null);
         this.anchoredFinalStateTransition = anchoredFinalStateTransition;
         this.unAnchoredFinalStateTransition = unAnchoredFinalStateTransition;
@@ -75,6 +78,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         this.preAnchoredFinalStateTransition = preAnchoredFinalStateTransition;
         this.preUnAnchoredFinalStateTransition = preUnAnchoredFinalStateTransition;
         this.cgLoopToSelf = cgLoopToSelf;
+        this.cgLoopToSelfHasDependency = cgLoopToSelfHasDependency;
     }
 
     private CGTrackingDFAStateNode(CGTrackingDFAStateNode copy, short copyID) {
@@ -86,6 +90,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         this.anchoredFinalStateTransition = copy.anchoredFinalStateTransition;
         this.unAnchoredFinalStateTransition = copy.unAnchoredFinalStateTransition;
         this.cgLoopToSelf = copy.cgLoopToSelf;
+        this.cgLoopToSelfHasDependency = copy.cgLoopToSelfHasDependency;
     }
 
     private DFACaptureGroupPartialTransition getCGTransitionToSelf() {
@@ -131,6 +136,14 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
             locals.setLastIndex();
             if (secondIndex < postLoopIndex) {
                 executor.inputSkipReverse(locals, codeRange);
+            }
+            if (cgLoopToSelfHasDependency && secondIndex < locals.getLastIndex()) {
+                int postLoopMinusTwoIndex = locals.getIndex();
+                executor.inputSkipReverse(locals, codeRange);
+                transition.apply(executor, locals.getCGData(), locals.getIndex());
+                locals.setIndex(postLoopMinusTwoIndex);
+            }
+            if (secondIndex < postLoopIndex) {
                 transition.apply(executor, locals.getCGData(), locals.getIndex());
             }
             locals.setIndex(postLoopIndex);

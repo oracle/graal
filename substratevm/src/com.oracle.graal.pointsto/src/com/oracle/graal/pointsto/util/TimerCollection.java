@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.util;
 
 import com.oracle.graal.pointsto.reports.StatisticsPrinter;
 import com.oracle.svm.util.ImageBuildStatistics;
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import java.io.PrintWriter;

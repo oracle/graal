@@ -25,25 +25,18 @@
 package com.oracle.graal.pointsto;
 
 import java.io.PrintWriter;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.DeoptBciSupplier;
-import org.graalvm.compiler.nodes.StateSplit;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.ClassInclusionPolicy.LayeredBaseImageInclusionPolicy;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -60,6 +53,18 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.meta.MultiMethod;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Builder;
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.DeoptBciSupplier;
+import jdk.graal.compiler.nodes.StateSplit;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -75,7 +80,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected final AnalysisMetaAccess metaAccess;
     protected final AnalysisPolicy analysisPolicy;
 
-    protected final Boolean extendedAsserts;
     protected final int maxConstantObjectsPerType;
     protected final boolean profileConstantObjects;
     protected final boolean optimizeReturnedParameter;
@@ -94,16 +98,16 @@ public abstract class AbstractAnalysisEngine implements BigBang {
      * Processing queue.
      */
     protected final CompletionExecutor executor;
-    private final Runnable heartbeatCallback;
 
     protected final Timer processFeaturesTimer;
     protected final Timer analysisTimer;
     protected final Timer verifyHeapTimer;
+    protected final ClassInclusionPolicy classInclusionPolicy;
 
     @SuppressWarnings("this-escape")
     public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
-                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, ForkJoinPool executorService, Runnable heartbeatCallback,
-                    UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection) {
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext,
+                    TimerCollection timerCollection, ClassInclusionPolicy classInclusionPolicy) {
         this.options = options;
         this.universe = universe;
         this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(snippetReflectionProvider));
@@ -111,21 +115,21 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.metaAccess = metaAccess;
         this.analysisPolicy = universe.analysisPolicy();
         this.hostVM = hostVM;
-        this.executor = new CompletionExecutor(this, executorService, heartbeatCallback);
-        this.heartbeatCallback = heartbeatCallback;
+        this.executor = new CompletionExecutor(debugContext, this);
         this.unsupportedFeatures = unsupportedFeatures;
 
         this.processFeaturesTimer = timerCollection.get(TimerCollection.Registry.FEATURES);
         this.verifyHeapTimer = timerCollection.get(TimerCollection.Registry.VERIFY_HEAP);
         this.analysisTimer = timerCollection.get(TimerCollection.Registry.ANALYSIS);
 
-        this.extendedAsserts = PointstoOptions.ExtendedAsserts.getValue(options);
         maxConstantObjectsPerType = PointstoOptions.MaxConstantObjectsPerType.getValue(options);
         profileConstantObjects = PointstoOptions.ProfileConstantObjects.getValue(options);
         optimizeReturnedParameter = PointstoOptions.OptimizeReturnedParameter.getValue(options);
         this.snippetReflectionProvider = snippetReflectionProvider;
         this.constantReflectionProvider = constantReflectionProvider;
         this.wordTypes = wordTypes;
+        classInclusionPolicy.setBigBang(this);
+        this.classInclusionPolicy = classInclusionPolicy;
     }
 
     /**
@@ -183,7 +187,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
                      */
                     boolean pendingOperations = executor.getPostedOperations() > 0;
                     if (pendingOperations) {
-                        System.out.println("Found pending operations, continuing analysis.");
                         continue;
                     }
                     /* Outer analysis loop is done. Check if heap verification modifies analysis. */
@@ -214,7 +217,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
              * checkHeapSnapshot returns all heap scanning and verification tasks are completed.
              */
             assert executor.isBeforeStart() : executor.getState();
-            analysisModified = universe.getHeapVerifier().checkHeapSnapshot(metaAccess, executor, "during analysis", true);
+            analysisModified = universe.getHeapVerifier().checkHeapSnapshot(metaAccess, executor, "during analysis", true, universe.getEmbeddedRoots());
         }
         /* Initialize for the next iteration. */
         executor.init(getTiming());
@@ -240,11 +243,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         StatisticsPrinter.printLast(out, "total_memory_bytes", analysisTimer.getTotalMemory());
     }
 
-    @Override
-    public boolean extendedAsserts() {
-        return extendedAsserts;
-    }
-
     public int maxConstantObjectsPerType() {
         return maxConstantObjectsPerType;
     }
@@ -260,14 +258,13 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         }
     }
 
-    @Override
-    public OptionValues getOptions() {
-        return options;
+    public boolean isBaseLayerAnalysisEnabled() {
+        return classInclusionPolicy instanceof LayeredBaseImageInclusionPolicy;
     }
 
     @Override
-    public Runnable getHeartbeatCallback() {
-        return heartbeatCallback;
+    public OptionValues getOptions() {
+        return options;
     }
 
     @Override
@@ -354,6 +351,27 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         return executor.isStarted();
     }
 
+    @Override
+    public void registerTypeForBaseImage(Class<?> cls) {
+        if (getOrDefault(cls, classInclusionPolicy::isClassIncluded, false)) {
+            classInclusionPolicy.includeClass(cls);
+            Stream.concat(Arrays.stream(getOrDefault(cls, Class::getDeclaredConstructors, new Constructor<?>[0])), Arrays.stream(getOrDefault(cls, Class::getDeclaredMethods, new Method[0])))
+                            .filter(classInclusionPolicy::isMethodIncluded)
+                            .forEach(classInclusionPolicy::includeMethod);
+            Arrays.stream(getOrDefault(cls, Class::getDeclaredFields, new Field[0]))
+                            .filter(classInclusionPolicy::isFieldIncluded)
+                            .forEach(classInclusionPolicy::includeField);
+        }
+    }
+
+    public static <T, U> U getOrDefault(T cls, Function<T, U> getMembers, U backup) {
+        try {
+            return getMembers.apply(cls);
+        } catch (NoClassDefFoundError | IncompatibleClassChangeError e) {
+            return backup;
+        }
+    }
+
     /**
      * Provide a non-null position. Some flows like newInstance and invoke require a non-null
      * position, for others is just better. The constructed position is best-effort, i.e., it
@@ -371,6 +389,10 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     /** Creates a synthetic position for the node in the given method. */
+    public static BytecodePosition syntheticSourcePosition(ResolvedJavaMethod method) {
+        return syntheticSourcePosition(null, method);
+    }
+
     public static BytecodePosition syntheticSourcePosition(Node node, ResolvedJavaMethod method) {
         int bci = BytecodeFrame.UNKNOWN_BCI;
         if (node instanceof DeoptBciSupplier) {

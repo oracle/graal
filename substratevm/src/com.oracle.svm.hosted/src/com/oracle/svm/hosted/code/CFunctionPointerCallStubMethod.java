@@ -28,17 +28,19 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -63,18 +65,22 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
 
     @Override
     public Signature getSignature() {
+        /*
+         * Inject the declaring class as an additional parameter at the beginning of the parameter
+         * list, to compensate for making the method `static`.
+         */
         return new Signature() {
-            private final Signature wrapped = getOriginal().getSignature();
+            private final Signature wrapped = CFunctionPointerCallStubMethod.super.getSignature();
 
             @Override
             public int getParameterCount(boolean receiver) {
-                return wrapped.getParameterCount(true);
+                return wrapped.getParameterCount(receiver) + 1;
             }
 
             @Override
             public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
                 if (index == 0) {
-                    return getOriginal().getDeclaringClass().resolve(accessingClass);
+                    return getOriginal().getDeclaringClass();
                 }
                 return wrapped.getParameterType(index - 1, accessingClass);
             }
@@ -82,6 +88,11 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
             @Override
             public JavaType getReturnType(ResolvedJavaType accessingClass) {
                 return wrapped.getReturnType(accessingClass);
+            }
+
+            @Override
+            public String toString() {
+                return "CFunctionPointerCallStubMethod.Signature<" + wrapped + ">";
             }
         };
     }
@@ -118,28 +129,23 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         assert purpose != Purpose.PREPARE_RUNTIME_COMPILATION || allowRuntimeCompilation();
 
         return super.buildGraph(debug, method, providers, purpose);
     }
 
     @Override
-    protected JavaType[] getParameterTypesForLoad(ResolvedJavaMethod method) {
-        return method.toParameterTypes(); // include receiver = call target address
-    }
-
-    @Override
-    protected ValueNode createTargetAddressNode(HostedGraphKit kit, HostedProviders providers, List<ValueNode> arguments) {
+    protected ValueNode createTargetAddressNode(HostedGraphKit kit, List<ValueNode> arguments) {
         return arguments.get(0);
     }
 
     @Override
-    protected Signature adaptSignatureAndConvertArguments(HostedProviders providers, NativeLibraries nativeLibraries,
-                    HostedGraphKit kit, ResolvedJavaMethod method, JavaType returnType, JavaType[] paramTypes, List<ValueNode> arguments) {
+    protected ResolvedSignature<AnalysisType> adaptSignatureAndConvertArguments(NativeLibraries nativeLibraries,
+                    HostedGraphKit kit, AnalysisMethod method, AnalysisType returnType, AnalysisType[] paramTypes, List<ValueNode> arguments) {
         // First argument is the call target address, not an actual argument
         arguments.remove(0);
-        JavaType[] paramTypesNoReceiver = Arrays.copyOfRange(paramTypes, 1, paramTypes.length);
-        return super.adaptSignatureAndConvertArguments(providers, nativeLibraries, kit, method, returnType, paramTypesNoReceiver, arguments);
+        var paramTypesNoReceiver = Arrays.copyOfRange(paramTypes, 1, paramTypes.length);
+        return super.adaptSignatureAndConvertArguments(nativeLibraries, kit, method, returnType, paramTypesNoReceiver, arguments);
     }
 }

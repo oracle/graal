@@ -25,6 +25,7 @@
  */
 package com.oracle.svm.core.jfr.logging;
 
+import java.util.Locale;
 import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
@@ -114,7 +115,7 @@ public class JfrLogging {
         LogLevel[] values = LogLevel.values();
         String[] result = new String[getMaxLogLevel(values) + 1];
         for (LogLevel logLevel : values) {
-            result[getLevel(logLevel)] = logLevel.toString().toLowerCase();
+            result[getLevel(logLevel)] = logLevel.toString().toLowerCase(Locale.ROOT);
         }
         return result;
     }
@@ -140,7 +141,7 @@ public class JfrLogging {
                     if (builder.length() > 0) {
                         builder.append(",");
                     }
-                    builder.append(logTag.toString().toLowerCase());
+                    builder.append(logTag.toString().toLowerCase(Locale.ROOT));
                 }
                 result[getId(logTagSet)] = builder.toString();
             }

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -39,9 +38,31 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.WriteStackPointerNode;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
+
 public class ContinuationSupport {
+    static final class Options {
+        @Option(type = OptionType.Expert, help = "Support for continuations which are used by virtual threads. " +
+                        "If disabled, virtual threads can be started but each of them is backed by a platform thread.") //
+        public static final HostedOptionKey<Boolean> VMContinuations = new HostedOptionKey<>(true);
+    }
+
+    @Fold
+    public static boolean isSupported() {
+        return ContinuationsFeature.isSupported();
+    }
+
+    /* See JDK native enum {@code freeze_result}. */
+    public static final int FREEZE_OK = 0;
+    public static final int FREEZE_PINNED_CS = 2; // critical section
+    public static final int FREEZE_PINNED_NATIVE = 3;
+    public static final int FREEZE_YIELDING = -2;
+
     private long ipOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -93,7 +114,7 @@ public class ContinuationSupport {
         // copyFrames() may do something interruptible before uninterruptibly copying frames.
         // Code must not rely on remaining uninterruptible until after frames were copied.
         CodePointer enterIP = singleton().copyFrames(storedCont, topSP, preparedData);
-        KnownIntrinsics.farReturn(Continuation.FREEZE_OK, topSP, enterIP, false);
+        KnownIntrinsics.farReturn(FREEZE_OK, topSP, enterIP, false);
     }
 
     @Uninterruptible(reason = "Copies stack frames containing references.")

@@ -33,9 +33,13 @@
     ]
   },
 
-  latest_jdk:: common["labsjdk-ee-21"],
-  bench_jdks:: [
-    self.latest_jdk
+  product_jdks:: [
+     common["labsjdk-ee-latest"],
+  ],
+
+  jdks_of_interest:: [
+     common["labsjdk-ee-21"],
+     common["labsjdk-ee-latest"],
   ],
 
   compiler_benchmarks_notifications:: {
@@ -51,33 +55,34 @@
     local use_libgraal_profile = libgraal_profiling_only(config.compiler.use_libgraal_profile),
 
     job_prefix:: "bench-compiler",
-    tags+: ["bench-compiler"],
+    tags+: {opt_post_merge+: ["bench-compiler"]},
     python_version : "3",
+    packages+: common.deps.svm.packages,
     environment+: {
       BENCH_RESULTS_FILE_PATH : "bench-results.json"
     },
+    default_fork_count::1,
     plain_benchmark_cmd::
       ["mx",
       "--kill-with-sigquit",
       "benchmark",
+      "--default-fork-count=" + self.default_fork_count,
       "--fork-count-file=${FORK_COUNT_FILE}",
-      "--extras=${BENCH_SERVER_EXTRAS}",
       "--results-file",
       "${BENCH_RESULTS_FILE_PATH}",
       "--machine-name=${MACHINE_NAME}"] +
-      (if std.objectHasAll(self.environment, 'MX_TRACKER') then ["--tracker=" + self.environment['MX_TRACKER']] else ["--tracker=rss"]),
-    benchmark_cmd:: bench_common.hwlocIfNuma(self.should_use_hwloc, self.plain_benchmark_cmd, node=self.default_numa_node),
+      (if std.objectHasAll(self.environment, 'MX_TRACKER') then ["--tracker=" + self.environment['MX_TRACKER']] else []),
+    restrict_threads:: null,  # can be overridden to restrict the benchmark to the given number of threads. If null, will use one full NUMA node
+    benchmark_cmd:: if self.should_use_hwloc then bench_common.hwloc_cmd(self.plain_benchmark_cmd, self.restrict_threads, self.default_numa_node, self.hyperthreading, self.threads_per_node) else self.plain_benchmark_cmd,
     min_heap_size:: if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
     max_heap_size:: if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],
-    _WarnMissingIntrinsic:: true, # won't be needed after GR-34642
     extra_vm_args::
       ["--profiler=${MX_PROFILER}",
       "--jvm=${JVM}",
       "--jvm-config=${JVM_CONFIG}",
       "-XX:+PrintConcurrentLocks",
-      "-Dgraal.CompilationFailureAction=Diagnose",
+      "-Djdk.graal.CompilationFailureAction=Diagnose",
       "-XX:+CITime"] +
-      (if self._WarnMissingIntrinsic then ["-Dgraal.WarnMissingIntrinsic=true"] else []) +
       self.min_heap_size +
       self.max_heap_size,
     should_mx_build:: true,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,16 +35,17 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.ExportLibrary;
 import org.graalvm.polyglot.PolyglotException;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.StringContains;
 import org.junit.Assert;
-import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
 
 public class PolyglotArrayTestBase extends ManagedMemAccessTestBase {
 
@@ -180,14 +181,18 @@ public class PolyglotArrayTestBase extends ManagedMemAccessTestBase {
         }
     }
 
-    protected interface ExpectedExceptionConsumer extends Consumer<ExpectedException> {
+    protected interface TestRunnableConsumer extends Consumer<Runnable> {
     }
 
-    protected static ExpectedExceptionConsumer expectPolyglotException(String exceptionMessage) {
-        return (ExpectedException thrown) -> {
-            thrown.expect(PolyglotException.class);
-            thrown.expectMessage(exceptionMessage);
+    protected static TestRunnableConsumer expectPolyglotException(String exceptionMessage) {
+        return (Runnable testRunnable) -> {
+            PolyglotException exception = Assert.assertThrows(PolyglotException.class, testRunnable::run);
+            MatcherAssert.assertThat(exception.getMessage(), StringContains.containsString(exceptionMessage));
         };
+    }
+
+    protected static TestRunnableConsumer expectNoException() {
+        return Runnable::run;
     }
 
     /**

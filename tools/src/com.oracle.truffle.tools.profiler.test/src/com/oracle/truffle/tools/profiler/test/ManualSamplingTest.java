@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.profiler.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -73,7 +74,7 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
         assertEquals(expectedCharIndex, entry.getSourceSection().getCharIndex());
         assertNotNull(entry.toStackTraceElement());
         assertNotNull(entry.toString());
-        assertNotNull(entry.hashCode());
+        assertNotEquals(0, entry.hashCode());
         assertTrue(entry.equals(entry));
     }
 
@@ -225,7 +226,7 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
     }
 
     /**
-     * @param sources every source is executed on its on thread and sampled.
+     * @param sources every source is executed on its own thread and sampled.
      * @param verifier verify the stack samples
      * @param expectedSamples number of expected samples
      */

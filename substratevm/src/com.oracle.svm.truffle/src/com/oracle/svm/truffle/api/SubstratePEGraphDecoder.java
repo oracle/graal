@@ -29,20 +29,20 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
-import org.graalvm.compiler.nodes.EncodedGraph;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.replacements.PEGraphDecoder;
+import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.graph.SourceLanguagePositionProvider;
+import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.ParameterPlugin;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.replacements.PEGraphDecoder;
 
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
-import com.oracle.svm.graal.GraalSupport;
+import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -74,7 +74,7 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
     }
 
     private EncodedGraph createGraph(ResolvedJavaMethod method, boolean trackNodeSourcePosition) {
-        EncodedGraph result = GraalSupport.encodedGraph((SharedRuntimeMethod) method, trackNodeSourcePosition);
+        EncodedGraph result = TruffleRuntimeCompilationSupport.encodedGraph((SharedRuntimeMethod) method, trackNodeSourcePosition);
         if (result == null) {
             throw shouldNotReachHere("Graph not available for runtime compilation: " + method.format("%H.%n(%p)"));
         }

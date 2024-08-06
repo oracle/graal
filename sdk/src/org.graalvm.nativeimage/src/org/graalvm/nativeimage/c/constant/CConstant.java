@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,8 +89,7 @@ public @interface CConstant {
          * This method is useful during native image generation, when the annotated method cannot be
          * called.
          *
-         * @param declaringClass The class that contains the method annotated with {@link CConstant}
-         *            .
+         * @param declaringClass The class that contains the method.
          * @param methodName The name of the method annotated with {@link CConstant}.
          * @param returnType The desired type of the returned value. For integer-kind constants, the
          *            supported types are {@link Long}, {@link Integer}, and {@link Boolean}. For

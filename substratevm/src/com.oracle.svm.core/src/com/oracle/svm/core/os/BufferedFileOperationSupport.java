@@ -26,15 +26,12 @@ package com.oracle.svm.core.os;
 
 import java.nio.ByteOrder;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -46,10 +43,15 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport.BufferedFileOperationSupportHolder;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Provides buffered, OS-independent operations on files. Most of the code is implemented in a way
@@ -99,7 +101,7 @@ public class BufferedFileOperationSupport {
      *         Returns a null pointer otherwise.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public BufferedFile allocate(RawFileDescriptor fd) {
+    public BufferedFile allocate(RawFileDescriptor fd, NmtCategory nmtCategory) {
         if (!rawFiles().isValid(fd)) {
             return WordFactory.nullPointer();
         }
@@ -110,7 +112,7 @@ public class BufferedFileOperationSupport {
 
         /* Use a single allocation for the struct and the corresponding buffer. */
         UnsignedWord totalSize = SizeOf.unsigned(BufferedFile.class).add(WordFactory.unsigned(BUFFER_SIZE));
-        BufferedFile result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(totalSize);
+        BufferedFile result = NullableNativeMemory.malloc(totalSize, nmtCategory);
         if (result.isNull()) {
             return WordFactory.nullPointer();
         }
@@ -127,7 +129,7 @@ public class BufferedFileOperationSupport {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void free(BufferedFile f) {
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(f);
+        NullableNativeMemory.free(f);
     }
 
     /**
@@ -352,7 +354,7 @@ public class BufferedFileOperationSupport {
     public boolean writeUTF8(BufferedFile f, String string) {
         boolean success = true;
         for (int index = 0; index < string.length() && success; index++) {
-            success &= writeUTF8(f, JavaLangSubstitutions.StringUtil.charAt(string, index));
+            success &= writeUTF8(f, UninterruptibleUtils.String.charAt(string, index));
         }
         return success;
     }

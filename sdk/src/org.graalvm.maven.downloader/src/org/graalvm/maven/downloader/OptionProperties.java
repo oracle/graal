@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,21 @@
  */
 package org.graalvm.maven.downloader;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
 
 class OptionProperties {
-    static final String RELATIVE_OUTPUT_DIR = System.getProperty("org.graalvm.maven.downloader.relative_output_dir");
+    static final String DEFAULT_RELATIVE_OUTPUT_DIR = "modules";
+    static final String RELATIVE_OUTPUT_DIR = System.getProperty("org.graalvm.maven.downloader.relative_output_dir", DEFAULT_RELATIVE_OUTPUT_DIR);
     static final String DEFAULT_VERSION = System.getProperty("org.graalvm.maven.downloader.default_version");
     static final String VERSION_PROP = "org.graalvm.maven.downloader.version";
     static final String DEFAULT_MAVEN_REPO = "https://repo1.maven.org/maven2/";
@@ -72,6 +80,16 @@ class OptionProperties {
             if (DEFAULT_VERSION != null) {
                 return DEFAULT_VERSION;
             } else {
+                InputStream in = OptionProperties.class.getResourceAsStream("/META-INF/graalvm/org.graalvm.maven.downloader/version");
+                if (in != null) {
+                    try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+                        String version = r.readLine();
+                        if (version != null) {
+                            return version;
+                        }
+                    } catch (IOException ioe) {
+                    }
+                }
                 return "not specified";
             }
         } else {
@@ -89,12 +107,27 @@ class OptionProperties {
     }
 
     public static String getDefaultOutputDir() {
-        if (RELATIVE_OUTPUT_DIR != null) {
-            if (ImageInfo.inImageRuntimeCode()) {
-                String progName = ProcessProperties.getExecutableName();
-                return Paths.get(progName).resolve("..").resolve(RELATIVE_OUTPUT_DIR).normalize().toString();
+        if (ImageInfo.inImageRuntimeCode()) {
+            String progName = ProcessProperties.getExecutableName();
+            if (progName != null) {
+                // $STANDALONE_HOME/bin/<exe>/../../modules = $STANDALONE_HOME/modules
+                Path standaloneHome = Paths.get(progName).resolve("..").resolve("..");
+                return standaloneHome.resolve(RELATIVE_OUTPUT_DIR).normalize().toString();
+            }
+        } else {
+            String javaHomeProperty = System.getProperty("java.home");
+            if (javaHomeProperty != null) {
+                Path javaHome = Paths.get(javaHomeProperty);
+                if (Files.isDirectory(javaHome) && Files.exists(javaHome.resolve("lib").resolve("modules"))) {
+                    // Resolve standalone home relative to java.home.
+                    Path standaloneHome = javaHome.resolve("..");
+                    Path modules = standaloneHome.resolve(RELATIVE_OUTPUT_DIR).normalize();
+                    if (Files.isDirectory(modules)) {
+                        return modules.toString();
+                    }
+                }
             }
         }
-        return "maven downloader output";
+        return DEFAULT_RELATIVE_OUTPUT_DIR;
     }
 }

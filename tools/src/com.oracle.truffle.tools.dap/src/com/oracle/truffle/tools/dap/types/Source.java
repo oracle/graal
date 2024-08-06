@@ -24,13 +24,13 @@
  */
 package com.oracle.truffle.tools.dap.types;
 
-import org.graalvm.shadowed.org.json.JSONArray;
-import org.graalvm.shadowed.org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 /**
  * A Source is a descriptor for source code. It is returned from the debug adapter as part of a
@@ -69,7 +69,7 @@ public class Source extends JSONBase {
     }
 
     /**
-     * If sourceReference &gt 0 the contents of the source must be retrieved through the
+     * If sourceReference &gt; 0 the contents of the source must be retrieved through the
      * SourceRequest (even if a path is specified). A sourceReference is only valid for a session,
      * so it must not be used to persist a source. The value should be less than or equal to
      * 2147483647 (2^31 - 1).

@@ -61,7 +61,3 @@ Some examples are:
 * [IntelliJ Save Actions](https://github.com/dubreuia/intellij-plugin-save-actions) to automatically format files before saving them.
 
 See the [documentation on IDE integration](https://github.com/graalvm/mx/blob/master/docs/IDE.md) for further suggestions.
-
-### Further Reading
-
-* [Native Image Hosted and Runtime Options](../HostedvsRuntimeOptions.md)

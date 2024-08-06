@@ -134,8 +134,8 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     @Override
-    public TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int index, int maxIndex) {
-        return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nfa.getNumberOfStates(), trackLastGroup);
+    public TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index) {
+        return new TRegexNFAExecutorLocals(input, fromIndex, maxIndex, regionFrom, regionTo, index, getNumberOfCaptureGroups(), nfa.getNumberOfStates(), trackLastGroup);
     }
 
     @Override
@@ -143,7 +143,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
         TRegexNFAExecutorLocals locals = (TRegexNFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
 
-        final int offset = rewindUpTo(locals, 0, nfa.getAnchoredEntry().length - 1, codeRange);
+        final int offset = rewindUpTo(locals, locals.getRegionFrom(), nfa.getAnchoredEntry().length - 1, codeRange);
         NFAState anchoredInitialState = nfa.getAnchoredEntry()[offset] == null ? null : nfa.getAnchoredEntry()[offset].getTarget();
         NFAState unAnchoredInitialState = nfa.getUnAnchoredEntry()[offset] == null ? null : nfa.getUnAnchoredEntry()[offset].getTarget();
         if (anchoredInitialState != unAnchoredInitialState && inputAtBegin(locals)) {

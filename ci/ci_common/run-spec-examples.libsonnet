@@ -234,6 +234,36 @@ local r      = import "run-spec.libsonnet";
       };
       std.assertEqual(_impl.get_platform_spec(_impl.desugar_task_dict(_input).job).variants, _result)
     ,
+    generate_variants_exclude::
+      local _feature_map = {
+        benchmarks: {
+          [name]: {
+            "<all-os>"+: _impl.exclude,
+          },
+          for name in ["deltablue", "nbody", "binarytrees", "fasta", "jolden", "specjbb2005"]
+        },
+      };
+      local _input = {
+        "job": _impl.generate_variants({
+          // ! can be used to exclude individual values from all feature values
+          "benchmarks:!specjbb2005:!jolden": {
+            // run all benchmarks but specjbb2005 and jolden
+            "linux": {
+              "amd64": _impl.include
+            }
+          },
+        }, feature_map=_feature_map)
+      };
+      //
+      local _result =
+      {
+        "benchmarks:deltablue":   { "<all-os>": { "<exclude>": true }, "linux": { "amd64": { "<exclude>": false } } },
+        "benchmarks:nbody":       { "<all-os>": { "<exclude>": true }, "linux": { "amd64": { "<exclude>": false } } },
+        "benchmarks:binarytrees": { "<all-os>": { "<exclude>": true }, "linux": { "amd64": { "<exclude>": false } } },
+        "benchmarks:fasta":       { "<all-os>": { "<exclude>": true }, "linux": { "amd64": { "<exclude>": false } } },
+      };
+      std.assertEqual(_impl.get_platform_spec(_impl.desugar_task_dict(_input).job).variants, _result)
+    ,
     expand_variants::
       local _input = {
         "task": _impl.add_platform_spec({

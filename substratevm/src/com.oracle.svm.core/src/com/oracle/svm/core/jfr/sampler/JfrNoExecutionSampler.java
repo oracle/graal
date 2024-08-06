@@ -27,14 +27,15 @@ package com.oracle.svm.core.jfr.sampler;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.Uninterruptible;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jfr.JfrExecutionSamplerSupported;
 import com.oracle.svm.core.jfr.JfrFeature;
 
 public class JfrNoExecutionSampler extends JfrExecutionSampler {
@@ -92,7 +93,7 @@ class JfrNoExecutionSamplerFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (!JfrFeature.isExecutionSamplerSupported()) {
+        if (!JfrExecutionSamplerSupported.isSupported()) {
             ImageSingletons.add(JfrExecutionSampler.class, new JfrNoExecutionSampler());
         }
     }

@@ -30,14 +30,15 @@ import java.util.List;
 import java.util.ListResourceBundle;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -49,6 +50,7 @@ import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializatio
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.debug.GraalError;
 import sun.util.resources.OpenListResourceBundle;
 import sun.util.resources.ParallelListResourceBundle;
 
@@ -172,11 +174,13 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Override
-    public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
-        super.prepareBundle(bundleName, bundle, locale);
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale, boolean jdkLocale) {
+        super.prepareBundle(bundleName, bundle, findModule, locale, jdkLocale);
         /* Initialize ResourceBundle.keySet eagerly */
         bundle.keySet();
-        this.existingBundles.add(control.toBundleName(bundleName, locale));
+        if (!jdkLocale) {
+            this.existingBundles.add(control.toBundleName(bundleName, locale));
+        }
     }
 
     @Override

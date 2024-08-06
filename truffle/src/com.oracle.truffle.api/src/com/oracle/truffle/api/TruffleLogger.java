@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,12 +47,14 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
@@ -819,8 +821,8 @@ public final class TruffleLogger {
         } else {
             value = DEFAULT_VALUE;
         }
-        setLevelNum(value);
-        if (children != null) {
+        boolean changed = setLevelNum(value);
+        if (changed && children != null) {
             for (ChildLoggerRef ref : children) {
                 final TruffleLogger logger = ref.get();
                 if (logger != null) {
@@ -982,6 +984,7 @@ public final class TruffleLogger {
         }
 
         synchronized boolean isLoggable(final String loggerName, final Level level) {
+
             final Set<String> toRemove = collectRemovedLevels();
             if (!toRemove.isEmpty()) {
                 reconfigure(Collections.emptyMap(), toRemove);
@@ -1132,28 +1135,36 @@ public final class TruffleLogger {
 
         private Set<String> collectRemovedLevels() {
             assert Thread.holdsLock(this);
-            final Set<String> toRemove = new HashSet<>();
-            ContextWeakReference ref;
-            while ((ref = (ContextWeakReference) contextsRefQueue.poll()) != null) {
-                activeContexts.remove(ref);
-                toRemove.addAll(ref.configuredLoggers.keySet());
+            Set<String> toRemove = new HashSet<>();
+            /*
+             * Context-bound loggers are designed to operate within a single context and should not
+             * be reconfigured when the context is closed or subject to garbage collection.
+             * Preserving the log levels after the context is closed serves the purpose of detecting
+             * code where the logger is misused and logs after the context closure.
+             */
+            if (!LanguageAccessor.ENGINE.isContextBoundLogger(getSPI())) {
+                ContextWeakReference ref;
+                while ((ref = (ContextWeakReference) contextsRefQueue.poll()) != null) {
+                    activeContexts.remove(ref);
+                    toRemove.addAll(ref.configuredLoggers.keySet());
+                }
             }
             return toRemove;
         }
 
         private void reconfigure(final Map<String, Level> addedLevels, final Set<String> toRemove) {
             assert Thread.holdsLock(this);
-            assert !addedLevels.isEmpty() || !toRemove.isEmpty();
-            final Collection<String> loggersWithRemovedLevels = new HashSet<>();
-            final Collection<String> loggersWithChangedLevels = new HashSet<>();
+            final Collection<String> loggersWithRemovedLevels = new TreeSet<>(Comparator.reverseOrder());
+            final Collection<String> loggersWithChangedLevels = new TreeSet<>();
+            boolean singleContext = activeContexts.size() <= 1;
             effectiveLevels = computeEffectiveLevels(
                             effectiveLevels,
                             toRemove,
                             addedLevels,
                             activeContexts,
+                            singleContext,
                             loggersWithRemovedLevels,
                             loggersWithChangedLevels);
-            boolean singleContext = activeContexts.size() <= 1;
             for (String loggerName : loggersWithRemovedLevels) {
                 final TruffleLogger logger = getLogger(loggerName);
                 if (logger != null) {
@@ -1223,12 +1234,13 @@ public final class TruffleLogger {
         }
 
         private static Map<String, Level> computeEffectiveLevels(
-                        final Map<String, Level> currentEffectiveLevels,
-                        final Set<String> removed,
-                        final Map<String, Level> added,
-                        final Collection<? extends ContextWeakReference> contexts,
-                        final Collection<? super String> removedLevels,
-                        final Collection<? super String> changedLevels) {
+                        Map<String, Level> currentEffectiveLevels,
+                        Set<String> removed,
+                        Map<String, Level> added,
+                        Collection<? extends ContextWeakReference> contexts,
+                        boolean singleContext,
+                        Collection<? super String> removedLevels,
+                        Collection<? super String> changedLevels) {
             final Map<String, Level> newEffectiveLevels = new HashMap<>(currentEffectiveLevels);
             for (String loggerName : removed) {
                 final Level level = findMinLevel(loggerName, contexts);
@@ -1243,15 +1255,50 @@ public final class TruffleLogger {
                     }
                 }
             }
-            // In a multi context scenario there can be a logger with higher effective log level
-            // than a default one. When the newly configured context does not specify log level
-            // explicitly the effective log level of such a logger needs to be set to the default
-            // level.
-            Map<String, Level> addedWithDefaults = new HashMap<>(added);
-            for (String loggerName : newEffectiveLevels.keySet()) {
-                addedWithDefaults.putIfAbsent(loggerName, Level.INFO);
+            Map<String, Level> toAdd;
+            if (singleContext) {
+                if (!newEffectiveLevels.isEmpty()) {
+                    // During the transition from a multi-context to a single context, log levels
+                    // may need to be adjusted. In a multi-context scenario, log levels can be
+                    // escalated to the default log level if a logger has a higher log level than
+                    // the default level, such as Level.OFF. Additionally, log levels may be
+                    // inherited from a parent logger if the parent has a lower log level than the
+                    // logger's own level.
+                    ContextWeakReference ref = contexts.iterator().next();
+                    Map<String, Level> config = ref.configuredLoggers;
+                    for (Map.Entry<String, Level> e : newEffectiveLevels.entrySet()) {
+                        String loggerName = e.getKey();
+                        Level level = config.get(loggerName);
+                        assert level != null;
+                        e.setValue(level);
+                        changedLevels.add(loggerName);
+                    }
+                }
+                toAdd = added;
+            } else {
+                // In a multi-context scenario, if a newly registered context specifies a logger
+                // with a higher effective log level than the default level, for example Level.OFF,
+                // and this logger is not configured by already existing contexts, we need to use
+                // the default level to ensure that loggers for existing contexts are not disabled.
+                toAdd = new HashMap<>();
+                for (Map.Entry<String, Level> e : added.entrySet()) {
+                    String loggerName = e.getKey();
+                    Level loggerLevel = e.getValue();
+                    if (!newEffectiveLevels.containsKey(loggerName)) {
+                        loggerLevel = min(loggerLevel, Level.INFO);
+                    }
+                    toAdd.put(loggerName, loggerLevel);
+                }
+                // In a multi-context scenario, it's possible to encounter a logger with a higher
+                // effective log level than the default level inherited from an existing context,
+                // for example Level.OFF. In cases where the newly configured context does not
+                // explicitly specify a log level for this logger, it's necessary to ensure that the
+                // effective log level of the logger is set to the default level.
+                for (String loggerName : newEffectiveLevels.keySet()) {
+                    toAdd.putIfAbsent(loggerName, Level.INFO);
+                }
             }
-            for (Map.Entry<String, Level> addedLevel : addedWithDefaults.entrySet()) {
+            for (Map.Entry<String, Level> addedLevel : toAdd.entrySet()) {
                 final String loggerName = addedLevel.getKey();
                 final Level loggerLevel = addedLevel.getValue();
                 final Level currentLevel = newEffectiveLevels.get(loggerName);

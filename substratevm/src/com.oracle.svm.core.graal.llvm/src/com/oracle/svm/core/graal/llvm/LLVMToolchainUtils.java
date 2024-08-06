@@ -29,12 +29,11 @@ import static com.oracle.svm.core.graal.llvm.objectfile.LLVMObjectFile.getLld;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -111,7 +110,7 @@ public class LLVMToolchainUtils {
 
     private static int optimizationLevel() {
         return switch (SubstrateOptions.optimizationLevel()) {
-            case O0, BUILD_TIME -> 0;
+            case O0, BUILD_TIME, SIZE -> 0;
             case O1 -> 1;
             case O2 -> 2;
             case O3 -> 3;
@@ -170,8 +169,8 @@ public class LLVMToolchainUtils {
     public static final class BatchExecutor {
         private CompletionExecutor executor;
 
-        public BatchExecutor(BigBang bb, ForkJoinPool threadPool) {
-            this.executor = new CompletionExecutor(bb, threadPool, bb.getHeartbeatCallback());
+        public BatchExecutor(DebugContext debug, BigBang bb) {
+            this.executor = new CompletionExecutor(debug, bb);
             executor.init();
         }
 

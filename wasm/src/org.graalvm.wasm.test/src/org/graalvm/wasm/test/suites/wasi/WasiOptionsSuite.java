@@ -40,19 +40,6 @@
  */
 package org.graalvm.wasm.test.suites.wasi;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.polyglot.io.IOAccess;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.utils.Assert;
-import org.graalvm.wasm.utils.WasmBinaryTools;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
@@ -64,6 +51,19 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Map;
 import java.util.Set;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.utils.WasmBinaryTools;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
 public class WasiOptionsSuite {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,9 +29,12 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -44,10 +47,12 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.vm.VM;
 
 /**
  * Represents a native Java method.
  */
+@ExportLibrary(NodeLibrary.class)
 final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
 
     private final TruffleObject boundNative;
@@ -96,15 +101,12 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
     }
 
     @Override
-    void beforeInstumentation(VirtualFrame frame) {
-        // no op
-    }
-
-    @Override
     public Object execute(VirtualFrame frame) {
         final JniEnv env = getContext().getJNI();
         int nativeFrame = env.getHandles().pushFrame();
         NATIVE_METHOD_CALLS.inc();
+        var tls = getContext().getLanguage().getThreadLocalState();
+        tls.blockContinuationSuspension();   // Can't unwind through native frames.
         try {
             Object[] nativeArgs = preprocessArgs(env, frame.getArguments());
             Object result = executeNative.execute(boundNative, nativeArgs);
@@ -113,6 +115,7 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         } finally {
+            tls.unblockContinuationSuspension();
             env.getHandles().popFramesIncluding(nativeFrame);
         }
     }
@@ -152,7 +155,19 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
     }
 
     @Override
-    public int getBci(@SuppressWarnings("unused") Frame frame) {
-        return -2;
+    public int getBci(Frame frame) {
+        return VM.EspressoStackElement.NATIVE_BCI;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public boolean hasScope(@SuppressWarnings("unused") Frame frame) {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
+        return new SubstitutionScope(frame.getArguments(), getMethodVersion());
     }
 }

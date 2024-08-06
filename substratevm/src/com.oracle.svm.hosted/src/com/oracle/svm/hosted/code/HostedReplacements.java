@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,19 +26,17 @@ package com.oracle.svm.hosted.code;
 
 import java.util.IdentityHashMap;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.word.WordTypes;
-
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
+import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.java.BytecodeParser;
+import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -65,11 +63,11 @@ public class HostedReplacements extends SubstrateReplacements {
     private final HostedUniverse hUniverse;
     private final SubstrateReplacements aReplacements;
 
-    public HostedReplacements(HostedUniverse hUniverse, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target, HostedProviders anaylysisProviders,
-                    BytecodeProvider bytecodeProvider, WordTypes wordTypes) {
-        super(providers, snippetReflection, bytecodeProvider, target, wordTypes, null);
+    public HostedReplacements(HostedUniverse hUniverse, Providers providers, TargetDescription target, HostedProviders analysisProviders,
+                    BytecodeProvider bytecodeProvider) {
+        super(providers, bytecodeProvider, target, null);
         this.hUniverse = hUniverse;
-        this.aReplacements = (SubstrateReplacements) anaylysisProviders.getReplacements();
+        this.aReplacements = (SubstrateReplacements) analysisProviders.getReplacements();
     }
 
     @Override
@@ -79,7 +77,7 @@ public class HostedReplacements extends SubstrateReplacements {
     }
 
     @Override
-    public void encodeSnippets() {
+    public void encodeSnippets(GraphEncoder encoder) {
         /* Copy over all snippets from the analysis replacements, changing out metadata objects. */
         IdentityHashMap<Object, Object> mapping = new IdentityHashMap<>();
         super.copyFrom(aReplacements, obj -> AnalysisToHostedGraphTransplanter.replaceAnalysisObjects(obj, null, mapping, hUniverse));

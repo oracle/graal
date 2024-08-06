@@ -78,6 +78,11 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
         return annotated;
     }
 
+    @Override
+    public ResolvedJavaType unwrapTowardsOriginalType() {
+        return original;
+    }
+
     void addInstanceField(ResolvedJavaField field) {
         for (int i = 0; i < instanceFields.length; i++) {
             ResolvedJavaField[] newFields = Arrays.copyOf(instanceFields[i], instanceFields[i].length + 1, ResolvedJavaField[].class);
@@ -330,11 +335,6 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     @Override
     public ResolvedJavaType getHostClass() {
         return original.getHostClass();
-    }
-
-    @Override
-    public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(original);
     }
 
     @Override

@@ -44,6 +44,8 @@ import org.graalvm.polyglot.Source;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
+import static com.oracle.truffle.tools.dap.test.DAPTester.getFilePath;
+
 /**
  * Test of SourcePath option.
  */
@@ -131,7 +133,7 @@ public class RelativeSourceDAPTest {
                 tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":" + (seq++) + "}");
             }
             // Suspend at the beginning of the script:
-            String sourceJson = (i == 0) ? "{\"name\":\"" + new File(resolvedURI[i].getPath()).getName() + "\",\"path\":\"" + resolvedURI[i].getPath() + "\"}"
+            String sourceJson = (i == 0) ? "{\"name\":\"" + new File(resolvedURI[i].getPath()).getName() + "\",\"path\":\"" + getFilePath(new File(resolvedURI[i])) + "\"}"
                             : "{\"sourceReference\":" + (i + 1) + ",\"path\":\"" + resolvedURI[i].getSchemeSpecificPart() + "\",\"name\":\"test" + (i + 1) + ".file\"}";
             tester.compareReceivedMessages(
                             "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":" + sourceJson + "},\"type\":\"event\",\"seq\":" + (seq++) + "}");
@@ -175,7 +177,7 @@ public class RelativeSourceDAPTest {
         tester.sendMessage("{\"command\":\"configurationDone\",\"type\":\"request\",\"seq\":5}");
         tester.compareReceivedMessages("{\"success\":true,\"type\":\"response\",\"request_seq\":5,\"command\":\"configurationDone\",\"seq\":5}");
 
-        String resolvedPath = new File("relative/path").toPath().toAbsolutePath().toString();
+        String resolvedPath = getFilePath(new File("relative/path"));
 
         tester.eval(source);
         String sourceJson = "{\"sourceReference\":1,\"path\":\"" + resolvedPath + "\",\"name\":\"path\"}";
@@ -219,7 +221,7 @@ public class RelativeSourceDAPTest {
         TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePath, true, true);
         ProxyLanguage.setDelegate(language);
         Source source = Source.create(ProxyLanguage.ID, sourceContent);
-        String sourceJson = "{\"name\":\"" + filePath.getFileName() + "\",\"path\":\"" + filePath + "\"}";
+        String sourceJson = "{\"name\":\"" + filePath.getFileName() + "\",\"path\":\"" + getFilePath(filePath.toFile()) + "\"}";
 
         DAPTester tester = DAPTester.start(false, null, Collections.singletonList(sourcePathURI));
         tester.sendMessage(

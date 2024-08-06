@@ -27,21 +27,21 @@ package com.oracle.svm.core.graal.phases;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.AbstractEndNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.MergeNode;
-import org.graalvm.compiler.nodes.PhiNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.UnwindNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.Phase;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.AbstractEndNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.PhiNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.UnwindNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.WithExceptionNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
+import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.phases.Phase;
 
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -70,7 +70,7 @@ public class RemoveUnwindPhase extends Phase {
         List<WithExceptionNode> withExceptionNodes = new ArrayList<>();
         List<BytecodeExceptionNode> bytecodeExceptionNodes = new ArrayList<>();
         for (UnwindNode node : graph.getNodes(UnwindNode.TYPE)) {
-            walkBack(node.predecessor(), node, withExceptionNodes, bytecodeExceptionNodes, GraphUtil.unproxify(node.exception()), graph);
+            walkBack(node.predecessor(), node, GraphUtil.unproxify(node.exception()), withExceptionNodes, bytecodeExceptionNodes);
         }
 
         /*
@@ -91,47 +91,80 @@ public class RemoveUnwindPhase extends Phase {
         }
     }
 
+    private record WorklistEntry(Node current, Node successor, ValueNode expectedException) {
+    }
+
     /**
      * We walk back from the {@link UnwindNode} to a {@link WithExceptionNode}. If the control flow
-     * path only contains nodes white-listed in this method, then we know that we have a node that
-     * just forwards the exception to the {@link UnwindNode}. Such nodes are rewritten to a variant
-     * without an exception edge, i.e., no exception handler entry is created for such invokes.
+     * path only contains nodes explicitly allowed in this method, then we know that we have a node
+     * that just forwards the exception to the {@link UnwindNode}. Such nodes are rewritten to a
+     * variant without an exception edge, i.e., no exception handler entry is created for such
+     * invokes.
      */
-    protected static void walkBack(Node n, Node successor, List<WithExceptionNode> withExceptionNodes, List<BytecodeExceptionNode> bytecodeExceptionNodes, ValueNode expectedExceptionNode,
-                    StructuredGraph graph) {
-        if (n instanceof WithExceptionNode) {
-            WithExceptionNode node = (WithExceptionNode) n;
-            if (node.exceptionEdge() == successor) {
-                withExceptionNodes.add(node);
-            }
-        } else if (n instanceof BytecodeExceptionNode || n instanceof ExceptionObjectNode) {
-            if (n == expectedExceptionNode) {
-                if (n instanceof BytecodeExceptionNode) {
-                    BytecodeExceptionNode node = (BytecodeExceptionNode) n;
-                    bytecodeExceptionNodes.add(node);
+    protected static void walkBack(Node initialNode, Node initialSuccessor, ValueNode initialExpectedException,
+                    List<WithExceptionNode> withExceptionNodes, List<BytecodeExceptionNode> bytecodeExceptionNodes) {
+        Node current = initialNode;
+        Node successor = initialSuccessor;
+        ValueNode expectedException = initialExpectedException;
+
+        /*
+         * The worklist is used when a node has multiple predecessors. The inner loop walks back
+         * single-predecessor nodes to avoid allocating unnecessary worklist entries.
+         */
+        List<WorklistEntry> worklist = new ArrayList<>();
+        while (true) {
+            nodeWalk: while (true) {
+                if (current instanceof WithExceptionNode node) {
+                    if (node.exceptionEdge() == successor) {
+                        withExceptionNodes.add(node);
+                    }
+                    break;
+
+                } else if (current instanceof BytecodeExceptionNode || current instanceof ExceptionObjectNode) {
+                    if (current == expectedException) {
+                        if (current instanceof BytecodeExceptionNode) {
+                            BytecodeExceptionNode node = (BytecodeExceptionNode) current;
+                            bytecodeExceptionNodes.add(node);
+                        } else {
+                            successor = current;
+                            current = current.predecessor();
+                            continue nodeWalk;
+                        }
+                    }
+                    // bailout here, the node does not flow into the corresponding unwind, its a
+                    // unrelated exception, but a different one than the unwind one
+                    break;
+                } else if (current instanceof MergeNode merge) {
+                    if (merge.isPhiAtMerge(expectedException)) {
+                        /* Propagate expected exception on each control path leading to the merge */
+                        PhiNode expectedExceptionForInput = (PhiNode) expectedException;
+                        for (int input = 0; input < merge.forwardEndCount(); input++) {
+                            Node predecessor = merge.forwardEndAt(input);
+                            worklist.add(new WorklistEntry(predecessor, merge, GraphUtil.unproxify(expectedExceptionForInput.valueAt(input))));
+                        }
+                    } else {
+                        for (ValueNode predecessor : merge.cfgPredecessors()) {
+                            worklist.add(new WorklistEntry(predecessor, merge, expectedException));
+                        }
+                    }
+                    break;
+
+                } else if (current instanceof AbstractBeginNode || current instanceof AbstractEndNode) {
+                    successor = current;
+                    current = current.predecessor();
+
                 } else {
-                    walkBack(n.predecessor(), n, withExceptionNodes, bytecodeExceptionNodes, expectedExceptionNode, graph);
-                }
-            } else {
-                graph.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Node %s does not flow to the corresponding Unwind. Bailing out.", n);
-            }
-        } else if (n instanceof MergeNode) {
-            MergeNode merge = (MergeNode) n;
-            if (merge.isPhiAtMerge(expectedExceptionNode)) {
-                /* Propagate expected exception on each control path leading to the merge */
-                PhiNode expectedExceptionForInput = (PhiNode) expectedExceptionNode;
-                for (int input = 0; input < merge.forwardEndCount(); input++) {
-                    Node predecessor = merge.forwardEndAt(input);
-                    walkBack(predecessor, merge, withExceptionNodes, bytecodeExceptionNodes, GraphUtil.unproxify(expectedExceptionForInput.valueAt(input)), graph);
-                }
-            } else {
-                for (ValueNode predecessor : merge.cfgPredecessors()) {
-                    walkBack(predecessor, merge, withExceptionNodes, bytecodeExceptionNodes, expectedExceptionNode, graph);
+                    break;
                 }
             }
 
-        } else if (n instanceof AbstractBeginNode || n instanceof AbstractEndNode) {
-            walkBack(n.predecessor(), n, withExceptionNodes, bytecodeExceptionNodes, expectedExceptionNode, graph);
+            if (worklist.isEmpty()) {
+                break;
+            }
+            var entry = worklist.removeLast();
+            current = entry.current;
+            successor = entry.successor;
+            expectedException = entry.expectedException;
         }
     }
 

@@ -124,6 +124,10 @@ public class TBitSet implements Iterable<Integer> {
         return Arrays.copyOf(words, words.length);
     }
 
+    public long[] getInternalArray() {
+        return words;
+    }
+
     private void ensureCapacity(int nWords) {
         if (words.length < nWords) {
             words = Arrays.copyOf(words, Math.max(2 * words.length, nWords));

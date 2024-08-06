@@ -34,7 +34,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
-import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -104,7 +104,7 @@ public class VMThreadLocalInfo {
         } else if (threadLocalClass == FastThreadLocalLong.class) {
             storageKind = JavaKind.Long;
         } else if (threadLocalClass == FastThreadLocalWord.class) {
-            storageKind = FrameAccess.getWordKind();
+            storageKind = ConfigurationValues.getWordKind();
         } else if (threadLocalClass == FastThreadLocalObject.class) {
             storageKind = JavaKind.Object;
         } else if (threadLocalClass == FastThreadLocalBytes.class) {

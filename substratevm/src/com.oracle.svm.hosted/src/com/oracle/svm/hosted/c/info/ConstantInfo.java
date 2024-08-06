@@ -38,6 +38,10 @@ public class ConstantInfo extends SizableInfo {
         this.valueInfo = adoptChild(new PropertyInfo<>("value"));
     }
 
+    public Object getValue() {
+        return valueInfo.getProperty();
+    }
+
     public PropertyInfo<Object> getValueInfo() {
         return valueInfo;
     }

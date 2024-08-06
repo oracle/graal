@@ -439,7 +439,7 @@ final class ParserDriver {
      * @return the parser result corresponding to {@code lib}
      */
     private LLVMParserResult parseLibraryWithSource(Source source, ByteSequence bytes) {
-        BinaryParserResult binaryParserResult = BinaryParser.parse(bytes, source, context);
+        BinaryParserResult binaryParserResult = BinaryParser.parse(bytes, source, context, bitcodeID);
         if (binaryParserResult != null) {
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
             processDependencies(binaryParserResult.getLibraryName(), source.isInternal(), binaryParserResult);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,38 +40,28 @@
  */
 package com.oracle.truffle.object;
 
-/** @since 0.17 or earlier */
-@Deprecated
-public final class ObjectStorageOptions {
+final class ObjectStorageOptions {
     @SuppressWarnings("deprecation") private static final String OPTION_PREFIX = com.oracle.truffle.api.object.Layout.OPTION_PREFIX;
 
     private ObjectStorageOptions() {
     }
 
-    /** @since 0.17 or earlier */
     public static final boolean PrimitiveLocations = booleanOption(OPTION_PREFIX + "PrimitiveLocations", true);
-    /** @since 0.17 or earlier */
     public static final boolean IntegerLocations = booleanOption(OPTION_PREFIX + "IntegerLocations", true);
-    /** @since 0.17 or earlier */
     public static final boolean DoubleLocations = booleanOption(OPTION_PREFIX + "DoubleLocations", true);
-    /** @since 0.17 or earlier */
     public static final boolean LongLocations = booleanOption(OPTION_PREFIX + "LongLocations", true);
-    /** @since 0.17 or earlier */
     public static final boolean BooleanLocations = booleanOption(OPTION_PREFIX + "BooleanLocations", true);
-    /** @since 0.17 or earlier */
     public static final boolean TypedObjectLocations = booleanOption(OPTION_PREFIX + "TypedObjectLocations", true);
 
     /**
      * Allocation of in-object fields.
-     *
-     * @since 0.17 or earlier
      */
     public static final boolean InObjectFields = booleanOption(OPTION_PREFIX + "InObjectFields", true);
 
     static final boolean TriePropertyMap = booleanOption(OPTION_PREFIX + "TriePropertyMap", true);
+    static final boolean TrieTransitionMap = booleanOption(OPTION_PREFIX + "TrieTransitionMap", true);
 
     // Debug options (should be final)
-    /** @since 0.17 or earlier */
     public static final boolean TraceReshape = booleanOption(OPTION_PREFIX + "TraceReshape", false);
 
     static final boolean DebugCounters = booleanOption(OPTION_PREFIX + "DebugCounters", false);
@@ -83,12 +73,9 @@ public final class ObjectStorageOptions {
     static final boolean DumpShapes = DumpShapesDOT || DumpShapesJSON || DumpShapesIGV;
     static final String DumpShapesPath = System.getProperty(OPTION_PREFIX + "DumpShapesPath", "");
 
-    /** @since 0.17 or earlier */
     static final boolean Profile = booleanOption(OPTION_PREFIX + "Profile", false);
-    /** @since 0.17 or earlier */
     static final int ProfileTopResults = Integer.getInteger(OPTION_PREFIX + "ProfileTopResults", -1);
 
-    /** @since 0.17 or earlier */
     public static boolean booleanOption(String name, boolean defaultValue) {
         String value = System.getProperty(name);
         return value == null ? defaultValue : value.equalsIgnoreCase("true");

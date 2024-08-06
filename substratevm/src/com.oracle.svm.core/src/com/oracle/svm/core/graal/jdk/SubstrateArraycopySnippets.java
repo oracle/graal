@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,30 +24,16 @@
  */
 package com.oracle.svm.core.graal.jdk;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import java.util.Map;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.InputType;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.replacements.arraycopy.ArrayCopyNode;
-import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
-import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -56,11 +42,26 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.util.ArrayUtil;
 
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallWithExceptionNode;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.replacements.arraycopy.ArrayCopyNode;
+import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
 import jdk.vm.ci.meta.JavaKind;
 
 public final class SubstrateArraycopySnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(SubstrateArraycopySnippets.class, "doArraycopy", false, LocationIdentity.any());
+    private static final SubstrateForeignCallDescriptor ARRAYCOPY = SnippetRuntime.findForeignCall(SubstrateArraycopySnippets.class, "doArraycopy", HAS_SIDE_EFFECT, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{ARRAYCOPY};
 
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
@@ -87,25 +88,25 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
 
         if (LayoutEncoding.isPrimitiveArray(fromLayoutEncoding)) {
             if (fromArray == toArray && fromIndex < toIndex) {
-                boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
+                ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
                 JavaMemoryUtil.copyPrimitiveArrayBackward(fromArray, fromIndex, fromArray, toIndex, length, fromLayoutEncoding);
                 return;
             } else if (fromHub == toHub) {
-                boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
+                ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
                 JavaMemoryUtil.copyPrimitiveArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromLayoutEncoding);
                 return;
             }
         } else if (LayoutEncoding.isObjectArray(fromLayoutEncoding)) {
             if (fromArray == toArray && fromIndex < toIndex) {
-                boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
+                ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
                 JavaMemoryUtil.copyObjectArrayBackward(fromArray, fromIndex, fromArray, toIndex, length, fromLayoutEncoding);
                 return;
             } else if (fromHub == toHub) {
-                boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
+                ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
                 JavaMemoryUtil.copyObjectArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromLayoutEncoding);
                 return;
             } else if (LayoutEncoding.isObjectArray(toHub.getLayoutEncoding())) {
-                boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
+                ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
                 if (DynamicHub.toClass(toHub).isAssignableFrom(DynamicHub.toClass(fromHub))) {
                     JavaMemoryUtil.copyObjectArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromLayoutEncoding);
                 } else {
@@ -115,12 +116,6 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
             }
         }
         throw new ArrayStoreException();
-    }
-
-    private static void boundsCheck(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
-        if (fromIndex < 0 || toIndex < 0 || length < 0 || fromIndex > ArrayLengthNode.arrayLength(fromArray) - length || toIndex > ArrayLengthNode.arrayLength(toArray) - length) {
-            throw new ArrayIndexOutOfBoundsException();
-        }
     }
 
     static final class SubstrateArrayCopyLowering implements NodeLoweringProvider<ArrayCopyNode> {

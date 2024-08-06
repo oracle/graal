@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,6 +91,12 @@ final class PolyglotHostAccess extends AbstractHostAccess {
     }
 
     @Override
+    public Object toByteSequence(Object internalContext, Object guestValue) {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        return context.getAPIAccess().toByteSequence(PolyglotByteSequence.create(context.getHostContext(), guestValue));
+    }
+
+    @Override
     public <K, V> Map<K, V> toMap(Object internalContext, Object foreignObject, boolean implementsFunction, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType) {
         PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
         return PolyglotMap.create(context.getHostContext(), foreignObject, implementsFunction, keyClass, keyType, valueClass, valueType);
@@ -109,15 +115,15 @@ final class PolyglotHostAccess extends AbstractHostAccess {
     }
 
     @Override
-    public Object toObjectProxy(Object internalContext, Class<?> clazz, Object obj) throws IllegalArgumentException {
+    public Object toObjectProxy(Object internalContext, Class<?> clazz, Type genericType, Object obj) throws IllegalArgumentException {
         PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
-        return PolyglotObjectProxyHandler.newProxyInstance(clazz, obj, context.getHostContext());
+        return PolyglotObjectProxyHandler.newProxyInstance(clazz, genericType, obj, context.getHostContext());
     }
 
     @Override
-    public <T> T toFunctionProxy(Object internalContext, Class<T> functionalType, Object function) {
+    public <T> T toFunctionProxy(Object internalContext, Class<T> functionalType, Type genericType, Object function) {
         PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
-        return PolyglotFunctionProxyHandler.create(functionalType, function, context.getHostContext());
+        return PolyglotFunctionProxyHandler.create(functionalType, genericType, function, context.getHostContext());
     }
 
     @Override

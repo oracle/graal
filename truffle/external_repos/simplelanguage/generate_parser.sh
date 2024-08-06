@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -41,4 +41,4 @@
 #
 
 curl -O https://www.antlr.org/download/antlr-4.12.0-complete.jar
-java -cp antlr-4.12.0-complete.jar org.antlr.v4.Tool -package com.oracle.truffle.sl.parser -no-listener language/src/main/java/com/oracle/truffle/sl/parser/SimpleLanguage.g4
+$JAVA_HOME/bin/java -cp antlr-4.12.0-complete.jar org.antlr.v4.Tool -package com.oracle.truffle.sl.parser -no-listener language/src/main/java/com/oracle/truffle/sl/parser/SimpleLanguage.g4

@@ -34,12 +34,12 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedThread;
 import jdk.jfr.consumer.RecordingStream;
@@ -88,7 +88,7 @@ public class TestVirtualThreadsJfrStreaming extends JfrStreamingTest {
 
         VirtualStressor.execute(THREADS, eventEmitter);
         waitUntilTrue(() -> emittedEventsPerType.get() == EXPECTED_EVENTS);
-        waitUntilTrue(() -> expectedThreads.isEmpty());
+        waitUntilTrue(expectedThreads::isEmpty);
         stopStream(stream, null);
     }
 }

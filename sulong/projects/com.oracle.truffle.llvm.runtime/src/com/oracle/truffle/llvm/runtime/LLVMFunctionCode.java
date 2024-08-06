@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.runtime;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -61,9 +66,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * {@link LLVMFunctionCode} represents the callable function of a {@link LLVMFunction}.
  *
@@ -84,6 +86,7 @@ public final class LLVMFunctionCode {
     private final LLVMFunction llvmFunction;
 
     private volatile CallTarget cachedNativeWrapperFactory;
+    private volatile EconomicMap<String, CallTarget> cachedAltBackendNativeWrapperFactory;
 
     public LLVMFunctionCode(LLVMFunction llvmFunction) {
         this.llvmFunction = llvmFunction;
@@ -113,10 +116,10 @@ public final class LLVMFunctionCode {
         }
     }
 
-    private CallTarget createNativeWrapperFactory(NativeContextExtension nativeExt) {
+    private CallTarget createNativeWrapperFactory(NativeContextExtension nativeExt, String backend) {
         CallTarget ret = null;
         if (nativeExt != null) {
-            ret = nativeExt.createNativeWrapperFactory(this);
+            ret = nativeExt.createNativeWrapperFactory(this, backend);
         }
         if (ret == null) {
             // either no native access, or signature is unsupported
@@ -126,19 +129,60 @@ public final class LLVMFunctionCode {
         return ret;
     }
 
-    private synchronized void initNativeWrapperFactory(NativeContextExtension nativeExt) {
-        if (cachedNativeWrapperFactory == null) {
-            cachedNativeWrapperFactory = createNativeWrapperFactory(nativeExt);
+    private synchronized void initNativeWrapperFactory(NativeContextExtension nativeExt, String backend) {
+        if (backend == null) {
+            if (cachedNativeWrapperFactory == null) {
+                cachedNativeWrapperFactory = createNativeWrapperFactory(nativeExt, null);
+            }
+        } else {
+            if (cachedAltBackendNativeWrapperFactory == null) {
+                cachedAltBackendNativeWrapperFactory = EconomicMap.create();
+            }
+            if (!cachedAltBackendNativeWrapperFactory.containsKey(backend)) {
+                cachedAltBackendNativeWrapperFactory.put(backend, createNativeWrapperFactory(nativeExt, backend));
+            }
         }
     }
 
     CallTarget getNativeWrapperFactory(NativeContextExtension nativeExt) {
         CompilerAsserts.neverPartOfCompilation();
         if (cachedNativeWrapperFactory == null) {
-            initNativeWrapperFactory(nativeExt);
+            initNativeWrapperFactory(nativeExt, null);
         }
         assert cachedNativeWrapperFactory != null;
         return cachedNativeWrapperFactory;
+    }
+
+    CallTarget getAltBackendNativeWrapperFactory(NativeContextExtension nativeExt, String backend) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (cachedAltBackendNativeWrapperFactory == null || !cachedAltBackendNativeWrapperFactory.containsKey(backend)) {
+            initNativeWrapperFactory(nativeExt, backend);
+        }
+        assert cachedAltBackendNativeWrapperFactory.containsKey(backend);
+        return cachedAltBackendNativeWrapperFactory.get(backend);
+    }
+
+    private volatile boolean nativeSignatureInitialized;
+    private String nativeSignature;
+
+    @TruffleBoundary
+    private synchronized void initNativeSignature() {
+        if (!nativeSignatureInitialized) {
+            NativeContextExtension nativeContextExtension = LLVMLanguage.getContext().getContextExtensionOrNull(NativeContextExtension.class);
+            if (nativeContextExtension == null) {
+                nativeSignature = null;
+            } else {
+                nativeSignature = nativeContextExtension.getNativeSignature(llvmFunction.getType());
+            }
+            nativeSignatureInitialized = true;
+        }
+    }
+
+    public String getNativeSignature() {
+        if (!nativeSignatureInitialized) {
+            initNativeSignature();
+        }
+        return nativeSignature;
     }
 
     public static final class Intrinsic {

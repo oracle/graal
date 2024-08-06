@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -151,10 +151,12 @@ public final class SuspendedEvent {
     private final Map<Breakpoint, Throwable> conditionFailures;
     private DebugStackFrameIterable cachedFrames;
     private List<List<DebugStackTraceElement>> cachedAsyncFrames;
+    private final boolean singleStepCompleted;
+    private final boolean isUnwind;
 
     SuspendedEvent(DebuggerSession session, Thread thread, SuspendedContext context, MaterializedFrame frame, SuspendAnchor suspendAnchor,
                     InsertableNode insertableNode, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
-                    List<Breakpoint> breakpoints, Map<Breakpoint, Throwable> conditionFailures) {
+                    List<Breakpoint> breakpoints, Map<Breakpoint, Throwable> conditionFailures, boolean singleStepCompleted, boolean isUnwind) {
         Objects.requireNonNull(session, "session");
         Objects.requireNonNull(thread, "thread");
         Objects.requireNonNull(context, "context");
@@ -174,6 +176,8 @@ public final class SuspendedEvent {
         this.breakpoints = Collections.unmodifiableList(breakpoints);
         this.thread = thread;
         this.sourceSection = context.getInstrumentedSourceSection();
+        this.singleStepCompleted = singleStepCompleted;
+        this.isUnwind = isUnwind;
     }
 
     boolean isDisposed() {
@@ -374,6 +378,43 @@ public final class SuspendedEvent {
         return exception;
     }
 
+    /**
+     * Returns true if a breakpoint hit was the reason for the suspension. A breakpoint hit can
+     * happen at the same time as a step completed and/or an unwind. Hence, a caller of this method
+     * is responsible for also taking the results of {@link SuspendedEvent#isUnwind()} and
+     * {@link SuspendedEvent#isStep()} into account.
+     *
+     * @since 24.1
+     */
+    public boolean isBreakpointHit() {
+        return !breakpoints.isEmpty();
+    }
+
+    /**
+     * Returns true if a step was the reason for the suspension. A step can be either a step over,
+     * step into or a step out. A step that is completed can happen at the same time as an unwind
+     * and/or a breakpoint hit. Hence, a caller of this method is responsible for also taking the
+     * results of {@link SuspendedEvent#isUnwind()} and {@link SuspendedEvent#isBreakpointHit()}
+     * into account.
+     *
+     * @since 24.1
+     */
+    public boolean isStep() {
+        return singleStepCompleted;
+    }
+
+    /**
+     * Returns true if an unwind was the reason for the suspension. An unwind can complete at the
+     * same time as a step and/or a breakpoint hit. Hence, a caller of this method is responsible
+     * for also taking the results of {@link SuspendedEvent#isStep()} and
+     * {@link SuspendedEvent#isBreakpointHit()} into account.
+     *
+     * @since 24.1
+     */
+    public boolean isUnwind() {
+        return isUnwind;
+    }
+
     MaterializedFrame getMaterializedFrame() {
         return materializedFrame;
     }
@@ -474,10 +515,7 @@ public final class SuspendedEvent {
         if (target instanceof RootCallTarget) {
             root = ((RootCallTarget) target).getRootNode();
         }
-        if (root != null && session.getDebugger().getEnv().isEngineRoot(root)) {
-            return true;
-        }
-        return false;
+        return root != null && session.getDebugger().getEnv().isEngineRoot(root);
     }
 
     /**

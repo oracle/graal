@@ -26,10 +26,8 @@
 
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -75,7 +73,7 @@ public class JfrBufferList {
             }
 
             JfrBufferNode next = node.getNext();
-            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
+            JfrBufferNodeAccess.free(node);
             node = next;
         }
         head = WordFactory.nullPointer();

@@ -35,10 +35,21 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.monitor.JavaMonitor;
 
 /**
- * Documents that the class is based on a JDK class without {@linkplain TargetClass substituting}
- * it.
+ * Documents that a class is based on JDK source code. For example, {@link JavaMonitor} (which is
+ * used to implement "synchronized" in Native Image) is a simplified and customized version of the
+ * JDK class {@link java.util.concurrent.locks.ReentrantLock}.
+ *
+ * Unless specified otherwise, we try to keep our custom implementations in sync with their JDK
+ * counterparts. When we update to a new JDK version, we therefore need to check if there were any
+ * relevant changes that need to be applied to our code base. Here is a basic rule of thumb:
+ * <ul>
+ * <li>master should follow JDK latest (unless there are incompatibilities with earlier JDK versions
+ * that we need to support on master)</li>
+ * <li>important bug/performance fixes need to be backported</li>
+ * </ul>
  */
 @Repeatable(BasedOnJDKClass.List.class)
 @Retention(RetentionPolicy.RUNTIME)

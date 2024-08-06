@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.heap.dump;
 
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.NumUtil;
 
 /* Enum of all relevant HPROF top-level records (see enum hprofTag in HotSpot). */
 public enum HProfTopLevelRecord {

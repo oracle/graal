@@ -45,7 +45,7 @@ import org.graalvm.wasm.api.ValueType;
 
 public class DefaultWasmGlobal extends WasmGlobal {
     private long globalValue;
-    private Object globalReferenceValue;
+    private Object globalObjectValue;
 
     @SuppressWarnings("this-escape")
     public DefaultWasmGlobal(ValueType valueType, boolean mutable, int value) {
@@ -62,7 +62,7 @@ public class DefaultWasmGlobal extends WasmGlobal {
     @SuppressWarnings("this-escape")
     public DefaultWasmGlobal(ValueType valueType, boolean mutable, Object value) {
         super(valueType, mutable);
-        storeReference(value);
+        storeObject(value);
     }
 
     @Override
@@ -78,10 +78,10 @@ public class DefaultWasmGlobal extends WasmGlobal {
     }
 
     @Override
-    public Object loadAsReference() {
-        assert globalReferenceValue != null;
-        assert ValueType.isReferenceType(getValueType());
-        return globalReferenceValue;
+    public Object loadAsObject() {
+        assert globalObjectValue != null;
+        assert ValueType.isReferenceType(getValueType()) || ValueType.isVectorType(getValueType());
+        return globalObjectValue;
     }
 
     @Override
@@ -97,8 +97,8 @@ public class DefaultWasmGlobal extends WasmGlobal {
     }
 
     @Override
-    public void storeReference(Object value) {
-        assert ValueType.isReferenceType(getValueType());
-        this.globalReferenceValue = value;
+    public void storeObject(Object value) {
+        assert ValueType.isReferenceType(getValueType()) || ValueType.isVectorType(getValueType());
+        this.globalObjectValue = value;
     }
 }

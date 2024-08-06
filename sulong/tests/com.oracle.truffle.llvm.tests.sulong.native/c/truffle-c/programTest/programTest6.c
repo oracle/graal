@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,7 +45,7 @@ int gcd(int u, int v) {
     if (~u & 1) {    // u is even
         if (v & 1) { // v is odd
             return gcd(u >> 1, v);
-        } else {     // both u and v are even
+        } else { // both u and v are even
             return gcd(u >> 1, v >> 1) << 1;
         }
     }

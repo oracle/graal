@@ -29,7 +29,7 @@ import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.LinkageType;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
-import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 
 /*
  * These helper functions are used to hide the specific lowerings of some instructions

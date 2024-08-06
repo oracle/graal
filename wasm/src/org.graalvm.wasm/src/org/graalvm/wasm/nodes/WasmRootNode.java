@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,13 @@ import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.popInt;
 import static org.graalvm.wasm.nodes.WasmFrame.popLong;
 import static org.graalvm.wasm.nodes.WasmFrame.popReference;
+import static org.graalvm.wasm.nodes.WasmFrame.popVector128;
 import static org.graalvm.wasm.nodes.WasmFrame.pushDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
+import static org.graalvm.wasm.nodes.WasmFrame.pushVector128;
 
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
@@ -58,6 +60,7 @@ import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -66,9 +69,11 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -109,6 +114,21 @@ public class WasmRootNode extends RootNode {
         }
     }
 
+    @Override
+    protected int findBytecodeIndex(Node node, Frame frame) {
+        if (node == null) {
+            // uncached wasm calls without location may happen
+            return -1;
+        }
+        if (node instanceof WasmCallNode n) {
+            // cached wasm call with location may happen
+            return n.getBytecodeOffset();
+        } else {
+            // for wasm exceptions we might be able to get the stack trace
+            return -1;
+        }
+    }
+
     protected final WasmInstance instance(VirtualFrame frame) {
         WasmInstance instance = boundInstance;
         if (instance == null) {
@@ -136,7 +156,7 @@ public class WasmRootNode extends RootNode {
     }
 
     @Override
-    public final Object execute(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         assert WasmArguments.isValid(frame.getArguments());
         final WasmContext context = getContext();
         final WasmInstance instance = instance(frame);
@@ -192,6 +212,8 @@ public class WasmRootNode extends RootNode {
                     return popFloat(frame, localCount);
                 case WasmType.F64_TYPE:
                     return popDouble(frame, localCount);
+                case WasmType.V128_TYPE:
+                    return popVector128(frame, localCount);
                 case WasmType.FUNCREF_TYPE:
                 case WasmType.EXTERNREF_TYPE:
                     return popReference(frame, localCount);
@@ -209,7 +231,7 @@ public class WasmRootNode extends RootNode {
         CompilerAsserts.partialEvaluationConstant(resultCount);
         final var multiValueStack = WasmLanguage.get(this).multiValueStack();
         final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
-        final Object[] referenceMultiValueStack = multiValueStack.referenceStack();
+        final Object[] objectMultiValueStack = multiValueStack.objectStack();
         for (int i = 0; i < resultCount; i++) {
             final int resultType = functionNode.resultType(i);
             CompilerAsserts.partialEvaluationConstant(resultType);
@@ -226,9 +248,12 @@ public class WasmRootNode extends RootNode {
                 case WasmType.F64_TYPE:
                     primitiveMultiValueStack[i] = Double.doubleToRawLongBits(popDouble(frame, localCount + i));
                     break;
+                case WasmType.V128_TYPE:
+                    objectMultiValueStack[i] = popVector128(frame, localCount + i);
+                    break;
                 case WasmType.FUNCREF_TYPE:
                 case WasmType.EXTERNREF_TYPE:
-                    referenceMultiValueStack[i] = popReference(frame, localCount + i);
+                    objectMultiValueStack[i] = popReference(frame, localCount + i);
                     break;
                 default:
                     throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown result type: %d", resultType);
@@ -240,7 +265,7 @@ public class WasmRootNode extends RootNode {
     private void moveArgumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         int paramCount = functionNode.paramCount();
-        assert WasmArguments.getArgumentCount(args) == paramCount : "Expected number of params " + paramCount + ", actual " + args.length;
+        assert WasmArguments.getArgumentCount(args) == paramCount : "Expected number of params " + paramCount + ", actual " + WasmArguments.getArgumentCount(args);
         for (int i = 0; i != paramCount; ++i) {
             final Object arg = WasmArguments.getArgument(args, i);
             byte type = functionNode.localType(i);
@@ -256,6 +281,9 @@ public class WasmRootNode extends RootNode {
                     break;
                 case WasmType.F64_TYPE:
                     pushDouble(frame, i, (double) arg);
+                    break;
+                case WasmType.V128_TYPE:
+                    pushVector128(frame, i, (Vector128) arg);
                     break;
                 case WasmType.FUNCREF_TYPE:
                 case WasmType.EXTERNREF_TYPE:
@@ -282,6 +310,9 @@ public class WasmRootNode extends RootNode {
                     break;
                 case WasmType.F64_TYPE:
                     pushDouble(frame, i, 0D);
+                    break;
+                case WasmType.V128_TYPE:
+                    pushVector128(frame, i, Vector128.ZERO);
                     break;
                 case WasmType.FUNCREF_TYPE:
                 case WasmType.EXTERNREF_TYPE:

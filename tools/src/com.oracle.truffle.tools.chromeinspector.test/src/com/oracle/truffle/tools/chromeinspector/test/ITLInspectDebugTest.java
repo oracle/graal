@@ -70,7 +70,8 @@ public class ITLInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
-        assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        tester.receiveMessages(
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n" +
@@ -101,7 +102,8 @@ public class ITLInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
-        assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        tester.receiveMessages(
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n" +
@@ -142,7 +144,8 @@ public class ITLInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
-        assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        tester.receiveMessages(
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n" +
@@ -172,7 +175,8 @@ public class ITLInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
-        assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        tester.receiveMessages(
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n" +
@@ -213,7 +217,8 @@ public class ITLInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
-        assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        tester.receiveMessages(
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n" +
@@ -269,9 +274,10 @@ public class ITLInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
-        assertTrue(tester.compareReceivedMessages(
+        tester.receiveMessages(
                         "{\"result\":{},\"id\":1}\n" +
-                        "{\"result\":{},\"id\":2}\n" +
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
+        assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n" +
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source1);
@@ -319,9 +325,10 @@ public class ITLInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
-        assertTrue(tester.compareReceivedMessages(
+        tester.receiveMessages(
                         "{\"result\":{},\"id\":1}\n" +
-                        "{\"result\":{},\"id\":2}\n" +
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
+        assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n" +
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
@@ -387,9 +394,10 @@ public class ITLInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
-        assertTrue(tester.compareReceivedMessages(
+        tester.receiveMessages(
                         "{\"result\":{},\"id\":1}\n" +
-                        "{\"result\":{},\"id\":2}\n" +
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
+        assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n" +
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
@@ -426,9 +434,10 @@ public class ITLInspectDebugTest {
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Debugger.setAsyncCallStackDepth\",\"params\":{\"maxDepth\":1}}");
         tester.sendMessage("{\"id\":4,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
-        assertTrue(tester.compareReceivedMessages(
+        tester.receiveMessages(
                         "{\"result\":{},\"id\":1}\n" +
-                        "{\"result\":{},\"id\":2}\n" +
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
+        assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n" +
                         "{\"result\":{},\"id\":4}\n" +
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
@@ -511,9 +520,10 @@ public class ITLInspectDebugTest {
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Debugger.setAsyncCallStackDepth\",\"params\":{\"maxDepth\":1}}");
         tester.sendMessage("{\"id\":4,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
-        assertTrue(tester.compareReceivedMessages(
+        tester.receiveMessages(
                         "{\"result\":{},\"id\":1}\n" +
-                        "{\"result\":{},\"id\":2}\n" +
+                        "{\"result\":{\"debuggerId\":\"UniqueDebuggerId.", "},\"id\":2}\n");
+        assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n" +
                         "{\"result\":{},\"id\":4}\n" +
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));

@@ -95,7 +95,7 @@ public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
         @SuppressWarnings("unused")
         @Specialization(replaces = "cacheEquals")
         public static boolean isReadable(AbstractConstantKeysObject receiver, String symbol,
-                        @Cached("createClassProfile()") @Cached.Shared("classProfile") ValueProfile classProfile) {
+                        @Cached(value = "createClassProfile()", inline = false) @Cached.Shared("classProfile") ValueProfile classProfile) {
             return classProfile.profile(receiver).isMemberReadableImpl(symbol);
         }
     }
@@ -106,20 +106,20 @@ public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
         @Specialization(guards = "symbol == cachedSymbol", limit = "8")
         public static Object readIdentity(AbstractConstantKeysObject receiver, @SuppressWarnings("unused") String symbol,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached("createClassProfile()") @Cached.Exclusive ValueProfile classProfile) throws UnknownIdentifierException {
+                        @Cached(value = "createClassProfile()", inline = false) @Cached.Exclusive ValueProfile classProfile) throws UnknownIdentifierException {
             return read(receiver, cachedSymbol, classProfile);
         }
 
         @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "8", replaces = "readIdentity")
         public static Object readEquals(AbstractConstantKeysObject receiver, @SuppressWarnings("unused") String symbol,
                         @Cached("symbol") String cachedSymbol,
-                        @Cached("createClassProfile()") @Cached.Exclusive ValueProfile classProfile) throws UnknownIdentifierException {
+                        @Cached(value = "createClassProfile()", inline = false) @Cached.Exclusive ValueProfile classProfile) throws UnknownIdentifierException {
             return read(receiver, cachedSymbol, classProfile);
         }
 
         @Specialization(replaces = "readEquals")
         public static Object read(AbstractConstantKeysObject receiver, String symbol,
-                        @Cached("createClassProfile()") @Cached.Shared("classProfile") ValueProfile classProfile) throws UnknownIdentifierException {
+                        @Cached(value = "createClassProfile()", inline = false) @Cached.Shared("classProfile") ValueProfile classProfile) throws UnknownIdentifierException {
             return classProfile.profile(receiver).readMemberImpl(symbol);
         }
     }

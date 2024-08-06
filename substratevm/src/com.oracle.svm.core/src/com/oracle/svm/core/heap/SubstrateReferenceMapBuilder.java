@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.lir.LIRFrameState;
-import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.framemap.ReferenceMapBuilder;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.util.VMError;

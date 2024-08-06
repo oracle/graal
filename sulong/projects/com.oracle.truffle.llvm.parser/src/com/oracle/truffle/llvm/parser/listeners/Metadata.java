@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.listeners;
 
 import com.oracle.truffle.llvm.parser.metadata.MDArgList;
+import com.oracle.truffle.llvm.parser.metadata.MDAssignID;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
@@ -78,6 +79,7 @@ import java.util.Set;
 
 public class Metadata implements ParserListener {
 
+    // enum MetadataCodes in llvm/include/llvm/Bitcode/LLVMBitCodes.h
     private static final int METADATA_STRING = 1;
     private static final int METADATA_VALUE = 2;
     private static final int METADATA_NODE = 3;
@@ -121,6 +123,7 @@ public class Metadata implements ParserListener {
     private static final int METADATA_COMMON_BLOCK = 44;
     private static final int METADATA_GENERIC_SUBRANGE = 45;
     private static final int METADATA_ARG_LIST = 46;
+    private static final int METADATA_ASSIGN_ID = 47;
 
     public Type getTypeById(long id) {
         return types.get(id);
@@ -340,6 +343,12 @@ public class Metadata implements ParserListener {
 
             case METADATA_ARG_LIST:
                 metadata.add(MDArgList.create(args, metadata));
+                break;
+
+            case METADATA_ASSIGN_ID:
+                // https://llvm.org/docs/AssignmentTracking.html
+                // currently unused by sulong
+                metadata.add(MDAssignID.create());
                 break;
 
             default:

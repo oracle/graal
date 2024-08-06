@@ -39,8 +39,6 @@ import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -53,8 +51,9 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistra
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
@@ -63,6 +62,9 @@ import com.oracle.svm.hosted.FeatureImpl.IsInConfigurationAccessImpl;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
+
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.options.Option;
 
 /**
  * Handles the registration and iterations of {@link Feature features}.
@@ -73,13 +75,14 @@ public class FeatureHandler {
     public static class Options {
         @APIOption(name = "features") //
         @Option(help = "A comma-separated list of fully qualified Feature implementation classes")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> Features = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> Features = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         private static List<String> userEnabledFeatures() {
             return Options.Features.getValue().values();
         }
 
-        @Option(help = "Allow using deprecated @AutomaticFeature annotation. If set to false, an error is shown instead of a warning.")//
+        @Option(help = "Allow using deprecated @AutomaticFeature annotation. If set to false, an error is shown instead of a warning.", //
+                        deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 22.3 and will be removed in a future release")//
         public static final HostedOptionKey<Boolean> AllowDeprecatedAutomaticFeature = new HostedOptionKey<>(true);
     }
 
@@ -102,6 +105,10 @@ public class FeatureHandler {
                 consumer.accept((InternalFeature) feature);
             }
         }
+    }
+
+    public boolean containsFeature(Class<?> c) {
+        return registeredFeatures.contains(c);
     }
 
     @SuppressWarnings({"unchecked", "try"})
@@ -285,12 +292,15 @@ public class FeatureHandler {
     }
 
     private static UserException handleFeatureError(Feature feature, Throwable throwable) {
-        /* Avoid wrapping UserErrors and VMErrors. */
+        /* Avoid wrapping UserError, VMError, and InterruptImageBuilding throwables. */
         if (throwable instanceof UserException userError) {
             throw userError;
         }
         if (throwable instanceof HostedError vmError) {
             throw vmError;
+        }
+        if (throwable instanceof InterruptImageBuilding iib) {
+            throw iib;
         }
 
         String featureClassName = feature.getClass().getName();

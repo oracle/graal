@@ -73,6 +73,9 @@ struct __graal_create_isolate_params_t {
     /* Fields introduced in version 4 */
     char           _reserved_3;                 /* Internal usage, do not use. */
     char           _reserved_4;                 /* Internal usage, do not use. */
+
+    /* Fields introduced in version 5 */
+    char           _reserved_5;                 /* Internal usage, do not use. */
 };
 typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;
 

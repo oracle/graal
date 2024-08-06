@@ -1,4 +1,5 @@
 One or several (comma-separated) paths to JSON files that specify lists of interfaces that define Java proxy classes.
+
 The JSON structure is described in the following schema:
 
   https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/proxy-config-schema-v1.0.0.json

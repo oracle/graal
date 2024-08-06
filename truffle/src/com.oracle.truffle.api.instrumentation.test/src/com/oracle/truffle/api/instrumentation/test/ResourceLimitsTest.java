@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
-import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
@@ -54,10 +53,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -66,11 +65,20 @@ import org.graalvm.polyglot.ResourceLimits;
 import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.experimental.theories.DataPoints;
+import org.junit.experimental.theories.Theories;
+import org.junit.experimental.theories.Theory;
 import org.junit.rules.TestName;
+import org.junit.runner.RunWith;
 
-public class ResourceLimitsTest {
+@SuppressWarnings("hiding")
+@RunWith(Theories.class)
+public class ResourceLimitsTest extends AbstractPolyglotTest {
+
+    @DataPoints public static final boolean[] useVirtualThreads = new boolean[]{false, true};
 
     @Rule public TestName testNameRule = new TestName();
 
@@ -265,8 +273,9 @@ public class ResourceLimitsTest {
         }
     }
 
-    @Test
-    public void testStatementLimitDifferentPerContextParallel() throws ExecutionException, InterruptedException {
+    @Theory
+    public void testStatementLimitDifferentPerContextParallel(boolean vthreads) throws ExecutionException, InterruptedException {
+        Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
         ResourceLimits limits1 = ResourceLimits.newBuilder().//
                         statementLimit(1, null).//
                         build();
@@ -276,7 +285,7 @@ public class ResourceLimitsTest {
         Source source = statements(1);
 
         try (Engine engine = Engine.create()) {
-            ExecutorService executorService = Executors.newFixedThreadPool(20);
+            ExecutorService executorService = threadPool(20, vthreads);
             List<Future<?>> futures = new ArrayList<>();
 
             for (int i = 0; i < 10; i++) {
@@ -370,8 +379,9 @@ public class ResourceLimitsTest {
         }
     }
 
-    @Test
-    public void testSharedContextStatementLimitParallel() throws InterruptedException, ExecutionException {
+    @Theory
+    public void testSharedContextStatementLimitParallel(boolean vthreads) throws InterruptedException, ExecutionException {
+        Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
         try (Engine engine = Engine.create()) {
             Map<Context, ResourceLimitEvent> events = new HashMap<>();
             final int limit = 50;
@@ -383,7 +393,7 @@ public class ResourceLimitsTest {
                                 }
                             }).//
                             build();
-            ExecutorService executorService = Executors.newFixedThreadPool(20);
+            ExecutorService executorService = threadPool(20, vthreads);
             List<Future<?>> futures = new ArrayList<>();
             final int tasks = 1000;
             for (int i = 0; i < tasks; i++) {
@@ -419,8 +429,9 @@ public class ResourceLimitsTest {
         }
     }
 
-    @Test
-    public void testParallelContextStatementLimit() throws InterruptedException, ExecutionException {
+    @Theory
+    public void testParallelContextStatementLimit(boolean vthreads) throws InterruptedException, ExecutionException {
+        Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
         Map<Context, ResourceLimitEvent> events = new HashMap<>();
         final int limit = 10000;
         ResourceLimits limits = ResourceLimits.newBuilder().//
@@ -432,7 +443,7 @@ public class ResourceLimitsTest {
                             }
                         }).//
                         build();
-        ExecutorService executorService = Executors.newFixedThreadPool(20);
+        ExecutorService executorService = threadPool(20, vthreads);
         List<Future<?>> futures = new ArrayList<>();
         try (Context c = Context.newBuilder().resourceLimits(limits).build()) {
             forceMultiThreading(executorService, c);
@@ -464,8 +475,9 @@ public class ResourceLimitsTest {
         executorService.awaitTermination(100, TimeUnit.SECONDS);
     }
 
-    @Test
-    public void testParallelContextStatementLimit2() throws InterruptedException, ExecutionException {
+    @Theory
+    public void testParallelContextStatementLimit2(boolean vthreads) throws InterruptedException, ExecutionException {
+        Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
         Map<Context, ResourceLimitEvent> events = new HashMap<>();
         final int limit = 10000000;
         ResourceLimits limits = ResourceLimits.newBuilder().//
@@ -480,10 +492,10 @@ public class ResourceLimitsTest {
                             }
                         }).//
                         build();
-        ExecutorService executorService = Executors.newFixedThreadPool(20);
+        ExecutorService executorService = threadPool(20, vthreads);
         List<Future<?>> futures = new ArrayList<>();
         try (Context c = Context.newBuilder().resourceLimits(limits).build()) {
-            for (int i = 0; i < 20; i++) {
+            for (int i = 0; i < (vthreads ? 200 : 20); i++) {
                 futures.add(executorService.submit(() -> {
                     try {
                         c.eval(statements(Integer.MAX_VALUE));
@@ -513,8 +525,9 @@ public class ResourceLimitsTest {
         executorService.awaitTermination(100, TimeUnit.SECONDS);
     }
 
-    @Test
-    public void testParallelMultiContextStatementLimit() throws InterruptedException, ExecutionException {
+    @Theory
+    public void testParallelMultiContextStatementLimit(boolean vthreads) throws InterruptedException, ExecutionException {
+        Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
         try (Engine engine = Engine.create()) {
             Map<Context, ResourceLimitEvent> events = new ConcurrentHashMap<>();
             final int executions = 100;
@@ -526,7 +539,7 @@ public class ResourceLimitsTest {
                                 events.put(e.getContext(), e);
                             }).//
                             build();
-            ExecutorService executorService = Executors.newFixedThreadPool(threads);
+            ExecutorService executorService = threadPool(threads, vthreads);
             List<Future<?>> testFutures = new ArrayList<>();
 
             for (int contextIndex = 0; contextIndex < contexts; contextIndex++) {
@@ -594,8 +607,9 @@ public class ResourceLimitsTest {
         c.leave();
     }
 
-    @Test
-    public void testParallelMultiContextStatementResetLimit() throws InterruptedException, ExecutionException {
+    @Theory
+    public void testParallelMultiContextStatementResetLimit(boolean vthreads) throws InterruptedException, ExecutionException {
+        Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
         try (Engine engine = Engine.create()) {
             Map<Context, ResourceLimitEvent> events = new ConcurrentHashMap<>();
             final int executions = 100;
@@ -607,7 +621,7 @@ public class ResourceLimitsTest {
                                 events.put(e.getContext(), e);
                             }).//
                             build();
-            ExecutorService executorService = Executors.newFixedThreadPool(threads);
+            ExecutorService executorService = threadPool(threads, vthreads);
             List<Future<?>> testFutures = new ArrayList<>();
             for (int contextIndex = 0; contextIndex < contexts; contextIndex++) {
                 Context c = Context.newBuilder().engine(engine).resourceLimits(limits).build();

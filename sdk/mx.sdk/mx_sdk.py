@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -99,7 +99,16 @@ def build_oracle_compliant_javadoc_args(suite, product_name, feature_name):
 def javadoc(args):
     """build the Javadoc for all API packages"""
     extraArgs = build_oracle_compliant_javadoc_args(_suite, 'GraalVM', 'SDK')
-    mx.javadoc(['--unified', '--exclude-packages', 'org.graalvm.polyglot.tck'] + extraArgs + args)
+    excludedPackages = [
+        'org.graalvm.polyglot.tck',
+        'org.graalvm.sdk',
+        'org.graalvm.shadowed.org.jline.reader',
+        'org.graalvm.shadowed.org.jline.reader.impl.completer',
+        'org.graalvm.shadowed.org.jline.reader.impl.history',
+        'org.graalvm.shadowed.org.jline.terminal.impl',
+        'org.graalvm.shadowed.org.jline.utils',
+    ]
+    mx.javadoc(['--unified', '--disallow-all-warnings', '--exclude-packages', ','.join(excludedPackages)] + extraArgs + args)
 
 def upx(args):
     """compress binaries using the upx tool"""
@@ -235,7 +244,7 @@ def jdk_enables_jvmci_by_default(jdk):
 
 def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   root_module_names=None,
-                  missing_export_target_action='create',
+                  missing_export_target_action=None,
                   with_source=lambda x: True,
                   vendor_info=None,
                   use_upgrade_module_path=False,
@@ -253,17 +262,35 @@ class GraalVMJDKConfig(mx.JDKConfig):
     A JDKConfig that configures the built GraalVM as a JDK config.
     """
     def __init__(self):
-        mx.JDKConfig.__init__(self, mx_sdk_vm.graalvm_home(fatalIfMissing=True), tag='graalvm')
+        default_jdk = mx.get_jdk(tag='default')
+        if GraalVMJDKConfig._is_graalvm(default_jdk.home):
+            graalvm_home = default_jdk.home
+        else:
+            graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
+        self._home_internal = graalvm_home
+        mx.JDKConfig.__init__(self, graalvm_home, tag='graalvm')
 
     @property
     def home(self):
-        return mx_sdk_vm.graalvm_home(fatalIfMissing=True)
+        return self._home_internal
 
     @home.setter
     def home(self, home):
         return
 
+    @staticmethod
+    def _is_graalvm(java_home):
+        release_file = os.path.join(java_home, 'release')
+        if not os.path.isfile(release_file):
+            return False
+        with open(release_file, 'r') as file:
+            for line in file:
+                if line.startswith('GRAALVM_VERSION'):
+                    return True
+        return False
+
 class GraalVMJDK(mx.JDKFactory):
+
     def getJDKConfig(self):
         return GraalVMJDKConfig()
 

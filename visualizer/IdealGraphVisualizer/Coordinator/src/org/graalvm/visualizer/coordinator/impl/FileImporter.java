@@ -264,7 +264,7 @@ public class FileImporter {
                             NotifyDescriptor.INFORMATION_MESSAGE));
         } else {
             Exceptions.printStackTrace(
-                Exceptions.attachLocalizedMessage(ex, Bundle.ERR_ReadingFile(path, ex.getLocalizedMessage()))
+                Exceptions.attachLocalizedMessage(ex, Bundle.ERR_ReadingFile(path, ex.toString()))
             );
         }
         

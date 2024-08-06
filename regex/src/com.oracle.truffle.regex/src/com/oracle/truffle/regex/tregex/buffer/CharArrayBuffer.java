@@ -54,7 +54,7 @@ import com.oracle.truffle.regex.util.EmptyArrays;
  *
  * <pre>
  * CharArrayBuffer buf = new CharArrayBuffer();
- * List<char[]> results = new ArrayList<>();
+ * List&lt;char[]> results = new ArrayList&lt;>();
  * for (Object obj : listOfThingsToProcess) {
  *     for (Object x : obj.thingsThatShouldBecomeChars()) {
  *         buf.add(someCalculation(x));

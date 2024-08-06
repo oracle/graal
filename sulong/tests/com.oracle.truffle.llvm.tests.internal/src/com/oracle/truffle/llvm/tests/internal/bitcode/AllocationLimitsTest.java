@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,26 +29,28 @@
  */
 package com.oracle.truffle.llvm.tests.internal.bitcode;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertThrows;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.llvm.tests.Platform;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
+import org.hamcrest.core.StringContains;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.ClassRule;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.tck.TruffleRunner;
 
@@ -96,8 +98,6 @@ public class AllocationLimitsTest {
         return runWithPolyglot.getPolyglotContext().eval(source);
     }
 
-    @Rule public ExpectedException exception = ExpectedException.none();
-
     public static Value library;
 
     @Before
@@ -109,23 +109,20 @@ public class AllocationLimitsTest {
 
     @Test
     public void allocaMaxSize() {
-        exception.expect(PolyglotException.class);
-        exception.expectMessage("unsupported value range");
-        library.getMember("alloca_max_size").execute();
+        PolyglotException exception = assertThrows(PolyglotException.class, () -> library.getMember("alloca_max_size").execute());
+        assertThat(exception.getMessage(), StringContains.containsString("unsupported value range"));
     }
 
     @Test
     public void allocaMaxSizeI1() {
-        exception.expect(PolyglotException.class);
-        exception.expectMessage(EXCEEDS_LIMIT);
-        library.getMember("alloca_max_size_i1").execute();
+        PolyglotException exception = assertThrows(PolyglotException.class, () -> library.getMember("alloca_max_size_i1").execute());
+        assertThat(exception.getMessage(), EXCEEDS_LIMIT);
     }
 
     @Test
     public void allocaMaxSizeI64() {
-        exception.expect(PolyglotException.class);
-        exception.expectMessage(EXCEEDS_LIMIT);
-        library.getMember("alloca_max_size_i64").execute();
+        PolyglotException exception = assertThrows(PolyglotException.class, () -> library.getMember("alloca_max_size_i64").execute());
+        assertThat(exception.getMessage(), EXCEEDS_LIMIT);
     }
 
     @Test
@@ -136,37 +133,32 @@ public class AllocationLimitsTest {
 
     @Test
     public void allocaParameterMaxSize() {
-        exception.expect(PolyglotException.class);
-        exception.expectMessage(EXCEEDS_LIMIT);
-        library.getMember("alloca_parameter").execute(0xFFFF_FFFF_FFFF_FFFFL);
+        PolyglotException exception = assertThrows(PolyglotException.class, () -> library.getMember("alloca_parameter").execute(0xFFFF_FFFF_FFFF_FFFFL));
+        assertThat(exception.getMessage(), EXCEEDS_LIMIT);
     }
 
     @Test
     public void allocaParameterOverflowInt() {
-        exception.expect(PolyglotException.class);
-        exception.expectMessage(EXCEEDS_LIMIT);
-        library.getMember("alloca_parameter").execute(0xFFFF_FFFF_0000_0010L);
+        PolyglotException exception = assertThrows(PolyglotException.class, () -> library.getMember("alloca_parameter").execute(0xFFFF_FFFF_0000_0010L));
+        assertThat(exception.getMessage(), EXCEEDS_LIMIT);
     }
 
     @Test
     public void allocaOverflowInt() {
-        exception.expect(PolyglotException.class);
-        exception.expectMessage("unsupported value range");
-        library.getMember("alloca_overflow_int").execute();
+        PolyglotException exception = assertThrows(PolyglotException.class, () -> library.getMember("alloca_overflow_int").execute());
+        assertThat(exception.getMessage(), StringContains.containsString("unsupported value range"));
     }
 
     @Test
     public void allocaOverflowIntI1() {
-        exception.expect(PolyglotException.class);
-        exception.expectMessage(EXCEEDS_LIMIT);
-        library.getMember("alloca_overflow_int_i1").execute();
+        PolyglotException exception = assertThrows(PolyglotException.class, () -> library.getMember("alloca_overflow_int_i1").execute());
+        assertThat(exception.getMessage(), EXCEEDS_LIMIT);
     }
 
     @Test
     public void allocaOverflowIntI64() {
-        exception.expect(PolyglotException.class);
-        exception.expectMessage(EXCEEDS_LIMIT);
-        library.getMember("alloca_overflow_int_i64").execute();
+        PolyglotException exception = assertThrows(PolyglotException.class, () -> library.getMember("alloca_overflow_int_i64").execute());
+        assertThat(exception.getMessage(), EXCEEDS_LIMIT);
     }
 
     /**
@@ -187,16 +179,14 @@ public class AllocationLimitsTest {
 
     @Test
     public void allocaArrayExceedSize() {
-        exception.expect(PolyglotException.class);
-        exception.expectMessage(EXCEEDS_LIMIT);
-        library.getMember("alloca_array_exceed_size").execute();
+        PolyglotException exception = assertThrows(PolyglotException.class, () -> library.getMember("alloca_array_exceed_size").execute());
+        assertThat(exception.getMessage(), EXCEEDS_LIMIT);
     }
 
     @Test
     public void allocaArrayOverflowInt() {
-        exception.expect(PolyglotException.class);
-        exception.expectMessage(EXCEEDS_LIMIT);
-        library.getMember("alloca_array_overflow_int").execute();
+        PolyglotException exception = assertThrows(PolyglotException.class, () -> library.getMember("alloca_array_overflow_int").execute());
+        assertThat(exception.getMessage(), EXCEEDS_LIMIT);
     }
 
     /**
@@ -210,16 +200,14 @@ public class AllocationLimitsTest {
 
     @Test
     public void allocaVectorIntMinValue() {
-        exception.expect(PolyglotException.class);
-        exception.expectMessage(EXCEEDS_LIMIT);
-        library.getMember("alloca_vector_int_min_value").execute();
+        PolyglotException exception = assertThrows(PolyglotException.class, () -> library.getMember("alloca_vector_int_min_value").execute());
+        assertThat(exception.getMessage(), EXCEEDS_LIMIT);
     }
 
     @Test
     public void allocaVectorIntMinusOne() {
-        exception.expect(PolyglotException.class);
-        exception.expectMessage(EXCEEDS_LIMIT);
-        library.getMember("alloca_vector_int_minus_one").execute();
+        PolyglotException exception = assertThrows(PolyglotException.class, () -> library.getMember("alloca_vector_int_minus_one").execute());
+        assertThat(exception.getMessage(), EXCEEDS_LIMIT);
     }
 
     @Test

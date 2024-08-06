@@ -25,12 +25,14 @@
 package com.oracle.svm.core.snippets;
 
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.GC_LOCATIONS;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
 import java.lang.reflect.Method;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
-import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 
@@ -42,23 +44,23 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SnippetRuntime {
-    public static final SubstrateForeignCallDescriptor UNSUPPORTED_FEATURE = findForeignCall(SnippetRuntime.class, "unsupportedFeature", true, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor UNSUPPORTED_FEATURE = findForeignCall(SnippetRuntime.class, "unsupportedFeature", NO_SIDE_EFFECT, LocationIdentity.any());
 
     /* Implementation of runtime calls defined in a VM-independent way by Graal. */
-    private static final SubstrateForeignCallDescriptor REGISTER_FINALIZER = findForeignCall(SnippetRuntime.class, "registerFinalizer", true);
+    private static final SubstrateForeignCallDescriptor REGISTER_FINALIZER = findForeignCall(SnippetRuntime.class, "registerFinalizer", NO_SIDE_EFFECT);
 
     /*
      * Graal-defined math functions where we have optimized machine code sequences: We just register
      * the original Math function as the foreign call. The backend will emit the machine code
      * sequence.
      */
-    private static final SubstrateForeignCallDescriptor ARITHMETIC_SIN = findForeignJdkCall(UnaryOperation.SIN.foreignCallSignature.getName(), Math.class, "sin", true, true, true);
-    private static final SubstrateForeignCallDescriptor ARITHMETIC_COS = findForeignJdkCall(UnaryOperation.COS.foreignCallSignature.getName(), Math.class, "cos", true, true, true);
-    private static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignJdkCall(UnaryOperation.TAN.foreignCallSignature.getName(), Math.class, "tan", true, true, true);
-    private static final SubstrateForeignCallDescriptor ARITHMETIC_LOG = findForeignJdkCall(UnaryOperation.LOG.foreignCallSignature.getName(), Math.class, "log", true, true, true);
-    private static final SubstrateForeignCallDescriptor ARITHMETIC_LOG10 = findForeignJdkCall(UnaryOperation.LOG10.foreignCallSignature.getName(), Math.class, "log10", true, true, true);
-    private static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignJdkCall(UnaryOperation.EXP.foreignCallSignature.getName(), Math.class, "exp", true, true, true);
-    private static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignJdkCall(BinaryOperation.POW.foreignCallSignature.getName(), Math.class, "pow", true, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_SIN = findForeignJdkCall(UnaryOperation.SIN.foreignCallSignature.getName(), Math.class, "sin", NO_SIDE_EFFECT, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_COS = findForeignJdkCall(UnaryOperation.COS.foreignCallSignature.getName(), Math.class, "cos", NO_SIDE_EFFECT, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignJdkCall(UnaryOperation.TAN.foreignCallSignature.getName(), Math.class, "tan", NO_SIDE_EFFECT, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_LOG = findForeignJdkCall(UnaryOperation.LOG.foreignCallSignature.getName(), Math.class, "log", NO_SIDE_EFFECT, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_LOG10 = findForeignJdkCall(UnaryOperation.LOG10.foreignCallSignature.getName(), Math.class, "log10", NO_SIDE_EFFECT, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignJdkCall(UnaryOperation.EXP.foreignCallSignature.getName(), Math.class, "exp", NO_SIDE_EFFECT, true, true);
+    private static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignJdkCall(BinaryOperation.POW.foreignCallSignature.getName(), Math.class, "pow", NO_SIDE_EFFECT, true, true);
 
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{UNSUPPORTED_FEATURE, REGISTER_FINALIZER, ARITHMETIC_SIN, ARITHMETIC_COS, ARITHMETIC_TAN,
                     ARITHMETIC_LOG, ARITHMETIC_LOG10, ARITHMETIC_EXP, ARITHMETIC_POW};
@@ -67,31 +69,26 @@ public class SnippetRuntime {
         foreignCalls.register(FOREIGN_CALLS);
     }
 
-    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, LocationIdentity... additionalKilledLocations) {
-        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, additionalKilledLocations);
-    }
-
-    private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable,
-                    LocationIdentity... additionalKilledLocations) {
+    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, CallSideEffect callSideEffect, LocationIdentity... additionalKilledLocations) {
         Method method = findMethod(declaringClass, methodName);
         SubstrateForeignCallTarget foreignCallTargetAnnotation = AnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
         VMError.guarantee(foreignCallTargetAnnotation != null, "Add missing @SubstrateForeignCallTarget to %s.%s", declaringClass.getName(), methodName);
 
         boolean isUninterruptible = Uninterruptible.Utils.isUninterruptible(method);
         boolean isFullyUninterruptible = foreignCallTargetAnnotation.fullyUninterruptible();
-        return findForeignCall(descriptorName, method, isReexecutable, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
+        return findForeignCall(methodName, method, callSideEffect, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
     }
 
-    private static SubstrateForeignCallDescriptor findForeignJdkCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, boolean isUninterruptible,
+    private static SubstrateForeignCallDescriptor findForeignJdkCall(String descriptorName, Class<?> declaringClass, String methodName, CallSideEffect callSideEffect, boolean isUninterruptible,
                     boolean isFullyUninterruptible, LocationIdentity... additionalKilledLocations) {
         Method method = findMethod(declaringClass, methodName);
         SubstrateForeignCallTarget foreignCallTargetAnnotation = AnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
         VMError.guarantee(foreignCallTargetAnnotation == null, "%s.%s must not be annotated with @SubstrateForeignCallTarget.", declaringClass.getName(), methodName);
 
-        return findForeignCall(descriptorName, method, isReexecutable, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
+        return findForeignCall(descriptorName, method, callSideEffect, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
     }
 
-    private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Method method, boolean isReexecutable, boolean isUninterruptible, boolean isFullyUninterruptible,
+    private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Method method, CallSideEffect callSideEffect, boolean isUninterruptible, boolean isFullyUninterruptible,
                     LocationIdentity... additionalKilledLocations) {
         /*
          * The safepoint slowpath needs to kill the TLAB locations (see note in Safepoint.java). We
@@ -114,7 +111,7 @@ public class SnippetRuntime {
 
         boolean needsDebugInfo = !isFullyUninterruptible;
         boolean isGuaranteedSafepoint = !isUninterruptible;
-        return new SubstrateForeignCallDescriptor(descriptorName, method, isReexecutable, killedLocations, needsDebugInfo, isGuaranteedSafepoint);
+        return new SubstrateForeignCallDescriptor(descriptorName, method, callSideEffect, killedLocations, needsDebugInfo, isGuaranteedSafepoint);
     }
 
     private static Method findMethod(Class<?> declaringClass, String methodName) {
@@ -143,8 +140,9 @@ public class SnippetRuntime {
         private final Class<?> declaringClass;
         private final String methodName;
 
-        SubstrateForeignCallDescriptor(String descriptorName, Method method, boolean isReexecutable, LocationIdentity[] killedLocations, boolean needsDebugInfo, boolean isGuaranteedSafepoint) {
-            super(descriptorName, method.getReturnType(), method.getParameterTypes(), isReexecutable, killedLocations, needsDebugInfo, isGuaranteedSafepoint);
+        SubstrateForeignCallDescriptor(String descriptorName, Method method, CallSideEffect callSideEffect, LocationIdentity[] killedLocations, boolean needsDebugInfo, boolean isGuaranteedSafepoint) {
+            super(descriptorName, method.getReturnType(), method.getParameterTypes(), callSideEffect, killedLocations, needsDebugInfo,
+                            isGuaranteedSafepoint);
             this.declaringClass = method.getDeclaringClass();
             this.methodName = method.getName();
         }

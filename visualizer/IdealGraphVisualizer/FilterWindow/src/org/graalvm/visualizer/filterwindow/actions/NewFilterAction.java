@@ -64,7 +64,7 @@ public final class NewFilterAction extends CallableSystemAction {
             FilterTopComponent.findInstance().newFilter();
         } catch (IOException ex) {
             NotifyDescriptor.Message msg = new NotifyDescriptor.Message(Bundle.MSG_FilterCreateFailed(
-                ex.getLocalizedMessage()), NotifyDescriptor.ERROR_MESSAGE);
+                ex.toString()), NotifyDescriptor.ERROR_MESSAGE);
             DialogDisplayer.getDefault().notifyLater(msg);
         }
     }

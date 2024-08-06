@@ -108,7 +108,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
          * programming language, and are disallowed in Java SE 8 and above.)
          */
         @Override
-        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             METHODREF_RESOLVE_COUNT.inc();
             EspressoContext context = pool.getContext();
             Meta meta = context.getMeta();
@@ -120,7 +120,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
             // 1. If C is not an interface, interface method resolution throws an
             // IncompatibleClassChangeError.
             if (!holderInterface.isInterface()) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(name));
+                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Found class " + holderInterface.getExternalName() + ", but interface was expected");
             }
 
             Symbol<Signature> signature = getSignature(pool);

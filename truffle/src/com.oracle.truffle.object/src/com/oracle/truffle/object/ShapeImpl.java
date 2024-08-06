@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.object;
 
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -51,7 +49,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 
@@ -64,7 +61,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
@@ -213,15 +209,15 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @SuppressWarnings("this-escape")
     protected ShapeImpl(com.oracle.truffle.api.object.Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap,
-                    Transition transition, Allocator allocator, int flags) {
-        this(layout, parent, objectType, sharedData, propertyMap, transition, ((BaseAllocator) allocator).objectArraySize, ((BaseAllocator) allocator).objectFieldSize,
-                        ((BaseAllocator) allocator).primitiveFieldSize, ((BaseAllocator) allocator).primitiveArraySize, flags, null);
+                    Transition transition, BaseAllocator allocator, int flags) {
+        this(layout, parent, objectType, sharedData, propertyMap, transition, allocator.objectArraySize, allocator.objectFieldSize,
+                        allocator.primitiveFieldSize, allocator.primitiveArraySize, flags, null);
     }
 
     /** @since 0.17 or earlier */
     @SuppressWarnings("hiding")
     protected abstract ShapeImpl createShape(com.oracle.truffle.api.object.Layout layout, Object sharedData, ShapeImpl parent, Object objectType, PropertyMap propertyMap,
-                    Transition transition, Allocator allocator, int id);
+                    Transition transition, BaseAllocator allocator, int id);
 
     /** @since 0.17 or earlier */
     @SuppressWarnings("this-escape")
@@ -430,7 +426,8 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private static TransitionMap<Transition, ShapeImpl> newTransitionMap() {
-        return new TransitionMap<>();
+        transitionMapsCreated.inc();
+        return TransitionMap.create();
     }
 
     @SuppressWarnings("unchecked")
@@ -451,6 +448,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     private static Object newSingleEntry(Transition transition, ShapeImpl successor) {
+        transitionSingleEntriesCreated.inc();
         Object key = transition;
         if (transition.hasConstantLocation()) {
             key = new WeakKey<>(transition);
@@ -536,27 +534,6 @@ public abstract class ShapeImpl extends Shape {
         return null;
     }
 
-    public final <R> R iterateTransitions(BiFunction<Transition, ShapeImpl, R> consumer) {
-        Object trans = transitionMap;
-        if (trans == null) {
-            return null;
-        } else if (isSingleEntry(trans)) {
-            StrongKeyWeakValueEntry<Object, ShapeImpl> entry = asSingleEntry(trans);
-            ShapeImpl shape = entry.getValue();
-            if (shape != null) {
-                Transition key = unwrapKey(entry.getKey());
-                if (key != null) {
-                    return consumer.apply(key, shape);
-                }
-            }
-            return null;
-        } else {
-            assert isTransitionMap(trans);
-            TransitionMap<Transition, ShapeImpl> map = asTransitionMap(trans);
-            return map.iterateEntries(consumer);
-        }
-    }
-
     /**
      * Add a new property in the map, yielding a new or cached Shape object.
      *
@@ -589,14 +566,13 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public ShapeImpl defineProperty(Object key, Object value, int propertyFlags) {
-        return getLayoutStrategy().defineProperty(this, key, value, propertyFlags, null);
+        return getLayoutStrategy().defineProperty(this, key, value, propertyFlags);
     }
 
-    /** @since 0.17 or earlier */
     @TruffleBoundary
     @Override
-    public ShapeImpl defineProperty(Object key, Object value, int propertyFlags, com.oracle.truffle.api.object.LocationFactory locationFactory) {
-        return getLayoutStrategy().defineProperty(this, key, value, propertyFlags, locationFactory);
+    protected ShapeImpl defineProperty(Object key, Object value, int propertyFlags, int putFlags) {
+        return getLayoutStrategy().defineProperty(this, key, value, propertyFlags, putFlags);
     }
 
     /** @since 0.17 or earlier */
@@ -836,7 +812,6 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    @Override
     public final ShapeImpl getParent() {
         return parent;
     }
@@ -860,7 +835,6 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    @Override
     public final BaseAllocator allocator() {
         return getLayoutStrategy().createAllocator(this);
     }
@@ -928,12 +902,6 @@ public abstract class ShapeImpl extends Shape {
         intersection.retainAll(newList);
         diff.removeAll(intersection);
         return diff;
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public com.oracle.truffle.api.object.ObjectType getObjectType() {
-        return (com.oracle.truffle.api.object.ObjectType) objectType;
     }
 
     @Override
@@ -1045,13 +1013,6 @@ public abstract class ShapeImpl extends Shape {
         }
     }
 
-    /** @since 0.17 or earlier */
-    @Override
-    @TruffleBoundary
-    public final ShapeImpl changeType(com.oracle.truffle.api.object.ObjectType newObjectType) {
-        return setDynamicType(newObjectType);
-    }
-
     @TruffleBoundary
     @Override
     protected ShapeImpl setFlags(int newShapeFlags) {
@@ -1078,19 +1039,6 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    @Override
-    public final DynamicObject newInstance() {
-        throw DefaultLayout.unsupported();
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public final DynamicObjectFactory createFactory() {
-        throw DefaultLayout.unsupported();
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
     public Object getMutex() {
         return getRoot();
     }
@@ -1126,7 +1074,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** Bits available to API users. */
-    protected static final int OBJECT_FLAGS_MASK = 0x0000_00ff;
+    protected static final int OBJECT_FLAGS_MASK = 0x0000_ffff;
     protected static final int OBJECT_FLAGS_SHIFT = 0;
 
     protected static int getObjectFlags(int flags) {
@@ -1135,7 +1083,7 @@ public abstract class ShapeImpl extends Shape {
 
     protected static int checkObjectFlags(int flags) {
         if ((flags & ~OBJECT_FLAGS_MASK) != 0) {
-            throw new IllegalArgumentException("flags must be in the range [0, 255]");
+            throw new IllegalArgumentException("flags must be in the range [0, 0xffff]");
         }
         return flags;
     }
@@ -1179,7 +1127,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    public abstract static class BaseAllocator extends Allocator implements LocationVisitor, Cloneable {
+    public abstract static class BaseAllocator implements LocationVisitor {
         /** @since 0.17 or earlier */
         protected final LayoutImpl layout;
         /** @since 0.17 or earlier */
@@ -1238,25 +1186,48 @@ public abstract class ShapeImpl extends Shape {
         @Deprecated
         protected abstract Location newBooleanLocation(boolean useFinal);
 
-        /** @since 0.17 or earlier */
+        /**
+         * Creates a new location from a constant value. The value is stored in the shape rather
+         * than in the object.
+         *
+         * @param value the constant value
+         * @since 0.17 or earlier
+         */
         @Deprecated
-        @Override
         public Location constantLocation(Object value) {
             throw new UnsupportedOperationException();
         }
 
-        /** @since 0.17 or earlier */
+        /**
+         * Creates a new declared location with a default value. A declared location only assumes a
+         * type after the first set (initialization).
+         *
+         * @param value the default value
+         * @since 0.17 or earlier
+         */
         @Deprecated
-        @Override
         public Location declaredLocation(Object value) {
             throw new UnsupportedOperationException();
         }
 
-        /** @since 0.17 or earlier */
+        /**
+         * Create a new location compatible with the given initial value.
+         *
+         * @param value the initial value this location is going to be assigned
+         * @param useFinal final location
+         * @param nonNull non-null location
+         * @since 0.17 or earlier
+         */
         @Deprecated
-        @Override
         protected Location locationForValue(Object value, boolean useFinal, boolean nonNull) {
             throw new UnsupportedOperationException();
+        }
+
+        /**
+         * Used by tests.
+         */
+        public Location locationForValue(Object value) {
+            return locationForValue(value, false, value != null);
         }
 
         /** @since 0.17 or earlier */
@@ -1266,14 +1237,27 @@ public abstract class ShapeImpl extends Shape {
         }
 
         @SuppressWarnings("unused")
-        protected Location locationForValueUpcast(Object value, Location oldLocation, long putFlags) {
+        protected Location locationForValueUpcast(Object value, Location oldLocation, int putFlags) {
             throw new UnsupportedOperationException();
         }
 
-        /** @since 0.17 or earlier */
-        @Override
+        /**
+         * Create a new location for a fixed type. It can only be assigned to values of this type.
+         *
+         * @param type the Java type this location must be compatible with (may be primitive)
+         * @param useFinal final location
+         * @param nonNull non-null location
+         * @since 0.17 or earlier
+         */
         protected Location locationForType(Class<?> type, boolean useFinal, boolean nonNull) {
             throw new UnsupportedOperationException();
+        }
+
+        /**
+         * Used by tests.
+         */
+        public final Location locationForType(Class<?> type) {
+            return locationForType(type, false, false);
         }
 
         /** @since 0.17 or earlier */
@@ -1287,8 +1271,12 @@ public abstract class ShapeImpl extends Shape {
             return location0;
         }
 
-        /** @since 0.17 or earlier */
-        @Override
+        /**
+         * Reserves space for the given location, so that it will not be available to subsequently
+         * allocated locations.
+         *
+         * @since 0.17 or earlier
+         */
         public BaseAllocator addLocation(Location location) {
             advance(location);
             return this;
@@ -1312,22 +1300,6 @@ public abstract class ShapeImpl extends Shape {
         /** @since 0.17 or earlier */
         public void visitPrimitiveField(int index, int count) {
             primitiveFieldSize = Math.max(primitiveFieldSize, index + count);
-        }
-
-        /** @since 0.17 or earlier */
-        @Override
-        public final BaseAllocator copy() {
-            return clone();
-        }
-
-        /** @since 0.17 or earlier */
-        @Override
-        protected final BaseAllocator clone() {
-            try {
-                return (BaseAllocator) super.clone();
-            } catch (CloneNotSupportedException e) {
-                throw shouldNotReachHere(e);
-            }
         }
 
         /** @since 0.17 or earlier */
@@ -1398,5 +1370,7 @@ public abstract class ShapeImpl extends Shape {
     static final DebugCounter shapeCacheWeakKeys = DebugCounter.create("Shape cache weak keys");
     static final DebugCounter propertyAssumptionsCreated = DebugCounter.create("Property assumptions created");
     static final DebugCounter propertyAssumptionsRemoved = DebugCounter.create("Property assumptions removed");
+    static final DebugCounter transitionSingleEntriesCreated = DebugCounter.create("Transition single-entry maps created");
+    static final DebugCounter transitionMapsCreated = DebugCounter.create("Transition multi-entry maps created");
 
 }

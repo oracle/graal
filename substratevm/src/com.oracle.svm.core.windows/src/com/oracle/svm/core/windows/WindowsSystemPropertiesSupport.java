@@ -45,8 +45,9 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
@@ -245,29 +246,29 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                 break;
             }
 
-            VoidPointer versionInfo = LibC.malloc(WordFactory.unsigned(versionSize));
+            VoidPointer versionInfo = NullableNativeMemory.malloc(WordFactory.unsigned(versionSize), NmtCategory.Internal);
             if (versionInfo.isNull()) {
                 break;
             }
+            try {
+                if (WinVer.GetFileVersionInfoW(kernel32Path, 0, versionSize, versionInfo) == 0) {
+                    break;
+                }
 
-            if (WinVer.GetFileVersionInfoW(kernel32Path, 0, versionSize, versionInfo) == 0) {
-                LibC.free(versionInfo);
-                break;
+                WindowsLibC.WCharPointer rootPath = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(ROOT_PATH), 0);
+                WordPointer fileInfoPointer = UnsafeStackValue.get(WordPointer.class);
+                CIntPointer lengthPointer = UnsafeStackValue.get(CIntPointer.class);
+                if (WinVer.VerQueryValueW(versionInfo, rootPath, fileInfoPointer, lengthPointer) == 0) {
+                    break;
+                }
+
+                VerRsrc.VS_FIXEDFILEINFO fileInfo = fileInfoPointer.read();
+                majorVersion = (short) (fileInfo.dwProductVersionMS() >> 16); // HIWORD
+                minorVersion = (short) fileInfo.dwProductVersionMS(); // LOWORD
+                buildNumber = (short) (fileInfo.dwProductVersionLS() >> 16); // HIWORD
+            } finally {
+                NullableNativeMemory.free(versionInfo);
             }
-
-            WindowsLibC.WCharPointer rootPath = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(ROOT_PATH), 0);
-            WordPointer fileInfoPointer = UnsafeStackValue.get(WordPointer.class);
-            CIntPointer lengthPointer = UnsafeStackValue.get(CIntPointer.class);
-            if (WinVer.VerQueryValueW(versionInfo, rootPath, fileInfoPointer, lengthPointer) == 0) {
-                LibC.free(versionInfo);
-                break;
-            }
-
-            VerRsrc.VS_FIXEDFILEINFO fileInfo = fileInfoPointer.read();
-            majorVersion = (short) (fileInfo.dwProductVersionMS() >> 16); // HIWORD
-            minorVersion = (short) fileInfo.dwProductVersionMS(); // LOWORD
-            buildNumber = (short) (fileInfo.dwProductVersionLS() >> 16); // HIWORD
-            LibC.free(versionInfo);
         } while (false);
 
         String osVersion = majorVersion + "." + minorVersion;
@@ -356,7 +357,11 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                     if (isWorkstation) {
                         switch (minorVersion) {
                             case 0:
-                                osName = "Windows 10";
+                                if (buildNumber >= 22000) {
+                                    osName = "Windows 11";
+                                } else {
+                                    osName = "Windows 10";
+                                }
                                 break;
                             default:
                                 osName = "Windows NT (unknown)";
@@ -364,7 +369,9 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                     } else {
                         switch (minorVersion) {
                             case 0:
-                                if (buildNumber > 17762) {
+                                if (buildNumber > 20347) {
+                                    osName = "Windows Server 2022";
+                                } else if (buildNumber > 17762) {
                                     osName = "Windows Server 2019";
                                 } else {
                                     osName = "Windows Server 2016";

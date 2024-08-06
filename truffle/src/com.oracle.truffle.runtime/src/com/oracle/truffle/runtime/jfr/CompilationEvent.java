@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.runtime.jfr;
 
+import java.util.function.Supplier;
+
 /**
  * The JFR event describing a Truffle compilation.
  */
@@ -47,9 +49,9 @@ public interface CompilationEvent extends RootFunctionEvent {
 
     void compilationStarted();
 
-    void failed(boolean permanent, CharSequence reason);
+    void failed(int tier, boolean permanent, String reason, Supplier<String> lazyStackTrace);
 
-    void succeeded();
+    void succeeded(int tier);
 
     void setCompiledCodeSize(int size);
 

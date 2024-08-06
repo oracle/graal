@@ -56,8 +56,8 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
     private int lastIndex;
     private final DFACaptureGroupTrackingData cgData;
 
-    public TRegexDFAExecutorLocals(TruffleString input, int fromIndex, int index, int maxIndex, DFACaptureGroupTrackingData cgData) {
-        super(input, fromIndex, maxIndex, index);
+    public TRegexDFAExecutorLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index, DFACaptureGroupTrackingData cgData) {
+        super(input, fromIndex, maxIndex, regionFrom, regionTo, index);
         result = TRegexDFAExecutorNode.NO_MATCH;
         this.cgData = cgData;
     }
@@ -117,6 +117,6 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
     }
 
     public TRegexDFAExecutorLocals toInnerLiteralBackwardLocals() {
-        return new TRegexDFAExecutorLocals(getInput(), getFromIndex(), getIndex(), getMaxIndex(), cgData);
+        return new TRegexDFAExecutorLocals(getInput(), getFromIndex(), getMaxIndex(), getRegionFrom(), getRegionTo(), getIndex(), cgData);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMScopeChain;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
+import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.SulongLibrary;
 import com.oracle.truffle.llvm.runtime.SulongLibrary.CachedMainFunction;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
@@ -302,6 +303,9 @@ public final class LoadModulesNode extends LLVMRootNode {
                     }
 
                     for (int i = 0; i < libraryDependencies.length; i++) {
+                        if (LibraryLocator.loggingEnabled()) {
+                            LibraryLocator.traceStaticInits(context, "building scope", libraryDependencies[i].getLibraryName());
+                        }
                         CallTarget callTarget = libraryDependencies[i].execute();
                         if (callTarget != null) {
                             queAdd(que, callTarget);
@@ -340,6 +344,9 @@ public final class LoadModulesNode extends LLVMRootNode {
                 if (!visited.get(id)) {
                     visited.set(id);
                     for (LoadDependencyNode libraryDependency : libraryDependencies) {
+                        if (LibraryLocator.loggingEnabled()) {
+                            LibraryLocator.traceStaticInits(context, "building library dependency", libraryDependency.getLibraryName());
+                        }
                         CallTarget lib = libraryDependency.execute();
                         if (lib != null) {
                             callDependencies.call(lib, LLVMLoadingPhase.BUILD_DEPENDENCY, visited, dependencies);

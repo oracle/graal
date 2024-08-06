@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -78,6 +78,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotRead
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotReadBuffer.LLVMPolyglotReadBufferFloatNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotReadBuffer.LLVMPolyglotReadBufferIntNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotReadBuffer.LLVMPolyglotReadBufferLongNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotReadBuffer.LLVMPolyglotReadBufferNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotReadBuffer.LLVMPolyglotReadBufferShortNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWriteBuffer.LLVMPolyglotWriteBufferByteNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWriteBuffer.LLVMPolyglotWriteBufferDoubleNode;
@@ -571,6 +572,12 @@ abstract class CommonPointerLibraries {
     static byte readBufferByte(LLVMPointerImpl receiver, long byteOffset,
                     @Cached LLVMPolyglotReadBufferByteNode read) throws UnsupportedMessageException, InvalidBufferOffsetException {
         return read.execute(receiver, byteOffset);
+    }
+
+    @ExportMessage
+    static void readBuffer(LLVMPointerImpl receiver, long byteOffset, byte[] destination, int destinationOffset, int length,
+                    @Cached LLVMPolyglotReadBufferNode read) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        read.execute(receiver, byteOffset, destination, destinationOffset, length);
     }
 
     @ExportMessage

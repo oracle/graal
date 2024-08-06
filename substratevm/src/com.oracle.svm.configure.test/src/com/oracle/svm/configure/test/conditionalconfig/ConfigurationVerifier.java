@@ -34,9 +34,10 @@ import org.junit.Test;
 
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationSet;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public class ConfigurationVerifier {
 

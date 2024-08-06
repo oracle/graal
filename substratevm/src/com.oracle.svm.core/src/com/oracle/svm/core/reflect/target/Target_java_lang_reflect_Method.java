@@ -34,11 +34,13 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 
 import sun.reflect.generics.repository.MethodRepository;
@@ -60,43 +62,56 @@ public final class Target_java_lang_reflect_Method {
 
     @Alias //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableAccessorComputer.class) //
-    Target_jdk_internal_reflect_MethodAccessor methodAccessor;
+    public Target_jdk_internal_reflect_MethodAccessor methodAccessor;
+
+    /**
+     * We need this indirection to use {@link #acquireMethodAccessor()} for checking if run-time
+     * conditions for this method are satisfied.
+     */
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Reset) //
+    Target_jdk_internal_reflect_MethodAccessor methodAccessorFromMetadata;
 
     @Alias
     @TargetElement(name = CONSTRUCTOR_NAME)
     @SuppressWarnings("hiding")
-    public native void constructor(Class<?> declaringClass, String name, Class<?>[] parameterTypes, Class<?> returnType, Class<?>[] checkedExceptions, int modifiers, int slot, String signature,
+    native void constructor(Class<?> declaringClass, String name, Class<?>[] parameterTypes, Class<?> returnType, Class<?>[] checkedExceptions, int modifiers, int slot, String signature,
                     byte[] annotations, byte[] parameterAnnotations, byte[] annotationDefault);
 
     @Alias
     native Target_java_lang_reflect_Method copy();
 
+    /**
+     * Encoded field, will fetch the value from {@link #methodAccessorFromMetadata} and check the
+     * conditions.
+     */
     @Substitute
     public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
-        if (methodAccessor == null) {
-            MissingReflectionRegistrationUtils.forQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));
+        RuntimeConditionSet conditions = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).conditions;
+        if (methodAccessorFromMetadata == null || !conditions.satisfied()) {
+            throw MissingReflectionRegistrationUtils.errorForQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));
         }
-        return methodAccessor;
+        return methodAccessorFromMetadata;
     }
 
     static class AnnotationsComputer extends ReflectionMetadataComputer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getAnnotationsEncoding((AccessibleObject) receiver);
+            return ImageSingletons.lookup(EncodedRuntimeMetadataSupplier.class).getAnnotationsEncoding((AccessibleObject) receiver);
         }
     }
 
     static class ParameterAnnotationsComputer extends ReflectionMetadataComputer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getParameterAnnotationsEncoding((Executable) receiver);
+            return ImageSingletons.lookup(EncodedRuntimeMetadataSupplier.class).getParameterAnnotationsEncoding((Executable) receiver);
         }
     }
 
     static class AnnotationDefaultComputer extends ReflectionMetadataComputer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getAnnotationDefaultEncoding((Method) receiver);
+            return ImageSingletons.lookup(EncodedRuntimeMetadataSupplier.class).getAnnotationDefaultEncoding((Method) receiver);
         }
     }
 }

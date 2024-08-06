@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,7 +69,8 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
 
     @Override
     protected CallTarget parse(ParsingRequest request) {
-        RootNode root = new RootNodeImpl(this, new PrivilegedCallNode(), new UnsafeCallNode());
+        RootNode root = new RootNodeImpl(this, new PrivilegedCallNode(new Thread(() -> {
+        })), new UnsafeCallNode());
         return root.getCallTarget();
     }
 
@@ -106,10 +107,17 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
 
     private static final class PrivilegedCallNode extends BaseNode {
 
+        private final Thread otherThread;
+
+        PrivilegedCallNode(Thread thread) {
+            this.otherThread = thread;
+        }
+
         @Override
         void execute(VirtualFrame frame) {
             doPrivilegedCall();
-            doPrivilegedCallBehindBoundary();
+            doBehindBoundaryPrivilegedCall();
+            doInterrupt();
         }
 
         @SuppressWarnings("deprecation" /* JEP-411 */)
@@ -118,21 +126,26 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
         }
 
         @TruffleBoundary
-        static void doPrivilegedCallBehindBoundary() {
+        static void doBehindBoundaryPrivilegedCall() {
             Thread.currentThread().setName("Thread-2");
+        }
+
+        @TruffleBoundary
+        void doInterrupt() {
+            if (this.otherThread != null) {
+                this.otherThread.interrupt();
+            }
+            Thread.currentThread().interrupt();
         }
     }
 
     private static final class UnsafeCallNode extends BaseNode {
         private static final Unsafe UNSAFE;
-        private static final long VALUE_OFFSET;
         static {
             try {
                 Field f = Unsafe.class.getDeclaredField("theUnsafe");
                 f.setAccessible(true);
                 UNSAFE = (Unsafe) f.get(null);
-                f = Integer.class.getDeclaredField("value");
-                VALUE_OFFSET = getFieldOffset(f);
             } catch (ReflectiveOperationException e) {
                 throw new RuntimeException(e);
             }
@@ -146,19 +159,28 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
         @Override
         void execute(VirtualFrame frame) {
             doUnsafeAccess();
-            doUnsafeAccessBehindBoundary();
+            doBehindBoundaryUnsafeAccess();
+        }
+
+        @TruffleBoundary
+        static long getFieldOffset(Class<?> clazz, String value) {
+            try {
+                return getFieldOffset(clazz.getDeclaredField(value));
+            } catch (ReflectiveOperationException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         static void doUnsafeAccess() {
             int i = 42;
-            int result = UNSAFE.getInt(i, VALUE_OFFSET);
+            int result = UNSAFE.getInt(i, getFieldOffset(Integer.class, "value"));
             assert i == result;
         }
 
         @TruffleBoundary
-        static void doUnsafeAccessBehindBoundary() {
+        static void doBehindBoundaryUnsafeAccess() {
             int i = 23;
-            int result = UNSAFE.getInt(i, VALUE_OFFSET);
+            int result = UNSAFE.getInt(i, getFieldOffset(Integer.class, "value"));
             assert i == result;
         }
     }

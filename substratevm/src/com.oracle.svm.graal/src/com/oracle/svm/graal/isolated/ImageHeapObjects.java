@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import org.graalvm.compiler.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 

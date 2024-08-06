@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
 
 import java.io.IOException;
@@ -70,7 +69,7 @@ final class LibTruffleAttachResource implements InternalResource {
             Path base = basePath(env);
             return env.readResourceLines(base.resolve("sha256")).get(0);
         } catch (IOException ioe) {
-            throw CompilerDirectives.shouldNotReachHere(ioe);
+            throw new InternalError(ioe);
         }
     }
 

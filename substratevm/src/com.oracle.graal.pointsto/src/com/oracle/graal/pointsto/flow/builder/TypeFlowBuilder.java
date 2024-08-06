@@ -29,9 +29,10 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.phases.common.LazyValue;
+import jdk.graal.compiler.phases.common.LazyValue;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.PrimitiveFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 
@@ -47,8 +48,17 @@ public final class TypeFlowBuilder<T extends TypeFlow<?>> {
 
     public static <U extends TypeFlow<?>> TypeFlowBuilder<U> create(PointsToAnalysis bb, Object source, Class<U> clazz, Supplier<U> supplier) {
         TypeFlowBuilder<U> builder = new TypeFlowBuilder<>(source, clazz, new LazyValue<>(supplier));
+        assert checkForPrimitiveFlows(bb, clazz) : "Primitive flow encountered without -H:+TrackPrimitiveValues: " + clazz;
         PointsToStats.registerTypeFlowBuilder(bb, builder);
         return builder;
+    }
+
+    /**
+     * A sanity check. If tracking primitive values is disabled, no primitive flows should be
+     * created.
+     */
+    private static <U extends TypeFlow<?>> boolean checkForPrimitiveFlows(PointsToAnalysis bb, Class<U> clazz) {
+        return bb.trackPrimitiveValues() || !PrimitiveFlow.class.isAssignableFrom(clazz);
     }
 
     private final Object source;

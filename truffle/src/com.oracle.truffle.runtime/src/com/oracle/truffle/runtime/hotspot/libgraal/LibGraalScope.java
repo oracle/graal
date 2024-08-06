@@ -108,9 +108,9 @@ public final class LibGraalScope implements AutoCloseable {
      * Gets the isolate thread associated with the current thread. The current thread must be in an
      * {@linkplain #LibGraalScope() opened} scope.
      *
-     * @returns a value that can be used for the IsolateThreadContext argument of a {@code native}
-     *          method {@link LibGraal#registerNativeMethods linked} to a CEntryPoint function in
-     *          libgraal
+     * @return a value that can be used for the IsolateThreadContext argument of a {@code native}
+     *         method {@link LibGraal#registerNativeMethods linked} to a CEntryPoint function in
+     *         libgraal
      * @throws IllegalStateException if the current thread is not attached to libgraal
      */
     public static long getIsolateThread() {

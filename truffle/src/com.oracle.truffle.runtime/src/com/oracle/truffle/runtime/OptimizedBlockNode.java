@@ -473,9 +473,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
 
         @Override
         public boolean visit(Node node) {
-            if (!node.getCost().isTrivial()) {
-                count++;
-            }
+            count++;
             if (node instanceof BlockNode<?>) {
                 computeBlock((OptimizedBlockNode<?>) node);
             } else {

@@ -50,7 +50,7 @@ import java.lang.annotation.Target;
  *
  * @since 0.8 or earlier
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.RUNTIME) // still used by GraalPy as RUNTIME
 @Target({ElementType.TYPE})
 public @interface GeneratedBy {
     /** @since 0.8 or earlier */

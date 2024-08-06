@@ -74,13 +74,10 @@ final class WindowsTruffleNFISupport extends TruffleNFISupport {
     @Override
     protected long loadLibraryImpl(long nativeContext, String name, int flags) {
         String dllPath = name;
-        CTypeConversion.CCharPointerHolder dllpathPin = CTypeConversion.toCString(dllPath);
-        CCharPointer dllPathPtr = dllpathPin.get();
-        /*
-         * WinBase.SetDllDirectoryA(dllpathPtr); CCharPointerHolder pathPin =
-         * CTypeConversion.toCString(path); CCharPointer pathPtr = pathPin.get();
-         */
-        HMODULE dlhandle = LibLoaderAPI.LoadLibraryA(dllPathPtr);
+        HMODULE dlhandle;
+        try (CTypeConversion.CCharPointerHolder dllpathPin = CTypeConversion.toCString(dllPath)) {
+            dlhandle = LibLoaderAPI.LoadLibraryExA(dllpathPin.get(), WordFactory.nullPointer(), flags);
+        }
         if (dlhandle.isNull()) {
             CompilerDirectives.transferToInterpreter();
             throw SubstrateUtil.cast(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(dllPath)), AbstractTruffleException.class);

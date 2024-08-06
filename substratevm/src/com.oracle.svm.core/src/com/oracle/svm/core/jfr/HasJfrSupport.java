@@ -26,7 +26,7 @@ package com.oracle.svm.core.jfr;
 
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

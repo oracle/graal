@@ -24,34 +24,32 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
-import org.graalvm.compiler.bytecode.Bytecode;
-import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
-import org.graalvm.compiler.core.common.PermanentBailoutException;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.debug.DebugContext.Description;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.nodes.EncodedGraph;
-import org.graalvm.compiler.nodes.GraphEncoder;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.compiler.runtime.RuntimeProvider;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.util.ClassUtil;
 
+import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
+import jdk.graal.compiler.bytecode.Bytecode;
+import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
+import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Builder;
+import jdk.graal.compiler.debug.DebugContext.Description;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.runtime.JVMCI;
 
@@ -72,7 +70,7 @@ public final class AnalysisParsedGraph {
     private final EncodedGraph encodedGraph;
     private final boolean isIntrinsic;
 
-    private AnalysisParsedGraph(EncodedGraph encodedGraph, boolean isIntrinsic) {
+    public AnalysisParsedGraph(EncodedGraph encodedGraph, boolean isIntrinsic) {
         this.isIntrinsic = isIntrinsic;
         this.encodedGraph = encodedGraph;
     }
@@ -127,7 +125,7 @@ public final class AnalysisParsedGraph {
 
             graph = new StructuredGraph.Builder(options, debug)
                             .method(method)
-                            .recordInlinedMethods(false)
+                            .recordInlinedMethods(bb.getHostVM().recordInlinedMethods(method))
                             .build();
             try (DebugContext.Scope s = debug.scope("ClosedWorldAnalysis", graph, method)) {
 
@@ -136,7 +134,7 @@ public final class AnalysisParsedGraph {
 
                     GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(bb.getProviders(method).getGraphBuilderPlugins())
                                     .withEagerResolving(true)
-                                    .withUnresolvedIsError(PointstoOptions.UnresolvedIsError.getValue(bb.getOptions()))
+                                    .withUnresolvedIsError(false)
                                     .withNodeSourcePosition(true)
                                     .withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll)
                                     .withRetainLocalVariables(true);

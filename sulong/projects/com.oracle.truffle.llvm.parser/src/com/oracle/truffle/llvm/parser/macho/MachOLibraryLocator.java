@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.macho;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.TruffleFile;
@@ -49,9 +50,14 @@ public final class MachOLibraryLocator extends LibraryLocator {
     private final List<String> rPaths;
 
     public MachOLibraryLocator(MachOFile machOFile, Source source) {
-        String origin = BinaryParser.getOrigin(source);
-        List<String> machoPaths = machOFile.getRPaths(origin);
-        this.rPaths = machoPaths;
+        if (source != null && source.isInternal()) {
+            // internal sources don't have an accessible rpath
+            this.rPaths = Collections.emptyList();
+        } else {
+            String origin = BinaryParser.getOrigin(source);
+            List<String> machoPaths = machOFile.getRPaths(origin);
+            this.rPaths = machoPaths;
+        }
     }
 
     private static final String RPATH_PATTERN = "@rpath/";
@@ -75,9 +81,13 @@ public final class MachOLibraryLocator extends LibraryLocator {
                 for (String p : rPaths) {
                     Path absPath = Paths.get(p, subLib);
                     traceTry(context, absPath);
-                    TruffleFile file = context.getEnv().getInternalTruffleFile(absPath.toUri());
-                    if (file.exists()) {
-                        return file;
+                    try {
+                        TruffleFile file = context.getEnv().getInternalTruffleFile(absPath.toUri());
+                        if (file.exists()) {
+                            return file;
+                        }
+                    } catch (SecurityException ex) {
+                        // fallthrough, treat "not allowed" the same as "not found"
                     }
                 }
             }

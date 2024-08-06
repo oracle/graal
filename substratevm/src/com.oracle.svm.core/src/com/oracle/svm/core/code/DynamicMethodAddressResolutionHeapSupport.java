@@ -24,19 +24,11 @@
  */
 package com.oracle.svm.core.code;
 
-import static com.oracle.svm.core.util.PointerUtils.roundUp;
-
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.Heap;
+import jdk.graal.compiler.api.replacements.Fold;
 
 public abstract class DynamicMethodAddressResolutionHeapSupport {
 
@@ -54,20 +46,5 @@ public abstract class DynamicMethodAddressResolutionHeapSupport {
 
     public abstract UnsignedWord getRequiredPreHeapMemoryInBytes();
 
-    public abstract int install(Pointer address);
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public UnsignedWord getDynamicMethodAddressResolverPreHeapMemoryBytes() {
-        UnsignedWord requiredPreHeapMemoryInBytes = getRequiredPreHeapMemoryInBytes();
-        /* Ensure there is enough space to properly align the heap */
-        UnsignedWord heapAlignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
-        return roundUp((PointerBase) requiredPreHeapMemoryInBytes, heapAlignment);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer getPreHeapMappingStartAddress() {
-        UnsignedWord heapBase = (UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate());
-        return (Pointer) heapBase.subtract(getRequiredPreHeapMemoryInBytes());
-    }
-
+    public abstract int install(Pointer heapBase);
 }

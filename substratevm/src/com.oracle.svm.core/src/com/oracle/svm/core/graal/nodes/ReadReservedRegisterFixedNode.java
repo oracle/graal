@@ -24,17 +24,16 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import com.oracle.svm.core.FrameAccess;
 
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.code.Register;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
@@ -43,7 +42,7 @@ public final class ReadReservedRegisterFixedNode extends FixedWithNextNode imple
 
     private final Register register;
 
-    protected ReadReservedRegisterFixedNode(Register register) {
+    public ReadReservedRegisterFixedNode(Register register) {
         super(TYPE, FrameAccess.getWordStamp());
         this.register = register;
     }

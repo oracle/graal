@@ -26,12 +26,6 @@ package com.oracle.svm.core.identityhashcode;
 
 import java.util.SplittableRandom;
 
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
-import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
@@ -40,11 +34,18 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 
 public final class IdentityHashCodeSupport {
@@ -74,10 +75,12 @@ public final class IdentityHashCodeSupport {
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     public static int generateIdentityHashCode(Object obj) {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
-        VMError.guarantee(ol.hasFixedIdentityHashField(), "Snippet must handle other cases");
+        VMError.guarantee(!ol.isIdentityHashFieldOptional(), "Optional hash is handled in snippet");
+
         int newHashCode = generateRandomHashCode();
-        if (!Unsafe.getUnsafe().compareAndSetInt(obj, ol.getFixedIdentityHashOffset(), 0, newHashCode)) {
-            newHashCode = ObjectAccess.readInt(obj, ol.getFixedIdentityHashOffset(), IDENTITY_HASHCODE_LOCATION);
+        int offset = LayoutEncoding.getIdentityHashOffset(obj);
+        if (!Unsafe.getUnsafe().compareAndSetInt(obj, offset, 0, newHashCode)) {
+            newHashCode = ObjectAccess.readInt(obj, offset, IDENTITY_HASHCODE_LOCATION);
         }
         VMError.guarantee(newHashCode != 0, "Missing identity hash code");
         return newHashCode;

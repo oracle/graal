@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2024, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,16 +28,18 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import os
+import tempfile
 from argparse import ArgumentParser
 
 import mx
+import mx_util
 import mx_sulong
 
 _suite = mx.suite('sulong')
 
 COPYRIGHT_HEADER_BSD = """\
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -73,7 +75,7 @@ COPYRIGHT_HEADER_BSD = """\
 
 COPYRIGHT_HEADER_BSD_HASH = """\
 #
-# Copyright (c) 2020, 2023, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2024, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -132,7 +134,7 @@ def _write_llvm_config_java(project_name, constants, file_comment=None):
     source_gen_dir = mx.dependency(project_name).source_dirs()[0]
     rel_file = package_name.split(".") + [class_name + ".java"]
     src_file = os.path.join(source_gen_dir, *rel_file)
-    mx.ensure_dir_exists(os.path.dirname(src_file))
+    mx_util.ensure_dir_exists(os.path.dirname(src_file))
     with open(src_file, "w") as fp:
         mx.log("Generating {}".format(src_file))
         fp.write(COPYRIGHT_HEADER_BSD.format("package {package};".format(package=package_name)))
@@ -152,7 +154,7 @@ def _write_llvm_config_java(project_name, constants, file_comment=None):
 def _write_llvm_config_mx(constants, file_comment=None):
     file_name = "mx_sulong_llvm_config.py"
     src_file = os.path.join(_suite.mxDir, file_name)
-    mx.ensure_dir_exists(os.path.dirname(src_file))
+    mx_util.ensure_dir_exists(os.path.dirname(src_file))
     with open(src_file, "w") as fp:
         mx.log("Generating {}".format(src_file))
         fp.write(COPYRIGHT_HEADER_BSD_HASH)
@@ -204,8 +206,28 @@ def create_generated_sources(args=None, out=None):
     parser.add_argument('--check', action='store_true', help='check for differences, fail if anything changed')
     parsed_args, args = parser.parse_known_args(args)
 
-    create_parsers(args, out=out)
-    generate_llvm_config(args, out=out)
-
     if parsed_args.check:
-        mx.run(['git', 'diff', '--exit-code'])
+        witness = tempfile.NamedTemporaryFile()
+        mx.run(['git', 'diff', '--', _suite.dir], out=witness)
+
+    try:
+        create_parsers(args, out=out)
+        generate_llvm_config(args, out=out)
+
+        if parsed_args.check:
+            with tempfile.NamedTemporaryFile() as f2:
+                mx.run(['git', 'diff', '--', _suite.dir], out=f2)
+                with open(witness.name, 'r') as before, open(f2.name, 'r') as after:
+                    while True:
+                        line_before = before.readline()
+                        line_after = after.readline()
+                        if line_before != line_after:
+                            mx.run(['git', 'diff', '--', _suite.dir])
+                            if os.path.getsize(witness.name) > 0:
+                                mx.warn("There were changes before so the diff above might be misleading (e.g., create-generated-sources might have reverted some changes)")
+                            raise mx.abort('Generating sources changed some files. See diff above')
+                        if line_before == '' or line_after == '':
+                            break
+    finally:
+        if parsed_args.check:
+            witness.close()

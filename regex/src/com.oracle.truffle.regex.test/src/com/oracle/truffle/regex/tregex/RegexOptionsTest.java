@@ -48,7 +48,9 @@ import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
+import com.oracle.truffle.regex.tregex.parser.flavors.MatchingMode;
 import org.junit.Test;
 
 import com.oracle.truffle.regex.RegexOptions;
@@ -58,7 +60,8 @@ import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
 public class RegexOptionsTest {
 
     private static RegexOptions parse(String options) {
-        RegexOptions.Builder builder = RegexOptions.builder(Source.newBuilder(RegexLanguage.ID, options, "test").build(), options);
+        String regex = options + "/./";
+        RegexOptions.Builder builder = RegexOptions.builder(Source.newBuilder(RegexLanguage.ID, regex, "test").build(), regex);
         builder.parseOptions();
         return builder.build();
     }
@@ -74,7 +77,10 @@ public class RegexOptionsTest {
     @Test
     public void testParseOptions() {
         assertTrue(parse(setBool(RegexOptions.ALWAYS_EAGER_NAME)).isAlwaysEager());
+        assertTrue(parse(setBool(RegexOptions.BOOLEAN_MATCH_NAME)).isBooleanMatch());
         assertTrue(parse(setBool(RegexOptions.DUMP_AUTOMATA_NAME)).isDumpAutomata());
+        assertTrue(parse(setBool(RegexOptions.GENERATE_INPUT_NAME)).isGenerateInput());
+        assertTrue(parse(setBool(RegexOptions.MUST_ADVANCE_NAME)).isMustAdvance());
         assertTrue(parse(setBool(RegexOptions.REGRESSION_TEST_MODE_NAME)).isRegressionTestMode());
         assertTrue(parse(setBool(RegexOptions.STEP_EXECUTION_NAME)).isStepExecution());
         assertTrue(parse(setBool(RegexOptions.U180E_WHITESPACE_NAME)).isU180EWhitespace());
@@ -87,5 +93,24 @@ public class RegexOptionsTest {
         assertTrue(opt.isAlwaysEager());
         assertTrue(opt.isDumpAutomata());
         assertTrue(opt.isRegressionTestMode());
+        assertEquals(MatchingMode.match, parse(setVal(RegexOptions.PYTHON_METHOD_NAME, RegexOptions.MATCHING_MODE_MATCH)).getMatchingMode());
+        assertEquals(MatchingMode.fullmatch, parse(setVal(RegexOptions.PYTHON_METHOD_NAME, RegexOptions.MATCHING_MODE_FULLMATCH)).getMatchingMode());
+        assertEquals(MatchingMode.search, parse(setVal(RegexOptions.PYTHON_METHOD_NAME, RegexOptions.MATCHING_MODE_SEARCH)).getMatchingMode());
+        assertEquals(MatchingMode.match, parse(setVal(RegexOptions.MATCHING_MODE_NAME, RegexOptions.MATCHING_MODE_MATCH)).getMatchingMode());
+        assertEquals(MatchingMode.fullmatch, parse(setVal(RegexOptions.MATCHING_MODE_NAME, RegexOptions.MATCHING_MODE_FULLMATCH)).getMatchingMode());
+        assertEquals(MatchingMode.search, parse(setVal(RegexOptions.MATCHING_MODE_NAME, RegexOptions.MATCHING_MODE_SEARCH)).getMatchingMode());
+        assertEquals("abc", parse(setVal(RegexOptions.PYTHON_LOCALE_NAME, "abc")).getPythonLocale());
+        assertEquals(123, parse(RegexOptions.MAX_DFA_SIZE_NAME + "=123").getMaxDFASize());
+        assertEquals(123, parse(RegexOptions.MAX_BACK_TRACKER_SIZE_NAME + "=123").getMaxBackTrackerCompileSize());
+    }
+
+    @Test(expected = RegexSyntaxException.class)
+    public void testNegative() {
+        parse(RegexOptions.MAX_DFA_SIZE_NAME + "=-123");
+    }
+
+    @Test(expected = RegexSyntaxException.class)
+    public void testOverflow() {
+        parse(RegexOptions.MAX_DFA_SIZE_NAME + "=" + (Short.MAX_VALUE + 1));
     }
 }

@@ -82,9 +82,4 @@ public final class LineBreakpointInfo extends AbstractBreakpointInfo {
     public String toString() {
         return "typeTag: " + typeTag + ", classId: " + classId + ", methodId: " + methodId + ", bci: " + bci;
     }
-
-    @Override
-    public boolean isLineBreakpoint() {
-        return true;
-    }
 }

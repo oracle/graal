@@ -130,7 +130,7 @@ public class WasmBinaryTools {
         stdout.close();
         if (exitCode != 0) {
             String output = input == null ? stdout.get() : "(binary data)";
-            Assert.fail(String.format("%s ('%s', exit code %d)\nstderr:\n%s\nstdout:\n%s", message, String.join(" ", commandLine), exitCode, stderr.get(), output));
+            throw new RuntimeException(String.format("%s ('%s', exit code %d)\nstderr:\n%s\nstdout:\n%s", message, String.join(" ", commandLine), exitCode, stderr.get(), output));
         }
         return stdout.getBytes();
     }
@@ -192,10 +192,9 @@ public class WasmBinaryTools {
                 return pathAsString;
             }
         }
-
-        Assert.assertNotNull(
-                        String.format("The %s property must be set in order to be able to compile .wat to .wasm", SystemProperties.WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME),
-                        executable);
+        if (executable == null) {
+            throw new RuntimeException(String.format("The %s property must be set in order to be able to compile .wat to .wasm", SystemProperties.WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME));
+        }
         return executable;
     }
 

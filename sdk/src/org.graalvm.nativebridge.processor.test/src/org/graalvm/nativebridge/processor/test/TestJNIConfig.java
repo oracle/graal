@@ -52,7 +52,7 @@ import org.graalvm.nativebridge.TypeLiteral;
 
 public final class TestJNIConfig {
 
-    private static final BinaryMarshaller<?> UNSUPPORTED = new BinaryMarshaller<Object>() {
+    private static final BinaryMarshaller<?> UNSUPPORTED = new BinaryMarshaller<>() {
         @Override
         public Object read(BinaryInput input) {
             throw new UnsupportedOperationException();

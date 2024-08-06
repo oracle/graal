@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -69,19 +70,19 @@ public abstract class LLVMMemCopy extends LLVMBuiltin {
     }
 
     @Specialization
-    protected Object doVoid(LLVMPointer target, LLVMPointer source, int length, boolean isVolatile) {
-        return doVoid(target, source, (long) length, isVolatile);
+    protected Object doVoid(VirtualFrame frame, LLVMPointer target, LLVMPointer source, int length, boolean isVolatile) {
+        return doVoid(frame, target, source, (long) length, isVolatile);
     }
 
     @Specialization
-    protected Object doVoid(LLVMPointer target, LLVMPointer source, long length, @SuppressWarnings("unused") boolean isVolatile) {
-        memMove.executeWithTarget(target, source, length);
+    protected Object doVoid(VirtualFrame frame, LLVMPointer target, LLVMPointer source, long length, @SuppressWarnings("unused") boolean isVolatile) {
+        memMove.executeWithTarget(frame, target, source, length);
         return null;
     }
 
     @Specialization
-    protected Object doVoid(LLVMPointer target, LLVMPointer source, LLVMPointer length, boolean isVolatile,
+    protected Object doVoid(VirtualFrame frame, LLVMPointer target, LLVMPointer source, LLVMPointer length, boolean isVolatile,
                     @Cached LLVMToNativeNode toNative) {
-        return doVoid(target, source, toNative.executeWithTarget(length).asNative(), isVolatile);
+        return doVoid(frame, target, source, toNative.executeWithTarget(length).asNative(), isVolatile);
     }
 }

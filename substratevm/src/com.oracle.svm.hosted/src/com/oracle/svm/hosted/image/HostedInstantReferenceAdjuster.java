@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

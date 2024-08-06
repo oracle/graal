@@ -30,6 +30,7 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
@@ -58,11 +59,14 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     protected HostedType[] subTypes;
     protected HostedField[] staticFields;
 
-    protected HostedMethod[] vtable;
-
+    boolean loadedFromPriorLayer;
     protected int typeID;
     protected HostedType uniqueConcreteImplementation;
     protected HostedMethod[] allDeclaredMethods;
+
+    // region closed-world only fields
+
+    protected HostedMethod[] closedTypeWorldVTable;
 
     /**
      * Start of type check range check. See {@link DynamicHub}.typeCheckStart
@@ -84,7 +88,34 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     /**
      * Array used within type checks. See {@link DynamicHub}.typeCheckSlots
      */
-    protected short[] typeCheckSlots;
+    protected short[] closedTypeWorldTypeCheckSlots;
+
+    // endregion closed-world only fields
+
+    // region open-world only fields
+
+    protected HostedType[] typeCheckInterfaceOrder;
+    protected HostedMethod[] openTypeWorldDispatchTables;
+    protected int[] itableStartingOffsets;
+
+    /**
+     * Instance class depth. Due to single-inheritance a parent class will be at the same depth in
+     * all subtypes. For interface types we set this to a negative value.
+     */
+    protected int typeIDDepth;
+
+    /*
+     * Since we store interfaces within the openTypeWorldTypeCheckSlots, we must know both the
+     * number of class and interface types to ensure we read from the correct locations.
+     */
+
+    protected int numClassTypes;
+
+    protected int numInterfaceTypes;
+
+    protected int[] openTypeWorldTypeCheckSlots;
+
+    // endregion open-world only fields
 
     /**
      * A more precise subtype that can replace this type as the declared type of values. Null if
@@ -113,44 +144,102 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return subTypes;
     }
 
-    public HostedMethod[] getVTable() {
-        assert vtable != null;
-        return vtable;
+    protected HostedMethod[] getClosedTypeWorldVTable() {
+        assert closedTypeWorldVTable != null;
+        return closedTypeWorldVTable;
     }
 
+    protected HostedMethod[] getOpenTypeWorldDispatchTables() {
+        assert openTypeWorldDispatchTables != null;
+        return openTypeWorldDispatchTables;
+    }
+
+    public HostedMethod[] getVTable() {
+        return SubstrateOptions.closedTypeWorld() ? getClosedTypeWorldVTable() : getOpenTypeWorldDispatchTables();
+    }
+
+    @Override
     public int getTypeID() {
         assert typeID != -1;
         return typeID;
     }
 
     public void setTypeCheckRange(short typeCheckStart, short typeCheckRange) {
+        assert SubstrateOptions.closedTypeWorld();
         this.typeCheckStart = typeCheckStart;
         this.typeCheckRange = typeCheckRange;
     }
 
     public void setTypeCheckSlot(short typeCheckSlot) {
+        assert SubstrateOptions.closedTypeWorld();
         this.typeCheckSlot = typeCheckSlot;
     }
 
-    public void setTypeCheckSlots(short[] typeCheckSlots) {
-        this.typeCheckSlots = typeCheckSlots;
+    public void setClosedTypeWorldTypeCheckSlots(short[] closedTypeWorldTypeCheckSlots) {
+        assert SubstrateOptions.closedTypeWorld();
+        this.closedTypeWorldTypeCheckSlots = closedTypeWorldTypeCheckSlots;
     }
 
     public short getTypeCheckStart() {
+        assert SubstrateOptions.closedTypeWorld();
         return typeCheckStart;
     }
 
     public short getTypeCheckRange() {
+        assert SubstrateOptions.closedTypeWorld();
         return typeCheckRange;
     }
 
     public short getTypeCheckSlot() {
+        assert SubstrateOptions.closedTypeWorld();
         return typeCheckSlot;
     }
 
-    public short[] getTypeCheckSlots() {
-        assert typeCheckSlots != null;
-        return typeCheckSlots;
+    public short[] getClosedTypeWorldTypeCheckSlots() {
+        assert SubstrateOptions.closedTypeWorld();
+        assert closedTypeWorldTypeCheckSlots != null;
+        return closedTypeWorldTypeCheckSlots;
+    }
+
+    public void setTypeIDDepth(int typeIDDepth) {
+        assert !SubstrateOptions.closedTypeWorld();
+        this.typeIDDepth = typeIDDepth;
+    }
+
+    public void setNumClassTypes(int numClassTypes) {
+        assert !SubstrateOptions.closedTypeWorld();
+        this.numClassTypes = numClassTypes;
+    }
+
+    public void setNumInterfaceTypes(int numInterfaceTypes) {
+        assert !SubstrateOptions.closedTypeWorld();
+        this.numInterfaceTypes = numInterfaceTypes;
+    }
+
+    public void setOpenTypeWorldTypeCheckSlots(int[] openTypeWorldTypeCheckSlots) {
+        assert !SubstrateOptions.closedTypeWorld();
+        this.openTypeWorldTypeCheckSlots = openTypeWorldTypeCheckSlots;
+    }
+
+    public int getTypeIDDepth() {
+        assert !SubstrateOptions.closedTypeWorld();
+        return typeIDDepth;
+    }
+
+    public int getNumClassTypes() {
+        assert !SubstrateOptions.closedTypeWorld();
+        return numClassTypes;
+    }
+
+    public int getNumInterfaceTypes() {
+        assert !SubstrateOptions.closedTypeWorld();
+        return numInterfaceTypes;
+    }
+
+    public int[] getOpenTypeWorldTypeCheckSlots() {
+        assert !SubstrateOptions.closedTypeWorld();
+        assert openTypeWorldTypeCheckSlots != null : this;
+        return openTypeWorldTypeCheckSlots;
     }
 
     /**
@@ -173,6 +262,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     public HostedType getUniqueConcreteImplementation() {
         return uniqueConcreteImplementation;
+    }
+
+    public void loadTypeID(int newTypeID) {
+        this.typeID = newTypeID;
+        this.loadedFromPriorLayer = true;
     }
 
     @Override
@@ -238,11 +332,6 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     @Override
     public final boolean isInitialized() {
-        if (!wrapped.isReachable()) {
-            /* Workaround until ParseOnce can always be enabled. */
-            return wrapped.isInitialized();
-        }
-
         /*
          * Note that we do not delegate to wrapped.isInitialized here: when a class initializer is
          * simulated at image build time, then AnalysisType.isInitialized() returns false but
@@ -449,7 +538,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public ResolvedJavaType unwrapTowardsOriginalType() {
+        return wrapped;
+    }
+
     public Class<?> getJavaClass() {
-        return wrapped.getJavaClass();
+        return OriginalClassProvider.getJavaClass(this);
     }
 }

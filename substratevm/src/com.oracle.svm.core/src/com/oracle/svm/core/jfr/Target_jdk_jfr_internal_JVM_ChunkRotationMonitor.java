@@ -27,7 +27,8 @@
 package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 
-@TargetClass(className = "jdk.jfr.internal.JVM$ChunkRotationMonitor", onlyWith = HasJfrSupport.class)
+@TargetClass(className = "jdk.jfr.internal.JVM$ChunkRotationMonitor", onlyWith = {HasJfrSupport.class, JDK21OrEarlier.class})
 public final class Target_jdk_jfr_internal_JVM_ChunkRotationMonitor {
 }

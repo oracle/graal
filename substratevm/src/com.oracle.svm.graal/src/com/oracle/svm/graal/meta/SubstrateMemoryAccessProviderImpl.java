@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.graal.meta;
 
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.SignedWord;

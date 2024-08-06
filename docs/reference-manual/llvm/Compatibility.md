@@ -14,7 +14,7 @@ It is recommended to use the LLVM toolchain shipped with GraalVM.
 In contrast to the static compilation model of LLVM languages, in GraalVM the machine code is not directly produced from the LLVM bitcode.
 There is an additional dynamic compilation step by the Graal compiler.
 
-First, the LLVM frontend (e.g., `clang`) performs optimizations on the bitcode level, and then the Graal compiler does its own optimizations on top of that during dynamic compilation.
+First, the LLVM frontend (for example, `clang`) performs optimizations on the bitcode level, and then the Graal compiler does its own optimizations on top of that during dynamic compilation.
 Some optimizations are better when done ahead-of-time on bitcode, while other optimizations are better left for the dynamic compilation of the Graal compiler, when profiling information is available.
 
 The LLVM toolchain that is shipped with GraalVM automatically selects the recommended flags by default.

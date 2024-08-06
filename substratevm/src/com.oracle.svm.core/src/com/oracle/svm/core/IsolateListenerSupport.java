@@ -26,13 +26,15 @@ package com.oracle.svm.core;
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredImageSingleton
 public class IsolateListenerSupport {
@@ -58,22 +60,42 @@ public class IsolateListenerSupport {
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     public void afterCreateIsolate(Isolate isolate) {
-        for (int i = 0; i < listeners.length; i++) {
-            listeners[i].afterCreateIsolate(isolate);
+        for (IsolateListener listener : listeners) {
+            try {
+                listener.afterCreateIsolate(isolate);
+            } catch (Throwable e) {
+                throw VMError.shouldNotReachHere(e);
+            }
         }
     }
 
     @Uninterruptible(reason = "The isolate teardown is in progress.")
     public void onIsolateTeardown() {
-        for (int i = 0; i < listeners.length; i++) {
-            listeners[i].onIsolateTeardown();
+        for (int i = listeners.length - 1; i >= 0; i--) {
+            try {
+                listeners[i].onIsolateTeardown();
+            } catch (Throwable e) {
+                throw VMError.shouldNotReachHere(e);
+            }
         }
     }
 
     public interface IsolateListener {
+        /**
+         * Implementations must not throw any exceptions. Note that the thread that creates the
+         * isolate is still unattached when this method is called.
+         */
         @Uninterruptible(reason = "Thread state not yet set up.")
         void afterCreateIsolate(Isolate isolate);
 
+        /**
+         * Implementations must not throw any exceptions. Note that this method is called on
+         * listeners in the reverse order of {@link #afterCreateIsolate}.
+         *
+         * This method is called during isolate teardown, when the VM is guaranteed to be
+         * single-threaded (i.e., all other threads already exited on the OS-level). This method is
+         * not called for applications that use {@link JavaMainWrapper}.
+         */
         @Uninterruptible(reason = "The isolate teardown is in progress.")
         default void onIsolateTeardown() {
         }

@@ -34,6 +34,8 @@ import static com.oracle.truffle.espresso.runtime.staticobject.StaticObject.CLAS
 import static com.oracle.truffle.espresso.runtime.staticobject.StaticObject.notNull;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -49,7 +51,6 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -71,21 +72,16 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.interop.CandidateMethodWithArgs;
-import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupInstanceFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
-import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
-import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToReference;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * BaseInterop (isNull, is/asString, meta-instance, identity, exceptions, toDisplayString) Support
@@ -94,7 +90,6 @@ import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 @GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @Shareable
-@SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class EspressoInterop extends BaseInterop {
     // region ### is/as checks/conversions
 
@@ -129,7 +124,7 @@ public class EspressoInterop extends BaseInterop {
         Meta meta = receiver.getKlass().getMeta();
         return receiver.getKlass() == meta.java_lang_Byte || receiver.getKlass() == meta.java_lang_Short || receiver.getKlass() == meta.java_lang_Integer ||
                         receiver.getKlass() == meta.java_lang_Long || receiver.getKlass() == meta.java_lang_Float ||
-                        receiver.getKlass() == meta.java_lang_Double;
+                        receiver.getKlass() == meta.java_lang_Double || receiver.getKlass() == meta.java_math_BigInteger;
     }
 
     @ExportMessage
@@ -305,6 +300,28 @@ public class EspressoInterop extends BaseInterop {
         return false;
     }
 
+    @ExportMessage
+    static boolean fitsInBigInteger(StaticObject receiver) {
+        receiver.checkNotForeign();
+        if (isNull(receiver)) {
+            return false;
+        }
+        Klass klass = receiver.getKlass();
+        Meta meta = klass.getMeta();
+        if (isAtMostLong(klass) || klass == meta.java_math_BigInteger) {
+            return true;
+        }
+        if (klass == meta.java_lang_Float) {
+            float floatValue = meta.java_lang_Float_value.getFloat(receiver);
+            return floatValue % 1 == 0 && !isNegativeZero(floatValue);
+        }
+        if (klass == meta.java_lang_Double) {
+            double doubleValue = meta.java_lang_Double_value.getDouble(receiver);
+            return doubleValue % 1 == 0 && !isNegativeZero(doubleValue);
+        }
+        return false;
+    }
+
     private static Number readNumberValue(StaticObject receiver) throws UnsupportedMessageException {
         assert receiver.isEspressoObject();
         Klass klass = receiver.getKlass();
@@ -389,6 +406,46 @@ public class EspressoInterop extends BaseInterop {
             throw UnsupportedMessageException.create();
         }
         return readNumberValue(receiver).doubleValue();
+    }
+
+    @ExportMessage
+    public static BigInteger asBigInteger(StaticObject receiver) throws UnsupportedMessageException {
+        receiver.checkNotForeign();
+        if (!fitsInBigInteger(receiver)) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.create();
+        }
+        Meta meta = getMeta();
+        if (receiver.getKlass() == meta.java_math_BigInteger) {
+            return toHostBigInteger(receiver, meta);
+        } else if (fitsInLong(receiver)) {
+            return toBigInteger(asLong(receiver));
+        } else if (fitsInDouble(receiver)) {
+            // we know it fits in BigInteger so no need to check the double value
+            return toBigInteger(asDouble(receiver));
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @TruffleBoundary
+    private static BigInteger toHostBigInteger(StaticObject receiver, Meta meta) {
+        StaticObject guestByteArray = (StaticObject) meta.java_math_BigInteger_toByteArray.invokeDirect(receiver);
+        byte[] bytes = guestByteArray.unwrap(meta.getLanguage());
+        return new BigInteger(bytes);
+    }
+
+    @TruffleBoundary
+    private static BigInteger toBigInteger(long longValue) {
+        return BigInteger.valueOf(longValue);
+    }
+
+    @TruffleBoundary
+    private static BigInteger toBigInteger(double doubleValue) {
+        try {
+            return new BigDecimal(doubleValue).toBigIntegerExact();
+        } catch (ArithmeticException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
     }
 
     // endregion ### is/as checks/conversions
@@ -659,54 +716,14 @@ public class EspressoInterop extends BaseInterop {
     static Object invokeMember(StaticObject receiver,
                     String member,
                     Object[] arguments,
-                    @Exclusive @Cached LookupVirtualMethodNode lookupMethod,
-                    @Exclusive @Cached OverLoadedMethodSelectorNode selectorNode,
-                    @Exclusive @Cached InvokeEspressoNode invoke,
-                    @Exclusive @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
+                    @CachedLibrary("receiver") InteropLibrary receiverInterop,
+                    @Cached InteropLookupAndInvoke.Virtual lookupAndInvoke)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        Method[] candidates = lookupMethod.execute(receiver.getKlass(), member, arguments.length);
-        try {
-            if (candidates != null) {
-                if (candidates.length == 1) {
-                    // common case with no overloads
-                    Method m = candidates[0];
-                    assert !m.isStatic() && m.isPublic();
-                    assert member.startsWith(m.getNameAsString());
-                    if (!m.isVarargs()) {
-                        assert m.getParameterCount() == arguments.length;
-                        return invoke.execute(m, receiver, arguments);
-                    } else {
-                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode);
-                        if (matched != null) {
-                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
-                            if (matched != null) {
-                                return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
-                            }
-                        }
-                    }
-                } else {
-                    // multiple overloaded methods found
-                    // find method with type matches
-                    CandidateMethodWithArgs typeMatched = selectorNode.execute(candidates, arguments);
-                    if (typeMatched != null) {
-                        // single match found!
-                        return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true);
-                    } else {
-                        // unable to select exactly one best candidate for the input args!
-                        throw UnknownIdentifierException.create(member);
-                    }
-                }
-            }
+        if (!receiverInterop.isMemberInvocable(receiver, member)) {
+            // Not invocable, no matter the arity or argument types.
             throw UnknownIdentifierException.create(member);
-        } catch (EspressoException e) {
-            Meta meta = e.getGuestException().getKlass().getMeta();
-            if (meta.polyglot != null && e.getGuestException().getKlass() == meta.polyglot.ForeignException) {
-                // rethrow the original foreign exception when leaving espresso interop
-                EspressoLanguage language = receiver.getKlass().getContext().getLanguage();
-                throw (AbstractTruffleException) meta.java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(language);
-            }
-            throw e;
         }
+        return lookupAndInvoke.execute(receiver, receiver.getKlass(), arguments, member);
     }
 
     // endregion ### Members

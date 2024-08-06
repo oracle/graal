@@ -68,6 +68,9 @@ public class Signal {
     @CConstant
     public static native int SIG_SETMASK();
 
+    @CConstant
+    public static native int SIGEV_SIGNAL();
+
     @CFunction
     public static native int sigprocmask(int how, sigset_tPointer set, sigset_tPointer oldset);
 
@@ -179,9 +182,21 @@ public class Signal {
         sigset_tPointer sa_mask();
     }
 
+    @CStruct(addStructKeyword = true)
+    public interface sigevent extends PointerBase {
+        @CField
+        void sigev_notify(int value);
+
+        @CField
+        void sigev_signo(int value);
+    }
+
     /** Don't call this function directly, see {@link PosixUtils#sigaction}. */
     @CFunction
     public static native int sigaction(int signum, sigaction act, sigaction oldact);
+
+    @CConstant
+    public static native int SIGPROF();
 
     @CEnum
     @CContext(PosixDirectives.class)

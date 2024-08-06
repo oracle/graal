@@ -77,7 +77,7 @@ public class JmxServerFeature implements InternalFeature {
     }
 
     private static void registerJMXAgentResources() {
-        ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
+        ResourcesRegistry<ConfigurationCondition> resourcesRegistry = ResourcesRegistry.singleton();
 
         resourcesRegistry.addResourceBundles(ConfigurationCondition.alwaysTrue(),
                         "jdk.internal.agent.resources.agent");
@@ -89,10 +89,10 @@ public class JmxServerFeature implements InternalFeature {
     private static void configureProxy(BeforeAnalysisAccess access) {
         DynamicProxyRegistry dynamicProxySupport = ImageSingletons.lookup(DynamicProxyRegistry.class);
 
-        dynamicProxySupport.addProxyClass(access.findClassByName("java.rmi.Remote"),
+        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("java.rmi.Remote"),
                         access.findClassByName("java.rmi.registry.Registry"));
 
-        dynamicProxySupport.addProxyClass(access.findClassByName("javax.management.remote.rmi.RMIServer"));
+        dynamicProxySupport.addProxyClass(ConfigurationCondition.alwaysTrue(), access.findClassByName("javax.management.remote.rmi.RMIServer"));
     }
 
     /**
@@ -109,7 +109,6 @@ public class JmxServerFeature implements InternalFeature {
     private static void configureReflection(BeforeAnalysisAccess access) {
         Set<PlatformManagedObject> platformManagedObjects = ManagementSupport.getSingleton().getPlatformManagedObjects();
         for (PlatformManagedObject p : platformManagedObjects) {
-
             // The platformManagedObjects list contains some PlatformManagedObjectSupplier objects
             // that are meant to help initialize some MXBeans at runtime. Skip them here.
             if (p instanceof ManagementSupport.PlatformManagedObjectSupplier) {
@@ -119,7 +118,8 @@ public class JmxServerFeature implements InternalFeature {
             RuntimeReflection.register(clazz);
         }
 
-        RuntimeReflection.register(access.findClassByName("com.sun.jmx.remote.protocol.rmi.ServerProvider"));
-        RuntimeReflection.register(access.findClassByName("com.sun.jmx.remote.protocol.rmi.ServerProvider").getConstructors());
+        Class<?> serviceProviderClass = access.findClassByName("com.sun.jmx.remote.protocol.rmi.ServerProvider");
+        RuntimeReflection.register(serviceProviderClass);
+        RuntimeReflection.register(serviceProviderClass.getConstructors());
     }
 }

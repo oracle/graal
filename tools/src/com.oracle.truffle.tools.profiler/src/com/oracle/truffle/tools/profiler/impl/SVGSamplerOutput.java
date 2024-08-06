@@ -24,31 +24,32 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.tools.profiler.CPUSampler;
-import com.oracle.truffle.tools.profiler.CPUSamplerData;
-import com.oracle.truffle.tools.profiler.ProfilerNode;
-import org.graalvm.shadowed.org.json.JSONArray;
-import org.graalvm.shadowed.org.json.JSONObject;
-
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
 
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
+
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
+import com.oracle.truffle.tools.profiler.ProfilerNode;
+
 final class SVGSamplerOutput {
 
-    public static void printSamplingFlameGraph(PrintStream out, Map<TruffleContext, CPUSamplerData> data) {
+    public static void printSamplingFlameGraph(PrintStream out, List<CPUSamplerData> data) {
         GraphOwner graph = new GraphOwner(new StringBuilder(), data);
 
         graph.addComponent(new SVGFlameGraph(graph));
@@ -68,7 +69,7 @@ final class SVGSamplerOutput {
     public void header(double width, double height) {
         output.append("<?xml version=\"1.0\" standalone=\"no\"?>\n");
         output.append("<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n");
-        output.append(String.format(
+        output.append(String.format(Locale.ROOT,
                         "<svg version=\"1.1\" width=\"%1$f\" height=\"%2$f\" onload=\"init(evt)\" viewBox=\"0 0 %1$f %2$f\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n",
                         width, height));
     }
@@ -78,7 +79,7 @@ final class SVGSamplerOutput {
     }
 
     public static String allocateColor(int r, int g, int b) {
-        return String.format("rgb(%d, %d, %d)", r, g, b);
+        return String.format(Locale.ROOT, "rgb(%d, %d, %d)", r, g, b);
     }
 
     public static String startGroup(Map<String, String> attributes) {
@@ -86,7 +87,7 @@ final class SVGSamplerOutput {
         result.append("<g ");
         for (String key : new String[]{"class", "style", "onmouseover", "onmouseout", "onclick", "id"}) {
             if (attributes.containsKey(key)) {
-                result.append(String.format("%s=\"%s\"", key, attributes.get(key)));
+                result.append(String.format(Locale.ROOT, "%s=\"%s\"", key, attributes.get(key)));
                 result.append(" ");
             }
         }
@@ -97,11 +98,11 @@ final class SVGSamplerOutput {
         }
 
         if (attributes.containsKey("title")) {
-            result.append(String.format("<title>%s</title>", attributes.get("title")));
+            result.append(String.format(Locale.ROOT, "<title>%s</title>", attributes.get("title")));
         }
 
         if (attributes.containsKey("href")) {
-            result.append(String.format("<a xlink:href=%s", attributes.get("href")));
+            result.append(String.format(Locale.ROOT, "<a xlink:href=%s", attributes.get("href")));
 
             final String target;
             if (attributes.containsKey("target")) {
@@ -109,7 +110,7 @@ final class SVGSamplerOutput {
             } else {
                 target = "_top";
             }
-            result.append(String.format(" target=%s", target));
+            result.append(String.format(Locale.ROOT, " target=%s", target));
         }
         return result.toString();
     }
@@ -127,7 +128,7 @@ final class SVGSamplerOutput {
         StringBuilder result = new StringBuilder();
         result.append("<svg ");
         for (Map.Entry<String, String> e : attributes.entrySet()) {
-            result.append(String.format("%s=\"%s\"", e.getKey(), e.getValue()));
+            result.append(String.format(Locale.ROOT, "%s=\"%s\"", e.getKey(), e.getValue()));
             result.append(" ");
         }
         result.append(">\n");
@@ -143,16 +144,17 @@ final class SVGSamplerOutput {
 
     public static String fillRectangle(double x1, double y1, double w, double h, String fill, String extras, Map<String, String> attributes) {
         StringBuilder result = new StringBuilder();
-        result.append(String.format("<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" fill=\"%s\" %s", x1, y1, w, h, fill, extras));
+        result.append(String.format(Locale.ROOT, "<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" fill=\"%s\" %s", x1, y1, w, h, fill, extras));
         for (Map.Entry<String, String> entry : attributes.entrySet()) {
-            result.append(String.format(" %s=\"%s\"", entry.getKey(), entry.getValue()));
+            result.append(String.format(Locale.ROOT, " %s=\"%s\"", entry.getKey(), entry.getValue()));
         }
         result.append("/>\n");
         return result.toString();
     }
 
     public static String ttfString(String color, String font, double size, double x, double y, String text, String loc, String extras) {
-        return String.format("<text text-anchor=\"%s\" x=\"%f\" y=\"%f\" font-size=\"%f\" font-family=\"%s\" fill=\"%s\" %s >%s</text>\n", loc == null ? "left" : loc, x, y, size, font, color,
+        return String.format(Locale.ROOT, "<text text-anchor=\"%s\" x=\"%f\" y=\"%f\" font-size=\"%f\" font-family=\"%s\" fill=\"%s\" %s >%s</text>\n", loc == null ? "left" : loc, x, y, size, font,
+                        color,
                         extras == null ? "" : extras, escape(text));
     }
 
@@ -212,7 +214,7 @@ final class SVGSamplerOutput {
     private static class GraphOwner implements SVGComponent {
 
         private final SVGSamplerOutput svg;
-        private final Map<TruffleContext, CPUSamplerData> data;
+        private final List<CPUSamplerData> data;
         private ArrayList<SVGComponent> components;
         private Random random = new Random();
         private Map<GraphColorMap, String> languageColors;
@@ -230,7 +232,7 @@ final class SVGSamplerOutput {
         public final JSONArray sampleJsonKeys = new JSONArray();
         public final JSONArray sampleData = new JSONArray();
 
-        GraphOwner(StringBuilder output, Map<TruffleContext, CPUSamplerData> data) {
+        GraphOwner(StringBuilder output, List<CPUSamplerData> data) {
             svg = new SVGSamplerOutput(output);
             this.data = data;
             components = new ArrayList<>();
@@ -267,8 +269,8 @@ final class SVGSamplerOutput {
             StringBuilder css = new StringBuilder();
             css.append("<defs>\n");
             css.append("    <linearGradient id=\"background\" y1=\"0\" y2=\"1\" x1=\"0\" x2=\"0\" >\n");
-            css.append(String.format("        <stop stop-color=\"%s\" offset=\"5%%\" />\n", background1()));
-            css.append(String.format("        <stop stop-color=\"%s\" offset=\"95%%\" />\n", background2()));
+            css.append(String.format(Locale.ROOT, "        <stop stop-color=\"%s\" offset=\"5%%\" />\n", background1()));
+            css.append(String.format(Locale.ROOT, "        <stop stop-color=\"%s\" offset=\"95%%\" />\n", background2()));
             css.append("    </linearGradient>\n");
             css.append("</defs>\n");
             css.append("<style type=\"text/css\">\n");
@@ -285,8 +287,8 @@ final class SVGSamplerOutput {
             result.append("<script type=\"text/ecmascript\">\n<![CDATA[\n");
             result.append(getResource("graphowner.js"));
             result.append("'use strict';\n");
-            result.append(String.format("var fontSize = %s;\n", fontSize()));
-            result.append(String.format("var fontWidth = %s;\n", fontWidth()));
+            result.append(String.format(Locale.ROOT, "var fontSize = %s;\n", fontSize()));
+            result.append(String.format(Locale.ROOT, "var fontWidth = %s;\n", fontWidth()));
             result.append(samples());
             result.append(resizeFunction());
             result.append(initFunction("evt"));
@@ -326,7 +328,7 @@ final class SVGSamplerOutput {
             root.put("l", GraphColorMap.GRAY.ordinal());
             long totalSamples = 0;
             JSONArray children = new JSONArray();
-            for (CPUSamplerData value : data.values()) {
+            for (CPUSamplerData value : data) {
                 for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : value.getThreadData().entrySet()) {
                     Thread thread = node.getKey();
                     // Output the thread node itself...
@@ -663,7 +665,7 @@ final class SVGSamplerOutput {
 
         public String initFunction(String argName) {
             StringBuilder result = new StringBuilder();
-            result.append(String.format("function init(%s) {\n", argName));
+            result.append(String.format(Locale.ROOT, "function init(%s) {\n", argName));
             for (SVGComponent component : components) {
                 result.append(component.initFunction(argName));
             }
@@ -686,10 +688,10 @@ final class SVGSamplerOutput {
 
         public String searchFunction(String argName) {
             StringBuilder result = new StringBuilder();
-            result.append(String.format("var searchColor = \"%s\";\n", searchColor()));
+            result.append(String.format(Locale.ROOT, "var searchColor = \"%s\";\n", searchColor()));
             result.append(getResource("search.js"));
 
-            result.append(String.format("function search(%s) {\n", argName));
+            result.append(String.format(Locale.ROOT, "function search(%s) {\n", argName));
             for (SVGComponent component : components) {
                 result.append(component.searchFunction(argName));
             }
@@ -926,8 +928,8 @@ final class SVGSamplerOutput {
 
         public String script() {
             StringBuilder script = new StringBuilder();
-            script.append(String.format("var xpad = %s;\nvar fg_width = 1200;\nvar fg_bottom_padding = %s;\nvar fg_min_width = %s;\n", XPAD, bottomPadding, MINWIDTH));
-            script.append(String.format("var fg_frameheight = %s;\nvar fg_top_padding = %s;", FRAMEHEIGHT, topPadding));
+            script.append(String.format(Locale.ROOT, "var xpad = %s;\nvar fg_width = 1200;\nvar fg_bottom_padding = %s;\nvar fg_min_width = %s;\n", XPAD, bottomPadding, MINWIDTH));
+            script.append(String.format(Locale.ROOT, "var fg_frameheight = %s;\nvar fg_top_padding = %s;", FRAMEHEIGHT, topPadding));
             script.append(owner.getResource("flamegraph.js"));
             return script.toString();
         }
@@ -939,7 +941,7 @@ final class SVGSamplerOutput {
             svgattr.put("y", Double.toString(y));
             svgattr.put("wdith", Double.toString(width()));
             svgattr.put("height", Double.toString(height()));
-            svgattr.put("viewBox", String.format("0.0 -%f %f %f", height(), width(), height()));
+            svgattr.put("viewBox", String.format(Locale.ROOT, "0.0 -%f %f %f", height(), width(), height()));
             output.append(startSubDrawing(svgattr));
             Map<String, String> attr = new HashMap<>();
             Map<String, String> canvasAttr = new HashMap<>();
@@ -1038,9 +1040,9 @@ final class SVGSamplerOutput {
             int total = sample.getInt("h");
             double percent = 100.0 * (compiled + interpreted) / sampleCount;
             double totalPercent = 100.0 * total / sampleCount;
-            title.append(String.format("Self samples: %d (%.2f%%)\n", interpreted + compiled, percent));
-            title.append(String.format("total samples:  %d (%.2f%%)\n", total, totalPercent));
-            title.append(String.format("Source location: %s:%d\n", owner.sourceNames.get(key.sourceId), key.sourceLine));
+            title.append(String.format(Locale.ROOT, "Self samples: %d (%.2f%%)\n", interpreted + compiled, percent));
+            title.append(String.format(Locale.ROOT, "total samples:  %d (%.2f%%)\n", total, totalPercent));
+            title.append(String.format(Locale.ROOT, "Source location: %s:%d\n", owner.sourceNames.get(key.sourceId), key.sourceLine));
             groupAttrs.put("title", escape(title.toString()));
             output.append(startGroup(groupAttrs));
 
@@ -1073,11 +1075,11 @@ final class SVGSamplerOutput {
         }
 
         public String initFunction(String argName) {
-            return String.format("fg_init(%s)\n", argName);
+            return String.format(Locale.ROOT, "fg_init(%s)\n", argName);
         }
 
         public String searchFunction(String argName) {
-            return String.format("fg_search(%s)\n", argName);
+            return String.format(Locale.ROOT, "fg_search(%s)\n", argName);
         }
 
         public String resetSearchFunction() {
@@ -1157,11 +1159,11 @@ final class SVGSamplerOutput {
 
         public String script() {
             StringBuilder script = new StringBuilder();
-            script.append(String.format("var h_width = %s;\n", width()));
-            script.append(String.format("var h_minwidth = %s;\n", MINWIDTH));
-            script.append(String.format("var h_top_padding = %s;\n", titlePadding));
-            script.append(String.format("var h_bottom_padding = %s;\n", bottomPadding));
-            script.append(String.format("var h_frameheight = %s;\n", FRAMEHEIGHT));
+            script.append(String.format(Locale.ROOT, "var h_width = %s;\n", width()));
+            script.append(String.format(Locale.ROOT, "var h_minwidth = %s;\n", MINWIDTH));
+            script.append(String.format(Locale.ROOT, "var h_top_padding = %s;\n", titlePadding));
+            script.append(String.format(Locale.ROOT, "var h_bottom_padding = %s;\n", bottomPadding));
+            script.append(String.format(Locale.ROOT, "var h_frameheight = %s;\n", FRAMEHEIGHT));
             script.append("var histogramData = ");
             JSONArray data = new JSONArray();
             for (JSONObject bar : histogram) {
@@ -1180,7 +1182,7 @@ final class SVGSamplerOutput {
             svgattr.put("y", Double.toString(y));
             svgattr.put("wdith", Double.toString(width()));
             svgattr.put("height", Double.toString(height()));
-            svgattr.put("viewBox", String.format("0.0 0.0 %f %f", width(), height()));
+            svgattr.put("viewBox", String.format(Locale.ROOT, "0.0 0.0 %f %f", width(), height()));
             output.append(startSubDrawing(svgattr));
             Map<String, String> attr = new HashMap<>();
             Map<String, String> canvasAttr = new HashMap<>();
@@ -1222,9 +1224,9 @@ final class SVGSamplerOutput {
             title.append("\n");
             int interpreted = bar.getInt("i");
             int compiled = bar.getInt("c");
-            title.append(String.format("%d samples (%d interpreted, %d compiled).\n", interpreted + compiled, interpreted, compiled));
+            title.append(String.format(Locale.ROOT, "%d samples (%d interpreted, %d compiled).\n", interpreted + compiled, interpreted, compiled));
             double percent = 100.0 * (compiled + interpreted) / sampleCount;
-            title.append(String.format("%.2f%% of displayed samples.\n", percent));
+            title.append(String.format(Locale.ROOT, "%.2f%% of displayed samples.\n", percent));
             groupAttrs.put("title", escape(title.toString()));
             output.append(startGroup(groupAttrs));
 
@@ -1269,11 +1271,11 @@ final class SVGSamplerOutput {
         }
 
         public String initFunction(String argName) {
-            return String.format("h_init(%s)\n", argName);
+            return String.format(Locale.ROOT, "h_init(%s)\n", argName);
         }
 
         public String searchFunction(String argName) {
-            return String.format("h_search(%s)\n", argName);
+            return String.format(Locale.ROOT, "h_search(%s)\n", argName);
         }
 
         public String resetSearchFunction() {

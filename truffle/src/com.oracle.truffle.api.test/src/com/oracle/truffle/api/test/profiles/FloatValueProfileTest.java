@@ -42,9 +42,9 @@ package com.oracle.truffle.api.test.profiles;
 
 import static com.oracle.truffle.api.test.profiles.PrimitiveValueProfileTest.exactCompare;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
 
 import org.junit.BeforeClass;
 import org.junit.Test;

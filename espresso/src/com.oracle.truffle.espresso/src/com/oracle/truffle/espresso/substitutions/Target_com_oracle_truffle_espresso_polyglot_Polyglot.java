@@ -45,7 +45,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
 import com.oracle.truffle.espresso.nodes.interop.ToReference;
@@ -220,13 +219,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @SuppressWarnings("unused") ObjectKlass targetKlass,
                         @JavaType(Object.class) StaticObject value,
                         @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached BranchProfile exceptionProfile,
-                        @Cached InitCheck initCheck) {
+                        @Cached BranchProfile exceptionProfile) {
             Meta meta = context.getMeta();
             // Casting to ForeignException skip the field checks.
             Object foreignObject = value.rawForeignObject(getLanguage());
             if (interop.isException(foreignObject)) {
-                initCheck.execute(targetKlass);
                 return StaticObject.createForeignException(context, foreignObject, interop);
             }
             exceptionProfile.enter();

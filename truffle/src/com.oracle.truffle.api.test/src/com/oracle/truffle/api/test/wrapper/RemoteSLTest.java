@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.OutputStream;
 import java.lang.reflect.Field;
 
 import org.graalvm.polyglot.Context;
@@ -107,7 +108,7 @@ public class RemoteSLTest {
 
     @Test
     public void test() {
-        try (Context context = Context.newBuilder().logHandler(System.err).option("engine.SpawnRemote", "true").allowHostAccess(HostAccess.ALL).build()) {
+        try (Context context = Context.newBuilder().logHandler(OutputStream.nullOutputStream()).option("engine.SpawnRemote", "true").allowHostAccess(HostAccess.ALL).build()) {
             Value guestFunction = context.eval("sl", "" + //
                             "function error() {eval(\"sl\", \"asdf(\");}\n" + //
                             "function identity(v) {return v;}\n" + //

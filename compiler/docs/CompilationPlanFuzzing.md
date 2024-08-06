@@ -1,7 +1,7 @@
 # Compilation plan fuzzing
 This page covers the creation and usage of fuzzed compilation plans instead of the usual phase orderings specified by the different `CompilerConfiguration`s.
 ## Abstraction design
-The following design can be found in the package `org.graalvm.compiler.core.phases.fuzzing`.
+The following design can be found in the package `jdk.graal.compiler.core.phases.fuzzing`.
 ### Diagram
 ```
                                                                              Suites  >  FuzzedSuites
@@ -145,7 +145,7 @@ It is possible to fix some parameters of the creation of fuzzed compilation plan
   * `mx phaseplan-fuzz-jtt-tests HP_life`
   * `mx gate --extra-unittest-argument='HP_life' --tags phaseplan-fuzz-jtt-tests`
 - If you want to use the phases of a specific compiler configuration and respect its requirements, you should use:
-  * `-Dgraal.CompilerConfiguration=<config>`
+  * `-Djdk.graal.CompilerConfiguration=<config>`
 
 #### Load a phase plan
 You can load a phase plan (one created by a fuzzed compilation plan or any other phase plan serialized using the `PhasePlanSerializer`) using the command:
@@ -169,5 +169,5 @@ These commands will make each thread create a new fuzzed compilation plan for ea
 #### Load a phase plan
 It is possible to load a phase plan (one created by a fuzzed compilation plan or any other phase plan serialized using the `PhasePlanSerializer`) and use it for the compilation of a method by using the command:
 ```
-mx gate --extra-vm-argument='-DCompileTheWorld.LoadPhasePlan=/path/to/phaseplan' --extra-vm-argument='-DCompileTheWorld.MethodFilter=<methodName>' --extra-vm-argument='-Dgraal.CompilerConfiguration=<config>' --tags ctw
+mx gate --extra-vm-argument='-DCompileTheWorld.LoadPhasePlan=/path/to/phaseplan' --extra-vm-argument='-DCompileTheWorld.MethodFilter=<methodName>' --extra-vm-argument='-Djdk.graal.CompilerConfiguration=<config>' --tags ctw
 ```

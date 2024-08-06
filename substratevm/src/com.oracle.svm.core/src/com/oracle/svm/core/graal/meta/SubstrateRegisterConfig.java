@@ -29,7 +29,7 @@ import com.oracle.svm.core.ReservedRegisters;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 
-public interface SubstrateRegisterConfig extends RegisterConfig {
+public interface SubstrateRegisterConfig extends RegisterConfig, com.oracle.svm.core.deopt.DeoptimizationSlotPacking {
 
     enum ConfigKind {
         NORMAL,
@@ -40,5 +40,4 @@ public interface SubstrateRegisterConfig extends RegisterConfig {
     default Register getFrameRegister() {
         return ReservedRegisters.singleton().getFrameRegister();
     }
-
 }

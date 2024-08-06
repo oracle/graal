@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,7 +72,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.polyglot.EngineAccessor.EngineImpl;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 
 final class PolyglotLoggers {
@@ -92,10 +91,6 @@ final class PolyglotLoggers {
 
     static Set<String> getInternalIds() {
         return INTERNAL_IDS;
-    }
-
-    static PolyglotContextImpl getCurrentOuterContext() {
-        return EngineImpl.getOuterContext(PolyglotFastThreadLocals.getContext(null));
     }
 
     static boolean haveSameTarget(LogHandler h1, LogHandler h2) {
@@ -136,7 +131,6 @@ final class PolyglotLoggers {
     /**
      * Creates a default {@link Handler} for an engine when a {@link Handler} was not specified.
      *
-     * @param polyglot the polyglot owning the handler
      * @param out the {@link OutputStream} to print log messages into
      * @param sandboxPolicy the engine's sandbox policy
      */
@@ -198,17 +192,17 @@ final class PolyglotLoggers {
 
         private final LogHandler handler;
         private final boolean useCurrentContext;
-        private final Map<String, Level> ownerLogLevels;
+        private final Function<VMObject, Map<String, Level>> ownerLogLevelsProvider;
         private final Set<String> rawLoggerIds;
         private final Set<Level> implicitLevels;
         private volatile WeakReference<VMObject> ownerRef;
 
-        private LoggerCache(LogHandler handler, boolean useCurrentContext, Map<String, Level> ownerLogLevels,
+        private LoggerCache(LogHandler handler, boolean useCurrentContext, Function<VMObject, Map<String, Level>> ownerLogLevelsProvider,
                         Set<String> rawLoggerIds, Level... implicitLevels) {
             Objects.requireNonNull(handler);
             this.handler = handler;
             this.useCurrentContext = useCurrentContext;
-            this.ownerLogLevels = ownerLogLevels;
+            this.ownerLogLevelsProvider = ownerLogLevelsProvider;
             this.rawLoggerIds = rawLoggerIds;
             if (implicitLevels.length == 0) {
                 this.implicitLevels = Collections.emptySet();
@@ -216,6 +210,10 @@ final class PolyglotLoggers {
                 this.implicitLevels = new HashSet<>();
                 Collections.addAll(this.implicitLevels, implicitLevels);
             }
+        }
+
+        boolean isContextBoundLogger() {
+            return !useCurrentContext;
         }
 
         void setOwner(VMObject owner) {
@@ -226,17 +224,19 @@ final class PolyglotLoggers {
         }
 
         static LoggerCache newEngineLoggerCache(PolyglotEngineImpl engine) {
-            return newEngineLoggerCache(new PolyglotLogHandler(engine.logHandler), engine.logLevels, true, Collections.emptySet());
+            Objects.requireNonNull(engine);
+            LoggerCache cache = new LoggerCache(new PolyglotLogHandler(engine), true, (owner) -> ((PolyglotEngineImpl) owner).logLevels, Collections.emptySet());
+            cache.setOwner(engine);
+            return cache;
         }
 
-        static LoggerCache newEngineLoggerCache(LogHandler handler, Map<String, Level> logLevels, boolean useCurrentContext,
-                        Set<String> rawLoggerIds, Level... implicitLevels) {
-            return new LoggerCache(handler, useCurrentContext, logLevels, rawLoggerIds, implicitLevels);
+        static LoggerCache newEngineLoggerCache(LogHandler handler, Map<String, Level> logLevels, Set<String> rawLoggerIds, Level... implicitLevels) {
+            return new LoggerCache(handler, false, (owner) -> logLevels, rawLoggerIds, implicitLevels);
         }
 
         static LoggerCache newContextLoggerCache(PolyglotContextImpl context) {
             Objects.requireNonNull(context);
-            LoggerCache cache = new LoggerCache(new ContextLogHandler(context), false, context.config.logLevels, Collections.emptySet());
+            LoggerCache cache = new LoggerCache(new ContextLogHandler(context), false, (owner) -> ((PolyglotContextImpl) owner).config.logLevels, Collections.emptySet());
             cache.setOwner(context);
             return cache;
         }
@@ -251,18 +251,25 @@ final class PolyglotLoggers {
 
         public Map<String, Level> getLogLevels() {
             if (useCurrentContext) {
-                PolyglotContextImpl context = getCurrentOuterContext();
+                PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
                 if (context != null) {
                     return context.config.logLevels;
                 }
             }
-            if (ownerLogLevels != null) {
-                if (ownerRef != null && ownerRef.get() == null) {
-                    // if the owner was initialized and owner was collected we shared the truffle
-                    // logger too far.
-                    throw ContextLogHandler.invalidSharing();
+            if (ownerLogLevelsProvider != null) {
+                VMObject owner;
+                if (ownerRef != null) {
+                    owner = ownerRef.get();
+                    if (owner == null) {
+                        // if the owner was initialized and owner was collected we shared the
+                        // truffle
+                        // logger too far.
+                        throw ContextLogHandler.invalidSharing();
+                    }
+                } else {
+                    owner = null;
                 }
-                return ownerLogLevels;
+                return ownerLogLevelsProvider.apply(owner);
             }
             return null;
         }
@@ -500,7 +507,7 @@ final class PolyglotLoggers {
 
             private static String possibleSimpleName(final String loggerName) {
                 int index = -1;
-                for (int i = 0; i >= 0; i = loggerName.indexOf('.', i + 1)) {
+                for (int i = loggerName.indexOf('.'); i >= 0; i = loggerName.indexOf('.', i + 1)) {
                     if (i + 1 < loggerName.length() && Character.isUpperCase(loggerName.charAt(i + 1))) {
                         index = i + 1;
                         break;
@@ -550,21 +557,22 @@ final class PolyglotLoggers {
 
         private static final LogHandler INSTANCE = new PolyglotLogHandler();
 
-        private final LogHandler fallBackHandler;
+        private final WeakReference<PolyglotEngineImpl> engineRef;
 
         PolyglotLogHandler() {
-            this.fallBackHandler = null;
+            this.engineRef = null;
         }
 
-        PolyglotLogHandler(LogHandler fallbackHandler) {
-            this.fallBackHandler = fallbackHandler;
+        PolyglotLogHandler(PolyglotEngineImpl engine) {
+            this.engineRef = new WeakReference<>(engine);
         }
 
         @Override
         public void publish(final LogRecord record) {
             LogHandler handler = findDelegate();
             if (handler == null) {
-                handler = fallBackHandler;
+                PolyglotEngineImpl engine = engineRef != null ? engineRef.get() : null;
+                handler = engine != null ? engine.logHandler : null;
             }
             if (handler != null) {
                 handler.publish(record);
@@ -588,7 +596,7 @@ final class PolyglotLoggers {
         }
 
         private static LogHandler findDelegate() {
-            final PolyglotContextImpl currentContext = getCurrentOuterContext();
+            final PolyglotContextImpl currentContext = PolyglotFastThreadLocals.getContext(null);
             return currentContext != null ? currentContext.config.logHandler : null;
         }
     }
@@ -769,7 +777,7 @@ final class PolyglotLoggers {
                 synchronized (this) {
                     loggersCache = loggers;
                     if (loggersCache == null) {
-                        LoggerCache spi = LoggerCache.newEngineLoggerCache(logHandler, logLevels, false, Collections.singleton(GRAAL_COMPILER_LOG_ID), Level.INFO);
+                        LoggerCache spi = LoggerCache.newEngineLoggerCache(logHandler, logLevels, Collections.singleton(GRAAL_COMPILER_LOG_ID), Level.INFO);
                         loggers = loggersCache = EngineAccessor.LANGUAGE.createEngineLoggers(spi);
                     }
                 }

@@ -24,17 +24,16 @@
  */
 package com.oracle.graal.pointsto.plugins;
 
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
-import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
-
 import com.oracle.graal.pointsto.nodes.AnalysisObjectCloneNode;
 
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets;
+import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -50,7 +49,7 @@ public class PointstoGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("clone", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode object = receiver.get();
+                ValueNode object = receiver.get(true);
                 b.addPush(JavaKind.Object, new AnalysisObjectCloneNode(MacroParams.of(b, targetMethod, object)));
                 return true;
             }

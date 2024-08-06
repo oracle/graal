@@ -71,7 +71,10 @@ public @interface NodeInfo {
      * @see Node#getCost()
      * @see NodeCost
      * @since 0.8 or earlier
+     * @deprecated in 24.1 without replacement
      */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     NodeCost cost() default NodeCost.MONOMORPHIC;
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,11 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * Set to true if the launcher has been started via the {@code runLauncher} JNI entry point.
      */
     private boolean jniLaunch;
+    /**
+     * The arguments from the option_vars environment variables, only set if the launcher has been
+     * started via {@code runLauncher}.
+     */
+    private String[] optionVarsArguments;
     /**
      * Native argument count, set if the launcher has been started via {@code runLauncher}.
      */
@@ -137,13 +142,14 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * Entry point for invoking the launcher via JNI. Relies on a launcher constructor to be set via
      * the org.graalvm.launcher.class system property.
      *
+     * @param optionVarsArgs the arguments from the option_vars environment variables
      * @param args the command line arguments as an encoding-agnostic byte array
      * @param argc the number of native command line arguments
      * @param argv pointer to argv
-     * @param relaunch indicates if this is a relaunch with previously identified vm arguments
+     * @param relaunch indicates if this is a relaunch with previously identified --vm.* arguments
      * @throws Exception if no launcher constructor has been set.
      */
-    public static void runLauncher(byte[][] args, int argc, long argv, boolean relaunch) throws Exception {
+    public static void runLauncher(byte[][] optionVarsArgs, byte[][] args, int argc, long argv, boolean relaunch) throws Exception {
         if (isAOT()) {
             // enable signal handling for the launcher
             RuntimeOptions.set("EnableSignalHandling", true);
@@ -159,6 +165,12 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
         launcher.nativeArgc = argc;
         launcher.nativeArgv = argv;
         launcher.relaunch = relaunch;
+
+        String[] optionVarsArguments = new String[optionVarsArgs.length];
+        for (int i = 0; i < optionVarsArgs.length; i++) {
+            optionVarsArguments[i] = new String(optionVarsArgs[i]);
+        }
+        launcher.optionVarsArguments = optionVarsArguments;
 
         String[] arguments = new String[args.length];
         for (int i = 0; i < args.length; i++) {
@@ -183,18 +195,23 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      */
     protected final void validateVmArguments(List<String> originalArgs, List<String> unrecognizedArgs) {
         if (relaunch) {
-            // vm arguments have been explicitly set, bypassing the heuristic
+            // --vm.* arguments have been explicitly set, bypassing the heuristic
             return;
         }
 
         List<String> heuristicVmArgs = new ArrayList<>();
-        List<String> actualVmArgs = new ArrayList<>();
-
         for (String arg : originalArgs) {
             if (arg.startsWith("--vm.")) {
                 heuristicVmArgs.add(arg);
             }
         }
+        for (String arg : optionVarsArguments) {
+            if (arg.startsWith("--vm.")) {
+                heuristicVmArgs.add(arg);
+            }
+        }
+
+        List<String> actualVmArgs = new ArrayList<>();
         for (String arg : unrecognizedArgs) {
             if (arg.startsWith("--vm.")) {
                 actualVmArgs.add(arg);
@@ -205,8 +222,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
             throw new RelaunchException(actualVmArgs);
         }
 
-        // all argument match, we're good
-        return;
+        // all --vm.* arguments match, we're good
     }
 
     /**

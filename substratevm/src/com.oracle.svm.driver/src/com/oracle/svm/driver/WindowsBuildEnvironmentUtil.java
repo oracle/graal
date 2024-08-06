@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,9 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
-import java.util.stream.Stream;
 
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 
@@ -43,70 +40,36 @@ import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
  * This utility helps set up a build environment for Windows users automatically.
  */
 class WindowsBuildEnvironmentUtil {
-    private static final String VSINSTALLDIR_ENV = "VSINSTALLDIR";
-    private static final Path[] KNOWN_VS_LOCATIONS = {
-                    Paths.get("C:", "Program Files", "Microsoft Visual Studio"),
-                    // prefer x64 location over x86
-                    Paths.get("C:", "Program Files (x86)", "Microsoft Visual Studio")};
-    private static final String[] KNOWN_VS_EDITIONS = {
-                    // prefer Enterprise over Professional over Community over BuildTools
-                    "Enterprise", "Professional", "Community", "BuildTools"};
     private static final String VCVARSALL = "vcvarsall.bat";
     private static final Path VCVARSALL_SUBPATH = Paths.get("VC", "Auxiliary", "Build", VCVARSALL);
-    private static final String OUTPUT_SEPARATOR = "!NEXTCOMMAND!";
     // Use another static field for minimum required version because CCompilerInvoker is hosted only
     private static final String VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION = CCompilerInvoker.VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION;
+    private static final String VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION_TEXT = CCompilerInvoker.VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION_TEXT;
 
     static void propagateEnv(Map<String, String> environment) {
         if (isCCompilerOnPath()) {
             return; // nothing to do, build environment initialized by user
         }
-        Path vcVarsAllLocation = null;
-        for (Path visualStudioLocation : KNOWN_VS_LOCATIONS) {
-            if (!Files.isDirectory(visualStudioLocation)) {
-                continue;
-            }
-            List<Path> installationCandidates;
-            try (Stream<Path> pathStream = Files.list(visualStudioLocation)) {
-                installationCandidates = pathStream
-                                // only keep sub-directories matching 20\d\d
-                                .filter(p -> p.toFile().getName().matches("20\\d\\d"))
-                                // sort years
-                                .sorted(Comparator.comparing(p -> p.toFile().getName()))
-                                // reverse order to ensure latest year is first
-                                .sorted(Comparator.reverseOrder())
-                                .toList();
-            } catch (IOException e) {
-                throw fail("Failed to traverse known Visual Studio locations.", e);
-            }
-            for (Path installation : installationCandidates) {
-                for (String edition : KNOWN_VS_EDITIONS) {
-                    Path possibleLocation = installation.resolve(edition).resolve(VCVARSALL_SUBPATH);
-                    if (Files.isRegularFile(possibleLocation) && Files.isReadable(possibleLocation)) {
-                        vcVarsAllLocation = possibleLocation;
-                        break;
-                    }
-                }
-            }
-        }
+        Path vcVarsAllLocation = findVCVarsallWithVSWhere();
         if (vcVarsAllLocation == null) {
             throw fail(String.format("Failed to find '%s' in a Visual Studio installation.", VCVARSALL));
         }
         Map<String, String> originalEnv = new HashMap<>();
         int numSeenOutputSeparators = 0;
+        String outputSeparator = "!NEXTCOMMAND!";
         try {
             // call `set`, then `vcvarsall.bat`, and then `set` again with separators in between
             String commandSequence = String.format("cmd.exe /c set && echo %s && \"%s\" x64 && echo %s && set",
-                            OUTPUT_SEPARATOR, vcVarsAllLocation, OUTPUT_SEPARATOR);
+                            outputSeparator, vcVarsAllLocation, outputSeparator);
             Process p = Runtime.getRuntime().exec(new String[]{"cmd.exe", "/c", commandSequence});
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                String line = null;
+                String line;
                 while ((line = reader.readLine()) != null) {
-                    if (line.startsWith(OUTPUT_SEPARATOR)) {
+                    if (line.startsWith(outputSeparator)) {
                         numSeenOutputSeparators++;
                     } else if (numSeenOutputSeparators == 0) {
                         // collect environment variables from 1st `set` invocation
-                        processLineWithKeyValue(line, (key, value) -> originalEnv.put(key, value));
+                        processLineWithKeyValue(line, originalEnv::put);
                     } else if (numSeenOutputSeparators == 2) {
                         // iterate through updated environment variables from 2nd `set` invocation
                         processLineWithKeyValue(line, (key, value) -> {
@@ -122,9 +85,42 @@ class WindowsBuildEnvironmentUtil {
         } catch (IOException | InterruptedException e) {
             throw fail("Failed to detect variables of Windows build environment.", e);
         }
-        if (!environment.containsKey(VSINSTALLDIR_ENV)) {
+        if (!environment.containsKey("VSINSTALLDIR")) {
             throw fail("Failed to automatically set up Windows build environment.");
         }
+    }
+
+    private static Path findVCVarsallWithVSWhere() {
+        String programFilesX86 = System.getenv("ProgramFiles(x86)");
+        if (programFilesX86 == null) {
+            return null;
+        }
+        /*
+         * vswhere is included with the installer as of Visual Studio 2017 version 15.2 and later,
+         * and can be found at the following location: `%ProgramFiles(x86)%\Microsoft Visual
+         * Studio\Installer\vswhere.exe` (see:
+         * https://github.com/microsoft/vswhere/blob/2717133/README.md).
+         */
+        Path vsWhereExe = Paths.get(programFilesX86, "Microsoft Visual Studio", "Installer", "vswhere.exe");
+        if (!Files.exists(vsWhereExe)) {
+            return null;
+        }
+        try {
+            Process p = Runtime.getRuntime().exec(new String[]{vsWhereExe.toAbsolutePath().toString(),
+                            "-version", VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION,
+                            "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                            "-property", "installationPath"});
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                Path installationPath = Paths.get(reader.readLine());
+                Path possibleLocation = installationPath.resolve(VCVARSALL_SUBPATH);
+                if (isRegularReadableFile(possibleLocation)) {
+                    return possibleLocation;
+                }
+            }
+        } catch (IOException e) {
+            throw fail("Failed to process vswhere.exe output.", e);
+        }
+        throw fail("Failed to find suitable version of Visual Studio with vswhere.exe.");
     }
 
     private static boolean isCCompilerOnPath() {
@@ -133,6 +129,10 @@ class WindowsBuildEnvironmentUtil {
         } catch (IOException | InterruptedException e) {
             throw NativeImage.showError("Failed to check for 'cl.exe'.", e);
         }
+    }
+
+    private static boolean isRegularReadableFile(Path location) {
+        return Files.isRegularFile(location) && Files.isReadable(location);
     }
 
     private static void processLineWithKeyValue(String line, BiConsumer<String, String> consumeKeyValue) {
@@ -150,6 +150,6 @@ class WindowsBuildEnvironmentUtil {
         throw NativeImage.showError(String.format("%s%nPlease make sure that %s or later is installed on your system. " +
                         "You can download it at https://visualstudio.microsoft.com/downloads/. " +
                         "If this error persists, please try and run GraalVM Native Image in an x64 Native Tools Command Prompt or file a ticket.",
-                        reason, VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION), e);
+                        reason, VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION_TEXT), e);
     }
 }

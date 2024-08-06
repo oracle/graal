@@ -38,7 +38,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.oracle.svm.core.thread.VirtualThreads;
+import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.test.jfr.events.StringEvent;
 
 import jdk.jfr.Recording;
@@ -65,7 +65,7 @@ public class TestJavaLevelVirtualThreadEvents extends JfrRecordingTest {
                  * Pinning the current thread will result in a VirtualThreadPinned event when it
                  * attempts to yield at the subsequent Thread.sleep() call.
                  */
-                VirtualThreads.singleton().pinCurrent();
+                Target_jdk_internal_vm_Continuation.pin();
                 Thread.sleep(50);
 
                 com.oracle.svm.test.jfr.events.StringEvent stringEvent = new StringEvent();

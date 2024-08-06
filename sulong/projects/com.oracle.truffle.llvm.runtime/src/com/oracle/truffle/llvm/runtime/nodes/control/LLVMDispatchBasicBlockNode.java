@@ -84,7 +84,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
 
     @Specialization
     public Object doDispatch(VirtualFrame frame) {
-        return dispatchFromBasicBlock(frame, 0, new Counters());
+        Counters counters = new Counters();
+        return dispatchFromBasicBlock(frame, 0, counters);
     }
 
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)

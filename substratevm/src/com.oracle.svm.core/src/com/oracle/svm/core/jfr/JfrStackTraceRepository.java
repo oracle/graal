@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -51,12 +50,13 @@ import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.sampler.SamplerSampleWriter;
 import com.oracle.svm.core.sampler.SamplerSampleWriterData;
 import com.oracle.svm.core.sampler.SamplerSampleWriterDataAccess;
-import com.oracle.svm.core.sampler.SamplerStackWalkVisitor;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.stack.JavaStackWalker;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Repository that collects all metadata about stacktraces.
@@ -108,23 +108,28 @@ public class JfrStackTraceRepository implements JfrRepository {
          */
         JfrExecutionSampler.singleton().preventSamplingInCurrentThread();
         try {
-            /* Try to walk the stack. */
             SamplerSampleWriterData data = StackValue.get(SamplerSampleWriterData.class);
-            if (SamplerSampleWriterDataAccess.initialize(data, skipCount, true)) {
-                JfrThreadLocal.setSamplerWriterData(data);
-                try {
-                    SamplerSampleWriter.begin(data);
-                    Pointer sp = KnownIntrinsics.readCallerStackPointer();
-                    CodePointer ip = FrameAccess.singleton().readReturnAddress(sp);
-                    SamplerStackWalkVisitor visitor = ImageSingletons.lookup(SamplerStackWalkVisitor.class);
-                    if (JavaStackWalker.walkCurrentThread(sp, ip, visitor) || data.getTruncated()) {
-                        return storeDeduplicatedStackTrace(data);
-                    }
-                } finally {
-                    JfrThreadLocal.setSamplerWriterData(WordFactory.nullPointer());
-                }
+            if (!SamplerSampleWriterDataAccess.initialize(data, skipCount, true)) {
+                return 0L;
             }
-            return 0L;
+
+            assert SamplerSampleWriterDataAccess.verify(data);
+            assert data.getCurrentPos().unsignedRemainder(Long.BYTES).equal(0);
+
+            /*
+             * Start a stack trace and do a stack walk. Note that the data will only be committed to
+             * the buffer if it is a new stack trace.
+             */
+            SamplerSampleWriter.begin(data);
+            Pointer sp = KnownIntrinsics.readCallerStackPointer();
+            CodePointer ip = FrameAccess.singleton().readReturnAddress(CurrentIsolate.getCurrentThread(), sp);
+            int errorCode = JfrStackWalker.walkCurrentThread(data, ip, sp, false);
+            return switch (errorCode) {
+                case JfrStackWalker.NO_ERROR, JfrStackWalker.TRUNCATED -> storeDeduplicatedStackTrace(data);
+                case JfrStackWalker.BUFFER_SIZE_EXCEEDED -> 0L;
+                case JfrStackWalker.UNPARSEABLE_STACK -> throw VMError.shouldNotReachHere("Only the async sampler may encounter an unparseable stack.");
+                default -> throw VMError.shouldNotReachHere("Unexpected return value");
+            };
         } finally {
             JfrExecutionSampler.singleton().allowSamplingInCurrentThread();
         }
@@ -193,7 +198,7 @@ public class JfrStackTraceRepository implements JfrRepository {
              * the thread-local buffer to the C heap because the thread-local buffer will be
              * overwritten or freed at some point.
              */
-            Pointer to = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size);
+            Pointer to = NullableNativeMemory.malloc(size, NmtCategory.JFR);
             if (to.isNonNull()) {
                 UnmanagedMemoryUtil.copy(start, to, size);
                 entry.setRawStackTrace(to);
@@ -205,7 +210,8 @@ public class JfrStackTraceRepository implements JfrRepository {
                 }
 
                 /* Hashtable entry allocation failed. */
-                ImageSingletons.lookup(UnmanagedMemorySupport.class).free(to);
+                NullableNativeMemory.free(to);
+                to = WordFactory.nullPointer();
             }
 
             /* Some allocation failed. */
@@ -303,6 +309,11 @@ public class JfrStackTraceRepository implements JfrRepository {
     public static final class JfrStackTraceTable extends AbstractUninterruptibleHashtable {
         private static long nextId;
 
+        @Platforms(Platform.HOSTED_ONLY.class)
+        JfrStackTraceTable() {
+            super(NmtCategory.JFR);
+        }
+
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected JfrStackTraceTableEntry[] createTable(int size) {
@@ -333,7 +344,7 @@ public class JfrStackTraceRepository implements JfrRepository {
         protected void free(UninterruptibleEntry entry) {
             JfrStackTraceTableEntry stackTraceEntry = (JfrStackTraceTableEntry) entry;
             /* The base method will free only the entry itself, not the pointer with stacktrace. */
-            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(stackTraceEntry.getRawStackTrace());
+            NullableNativeMemory.free(stackTraceEntry.getRawStackTrace());
             super.free(entry);
         }
     }

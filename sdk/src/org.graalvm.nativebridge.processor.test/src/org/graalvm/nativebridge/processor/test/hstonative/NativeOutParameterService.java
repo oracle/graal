@@ -41,6 +41,7 @@
 package org.graalvm.nativebridge.processor.test.hstonative;
 
 import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
+import org.graalvm.nativebridge.In;
 import org.graalvm.nativebridge.NativeIsolate;
 import org.graalvm.nativebridge.NativeObject;
 import org.graalvm.nativebridge.Out;
@@ -93,4 +94,7 @@ abstract class NativeOutParameterService extends NativeObject implements OutPara
 
     @Override
     public abstract Map<String, String> mixedParametersCustom(List<String> p1, @Out List<String> p2, List<String> p3, @Out List<String> p4);
+
+    @Override
+    public abstract void exchangeArrayWithMarshalledParameter(@In @Out int[] arr, List<String> list);
 }

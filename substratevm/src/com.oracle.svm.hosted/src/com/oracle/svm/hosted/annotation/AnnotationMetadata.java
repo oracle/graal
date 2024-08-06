@@ -30,10 +30,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
-import org.graalvm.compiler.debug.GraalError;
-
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.internal.reflect.ConstantPool;
 import sun.reflect.annotation.AnnotationParser;
 import sun.reflect.annotation.TypeNotPresentExceptionProxy;
@@ -42,12 +41,12 @@ public class AnnotationMetadata {
 
     @SuppressWarnings("serial")
     static final class AnnotationExtractionError extends Error {
-        AnnotationExtractionError(Throwable cause) {
-            super(cause);
+        AnnotationExtractionError(Object targetElement, Throwable cause) {
+            super("Failed to process '%s': %s".formatted(targetElement, cause), cause);
         }
 
-        AnnotationExtractionError(String message) {
-            super(message);
+        AnnotationExtractionError(Object targetElement, String message) {
+            super("Failed to process '%s': %s".formatted(targetElement, message));
         }
     }
 
@@ -76,9 +75,9 @@ public class AnnotationMetadata {
             if (targetException instanceof LinkageError || targetException instanceof TypeNotPresentException) {
                 return new TypeNotPresentExceptionProxy(signature, targetException);
             }
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(signature, e);
         } catch (ReflectiveOperationException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(signature, e);
         }
         return type;
     }
@@ -103,7 +102,7 @@ public class AnnotationMetadata {
         try {
             return annotationTypeMismatchExceptionProxyConstructor.newInstance(message);
         } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(message, e);
         }
     }
 }

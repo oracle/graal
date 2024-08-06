@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.NeedsFreshResolutionException;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
@@ -43,21 +44,17 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 public final class RuntimeConstantPool extends ConstantPool {
 
     private final EspressoContext context;
-    private final ConstantPool pool;
+    private final ImmutableConstantPool pool;
     private final StaticObject classLoader;
 
     @CompilationFinal(dimensions = 1) //
     private final Resolvable.ResolvedConstant[] constants;
 
-    public RuntimeConstantPool(EspressoContext context, ConstantPool pool, StaticObject classLoader) {
+    public RuntimeConstantPool(EspressoContext context, ImmutableConstantPool pool, StaticObject classLoader) {
         this.context = context;
         this.pool = pool;
-        constants = copyResolvedConstant(pool); // utf8, int, floats..., others->null
+        this.constants = new Resolvable.ResolvedConstant[pool.length()];
         this.classLoader = classLoader;
-    }
-
-    private static Resolvable.ResolvedConstant[] copyResolvedConstant(ConstantPool pool) {
-        return new Resolvable.ResolvedConstant[pool.length()];
     }
 
     @Override
@@ -75,7 +72,7 @@ public final class RuntimeConstantPool extends ConstantPool {
         return pool.at(index, description);
     }
 
-    private Resolvable.ResolvedConstant outOfLockResolvedAt(Klass accessingKlass, int index, String description) {
+    private Resolvable.ResolvedConstant outOfLockResolvedAt(ObjectKlass accessingKlass, int index, String description) {
         Resolvable.ResolvedConstant c = constants[index];
         if (c == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -95,7 +92,7 @@ public final class RuntimeConstantPool extends ConstantPool {
         return c;
     }
 
-    private Resolvable.ResolvedConstant resolvedAt(Klass accessingKlass, int index, String description) {
+    private Resolvable.ResolvedConstant resolvedAt(ObjectKlass accessingKlass, int index, String description) {
         Resolvable.ResolvedConstant c = constants[index];
         if (c == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -111,7 +108,7 @@ public final class RuntimeConstantPool extends ConstantPool {
         return c;
     }
 
-    private Resolvable.ResolvedConstant resolvedAtNoCache(Klass accessingKlass, int index, String description) {
+    private Resolvable.ResolvedConstant resolvedAtNoCache(ObjectKlass accessingKlass, int index, String description) {
         CompilerAsserts.neverPartOfCompilation();
         return ((Resolvable) pool.at(index, description)).resolve(this, index, accessingKlass);
     }
@@ -121,12 +118,12 @@ public final class RuntimeConstantPool extends ConstantPool {
         return (StaticObject) resolved.value();
     }
 
-    public Klass resolvedKlassAt(Klass accessingKlass, int index) {
+    public Klass resolvedKlassAt(ObjectKlass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "klass");
         return (Klass) resolved.value();
     }
 
-    public Field resolvedFieldAt(Klass accessingKlass, int index) {
+    public Field resolvedFieldAt(ObjectKlass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "field");
         try {
             return ((Field) resolved.value());
@@ -140,7 +137,7 @@ public final class RuntimeConstantPool extends ConstantPool {
         }
     }
 
-    public Field resolveFieldAndUpdate(Klass accessingKlass, int index, Field field) {
+    public Field resolveFieldAndUpdate(ObjectKlass accessingKlass, int index, Field field) {
         CompilerAsserts.neverPartOfCompilation();
         try {
             Resolvable.ResolvedConstant resolved = resolvedAtNoCache(accessingKlass, index, "field");
@@ -173,31 +170,36 @@ public final class RuntimeConstantPool extends ConstantPool {
         return constant != null && constant.isSuccess();
     }
 
-    public Method resolvedMethodAt(Klass accessingKlass, int index) {
+    public Method resolvedMethodAt(ObjectKlass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "method");
         return (Method) resolved.value();
     }
 
-    public Method resolvedMethodAtNoCache(Klass accessingKlass, int index) {
+    public MethodRefConstant resolvedMethodRefAt(ObjectKlass accessingKlass, int index) {
+        Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "method");
+        return (MethodRefConstant) resolved;
+    }
+
+    public Method resolvedMethodAtNoCache(ObjectKlass accessingKlass, int index) {
         CompilerAsserts.neverPartOfCompilation();
         Resolvable.ResolvedConstant resolved = resolvedAtNoCache(accessingKlass, index, "method");
         return (Method) resolved.value();
     }
 
-    public StaticObject resolvedMethodHandleAt(Klass accessingKlass, int index) {
+    public StaticObject resolvedMethodHandleAt(ObjectKlass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "method handle");
         return (StaticObject) resolved.value();
     }
 
-    public StaticObject resolvedMethodTypeAt(Klass accessingKlass, int index) {
+    public StaticObject resolvedMethodTypeAt(ObjectKlass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "method type");
         return (StaticObject) resolved.value();
     }
 
-    public InvokeDynamicConstant.CallSiteLink linkInvokeDynamic(Klass accessingKlass, int index) {
+    public InvokeDynamicConstant.CallSiteLink linkInvokeDynamic(ObjectKlass accessingKlass, int index, int bci, Method method) {
         InvokeDynamicConstant indy = (InvokeDynamicConstant) resolvedAt(accessingKlass, index, "indy");
         try {
-            return indy.link(this, accessingKlass, index);
+            return indy.link(this, accessingKlass, index, method, bci);
         } catch (InvokeDynamicConstant.CallSiteLinkingFailure failure) {
             // On failure, shortcut subsequent linking operations.
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -208,7 +210,11 @@ public final class RuntimeConstantPool extends ConstantPool {
         }
     }
 
-    public DynamicConstant.Resolved resolvedDynamicConstantAt(Klass accessingKlass, int index) {
+    public InvokeDynamicConstant.Resolved peekResolvedInvokeDynamic(int index) {
+        return (InvokeDynamicConstant.Resolved) constants[index];
+    }
+
+    public DynamicConstant.Resolved resolvedDynamicConstantAt(ObjectKlass accessingKlass, int index) {
         DynamicConstant.Resolved dynamicConstant = (DynamicConstant.Resolved) outOfLockResolvedAt(accessingKlass, index, "dynamic constant");
         dynamicConstant.checkFail();
         return dynamicConstant;

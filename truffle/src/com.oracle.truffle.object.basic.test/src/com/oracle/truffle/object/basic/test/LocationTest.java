@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,7 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
+import com.oracle.truffle.object.ShapeImpl;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -190,7 +191,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testLocationDecoratorEquals() {
-        Shape.Allocator allocator = rootShape.allocator();
+        var allocator = ((ShapeImpl) rootShape).allocator();
         Location intLocation1 = allocator.locationForType(int.class);
         Location intLocation2 = allocator.locationForType(int.class);
         Assert.assertEquals(intLocation1.getClass(), intLocation2.getClass());
@@ -213,7 +214,7 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
 
     @Test
     public void testLocationIsPrimitive() {
-        Shape.Allocator allocator = rootShape.allocator();
+        var allocator = ((ShapeImpl) rootShape).allocator();
 
         Location objectLocation = allocator.locationForType(Object.class);
         Assert.assertFalse(objectLocation.isPrimitive());

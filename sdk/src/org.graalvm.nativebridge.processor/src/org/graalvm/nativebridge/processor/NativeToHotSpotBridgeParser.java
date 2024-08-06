@@ -165,10 +165,10 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
             int marshalledParametersCount = 0;
             for (int i = 0; i < parameterTypes.size(); i++) {
                 MarshallerData marshallerData = methodData.getParameterMarshaller(i);
-                if (marshallerData.isCustom()) {
+                TypeMirror parameterType = parameterTypes.get(i);
+                if (AbstractBridgeGenerator.isBinaryMarshallable(marshallerData, parameterType, false)) {
                     marshalledParametersCount++;
                 } else {
-                    TypeMirror parameterType = parameterTypes.get(i);
                     signature.add(getEndPointMethodParameterType(marshallerData, parameterType));
                 }
             }

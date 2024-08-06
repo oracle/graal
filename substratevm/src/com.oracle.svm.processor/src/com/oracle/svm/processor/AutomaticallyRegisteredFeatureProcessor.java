@@ -34,7 +34,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic.Kind;
 
-import org.graalvm.compiler.processor.AbstractProcessor;
+import jdk.graal.compiler.processor.AbstractProcessor;
 
 // Checkstyle: allow Class.getSimpleName
 

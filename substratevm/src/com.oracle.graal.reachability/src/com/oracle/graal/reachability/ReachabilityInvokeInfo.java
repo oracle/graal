@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.reachability;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -63,7 +62,7 @@ public class ReachabilityInvokeInfo implements InvokeInfo {
         if (isDirectInvoke) {
             return List.of(targetMethod);
         }
-        return Arrays.asList(targetMethod.getImplementations());
+        return targetMethod.collectMethodImplementations(false);
     }
 
     @Override

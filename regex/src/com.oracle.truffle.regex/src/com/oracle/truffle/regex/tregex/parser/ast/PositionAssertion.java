@@ -69,7 +69,17 @@ public class PositionAssertion extends Term {
         /**
          * The <strong>$</strong> assertion, which matches at the end of the string.
          */
-        DOLLAR
+        DOLLAR,
+        /**
+         * Matches at the beginning of capture group 0, i.e. no characters may be matched before the
+         * boundary.
+         */
+        MATCH_BEGIN,
+        /**
+         * Matches at the end of capture group 0, i.e. no characters or back-references may be
+         * matched after the boundary.
+         */
+        MATCH_END,
     }
 
     /**
@@ -103,6 +113,11 @@ public class PositionAssertion extends Term {
         return copy(ast);
     }
 
+    /**
+     * Points to the body of a regular expression when this node is treated as an initial state of
+     * an NFA. If this {@link #isCaret()}, then this returns the next expression. If this
+     * {@link #isDollar()}, then this returns the previous expression.
+     */
     public RegexASTNode getNext() {
         return next;
     }
@@ -134,6 +149,10 @@ public class PositionAssertion extends Term {
                 return "^";
             case DOLLAR:
                 return "$";
+            case MATCH_BEGIN:
+                return "(_MATCH_BEGIN_)";
+            case MATCH_END:
+                return "(_MATCH_END_)";
         }
         throw CompilerDirectives.shouldNotReachHere();
     }

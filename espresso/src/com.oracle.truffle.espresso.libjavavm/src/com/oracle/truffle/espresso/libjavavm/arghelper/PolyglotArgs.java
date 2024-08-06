@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,20 +26,8 @@ package com.oracle.truffle.espresso.libjavavm.arghelper;
 import static com.oracle.truffle.espresso.libjavavm.Arguments.abort;
 import static com.oracle.truffle.espresso.libjavavm.Arguments.abortExperimental;
 import static com.oracle.truffle.espresso.libjavavm.arghelper.ArgumentsHandler.isBooleanOption;
-import static java.nio.file.StandardOpenOption.APPEND;
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
-import static java.nio.file.StandardOpenOption.WRITE;
 
-import java.io.BufferedOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.channels.FileChannel;
-import java.nio.channels.OverlappingFileLockException;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -50,7 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 
-import org.graalvm.collections.Pair;
+import org.graalvm.launcher.Launcher;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -90,7 +78,7 @@ class PolyglotArgs {
         }
         if (logFile != null) {
             try {
-                builder.logHandler(newLogStream(logFile));
+                builder.logHandler(Launcher.newLogStream(logFile));
             } catch (IOException ioe) {
                 throw abort(ioe.toString());
             }
@@ -161,18 +149,15 @@ class PolyglotArgs {
 
     private OptionDescriptor findOptionDescriptor(String group, String key) {
         OptionDescriptors descriptors = null;
-        switch (group) {
-            case "engine":
-                descriptors = getTempEngine().getOptions();
-                break;
-            default:
-                Engine engine = getTempEngine();
-                if (engine.getLanguages().containsKey(group)) {
-                    descriptors = engine.getLanguages().get(group).getOptions();
-                } else if (engine.getInstruments().containsKey(group)) {
-                    descriptors = engine.getInstruments().get(group).getOptions();
-                }
-                break;
+        if (group.equals("engine")) {
+            descriptors = getTempEngine().getOptions();
+        } else {
+            Engine engine = getTempEngine();
+            if (engine.getLanguages().containsKey(group)) {
+                descriptors = engine.getLanguages().get(group).getOptions();
+            } else if (engine.getInstruments().containsKey(group)) {
+                descriptors = engine.getInstruments().get(group).getOptions();
+            }
         }
         if (descriptors == null) {
             return null;
@@ -231,7 +216,7 @@ class PolyglotArgs {
         final String option;
         final String description;
 
-        protected PrintableOption(String option, String description) {
+        private PrintableOption(String option, String description) {
             this.option = option;
             this.description = description;
         }
@@ -243,21 +228,12 @@ class PolyglotArgs {
     }
 
     private static String optionsTitle(String kind, OptionCategory optionCategory) {
-        String category;
-        switch (optionCategory) {
-            case USER:
-                category = "User ";
-                break;
-            case EXPERT:
-                category = "Expert ";
-                break;
-            case INTERNAL:
-                category = "Internal ";
-                break;
-            default:
-                category = "";
-                break;
-        }
+        String category = switch (optionCategory) {
+            case USER -> "User ";
+            case EXPERT -> "Expert ";
+            case INTERNAL -> "Internal ";
+            default -> "";
+        };
         return category + kind + " options:";
     }
 
@@ -291,9 +267,7 @@ class PolyglotArgs {
         StringBuilder key = new StringBuilder("--");
         key.append(descriptor.getName());
         Object defaultValue = descriptor.getKey().getDefaultValue();
-        if (defaultValue instanceof Boolean && defaultValue == Boolean.FALSE) {
-            // nothing to print
-        } else {
+        if (defaultValue != Boolean.FALSE) {
             key.append("=<");
             key.append(descriptor.getKey().getType().getName());
             key.append(">");
@@ -320,155 +294,4 @@ class PolyglotArgs {
         return instruments;
     }
 
-    /**
-     * Creates a new log file. The method uses a supplemental lock file to determine the file is
-     * still opened for output; in that case, it creates a different file, named `path'1, `path`2,
-     * ... until it finds a free name. Files not locked (actively written to) are overwritten.
-     *
-     * @param path the desired output for log
-     * @return the OutputStream for logging
-     * @throws IOException in case of I/O error opening the file
-     * @since 20.0
-     */
-    protected static OutputStream newLogStream(Path path) throws IOException {
-        Path usedPath = path;
-        Path fileNamePath = path.getFileName();
-        String fileName = fileNamePath == null ? "" : fileNamePath.toString();
-        Path lockFile = null;
-        FileChannel lockFileChannel = null;
-        for (int unique = 0;; unique++) {
-            StringBuilder lockFileNameBuilder = new StringBuilder(fileName);
-            if (unique > 0) {
-                lockFileNameBuilder.append(unique);
-                usedPath = path.resolveSibling(lockFileNameBuilder.toString());
-            }
-            lockFileNameBuilder.append(".lck");
-            lockFile = path.resolveSibling(lockFileNameBuilder.toString());
-            Pair<FileChannel, Boolean> openResult = openChannel(lockFile);
-            if (openResult != null) {
-                lockFileChannel = openResult.getLeft();
-                if (lock(lockFileChannel, openResult.getRight())) {
-                    break;
-                } else {
-                    // Close and try next name
-                    lockFileChannel.close();
-                }
-            }
-        }
-        assert lockFile != null && lockFileChannel != null;
-        boolean success = false;
-        try {
-            OutputStream stream = new LockableOutputStream(
-                            new BufferedOutputStream(Files.newOutputStream(usedPath, WRITE, CREATE, APPEND)),
-                            lockFile,
-                            lockFileChannel);
-            success = true;
-            return stream;
-        } finally {
-            if (!success) {
-                LockableOutputStream.unlock(lockFile, lockFileChannel);
-            }
-        }
-    }
-
-    private static Pair<FileChannel, Boolean> openChannel(Path path) throws IOException {
-        FileChannel channel = null;
-        for (int retries = 0; channel == null && retries < 2; retries++) {
-            try {
-                channel = FileChannel.open(path, CREATE_NEW, WRITE);
-                return Pair.create(channel, true);
-            } catch (FileAlreadyExistsException faee) {
-                // Maybe a FS race showing a zombie file, try to reuse it
-                if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) && isParentWritable(path)) {
-                    try {
-                        channel = FileChannel.open(path, WRITE, APPEND);
-                        return Pair.create(channel, false);
-                    } catch (NoSuchFileException x) {
-                        // FS Race, next try we should be able to create with CREATE_NEW
-                    } catch (IOException x) {
-                        return null;
-                    }
-                } else {
-                    return null;
-                }
-            }
-        }
-        return null;
-    }
-
-    private static boolean isParentWritable(Path path) {
-        Path parentPath = path.getParent();
-        if (parentPath == null && !path.isAbsolute()) {
-            parentPath = path.toAbsolutePath().getParent();
-        }
-        return parentPath != null && Files.isWritable(parentPath);
-    }
-
-    private static boolean lock(FileChannel lockFileChannel, boolean newFile) {
-        boolean available = false;
-        try {
-            available = lockFileChannel.tryLock() != null;
-        } catch (OverlappingFileLockException ofle) {
-            // VM already holds lock continue with available set to false
-        } catch (IOException ioe) {
-            // Locking not supported by OS
-            available = newFile;
-        }
-        return available;
-    }
-
-    private static final class LockableOutputStream extends OutputStream {
-
-        private final OutputStream delegate;
-        private final Path lockFile;
-        private final FileChannel lockFileChannel;
-
-        LockableOutputStream(OutputStream delegate, Path lockFile, FileChannel lockFileChannel) {
-            this.delegate = delegate;
-            this.lockFile = lockFile;
-            this.lockFileChannel = lockFileChannel;
-        }
-
-        @Override
-        public void write(int b) throws IOException {
-            delegate.write(b);
-        }
-
-        @Override
-        public void write(byte[] b) throws IOException {
-            delegate.write(b);
-        }
-
-        @Override
-        public void write(byte[] b, int off, int len) throws IOException {
-            delegate.write(b, off, len);
-        }
-
-        @Override
-        public void flush() throws IOException {
-            delegate.flush();
-        }
-
-        @Override
-        public void close() throws IOException {
-            try {
-                delegate.close();
-            } finally {
-                unlock(lockFile, lockFileChannel);
-            }
-        }
-
-        private static void unlock(Path lockFile, FileChannel lockFileChannel) {
-            try {
-                lockFileChannel.close();
-            } catch (IOException ioe) {
-                // Error while closing the channel, ignore.
-            }
-            try {
-                Files.delete(lockFile);
-            } catch (IOException ioe) {
-                // Error while deleting the lock file, ignore.
-            }
-        }
-    }
 }

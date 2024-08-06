@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -319,6 +319,35 @@ public final class CompilerDirectives {
      * @since 0.8 or earlier
      */
     public static void materialize(Object obj) {
+    }
+
+    /**
+     * Prevents the compiler from moving an allocation, enabling precise {@link OutOfMemoryError}
+     * exception locations. This intrinsic ensures the allocation's immobility and guarantees that
+     * the compiler's optimizations do not eliminate the allocation. Imposing such a restriction can
+     * hinder certain compiler optimizations, potentially degrading performance. If the intrinsic
+     * does not find an allocation as its argument, it causes a runtime compilation failure,
+     * invoking {@link CompilerDirectives#bailout(String)}.
+     *
+     * <b>Example usage:</b>
+     *
+     * <pre>{@code
+     * int[] tryAllocateArray() {
+     *     int[] array;
+     *     try {
+     *         array = CompilerDirectives.ensureAllocatedHere(new int[42]);
+     *     } catch (OutOfMemoryError e) {
+     *         // handle out of memory errors to maintain consistency
+     *         array = null;
+     *     }
+     *     return array;
+     * }
+     * }</pre>
+     *
+     * @since 24.1.0
+     */
+    public static <T> T ensureAllocatedHere(T object) {
+        return object;
     }
 
     /**

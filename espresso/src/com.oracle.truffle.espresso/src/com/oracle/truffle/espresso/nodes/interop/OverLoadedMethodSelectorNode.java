@@ -46,12 +46,12 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
     public abstract CandidateMethodWithArgs execute(Method[] candidates, Object[] arguments);
 
     @Specialization(guards = {"same(candidates, cachedCandidates)"}, limit = "LIMIT")
-    CandidateMethodWithArgs doCached(Method[] candidates,
+    CandidateMethodWithArgs doCached(@SuppressWarnings("unused") Method[] candidates,
                     Object[] arguments,
-                    @SuppressWarnings("unused") @Cached(value = "candidates", dimensions = 1) Method[] cachedCandidates,
+                    @Cached(value = "candidates", dimensions = 1) Method[] cachedCandidates,
                     @Cached(value = "resolveParameterKlasses(candidates)", dimensions = 2) Klass[][] parameterKlasses,
                     @Cached ToEspressoNode.DynamicToEspresso toEspressoNode) {
-        return selectMatchingOverloads(candidates, arguments, parameterKlasses, toEspressoNode);
+        return selectMatchingOverloads(cachedCandidates, arguments, parameterKlasses, toEspressoNode);
     }
 
     @Specialization(replaces = "doCached")
@@ -76,14 +76,14 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         if (fitByType.size() == 1) {
             CandidateMethodWithArgs matched = fitByType.get(0);
             if (matched.getMethod().isVarargs()) {
-                return MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                return MethodArgsUtils.ensureVarArgsArrayCreated(matched);
             }
             return matched;
         }
         // still multiple candidates, so try to select the best one
         CandidateMethodWithArgs mostSpecificOverload = findMostSpecificOverload(fitByType, arguments);
         if (mostSpecificOverload != null && mostSpecificOverload.getMethod().isVarargs()) {
-            return MethodArgsUtils.ensureVarArgsArrayCreated(mostSpecificOverload, toEspressoNode);
+            return MethodArgsUtils.ensureVarArgsArrayCreated(mostSpecificOverload);
         }
         return mostSpecificOverload;
     }

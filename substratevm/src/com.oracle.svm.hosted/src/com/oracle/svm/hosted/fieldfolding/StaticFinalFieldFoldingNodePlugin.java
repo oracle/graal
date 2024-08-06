@@ -26,24 +26,23 @@ package com.oracle.svm.hosted.fieldfolding;
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.EndNode;
-import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.MergeNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.nodes.type.StampTool;
-
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.ameta.ReadableJavaField;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.EndNode;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -53,6 +52,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
 
     private final StaticFinalFieldFoldingFeature feature;
+    private final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
 
     StaticFinalFieldFoldingNodePlugin(StaticFinalFieldFoldingFeature feature) {
         this.feature = feature;
@@ -80,7 +80,7 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
             return false;
         }
 
-        if (!ReadableJavaField.isValueAvailable(aField)) {
+        if (!fieldValueInterceptionSupport.isValueAvailable(aField)) {
             /*
              * Cannot optimize static field whose value is recomputed and is not yet available,
              * i.e., it may depend on analysis/compilation derived data.

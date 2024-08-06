@@ -42,6 +42,10 @@ public class EnumConstantInfo extends SizableInfo {
         this.valueInfo = adoptChild(new PropertyInfo<>("value"));
     }
 
+    public long getValue() {
+        return (long) valueInfo.getProperty();
+    }
+
     public PropertyInfo<Object> getValueInfo() {
         return valueInfo;
     }

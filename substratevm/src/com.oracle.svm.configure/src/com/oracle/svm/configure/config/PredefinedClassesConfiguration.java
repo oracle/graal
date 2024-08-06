@@ -34,14 +34,16 @@ import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.core.configure.ConfigurationParser;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
-import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.util.Digest;
+import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class PredefinedClassesConfiguration extends ConfigurationBase<PredefinedClassesConfiguration, PredefinedClassesConfiguration.Predicate> {
     private final Path[] classDestinationDirs;
@@ -85,13 +87,13 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
     }
 
     @Override
-    public void mergeConditional(ConfigurationCondition condition, PredefinedClassesConfiguration other) {
+    public void mergeConditional(UnresolvedConfigurationCondition condition, PredefinedClassesConfiguration other) {
         /* Not implemented with conditions yet */
         classes.putAll(other.classes);
     }
 
     public void add(String nameInfo, byte[] classData) {
-        String hash = PredefinedClassesSupport.hash(classData, 0, classData.length);
+        String hash = Digest.digest(classData);
         if (shouldExcludeClassWithHash != null && shouldExcludeClassWithHash.test(hash)) {
             return;
         }
@@ -164,13 +166,19 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
     }
 
     @Override
-    public ConfigurationParser createParser() {
+    public ConfigurationParser createParser(boolean strictMetadata) {
+        VMError.guarantee(!strictMetadata, "Predefined classes configuration is not supported with strict metadata");
         return new PredefinedClassesConfigurationParser(this::add, true);
     }
 
     @Override
     public boolean isEmpty() {
         return classes.isEmpty();
+    }
+
+    @Override
+    public boolean supportsCombinedFile() {
+        return false;
     }
 
     public boolean containsClassWithName(String className) {

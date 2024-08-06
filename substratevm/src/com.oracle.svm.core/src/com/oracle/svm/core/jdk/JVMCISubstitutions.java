@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -51,6 +52,9 @@ final class IsNotLibgraal implements BooleanSupplier {
  */
 @TargetClass(value = Services.class, onlyWith = IsNotLibgraal.class)
 final class Target_jdk_vm_ci_services_Services {
+    @Delete //
+    static Map<String, String> savedProperties;
+
     @Substitute
     public static Map<String, String> getSavedProperties() {
         return SystemPropertiesSupport.singleton().getSavedProperties();

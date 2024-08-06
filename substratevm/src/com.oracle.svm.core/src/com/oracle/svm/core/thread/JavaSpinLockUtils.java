@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
-import org.graalvm.compiler.nodes.PauseNode;
+import jdk.graal.compiler.nodes.PauseNode;
 
 import com.oracle.svm.core.Uninterruptible;
 

@@ -101,7 +101,6 @@ public final class TRegexCompilationRequest {
     private final RegexLanguage language;
     private final RegexSource source;
     private RegexAST ast = null;
-    private AbstractRegexObject flags = null;
     private AbstractRegexObject namedCaptureGroups = null;
     private PureNFA pureNFA = null;
     private NFA nfa = null;
@@ -134,10 +133,6 @@ public final class TRegexCompilationRequest {
 
     public RegexAST getAst() {
         return ast;
-    }
-
-    public AbstractRegexObject getFlags() {
-        return flags;
     }
 
     public AbstractRegexObject getNamedCaptureGroups() {
@@ -290,7 +285,7 @@ public final class TRegexCompilationRequest {
         }
         if (traceFinder && preCalculatedResults.length > 1) {
             executorNodeBackward = createDFAExecutor(traceFinderNFA, false, false, false, false, false);
-        } else if (!executorNodeForward.isAnchored() && !executorNodeForward.isSimpleCG() && (!traceFinder || !nfa.hasReverseUnAnchoredEntry())) {
+        } else if (!executorNodeForward.isAnchored() && !executorNodeForward.isSimpleCG() && (!traceFinder || !nfa.hasReverseUnAnchoredEntry()) && !source.getOptions().isBooleanMatch()) {
             executorNodeBackward = createDFAExecutor(nfa, false, false, false, allowSimpleCG && !(ast.getRoot().endsWithDollar() && !properties.hasCaptureGroups()), trackLastGroup);
         }
         logAutomatonSizes(rootNode);
@@ -333,7 +328,7 @@ public final class TRegexCompilationRequest {
         RegexFlavor flavor = source.getOptions().getFlavor();
         RegexParser parser = flavor.createParser(language, source, compilationBuffer);
         ast = parser.parse();
-        flags = parser.getFlags();
+        ast.setFlavorSpecificFlags(parser.getFlags());
         namedCaptureGroups = parser.getNamedCaptureGroups();
     }
 
@@ -353,7 +348,7 @@ public final class TRegexCompilationRequest {
 
     private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean genericCG, boolean allowSimpleCG, boolean trackLastGroup) {
         return createDFAExecutor(nfaArg, new TRegexDFAExecutorProperties(forward, searching, genericCG, allowSimpleCG,
-                        source.getOptions().isRegressionTestMode(), trackLastGroup, nfaArg.getAst().getRoot().getMinPath()), null);
+                        trackLastGroup, nfaArg.getAst().getRoot().getMinPath()), null);
     }
 
     public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props, String debugDumpName) {

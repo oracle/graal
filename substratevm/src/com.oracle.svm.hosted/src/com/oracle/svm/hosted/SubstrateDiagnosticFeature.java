@@ -51,10 +51,11 @@ class SubstrateDiagnosticFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
-        // Explicitly mark the option as used so that it is possible to specify a value at runtime.
+        // Explicitly mark options as used so that it is possible to specify a value at runtime.
         BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) access;
         registerOptionAsRead(accessImpl, SubstrateOptions.class, SubstrateOptions.DiagnosticDetails.getName());
         registerOptionAsRead(accessImpl, SubstrateDiagnostics.Options.class, SubstrateDiagnostics.Options.LoopOnFatalError.getName());
+        registerOptionAsRead(accessImpl, SubstrateDiagnostics.Options.class, SubstrateDiagnostics.Options.ImplicitExceptionWithoutStacktraceIsFatal.getName());
     }
 
     private static void registerOptionAsRead(BeforeAnalysisAccessImpl accessImpl, Class<?> clazz, String fieldName) {

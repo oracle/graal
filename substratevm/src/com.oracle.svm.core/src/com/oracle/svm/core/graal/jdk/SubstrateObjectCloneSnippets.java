@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,35 +24,12 @@
  */
 package com.oracle.svm.core.graal.jdk;
 
-import static org.graalvm.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+import static jdk.graal.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.GraphState;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.VirtualizerTool;
-import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
-import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.replacements.nodes.ObjectClone;
-import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
 
@@ -60,7 +37,6 @@ import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
-import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
@@ -78,11 +54,36 @@ import com.oracle.svm.core.util.NonmovableByteArrayReader;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.internal.misc.Unsafe;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallWithExceptionNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.nodes.spi.VirtualizerTool;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.replacements.nodes.ObjectClone;
+import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class SubstrateObjectCloneSnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor CLONE = SnippetRuntime.findForeignCall(SubstrateObjectCloneSnippets.class, "doClone", true, LocationIdentity.any());
+    private static final SubstrateForeignCallDescriptor CLONE = SnippetRuntime.findForeignCall(SubstrateObjectCloneSnippets.class, "doClone", NO_SIDE_EFFECT, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{CLONE};
 
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
@@ -90,7 +91,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static Object doClone(Object original) throws CloneNotSupportedException, InstantiationException {
+    private static Object doClone(Object original) throws CloneNotSupportedException {
         if (original == null) {
             throw new NullPointerException();
         } else if (!(original instanceof Cloneable)) {
@@ -120,7 +121,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
                 throw VMError.shouldNotReachHere("Hybrid classes do not support Object.clone().");
             }
         } else {
-            result = Unsafe.getUnsafe().allocateInstance(DynamicHub.toClass(hub));
+            result = KnownIntrinsics.unvalidatedAllocateInstance(DynamicHub.toClass(hub));
         }
 
         int firstFieldOffset = ConfigurationValues.getObjectLayout().getFirstFieldOffset();
@@ -168,6 +169,12 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         int monitorOffset = hub.getMonitorOffset();
         if (monitorOffset != 0) {
             BarrieredAccess.writeObject(result, monitorOffset, null);
+        }
+
+        /* Reset identity hashcode if it is potentially outside the object header. */
+        if (ConfigurationValues.getObjectLayout().isIdentityHashFieldAtTypeSpecificOffset()) {
+            int offset = LayoutEncoding.getIdentityHashOffset(result);
+            ObjectAccess.writeInt(result, offset, 0);
         }
 
         return result;

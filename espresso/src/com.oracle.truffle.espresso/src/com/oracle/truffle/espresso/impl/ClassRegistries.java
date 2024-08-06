@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -54,6 +55,7 @@ public final class ClassRegistries {
     private final LoadingConstraints constraints;
     private final EspressoContext context;
 
+    // access to this list is done under the bootloader's package table lock
     private List<Klass> fixupModuleList = new ArrayList<>();
 
     private final Set<StaticObject> weakClassLoaderSet = Collections.newSetFromMap(new WeakHashMap<>());
@@ -221,6 +223,23 @@ public final class ClassRegistries {
         return list.toArray(ModuleRef.EMPTY_ARRAY);
     }
 
+    public ModuleTable.ModuleEntry findUniqueModule(Symbol<Symbol.Name> name) {
+        ModuleTable.ModuleEntry result = bootClassRegistry.modules().lookup(name);
+        synchronized (weakClassLoaderSet) {
+            for (StaticObject classLoader : weakClassLoaderSet) {
+                ModuleTable.ModuleEntry newResult = getClassRegistry(classLoader).modules().lookup(name);
+                if (newResult != null) {
+                    if (result == null) {
+                        result = newResult;
+                    } else {
+                        throw EspressoError.shouldNotReachHere("Found more than one module named " + name);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
     /**
      * Do not call directly. Use
      * {@link com.oracle.truffle.espresso.meta.Meta#loadKlassOrFail(Symbol, StaticObject, StaticObject)}
@@ -259,6 +278,7 @@ public final class ClassRegistries {
         return (BootClassRegistry) bootClassRegistry;
     }
 
+    @TruffleBoundary
     public void checkLoadingConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
         Symbol<Type> toCheck = context.getTypes().getElementalType(type);
         if (!Types.isPrimitive(toCheck) && loader1 != loader2) {
@@ -304,6 +324,7 @@ public final class ClassRegistries {
     }
 
     public void processFixupList(StaticObject javaBase) {
+        assert StaticObject.notNull(javaBase);
         for (PrimitiveKlass k : context.getMeta().PRIMITIVE_KLASSES) {
             context.getMeta().java_lang_Class_module.setObject(k.initializeEspressoClass(), javaBase);
         }

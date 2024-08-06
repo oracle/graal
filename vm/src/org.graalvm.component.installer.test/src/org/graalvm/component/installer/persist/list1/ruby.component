@@ -1,4 +1,0 @@
-Bundle-Symbolic-Name: org.graalvm.rubt
-Bundle-Name: Ruby implementation
-Bundle-Version: 1.0
-Bundle-RequireCapability-graalvm_version: 0.32

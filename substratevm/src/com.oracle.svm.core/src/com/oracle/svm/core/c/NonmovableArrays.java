@@ -28,13 +28,9 @@ import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -53,8 +49,13 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Support for allocating and accessing non-moving arrays. Such arrays are safe to access during
@@ -83,7 +84,7 @@ public final class NonmovableArrays {
 
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static <T extends NonmovableArray<?>> T createArray(int length, Class<?> arrayType) {
+    private static <T extends NonmovableArray<?>> T createArray(int length, Class<?> arrayType, NmtCategory nmtCategory) {
         if (SubstrateUtil.HOSTED) {
             Class<?> componentType = arrayType.getComponentType();
             Object array = Array.newInstance(componentType, length);
@@ -92,14 +93,14 @@ public final class NonmovableArrays {
         DynamicHub hub = SubstrateUtil.cast(arrayType, DynamicHub.class);
         assert LayoutEncoding.isArray(hub.getLayoutEncoding());
         UnsignedWord size = LayoutEncoding.getArrayAllocationSize(hub.getLayoutEncoding(), length);
-        Pointer array = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(size);
+        Pointer array = NullableNativeMemory.calloc(size, nmtCategory);
         if (array.isNull()) {
             throw OUT_OF_MEMORY_ERROR;
         }
 
         ObjectHeader header = Heap.getHeap().getObjectHeader();
         Word encodedHeader = header.encodeAsUnmanagedObjectHeader(hub);
-        header.initializeHeaderOfNewObject(array, encodedHeader);
+        header.initializeHeaderOfNewObject(array, encodedHeader, true);
 
         array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
         // already zero-initialized thanks to calloc()
@@ -180,8 +181,8 @@ public final class NonmovableArrays {
      * array, it is not a Java object and must never be referenced as an object.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static NonmovableArray<Byte> createByteArray(int nbytes) {
-        return createArray(nbytes, byte[].class);
+    public static NonmovableArray<Byte> createByteArray(int nbytes, NmtCategory nmtCategory) {
+        return createArray(nbytes, byte[].class, nmtCategory);
     }
 
     /**
@@ -192,8 +193,8 @@ public final class NonmovableArrays {
      * of a Java array, it is not a Java object and must never be referenced as an object.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static NonmovableArray<Integer> createIntArray(int length) {
-        return createArray(length, int[].class);
+    public static NonmovableArray<Integer> createIntArray(int length, NmtCategory nmtCategory) {
+        return createArray(length, int[].class, nmtCategory);
     }
 
     /**
@@ -204,8 +205,8 @@ public final class NonmovableArrays {
      * of a Java array, it is not a Java object and must never be referenced as an object.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T extends WordBase> NonmovableArray<T> createWordArray(int length) {
-        return createArray(length, WordBase[].class);
+    public static <T extends WordBase> NonmovableArray<T> createWordArray(int length, NmtCategory nmtCategory) {
+        return createArray(length, WordBase[].class, nmtCategory);
     }
 
     /**
@@ -219,16 +220,16 @@ public final class NonmovableArrays {
      * that of a Java array, it is not a Java object and must never be referenced as an object.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T> NonmovableObjectArray<T> createObjectArray(Class<T[]> arrayType, int length) {
+    public static <T> NonmovableObjectArray<T> createObjectArray(Class<T[]> arrayType, int length, NmtCategory nmtCategory) {
         assert (SubstrateUtil.HOSTED ? (arrayType.isArray() && !arrayType.getComponentType().isPrimitive())
                         : LayoutEncoding.isObjectArray(SubstrateUtil.cast(arrayType, DynamicHub.class).getLayoutEncoding())) : "must be an object array type";
-        return createArray(length, arrayType);
+        return createArray(length, arrayType, nmtCategory);
     }
 
     /** @see java.util.Arrays#copyOf */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T> NonmovableObjectArray<T> copyOfObjectArray(T[] source, int newLength) {
-        NonmovableObjectArray<T> array = createArray(newLength, source.getClass());
+    public static <T> NonmovableObjectArray<T> copyOfObjectArray(T[] source, int newLength, NmtCategory nmtCategory) {
+        NonmovableObjectArray<T> array = createArray(newLength, source.getClass(), nmtCategory);
         int copyLength = (source.length < newLength) ? source.length : newLength;
         for (int i = 0; i < copyLength; i++) {
             setObject(array, i, source[i]);
@@ -238,8 +239,8 @@ public final class NonmovableArrays {
 
     /** Same as {@link #copyOfObjectArray} with a {@code newLength} of the array length. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T> NonmovableObjectArray<T> copyOfObjectArray(T[] source) {
-        return copyOfObjectArray(source, source.length);
+    public static <T> NonmovableObjectArray<T> copyOfObjectArray(T[] source, NmtCategory nmtCategory) {
+        return copyOfObjectArray(source, source.length, nmtCategory);
     }
 
     public static byte[] heapCopyOfByteArray(NonmovableArray<Byte> source) {
@@ -298,7 +299,7 @@ public final class NonmovableArrays {
     /** Releases an array created at runtime. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void releaseUnmanagedArray(NonmovableArray<?> array) {
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(array);
+        NullableNativeMemory.free(array);
         untrackUnmanagedArray(array);
     }
 

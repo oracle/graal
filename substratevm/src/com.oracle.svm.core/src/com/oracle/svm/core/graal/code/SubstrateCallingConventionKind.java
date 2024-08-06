@@ -57,4 +57,8 @@ public enum SubstrateCallingConventionKind {
     public boolean isCustom() {
         return this == Custom;
     }
+
+    public boolean isNativeABI() {
+        return this == Native || isCustom();
+    }
 }

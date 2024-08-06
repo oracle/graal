@@ -26,7 +26,6 @@ package com.oracle.svm.core.posix.riscv64;
 
 import static com.oracle.svm.core.RegisterDumper.dumpReg;
 
-import org.graalvm.compiler.core.riscv64.ShadowedRISCV64;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
@@ -44,12 +43,14 @@ import com.oracle.svm.core.posix.headers.Signal.mcontext_linux_riscv64_t;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.vm.ci.riscv64.RISCV64;
+
 @AutomaticallyRegisteredImageSingleton(RegisterDumper.class)
 @Platforms(Platform.LINUX_RISCV64.class)
 class RISCV64LinuxUContextRegisterDumper implements UContextRegisterDumper {
     RISCV64LinuxUContextRegisterDumper() {
-        VMError.guarantee(ShadowedRISCV64.x27.equals(RISCV64ReservedRegisters.heapBaseRegisterCandidate));
-        VMError.guarantee(ShadowedRISCV64.x23.equals(RISCV64ReservedRegisters.threadRegisterCandidate));
+        VMError.guarantee(RISCV64.x27.equals(RISCV64ReservedRegisters.HEAP_BASE_REGISTER_CANDIDATE));
+        VMError.guarantee(RISCV64.x23.equals(RISCV64ReservedRegisters.THREAD_REGISTER));
     }
 
     @Override

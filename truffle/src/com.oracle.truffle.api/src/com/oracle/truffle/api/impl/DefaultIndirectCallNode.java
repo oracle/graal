@@ -50,7 +50,7 @@ final class DefaultIndirectCallNode extends IndirectCallNode {
 
     @Override
     public Object call(CallTarget target, Object... arguments) {
-        return ((DefaultCallTarget) target).callDirectOrIndirect(this, arguments);
+        return ((DefaultCallTarget) target).call(this, arguments);
     }
 
 }

@@ -40,19 +40,21 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.charset.UnicodeProperties;
+import com.oracle.truffle.regex.charset.UnicodePropertyDataVersion;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
+import com.oracle.truffle.regex.tregex.nfa.TransitionGuard;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
+import com.oracle.truffle.regex.tregex.parser.MultiCharacterCaseFolding;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
-
-import java.util.Arrays;
-import java.util.function.BiPredicate;
 
 /**
  * An implementation of the Ruby regex flavor.
@@ -182,7 +184,7 @@ import java.util.function.BiPredicate;
  * the empty check, by verifying the state of the capture groups on top of verifying the current
  * index (see {@code TRegexBacktrackingNFAExecutorNode#monitorCaptureGroupsInEmptyCheck}). For that,
  * we need fine-grained information about capture group updates and so we include this information
- * in the transition guards by {@link QuantifierGuard#createUpdateCG}.
+ * in the transition guards by {@link TransitionGuard#createUpdateCG}.
  *
  * In unrolled loops, we disable empty checks altogether (in {@link JSRegexParser}, in the calls to
  * {@code RegexParser#createOptional}). This is correct since Ruby's empty checks terminate a loop
@@ -215,17 +217,18 @@ import java.util.function.BiPredicate;
  * We implement this in {@code NFATraversalRegexASTVisitor} by introducing two transitions whenever
  * we leave a loop, one leading to the start of the loop (empty check passes) and one escaping past
  * the loop (empty check fails). The two transitions are then annotated with complementary guards
- * ({@link QuantifierGuard#createEscapeZeroWidth} and {@link QuantifierGuard#createEscapeZeroWidth},
+ * ({@link TransitionGuard#createEscapeZeroWidth} and {@link TransitionGuard#createEscapeZeroWidth},
  * respectively), so that at runtime, only one of the two transitions will be admissible.</li>
  * </ul>
  */
 public final class RubyFlavor extends RegexFlavor {
 
     public static final RubyFlavor INSTANCE = new RubyFlavor();
+    public static final UnicodeProperties UNICODE = new UnicodeProperties(UnicodePropertyDataVersion.UNICODE_15_1_0, UnicodeProperties.CASE_INSENSITIVE);
 
     private RubyFlavor() {
         super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | EMPTY_CHECKS_MONITOR_CAPTURE_GROUPS | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK |
-                        HAS_CONDITIONAL_BACKREFERENCES);
+                        HAS_CONDITIONAL_BACKREFERENCES | EMPTY_CHECKS_ON_MANDATORY_LOOP_ITERATIONS);
     }
 
     @Override
@@ -239,21 +242,12 @@ public final class RubyFlavor extends RegexFlavor {
     }
 
     @Override
-    public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
-        return RubyFlavor::equalsIgnoreCase;
+    public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
+        return (codePointA, codePointB, altMode) -> MultiCharacterCaseFolding.equalsIgnoreCase(CaseFoldData.CaseFoldAlgorithm.Ruby, codePointA, codePointB);
     }
 
-    private static boolean equalsIgnoreCase(int codePointA, int codePointB) {
-        int[] foldedA = RubyCaseFolding.caseFold(codePointA);
-        int[] foldedB = RubyCaseFolding.caseFold(codePointB);
-        if (foldedA == null && foldedB == null) {
-            return codePointA == codePointB;
-        } else if (foldedA == null) {
-            return foldedB.length == 1 && codePointA == foldedB[0];
-        } else if (foldedB == null) {
-            return foldedA.length == 1 && foldedA[0] == codePointB;
-        } else {
-            return Arrays.equals(foldedA, foldedB);
-        }
+    @Override
+    public CaseFoldData.CaseFoldAlgorithm getCaseFoldAlgorithm(RegexAST ast) {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 }

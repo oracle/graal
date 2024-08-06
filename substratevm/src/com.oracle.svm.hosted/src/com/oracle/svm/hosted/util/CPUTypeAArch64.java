@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,7 +87,7 @@ public enum CPUTypeAArch64 implements CPUType {
         name = cpuTypeName;
         parent = cpuTypeParentOrNull;
         specificFeatures = features.length > 0 ? EnumSet.copyOf(List.of(features)) : EnumSet.noneOf(CPUFeature.class);
-        assert parent == null || parent.getFeatures().stream().noneMatch(f -> specificFeatures.contains(f)) : "duplicate features detected but not allowed";
+        assert parent == null || parent.getFeatures().stream().noneMatch(specificFeatures::contains) : "duplicate features detected but not allowed";
     }
 
     @Override
@@ -102,7 +102,7 @@ public enum CPUTypeAArch64 implements CPUType {
 
     @Override
     public String getSpecificFeaturesString() {
-        return specificFeatures.stream().map(f -> f.name()).collect(Collectors.joining(" + "));
+        return specificFeatures.stream().map(Enum::name).collect(Collectors.joining(" + "));
     }
 
     public EnumSet<CPUFeature> getFeatures() {
@@ -133,7 +133,7 @@ public enum CPUTypeAArch64 implements CPUType {
             throw UserError.abort("Unsupported architecture '%s'. Please adjust '%s'. On AArch64, only %s are available.",
                             marchValue,
                             SubstrateOptionsParser.commandArgument(NativeImageOptions.MicroArchitecture, marchValue),
-                            StringUtil.joinSingleQuoted(values()));
+                            StringUtil.joinSingleQuoted(CPUType.toNames(values())));
         }
         List<CPUFeature> features = new ArrayList<>(value.getFeatures());
         processFeatureModifiers(features, archParts);

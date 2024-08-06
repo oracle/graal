@@ -24,18 +24,19 @@
  */
 package com.oracle.svm.core.graal.stackvalue;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.ConstantValue;
-import org.graalvm.compiler.lir.VirtualStackSlot;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.config.ConfigurationValues;
 
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.ConstantValue;
+import jdk.graal.compiler.lir.VirtualStackSlot;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -99,7 +100,7 @@ public final class LoweredStackValueNode extends StackValueNode implements LIRLo
         stackSlotHolder.gen = gen;
 
         if (sizeInBytes == 0) {
-            gen.setResult(this, new ConstantValue(gen.getLIRGeneratorTool().getLIRKind(FrameAccess.getWordStamp()), JavaConstant.forIntegerKind(FrameAccess.getWordKind(), 0)));
+            gen.setResult(this, new ConstantValue(gen.getLIRGeneratorTool().getLIRKind(FrameAccess.getWordStamp()), JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), 0)));
         } else {
             VirtualStackSlot slot = stackSlotHolder.slot;
             if (slot == null) {

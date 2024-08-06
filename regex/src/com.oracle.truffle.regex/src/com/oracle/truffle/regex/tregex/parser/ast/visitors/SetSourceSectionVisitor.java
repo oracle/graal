@@ -41,7 +41,6 @@
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
@@ -57,27 +56,27 @@ import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
  * This visitor is used for setting the {@link SourceSection} of AST subtrees that are copied into
  * the parser tree as substitutions for things like word boundaries and position assertions in
  * multi-line mode. It will set the source section of all nodes in the subtree to the
- * {@link SourceSection} object passed to {@link #run(Group, Token)}.
+ * {@link SourceSection} object passed to {@link #run(Group, SourceSection)}.
  *
  * @see com.oracle.truffle.regex.tregex.parser.RegexASTBuilder
  */
 public final class SetSourceSectionVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     private final RegexAST ast;
-    private Token token;
+    private SourceSection sourceSection;
 
     public SetSourceSectionVisitor(RegexAST ast) {
         this.ast = ast;
     }
 
-    public void run(Group root, Token t) {
-        this.token = t;
+    public void run(Group root, SourceSection setSourceSection) {
+        this.sourceSection = setSourceSection;
         run(root);
     }
 
     @Override
     protected void visit(BackReference backReference) {
-        ast.addSourceSection(backReference, token);
+        ast.addSourceSection(backReference, sourceSection);
     }
 
     @Override
@@ -94,31 +93,31 @@ public final class SetSourceSectionVisitor extends DepthFirstTraversalRegexASTVi
 
     @Override
     protected void visit(PositionAssertion assertion) {
-        ast.addSourceSection(assertion, token);
+        ast.addSourceSection(assertion, sourceSection);
     }
 
     @Override
     protected void visit(LookBehindAssertion assertion) {
-        ast.addSourceSection(assertion, token);
+        ast.addSourceSection(assertion, sourceSection);
     }
 
     @Override
     protected void visit(LookAheadAssertion assertion) {
-        ast.addSourceSection(assertion, token);
+        ast.addSourceSection(assertion, sourceSection);
     }
 
     @Override
     protected void visit(AtomicGroup atomicGroup) {
-        ast.addSourceSection(atomicGroup, token);
+        ast.addSourceSection(atomicGroup, sourceSection);
     }
 
     @Override
     protected void visit(CharacterClass characterClass) {
-        ast.addSourceSection(characterClass, token);
+        ast.addSourceSection(characterClass, sourceSection);
     }
 
     @Override
     protected void visit(SubexpressionCall subexpressionCall) {
-        ast.addSourceSection(subexpressionCall, token);
+        ast.addSourceSection(subexpressionCall, sourceSection);
     }
 }

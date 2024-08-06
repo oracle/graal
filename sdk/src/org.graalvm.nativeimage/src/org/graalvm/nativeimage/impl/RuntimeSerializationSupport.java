@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,25 +44,32 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public interface RuntimeSerializationSupport {
+import org.graalvm.nativeimage.ImageSingletons;
 
-    void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz);
+public interface RuntimeSerializationSupport<C> {
 
-    void register(ConfigurationCondition condition, Class<?>... classes);
+    @SuppressWarnings("unchecked")
+    static RuntimeSerializationSupport<ConfigurationCondition> singleton() {
+        return ImageSingletons.lookup(RuntimeSerializationSupport.class);
+    }
 
-    void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> clazz, Class<?> customTargetConstructorClazz);
+    void registerIncludingAssociatedClasses(C condition, Class<?> clazz);
 
-    void registerWithTargetConstructorClass(ConfigurationCondition condition, String className, String customTargetConstructorClassName);
+    void register(C condition, Class<?>... classes);
 
-    void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName);
+    void registerWithTargetConstructorClass(C condition, Class<?> clazz, Class<?> customTargetConstructorClazz);
 
-    default void registerLambdaCapturingClass(ConfigurationCondition condition, Class<?> lambdaCapturingClass) {
+    void registerWithTargetConstructorClass(C condition, String className, String customTargetConstructorClassName);
+
+    void registerLambdaCapturingClass(C condition, String lambdaCapturingClassName);
+
+    default void registerLambdaCapturingClass(C condition, Class<?> lambdaCapturingClass) {
         registerLambdaCapturingClass(condition, lambdaCapturingClass.getName());
     }
 
-    void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces);
+    void registerProxyClass(C condition, List<String> implementedInterfaces);
 
-    default void registerProxyClass(ConfigurationCondition condition, Class<?>... implementedInterfaces) {
+    default void registerProxyClass(C condition, Class<?>... implementedInterfaces) {
         registerProxyClass(condition, Arrays.stream(implementedInterfaces).map(Class::getName).collect(Collectors.toList()));
     }
 }

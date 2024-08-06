@@ -84,12 +84,16 @@ import com.oracle.truffle.api.source.SourceSection;
  * <p>
  * <b>Example minimal implementation of an instrumentable node:</b>
  *
- * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.SimpleNode}
+ * {@snippet file="com/oracle/truffle/api/instrumentation/InstrumentableNode.java"
+ * region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.SimpleNode"}
  *
  * <p>
  * Example for a typical implementation of an instrumentable node with support for source
  * sections:</b>
- * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.RecommendedNode}
+ * 
+ * {@snippet file="com/oracle/truffle/api/instrumentation/InstrumentableNode.java"
+ * region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.RecommendedNode"}
+ * 
  * <p>
  *
  * @see #isInstrumentable() to decide whether node is instrumentable.
@@ -171,13 +175,15 @@ public interface InstrumentableNode extends NodeInterface {
      * implement tagging using Java types is by overriding the {@link #hasTag(Class)} method. This
      * example shows how to tag a node subclass and all its subclasses as statement:
      *
-     * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.StatementNode}
+     * {@snippet file="com/oracle/truffle/api/instrumentation/InstrumentableNode.java"
+     * region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.StatementNode"}
      *
      * <p>
      * Often it is impossible to just rely on the node's Java type to implement tagging. This
      * example shows how to use local state to implement tagging for a node.
      *
-     * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode}
+     * {@snippet file="com/oracle/truffle/api/instrumentation/InstrumentableNode.java"
+     * region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode"}
      *
      * <p>
      * The implementation of hasTag method must ensure that its result is stable after the parent
@@ -273,7 +279,8 @@ public interface InstrumentableNode extends NodeInterface {
      * how it can implement <code>materializeSyntaxNodes</code> to restore the syntactic structure
      * of the AST:
      * <p>
-     * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode}
+     * {@snippet file="com/oracle/truffle/api/instrumentation/InstrumentableNode.java"
+     * region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode"}
      *
      * @param materializedTags a set of tags that requested to be materialized
      * @since 0.33
@@ -442,6 +449,7 @@ public interface InstrumentableNode extends NodeInterface {
 
 }
 
+// @formatter:off // @replace regex='.*' replacement=''
 class InstrumentableNodeSnippets {
 
     static class SimpleNodeWrapper implements WrapperNode {
@@ -459,7 +467,7 @@ class InstrumentableNodeSnippets {
         }
     }
 
-    // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.SimpleNode
+    // @start region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.SimpleNode"
     @GenerateWrapper
     abstract static class SimpleNode extends Node
                     implements InstrumentableNode {
@@ -475,7 +483,7 @@ class InstrumentableNodeSnippets {
             return new SimpleNodeWrapper(this, probe);
         }
     }
-    // END: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.SimpleNode
+    // @end region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.SimpleNode"
 
     static class RecommendedNodeWrapper implements WrapperNode {
 
@@ -492,7 +500,7 @@ class InstrumentableNodeSnippets {
         }
     }
 
-    // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.RecommendedNode
+    // @start region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.RecommendedNode"
     @GenerateWrapper
     abstract static class RecommendedNode extends Node
                     implements InstrumentableNode {
@@ -537,7 +545,7 @@ class InstrumentableNodeSnippets {
             return new RecommendedNodeWrapper(this, probe);
         }
     }
-    // END: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.RecommendedNode
+    // @end region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.RecommendedNode"
 
     abstract static class StatementNodeWrapper implements WrapperNode {
 
@@ -548,7 +556,7 @@ class InstrumentableNodeSnippets {
         }
     }
 
-    // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.StatementNode
+    // @start region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.StatementNode"
     @GenerateWrapper
     abstract static class StatementNode extends SimpleNode
                     implements InstrumentableNode {
@@ -573,7 +581,7 @@ class InstrumentableNodeSnippets {
             return false;
         }
     }
-    // END: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.StatementNode
+    // @end region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.StatementNode"
 
     private static final class Debugger {
         static class HaltTag extends Tag {
@@ -595,7 +603,7 @@ class InstrumentableNodeSnippets {
     }
 
     @SuppressWarnings("unused")
-    // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
+    // @start region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode"
     @GenerateWrapper
     static class HaltNode extends Node implements InstrumentableNode {
         private boolean isDebuggerHalt;
@@ -626,7 +634,7 @@ class InstrumentableNodeSnippets {
 
     }
 
-    // END: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
+    // @end region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode"
     @SuppressWarnings("unused")
     static class ExpressionNodeWrapper implements WrapperNode {
         ExpressionNodeWrapper(Node node, ProbeNode probe) {
@@ -641,7 +649,7 @@ class InstrumentableNodeSnippets {
         }
     }
 
-    // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode
+    // @start region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode"
     @GenerateWrapper
     abstract static class ExpressionNode extends Node
                     implements InstrumentableNode {
@@ -713,5 +721,5 @@ class InstrumentableNodeSnippets {
             return child.execute(frame) + 1;
         }
     }
-    // END: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode
+    // @end region="com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode"
 }

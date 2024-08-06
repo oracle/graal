@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.tests.interop;
 
 import org.graalvm.polyglot.Value;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.StringContains;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -47,8 +49,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.tests.interop.CxxVTableTest2Factory.CallFoo1NodeGen;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-import org.junit.Rule;
-import org.junit.rules.ExpectedException;
 
 @RunWith(TruffleRunner.class)
 public class CxxVTableTest2 extends InteropTestBase {
@@ -118,16 +118,12 @@ public class CxxVTableTest2 extends InteropTestBase {
         Assert.assertEquals(12, foo2Result);
     }
 
-    @Rule public ExpectedException expectedException = ExpectedException.none();
-
     @Test
     public void testNonExistingVirtualMethod() {
         Value a = preparePolyglotBasA.execute();
 
-        expectedException.expect(UnsupportedOperationException.class);
-        expectedException.expectMessage("Non readable or non-existent member key 'foo3'");
-
-        a.invokeMember("foo3").asInt();
+        UnsupportedOperationException exception = Assert.assertThrows(UnsupportedOperationException.class, () -> a.invokeMember("foo3").asInt());
+        MatcherAssert.assertThat(exception.getMessage(), StringContains.containsString("Non readable or non-existent member key 'foo3'"));
     }
 
     @Test

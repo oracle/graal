@@ -52,8 +52,9 @@ static void throwError(JNIEnv *env, jlong context) {
     DWORD error = GetLastError();
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
     LPSTR msg;
+    DWORD lang = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
 
-    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPSTR) &msg, 0,
+    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, lang, (LPSTR) &msg, 0,
                    NULL);
     (*env)->ThrowNew(env, ctx->UnsatisfiedLinkError, msg);
     LocalFree(msg);

@@ -27,7 +27,7 @@ package com.oracle.svm.graal.isolated;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
-import org.graalvm.compiler.serviceprovider.UnencodedSpeculationReason;
+import jdk.graal.compiler.serviceprovider.UnencodedSpeculationReason;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;

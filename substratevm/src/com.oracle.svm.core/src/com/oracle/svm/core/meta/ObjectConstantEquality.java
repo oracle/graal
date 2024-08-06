@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.meta;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -36,9 +37,8 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
  * comparable, but their {@link Object#equals} methods should not and cannot (due to dependencies)
  * have direct knowledge of other classes, so their methods delegate to this class. This code
  * overlaps with {@link ConstantReflectionProvider#constantEquals}, but existing code relies on
- * directly testing object equality on constants, such as the
- * {@link org.graalvm.compiler.truffle.compiler.nodes.ObjectLocationIdentity} class, which is
- * crucial for the alias analysis of memory accesses during compilation.
+ * directly testing object equality on constants, such as the {@link ObjectLocationIdentity} class,
+ * which is crucial for the alias analysis of memory accesses during compilation.
  */
 public interface ObjectConstantEquality {
     @Fold

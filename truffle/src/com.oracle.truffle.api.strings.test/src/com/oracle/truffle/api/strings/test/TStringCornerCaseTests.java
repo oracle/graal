@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,8 +51,11 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 
 public class TStringCornerCaseTests extends TStringTestBase {
+
+    private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
     @Test
     public void testTranscodeYieldsEmptyString() {
@@ -127,5 +130,21 @@ public class TStringCornerCaseTests extends TStringTestBase {
         TruffleString t1 = TruffleString.fromConstant(s, TruffleString.Encoding.UTF_16);
         TruffleString t2 = TruffleString.fromConstant(s, TruffleString.Encoding.UTF_16);
         Assert.assertEquals(t1, t2);
+    }
+
+    @Test
+    public void testInflateOverAllocation() {
+        TruffleStringBuilder sb = TruffleStringBuilder.createUTF16(MAX_ARRAY_SIZE >> 1);
+        sb.appendStringUncached(TruffleString.fromJavaStringUncached("asdf", TruffleString.Encoding.UTF_16));
+        sb.appendStringUncached(TruffleString.fromJavaStringUncached("\u2020", TruffleString.Encoding.UTF_16));
+        Assert.assertEquals("asdf\u2020", sb.toStringUncached().toJavaStringUncached());
+    }
+
+    @Test(expected = OutOfMemoryError.class)
+    public void testInflateOverAllocation2() {
+        TruffleStringBuilder sb = TruffleStringBuilder.createUTF16(MAX_ARRAY_SIZE >> 1);
+        sb.appendCodePointUncached('a', MAX_ARRAY_SIZE >> 1);
+        sb.appendStringUncached(TruffleString.fromJavaStringUncached("\u2020", TruffleString.Encoding.UTF_16));
+        Assert.assertEquals("asdf\u2020", sb.toStringUncached().toJavaStringUncached());
     }
 }

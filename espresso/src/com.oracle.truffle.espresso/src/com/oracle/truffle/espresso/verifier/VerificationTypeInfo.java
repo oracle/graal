@@ -33,10 +33,16 @@ import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Null;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
 
+import com.oracle.truffle.espresso.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
-abstract class VerificationTypeInfo {
+public abstract class VerificationTypeInfo {
 
     VerificationTypeInfo() {
     }
@@ -69,6 +75,16 @@ abstract class VerificationTypeInfo {
             default:
                 return fromCP(klass);
         }
+    }
+
+    public abstract Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs);
+
+    public boolean isNull() {
+        return false;
+    }
+
+    public boolean isIllegal() {
+        return false;
     }
 
     @SuppressWarnings("unused")
@@ -114,6 +130,35 @@ final class PrimitiveTypeInfo extends VerificationTypeInfo {
                 throw EspressoError.shouldNotReachHere();
         }
     }
+
+    @Override
+    public Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs) {
+        switch (tag) {
+            case ITEM_Integer:
+                return Type._int;
+            case ITEM_Float:
+                return Type._float;
+            case ITEM_Double:
+                return Type._double;
+            case ITEM_Long:
+                return Type._long;
+            case ITEM_Null: // fall through
+            case ITEM_Bogus: // fall through
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+
+    }
+
+    @Override
+    public boolean isNull() {
+        return tag == ITEM_Null;
+    }
+
+    @Override
+    public boolean isIllegal() {
+        return tag == ITEM_Bogus;
+    }
 }
 
 final class UninitializedThis extends VerificationTypeInfo {
@@ -134,6 +179,11 @@ final class UninitializedThis extends VerificationTypeInfo {
     @Override
     protected String fromCP(Klass klass) {
         return "newThis";
+    }
+
+    @Override
+    public Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs) {
+        return thisKlass.getType();
     }
 }
 
@@ -158,6 +208,12 @@ final class UninitializedVariable extends VerificationTypeInfo {
     protected String fromCP(Klass klass) {
         return "new " + klass.getConstantPool().classAt(newOffset).getName(klass.getConstantPool());
     }
+
+    @Override
+    public Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs) {
+        Types types = thisKlass.getMeta().getTypes();
+        return types.fromName(pool.classAt(bs.readCPI(getNewOffset())).getName(pool));
+    }
 }
 
 final class ReferenceVariable extends VerificationTypeInfo {
@@ -181,5 +237,11 @@ final class ReferenceVariable extends VerificationTypeInfo {
     @Override
     protected String fromCP(Klass klass) {
         return "" + klass.getConstantPool().classAt(constantPoolOffset).getName(klass.getConstantPool());
+    }
+
+    @Override
+    public Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs) {
+        Types types = thisKlass.getMeta().getTypes();
+        return types.fromName(pool.classAt(getConstantPoolOffset()).getName(pool));
     }
 }

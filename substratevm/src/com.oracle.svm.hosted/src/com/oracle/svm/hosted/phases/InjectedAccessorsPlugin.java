@@ -27,56 +27,57 @@ package com.oracle.svm.hosted.phases;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.vm.ci.meta.JavaType;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class InjectedAccessorsPlugin implements NodePlugin {
 
     @Override
     public boolean handleLoadField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field) {
-        return handleField(b, field, false, object, true, null);
+        return handleField(b, (AnalysisField) field, false, object, true, null);
     }
 
     @Override
     public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
-        return handleField(b, field, true, null, true, null);
+        return handleField(b, (AnalysisField) field, true, null, true, null);
     }
 
     @Override
     public boolean handleStoreField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field, ValueNode value) {
-        return handleField(b, field, false, object, false, value);
+        return handleField(b, (AnalysisField) field, false, object, false, value);
     }
 
     @Override
     public boolean handleStoreStaticField(GraphBuilderContext b, ResolvedJavaField field, ValueNode value) {
-        return handleField(b, field, true, null, false, value);
+        return handleField(b, (AnalysisField) field, true, null, false, value);
     }
 
-    private static boolean handleField(GraphBuilderContext b, ResolvedJavaField field, boolean isStatic, ValueNode receiver, boolean isGet, ValueNode value) {
+    private static boolean handleField(GraphBuilderContext b, AnalysisField field, boolean isStatic, ValueNode receiver, boolean isGet, ValueNode value) {
         InjectAccessors injectAccesors = field.getAnnotation(InjectAccessors.class);
         if (injectAccesors == null) {
             return false;
         }
 
+        var metaAccess = (AnalysisMetaAccess) b.getMetaAccess();
         Class<?> accessorsClass = injectAccesors.value();
-        ResolvedJavaType accessorsType = b.getMetaAccess().lookupJavaType(accessorsClass);
+        AnalysisType accessorsType = metaAccess.lookupJavaType(accessorsClass);
 
         String shortName = isGet ? "get" : "set";
         String fieldName = field.getName();
         String longName = shortName + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
 
-        ResolvedJavaMethod foundMethod = null;
-        for (ResolvedJavaMethod method : accessorsType.getDeclaredMethods(false)) {
+        AnalysisMethod foundMethod = null;
+        for (AnalysisMethod method : accessorsType.getDeclaredMethods(false)) {
             if (method.getName().equals(shortName) || method.getName().equals(longName)) {
                 if (foundMethod != null) {
                     error(field, accessorsType, null, "found two methods " + foundMethod.format("%n(%p)") + " and " + method.format("%n(%p)"));
@@ -98,10 +99,10 @@ public final class InjectedAccessorsPlugin implements NodePlugin {
                 error(field, accessorsType, foundMethod, "not enough parameters");
             }
 
-            JavaType actualReceiver = foundMethod.getSignature().getParameterType(paramIdx, null);
-            ResolvedJavaType expectedReceiver = field.getDeclaringClass();
+            AnalysisType actualReceiver = foundMethod.getSignature().getParameterType(paramIdx);
+            AnalysisType expectedReceiver = field.getDeclaringClass();
             boolean match = false;
-            for (ResolvedJavaType cur = expectedReceiver; cur != null; cur = cur.getSuperclass()) {
+            for (AnalysisType cur = expectedReceiver; cur != null; cur = cur.getSuperclass()) {
                 if (actualReceiver.equals(cur)) {
                     match = true;
                     break;
@@ -113,9 +114,9 @@ public final class InjectedAccessorsPlugin implements NodePlugin {
             paramIdx++;
         }
 
-        JavaType expectedValue = field.getType();
+        AnalysisType expectedValue = field.getType();
         if (isGet) {
-            JavaType actualValue = foundMethod.getSignature().getReturnType(null);
+            AnalysisType actualValue = foundMethod.getSignature().getReturnType();
             if (!actualValue.equals(expectedValue)) {
                 error(field, accessorsType, foundMethod, "wrong return type: expected " + expectedValue.toJavaName(true) + ", found " + actualValue.toJavaName(true));
             }
@@ -125,7 +126,7 @@ public final class InjectedAccessorsPlugin implements NodePlugin {
                 error(field, accessorsType, foundMethod, "not enough parameters");
             }
 
-            JavaType actualValue = foundMethod.getSignature().getParameterType(paramIdx, null);
+            AnalysisType actualValue = foundMethod.getSignature().getParameterType(paramIdx);
             if (!actualValue.equals(expectedValue)) {
                 error(field, accessorsType, foundMethod, "wrong value type: expected " + expectedValue.toJavaName(true) + ", found " + actualValue.toJavaName(true));
             }
@@ -148,7 +149,7 @@ public final class InjectedAccessorsPlugin implements NodePlugin {
         return true;
     }
 
-    private static void error(ResolvedJavaField field, ResolvedJavaType accessorsType, ResolvedJavaMethod method, String msg) {
+    private static void error(AnalysisField field, AnalysisType accessorsType, AnalysisMethod method, String msg) {
         throw VMError.shouldNotReachHere("Error in @" + InjectAccessors.class.getSimpleName() + " handling of field " + field.format("%H.%n") + ", accessors class " +
                         accessorsType.toJavaName(true) + (method == null ? "" : ", method " + method.format("%n(%p)")) + ": " + msg);
     }

@@ -248,7 +248,7 @@ abstract class BinaryOutput {
         if (value == null) {
             return true;
         }
-        return value instanceof Object[] || value == null || value instanceof Boolean || value instanceof Byte ||
+        return value instanceof Object[] || value instanceof Boolean || value instanceof Byte ||
                         value instanceof Short || value instanceof Character || value instanceof Integer ||
                         value instanceof Long || value instanceof Float || value instanceof Double || value instanceof String;
     }
@@ -263,8 +263,7 @@ abstract class BinaryOutput {
      * @see #isTypedValue(Object) to find out whether a value can be serialized.
      */
     public final void writeTypedValue(Object value) throws IllegalArgumentException {
-        if (value instanceof Object[]) {
-            Object[] arr = (Object[]) value;
+        if (value instanceof Object[] arr) {
             writeByte(ARRAY);
             writeInt(arr.length);
             for (Object arrElement : arr) {

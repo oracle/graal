@@ -101,6 +101,8 @@ public interface NodeFactory {
 
     LLVMControlFlowNode createRetVoid();
 
+    LLVMControlFlowNode createRetTail(LLVMExpressionNode retValue);
+
     LLVMControlFlowNode createNonVoidRet(LLVMExpressionNode retValue, Type resolvedType);
 
     LLVMExpressionNode createFunctionArgNode(int argIndex, Type paramType);

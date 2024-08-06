@@ -26,14 +26,50 @@
 
 package com.oracle.graal.pointsto.standalone.plugins;
 
-import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.java.BytecodeParser;
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class StandaloneGraphBuilderPhase extends GraphBuilderPhase.Instance {
-    public StandaloneGraphBuilderPhase(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-        super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+public class StandaloneGraphBuilderPhase extends GraphBuilderPhase {
+    public StandaloneGraphBuilderPhase(GraphBuilderConfiguration config) {
+        super(config);
+    }
+
+    @Override
+    public GraphBuilderPhase copyWithConfig(GraphBuilderConfiguration config) {
+        return new StandaloneGraphBuilderPhase(config);
+    }
+
+    @Override
+    protected Instance createInstance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+        return new Instance(providers, instanceGBConfig, optimisticOpts, initialIntrinsicContext);
+    }
+
+    public static class Instance extends GraphBuilderPhase.Instance {
+
+        public Instance(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+            super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+        }
+
+        @Override
+        protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
+            return new StandaloneBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
+        }
+    }
+
+    /**
+     * A non-abstract subclass of {@link BytecodeParser}. This exists mainly the use of non-platform
+     * specific {@link BytecodeParser} can be audited.
+     */
+    static class StandaloneBytecodeParser extends BytecodeParser {
+        protected StandaloneBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
+                        IntrinsicContext intrinsicContext) {
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
+        }
     }
 }

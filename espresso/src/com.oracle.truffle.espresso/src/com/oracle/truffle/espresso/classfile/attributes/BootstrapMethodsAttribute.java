@@ -27,7 +27,7 @@ import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
@@ -62,11 +62,11 @@ public final class BootstrapMethodsAttribute extends Attribute {
             return bootstrapMethodRef;
         }
 
-        public StaticObject getMethodHandle(Klass accessingKlass, RuntimeConstantPool pool) {
+        public StaticObject getMethodHandle(ObjectKlass accessingKlass, RuntimeConstantPool pool) {
             return pool.resolvedMethodHandleAt(accessingKlass, getBootstrapMethodRef());
         }
 
-        public StaticObject[] getStaticArguments(Klass accessingKlass, RuntimeConstantPool pool) {
+        public StaticObject[] getStaticArguments(ObjectKlass accessingKlass, RuntimeConstantPool pool) {
             Meta meta = accessingKlass.getMeta();
             StaticObject[] args = new StaticObject[numBootstrapArguments()];
             // @formatter:off

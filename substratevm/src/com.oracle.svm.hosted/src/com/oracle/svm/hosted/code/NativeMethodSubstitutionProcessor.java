@@ -24,10 +24,6 @@
  */
 package com.oracle.svm.hosted.code;
 
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.word.Word.Operation;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -37,6 +33,10 @@ import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.svm.core.option.HostedOptionValues;
 
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.word.Word.Operation;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -74,10 +74,5 @@ public class NativeMethodSubstitutionProcessor extends SubstitutionProcessor {
             return method;
         }
         return processor.lookup(method);
-    }
-
-    @Override
-    public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        return processor.resolve(method);
     }
 }

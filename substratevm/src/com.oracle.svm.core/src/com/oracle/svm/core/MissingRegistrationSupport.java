@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.option.OptionClassFilter;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public class MissingRegistrationSupport {
     private final OptionClassFilter classFilter;
@@ -48,7 +49,11 @@ public class MissingRegistrationSupport {
         return reportMissingRegistrationErrors(responsibleClass.getModuleName(), getPackageName(responsibleClass.getClassName()), responsibleClass.getClassName());
     }
 
-    public boolean reportMissingRegistrationErrors(String moduleName, String packageName, String className) {
+    public boolean reportMissingRegistrationErrors(Class<?> clazz) {
+        return reportMissingRegistrationErrors(clazz.getModule().getName(), clazz.getPackageName(), clazz.getName());
+    }
+
+    private boolean reportMissingRegistrationErrors(String moduleName, String packageName, String className) {
         return classFilter.isIncluded(moduleName, packageName, className) != null;
     }
 

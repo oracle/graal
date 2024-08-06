@@ -24,15 +24,17 @@
  */
 package com.oracle.svm.core.deopt;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+
 import java.util.Objects;
 
-import com.oracle.svm.core.SubstrateOptions;
-import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionDecoder;
 import com.oracle.svm.core.log.Log;
@@ -42,13 +44,14 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 public class DeoptimizationRuntime {
 
-    public static final SubstrateForeignCallDescriptor DEOPTIMIZE = SnippetRuntime.findForeignCall(DeoptimizationRuntime.class, "deoptimize", true, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor DEOPTIMIZE = SnippetRuntime.findForeignCall(DeoptimizationRuntime.class, "deoptimize", NO_SIDE_EFFECT, LocationIdentity.any());
 
     /** Foreign call: {@link #DEOPTIMIZE}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
@@ -71,7 +74,7 @@ public class DeoptimizationRuntime {
             }
 
             if (action.doesInvalidateCompilation()) {
-                Deoptimizer.invalidateMethodOfFrame(sp, speculation);
+                Deoptimizer.invalidateMethodOfFrame(CurrentIsolate.getCurrentThread(), sp, speculation);
             } else {
                 Deoptimizer.deoptimizeFrame(sp, false, speculation);
             }

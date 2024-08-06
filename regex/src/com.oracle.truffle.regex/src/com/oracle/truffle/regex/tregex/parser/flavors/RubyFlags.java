@@ -81,8 +81,6 @@ public final class RubyFlags extends AbstractConstantKeysObject {
     private static final String COMPILE_TIME_FLAGS = "mix";
     private static final String TYPE_FLAGS = "adu";
 
-    public static final RubyFlags EMPTY_INSTANCE = new RubyFlags("");
-
     public RubyFlags(String source) {
         int bits = 0;
         for (int i = 0; i < source.length(); i++) {
@@ -201,7 +199,7 @@ public final class RubyFlags extends AbstractConstantKeysObject {
     @ExportMessage
     @Override
     public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "TRegexRubyFlags{flags=" + toString() + '}';
+        return "TRegexRubyFlags{flags=" + this + '}';
     }
 
     @Override

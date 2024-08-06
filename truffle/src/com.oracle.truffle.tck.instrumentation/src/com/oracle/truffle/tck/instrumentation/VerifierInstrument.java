@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -268,7 +268,12 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                             node.getRootNode().getFrameDescriptor() == frame.getFrameDescriptor()) {
                 Object defaultValue = frame.getFrameDescriptor().getDefaultValue();
                 for (int slot = 0; slot < frame.getFrameDescriptor().getNumberOfSlots(); slot++) {
-                    Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getValue(slot));
+                    if (frame.isStatic(slot)) {
+                        Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getObjectStatic(slot));
+                        Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", 0L, frame.getLongStatic(slot));
+                    } else {
+                        Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getValue(slot));
+                    }
                 }
             }
         }

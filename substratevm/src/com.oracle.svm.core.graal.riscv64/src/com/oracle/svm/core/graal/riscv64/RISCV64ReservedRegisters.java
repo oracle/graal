@@ -24,28 +24,21 @@
  */
 package com.oracle.svm.core.graal.riscv64;
 
-import org.graalvm.compiler.core.riscv64.ShadowedRISCV64;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.ReservedRegisters;
 
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.riscv64.RISCV64;
 
 public final class RISCV64ReservedRegisters extends ReservedRegisters {
 
-    public static Register threadRegisterCandidate;
-    public static Register heapBaseRegisterCandidate;
-    public static Register stackBaseRegisterCandidate;
-
-    static {
-        stackBaseRegisterCandidate = ShadowedRISCV64.x2;
-        threadRegisterCandidate = ShadowedRISCV64.x23;
-        heapBaseRegisterCandidate = ShadowedRISCV64.x27;
-    }
+    public static final Register THREAD_REGISTER = RISCV64.x23;
+    public static final Register HEAP_BASE_REGISTER_CANDIDATE = RISCV64.x27;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     RISCV64ReservedRegisters() {
-        super(stackBaseRegisterCandidate, threadRegisterCandidate, heapBaseRegisterCandidate);
+        super(RISCV64.x2, THREAD_REGISTER, HEAP_BASE_REGISTER_CANDIDATE);
     }
 }

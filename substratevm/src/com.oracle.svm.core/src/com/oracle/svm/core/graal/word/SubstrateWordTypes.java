@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.word;
 
-import org.graalvm.compiler.word.WordTypes;
+import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 

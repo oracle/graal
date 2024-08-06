@@ -26,7 +26,7 @@
 
 package com.oracle.graal.pointsto.standalone;
 
-import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
+import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 import java.io.File;
 import java.lang.reflect.Method;
@@ -37,26 +37,19 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
 import com.oracle.graal.pointsto.AnalysisPolicy;
-import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeap;
+import com.oracle.graal.pointsto.heap.ImageLayerLoader;
+import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
@@ -81,6 +74,15 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
@@ -90,8 +92,8 @@ public final class PointsToAnalyzer {
 
     static {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.ci");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.compiler");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.compiler.management");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.graal.compiler");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.graal.compiler.management");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.loader");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.misc");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.text.spi");
@@ -135,7 +137,6 @@ public final class PointsToAnalyzer {
         SnippetReflectionProvider snippetReflection = originalProviders.getSnippetReflection();
         MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
         debugContext = new DebugContext.Builder(options, new GraalDebugHandlersFactory(snippetReflection)).build();
-        ForkJoinPool executor = PointsToAnalysis.createExecutor(debugContext, Math.min(Runtime.getRuntime().availableProcessors(), 32));
         StandaloneHost standaloneHost = new StandaloneHost(options, analysisClassLoader);
         int wordSize = getWordSize();
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
@@ -143,7 +144,7 @@ public final class PointsToAnalyzer {
 
         JavaKind wordKind = JavaKind.fromWordSize(wordSize);
         AnalysisUniverse aUniverse = new AnalysisUniverse(standaloneHost, wordKind,
-                        analysisPolicy, SubstitutionProcessor.IDENTITY, originalMetaAccess, snippetReflection, new PointsToAnalysisFactory(), new StandaloneAnnotationExtractor());
+                        analysisPolicy, SubstitutionProcessor.IDENTITY, originalMetaAccess, new PointsToAnalysisFactory(), new StandaloneAnnotationExtractor());
         AnalysisMetaAccess aMetaAccess = new StandaloneAnalysisMetaAccess(aUniverse, originalMetaAccess);
         StandaloneConstantReflectionProvider aConstantReflection = new StandaloneConstantReflectionProvider(aUniverse, HotSpotJVMCIRuntime.runtime());
         StandaloneConstantFieldProvider aConstantFieldProvider = new StandaloneConstantFieldProvider(aMetaAccess);
@@ -151,18 +152,25 @@ public final class PointsToAnalyzer {
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider,
                         originalProviders.getForeignCalls(), originalProviders.getLowerer(), originalProviders.getReplacements(),
                         originalProviders.getStampProvider(), snippetReflection, new WordTypes(aMetaAccess, wordKind),
-                        originalProviders.getPlatformConfigurationProvider(), aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
+                        originalProviders.getPlatformConfigurationProvider(), aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider(), originalProviders.getIdentityHashCodeProvider());
         standaloneHost.initializeProviders(aProviders);
         analysisName = getAnalysisName(mainEntryClass);
-        bigbang = new StandalonePointsToAnalysis(options, aUniverse, standaloneHost, aMetaAccess, snippetReflection, aConstantReflection, aProviders.getWordTypes(), executor, () -> {
-            /* do nothing */
-        }, new TimerCollection());
+        ClassInclusionPolicy classInclusionPolicy = new ClassInclusionPolicy.DefaultAllInclusionPolicy("Included in the base image");
+        bigbang = new StandalonePointsToAnalysis(options, aUniverse, standaloneHost, aMetaAccess, snippetReflection, aConstantReflection, aProviders.getWordTypes(), debugContext,
+                        new TimerCollection(), classInclusionPolicy);
         standaloneHost.setImageName(analysisName);
         aUniverse.setBigBang(bigbang);
         ImageHeap heap = new ImageHeap();
+        HostedValuesProvider hostedValuesProvider = new HostedValuesProvider(aMetaAccess, aUniverse);
+        ImageLayerLoader imageLayerLoader = new ImageLayerLoader();
+        imageLayerLoader.setUniverse(aUniverse);
+        aUniverse.setImageLayerLoader(imageLayerLoader);
         StandaloneImageHeapScanner heapScanner = new StandaloneImageHeapScanner(bigbang, heap, aMetaAccess,
-                        snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader);
+                        snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader, hostedValuesProvider);
         aUniverse.setHeapScanner(heapScanner);
+        imageLayerLoader.executeHeapScannerTasks();
+        ImageLayerWriter imageLayerWriter = new ImageLayerWriter();
+        imageLayerWriter.setImageHeap(heap);
         HeapSnapshotVerifier heapVerifier = new StandaloneHeapSnapshotVerifier(bigbang, heap, heapScanner);
         aUniverse.setHeapVerifier(heapVerifier);
         /* Register already created types as assignable. */
@@ -179,14 +187,14 @@ public final class PointsToAnalyzer {
          * good example.
          */
         try (Indent ignored = debugContext.logAndIndent("add initial classes/fields/methods")) {
-            bigbang.addRootClass(Object.class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(String.class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(String[].class, false, false).registerAsInHeap("root class");
-            bigbang.addRootField(String.class, "value").registerAsInHeap("root class");
-            bigbang.addRootClass(long[].class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(byte[].class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(byte[][].class, false, false).registerAsInHeap("root class");
-            bigbang.addRootClass(Object[].class, false, false).registerAsInHeap("root class");
+            bigbang.addRootClass(Object.class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(String.class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(String[].class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootField(String.class, "value").registerAsInstantiated("root class");
+            bigbang.addRootClass(long[].class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(byte[].class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(byte[][].class, false, false).registerAsInstantiated("root class");
+            bigbang.addRootClass(Object[].class, false, false).registerAsInstantiated("root class");
 
             var rootReason = "Registered in " + PointsToAnalyzer.class;
             bigbang.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, rootReason);
@@ -350,7 +358,7 @@ public final class PointsToAnalyzer {
                 boolean isInvokeSpecial = m.isConstructor() || m.isFinal();
                 AnalysisType t = m.getDeclaringClass();
                 if (!t.isAbstract()) {
-                    t.registerAsInHeap("Root class.");
+                    t.registerAsInstantiated("Root class.");
                 }
                 bigbang.addRootMethod(m, isInvokeSpecial, "Entry point from file, registered in " + PointsToAnalyzer.class);
             });

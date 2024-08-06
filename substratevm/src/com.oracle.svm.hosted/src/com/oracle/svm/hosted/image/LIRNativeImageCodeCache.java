@@ -30,22 +30,16 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ForkJoinPool;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedDirectCallTrampolineSupport;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
@@ -53,9 +47,13 @@ import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
-import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.Reference;
@@ -71,8 +69,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     private final TargetDescription target;
 
     @SuppressWarnings("this-escape")
-    public LIRNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
-        super(compilations, imageHeap);
+    public LIRNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, Set<HostedMethod> baseLayerMethods, NativeImageHeap imageHeap) {
+        super(compilations, imageHeap, baseLayerMethods);
         target = ConfigurationValues.getTarget();
         trampolineMap = new HashMap<>();
         orderedTrampolineMap = new HashMap<>();
@@ -139,7 +137,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     @SuppressWarnings("try")
     @Override
-    public void layoutMethods(DebugContext debug, BigBang bb, ForkJoinPool threadPool) {
+    public void layoutMethods(DebugContext debug, BigBang bb) {
 
         try (Indent indent = debug.logAndIndent("layout methods")) {
             // Assign initial location to all methods.
@@ -357,7 +355,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     HostedImageHeapConstantPatch patch = (HostedImageHeapConstantPatch) codeAnnotation;
 
                     ObjectInfo objectInfo = imageHeap.getConstantInfo(patch.constant);
-                    long objectAddress = objectInfo.getAddress();
+                    long objectAddress = objectInfo.getOffset();
 
                     if (targetCode == null) {
                         targetCode = ByteBuffer.wrap(compilation.getTargetCode()).order(target.arch.getByteOrder());
@@ -382,6 +380,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     // which is also in the code cache (a.k.a. a section-local call).
                     // This will change, and we will have to case-split here... but not yet.
                     HostedMethod callTarget = (HostedMethod) call.target;
+                    VMError.guarantee(!callTarget.wrapped.isInBaseLayer(), "Unexpected direct call to base layer method %s. These calls are currently lowered to indirect calls.", callTarget);
                     int callTargetStart = callTarget.getCodeAddressOffset();
                     if (trampolineOffsetMap != null && trampolineOffsetMap.containsKey(callTarget)) {
                         callTargetStart = trampolineOffsetMap.get(callTarget);
@@ -396,26 +395,18 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     patchesHandled++;
                 }
             }
+
             for (DataPatch dataPatch : compilation.getDataPatches()) {
                 assert dataPatch.note == null : "Unexpected note: " + dataPatch.note;
                 Reference ref = dataPatch.reference;
                 var patcher = patches.get(dataPatch.pcOffset);
-                if (ref instanceof ConstantReference constant && constant.getConstant() instanceof SubstrateMethodPointerConstant methodPtrConstant) {
-                    /*
-                     * We directly patch SubstrateMethodPointerConstants.
-                     */
-                    HostedMethod hMethod = (HostedMethod) methodPtrConstant.pointer().getMethod();
-                    VMError.guarantee(hMethod.isCompiled(), "Method %s is not compiled although there is a method pointer constant created for it.", hMethod);
-                    int targetOffset = hMethod.getCodeAddressOffset();
-                    int pcDisplacement = targetOffset - (compStart + dataPatch.pcOffset);
-                    patcher.patch(compStart, pcDisplacement, compilation.getTargetCode());
-                } else {
-                    /*
-                     * Constants are allocated offsets in a separate space, which can be emitted as
-                     * read-only (.rodata) section.
-                     */
-                    patcher.relocate(ref, relocs, compStart);
-                }
+                /*
+                 * Constants are (1) allocated offsets in a separate space, which can be emitted as
+                 * read-only (.rodata) section, or (2) method pointers that are computed relative to
+                 * the PC.
+                 */
+                patcher.relocate(ref, relocs, compStart);
+
                 boolean noPriorMatch = patchedOffsets.add(dataPatch.pcOffset);
                 VMError.guarantee(noPriorMatch, "Patching same offset twice.");
                 patchesHandled++;

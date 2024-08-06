@@ -36,7 +36,7 @@ public final class NativeImageResourceFileSystemUtil {
     }
 
     public static byte[] getBytes(String resourceName, boolean readOnly) {
-        Object entry = Resources.singleton().get(resourceName, true);
+        Object entry = Resources.singleton().getAtRuntime(resourceName, true);
         if (entry == null) {
             return new byte[0];
         }
@@ -49,7 +49,7 @@ public final class NativeImageResourceFileSystemUtil {
     }
 
     public static int getSize(String resourceName) {
-        Object entry = Resources.singleton().get(resourceName, true);
+        Object entry = Resources.singleton().getAtRuntime(resourceName, true);
         if (entry == null) {
             return 0;
         } else {

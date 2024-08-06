@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import static org.hamcrest.CoreMatchers.is;
 import java.math.BigInteger;
 import java.util.HashMap;
 
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -82,7 +83,7 @@ public class PolyglotBuiltinTest extends InteropTestBase {
             }
         }));
 
-        Assert.assertThat(ret, is(instanceOf(BoxedIntValue.class)));
+        MatcherAssert.assertThat(ret, is(instanceOf(BoxedIntValue.class)));
         BoxedIntValue value = (BoxedIntValue) ret;
         Assert.assertEquals(42, value.asInt());
     }

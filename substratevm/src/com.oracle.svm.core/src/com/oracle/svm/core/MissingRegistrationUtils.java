@@ -24,11 +24,10 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.core.SubstrateOptions.ReportingMode.Warn;
-
 import java.io.Serial;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.oracle.svm.core.util.ExitStatus;
 
@@ -46,7 +45,7 @@ public final class MissingRegistrationUtils {
 
     private static final int CONTEXT_LINES = 4;
 
-    private static final Set<String> seenOutputs = SubstrateOptions.MissingRegistrationReportingMode.getValue() == Warn ? ConcurrentHashMap.newKeySet() : null;
+    private static final AtomicReference<Set<String>> seenOutputs = new AtomicReference<>(null);
 
     public static void report(Error exception, StackTraceElement responsibleClass) {
         if (responsibleClass != null && !MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(responsibleClass)) {
@@ -93,13 +92,13 @@ public final class MissingRegistrationUtils {
                         break;
                     }
                 }
-                if (seenOutputs.isEmpty()) {
+                if (seenOutputs.get() == null && seenOutputs.compareAndSet(null, ConcurrentHashMap.newKeySet())) {
                     /* First output, we print an explanation message */
                     System.out.println("Note: this run will print partial stack traces of the locations where a " + exception.getClass().toString() + " would be thrown " +
                                     "when the -H:+ThrowMissingRegistrationErrors option is set. The trace stops at the first entry of JDK code and provides " + CONTEXT_LINES + " lines of context.");
                 }
                 String output = sb.toString();
-                if (seenOutputs.add(output)) {
+                if (seenOutputs.get().add(output)) {
                     System.out.print(output);
                 }
             }

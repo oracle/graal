@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.tests.other;
 
-import static org.hamcrest.CoreMatchers.containsString;
-
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -42,11 +40,11 @@ import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.StringContains;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.Platform;
@@ -110,8 +108,6 @@ public class EagerParsingLazyFailingTest {
         return options;
     }
 
-    @Rule public ExpectedException exception = ExpectedException.none();
-
     @Test
     public void unsupportedInlineAsmNotExecuted() {
         try (Runner runner = new Runner("unsupported_inline_asm.ll")) {
@@ -122,9 +118,8 @@ public class EagerParsingLazyFailingTest {
     @Test
     public void unsupportedInlineAsmExecuted() {
         try (Runner runner = new Runner("unsupported_inline_asm.ll")) {
-            exception.expect(PolyglotException.class);
-            exception.expectMessage(containsString("Unsupported operation"));
-            Assert.assertEquals(1, runner.load().invokeMember("run", 4).asInt());
+            PolyglotException exception = Assert.assertThrows(PolyglotException.class, () -> runner.load().invokeMember("run", 4).asInt());
+            MatcherAssert.assertThat(exception.getMessage(), StringContains.containsString("Unsupported operation"));
         }
     }
 
@@ -138,9 +133,8 @@ public class EagerParsingLazyFailingTest {
     @Test
     public void unsupportedInlineAsmEagerParsingExecuted() {
         try (Runner runner = new Runner("unsupported_inline_asm.ll", eagerParsingOptions())) {
-            exception.expect(PolyglotException.class);
-            exception.expectMessage(containsString("Unsupported operation"));
-            Assert.assertEquals(1, runner.load().invokeMember("run", 4).asInt());
+            PolyglotException exception = Assert.assertThrows(PolyglotException.class, () -> runner.load().invokeMember("run", 4).asInt());
+            MatcherAssert.assertThat(exception.getMessage(), StringContains.containsString("Unsupported operation"));
         }
     }
 }

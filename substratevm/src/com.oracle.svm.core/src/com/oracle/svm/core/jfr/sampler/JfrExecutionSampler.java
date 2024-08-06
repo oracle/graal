@@ -25,7 +25,7 @@
 package com.oracle.svm.core.jfr.sampler;
 
 import com.oracle.svm.core.Uninterruptible;
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 public abstract class JfrExecutionSampler {

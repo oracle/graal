@@ -96,4 +96,9 @@ abstract class EspressoInstrumentableRootNodeImpl extends EspressoInstrumentable
         }
         return false;
     }
+
+    @Override
+    public String toString() {
+        return methodVersion.getDeclaringKlass().getType() + "." + methodVersion.getName() + methodVersion.getRawSignature();
+    }
 }

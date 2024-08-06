@@ -25,9 +25,6 @@
 package com.oracle.truffle.tools.profiler.impl;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.PrintStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -36,15 +33,13 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
-import org.graalvm.options.OptionKey;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.shadowed.org.json.JSONObject;
 
 abstract class ProfilerCLI {
 
@@ -234,20 +229,6 @@ abstract class ProfilerCLI {
             int result = sourceSection != null ? sourceSection.hashCode() : 0;
             result = 31 * result + (rootName != null ? rootName.hashCode() : 0);
             return result;
-        }
-    }
-
-    protected static PrintStream chooseOutputStream(TruffleInstrument.Env env, OptionKey<String> option) {
-        try {
-            if (option.hasBeenSet(env.getOptions())) {
-                final String outputPath = option.getValue(env.getOptions());
-                final File file = new File(outputPath);
-                return new PrintStream(new FileOutputStream(file));
-            } else {
-                return new PrintStream(env.out());
-            }
-        } catch (FileNotFoundException e) {
-            throw handleFileNotFound();
         }
     }
 

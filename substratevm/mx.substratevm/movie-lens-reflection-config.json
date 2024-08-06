@@ -1,0 +1,6 @@
+[
+  {
+    "name": "org.apache.spark.status.JobDataWrapper",
+    "methods": [{"name": "completionTime", "parameterTypes":[]}]
+  }
+]

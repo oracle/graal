@@ -34,10 +34,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.asm.aarch64.AArch64Address;
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -49,20 +45,14 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.asm.aarch64.AArch64Address;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 
 final class AArch64CalleeSavedRegisters extends CalleeSavedRegisters {
-
-    /**
-     * During the normal method prologue (epilogue), the AArch64 backend saves (restores) sp (r30)
-     * and fp (r29) at the top of the frame. Because of this we do not need to emit an explicit
-     * save/restore for fp. When fp is a callee saved register, it should not be saved at a separate
-     * offset, but instead should refer to the value saved during the prologue. This is necessary
-     * for correctness purposes to ensure GC properly updates this position as needed when the value
-     * passed by the caller in fp is an object.
-     */
-    private final boolean fpCalleeSaved;
 
     @Fold
     public static AArch64CalleeSavedRegisters singleton() {
@@ -115,23 +105,24 @@ final class AArch64CalleeSavedRegisters extends CalleeSavedRegisters {
 
         if (fpCalleeSaved) {
             /*
-             * During frame creation, the frame pointer is always saved alongside the sp at the top
-             * of the frame. When registers are callee saved we need to record this position to
-             * ensure it is updated during GC.
+             * During the normal method prologue (epilogue), the AArch64 backend saves (restores) sp
+             * (r30) and fp (r29) at the top of the frame. Because of this we do not need to emit an
+             * explicit save/restore for fp. When fp is a callee saved register, it should not be
+             * saved at a separate offset, but instead should refer to the value saved during the
+             * prologue. This is necessary for correctness purposes to ensure GC properly updates
+             * this position as needed when the value passed by the caller in fp is an object.
              */
             calleeSavedRegisterOffsets.put(fp, calleeSavedRegistersSizeInBytes);
         }
 
         ImageSingletons.add(CalleeSavedRegisters.class,
-                        new AArch64CalleeSavedRegisters(frameRegister, calleeSavedRegisters, calleeSavedRegisterOffsets, calleeSavedRegistersSizeInBytes, saveAreaOffsetInFrame, fpCalleeSaved));
+                        new AArch64CalleeSavedRegisters(frameRegister, calleeSavedRegisters, calleeSavedRegisterOffsets, calleeSavedRegistersSizeInBytes, saveAreaOffsetInFrame));
 
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private AArch64CalleeSavedRegisters(Register frameRegister, List<Register> calleeSavedRegisters, Map<Register, Integer> offsetsInSaveArea, int saveAreaSize, int saveAreaOffsetInFrame,
-                    boolean fpCalleeSaved) {
+    private AArch64CalleeSavedRegisters(Register frameRegister, List<Register> calleeSavedRegisters, Map<Register, Integer> offsetsInSaveArea, int saveAreaSize, int saveAreaOffsetInFrame) {
         super(frameRegister, calleeSavedRegisters, offsetsInSaveArea, saveAreaSize, saveAreaOffsetInFrame);
-        this.fpCalleeSaved = fpCalleeSaved;
     }
 
     /**
@@ -153,13 +144,6 @@ final class AArch64CalleeSavedRegisters extends CalleeSavedRegisters {
                 }
             }
         }
-    }
-
-    /**
-     * @return whether fp needs to be restored at a far return.
-     */
-    public boolean restoreFPAtFarReturn() {
-        return fpCalleeSaved;
     }
 
     /**

@@ -1,0 +1,5 @@
+DYNAMIC_IMPORTS=/compiler,/graal-js,/sdk,/substratevm,/sulong,/tools,/truffle,fastr
+COMPONENTS=antlr4,xz,R,cmp,cov,dap,gvm,ins,insight,insightheap,lg,llp,llrc,llrl,llrn,lsp,nfi-libffi,ni,nic,pro,sdk,sdkl,svmt,svmnfi,tfl,tfla,tflc,tflm,truffle-json
+NATIVE_IMAGES=lib:jvmcicompiler,lib:Rvm
+NON_REBUILDABLE_IMAGES=lib:jvmcicompiler
+DISABLE_INSTALLABLES=False

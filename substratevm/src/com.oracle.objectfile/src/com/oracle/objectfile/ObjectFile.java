@@ -43,17 +43,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
-
-import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
 
+import jdk.graal.compiler.debug.DebugContext;
 import sun.nio.ch.DirectBuffer;
 
 /**
@@ -256,6 +254,11 @@ public abstract class ObjectFile {
         DIRECT_4,
         DIRECT_8,
         /**
+         * The relocation's symbol provides an address whose image-base-relative value (plus addend)
+         * supplies the fixup bytes.
+         */
+        ADDR32NB_4,
+        /**
          * The index of the object file section containing the relocation's symbol supplies the
          * fixup bytes. (used in CodeView debug information)
          */
@@ -329,6 +332,33 @@ public abstract class ObjectFile {
                 case PC_RELATIVE_2:
                 case PC_RELATIVE_4:
                 case PC_RELATIVE_8:
+                case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
+                case AARCH64_R_AARCH64_ADD_ABS_LO12_NC:
+                case AARCH64_R_LD_PREL_LO19:
+                case AARCH64_R_GOT_LD_PREL19:
+                case AARCH64_R_AARCH64_LDST128_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST32_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST16_ABS_LO12_NC:
+                case AARCH64_R_AARCH64_LDST8_ABS_LO12_NC:
+                    return true;
+            }
+            return false;
+        }
+
+        public static boolean isDirect(RelocationKind kind) {
+            switch (kind) {
+                case DIRECT_1:
+                case DIRECT_2:
+                case DIRECT_4:
+                case DIRECT_8:
+                case AARCH64_R_MOVW_UABS_G0:
+                case AARCH64_R_MOVW_UABS_G0_NC:
+                case AARCH64_R_MOVW_UABS_G1:
+                case AARCH64_R_MOVW_UABS_G1_NC:
+                case AARCH64_R_MOVW_UABS_G2:
+                case AARCH64_R_MOVW_UABS_G2_NC:
+                case AARCH64_R_MOVW_UABS_G3:
                     return true;
             }
             return false;
@@ -345,6 +375,7 @@ public abstract class ObjectFile {
                     return 2;
                 case DIRECT_4:
                 case PC_RELATIVE_4:
+                case ADDR32NB_4:
                 case SECREL_4:
                     return 4;
                 case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
@@ -496,10 +527,13 @@ public abstract class ObjectFile {
     // convenience overrides when specifying neither segment nor segment name
 
     public Section newUserDefinedSection(String name, ElementImpl impl) {
-        final Segment segment = getOrCreateSegment(null, name, false, false);
         final int alignment = getWordSizeInBytes();
-        final Section result = newUserDefinedSection(segment, name, alignment, impl);
-        return result;
+        return newUserDefinedSection(name, alignment, impl);
+    }
+
+    public Section newUserDefinedSection(String name, int alignment, ElementImpl impl) {
+        Segment segment = getOrCreateSegment(null, name, false, false);
+        return newUserDefinedSection(segment, name, alignment, impl);
     }
 
     public Section newDebugSection(String name, ElementImpl impl) {
@@ -1268,7 +1302,7 @@ public abstract class ObjectFile {
     private final Map<Element, List<BuildDependency>> dependenciesByDependingElement = new IdentityHashMap<>();
     private final Map<Element, List<BuildDependency>> dependenciesByDependedOnElement = new IdentityHashMap<>();
 
-    public void write(DebugContext context, Path outputFile, @SuppressWarnings("unused") ForkJoinPool forkJoinPool) throws IOException {
+    public void write(DebugContext context, Path outputFile) throws IOException {
         try (FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
             withDebugContext(context, "ObjectFile.write", () -> {
                 write(channel);
@@ -1531,8 +1565,8 @@ public abstract class ObjectFile {
         Map<LayoutDecision, ArrayList<LayoutDecision>> removedEdgesDependingOn = new HashMap<>();
         Map<LayoutDecision, ArrayList<LayoutDecision>> removedEdgesDependedOnBy = new HashMap<>();
         for (LayoutDecision l : allDecisions) {
-            removedEdgesDependingOn.put(l, new ArrayList<LayoutDecision>());
-            removedEdgesDependedOnBy.put(l, new ArrayList<LayoutDecision>());
+            removedEdgesDependingOn.put(l, new ArrayList<>());
+            removedEdgesDependedOnBy.put(l, new ArrayList<>());
         }
 
         // 2. run Kahn's algorithm

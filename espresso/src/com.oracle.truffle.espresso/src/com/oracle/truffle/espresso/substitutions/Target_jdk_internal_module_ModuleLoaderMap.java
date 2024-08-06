@@ -36,13 +36,13 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
+/**
+ * For JDK >11, boot modules are injected at
+ * {@link Target_jdk_internal_module_ModuleLoaderMap_Modules.Clinit}.
+ */
 @EspressoSubstitutions
 final class Target_jdk_internal_module_ModuleLoaderMap {
 
-    /**
-     * For JDK >11, boot modules are injected at
-     * {@link Target_jdk_internal_module_ModuleLoaderMap_Modules.Clinit}.
-     */
     @Substitution(versionFilter = VersionFilter.Java11OrEarlier.class)
     abstract static class BootModules extends SubstitutionNode {
 
@@ -50,28 +50,46 @@ final class Target_jdk_internal_module_ModuleLoaderMap {
 
         @Specialization
         @JavaType(Set.class)
-        StaticObject doDefault(
+        static StaticObject doDefault(
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().jdk_internal_module_ModuleLoaderMap_bootModules.getCallTargetNoSubstitution())") DirectCallNode original) {
-            Meta meta = context.getMeta();
-            // fetch original platform modules set
-            @JavaType(Set.class)
-            StaticObject originalResult = (StaticObject) original.call();
-            ModuleExtension[] extensions = ModuleExtension.get(context);
-            if (extensions.length == 0) {
-                return originalResult;
-            }
-            // inject our platform modules if options are enabled
-            return addModules(meta, originalResult, extensions);
+            return getModules(ModuleExtension.getBootExtensions(context), original, context);
         }
+    }
 
-        @TruffleBoundary
-        private static StaticObject addModules(Meta meta, StaticObject originalResult, ModuleExtension[] extensions) {
-            Method add = ((ObjectKlass) originalResult.getKlass()).itableLookup(meta.java_util_Set, meta.java_util_Set_add.getITableIndex());
-            for (ModuleExtension me : extensions) {
-                add.invokeDirect(originalResult, meta.toGuestString(me.moduleName()));
-            }
+    @Substitution(versionFilter = VersionFilter.Java11OrEarlier.class)
+    abstract static class PlatformModules extends SubstitutionNode {
+
+        abstract @JavaType(Set.class) StaticObject execute();
+
+        @Specialization
+        @JavaType(Set.class)
+        static StaticObject doDefault(
+                        @Bind("getContext()") EspressoContext context,
+                        @Cached("create(context.getMeta().jdk_internal_module_ModuleLoaderMap_platformModules.getCallTargetNoSubstitution())") DirectCallNode original) {
+            return getModules(ModuleExtension.getPlatformExtensions(context), original, context);
+        }
+    }
+
+    private static StaticObject getModules(ModuleExtension[] moduleExtensions, DirectCallNode original, EspressoContext context) {
+        Meta meta = context.getMeta();
+        // fetch original platform modules set
+        @JavaType(Set.class)
+        StaticObject originalResult = (StaticObject) original.call();
+        ModuleExtension[] extensions = moduleExtensions;
+        if (extensions.length == 0) {
             return originalResult;
         }
+        // inject our platform modules if options are enabled
+        return addModules(meta, originalResult, extensions);
+    }
+
+    @TruffleBoundary
+    private static StaticObject addModules(Meta meta, StaticObject originalResult, ModuleExtension[] extensions) {
+        Method add = ((ObjectKlass) originalResult.getKlass()).itableLookup(meta.java_util_Set, meta.java_util_Set_add.getITableIndex());
+        for (ModuleExtension me : extensions) {
+            add.invokeDirect(originalResult, meta.toGuestString(me.moduleName()));
+        }
+        return originalResult;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -149,9 +149,8 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         @Specialization(guards = "!self.isStoredOnHeap()")
         static void toNativeVaList(LLVMMaybeVaPointer self,
                         @Cached LLVMPointerOffsetStoreNode storeAddressNode) {
-            assert self.vaList.getOffset() == 0;
             // triggers a toNative transition for vaList object
-            storeAddressNode.executeWithTarget(self.address, 0, self.vaList.getObject());
+            storeAddressNode.executeWithTarget(self.address, 0, self.vaList);
             self.vaList = null;
         }
 
@@ -289,11 +288,23 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     static class Copy {
+        static boolean needsNativeTransition(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other) {
+            return !self.isPointer() && other.isPointer() && other.isStoredOnHeap();
+        }
 
-        @Specialization
+        @Specialization(guards = "needsNativeTransition(self, other)")
+        static void copyToNative(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame,
+                        @Cached LLVMPointerOffsetStoreNode offsetStoreNode) {
+            /* triggers toNative transition for vaListInstance */
+            offsetStoreNode.executeWithTarget(other.address, 0, self.vaList);
+
+            assert other.vaList == null;
+        }
+
+        @Specialization(guards = "!needsNativeTransition(self, other)")
         static void copy(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame,
-                        @Cached.Exclusive @Cached LLVMPointerOffsetLoadNode offsetLoadNode,
-                        @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode offsetStoreNode) {
+                        @Cached LLVMPointerOffsetLoadNode offsetLoadNode,
+                        @Cached LLVMPointerOffsetStoreNode offsetStoreNode) {
             LLVMPointer vaListPtr = offsetLoadNode.executeWithTarget(self.address, 0);
             offsetStoreNode.executeWithTarget(other.address, 0, vaListPtr);
             other.vaList = self.vaList;

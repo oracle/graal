@@ -73,6 +73,10 @@ public class ClangLike extends ClangLikeBase {
     @Override
     protected void getLinkerArgs(List<String> sulongArgs) {
         sulongArgs.add("-L" + getSulongHome().resolve(platform).resolve("lib"));
+        if (os == OS.DARWIN && tool == Tool.ClangXX) {
+            // for some reason `-lc++` does not pull in libc++abi, force it instead
+            sulongArgs.add("-lc++abi");
+        }
         super.getLinkerArgs(sulongArgs);
     }
 }

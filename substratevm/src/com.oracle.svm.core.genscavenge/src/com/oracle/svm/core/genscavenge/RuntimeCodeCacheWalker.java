@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -36,6 +35,8 @@ import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * References from the runtime compiled code to the Java heap must be considered either strong or
@@ -75,7 +76,7 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
         Object tether = UntetheredCodeInfoAccess.getTetherUnsafe(codeInfo);
         if (tether != null && !isReachable(tether)) {
             int state = CodeInfoAccess.getState(codeInfo);
-            if (state == CodeInfo.STATE_PARTIALLY_FREED) {
+            if (state == CodeInfo.STATE_INVALIDATED) {
                 /*
                  * The tether object is not reachable and the CodeInfo was already invalidated, so
                  * we only need to visit references that will be accessed before the unmanaged

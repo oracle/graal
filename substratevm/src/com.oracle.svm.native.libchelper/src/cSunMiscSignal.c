@@ -175,7 +175,7 @@ int cSunMiscSignal_await() {
 	if (haveSemaphore()) {
 		int const semWaitResult = sem_wait(cSunMiscSignal_semaphore);
 		/* Treat interruption (by a signal handler) like a notification. */
-		if (semWaitResult == EINTR) {
+		if (semWaitResult == -1 && errno == EINTR) {
 			return 0;
 		}
 		return semWaitResult;

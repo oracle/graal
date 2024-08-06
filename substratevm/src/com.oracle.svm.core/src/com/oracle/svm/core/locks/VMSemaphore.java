@@ -25,11 +25,11 @@
 
 package com.oracle.svm.core.locks;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.util.VMError;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * <p>
@@ -53,7 +53,7 @@ import org.graalvm.nativeimage.Platforms;
  * VMSemaphore with platform-specific implementations.
  * </p>
  */
-public class VMSemaphore {
+public class VMSemaphore extends VMLockingPrimitive {
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final String name;
@@ -66,34 +66,6 @@ public class VMSemaphore {
     @Platforms(Platform.HOSTED_ONLY.class)
     public String getName() {
         return name;
-    }
-
-    /**
-     * The function that initializes the semaphore.
-     *
-     * @return The error code.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected int init() {
-        throw VMError.shouldNotReachHere("Semaphore cannot be used during native image generation.");
-    }
-
-    /**
-     * The function that destroys the semaphore.
-     * 
-     * <p>
-     * Only a semaphore that has been initialized by {@link #init()} should be destroyed using this
-     * function.
-     * </p>
-     * 
-     * <p>
-     * Destroying a semaphore that other threads are currently blocked on (in {@link #await()})
-     * produces undefined behavior.
-     * </p>
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void destroy() {
-        throw VMError.shouldNotReachHere("Semaphore cannot be used during native image generation.");
     }
 
     /**
