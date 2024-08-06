@@ -76,23 +76,18 @@ public class TypeCheckSnippetUtils {
         int superCheckOffset = t.readInt(HotSpotReplacementsUtil.superCheckOffsetOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION);
         boolean primary = superCheckOffset != HotSpotReplacementsUtil.secondarySuperCacheOffset(INJECTED_VMCONFIG);
 
-        // if (T = S[off]) return true
-        if (sNonNull.readKlassPointer(superCheckOffset, HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION).equal(t)) {
-            if (primary) {
-                counters.cacheHit.inc();
-            } else {
-                counters.displayHit.inc();
-            }
-            return true;
-        }
-
-        // if (off != &cache) return false
         if (primary) {
-            counters.displayMiss.inc();
-            return false;
+            if (sNonNull.readKlassPointer(superCheckOffset, HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION).equal(t)) {
+                // if (T = S[off]) return true
+                counters.displayHit.inc();
+                return true;
+            } else {
+                counters.displayMiss.inc();
+                return false;
+            }
+        } else {
+            return checkSecondarySubType(t, sNonNull, counters);
         }
-
-        return checkSelfAndSupers(t, sNonNull, counters);
     }
 
     // @formatter:off

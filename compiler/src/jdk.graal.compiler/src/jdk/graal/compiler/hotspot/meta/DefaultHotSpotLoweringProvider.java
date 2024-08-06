@@ -1146,4 +1146,9 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     private void lowerRegisterFinalizer(RegisterFinalizerNode n, LoweringTool tool) {
         registerFinalizerSnippets.lower(n, tool);
     }
+
+    @Override
+    public GraalHotSpotVMConfig getVMConfig() {
+        return runtime.getVMConfig();
+    }
 }
