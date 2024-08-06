@@ -40,7 +40,11 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import java.lang.reflect.Field;
+
 import com.oracle.truffle.api.CompilerDirectives;
+
+import sun.misc.Unsafe;
 
 /**
  * Contains code to support Truffle operation interpreters. This code should not be used directly by
@@ -50,6 +54,24 @@ import com.oracle.truffle.api.CompilerDirectives;
  */
 public final class BytecodeSupport {
     private static final int MAX_PROFILE_COUNT = 0x3fffffff;
+
+    static final Unsafe UNSAFE = initUnsafe();
+
+    private static Unsafe initUnsafe() {
+        try {
+            // Fast path when we are trusted.
+            return Unsafe.getUnsafe();
+        } catch (SecurityException se) {
+            // Slow path when we are not trusted.
+            try {
+                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafe.setAccessible(true);
+                return (Unsafe) theUnsafe.get(Unsafe.class);
+            } catch (Exception e) {
+                throw new RuntimeException("exception while trying to get Unsafe", e);
+            }
+        }
+    }
 
     private BytecodeSupport() {
         // no instances
@@ -71,8 +93,8 @@ public final class BytecodeSupport {
      * @since 24.2
      */
     public static boolean profileBranch(int[] branchProfiles, int profileIndex, boolean condition) {
-        int t = branchProfiles[profileIndex * 2];
-        int f = branchProfiles[profileIndex * 2 + 1];
+        int t = UNSAFE.getInt(branchProfiles, Unsafe.ARRAY_INT_BASE_OFFSET + (profileIndex * 2) * Unsafe.ARRAY_INT_INDEX_SCALE);
+        int f = UNSAFE.getInt(branchProfiles, Unsafe.ARRAY_INT_BASE_OFFSET + (profileIndex * 2 + 1) * Unsafe.ARRAY_INT_INDEX_SCALE);
         boolean val = condition;
         if (val) {
             if (t == 0) {
@@ -84,7 +106,7 @@ public final class BytecodeSupport {
             }
             if (CompilerDirectives.inInterpreter()) {
                 if (t < MAX_PROFILE_COUNT) {
-                    branchProfiles[profileIndex * 2] = t + 1;
+                    UNSAFE.putInt(branchProfiles, Unsafe.ARRAY_INT_BASE_OFFSET + (profileIndex * 2) * Unsafe.ARRAY_INT_INDEX_SCALE, t + 1);
                 }
             }
         } else {
@@ -97,7 +119,7 @@ public final class BytecodeSupport {
             }
             if (CompilerDirectives.inInterpreter()) {
                 if (t < MAX_PROFILE_COUNT) {
-                    branchProfiles[profileIndex * 2 + 1] = f + 1;
+                    UNSAFE.putInt(branchProfiles, Unsafe.ARRAY_INT_BASE_OFFSET + (profileIndex * 2 + 1) * Unsafe.ARRAY_INT_INDEX_SCALE, f + 1);
                 }
             }
         }
@@ -109,5 +131,4 @@ public final class BytecodeSupport {
             return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
         }
     }
-
 }

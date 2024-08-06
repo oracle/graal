@@ -102,7 +102,7 @@ public class Introduction {
         });
 
         SampleInterpreter rootNode = rootNodes.getNode(0);
-        System.out.println(rootNode.dump());
+        // System.out.println(rootNode.dump());
 
         RootCallTarget callTarget = rootNode.getCallTarget();
         assertEquals(42, callTarget.call(40, 2));

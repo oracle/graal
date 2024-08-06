@@ -4399,7 +4399,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("reparseReason == null").end().startBlock();
             b.statement("builtNodes.add(null)");
             b.startIf().string("builtNodes.size() > Short.MAX_VALUE").end().startBlock();
-            emitThrow(b, types.BytecodeEncodingException, "\"Root node count exceeded maximum value.\"");
+            emitThrowEncodingException(b, "\"Root node count exceeded maximum value.\"");
             b.end();
             b.end();
 
@@ -6688,7 +6688,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("Short.MIN_VALUE <= num && num <= Short.MAX_VALUE").end().startBlock();
             b.startReturn().string("(short) num").end();
             b.end();
-            emitThrow(b, types.BytecodeEncodingException, "\"Value \" + num + \" cannot be encoded as a short.\"");
+            emitThrowEncodingException(b, "\"Value \" + num + \" cannot be encoded as a short.\"");
             return ex;
         }
 
@@ -6698,7 +6698,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(context.getDeclaredType(String.class), "valueName"));
             CodeTreeBuilder b = ex.createBuilder();
             b.startIf().string("num < 0").end().startBlock();
-            emitThrow(b, types.BytecodeEncodingException, "valueName + \" overflowed.\"");
+            emitThrowEncodingException(b, "valueName + \" overflowed.\"");
             b.end();
             b.statement("return num");
 
@@ -6711,7 +6711,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(context.getDeclaredType(String.class), "valueName"));
             CodeTreeBuilder b = ex.createBuilder();
             b.startIf().string("num < 0").end().startBlock();
-            emitThrow(b, types.BytecodeEncodingException, "valueName + \" overflowed.\"");
+            emitThrowEncodingException(b, "valueName + \" overflowed.\"");
             b.end();
             b.statement("return num");
 
@@ -6736,7 +6736,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("maxStackHeight = Math.max(maxStackHeight, stackHeight)");
 
             b.startIf().string("maxStackHeight > Short.MAX_VALUE").end().startBlock();
-            emitThrow(b, types.BytecodeEncodingException, "\"Maximum stack height exceeded.\"");
+            emitThrowEncodingException(b, "\"Maximum stack height exceeded.\"");
             b.end();
             b.end(2);
             return ex;
@@ -14926,6 +14926,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private static void emitThrowAssertionError(CodeTreeBuilder b, String reason) {
         b.startThrow().startCall("assertionFailed").string(reason).end(2);
+    }
+
+    private void emitThrowEncodingException(CodeTreeBuilder b, String reason) {
+        b.startThrow().startStaticCall(types.BytecodeEncodingException, "create");
+        b.string(reason);
+        b.end(2);
     }
 
     private void emitThrow(CodeTreeBuilder b, Class<? extends Throwable> exceptionClass, String reasonCode) {

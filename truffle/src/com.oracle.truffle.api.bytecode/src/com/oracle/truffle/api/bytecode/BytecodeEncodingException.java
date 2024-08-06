@@ -46,12 +46,16 @@ package com.oracle.truffle.api.bytecode;
  *
  * @since 24.2
  */
-public class BytecodeEncodingException extends RuntimeException {
+public final class BytecodeEncodingException extends RuntimeException {
 
     private static final long serialVersionUID = -2348428129745395052L;
 
-    public BytecodeEncodingException(String reason) {
+    private BytecodeEncodingException(String reason) {
         super(reason);
+    }
+
+    public static BytecodeEncodingException create(String reason) {
+        return new BytecodeEncodingException(reason);
     }
 
 }
