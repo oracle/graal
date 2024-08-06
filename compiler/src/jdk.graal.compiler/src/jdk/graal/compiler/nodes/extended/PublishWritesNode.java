@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,9 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.memory.MemoryAccess;
+import jdk.graal.compiler.nodes.memory.MemoryKill;
+import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
@@ -63,6 +66,18 @@ public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable
     }
 
     @Override
+    public boolean verifyNode() {
+        // Check that the published allocation node is not used by reads directly
+        for (AddressNode address : allocation.usages().filter(AddressNode.class)) {
+            assertTrue(address.usages().filter(n ->
+                    // n is a non-writing access (a.k.a. a read)
+                    n instanceof MemoryAccess && !MemoryKill.isMemoryKill(n)
+            ).isEmpty(), "%s has unpublished reads", allocation);
+        }
+        return true;
+    }
+
+    @Override
     public void generate(NodeLIRBuilderTool generator) {
         generator.setResult(this, generator.operand(allocation));
     }
@@ -76,5 +91,4 @@ public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable
     public GuardingNode getGuard() {
         return this;
     }
-
 }
