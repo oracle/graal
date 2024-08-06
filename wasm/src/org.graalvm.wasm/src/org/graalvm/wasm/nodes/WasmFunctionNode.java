@@ -183,8 +183,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         this.notifyFunction = notifyFunction;
     }
 
-    private WasmMemory memory(WasmInstance instance) {
-        return memory(instance, 0);
+    private WasmMemory memory0(WasmInstance instance) {
+        return memory(instance, 0).checkSize(module.memoryInitialSize(0));
     }
 
     private WasmMemory memory(WasmInstance instance, int index) {
@@ -270,7 +270,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int line = startLine;
 
         // Note: The module may not have any memories.
-        final WasmMemory zeroMemory = module.memoryCount() == 0 ? null : memory(instance);
+        final WasmMemory zeroMemory = !codeEntry.usesMemoryZero() ? null : memory0(instance);
 
         check(bytecode.length, (1 << 31) - 1);
 
@@ -4642,31 +4642,31 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int f = rawPeekU8(data, profileOffset + 1);
         boolean val = condition;
         if (val) {
+            if (t == 0) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
             if (!CompilerDirectives.inInterpreter()) {
-                if (t == 0) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                }
                 if (f == 0) {
                     // Make this branch fold during PE
                     val = true;
                 }
             } else {
                 if (t < MAX_PROFILE_VALUE) {
-                    data[profileOffset]++;
+                    data[profileOffset] = (byte) (t + 1);
                 }
             }
         } else {
+            if (f == 0) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
             if (!CompilerDirectives.inInterpreter()) {
-                if (f == 0) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                }
                 if (t == 0) {
                     // Make this branch fold during PE
                     val = false;
                 }
             } else {
                 if (f < MAX_PROFILE_VALUE) {
-                    data[profileOffset + 1]++;
+                    data[profileOffset + 1] = (byte) (f + 1);
                 }
             }
         }

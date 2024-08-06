@@ -48,8 +48,8 @@ import java.util.EnumSet;
 import java.util.Objects;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
-import org.graalvm.wasm.WasmContextOptions;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.graalvm.wasm.utils.cases.WasmCase;
@@ -71,6 +71,7 @@ public abstract class WasmBenchmarkSuiteBase {
         private Value benchmarkTeardownEach;
         private Value benchmarkRun;
         private Value result;
+        private int benchmarkTeardownEachArgs = 1;
 
         /**
          * Benchmarks must not be validated via their standard out, unlike tests.
@@ -97,6 +98,8 @@ public abstract class WasmBenchmarkSuiteBase {
                     }
                 }
             });
+            // Export "WebAssembly" binding.
+            contextBuilder.allowPolyglotAccess(PolyglotAccess.ALL);
             context = contextBuilder.build();
 
             var sources = benchmarkCase.getSources(EnumSet.noneOf(WasmBinaryTools.WabtOption.class));
@@ -110,6 +113,18 @@ public abstract class WasmBenchmarkSuiteBase {
             benchmarkRun = benchmarkModule.getMember("benchmarkRun");
             if (benchmarkRun == null) {
                 throw new RuntimeException(String.format("No benchmarkRun method in %s.", benchmarkCase.name()));
+            }
+
+            // Workaround for photon benchmark's nullary benchmarkTeardownEach().
+            Value api = context.getPolyglotBindings().getMember("WebAssembly");
+            if (api != null) {
+                Value funcType = api.getMember("func_type");
+                if (funcType != null) {
+                    Value signature = funcType.execute(benchmarkTeardownEach);
+                    if (signature.asString().contains("()")) {
+                        benchmarkTeardownEachArgs = 0;
+                    }
+                }
             }
 
             if (benchmarkSetupOnce != null) {
@@ -141,12 +156,20 @@ public abstract class WasmBenchmarkSuiteBase {
             // is that they can handle VM-state side-effects.
             // We may support benchmark-specific teardown actions in the future (at the invocation
             // level).
-            benchmarkSetupEach.execute();
+            if (benchmarkSetupEach != null) {
+                benchmarkSetupEach.execute();
+            }
         }
 
         @TearDown(Level.Invocation)
         public void teardownInvocation() {
-            benchmarkTeardownEach.execute(0);
+            if (benchmarkTeardownEach != null) {
+                if (benchmarkTeardownEachArgs == 0) {
+                    benchmarkTeardownEach.execute();
+                } else {
+                    benchmarkTeardownEach.execute(0);
+                }
+            }
         }
 
         public void run() {

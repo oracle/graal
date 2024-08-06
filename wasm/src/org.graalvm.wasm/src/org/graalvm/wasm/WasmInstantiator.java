@@ -495,7 +495,7 @@ public class WasmInstantiator {
             assert context.language().isMultiContext();
             return cachedTarget;
         }
-        final WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, module.bytecode(), codeEntry.localTypes(), codeEntry.resultTypes());
+        final WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, module.bytecode(), codeEntry.localTypes(), codeEntry.resultTypes(), codeEntry.usesMemoryZero());
         final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.localTypes(), codeEntry.maxStackSize());
         final WasmInstrumentableFunctionNode functionNode = instantiateFunctionNode(module, instance, wasmCodeEntry, codeEntry);
         final WasmRootNode rootNode;
