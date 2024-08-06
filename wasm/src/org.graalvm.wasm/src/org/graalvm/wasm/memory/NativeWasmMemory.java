@@ -127,6 +127,7 @@ final class NativeWasmMemory extends WasmMemory {
     }
 
     @Override
+    @TruffleBoundary
     public void reset() {
         free();
         size = declaredMinSize;
@@ -953,6 +954,7 @@ final class NativeWasmMemory extends WasmMemory {
         return startAddress == 0;
     }
 
+    @TruffleBoundary
     private void free() {
         unsafe.freeMemory(startAddress);
         startAddress = 0;
