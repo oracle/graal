@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,32 +51,49 @@ import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
-public class WasiFdFilestatSetTimesNode extends WasmBuiltinRootNode {
-    protected WasiFdFilestatSetTimesNode(WasmLanguage language, WasmModule module) {
+import java.io.IOException;
+
+public class WasiFdRenumberNode extends WasmBuiltinRootNode {
+
+    public WasiFdRenumberNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return fdstatSetTime(context,
-                        (int) WasmArguments.getArgument(args, 0),
-                        (long) WasmArguments.getArgument(args, 1),
-                        (long) WasmArguments.getArgument(args, 2),
-                        (int) WasmArguments.getArgument(args, 3));
+        return fdRenumber(context, (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int fdstatSetTime(WasmContext context, int fd, long atim, long mtim, int fstFlags) {
-        final Fd handle = context.fdManager().get(fd);
-        if (handle == null) {
-            return Errno.Badf.ordinal();
+    public int fdRenumber(WasmContext context, int fd, int to) {
+        synchronized (context.fdManager()) {
+            Fd handle = context.fdManager().get(fd);
+            if (handle == null) {
+                return Errno.Badf.ordinal();
+            }
+            if (fd == to) {
+                // if fd == to, dup2 is a no-op (we only check whether fd is a valid descriptor)
+                // since the semantics of fd_renumber is based on POSIX's dup2, we do the same
+                return Errno.Success.ordinal();
+            }
+            Fd toHandle = context.fdManager().get(to);
+            if (toHandle == null) {
+                // do not allow renumbering to arbitrary fd values
+                return Errno.Badf.ordinal();
+            }
+            try {
+                toHandle.close();
+            } catch (IOException e) {
+                return Errno.Io.ordinal();
+            }
+            context.fdManager().renumber(fd, to);
+            return Errno.Success.ordinal();
         }
-        return handle.filestatSetTimes(this, atim, mtim, fstFlags).ordinal();
     }
 
     @Override
     public String builtinNodeName() {
-        return "__wasi_fd_filestat_set_times";
+        return "__wasi_fd_renumber";
     }
 }

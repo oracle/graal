@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ package org.graalvm.wasm.predefined.wasi.fd;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
+import org.graalvm.wasm.predefined.wasi.types.Fdflags;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
 import org.graalvm.wasm.predefined.wasi.types.Rights;
 import org.graalvm.wasm.predefined.wasi.types.Whence;
@@ -70,10 +71,18 @@ abstract class SeekableByteChannelFd extends Fd {
         setChannel(channel);
     }
 
+    protected SeekableByteChannel getChannel() {
+        return channel;
+    }
+
     protected void setChannel(SeekableByteChannel channel) {
         this.channel = channel;
         this.inputStream = Channels.newInputStream(channel);
         this.outputStream = Channels.newOutputStream(channel);
+    }
+
+    protected OutputStream getOutputStream() {
+        return outputStream;
     }
 
     @Override
@@ -98,22 +107,52 @@ abstract class SeekableByteChannelFd extends Fd {
     }
 
     @Override
+    public Errno pread(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, long offset, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdRead)) {
+            return Errno.Notcapable;
+        }
+        if (isSet(fdFlags, Fdflags.Append)) {
+            // We implement pread using seek and tell (SeekableByteChannel#position). The best way
+            // to implement pread would be to use FileChannel#read(ByteBuffer,long), which allows
+            // reading from an arbitrary position without having to mutate the file descriptor's
+            // offset. The other disadvantage of using seek and tell is that files in append mode
+            // are not supported, as append mode always forces the position to the end of the file.
+            return Errno.Nosys;
+        }
+        return FdUtils.readFromStreamAt(node, memory, inputStream, iovecArrayAddress, iovecCount, channel, offset, sizeAddress);
+    }
+
+    @Override
+    public Errno pwrite(Node node, WasmMemory memory, int iovecArrayAddress, int iovecCount, long offset, int sizeAddress) {
+        if (!isSet(fsRightsBase, Rights.FdWrite)) {
+            return Errno.Notcapable;
+        }
+        if (isSet(fdFlags, Fdflags.Append)) {
+            // We implement pwrite using seek and tell (SeekableByteChannel#position). The best way
+            // to implement pwrite would be to use FileChannel#write(ByteBuffer,long), which allows
+            // writing to an arbitrary position without having to mutate the file descriptor's
+            // offset. The other disadvantage of using seek and tell is that files in append mode
+            // are not supported, as append mode always forces the position to the end of the file.
+            return Errno.Nosys;
+        }
+        return FdUtils.writeToStreamAt(node, memory, outputStream, iovecArrayAddress, iovecCount, channel, offset, sizeAddress);
+    }
+
+    @Override
     public Errno seek(Node node, WasmMemory memory, long offset, Whence whence, int newOffsetAddress) {
         if (!isSet(fsRightsBase, Rights.FdSeek)) {
             return Errno.Notcapable;
         }
         try {
-            switch (whence) {
-                case Set:
-                    channel.position(offset);
-                    break;
-                case Cur:
-                    channel.position(channel.position() + offset);
-                    break;
-                case End:
-                    channel.position(channel.size() + offset);
-                    break;
+            long newOffset = switch (whence) {
+                case Set -> offset;
+                case Cur -> channel.position() + offset;
+                case End -> channel.size() + offset;
+            };
+            if (newOffset < 0) {
+                return Errno.Inval;
             }
+            channel.position(newOffset);
             memory.store_i64(node, newOffsetAddress, channel.position());
         } catch (IOException e) {
             return Errno.Io;
@@ -121,4 +160,42 @@ abstract class SeekableByteChannelFd extends Fd {
         return Errno.Success;
     }
 
+    @Override
+    public Errno tell(Node node, WasmMemory memory, int offsetAddress) {
+        if (!isSet(fsRightsBase, Rights.FdTell)) {
+            return Errno.Notcapable;
+        }
+        try {
+            memory.store_i64(node, offsetAddress, channel.position());
+        } catch (IOException e) {
+            return Errno.Io;
+        }
+        return Errno.Success;
+    }
+
+    @Override
+    public Errno datasync() {
+        if (!isSet(fsRightsBase, Rights.FdDatasync)) {
+            return Errno.Notcapable;
+        }
+        try {
+            outputStream.flush();
+        } catch (IOException e) {
+            return Errno.Io;
+        }
+        return Errno.Success;
+    }
+
+    @Override
+    public Errno sync() {
+        if (!isSet(fsRightsBase, Rights.FdSync)) {
+            return Errno.Notcapable;
+        }
+        try {
+            outputStream.flush();
+        } catch (IOException e) {
+            return Errno.Io;
+        }
+        return Errno.Success;
+    }
 }

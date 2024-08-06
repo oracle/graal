@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@
 
 package org.graalvm.wasm.predefined.wasi.types;
 
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
 
@@ -68,6 +69,11 @@ public final class Dirent {
         memory.store_i64(node, address + 0, value);
     }
 
+    /** Writes the offset of the next directory entry stored in this directory. */
+    public static void writeDNextToByteArray(byte[] buffer, int address, long value) {
+        ByteArraySupport.littleEndian().putLong(buffer, address + 0, value);
+    }
+
     /** Reads the serial number of the file referred to by this directory entry. */
     public static long readDIno(Node node, WasmMemory memory, int address) {
         return memory.load_i64(node, address + 8);
@@ -76,6 +82,11 @@ public final class Dirent {
     /** Writes the serial number of the file referred to by this directory entry. */
     public static void writeDIno(Node node, WasmMemory memory, int address, long value) {
         memory.store_i64(node, address + 8, value);
+    }
+
+    /** Writes the serial number of the file referred to by this directory entry. */
+    public static void writeDInoToByteArray(byte[] buffer, int address, long value) {
+        ByteArraySupport.littleEndian().putLong(buffer, address + 8, value);
     }
 
     /** Reads the length of the name of the directory entry. */
@@ -88,6 +99,11 @@ public final class Dirent {
         memory.store_i32(node, address + 16, value);
     }
 
+    /** Writes the length of the name of the directory entry. */
+    public static void writeDNamlen(byte[] buffer, int address, int value) {
+        ByteArraySupport.littleEndian().putInt(buffer, address + 16, value);
+    }
+
     /** Reads the type of the file referred to by this directory entry. */
     public static Filetype readDType(Node node, WasmMemory memory, int address) {
         return Filetype.fromValue((byte) memory.load_i32_8u(node, address + 20));
@@ -98,4 +114,8 @@ public final class Dirent {
         memory.store_i32_8(node, address + 20, value.toValue());
     }
 
+    /** Writes the type of the file referred to by this directory entry. */
+    public static void writeDType(byte[] buffer, int address, Filetype value) {
+        ByteArraySupport.littleEndian().putByte(buffer, address + 20, value.toValue());
+    }
 }
