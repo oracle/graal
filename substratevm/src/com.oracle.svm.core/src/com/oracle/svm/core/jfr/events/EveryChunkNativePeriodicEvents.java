@@ -87,7 +87,7 @@ public class EveryChunkNativePeriodicEvents extends Event {
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.PhysicalMemory);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putLong(data, PhysicalMemory.getCachedSize().rawValue());
+            JfrNativeEventWriter.putLong(data, PhysicalMemory.size().rawValue());
             JfrNativeEventWriter.putLong(data, usedSize); /* used size */
             JfrNativeEventWriter.endSmallEvent(data);
         }

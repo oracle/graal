@@ -72,7 +72,7 @@ class LinuxPhysicalMemorySupportImpl implements PhysicalMemorySupport {
             List<String> lines = readAllLines("/proc/meminfo");
             for (String line : lines) {
                 if (line.contains("MemAvailable")) {
-                    return PhysicalMemory.getCachedSize().rawValue() - parseFirstNumber(line) * K;
+                    return PhysicalMemory.size().rawValue() - parseFirstNumber(line) * K;
                 }
             }
         } catch (Exception e) {

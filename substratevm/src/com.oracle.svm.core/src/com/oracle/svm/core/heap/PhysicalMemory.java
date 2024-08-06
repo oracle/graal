@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.container.Container;
@@ -67,7 +68,7 @@ public class PhysicalMemory {
     private static UnsignedWord cachedSize = UNSET_SENTINEL;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isInitialized() {
+    private static boolean isInitialized() {
         return cachedSize != UNSET_SENTINEL;
     }
 
@@ -78,15 +79,15 @@ public class PhysicalMemory {
     }
 
     /**
-     * Returns the size of physical memory in bytes, querying it from the OS if it has not been
-     * initialized yet.
+     * Populates the cache for the size of physical memory in bytes, querying it from the OS if it
+     * has not been initialized yet.
      *
      * This method might allocate and use synchronization, so it is not safe to call it from inside
      * a VMOperation or during early stages of a thread or isolate.
      */
-    public static UnsignedWord size() {
+    public static void initialize() {
         if (!isInitialized()) {
-            long memoryLimit = SubstrateOptions.MaxRAM.getValue();
+            long memoryLimit = IsolateArgumentParser.getLongOptionValue(IsolateArgumentParser.getOptionIndex(SubstrateOptions.MaxRAM));
             if (memoryLimit > 0) {
                 cachedSize = WordFactory.unsigned(memoryLimit);
             } else if (Container.singleton().isContainerized()) {
@@ -95,8 +96,6 @@ public class PhysicalMemory {
                 cachedSize = OperatingSystem.singleton().getPhysicalMemorySize();
             }
         }
-
-        return cachedSize;
     }
 
     /** Returns the amount of used physical memory in bytes, or -1 if not supported. */
@@ -113,11 +112,10 @@ public class PhysicalMemory {
     }
 
     /**
-     * Returns the size of physical memory in bytes that has been previously cached. This method
-     * must not be called if {@link #isInitialized()} is still false.
+     * Returns the size of physical memory in bytes that has been cached at startup.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getCachedSize() {
+    public static UnsignedWord size() {
         VMError.guarantee(isInitialized(), "Cached physical memory size is not available");
         return cachedSize;
     }
