@@ -81,6 +81,9 @@
   use_musl_dynamic:: require_musl + task_spec({
       mxgate_config+::["musl-dynamic"],
       mxgate_extra_args+: ["--extra-image-builder-arguments=--libc=musl -H:+UnlockExperimentalVMOptions -H:-StaticExecutable -H:-UnlockExperimentalVMOptions"],
+      environment+: {
+        MX_SVMTEST_RUN_PREFIX: "$MUSL_TOOLCHAIN/lib/libc.so ", # see GR-53484, launching the ELF file with the right interpreter
+      },
   } +
     # The galahad gates run with oracle JDK, which do not offer a musl build
     galahad.exclude

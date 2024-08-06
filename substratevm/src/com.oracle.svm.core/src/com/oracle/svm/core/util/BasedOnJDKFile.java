@@ -34,27 +34,29 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 /**
- * Documents that the element is based on a JDK source file. This is mainly useful for non-Java
+ * Documents that the element is based on a JDK source path. This is mainly useful for non-Java
  * sources like C++ files. For Java classes, {@link BasedOnJDKClass} might be more appropriate.
  */
 @Repeatable(BasedOnJDKFile.List.class)
 @Retention(RetentionPolicy.RUNTIME)
-@Target(value = {ElementType.TYPE, ElementType.FIELD, ElementType.CONSTRUCTOR, ElementType.METHOD})
+@Target(value = {ElementType.TYPE, ElementType.FIELD, ElementType.CONSTRUCTOR, ElementType.METHOD, ElementType.PACKAGE})
 @Platforms(Platform.HOSTED_ONLY.class)
 public @interface BasedOnJDKFile {
 
     /**
-     * Link to the source file.
+     * Link to the source path.
      *
-     * Currently, only GitHub links to the <a href="https://github.com/openjdk/jdk">openjdk</a> are
-     * supported. The format is as follows:
+     * Currently, only GitHub links to the <a href="https://github.com/openjdk/jdk">openjdk</a>
+     * repository are supported. Two formats are supported, file references (<em>blob</em>) and
+     * <em>tree</em> references for tracking entire source folders:
      *
      * <pre>
-     *     https://github.com/openjdk/jdk/blob/(tag or revision)/(path/to/the/source/file)(#L(line_start)-L(line_end))?
+     *     https://github.com/openjdk/jdk/blob/{tag or revision}/path/to/the/source/file(#L(line_start)-L(line_end))?
+     *     https://github.com/openjdk/jdk/tree/{tag or revision}/path/to/the/source/folder/
      * </pre>
      *
-     * To specify a line range, a suffix of the form {@code #L[0-9]+-L[0-9]+} might be added.
-     * Example:
+     * To specify a line range for a file, a suffix of the form {@code #L[0-9]+-L[0-9]+} might be
+     * added. Example:
      *
      * <pre>
      *     &#64;BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/cpu/x86/vm_version_x86.hpp#L40-L304")
@@ -65,6 +67,9 @@ public @interface BasedOnJDKFile {
      * <pre>
      *     &#64;BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/cpu/x86/vm_version_x86.hpp#L40")
      * </pre>
+     *
+     * Tree references track the all source files in the specified directory recursively. Note that
+     * tree references must end with a {@code /}.
      */
     String value();
 

@@ -136,10 +136,6 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
         return inputHasNext(locals, index, isForward());
     }
 
-    public boolean inputHasNext(TRegexExecutorLocals locals, boolean forward) {
-        return inputHasNext(locals, locals.getIndex(), forward);
-    }
-
     public boolean inputHasNext(TRegexExecutorLocals locals, int index, boolean forward) {
         return forward ? index < getMaxIndex(locals) : index > getMinIndex(locals);
     }
@@ -281,7 +277,7 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
                 return UTF16.isHighSurrogate(inputReadRaw(locals, forward), forward) ? 2 : 1;
             } else if (codeRange == TruffleString.CodeRange.BROKEN) {
                 if (UTF16.isHighSurrogate(inputReadRaw(locals, forward), forward) && inputHasNext(locals, inputIncRaw(locals.getIndex(), 1, forward), forward) &&
-                                UTF16.isLowSurrogate(inputReadRaw(locals, inputIncRaw(locals.getIndex(), 1), forward), forward)) {
+                                UTF16.isLowSurrogate(inputReadRaw(locals, inputIncRaw(locals.getIndex(), 1, forward), forward), forward)) {
                     return 2;
                 }
                 return 1;
@@ -323,10 +319,6 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
 
     public void inputIncRaw(TRegexExecutorLocals locals, int offset) {
         inputIncRaw(locals, offset, isForward());
-    }
-
-    public void inputIncRaw(TRegexExecutorLocals locals, boolean forward) {
-        inputIncRaw(locals, 1, forward);
     }
 
     public void inputIncRaw(TRegexExecutorLocals locals, int offset, boolean forward) {

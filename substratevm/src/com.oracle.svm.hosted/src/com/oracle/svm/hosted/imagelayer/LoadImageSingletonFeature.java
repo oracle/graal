@@ -216,6 +216,13 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
                              */
                             config.registerAsInHeap(slotInfo.keyClass());
                         }
+                        /*
+                         * GR-55294: The constants have to be created before the end of the analysis
+                         * as new types cannot be created later.
+                         */
+                        for (int priorId : getCrossLayerSingletonMappingInfo().getPriorLayerObjectIDs(slotInfo.keyClass())) {
+                            HostedImageLayerBuildingSupport.singleton().getLoader().getOrCreateConstant(priorId);
+                        }
                     }
                 }
             }

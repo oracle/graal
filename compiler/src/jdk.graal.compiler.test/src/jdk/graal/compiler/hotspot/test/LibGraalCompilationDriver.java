@@ -285,6 +285,12 @@ public class LibGraalCompilationDriver {
                 return capacity;
             }
 
+            @Override
+            public void initialize(long addr) {
+                super.initialize(addr);
+                UNSAFE.setMemory(getAddress(), length(), (byte) 0);
+            }
+
             public String readToString() {
                 long address = getAddress();
                 int size = UNSAFE.getInt(address);
@@ -292,6 +298,14 @@ public class LibGraalCompilationDriver {
                 UNSAFE.copyMemory(null, address + Integer.BYTES, data, ARRAY_BYTE_BASE_OFFSET, size);
                 return new String(data).trim();
             }
+
+            public boolean hasBeenWritten() {
+                GraalError.guarantee(getAddress() != 0, "Must have allocated native buffer already to use this API");
+                int size = UNSAFE.getInt(getAddress());
+                GraalError.guarantee(size >= 0, "Size cannot be negative but is %s", size);
+                return size > 0;
+            }
+
         }
 
         /**
@@ -548,9 +562,18 @@ public class LibGraalCompilationDriver {
 
             HotSpotInstalledCode installedCode = LibGraal.unhand(HotSpotInstalledCode.class, installedCodeHandle);
             if (installedCode == null) {
-                String stackTrace = stackTraceBuffer.readToString();
-                TTY.println("%s : Error compiling method: %s", compilation.testName(), compilation);
-                TTY.println(stackTrace);
+                /*
+                 * Most exceptions during compilation in libgraal are already handled by the
+                 * libgraal side. Only exceptions happening during setting up compile contexts etc
+                 * may be thrown here. In general a compilation result of null means compilation
+                 * exception (handled or not), only if the exception buffer was written the
+                 * exception was not handled already on the libgraal side.
+                 */
+                if (stackTraceBuffer.hasBeenWritten()) {
+                    String stackTrace = stackTraceBuffer.readToString();
+                    TTY.println("%s : Error compiling method: %s", compilation.testName(), compilation);
+                    TTY.println(stackTrace);
+                }
                 return null;
             }
             return new CompilationResult(installedCode, memTimeBuffer.readTimeElapsed(), memTimeBuffer.readBytesAllocated());

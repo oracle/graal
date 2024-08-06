@@ -1073,7 +1073,8 @@ public class SymbolicSnippetEncoder {
 
     /**
      * To prevent this field being considered as an <i>externalValue</i> by
-     * {@link ObjectCopier#encode(Object, List)}, it must <b>not</b> be {@code final}.
+     * {@link ObjectCopier#encode(ObjectCopier.Encoder, Object)}, it must <b>not</b> be
+     * {@code final}.
      */
     private static Map<Class<?>, SnippetResolvedJavaType> snippetTypes = new HashMap<>();
 

@@ -1097,11 +1097,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private static void registerLinkageError(Class<?> clazz, LinkageError error, Map<Class<?>, Throwable> errorMap) {
+    private void registerLinkageError(Class<?> clazz, LinkageError error, Map<Class<?>, Throwable> errorMap) {
         if (LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz)) {
             throw error;
         } else {
-            errorMap.put(clazz, error);
+            var registeredError = errorMap.computeIfAbsent(clazz, k -> {
+                universe.getHeapScanner().rescanObject(error);
+                return error;
+            });
+            assert registeredError.toString().equals(error.toString()) : "Attempting to replace " + registeredError + " with " + error;
         }
     }
 

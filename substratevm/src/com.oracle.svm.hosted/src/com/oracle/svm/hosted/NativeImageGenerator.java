@@ -99,6 +99,7 @@ import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
+import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisFactory;
@@ -596,6 +597,12 @@ public class NativeImageGenerator {
                 loader.watchdog.recordActivity();
 
                 hUniverse = new HostedUniverse(bb);
+                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().getWriter().setHostedUniverse(hUniverse);
+                }
+                if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().getLoader().setHostedUniverse(hUniverse);
+                }
                 hMetaAccess = new HostedMetaAccess(hUniverse, bb.getMetaAccess());
 
                 BeforeUniverseBuildingAccessImpl beforeUniverseBuildingConfig = new BeforeUniverseBuildingAccessImpl(featureHandler, loader, debug, hMetaAccess);
@@ -635,6 +642,10 @@ public class NativeImageGenerator {
                 bb.getUnsupportedFeatures().report(bb);
 
                 recordRestrictHeapAccessCallees(aUniverse.getMethods());
+
+                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().getWriter().persistMethodGraphs();
+                }
 
                 /*
                  * After this point, all TypeFlow (and therefore also TypeState) objects are
@@ -717,7 +728,7 @@ public class NativeImageGenerator {
                         image.build(imageName, debug);
 
                         if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                            HostedImageLayerBuildingSupport.singleton().getWriter().persistAnalysisInfo(hUniverse, bb.getUniverse());
+                            HostedImageLayerBuildingSupport.singleton().getWriter().persistAnalysisInfo();
                         }
 
                         if (NativeImageOptions.PrintUniverse.getValue()) {
@@ -947,10 +958,25 @@ public class NativeImageGenerator {
 
                 setDefaultConfiguration();
 
+                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().getWriter()
+                                    .setImageLayerWriterHelper(HostedConfiguration.instance().createSVMImageLayerWriterHelper(HostedImageLayerBuildingSupport.singleton().getWriter()));
+                }
+
+                if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().getLoader().setImageLayerLoaderHelper(HostedConfiguration.instance().createSVMImageLayerLoaderHelper());
+                }
+
                 AnnotationSubstitutionProcessor annotationSubstitutions = createAnnotationSubstitutionProcessor(originalMetaAccess, loader, classInitializationSupport);
                 CEnumCallWrapperSubstitutionProcessor cEnumProcessor = new CEnumCallWrapperSubstitutionProcessor();
                 aUniverse = createAnalysisUniverse(options, target, loader, originalMetaAccess, annotationSubstitutions, cEnumProcessor,
                                 classInitializationSupport, Collections.singletonList(harnessSubstitutions), missingRegistrationSupport);
+
+                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    ImageLayerWriter imageLayerWriter = HostedImageLayerBuildingSupport.singleton().getWriter();
+                    aUniverse.setImageLayerWriter(imageLayerWriter);
+                    imageLayerWriter.setAnalysisUniverse(aUniverse);
+                }
 
                 ImageLayerLoader imageLayerLoader = null;
                 if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
