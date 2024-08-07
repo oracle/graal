@@ -71,6 +71,7 @@ final class PolyglotThreadInfo {
     private volatile int enteredCount;
     private volatile TruffleSafepoint.Interrupter leaveAndEnterInterrupter;
     final LinkedList<Object[]> explicitContextStack = new LinkedList<>();
+    boolean interruptSent;
     volatile boolean cancelled;
     volatile boolean leaveAndEnterInterrupted;
     private Object originalContextClassLoader = NULL_CLASS_LOADER;
