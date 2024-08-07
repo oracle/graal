@@ -113,12 +113,14 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local gate_jobs = {
     "gate-vm-libgraal_compiler-labsjdk-latest-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {} + galahad.exclude,
+    # [GR-57161] IllegalStateException: Cannot call getJObjectValue without Java frame anchor
+    # "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {} + galahad.exclude,
     "gate-vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
 
     "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
+    # [GR-57161] IllegalStateException: Cannot call getJObjectValue without Java frame anchor
+    # "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
   } + if repo_config.graalvm_edition == "ce" then
   {
     # GuestGraal on EE is still under construction
@@ -179,7 +181,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     for os_arch in all_os_arches
     for task in [
       "libgraal_compiler",
-      "libgraal_truffle",
+      # [GR-57161] IllegalStateException: Cannot call getJObjectValue without Java frame anchor
+      # "libgraal_truffle",
       "libgraal_compiler_quickbuild",
       "libgraal_truffle_quickbuild"
     ] +
