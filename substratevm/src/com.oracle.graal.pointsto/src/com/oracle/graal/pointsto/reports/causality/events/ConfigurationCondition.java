@@ -24,11 +24,9 @@
  */
 package com.oracle.graal.pointsto.reports.causality.events;
 
-public final class ConfigurationCondition extends CausalityEvent {
-    public final String typeName;
-
-    ConfigurationCondition(String typeName) {
-        this.typeName = typeName;
+public final class ConfigurationCondition extends ClassEvent {
+    ConfigurationCondition(Class<?> type) {
+        super(type);
     }
 
     @Override
@@ -39,10 +37,5 @@ public final class ConfigurationCondition extends CausalityEvent {
     @Override
     public EventKinds typeDescriptor() {
         return EventKinds.ConfigurationCondition;
-    }
-
-    @Override
-    public String toString() {
-        return typeName + typeDescriptor().suffix;
     }
 }

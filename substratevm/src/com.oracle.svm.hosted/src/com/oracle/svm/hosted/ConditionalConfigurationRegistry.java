@@ -31,11 +31,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.reports.causality.CausalityExport;
-import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
@@ -66,7 +66,7 @@ public abstract class ConditionalConfigurationRegistry {
             }
             if (beforeAnalysisAccess == null) {
                 Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getType(), key -> new ConcurrentLinkedQueue<>());
-                CausalityExport.registerEvent(CausalityEvents.ConfigurationCondition.create(condition.getTypeName()));
+                CausalityExport.registerEvent(CausalityEvents.ConfigurationCondition.create(condition.getType()));
             handlers.add(() -> consumer.accept(runtimeCondition));
             } else {
                 beforeAnalysisAccess.registerReachabilityHandler(access -> consumer.accept(runtimeCondition), condition.getType());

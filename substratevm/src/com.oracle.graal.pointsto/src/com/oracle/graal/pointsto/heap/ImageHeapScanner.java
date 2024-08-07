@@ -32,10 +32,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.reports.causality.CausalityExport;
-import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
-import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
-import com.oracle.graal.pointsto.reports.causality.events.UnknownHeapObject;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
@@ -55,6 +51,10 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
+import com.oracle.graal.pointsto.reports.causality.events.UnknownHeapObject;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -387,8 +387,8 @@ public abstract class ImageHeapScanner {
                     // Objects created by the analysis itself would add too many types as roots...
                     cause = CausalityEvents.Ignored;
                 }
-
-                CausalityEvent typeObjectInHeap = (asObject(constant) instanceof Class<?> ? CausalityEvents.HeapObjectClass : CausalityEvents.HeapObjectDynamicHub)
+                
+                CausalityEvent typeObjectInHeap = (snippetReflection.asObject(Object.class, constant) instanceof Class<?> ? CausalityEvents.HeapObjectClass : CausalityEvents.HeapObjectDynamicHub)
                         .create(typeFromClassConstant.getJavaClass());
                 CausalityExport.registerEdge(cause, typeObjectInHeap);
 

@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.reports.causality;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -118,7 +117,7 @@ final class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
         originalInvokeReceivers.put(invocation, invocation.getReceiver());
     }
 
-    protected void forEachTypeflow(Consumer<TypeFlow<?>> callback) {
+    private void forEachTypeflow(Consumer<TypeFlow<?>> callback) {
         for (var e : interflows.keySet()) {
             callback.accept(e.getLeft());
             callback.accept(e.getRight());
@@ -132,7 +131,7 @@ final class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
         flowingFromHeap.keySet().stream().map(Pair::getLeft).forEach(callback);
 
         // TODO: Unsure about this - whether it is necessary and whether it is correct/complete
-        originalInvokeReceivers.keySet().stream().map(InvokeTypeFlow::getTargetMethod).flatMap(targetMethod -> Arrays.stream(targetMethod.getImplementations()))
+        originalInvokeReceivers.keySet().stream().map(InvokeTypeFlow::getTargetMethod).flatMap(targetMethod -> targetMethod.collectMethodImplementations(false).stream())
                         .map(CausalityEvents.MethodImplementationInvoked::create).forEach(callback);
 
         forEachTypeflow(tf -> {
@@ -243,7 +242,7 @@ final class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
         HashMap<TypeFlow<?>, Graph.RealFlowNode> flowMapping = new HashMap<>();
 
         Function<TypeFlow<?>, Graph.RealFlowNode> flowMapper = flow -> {
-            if (flow.getState().typesCount() == 0 && !flow.isSaturated()) {
+            if (flow.getState().isPrimitive() || flow.getState().typesCount() == 0 && !flow.isSaturated()) {
                 return null;
             }
 

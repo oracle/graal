@@ -217,7 +217,7 @@ public final class CausalityEvents {
     public static final EventFactory<Consumer<DuringAnalysisAccess>> ReachabilityNotificationCallback = factory(ReachabilityNotificationCallback::new);
     public static final EventFactory<BiConsumer<DuringAnalysisAccess, Class<?>>> SubtypeReachableNotificationCallback = factory(SubtypeReachableNotificationCallback::new);
     public static final EventFactory<BiConsumer<DuringAnalysisAccess, Executable>> OverrideReachableNotificationCallback = factory(OverrideReachableNotificationCallback::new);
-    public static final EventFactory<String> ConfigurationCondition = factory(ConfigurationCondition::new);
+    public static final EventFactory<Class<?>> ConfigurationCondition = factory(ConfigurationCondition::new);
     public static final EventFactory<URI> ConfigurationFile = factory(ConfigurationFile::new);
     public static final EventFactory<Class<?>> UnknownHeapObject = factory(UnknownHeapObject::new);
     public static final EventFactory<Class<?>> BuildTimeClassInitialization = factory(BuildTimeClassInitialization::new);

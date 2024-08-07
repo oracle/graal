@@ -80,11 +80,11 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
-import com.oracle.graal.pointsto.reports.causality.CausalityExport;
-import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
@@ -365,10 +365,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         for (Executable executable : executables) {
             CausalityExport.registerEvent(CausalityEvents.ReflectionRegistration.create(executable));
         }
-        runConditionalInAnalysisTask(condition, (cnd) -> {
-            // Causality-Merge-TODO: try-region for each executable in registerMethods()
-            registerMethods(cnd, queriedOnly, executables);
-        });
+        runConditionalInAnalysisTask(condition, (cnd) -> registerMethods(cnd, queriedOnly, executables));
     }
 
     @Override
@@ -429,7 +426,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private void registerMethods(ConfigurationCondition cnd, boolean queriedOnly, Executable[] reflectExecutables) {
         for (Executable reflectExecutable : reflectExecutables) {
-            registerMethod(cnd, queriedOnly, reflectExecutable);
+            try (var ignored = CausalityExport.setCause(CausalityEvents.ReflectionRegistration.create(reflectExecutable))) {
+                registerMethod(cnd, queriedOnly, reflectExecutable);
+            }
         }
     }
 
@@ -543,7 +542,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         for (Field field : fields) {
             CausalityExport.registerEvent(CausalityEvents.ReflectionRegistration.create(field));
         }
-        // Causality-Merge-TODO: try-region in registerFields()
         runConditionalInAnalysisTask(condition, (cnd) -> registerFields(cnd, false, fields));
     }
 
@@ -584,7 +582,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private void registerFields(ConfigurationCondition cnd, boolean queriedOnly, Field[] reflectFields) {
         for (Field reflectField : reflectFields) {
-            registerField(cnd, queriedOnly, reflectField);
+            try (var ignored = CausalityExport.setCause(CausalityEvents.ReflectionRegistration.create(reflectField))) {
+                registerField(cnd, queriedOnly, reflectField);
+            }
         }
     }
 

@@ -44,6 +44,7 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -205,7 +206,7 @@ abstract class BasicImpl<TContext extends BasicImpl.ThreadContext> extends Causa
             } else {
                 o = asObject(bb, Object.class, value);
                 Object original = originsOfReplacedObjects.getOrDefault(o, o);
-                java.lang.reflect.Field f = field.getJavaField();
+                java.lang.reflect.Field f = OriginalFieldProvider.getJavaField(field.unwrapTowardsOriginalField());
                 Class<?> declaringClass = f.getDeclaringClass();
                 responsible = HeapAssignmentTracing.getInstance().getClassResponsibleForStaticFieldWrite(declaringClass, f, original);
             }
@@ -218,7 +219,7 @@ abstract class BasicImpl<TContext extends BasicImpl.ThreadContext> extends Causa
                 o = asObject(bb, Object.class, value);
                 Object original = originsOfReplacedObjects.getOrDefault(o, o);
 
-                java.lang.reflect.Field f = field.getJavaField();
+                java.lang.reflect.Field f = OriginalFieldProvider.getJavaField(field.unwrapTowardsOriginalField());
                 if (f.getDeclaringClass().isAssignableFrom(receiverO.getClass())) {
                     responsible = HeapAssignmentTracing.getInstance().getClassResponsibleForNonstaticFieldWrite(receiverO, f, original);
                 } else {
