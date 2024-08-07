@@ -89,7 +89,7 @@ public final class BytecodeConfig {
      * {@link BytecodeConfig}.
      * <p>
      * Note this method is not intended to be used directly. Use the generated method, for example
-     * <code>MyBytecodeRootNode.newConfigBuilder()</code> instead.
+     * <code>MyBytecodeRootNodeGen.newConfigBuilder()</code> instead.
      *
      * @since 24.2
      */

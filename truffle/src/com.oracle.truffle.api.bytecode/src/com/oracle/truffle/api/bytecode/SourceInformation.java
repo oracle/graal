@@ -43,8 +43,10 @@ package com.oracle.truffle.api.bytecode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Represents a source information object which contains source section information for a range of
- * bytecodes.
+ * Introspection class modeling source section information for a range of bytecodes.
+ * <p>
+ * Note: Introspection classes are intended to be used for debugging purposes only. These APIs may
+ * change in the future.
  *
  * @see BytecodeNode#getSourceInformation()
  * @see BytecodeLocation#getSourceInformation()

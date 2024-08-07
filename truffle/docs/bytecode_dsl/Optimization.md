@@ -1,6 +1,6 @@
 # Optimization
 
-Bytecode interpreters commonly employ a variety of optimizations to achieve better interpreted performance. 
+Bytecode interpreters commonly employ a variety of optimizations to achieve better interpreted performance.
 This section discusses how to employ these optimizations in Bytecode DSL interpreters.
 
 ## Boxing elimination
@@ -10,18 +10,18 @@ By default, values are passed between operations as objects, which forces primit
 Often, the boxed value is subsequently unboxed when it gets consumed.
 
 Boxing elimination avoids these unnecessary boxing steps.
-The interpreter can speculatively rewrite bytecode to pass primitive values between operations whenever possible.
+The interpreter can speculatively rewrite bytecode instructions to specialized instructions that pass primitive values whenever possible.
 
-To enable boxing elimination, specify a set of `boxingEliminationTypes` on the `@GenerateBytecode` annotation. For example, the following configuration
+To enable boxing elimination, specify a set of `boxingEliminationTypes` on the [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) annotation. For example, the following configuration
 
 ```
 @GenerateBytecode(
     ...
-    boxingEliminationTypes = {long.class, boolean.class}
+    boxingEliminationTypes = {int.class, long.class}
 )
 ```
 
-will instruct the interpreter to automatically avoid boxing for `long` and `boolean` values.
+will instruct the interpreter to automatically avoid boxing for `int` and `long` values. (Note that `boolean` boxing elimination is supported, but is generally not worth the overhead of the additional instructions it produces.)
 
 Boxing elimination is implemented using quickening, which is described below.
 
@@ -32,8 +32,9 @@ Bytecode DSL supports quickened operations, which handle a subset of the special
 
 Quickened operations can reduce the amount of work required to evaluate an operation.
 For example, a quickened operation that only accepts `int` inputs can avoid operand boxing and the additional type checks required by the general operation.
+Additionally, a custom operation that has only one active specialization can be quickened to an operation that only supports that single specialization, avoiding extra specialization state checks.
 
-Quickened instructions can be automatically derived using [tracing](#tracing), or specified manually using `@ForceQuickening`.
+Quickened instructions can be automatically derived using [tracing](#tracing), or specified manually using [`@ForceQuickening`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/ForceQuickening.java).
 
 
 ## Superinstructions
@@ -50,8 +51,10 @@ Superinstructions can be automatically derived using [tracing](#tracing).
 
 **Note: Tracing is not yet supported**.
 
-Determining which instructions are worth optimizing (via quickening or superinstructions) typically requires manual profiling and benchmarking. 
+Determining which instructions are worth optimizing (via quickening or superinstructions) typically requires manual profiling and benchmarking.
 Bytecode DSL can automatically infer optimization opportunities using *tracing*.
+
+<!--
 
 First, the DSL allows you to generate a *tracing interpreter* to collect data about the executed bytecode (e.g., common instruction sequences).
 Then, executed on a representative corpus of programs, the interpreter collects tracing data and infers a set of optimization decisions (e.g., "create a superinstruction with instructions X, Y, and Z").
@@ -69,11 +72,6 @@ The path is relative to the current file.
 It is recommended to store decisions in a file named `"decisions.json"`.
 It is also recommended to check the decisions file in to version control and to update it whenever significant changes to the interpreter specification are made.
 
-**TODO**: does the file need to exist already?
-
-
-<!-- After it finishes executing a corpus program, the tracing interpreter persists the collected data (encoded as optimization decisions) to disk in the decisions file.
-When it traces subsequent corpus programs, the interpreter combines the tracing data; the resulting decisions file comprises tracing metrics from the entire corpus. -->
 
 Then we can recompile the Bytecode DSL interpreter for tracing. This will create a modified version of the interpreter that traces bytecode execution at run time.
 To do this, recompile the project with the `truffle.dsl.BytecodeEnableTracing=true` annotation processor flag. This can be done in `mx` using:
@@ -125,4 +123,5 @@ The `@GenerateBytecode` annotation has a second attribute, `decisionOverrideFile
 
 #### Decisions file format
 
-**TODO**
+
+-->

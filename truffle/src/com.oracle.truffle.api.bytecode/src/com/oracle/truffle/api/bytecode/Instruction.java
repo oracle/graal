@@ -54,7 +54,7 @@ import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Introspection class modeling an instruction in a bytecode interpreter.
- *
+ * <p>
  * Note: Introspection classes are intended to be used for debugging purposes only. These APIs may
  * change in the future.
  *
