@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,43 +40,44 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
-public class WasiFdFilestatSetTimesNode extends WasmBuiltinRootNode {
-    protected WasiFdFilestatSetTimesNode(WasmLanguage language, WasmModule module) {
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
+
+public final class WasiFdTellNode extends WasmBuiltinRootNode {
+
+    public WasiFdTellNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return fdstatSetTime(context,
+        return fdTell(context, memory(frame),
                         (int) WasmArguments.getArgument(args, 0),
-                        (long) WasmArguments.getArgument(args, 1),
-                        (long) WasmArguments.getArgument(args, 2),
-                        (int) WasmArguments.getArgument(args, 3));
+                        (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int fdstatSetTime(WasmContext context, int fd, long atim, long mtim, int fstFlags) {
+    private int fdTell(WasmContext context, WasmMemory memory, int fd, int filesizeAddress) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.filestatSetTimes(this, atim, mtim, fstFlags).ordinal();
+        return handle.tell(this, memory, filesizeAddress).ordinal();
     }
 
     @Override
     public String builtinNodeName() {
-        return "__wasi_fd_filestat_set_times";
+        return "__wasi_fd_tell";
     }
 }

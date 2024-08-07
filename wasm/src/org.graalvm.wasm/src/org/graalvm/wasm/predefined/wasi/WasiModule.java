@@ -146,34 +146,34 @@ public final class WasiModule extends BuiltinModule {
         defineFunction(context, module, "args_sizes_get", types(RETURN_VALUE_ADDRESS_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiArgsSizesGetNode(language, module));
         defineFunction(context, module, "environ_get", types(POINTER_TYPE, POINTER_TYPE), types(ERRNO_TYPE), new WasiEnvironGetNode(language, module));
         defineFunction(context, module, "environ_sizes_get", types(RETURN_VALUE_ADDRESS_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiEnvironSizesGetNode(language, module));
-        defineFunction(context, module, "clock_res_get", types(CLOCKID_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_clock_res_get"));
+        defineFunction(context, module, "clock_res_get", types(CLOCKID_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiClockResGetNode(language, module));
         defineFunction(context, module, "clock_time_get", types(CLOCKID_TYPE, TIMESTAMP_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiClockTimeGetNode(language, module));
         defineFunction(context, module, "fd_advise", types(FD_TYPE, FILESIZE_TYPE, FILESIZE_TYPE, ADVICE_TYPE), types(ERRNO_TYPE),
                         new WasiFdAdviseNode(language, module));
         defineFunction(context, module, "fd_allocate", types(FD_TYPE, FILESIZE_TYPE, FILESIZE_TYPE), types(ERRNO_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_allocate"));
         defineFunction(context, module, "fd_close", types(FD_TYPE), types(ERRNO_TYPE), new WasiFdCloseNode(language, module));
-        defineFunction(context, module, "fd_datasync", types(FD_TYPE), types(ERRNO_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_datasync"));
+        defineFunction(context, module, "fd_datasync", types(FD_TYPE), types(ERRNO_TYPE), new WasiFdDatasyncNode(language, module));
         defineFunction(context, module, "fd_fdstat_get", types(FD_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiFdFdstatGetNode(language, module));
         defineFunction(context, module, "fd_fdstat_set_flags", types(FD_TYPE, FDFLAGS_TYPE), types(ERRNO_TYPE), new WasiFdFdstatSetFlagsNode(language, module));
         defineFunction(context, module, "fd_fdstat_set_rights", types(FD_TYPE, RIGHTS_TYPE, RIGHTS_TYPE), types(ERRNO_TYPE),
-                        new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_fdstat_set_rights"));
+                        new WasiFdFdstatSetRightsNode(language, module));
         defineFunction(context, module, "fd_filestat_get", types(FD_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiFdFilestatGetNode(language, module));
-        defineFunction(context, module, "fd_filestat_set_size", types(FD_TYPE, FILESIZE_TYPE), types(ERRNO_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_filestat_set_size"));
+        defineFunction(context, module, "fd_filestat_set_size", types(FD_TYPE, FILESIZE_TYPE), types(ERRNO_TYPE), new WasiFdFilestatSetSizeNode(language, module));
         defineFunction(context, module, "fd_filestat_set_times", types(FD_TYPE, TIMESTAMP_TYPE, TIMESTAMP_TYPE, FSTFLAGS_TYPE), types(ERRNO_TYPE), new WasiFdFilestatSetTimesNode(language, module));
         defineFunction(context, module, "fd_pread", types(FD_TYPE, IOVEC_ARRAY_ADDRESS_TYPE, IOVEC_ARRAY_LENGTH_TYPE, FILESIZE_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE),
-                        new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_pread"));
+                        new WasiFdPreadNode(language, module));
         defineFunction(context, module, "fd_prestat_get", types(FD_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiFdPrestatGetNode(language, module));
         defineFunction(context, module, "fd_prestat_dir_name", types(FD_TYPE, POINTER_TYPE, SIZE_TYPE), types(ERRNO_TYPE), new WasiFdPrestatDirNameNode(language, module));
         defineFunction(context, module, "fd_pwrite", types(FD_TYPE, CIOVEC_ARRAY_ADDRESS_TYPE, CIOVEC_ARRAY_LENGTH_TYPE, FILESIZE_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE),
-                        new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_pwrite"));
+                        new WasiFdPwriteNode(language, module));
         defineFunction(context, module, "fd_read", types(FD_TYPE, IOVEC_ARRAY_ADDRESS_TYPE, IOVEC_ARRAY_LENGTH_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE),
                         new WasiFdReadNode(language, module));
         defineFunction(context, module, "fd_readdir", types(FD_TYPE, POINTER_TYPE, SIZE_TYPE, DIRCOOKIE_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE),
-                        new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_readdir"));
-        defineFunction(context, module, "fd_renumber", types(FD_TYPE, FD_TYPE), types(ERRNO_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_renumber"));
+                        new WasiFdReaddirNode(language, module));
+        defineFunction(context, module, "fd_renumber", types(FD_TYPE, FD_TYPE), types(ERRNO_TYPE), new WasiFdRenumberNode(language, module));
         defineFunction(context, module, "fd_seek", types(FD_TYPE, FILEDELTA_TYPE, WHENCE_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiFdSeekNode(language, module));
-        defineFunction(context, module, "fd_sync", types(FD_TYPE), types(ERRNO_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_sync"));
-        defineFunction(context, module, "fd_tell", types(FD_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_tell"));
+        defineFunction(context, module, "fd_sync", types(FD_TYPE), types(ERRNO_TYPE), new WasiFdSyncNode(language, module));
+        defineFunction(context, module, "fd_tell", types(FD_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE), new WasiFdTellNode(language, module));
         defineFunction(context, module, "fd_write", types(FD_TYPE, CIOVEC_ARRAY_ADDRESS_TYPE, CIOVEC_ARRAY_LENGTH_TYPE, RETURN_VALUE_ADDRESS_TYPE), types(ERRNO_TYPE),
                         new WasiFdWriteNode(language, module));
         defineFunction(context, module, "path_create_directory", types(FD_TYPE, STRING_ADDRESS_TYPE, STRING_LENGTH_TYPE), types(ERRNO_TYPE), new WasiPathCreateDirectoryNode(language, module));

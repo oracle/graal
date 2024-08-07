@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -122,6 +122,11 @@ public final class FdManager implements Closeable {
     }
 
     public synchronized void remove(int fd) {
+        handles.removeKey(fd);
+    }
+
+    public synchronized void renumber(int fd, int to) {
+        handles.put(to, handles.get(fd));
         handles.removeKey(fd);
     }
 

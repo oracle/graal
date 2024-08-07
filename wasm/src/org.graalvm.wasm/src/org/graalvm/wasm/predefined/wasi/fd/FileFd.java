@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,6 +69,12 @@ import static org.graalvm.wasm.predefined.wasi.FlagUtils.isSet;
  * File descriptor representing a file ({@link TruffleFile}).
  */
 class FileFd extends SeekableByteChannelFd {
+
+    /**
+     * The increment with which we grow files which are opened in Append mode and for which we
+     * increase the size using fd_filestat_set_size.
+     */
+    private static final int APPEND_GROW_CHUNK_SIZE = 1024 * 1024;
 
     private final TruffleFile file;
     private final short oflags;
@@ -168,7 +174,53 @@ class FileFd extends SeekableByteChannelFd {
     }
 
     @Override
-    public Errno fdstatSetTimes(Node node, long atim, long mtim, int fstFlags) {
+    public Errno filestatSetSize(Node node, long size) {
+        if (!isSet(fsRightsBase, Rights.FdFilestatSetSize)) {
+            return Errno.Notcapable;
+        }
+        if (size < 0) {
+            return Errno.Inval;
+        }
+        try {
+            if (size < file.size()) {
+                // We can decrease the size of a file using truncate.
+                getChannel().truncate(size);
+            } else if (size > file.size()) {
+                // To increase the size of a file, we write a 0 byte at the last desired position.
+                if (isSet(fdFlags, Fdflags.Append)) {
+                    // However, this is not possible in append mode, where we can only perform
+                    // writes at the end. In order to grow the file, we must write to it.
+                    long sizeDifference = size - file.size();
+                    if (sizeDifference >= APPEND_GROW_CHUNK_SIZE) {
+                        byte[] chunk = new byte[APPEND_GROW_CHUNK_SIZE];
+                        while (sizeDifference >= APPEND_GROW_CHUNK_SIZE) {
+                            getOutputStream().write(chunk);
+                            sizeDifference -= APPEND_GROW_CHUNK_SIZE;
+                        }
+                        getOutputStream().write(chunk, 0, (int) sizeDifference);
+                    } else {
+                        byte[] chunk = new byte[(int) sizeDifference];
+                        getOutputStream().write(chunk);
+                    }
+                    getOutputStream().write(new byte[(int) (size - file.size())]);
+                } else {
+                    long currentPosition = getChannel().position();
+                    try {
+                        getChannel().position(size - 1);
+                        getOutputStream().write(0);
+                    } finally {
+                        getChannel().position(currentPosition);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            return Errno.Io;
+        }
+        return Errno.Success;
+    }
+
+    @Override
+    public Errno filestatSetTimes(Node node, long atim, long mtim, int fstFlags) {
         if (!isSet(fsRightsBase, Rights.FdFilestatSetTimes)) {
             return Errno.Notcapable;
         }
