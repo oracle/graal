@@ -916,7 +916,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     private void notifyCompilationFailure(OptimizedCallTarget callTarget, Throwable t, boolean compilationStarted, int tier) {
         try {
             if (compilationStarted) {
-                listeners.onCompilationFailed(callTarget, t.toString(), false, false, tier);
+                listeners.onCompilationFailed(callTarget, t.toString(), false, false, tier, () -> TruffleCompilable.serializeException(t));
             } else {
                 listeners.onCompilationDequeued(callTarget, this, String.format("Failed to create Truffle compiler due to %s.", t.getMessage()), tier);
             }

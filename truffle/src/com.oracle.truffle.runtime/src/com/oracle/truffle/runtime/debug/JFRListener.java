@@ -47,6 +47,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -56,9 +57,9 @@ import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo
 import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 import com.oracle.truffle.runtime.AbstractCompilationTask;
 import com.oracle.truffle.runtime.AbstractGraalTruffleRuntimeListener;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.ModuleUtil;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.jfr.CompilationEvent;
 import com.oracle.truffle.runtime.jfr.CompilationStatisticsEvent;
 import com.oracle.truffle.runtime.jfr.DeoptimizationEvent;
@@ -132,17 +133,21 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     public void onCompilationTruffleTierFinished(OptimizedCallTarget target, AbstractCompilationTask task, GraphInfo graph) {
         CompilationData data = getCurrentData();
         if (data.event != null) {
+            data.partialEvaluationSuccess = true;
             data.partialEvalNodeCount = graph.getNodeCount();
             data.timePartialEvaluationFinished = System.nanoTime();
         }
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
         CompilationData data = getCurrentData();
+        if (!data.partialEvaluationSuccess) {
+            data.timePartialEvaluationFinished = System.nanoTime();
+        }
         statistics.finishCompilation(data.finish(), bailout, 0);
         if (data.event != null) {
-            data.event.failed(isPermanentFailure(bailout, permanentBailout), reason);
+            data.event.failed(tier, isPermanentFailure(bailout, permanentBailout), reason, lazyStackTrace);
             data.event.publish();
         }
         currentCompilation.remove();
@@ -155,23 +160,14 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         statistics.finishCompilation(data.finish(), false, compiledCodeSize);
         if (data.event != null) {
             CompilationEvent event = data.event;
-            event.succeeded();
+            event.succeeded(task.tier());
             event.setCompiledCodeSize(compiledCodeSize);
             if (target.getCodeAddress() != 0) {
                 event.setCompiledCodeAddress(target.getCodeAddress());
             }
 
-            int calls;
-            int inlinedCalls;
-            if (task == null) {
-                TraceCompilationListener.CallCountVisitor visitor = new TraceCompilationListener.CallCountVisitor();
-                target.accept(visitor);
-                calls = visitor.calls;
-                inlinedCalls = 0;
-            } else {
-                calls = task.countCalls();
-                inlinedCalls = task.countInlinedCalls();
-            }
+            int calls = task.countCalls();
+            int inlinedCalls = task.countInlinedCalls();
             int dispatchedCalls = calls - inlinedCalls;
             event.setInlinedCalls(inlinedCalls);
             event.setDispatchedCalls(dispatchedCalls);
@@ -201,6 +197,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     private static final class CompilationData {
         final CompilationEvent event;
         final long timeCompilationStarted;
+        boolean partialEvaluationSuccess;
         int partialEvalNodeCount;
         long timePartialEvaluationFinished;
 

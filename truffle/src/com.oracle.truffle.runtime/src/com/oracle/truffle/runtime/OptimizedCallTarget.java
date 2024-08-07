@@ -48,7 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
 
@@ -354,8 +354,8 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
     private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = NO_CALL;
     volatile List<OptimizedCallTarget> blockCompilations;
-    public final int id;
-    private static final AtomicInteger idCounter = new AtomicInteger(0);
+    public final long id;
+    private static final AtomicLong idCounter = new AtomicLong(0);
 
     @SuppressWarnings("this-escape")
     protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {

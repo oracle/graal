@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.runtime.jfr.impl;
 
+import java.util.function.Supplier;
+
 import com.oracle.truffle.runtime.jfr.CompilationEvent;
 
 import jdk.jfr.BooleanFlag;
 import jdk.jfr.Category;
-import jdk.jfr.Description;
 import jdk.jfr.DataAmount;
+import jdk.jfr.Description;
 import jdk.jfr.Label;
 import jdk.jfr.MemoryAddress;
 import jdk.jfr.Name;
@@ -75,24 +77,40 @@ class CompilationEventImpl extends RootFunctionEventImpl implements CompilationE
 
     @Label("Partial Evaluation Time") @Description("Partial Evaluation Time in Milliseconds") @Unsigned public long peTime;
 
+    @Label("Tier") @Description("The Tier of the Truffle Compiler") public int truffleTier;
+
     private transient CompilationFailureEventImpl failure;
 
     @Override
     public void compilationStarted() {
+        CompilationFailureEventImpl failureEvent = new CompilationFailureEventImpl(engineId, id, source, language, rootFunction);
+        if (failureEvent.isEnabled()) {
+            failureEvent.begin();
+            failure = failureEvent;
+        }
         begin();
     }
 
     @Override
-    public void succeeded() {
+    public void succeeded(int tier) {
         end();
-        this.success = true;
+        if (failure != null) {
+            failure.end();
+            failure = null;
+        }
+        truffleTier = tier;
+        success = true;
     }
 
     @Override
-    public void failed(boolean permanent, CharSequence reason) {
+    public void failed(int tier, boolean permanent, String reason, Supplier<String> lazyStackTrace) {
         end();
-        this.success = false;
-        this.failure = new CompilationFailureEventImpl(source, language, rootFunction, permanent, reason);
+        if (failure != null) {
+            failure.end();
+            failure.setFailureData(tier, permanent, reason, lazyStackTrace == null ? null : lazyStackTrace.get());
+        }
+        truffleTier = tier;
+        success = false;
     }
 
     @Override

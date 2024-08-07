@@ -515,7 +515,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             if (wrapper.listener != null) {
                 BailoutException bailout = t instanceof BailoutException ? (BailoutException) t : null;
                 boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-                wrapper.listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout, task.tier());
+                wrapper.listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout, task.tier(), bailout != null ? null : () -> TruffleCompilable.serializeException(t));
             }
             throw t;
         }

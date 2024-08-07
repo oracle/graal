@@ -52,6 +52,7 @@ import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.TruffleLogger;
@@ -301,7 +302,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
         if (bailout) {
             if (permanentBailout) {
                 permanentBailouts++;
@@ -768,10 +769,10 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
-        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
+        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationFailed(target, reason, bailout, permanentBailout, tier);
+                listener.onCompilationFailed(target, reason, bailout, permanentBailout, tier, lazyStackTrace);
             }
         }
 

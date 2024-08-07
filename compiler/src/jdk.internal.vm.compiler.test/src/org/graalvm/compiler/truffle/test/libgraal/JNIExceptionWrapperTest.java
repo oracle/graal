@@ -126,14 +126,6 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         @Override
         public void onGraalTierFinished(TruffleCompilable compilable, GraphInfo graph) {
         }
-
-        @Override
-        public void onSuccess(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo, int tier) {
-        }
-
-        @Override
-        public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
-        }
     }
 
     private static class TestTruffleCompilationTask implements TruffleCompilationTask {
