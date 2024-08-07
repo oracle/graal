@@ -1119,14 +1119,8 @@ def collate_metrics(args):
 
 def run_java(args, out=None, err=None, addDefaultArgs=True, command_mapper_hooks=None, jdk=None, **kw_args):
     graaljdk = jdk or get_graaljdk()
-    all_modules = [jmd.name for jmd in graaljdk.get_modules()]
     vm_args = _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
-    args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI']
-    if 'com.oracle.graal.graal_enterprise' in all_modules:
-        args += ['--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler,com.oracle.graal.graal_enterprise']
-    else:
-        args += ['--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler']
-    args += vm_args
+    args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'] + vm_args
     _check_bootstrap_config(args)
     cmd = get_vm_prefix() + [graaljdk.java] + ['-server'] + args
     map_file = join(graaljdk.home, 'proguard.map')
