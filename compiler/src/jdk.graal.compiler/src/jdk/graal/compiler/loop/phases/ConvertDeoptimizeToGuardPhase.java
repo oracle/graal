@@ -244,26 +244,35 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                                             new FixedGuardNode(conditionNode, deopt.getReason(), deopt.getAction(), deopt.getSpeculation(), negateGuardCondition, survivingSuccessorPosition));
                             FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
                             AbstractBeginNode survivingSuccessor;
+
                             if (negateGuardCondition) {
                                 survivingSuccessor = ifNode.falseSuccessor();
                             } else {
                                 survivingSuccessor = ifNode.trueSuccessor();
                             }
+                            /**
+                             * Note that we may be dealing with a semi canonicalized graph - cutting
+                             * off a branch here can canonicalize enclosing loops as well. This can
+                             * lead to situations where surviving successor will be dead.
+                             */
                             graph.removeSplitPropagate(ifNode, survivingSuccessor);
 
                             Node newGuard = guard;
-                            if (survivingSuccessor instanceof LoopExitNode) {
-                                newGuard = ProxyNode.forGuard(guard, (LoopExitNode) survivingSuccessor);
+                            if (survivingSuccessor.isAlive()) {
+                                if (survivingSuccessor instanceof LoopExitNode) {
+                                    newGuard = ProxyNode.forGuard(guard, (LoopExitNode) survivingSuccessor);
+                                }
+                                survivingSuccessor.replaceAtUsages(newGuard, InputType.Guard);
                             }
-                            survivingSuccessor.replaceAtUsages(newGuard, InputType.Guard);
-
                             graph.getOptimizationLog().report(ConvertDeoptimizeToGuardPhase.class, "DeoptimizeToGuardConversion", deopt.asNode());
                             FixedNode next = pred.next();
                             pred.setNext(guard);
                             guard.setNext(next);
                             assert providers != null;
                             SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(providers, false, graph.getAssumptions(), graph.getOptions());
-                            ((Simplifiable) survivingSuccessor).simplify(simplifierTool);
+                            if (survivingSuccessor.isAlive()) {
+                                ((Simplifiable) survivingSuccessor).simplify(simplifierTool);
+                            }
                         }
                     }
                     return;
