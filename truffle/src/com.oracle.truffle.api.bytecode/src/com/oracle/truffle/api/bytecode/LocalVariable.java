@@ -47,7 +47,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
  * Introspection class modeling a local variable and its liveness info in a bytecode interpreter.
  * There can be more than one local variable for a given {@link BytecodeLocal} because locals can be
  * live for multiple disjoint bytecode ranges.
- *
+ * <p>
  * Note: Introspection classes are intended to be used for debugging purposes only. These APIs may
  * change in the future.
  *

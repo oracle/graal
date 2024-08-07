@@ -44,7 +44,7 @@ package com.oracle.truffle.api.bytecode;
  * Introspection class modeling the meta-information of an exception handler in a bytecode
  * interpreter. An exception handler stores information for bytecode index ranges that determine how
  * an exception should be handled at a particular location.
- *
+ * <p>
  * Note: Introspection classes are intended to be used for debugging purposes only. These APIs may
  * change in the future.
  *
