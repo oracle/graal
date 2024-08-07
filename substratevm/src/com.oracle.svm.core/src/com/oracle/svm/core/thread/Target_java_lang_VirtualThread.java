@@ -83,15 +83,15 @@ public final class Target_java_lang_VirtualThread {
      */
     @Alias //
     @InjectAccessors(DefaultSchedulerAccessor.class) //
-    public static ForkJoinPool DEFAULT_SCHEDULER;
+    public static Executor DEFAULT_SCHEDULER;
 
     /**
      * (Re)initialize the unparker at runtime so that it does not reference any platform threads of
      * the image builder.
      */
     @Alias //
-    @InjectAccessors(UnparkerAccessor.class) //
-    private static ScheduledExecutorService UNPARKER;
+    @InjectAccessors(DelayedTaskSchedulersAccessor.class) //
+    private static ScheduledExecutorService[] DELAYED_TASK_SCHEDULERS;
 
     /** Go through {@link #nondefaultScheduler}. */
     @Alias //
@@ -108,24 +108,24 @@ public final class Target_java_lang_VirtualThread {
     // Checkstyle: resume
 
     @Alias
-    private static native ForkJoinPool createDefaultScheduler();
+    private static native Executor createDefaultScheduler();
 
     @Alias
-    private static native ScheduledExecutorService createDelayedTaskScheduler();
+    private static native ScheduledExecutorService[] createDelayedTaskSchedulers();
 
     private static final class DefaultSchedulerAccessor {
-        private static volatile ForkJoinPool defaultScheduler;
+        private static volatile Executor defaultScheduler;
 
-        public static ForkJoinPool get() {
-            ForkJoinPool result = defaultScheduler;
+        public static Executor get() {
+            Executor result = defaultScheduler;
             if (result == null) {
                 result = initializeDefaultScheduler();
             }
             return result;
         }
 
-        private static synchronized ForkJoinPool initializeDefaultScheduler() {
-            ForkJoinPool result = defaultScheduler;
+        private static synchronized Executor initializeDefaultScheduler() {
+            Executor result = defaultScheduler;
             if (result == null) {
                 result = createDefaultScheduler();
                 defaultScheduler = result;
@@ -134,22 +134,22 @@ public final class Target_java_lang_VirtualThread {
         }
     }
 
-    private static final class UnparkerAccessor {
-        private static volatile ScheduledExecutorService delayedTaskScheduler;
+    private static final class DelayedTaskSchedulersAccessor {
+        private static volatile ScheduledExecutorService[] delayedTaskScheduler;
 
         @SuppressWarnings("unused")
-        public static ScheduledExecutorService get() {
-            ScheduledExecutorService result = delayedTaskScheduler;
+        public static ScheduledExecutorService[] get() {
+            ScheduledExecutorService[] result = delayedTaskScheduler;
             if (result == null) {
                 result = initializeDelayedTaskScheduler();
             }
             return result;
         }
 
-        private static synchronized ScheduledExecutorService initializeDelayedTaskScheduler() {
-            ScheduledExecutorService result = delayedTaskScheduler;
+        private static synchronized ScheduledExecutorService[] initializeDelayedTaskScheduler() {
+            ScheduledExecutorService[] result = delayedTaskScheduler;
             if (result == null) {
-                result = createDelayedTaskScheduler();
+                result = createDelayedTaskSchedulers();
                 delayedTaskScheduler = result;
             }
             return result;
