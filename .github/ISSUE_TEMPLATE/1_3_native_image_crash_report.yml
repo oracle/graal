@@ -1,7 +1,7 @@
-name: 💥 Share Native Image Build-Time Crash Report (svm_err_b_*.md)
-description: Share an error report for GraalVM's native image using the generated `svm_err_b_*.md` file
-title: "[Native Image] Error Report"
-labels: ["native-image", "error-report"]
+name: 💥 Share Native Image Crash Report (svm_err_b_*.md)
+description: Share a crash report for GraalVM's Native Image using the generated `svm_err_b_*.md` file
+title: "[Native Image] Crash Report"
+labels: ["native-image", "crash-report"]
 
 body:
   - type: markdown
@@ -13,7 +13,7 @@ body:
     id: describe_issue
     attributes:
       label: Describe the Issue
-      description: "Describe the error you encountered with GraalVM's native image. Provide a clear and concise description of what happened and what you were trying to achieve."
+      description: "Describe the error you encountered with GraalVM's Native Image. Provide a clear and concise description of what happened and what you were trying to achieve."
     validations:
       required: true
 
@@ -49,7 +49,7 @@ body:
       value: |
         ### How to Find and Share the `svm_err_b_*.md` File
 
-        When a native image build fails, GraalVM generates a detailed error report file with a name like `svm_err_b_<timestamp>_pid<pid>.md`. This file contains valuable information for diagnosing the issue.
+        When a native image build fails fatally, GraalVM generates a detailed error report file with a name like `svm_err_b_<timestamp>_<pid>.md`. This file contains valuable information for diagnosing the issue.
 
         Use -H:ErrorFile to adjust the path or filename.
 
