@@ -88,7 +88,9 @@ public class BytecodeDSLBuiltins {
                         .setDynamicOperands(transparentOperationChild());
         m.rootOperation = m.operation(OperationKind.ROOT, "Root",
                         String.format("""
-                                        Each Root operation defines one function (i.e., a {@link %s}). It takes one or more children, which define the body of the function that executes when it is invoked.
+                                        Each Root operation defines one function (i.e., a {@link %s}).
+                                        It takes one or more children, which define the body of the function that executes when it is invoked.
+                                        If control falls through to the end of the body without returning, instructions are inserted to implicitly return {@code null}.
                                         <p>
                                         A root operation is typically the outermost one. That is, a {@link BytecodeParser} should invoke {@link #beginRoot} first before using other builder methods to generate bytecode.
                                         The parser should invoke {@link #endRoot} to finish generating the {@link %s}.
