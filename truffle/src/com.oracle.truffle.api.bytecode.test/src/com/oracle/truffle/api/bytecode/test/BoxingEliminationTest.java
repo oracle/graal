@@ -43,6 +43,8 @@ package com.oracle.truffle.api.bytecode.test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
+import java.lang.reflect.Field;
+
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -384,6 +386,68 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
                         "merge.conditional$generic",
                         "c.Abs",
                         "return");
+    }
+
+    @Test
+    public void testConditionalUnquickenable() {
+        // return arg0 ? { return 42L; 123L } : "not a long";
+        /**
+         * Regression test: because of the early return, the "child bci" of the positive branch is
+         * invalid. We should not try to boxing eliminate the conditional value.
+         */
+        BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            /**
+             * Setup: The invalid child bci points to the LoadConstant(42L)'s immediate. Allocate
+             * some constants before to make this immediate look like a quickened opcode, and then
+             * hit the negative branch so that unquickening is triggered. If it tries to quicken the
+             * invalid bci, the immediate will be rewritten to a different constant.
+             */
+            short unquickenableOpcode = findInstructionOpcode("LOAD_ARGUMENT$LONG");
+            for (int i = 1; i <= unquickenableOpcode; i++) {
+                b.emitLoadConstant(-i);
+            }
+
+            b.beginReturn();
+            b.beginConditional();
+            b.emitLoadArgument(0);
+
+            b.beginBlock();
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.emitLoadConstant(123L);
+            b.endBlock();
+
+            b.emitLoadConstant("not a long");
+
+            b.endConditional();
+            b.endReturn();
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertEquals("not a long", node.getCallTarget().call(false));
+        assertEquals(42L, node.getCallTarget().call(true));
+    }
+
+    private static short findInstructionOpcode(String instruction) {
+        for (var innerClass : BoxingEliminationTestRootNodeGen.class.getDeclaredClasses()) {
+            if (!innerClass.getSimpleName().equals("Instructions")) {
+                continue;
+            }
+            try {
+                Field instructionOpcode = innerClass.getDeclaredField(instruction);
+                instructionOpcode.setAccessible(true);
+                return instructionOpcode.getShort(null);
+            } catch (NoSuchFieldException ex) {
+                throw new AssertionError("Could not find instruction " + instruction, ex);
+            } catch (IllegalAccessException ex) {
+                throw new AssertionError("Could not access instruction opcode.", ex);
+            }
+        }
+        throw new AssertionError("Could not find Instructions class");
     }
 
     @Test

@@ -6505,7 +6505,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             for (int index = 0; index < branchArguments.length; index++) {
                 InstructionImmediate immediate = immedates.get(index);
                 branchArguments[index] = switch (immediate.kind()) {
-                    case BYTECODE_INDEX -> (index == 0) ? "operationData.child0Bci" : "operationData.child1Bci";
+                    case BYTECODE_INDEX -> (index == 0) ? "operationData.thenReachable ? operationData.child0Bci : -1"
+                                    : "operationData.elseReachable ? operationData.child1Bci : -1";
                     default -> throw new AssertionError("Unexpected immediate: " + immediate);
                 };
             }
@@ -10168,10 +10169,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
          * Returns true if the instruction can take -1 as a child bci.
          */
         private static boolean acceptsInvalidChildBci(BytecodeDSLModel model, InstructionModel instr) {
+            if (!model.usesBoxingElimination()) {
+                // Child bci immediates are only used for boxing elimination.
+                return false;
+            }
+
             if (instr.isShortCircuitConverter() || instr.isEpilogReturn()) {
                 return true;
             }
-            return isSameOrGenericQuickening(instr, model.popInstruction) || isSameOrGenericQuickening(instr, model.storeLocalInstruction);
+            return isSameOrGenericQuickening(instr, model.popInstruction) //
+                            || isSameOrGenericQuickening(instr, model.storeLocalInstruction) //
+                            || (model.usesBoxingElimination() && isSameOrGenericQuickening(instr, model.conditionalOperation.instruction));
         }
 
         private static boolean isSameOrGenericQuickening(InstructionModel instr, InstructionModel expected) {
@@ -13823,6 +13831,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssign("operandIndex").tree(readImmediate("bc", "bci", operand1)).end();
             b.startAssign("otherOperandIndex").tree(readImmediate("bc", "bci", operand0)).end();
             b.end();
+
+            b.startIf().string("operandIndex != -1 && otherOperandIndex != -1").end().startBlock();
+
             b.declaration(type(short.class), "operand", readInstruction("bc", "operandIndex"));
             b.declaration(type(short.class), "otherOperand", readInstruction("bc", "otherOperandIndex"));
 
@@ -13880,6 +13891,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             emitQuickeningOperand(b, "$this", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
             emitQuickeningOperand(b, "$this", "bc", "bci", null, 0, "otherOperandIndex", "otherOperand", "newOtherOperand");
+
+            b.end(); // case both operand indices are valid
+            b.startElseBlock();
+            b.startAssign("newInstruction").tree(createInstructionConstant(genericInstruction)).end();
+            b.end(); // case either operand index is invalid
+
             emitQuickening(b, "$this", "bc", "bci", null, "newInstruction");
 
             b.startStatement();
