@@ -166,19 +166,22 @@ public class JavaMainWrapper {
     }
 
     public static void invokeMain(String[] args) throws Throwable {
+        PreMainSupport preMainSupport = ImageSingletons.lookup(PreMainSupport.class);
+        String[] mainArgs = preMainSupport.retrievePremainArgs(args);
+        preMainSupport.invokePremain();
         JavaMainSupport javaMainSupport = ImageSingletons.lookup(JavaMainSupport.class);
         if (javaMainSupport.mainNonstatic) {
             Object instance = javaMainSupport.javaMainClassCtorHandle.invoke();
             if (javaMainSupport.mainWithoutArgs) {
                 javaMainSupport.javaMainHandle.invoke(instance);
             } else {
-                javaMainSupport.javaMainHandle.invoke(instance, args);
+                javaMainSupport.javaMainHandle.invoke(instance, mainArgs);
             }
         } else {
             if (javaMainSupport.mainWithoutArgs) {
                 javaMainSupport.javaMainHandle.invokeExact();
             } else {
-                javaMainSupport.javaMainHandle.invokeExact(args);
+                javaMainSupport.javaMainHandle.invokeExact(mainArgs);
             }
         }
     }
