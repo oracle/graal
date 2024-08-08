@@ -10183,10 +10183,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private static boolean isSameOrGenericQuickening(InstructionModel instr, InstructionModel expected) {
-            if (instr == expected) {
-                return true;
-            }
-            return instr.getQuickeningRoot() == expected && ElementUtils.typeEquals(instr.signature.getSpecializedType(0), type(Object.class));
+            return instr == expected || instr.getQuickeningRoot() == expected && instr.specializedType == null;
         }
 
         // calls dump, but catches any exceptions and falls back on an error string
