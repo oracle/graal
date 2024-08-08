@@ -87,14 +87,22 @@ public class GuestGraalClassLoader extends ClassLoader {
     private final Map<String, List<String>> services = new HashMap<>();
 
     /**
+     * Map from the {@linkplain Class#forName(String) name} of a class to the name of its enclosing
+     * module.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private final Map<String, String> modules;
+
+    /**
      * Modules in which Graal classes and their dependencies are defined.
      */
-    private static final Set<String> MODULE_PREFIXES = Set.of(
-                    "/jdk.internal.vm.ci/",
-                    "/org.graalvm.collections/",
-                    "/org.graalvm.word/",
-                    "/jdk.graal.compiler/",
-                    "/org.graalvm.truffle.compiler/");
+    private static final Set<String> LIBGRAAL_MODULES = Set.of(
+                    "jdk.internal.vm.ci",
+                    "org.graalvm.collections",
+                    "org.graalvm.word",
+                    "jdk.graal.compiler",
+                    "org.graalvm.truffle.compiler",
+                    "com.oracle.graal.graal_enterprise");
 
     static {
         ClassLoader.registerAsParallelCapable();
@@ -106,6 +114,7 @@ public class GuestGraalClassLoader extends ClassLoader {
     @Platforms(Platform.HOSTED_ONLY.class)
     GuestGraalClassLoader(Path imagePath) {
         super("GuestGraalClassLoader", null);
+        Map<String, String> modulesMap = new HashMap<>();
         try {
             // Need access to jdk.internal.jimage
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, getClass(), false,
@@ -114,8 +123,8 @@ public class GuestGraalClassLoader extends ClassLoader {
             for (var entry : imageReader.getEntryNames()) {
                 int secondSlash = entry.indexOf('/', 1);
                 if (secondSlash != -1) {
-                    String modulePrefix = entry.substring(0, secondSlash + 1);
-                    if (MODULE_PREFIXES.contains(modulePrefix)) {
+                    String module = entry.substring(1, secondSlash);
+                    if (LIBGRAAL_MODULES.contains(module)) {
                         String resource = entry.substring(secondSlash + 1);
                         resources.put(resource, entry);
                         if (resource.endsWith(".class")) {
@@ -124,8 +133,10 @@ public class GuestGraalClassLoader extends ClassLoader {
                             if (resource.equals("module-info.class")) {
                                 ModuleDescriptor md = ModuleDescriptor.read(imageReader.getResourceBuffer(imageReader.findLocation(entry)));
                                 for (var p : md.provides()) {
-                                    services.computeIfAbsent(p.service(), k -> new ArrayList<>(p.providers()));
+                                    services.computeIfAbsent(p.service(), k -> new ArrayList<>()).addAll(p.providers());
                                 }
+                            } else {
+                                modulesMap.put(className, module);
                             }
                         }
                     }
@@ -135,6 +146,15 @@ public class GuestGraalClassLoader extends ClassLoader {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        this.modules = Map.copyOf(modulesMap);
+    }
+
+    /**
+     * Gets an unmodifiable map from the {@linkplain Class#forName(String) name} of a class to the
+     * name of its enclosing module.
+     */
+    public Map<String, String> getModules() {
+        return modules;
     }
 
     @Override
@@ -152,7 +172,18 @@ public class GuestGraalClassLoader extends ClassLoader {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    Class<?> loadClassOrFail(String name) {
+    public Class<?> loadClassOrFail(Class<?> c) {
+        if (c.getClassLoader() == this) {
+            return c;
+        }
+        if (c.isArray()) {
+            return loadClassOrFail(c.getComponentType()).arrayType();
+        }
+        return loadClassOrFail(c.getName());
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public Class<?> loadClassOrFail(String name) {
         try {
             return loadClass(name);
         } catch (ClassNotFoundException e) {

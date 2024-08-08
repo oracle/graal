@@ -210,7 +210,7 @@ public class OptionValues {
         } else {
             for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
                 OptionDescriptor desc = e.getValue();
-                if (all || !excludeOptionFromHelp(desc)) {
+                if (!excludeOptionFromHelp(desc)) {
                     size++;
                 }
             }
@@ -229,11 +229,6 @@ public class OptionValues {
         }
     }
 
-    private static String getEdition(Class<?> c) {
-        boolean eeModule = "com.oracle.graal.graal_enterprise".equals(c.getModule().getName());
-        return eeModule ? "enterprise" : "community";
-    }
-
     private void printHelp(PrintStream out, String namePrefix, String key, OptionDescriptor desc) {
         Object value = desc.getOptionKey().getValue(this);
         if (value instanceof String) {
@@ -243,7 +238,7 @@ public class OptionValues {
         String assign = containsKey(desc.getOptionKey()) ? ":=" : "=";
         String typeName = desc.getOptionKey() instanceof EnumOptionKey ? "String" : desc.getOptionValueType().getSimpleName();
 
-        String edition = String.format("[%s edition]", getEdition(desc.getDeclaringClass()));
+        String edition = String.format("[%s edition]", OptionsParser.isEnterpriseOption(desc) ? "enterprise" : "community");
         String linePrefix = String.format("%s %s %s %s", name, assign, value, edition);
 
         int typeStartPos = PROPERTY_LINE_WIDTH - typeName.length();

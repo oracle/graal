@@ -132,7 +132,17 @@ public class LibGraalFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(JNIFeature.class, GraalCompilerFeature.class, ReflectionFeature.class);
+        /*
+         * LibGraal needs JNIFeature for the upcalls from HotSpot and ReflectionFeature to construct
+         * exceptions in jdk.internal.vm.TranslatedException.create(). However, both of these
+         * features are automatically registered (i.e. annotated by @AutomaticallyRegisteredFeature)
+         * so no need to explicitly add them here. Simply trying to look them up ensures that they
+         * are available.
+         */
+        ImageSingletons.lookup(ReflectionFeature.class);
+        ImageSingletons.lookup(JNIFeature.class);
+
+        return List.of(GraalCompilerFeature.class);
     }
 
     public static final class IsEnabled implements BooleanSupplier {
@@ -154,8 +164,8 @@ public class LibGraalFeature implements InternalFeature {
     /**
      * Collects all {@link OptionKey}s that are reachable at run time.
      * <p>
-     * This {@linkplain OptionsParser#setLibgraalOptionDescriptors initializes} the set of compiler
-     * options available in libgraal to an empty set that is populated after analysis.
+     * This {@linkplain OptionsParser#setLibgraalOptions} initializes} the set of compiler options
+     * available in libgraal to an empty set that is populated after analysis.
      */
     private static class OptionCollector implements ObjectReachableCallback<OptionKey<?>> {
         private final ConcurrentHashMap<OptionKey<?>, OptionKey<?>> options = new ConcurrentHashMap<>();
@@ -164,19 +174,18 @@ public class LibGraalFeature implements InternalFeature {
          * Libgraal compiler options. This is disjoint from {@link #vmOptionDescriptors}.
          * {@link #vmOptionDescriptors}.
          */
-        private final EconomicMap<String, OptionDescriptor> compilerOptionDescriptors;
+        private final OptionsParser.LibGraalOptionsInfo compilerOptions;
 
         /**
-         * Libgraal VM options. This is disjoint from {@link #compilerOptionDescriptors}.
+         * Libgraal VM options. This is disjoint from {@link #compilerOptions}.
          */
         private final EconomicMap<String, OptionDescriptor> vmOptionDescriptors;
 
         private boolean sealed;
 
         OptionCollector(EconomicMap<String, OptionDescriptor> vmOptionDescriptors) {
-            this.compilerOptionDescriptors = EconomicMap.create();
+            this.compilerOptions = OptionsParser.setLibgraalOptions(OptionsParser.LibGraalOptionsInfo.create());
             this.vmOptionDescriptors = vmOptionDescriptors;
-            OptionsParser.setLibgraalOptionDescriptors(compilerOptionDescriptors);
         }
 
         @Override
@@ -196,8 +205,15 @@ public class LibGraalFeature implements InternalFeature {
                     VMError.guarantee(access.isReachable(option.getClass()));
                     VMError.guarantee(access.isReachable(descriptor.getClass()));
                     String name = option.getName();
-                    if (!isNativeImageOption(option)) {
-                        compilerOptionDescriptors.put(name, descriptor);
+                    if (isCompilerOption(descriptor)) {
+                        if (option instanceof RuntimeOptionKey) {
+                            throw VMError.shouldNotReachHere("%s cannot be a compiler option", descriptor.getLocation());
+                        }
+                        compilerOptions.descriptors().put(name, descriptor);
+                        String module = descriptor.getDeclaringClass().getModule().getName();
+                        if (module.contains("enterprise")) {
+                            compilerOptions.enterpriseOptions().add(name);
+                        }
                     } else {
                         vmOptionDescriptors.put(name, descriptor);
                     }
@@ -232,6 +248,10 @@ public class LibGraalFeature implements InternalFeature {
             }
         }
         Module module = provider.getClass().getModule();
+        return isGraalModule(module);
+    }
+
+    private static boolean isGraalModule(Module module) {
         String name = module.getName();
         if (name != null) {
             // Only services in the core graal modules should be added
@@ -401,8 +421,8 @@ public class LibGraalFeature implements InternalFeature {
         return (HotSpotReplacementsImpl) originalProvider.getReplacements();
     }
 
-    private static boolean isNativeImageOption(OptionKey<?> key) {
-        return key instanceof RuntimeOptionKey;
+    private static boolean isCompilerOption(OptionDescriptor descriptor) {
+        return isGraalModule(descriptor.getDeclaringClass().getModule());
     }
 }
 

@@ -48,6 +48,8 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hotspot.GetCompilerConfig;
 import com.oracle.svm.graal.hotspot.GetJNIConfig;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.jni.JNIFeature;
+import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.serviceprovider.LibGraalService;
@@ -85,26 +87,26 @@ import jdk.vm.ci.code.TargetDescription;
  * <p>
  * To build libgraal, invoke {@code native-image} with the jar containing this feature and it
  * dependencies. For example:
- * 
+ *
  * <pre>
  *      native-image -p jniutils.jar -cp guestgraal-library.jar
  * </pre>
- *
+ * <p>
  * If building with mx, execute this from the {@code vm} suite:
- * 
+ *
  * <pre>
  *      mx --env guestgraal native-image \
  *          -p $(mx --env guestgraal --quiet path JNIUTILS) \
  *          -cp $(mx --env guestgraal --quiet path GUESTGRAAL_LIBRARY)
  * </pre>
- *
+ * <p>
  * This feature is composed of these key classes:
  * <ul>
  * <li>{@link GuestGraalClassLoader}</li>
  * <li>{@link GuestGraal}</li>
  * <li>{@link GuestGraalSubstitutions}</li>
  * </ul>
- *
+ * <p>
  * Additionally, it defines
  * {@code META-INF/native-image/com.oracle.svm.graal.hotspot.guestgraal/native-image.properties}.
  */
@@ -137,6 +139,16 @@ public final class GuestGraalFeature implements Feature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
+        /*
+         * LibGraal needs JNIFeature for the upcalls from HotSpot and ReflectionFeature to construct
+         * exceptions in jdk.internal.vm.TranslatedException.create(). However, both of these
+         * features are automatically registered (i.e. annotated by @AutomaticallyRegisteredFeature)
+         * so no need to explicitly add them here. Simply trying to look them up ensures that they
+         * are available.
+         */
+        ImageSingletons.lookup(ReflectionFeature.class);
+        ImageSingletons.lookup(JNIFeature.class);
+
         return List.of(GuestGraalFieldsOffsetsFeature.class);
     }
 
@@ -167,6 +179,10 @@ public final class GuestGraalFeature implements Feature {
     private Function<Class<?>, Object> newLIRPhaseStatistics;
 
     MethodHandle handleGlobalAtomicLongGetInitialValue;
+
+    public GuestGraalClassLoader getLoader() {
+        return loader;
+    }
 
     /**
      * Performs tasks once this feature is registered.
@@ -263,9 +279,9 @@ public final class GuestGraalFeature implements Feature {
         private final EconomicMap<String, OptionDescriptor> vmOptionDescriptors;
 
         /**
-         * Libgraal compiler options.
+         * Libgraal compiler options info.
          */
-        private final Object compilerOptionDescriptors;
+        private final Object compilerOptionsInfo;
 
         private boolean sealed;
 
@@ -273,8 +289,8 @@ public final class GuestGraalFeature implements Feature {
             this.vmOptionDescriptors = vmOptionDescriptors;
             try {
                 MethodType mt = methodType(Object.class);
-                MethodHandle mh = mhl.findStatic(buildTimeClass, "initLibgraalOptionDescriptors", mt);
-                compilerOptionDescriptors = mh.invoke();
+                MethodHandle mh = mhl.findStatic(buildTimeClass, "initLibgraalOptions", mt);
+                compilerOptionsInfo = mh.invoke();
             } catch (Throwable e) {
                 throw VMError.shouldNotReachHere(e);
             }
@@ -308,9 +324,10 @@ public final class GuestGraalFeature implements Feature {
                 }
             }
             try {
-                MethodType mt = methodType(Iterable.class, List.class, Object.class);
-                MethodHandle mh = mhl.findStatic(buildTimeClass, "finalizeLibgraalOptionDescriptors", mt);
-                Iterable<Object> values = (Iterable<Object>) mh.invoke(compilerOptions, compilerOptionDescriptors);
+                MethodType mt = methodType(Iterable.class, List.class, Object.class, Map.class);
+                MethodHandle mh = mhl.findStatic(buildTimeClass, "finalizeLibgraalOptions", mt);
+                Map<String, String> modules = loader.getModules();
+                Iterable<Object> values = (Iterable<Object>) mh.invoke(compilerOptions, compilerOptionsInfo, modules);
                 for (Object descriptor : values) {
                     VMError.guarantee(access.isReachable(descriptor.getClass()), "%s", descriptor.getClass());
                 }
@@ -376,7 +393,7 @@ public final class GuestGraalFeature implements Feature {
         RuntimeReflection.registerAllDeclaredClasses(Long.class);
         RuntimeReflection.register(ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.Long$LongCache"), "cache"));
 
-        /* Configure static state of Graal so that suitable for the GuestGraal use case */
+        /* Configure static state of Graal. */
         try {
             TargetDescription targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
             String arch = targetDescription.arch.getName();
@@ -426,7 +443,7 @@ public final class GuestGraalFeature implements Feature {
 
     @SuppressWarnings("try")
     @Override
-    public void afterAnalysis(AfterAnalysisAccess a) {
+    public void afterAnalysis(AfterAnalysisAccess access) {
         /*
          * Verify we only have JVMCI & Graal classes reachable that are coming from
          * GuestGraalClassLoader except for hosted JVMCI & Graal classes that are legitimately used
@@ -443,6 +460,8 @@ public final class GuestGraalFeature implements Feature {
                                         "GraalError"),
                         classesPattern("jdk.graal.compiler.options",
                                         "ModifiableOptionValues", "Option.*"),
+                        classesPattern("jdk.graal.compiler.util.json",
+                                        "JsonWriter"),
                         classesPattern("org.graalvm.collections",
                                         "EconomicMap.*", "EmptyMap.*", "Equivalence.*", "Pair"),
                         classesPattern("jdk.vm.ci.amd64",
@@ -458,7 +477,8 @@ public final class GuestGraalFeature implements Feature {
 
         Set<String> forbiddenHostedModules = Set.of("jdk.internal.vm.ci", "org.graalvm.collections", "org.graalvm.word", "jdk.graal.compiler");
 
-        BigBang bigBang = ((AfterAnalysisAccessImpl) a).getBigBang();
+        AfterAnalysisAccessImpl accessImpl = (AfterAnalysisAccessImpl) access;
+        BigBang bigBang = accessImpl.getBigBang();
         CallTreePrinter callTreePrinter = new CallTreePrinter(bigBang);
         callTreePrinter.buildCallTree();
 
@@ -484,7 +504,7 @@ public final class GuestGraalFeature implements Feature {
         if (!forbiddenReachableTypes.isEmpty()) {
             VMError.shouldNotReachHere("GuestGraal build found forbidden hosted types as reachable: %s", String.join(", ", forbiddenReachableTypes));
         }
-        optionCollector.afterAnalysis(a);
+        optionCollector.afterAnalysis(access);
     }
 
     @Override

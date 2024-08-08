@@ -71,14 +71,12 @@ public class BuildTime {
     private static final ClassLoader LOADER = BuildTime.class.getClassLoader();
 
     /**
-     * Creates and {@linkplain OptionsParser#setLibgraalOptionDescriptors registers} the map used
-     * for looking up libgraal compiler options.
+     * Creates and registers the data structures used for looking up libgraal compiler options and
+     * determining which of them are enterprise options.
      */
     @SuppressWarnings("unused")
-    public static Object initLibgraalOptionDescriptors() {
-        EconomicMap<String, OptionDescriptor> descriptors = EconomicMap.create();
-        OptionsParser.setLibgraalOptionDescriptors(descriptors);
-        return descriptors;
+    public static Object initLibgraalOptions() {
+        return OptionsParser.setLibgraalOptions(OptionsParser.LibGraalOptionsInfo.create());
     }
 
     /**
@@ -87,23 +85,29 @@ public class BuildTime {
      * {@code descriptorsObject}.
      *
      * @param optionObjects a list of {@link OptionKey} objects
-     * @param descriptorsObject the value returned by {@link #initLibgraalOptionDescriptors()}
+     * @param optionsInfoObject the value returned by {@link #initLibgraalOptions()}
+     * @param modules unmodifiable map from the {@linkplain Class#forName(String) name} of a class
+     *            to the name of its enclosing module.
      * @return the {@link OptionDescriptor} objects added to {@code descriptorsObject}
      */
-    @SuppressWarnings({"unused", "unchecked"})
-    public static Iterable<?> finalizeLibgraalOptionDescriptors(List<Object> optionObjects, Object descriptorsObject) {
+    @SuppressWarnings("unused")
+    public static Iterable<?> finalizeLibgraalOptions(List<Object> optionObjects, Object optionsInfoObject, Map<String, String> modules) {
         GraalError.guarantee(VALID_LOADER_NAME.equals(LOADER.getName()),
                         "Only call this method from classloader " + VALID_LOADER_NAME);
-        EconomicMap<String, OptionDescriptor> descriptors = (EconomicMap<String, OptionDescriptor>) descriptorsObject;
+        OptionsParser.LibGraalOptionsInfo optionsInfo = (OptionsParser.LibGraalOptionsInfo) optionsInfoObject;
         for (Object optionObject : optionObjects) {
             OptionKey<?> option = (OptionKey<?>) optionObject;
             OptionDescriptor descriptor = option.getDescriptor();
             if (descriptor.isServiceLoaded()) {
                 String name = option.getName();
-                descriptors.put(name, descriptor);
+                optionsInfo.descriptors().put(name, descriptor);
+                String module = modules.get(descriptor.getDeclaringClass().getName());
+                if (module.contains("enterprise")) {
+                    optionsInfo.enterpriseOptions().add(name);
+                }
             }
         }
-        return descriptors.getValues();
+        return optionsInfo.descriptors().getValues();
     }
 
     @SuppressWarnings("unused")

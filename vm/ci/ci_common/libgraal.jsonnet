@@ -80,6 +80,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
   # Gate for guestgraal
   guestgraal_compiler:: {
+    local pathsep = if self.os == "windows" then ";" else ":",
     local guestgraal_env = std.strReplace(vm.libgraal_env, "libgraal", "guestgraal"),
     # LibGraal gate tasks currently expected to work
     local tasks = [
@@ -97,9 +98,14 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
     run+: [
       ['mx', '--env', guestgraal_env, 'build'],
+      ['set-export', 'JNIUTILS_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'JNIUTILS']],
+      ['set-export', 'GUESTGRAAL_LIBRARY_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'GUESTGRAAL_LIBRARY']],
+    ] + (if vm.edition == "ee" then [
+      ['set-export', 'ENTERPRISE_GUESTGRAAL_LIBRARY_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'ENTERPRISE_GUESTGRAAL_LIBRARY']]
+    ] else []) + [
       ['mx', '--env', guestgraal_env, 'native-image', '-J-esa', '-J-ea', '-esa', '-ea',
-       '-p', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'JNIUTILS'],
-       '-cp', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'GUESTGRAAL_LIBRARY'],
+       '-p', '$JNIUTILS_PATH',
+       '-cp', '$GUESTGRAAL_LIBRARY_PATH' + pathsep + '$ENTERPRISE_GUESTGRAAL_LIBRARY_PATH',
        '-H:+UnlockExperimentalVMOptions', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases'],
       ['mx', '--env', guestgraal_env, 'gate', '--task', std.join(",", tasks), '--extra-vm-argument=-XX:JVMCILibPath=$PWD/' + vm.vm_dir],
     ],
@@ -119,11 +125,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
     "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {},
     "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
-  } + if repo_config.graalvm_edition == "ce" then
-  {
-    # GuestGraal on EE is still under construction
     "gate-vm-guestgraal_compiler-labsjdk-latest-linux-amd64": {}
-  } else {},
+  },
 
   local gates = g.as_gates(gate_jobs),
 
@@ -181,10 +184,9 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
       "libgraal_compiler",
       "libgraal_truffle",
       "libgraal_compiler_quickbuild",
-      "libgraal_truffle_quickbuild"
-    ] +
-    # GuestGraal on EE is still under construction
-    (if repo_config.graalvm_edition == "ce" then ["guestgraal_compiler"] else [])
+      "libgraal_truffle_quickbuild",
+      "guestgraal_compiler"
+    ]
   ],
 
   local adjust_windows_version(gate) = (
