@@ -44,11 +44,15 @@ public final class LibGraalUtil {
     public static JNIMethodScope openScope(Class<?> entryPointClass, Enum<?> id, JNIEnv env) {
         Objects.requireNonNull(id, "Id must be non null.");
         String scopeName = ClassUtil.getUnqualifiedName(entryPointClass) + "::" + id;
-        return LibGraalJNIMethodScope.open(scopeName, env, getJavaFrameAnchor().isNonNull());
+        return LibGraalJNIMethodScope.open(scopeName, env, hasJavaFrameAnchor());
     }
 
     public static JNIMethodScope openScope(String scopeName, JNIEnv env) {
-        return LibGraalJNIMethodScope.open(scopeName, env, getJavaFrameAnchor().isNonNull());
+        return LibGraalJNIMethodScope.open(scopeName, env, hasJavaFrameAnchor());
+    }
+
+    public static boolean hasJavaFrameAnchor() {
+        return getJavaFrameAnchor().isNonNull();
     }
 
     private static volatile int lastJavaPCOffset = -1;

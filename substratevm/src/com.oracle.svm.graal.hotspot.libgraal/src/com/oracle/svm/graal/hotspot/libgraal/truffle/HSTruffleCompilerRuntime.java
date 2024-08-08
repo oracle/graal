@@ -50,6 +50,7 @@ import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import com.oracle.svm.graal.hotspot.libgraal.LibGraalUtil;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JClass;
@@ -153,6 +154,13 @@ final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompiler
         }
         JNIMethodScope scope = JNIMethodScope.scopeOrNull();
         if (scope == null) {
+            return null;
+        }
+        /*
+         * TODO: GR-57161: IllegalStateException: Cannot call getJObjectValue without Java frame
+         * anchor
+         */
+        if (!LibGraalUtil.hasJavaFrameAnchor()) {
             return null;
         }
         JObject hsCompilable = JNIUtil.NewLocalRef(scope.getEnv(), LibGraal.getJObjectValue((HotSpotObjectConstant) constant));

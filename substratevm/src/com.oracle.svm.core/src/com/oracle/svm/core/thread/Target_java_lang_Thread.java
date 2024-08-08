@@ -498,14 +498,7 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     @TargetElement(name = "blockedOn", onlyWith = JDK21OrEarlier.class)
-    static void blockedOnJDK22(Target_sun_nio_ch_Interruptible b) {
-        JavaThreads.blockedOn(b);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDKLatest.class)
-    @SuppressWarnings("static-method")
-    void blockedOn(Target_sun_nio_ch_Interruptible b) {
+    static void blockedOnJDK21(Target_sun_nio_ch_Interruptible b) {
         JavaThreads.blockedOn(b);
     }
 
