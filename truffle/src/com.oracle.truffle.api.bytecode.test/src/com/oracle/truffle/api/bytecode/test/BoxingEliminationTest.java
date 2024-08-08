@@ -430,6 +430,9 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
         assertEquals("not a long", node.getCallTarget().call(false));
         assertEquals(42L, node.getCallTarget().call(true));
+
+        // Force a reparse to trigger validation and ensure the quickened bytecodes validate.
+        node.getRootNodes().ensureSources();
     }
 
     private static short findInstructionOpcode(String instruction) {
