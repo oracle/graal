@@ -63,6 +63,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
@@ -122,6 +123,15 @@ public class SerializationTutorial {
         }
 
         @Operation
+        @ConstantOperand(type = int.class, name = "constant")
+        public static final class AddConstant {
+            @Specialization
+            public static int doInt(int constant, int value) {
+                return constant + value;
+            }
+        }
+
+        @Operation
         public static final class ArrayRead {
             @Specialization
             public static Object doObjectArray(Object[] arr, int i) {
@@ -169,9 +179,9 @@ public class SerializationTutorial {
      * serialization.
      * <p>
      * The serialization logic cannot encode/decode user objects, such as {@code LoadConstant}
-     * constants and root node fields. Languages must provide the serialization logic for these
-     * objects themselves using {@link BytecodeSerializer} and {@link BytecodeDeserializer}
-     * instances.
+     * constants, {@link ConstantOperand} values, and root node fields. Languages must provide the
+     * serialization logic for these objects themselves using {@link BytecodeSerializer} and
+     * {@link BytecodeDeserializer} instances.
      * <p>
      * Before we define our own serialization logic, let's quickly define a concrete program to use
      * as a running example. This program takes an integer n and returns information about the n-th
@@ -202,13 +212,11 @@ public class SerializationTutorial {
                         b.endLessThan();
 
                         b.beginLessThan();
-                            b.beginAdd();
+                            b.beginAddConstant(-1);
                                 b.beginArrayLength();
                                     b.emitLoadConstant(PLANETS);
                                 b.endArrayLength();
-
-                                b.emitLoadConstant(-1);
-                            b.endAdd();
+                            b.endAddConstant();
 
                             b.emitLoadArgument(0);
                         b.endLessThan();
@@ -271,6 +279,7 @@ public class SerializationTutorial {
     static final byte TYPE_PLANET = 4;
 
     static class ExampleBytecodeSerializer implements BytecodeSerializer {
+        @Override
         public void serialize(SerializerContext context, DataOutput buffer, Object object) throws IOException {
             if (object instanceof Integer i) {
                 // For ints, we encode the int value.
@@ -335,6 +344,7 @@ public class SerializationTutorial {
      * reconstruct values using the same encoding defined by the serializer.
      */
     static class ExampleBytecodeDeserializer implements BytecodeDeserializer {
+        @Override
         public Object deserialize(DeserializerContext context, DataInput buffer) throws IOException {
             byte typeCode = buffer.readByte();
             return doDeserialize(context, buffer, typeCode);
@@ -370,7 +380,7 @@ public class SerializationTutorial {
      * <ol>
      * <li>A {@link TruffleLanguage} language used when creating each root node</li>
      * <li>A {@link BytecodeConfig} config that specifies which metadata to parse from the
-     * serialized bytes. Only metadats included during serialization will be available.</li>
+     * serialized byte (serialization encodes all metadata).</li>
      * <li>A {@link Supplier<DataInput>} a callable that supplies a {@link DataInput} to read.
      * Deserialization can happen multiple times because of reparsing. The supplier is responsible
      * for producing a fresh {@link DataInput} each time it is called.</li>
@@ -432,7 +442,7 @@ public class SerializationTutorial {
         // Modify the field.
         rootNode.name = "myRootNode";
 
-        // Serialize using BytecodeRootNodes#serialize.
+        // Serialize using the instance method.
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         nodes.serialize(new DataOutputStream(output), new ExampleBytecodeSerializer());
         byte[] serialized = output.toByteArray();
@@ -604,10 +614,9 @@ public class SerializationTutorial {
             // def plusOne(x) = x + 1
             b.beginRoot(null);
                 b.beginReturn();
-                    b.beginAdd();
+                    b.beginAddConstant(1);
                         b.emitLoadArgument(0);
-                        b.emitLoadConstant(1);
-                    b.endAdd();
+                    b.endAddConstant();
                 b.endReturn();
             SerializableBytecodeNode plusOne = b.endRoot();
             plusOne.name = "plusOne";
