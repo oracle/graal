@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.util.EnumSet;
+
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -35,6 +37,9 @@ import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
@@ -44,7 +49,7 @@ import jdk.graal.compiler.word.Word;
  * Information on the multiple partitions that make up the image heap, which don't necessarily form
  * a contiguous block of memory (there can be holes in between), and their boundaries.
  */
-public final class ImageHeapInfo {
+public final class ImageHeapInfo implements MultiLayeredImageSingleton, UnsavedSingleton {
     /** Indicates no chunk with {@link #initialize} chunk offset parameters. */
     public static final long NO_CHUNK = -1;
 
@@ -73,14 +78,7 @@ public final class ImageHeapInfo {
 
     @UnknownPrimitiveField(availability = AfterHeapLayout.class) public int dynamicHubCount;
 
-    public final ImageHeapInfo next;
-
     public ImageHeapInfo() {
-        this(null);
-    }
-
-    public ImageHeapInfo(ImageHeapInfo next) {
-        this.next = next;
     }
 
     @SuppressWarnings("hiding")
@@ -204,5 +202,10 @@ public final class ImageHeapInfo {
         log.string("Writable: ").zhex(Word.objectToUntrackedPointer(firstWritableRegularObject)).string(" - ").zhex(getObjectEnd(lastWritableRegularObject)).newline();
         log.string("Writable Huge: ").zhex(Word.objectToUntrackedPointer(firstWritableHugeObject)).string(" - ").zhex(getObjectEnd(lastWritableHugeObject)).newline();
         log.string("ReadOnly Huge: ").zhex(Word.objectToUntrackedPointer(firstReadOnlyHugeObject)).string(" - ").zhex(getObjectEnd(lastReadOnlyHugeObject)).newline();
+    }
+
+    @Override
+    public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+        return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
     }
 }

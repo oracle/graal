@@ -90,8 +90,8 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        HeapImpl heap = new HeapImpl();
-        ImageSingletons.add(Heap.class, heap);
+        ImageSingletons.add(Heap.class, new HeapImpl());
+        ImageSingletons.add(ImageHeapInfo.class, new ImageHeapInfo());
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 
         if (ImageSingletons.contains(PerfManager.class)) {
@@ -125,16 +125,19 @@ class GenScavengeGCFeature implements InternalFeature {
         access.registerAsUsed(Object[].class);
     }
 
+    private static ImageHeapInfo getImageHeapInfo() {
+        return ImageSingletons.lookup(ImageHeapInfo.class);
+    }
+
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(HeapImpl.getFirstImageHeapInfo(), Heap.getHeap().getImageHeapOffsetInAddressSpace());
+        ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(getImageHeapInfo(), Heap.getHeap().getImageHeapOffsetInAddressSpace());
         ImageSingletons.add(ImageHeapLayouter.class, heapLayouter);
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        ImageHeapInfo imageHeapInfo = HeapImpl.getFirstImageHeapInfo();
-        access.registerAsImmutable(imageHeapInfo);
+        access.registerAsImmutable(getImageHeapInfo());
     }
 
     @Override

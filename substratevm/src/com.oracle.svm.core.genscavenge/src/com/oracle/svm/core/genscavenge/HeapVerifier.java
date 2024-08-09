@@ -73,7 +73,7 @@ public class HeapVerifier {
 
     protected boolean verifyImageHeap() {
         boolean success = true;
-        for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
+        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
             success &= verifyAlignedChunks(null, info.getFirstWritableAlignedChunk());
             success &= verifyUnalignedChunks(null, info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
         }
@@ -129,7 +129,7 @@ public class HeapVerifier {
         boolean success = true;
         RememberedSet rememberedSet = RememberedSet.get();
 
-        for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
+        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
             success &= rememberedSet.verify(info.getFirstWritableAlignedChunk());
             success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
         }
