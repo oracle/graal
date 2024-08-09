@@ -3174,6 +3174,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     protected int readAlignHint(int n) {
         final int value = readUnsignedInt32();
+        assertUnsignedIntLess(value, 32, Failure.MALFORMED_MEMOP_FLAGS);
         assertUnsignedIntLessOrEqual(1 << value, n / 8, Failure.ALIGNMENT_LARGER_THAN_NATURAL);
         return value;
     }
