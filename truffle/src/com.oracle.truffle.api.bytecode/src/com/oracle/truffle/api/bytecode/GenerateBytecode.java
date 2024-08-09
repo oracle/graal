@@ -247,8 +247,12 @@ public @interface GenerateBytecode {
      * Whether the generated interpreter should support coroutines via a {@code yield} operation.
      * <p>
      * The yield operation returns a {@link ContinuationResult} from the current point in execution.
-     * The {@link ContinuationResult} saves the current state of the interpreter for resumption at a
-     * later point in time, as well as an optional return value.
+     * The {@link ContinuationResult} saves the current state of the interpreter so that it can be
+     * resumed at a later time. The yield and resume actions pass values, enabling communication
+     * between the caller and callee.
+     * <p>
+     * Technical note: in theoretical terms, a {@link ContinuationResult} implements an asymmetric
+     * stack-less coroutine.
      *
      * @see com.oracle.truffle.api.bytecode.ContinuationResult
      * @since 24.2

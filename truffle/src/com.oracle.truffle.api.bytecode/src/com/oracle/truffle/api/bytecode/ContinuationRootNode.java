@@ -46,10 +46,13 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
- * Interface to model continuations.
- *
+ * Abstract class representing the root node for a continuation.
+ * <p>
+ * These root nodes have a precise calling convention; see
+ * {@link ContinuationResult#getContinuationCallTarget()}.
+ * <p>
  * If a bytecode interpreter {@link GenerateBytecode#enableYield supports continuations}, the DSL
- * will generate a concrete implementation of this interface.
+ * will generate a concrete implementation of this interface. It should not be subclassed manually.
  *
  * @since 24.2
  */

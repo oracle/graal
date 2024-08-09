@@ -42,7 +42,7 @@ First, you provide a specification for your interpreter.
 This specification takes the form of a class definition annotated with [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) with some custom operation definitions.
 Operations are discussed in more detail [later](#operations), but it suffices for now to think of them as the semantic building blocks for Bytecode DSL programs. Common behaviour is implemented by built-in operations, and language-specific behaviour is implemented by user-defined custom operations.
 
-Below is a very simple example of an interpreter specification and a single custom `Add` operation:
+Below is a very simple example of an interpreter specification with a single custom `Add` operation:
 ```
 @GenerateBytecode(...)
 public abstract static class SampleInterpreter extends RootNode implements BytecodeRootNode {
@@ -494,4 +494,4 @@ Bytecode DSL interpreters can support serialization, which allows a language to 
 
 ### Continuations
 Bytecode DSL supports single-method continuations, whereby a root node is suspended and can be resumed at a later point in time.
-Continuations can be used to implement language features like coroutines and generators that suspend the state of the current method. See the [Continuations guide](Continuations.md) for more details.
+Continuations can be used to implement language features like coroutines and generators that suspend the state of the current method. See the [Continuations tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/ContinuationsTutorial.java) for more details.

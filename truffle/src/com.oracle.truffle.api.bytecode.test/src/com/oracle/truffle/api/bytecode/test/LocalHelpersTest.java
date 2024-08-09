@@ -67,6 +67,7 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
+import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
@@ -807,7 +808,7 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
         @SuppressWarnings("unused")
         @Specialization(guards = {"result.getContinuationRootNode() == rootNode"}, limit = "LIMIT")
         public static Object invokeDirect(ContinuationResult result, Object value,
-                        @Cached(value = "result.getContinuationRootNode()") RootNode rootNode,
+                        @Cached(value = "result.getContinuationRootNode()") ContinuationRootNode rootNode,
                         @Cached(value = "create(rootNode.getCallTarget())") DirectCallNode callNode) {
             return callNode.call(result.getFrame(), value);
         }

@@ -50,7 +50,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * Representation of a continuation closure, consisting of a resumable {@link RootNode}, the
  * interpreter state, and a yielded result. A {@link ContinuationResult} is returned when the
- * interpreter yields.
+ * interpreter yields. It can later be resumed to continue execution. It can be resumed only once.
  * <p>
  * Below illustrates an example usage of {@link ContinuationResult}.
  *
@@ -72,13 +72,15 @@ import com.oracle.truffle.api.nodes.RootNode;
  * assert returned == 100;
  * </pre>
  *
- * For performance reasons, a language may wish to define an inline cache over continuation
- * locations. In such a case, they should not call {@link #continueWith}, but instead cache and call
- * the {@link #getContinuationRootNode root node} or {@link #getContinuationCallTarget call target}
- * directly. Be careful to conform to the {@link #getContinuationCallTarget calling convention}.
+ * For performance reasons, a language may wish to define an inline cache over continuations. In
+ * such a case, they should not call {@link #continueWith}, but instead cache and call the
+ * {@link #getContinuationRootNode root node} or {@link #getContinuationCallTarget call target}
+ * directly. This is necessary because continuation results are dynamic values, not partial
+ * evaluation constants. Be careful to conform to the {@link #getContinuationCallTarget calling
+ * convention}.
  *
  * @see <a href=
- *      "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/Continuations.md">Continuations
+ *      "https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/ContinuationsTutorial.java">Continuations
  *      tutorial</a>
  * @since 24.2
  */
@@ -123,7 +125,7 @@ public final class ContinuationResult implements TruffleObject {
      * @see #getContinuationCallTarget()
      * @since 24.2
      */
-    public RootNode getContinuationRootNode() {
+    public ContinuationRootNode getContinuationRootNode() {
         return rootNode;
     }
 
@@ -135,9 +137,9 @@ public final class ContinuationResult implements TruffleObject {
      * instead choose to access and call this call target directly (e.g., to register it in an
      * inline cache).
      * <p>
-     * The call target takes two parameters: the interpreter {@link #getFrame frame} and an
-     * {@code Object} to resume execution with. The {@code Object} becomes the value produced by the
-     * yield operation in the resumed execution.
+     * The call target takes two parameters: the materialized interpreter {@link #getFrame frame}
+     * and an {@link Object} value to resume execution with. The value becomes the value produced by
+     * the yield operation in the resumed execution.
      *
      * @since 24.2
      */
