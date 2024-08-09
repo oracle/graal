@@ -124,12 +124,12 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
 
     @Override
     protected void onFinalize(Env env) {
-        logger.print("Executed successfully: ");
-        logger.print(Boolean.toString(!hasFailed).toUpperCase());
-        logger.flush();
         if (error != null) {
             throw new AssertionError("Failure", error);
         }
+        logger.print("Executed successfully: ");
+        logger.print(Boolean.toString(!hasFailed).toUpperCase());
+        logger.flush();
     }
 
     @Override
