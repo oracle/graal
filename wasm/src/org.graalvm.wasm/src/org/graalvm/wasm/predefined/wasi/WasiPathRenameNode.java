@@ -40,35 +40,45 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
+
 public class WasiPathRenameNode extends WasmBuiltinRootNode {
 
-    public WasiPathRenameNode(WasmLanguage language, WasmInstance instance) {
-        super(language, instance);
+    public WasiPathRenameNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return pathRename(context, (int) args[0], (int) args[1], (int) args[2], (int) args[3], (int) args[4], (int) args[5]);
+        return pathRename(context, memory(frame),
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1),
+                        (int) WasmArguments.getArgument(args, 2),
+                        (int) WasmArguments.getArgument(args, 3),
+                        (int) WasmArguments.getArgument(args, 4),
+                        (int) WasmArguments.getArgument(args, 5));
     }
 
     @TruffleBoundary
-    private int pathRename(WasmContext context, int oldFd, int oldPathAddress, int oldPathLength, int newFd, int newPathAddress, int newPathLength) {
+    private int pathRename(WasmContext context, WasmMemory memory, int oldFd, int oldPathAddress, int oldPathLength, int newFd, int newPathAddress, int newPathLength) {
         final Fd oldHandle = context.fdManager().get(oldFd);
         final Fd newHandle = context.fdManager().get(newFd);
         if (oldHandle == null || newHandle == null) {
             return Errno.Badf.ordinal();
         }
-        return oldHandle.pathRename(this, memory(), oldPathAddress, oldPathLength, newHandle, newPathAddress, newPathLength).ordinal();
+        return oldHandle.pathRename(this, memory, oldPathAddress, oldPathLength, newHandle, newPathAddress, newPathLength).ordinal();
     }
 
     @Override

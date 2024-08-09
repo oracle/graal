@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,7 @@ public class WasmOptions {
     @Option(help = "A comma-separated list of builtin modules to use.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[<linkingName>:]<builtinModuleName>,[<linkingName>:]<builtinModuleName>,...")//
     public static final OptionKey<String> Builtins = new OptionKey<>("");
 
-    @Option(help = "The minimal binary size for which to use async parsing.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)")//
+    @Option(help = "The minimal binary size for which to use async parsing. If threads are not supported, async parsing will not be used.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)")//
     public static final OptionKey<Integer> AsyncParsingBinarySize = new OptionKey<>(100_000);
 
     @Option(help = "The stack size in kilobytes to use during async parsing, or zero to use defaults.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)")//
@@ -102,6 +102,10 @@ public class WasmOptions {
     @Option(help = "Enable support for extended const expressions", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> ExtendedConstExpressions = new OptionKey<>(false);
+
+    @Option(help = "Enable support for the v128 type and vector instructions", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> SIMD = new OptionKey<>(true);
 
     @Option(help = "In this mode memories and tables are not initialized.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> MemoryOverheadMode = new OptionKey<>(false);

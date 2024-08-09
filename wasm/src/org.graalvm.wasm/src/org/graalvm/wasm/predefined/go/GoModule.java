@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,37 +43,34 @@ package org.graalvm.wasm.predefined.go;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 public class GoModule extends BuiltinModule {
-    private static final int NUMBER_OF_FUNCTIONS = 19;
 
     @Override
-    protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), NUMBER_OF_FUNCTIONS);
-
-        defineFunction(instance, "debug", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "runtime.wasmExit", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "runtime.wasmWrite", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "runtime.nanotime", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "runtime.walltime", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "runtime.scheduleTimeoutEvent", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "runtime.clearTimeoutEvent", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "runtime.getRandomData", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "syscall/js.stringVal", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "syscall/js.valueGet", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "syscall/js.valueSet", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "syscall/js.valueIndex", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "syscall/js.valueSetIndex", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "syscall/js.valueCall", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "syscall/js.valueNew", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "syscall/js.valueLength", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "syscall/js.valuePrepareString", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "syscall/js.valueLoadString", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        defineFunction(instance, "syscall/js.copyBytesToJS", types(I32_TYPE), types(), new GoFunctionNode(language, instance));
-        return instance;
+    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
+        WasmModule module = WasmModule.createBuiltin(name);
+        defineFunction(context, module, "debug", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "runtime.wasmExit", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "runtime.wasmWrite", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "runtime.nanotime", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "runtime.walltime", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "runtime.scheduleTimeoutEvent", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "runtime.clearTimeoutEvent", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "runtime.getRandomData", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "syscall/js.stringVal", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "syscall/js.valueGet", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "syscall/js.valueSet", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "syscall/js.valueIndex", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "syscall/js.valueSetIndex", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "syscall/js.valueCall", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "syscall/js.valueNew", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "syscall/js.valueLength", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "syscall/js.valuePrepareString", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "syscall/js.valueLoadString", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        defineFunction(context, module, "syscall/js.copyBytesToJS", types(I32_TYPE), types(), new GoFunctionNode(language, module));
+        return module;
     }
 }

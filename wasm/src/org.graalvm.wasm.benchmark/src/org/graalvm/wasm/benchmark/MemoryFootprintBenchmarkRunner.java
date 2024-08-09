@@ -40,11 +40,7 @@
  */
 package org.graalvm.wasm.benchmark;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.utils.WasmBinaryTools;
-import org.graalvm.wasm.utils.WasmResource;
-import org.graalvm.wasm.utils.cases.WasmCase;
+import static org.graalvm.wasm.utils.cases.WasmCase.collectFileCase;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -53,7 +49,11 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
-import static org.graalvm.wasm.utils.cases.WasmCase.collectFileCase;
+import org.graalvm.polyglot.Context;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.utils.WasmBinaryTools;
+import org.graalvm.wasm.utils.WasmResource;
+import org.graalvm.wasm.utils.cases.WasmCase;
 
 /**
  * For each benchmark case in {@code args}, measures the difference in heap size after forced GC
@@ -133,8 +133,9 @@ public class MemoryFootprintBenchmarkRunner {
                 final double heapSizeBefore = getHeapSize();
 
                 // The code we want to profile:
-                benchmarkCase.getSources(EnumSet.noneOf(WasmBinaryTools.WabtOption.class)).forEach(context::eval);
-                context.getBindings(WasmLanguage.ID).getMember("main").getMember("run");
+                var sources = benchmarkCase.getSources(EnumSet.noneOf(WasmBinaryTools.WabtOption.class));
+                sources.forEach(context::eval);
+                context.getBindings(WasmLanguage.ID).getMember(benchmarkCase.name()).getMember("run");
 
                 final double heapSizeAfter = getHeapSize();
                 final double result = heapSizeAfter - heapSizeBefore;

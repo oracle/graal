@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -86,10 +87,11 @@ final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     @TruffleBoundary
-    public synchronized boolean grow(long extraPageSize) {
+    public synchronized long grow(long extraPageSize) {
+        long previousSize = size();
         if (extraPageSize == 0) {
             invokeGrowCallback();
-            return true;
+            return previousSize;
         } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE)
             // ensure computation of targetByteSize does not overflow.
@@ -97,9 +99,9 @@ final class ByteArrayWasmMemory extends WasmMemory {
             byteArrayBuffer.grow(targetByteSize);
             currentMinSize = size() + extraPageSize;
             invokeGrowCallback();
-            return true;
+            return previousSize;
         } else {
-            return false;
+            return -1;
         }
     }
 
@@ -236,6 +238,15 @@ final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
+    public Vector128 load_i128(Node node, long address) {
+        if (ByteArraySupport.littleEndian().inBounds(byteArrayBuffer.buffer(), address, Vector128.BYTES)) {
+            return new Vector128(Arrays.copyOfRange(byteArrayBuffer.buffer(), (int) address, (int) address + Vector128.BYTES));
+        } else {
+            throw trapOutOfBounds(node, address, 16);
+        }
+    }
+
+    @Override
     public void store_i32(Node node, long address, int value) {
         try {
             ByteArraySupport.littleEndian().putInt(byteArrayBuffer.buffer(), address, value);
@@ -314,6 +325,15 @@ final class ByteArrayWasmMemory extends WasmMemory {
             ByteArraySupport.littleEndian().putInt(byteArrayBuffer.buffer(), address, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public void store_i128(Node node, long address, Vector128 value) {
+        if (ByteArraySupport.littleEndian().inBounds(byteArrayBuffer.buffer(), address, 16)) {
+            System.arraycopy(value.getBytes(), 0, byteArrayBuffer.buffer(), (int) address, 16);
+        } else {
+            throw trapOutOfBounds(node, address, 16);
         }
     }
 
@@ -955,6 +975,45 @@ final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
+    @TruffleBoundary
+    public int atomic_notify(Node node, long address, int count) {
+        validateAtomicAddress(node, address, 4);
+        if (outOfBounds(address, 4)) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+        if (!this.isShared()) {
+            return 0;
+        }
+        return invokeNotifyCallback(address, count);
+    }
+
+    @Override
+    @TruffleBoundary
+    public int atomic_wait32(Node node, long address, int expected, long timeout) {
+        validateAtomicAddress(node, address, 4);
+        if (outOfBounds(address, 4)) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+        if (!this.isShared()) {
+            throw trapUnsharedMemory(node);
+        }
+        return invokeWaitCallback(address, expected, timeout, false);
+    }
+
+    @Override
+    @TruffleBoundary
+    public int atomic_wait64(Node node, long address, long expected, long timeout) {
+        validateAtomicAddress(node, address, 8);
+        if (outOfBounds(address, 8)) {
+            throw trapOutOfBounds(node, address, 8);
+        }
+        if (!this.isShared()) {
+            throw trapUnsharedMemory(node);
+        }
+        return invokeWaitCallback(address, expected, timeout, true);
+    }
+
+    @Override
     public void initialize(byte[] source, int sourceOffset, long destinationOffset, int length) {
         assert destinationOffset + length <= byteSize();
         System.arraycopy(source, sourceOffset, byteArrayBuffer.buffer(), (int) destinationOffset, length);
@@ -1008,6 +1067,14 @@ final class ByteArrayWasmMemory extends WasmMemory {
             throw trapOutOfBounds(node, offset, length);
         }
         stream.write(byteArrayBuffer.buffer(), offset, length);
+    }
+
+    @Override
+    public void copyToBuffer(Node node, byte[] dst, long srcOffset, int dstOffset, int length) {
+        if (outOfBounds(srcOffset, length)) {
+            throw trapOutOfBounds(node, srcOffset, length);
+        }
+        System.arraycopy(byteArrayBuffer.buffer(), (int) srcOffset, dst, dstOffset, length);
     }
 
     private static final class WasmByteArrayBuffer {

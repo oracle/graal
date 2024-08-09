@@ -42,9 +42,13 @@ package org.graalvm.wasm.benchcases.bench;
 
 import org.graalvm.wasm.benchmark.WasmBenchmarkSuiteBase;
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Warmup;
 
+@Warmup(iterations = 2)
+@Measurement(iterations = 4)
 public class WatBenchmarkSuite extends WasmBenchmarkSuiteBase {
     @State(Scope.Benchmark)
     public static class WatBenchmarkState extends WasmBenchmarkState {

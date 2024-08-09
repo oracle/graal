@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,45 +38,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.utils;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+package org.graalvm.wasm;
 
-public class Assert {
-    public static void assertTrue(String message, boolean condition) {
-        if (!condition) {
-            fail(message);
-        }
-    }
+import java.util.function.Function;
 
-    public static void assertNotNull(String message, Object object) {
-        assertTrue(message, object != null);
-    }
+@FunctionalInterface
+public interface LinkAction {
 
-    public static void assertEquals(String message, Object expected, Object actual) {
-        if (!actual.equals(expected)) {
-            fail(format("%s '%s' != '%s'", message, expected, actual));
-        }
-    }
-
-    public static void assertFloatEquals(String message, Float expected, Float actual, Float epsilon) {
-        if (Math.abs(actual - expected) > epsilon) {
-            fail(format("%s %s \u2209 %s +/- %s", message, actual, expected, epsilon));
-        }
-    }
-
-    public static void assertDoubleEquals(String message, Double expected, Double actual, Double epsilon) {
-        if (Math.abs(actual - expected) > epsilon) {
-            fail(format("%s %s \u2209 %s +/- %s", message, actual, expected, epsilon));
-        }
-    }
-
-    public static void fail(String message) {
-        throw new RuntimeException(message);
-    }
-
-    @TruffleBoundary
-    public static String format(String format, Object... args) {
-        return String.format(format, args);
-    }
+    void accept(WasmContext context, WasmInstance instance, Function<ImportDescriptor, Object> imports);
 }

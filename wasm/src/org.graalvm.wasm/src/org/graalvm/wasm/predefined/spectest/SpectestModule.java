@@ -41,39 +41,39 @@
 
 package org.graalvm.wasm.predefined.spectest;
 
+import static org.graalvm.wasm.WasmType.F32_TYPE;
+import static org.graalvm.wasm.WasmType.F64_TYPE;
+import static org.graalvm.wasm.WasmType.I32_TYPE;
+import static org.graalvm.wasm.WasmType.I64_TYPE;
+
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
-import static org.graalvm.wasm.WasmType.F32_TYPE;
-import static org.graalvm.wasm.WasmType.F64_TYPE;
-import static org.graalvm.wasm.WasmType.I32_TYPE;
-import static org.graalvm.wasm.WasmType.I64_TYPE;
-
 public class SpectestModule extends BuiltinModule {
-    private static final int NUMBER_OF_FUNCTIONS = 7;
 
     @Override
-    protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance module = new WasmInstance(context, WasmModule.createBuiltin(name), NUMBER_OF_FUNCTIONS);
-        defineFunction(module, "print", types(), types(), new PrintNode(language, module));
-        defineFunction(module, "print_i32", types(I32_TYPE), types(), new PrintNode(language, module));
-        defineFunction(module, "print_i64", types(I64_TYPE), types(), new PrintNode(language, module));
-        defineFunction(module, "print_f32", types(F32_TYPE), types(), new PrintNode(language, module));
-        defineFunction(module, "print_f64", types(F64_TYPE), types(), new PrintNode(language, module));
-        defineFunction(module, "print_i32_f32", types(I32_TYPE, F32_TYPE), types(), new PrintNode(language, module));
-        defineFunction(module, "print_f64_f64", types(F64_TYPE, F64_TYPE), types(), new PrintNode(language, module));
+    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
+        WasmModule module = WasmModule.createBuiltin(name);
+        defineFunction(context, module, "print", types(), types(), new PrintNode(language, module));
+        defineFunction(context, module, "print_i32", types(I32_TYPE), types(), new PrintNode(language, module));
+        defineFunction(context, module, "print_i64", types(I64_TYPE), types(), new PrintNode(language, module));
+        defineFunction(context, module, "print_f32", types(F32_TYPE), types(), new PrintNode(language, module));
+        defineFunction(context, module, "print_f64", types(F64_TYPE), types(), new PrintNode(language, module));
+        defineFunction(context, module, "print_i32_f32", types(I32_TYPE, F32_TYPE), types(), new PrintNode(language, module));
+        defineFunction(context, module, "print_f64_f64", types(F64_TYPE, F64_TYPE), types(), new PrintNode(language, module));
         defineGlobal(module, "global_i32", I32_TYPE, GlobalModifier.CONSTANT, 666);
         defineGlobal(module, "global_i64", I64_TYPE, GlobalModifier.CONSTANT, 666L);
-        defineGlobal(module, "global_f32", F32_TYPE, GlobalModifier.CONSTANT, Float.floatToRawIntBits(666.0f));
-        defineGlobal(module, "global_f64", F64_TYPE, GlobalModifier.CONSTANT, Double.doubleToRawLongBits(666.0));
-        defineTable(module, "table", 10, 20, WasmType.FUNCREF_TYPE);
-        defineMemory(module, "memory", 1, 2, false, false);
-        defineMemory(module, "shared_memory", 1, 2, false, true);
+        defineGlobal(module, "global_f32", F32_TYPE, GlobalModifier.CONSTANT, 666.0f);
+        defineGlobal(module, "global_f64", F64_TYPE, GlobalModifier.CONSTANT, 666.0);
+        defineTable(context, module, "table", 10, 20, WasmType.FUNCREF_TYPE);
+        defineMemory(context, module, "memory", 1, 2, false, false);
+        if (context.getContextOptions().supportThreads() && context.getContextOptions().useUnsafeMemory()) {
+            defineMemory(context, module, "shared_memory", 1, 2, false, true);
+        }
         return module;
     }
 }

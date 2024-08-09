@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,12 @@
  */
 package org.graalvm.wasm.test;
 
-import com.oracle.truffle.api.TruffleLanguage;
+import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
+import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
+
+import java.io.IOException;
+import java.util.Set;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -49,14 +54,10 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
-import org.graalvm.wasm.utils.Assert;
+import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.util.Set;
-
-import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
-import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
+import com.oracle.truffle.api.TruffleLanguage;
 
 public class WasmPolyglotTestSuite {
     @Test
@@ -65,7 +66,7 @@ public class WasmPolyglotTestSuite {
             context.parse(Source.newBuilder(WasmLanguage.ID, ByteSequence.create(new byte[0]), "someName").build());
         } catch (PolyglotException pex) {
             Assert.assertTrue("Must be a syntax error.", pex.isSyntaxError());
-            Assert.assertTrue("Must not be an internal error.", !pex.isInternalError());
+            Assert.assertFalse("Must not be an internal error.", pex.isInternalError());
         }
     }
 
@@ -76,11 +77,12 @@ public class WasmPolyglotTestSuite {
                         ByteSequence.create(binaryReturnConst),
                         "main");
         Source source = sourceBuilder.build();
-        Context context = contextBuilder.build();
-        context.eval(source);
-        Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
-        Value result = mainFunction.execute();
-        Assert.assertEquals("Should be equal: ", 42, result.asInt());
+        try (Context context = contextBuilder.build()) {
+            context.eval(source);
+            Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            Value result = mainFunction.execute();
+            Assert.assertEquals("Should be equal: ", 42, result.asInt());
+        }
     }
 
     @Test
@@ -99,7 +101,7 @@ public class WasmPolyglotTestSuite {
         mainModule.getMember("main").execute();
         final TruffleLanguage.Env env = WasmContext.get(null).environment();
         final UnsafeWasmMemory memory = (UnsafeWasmMemory) env.asGuestValue(mainModule.getMember("memory"));
-        Assert.assertTrue("Memory should have been allocated.", !memory.freed());
+        Assert.assertFalse("Memory should have been allocated.", memory.freed());
         context.close();
         Assert.assertTrue("Memory should have been freed.", memory.freed());
     }
@@ -110,11 +112,12 @@ public class WasmPolyglotTestSuite {
         Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, test, "main");
         Source source = sourceBuilder.build();
-        Context context = contextBuilder.build();
-        context.eval(source);
-        Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
-        Value result = mainFunction.execute();
-        Assert.assertEquals("Should be equal: ", 11, result.asInt());
+        try (Context context = contextBuilder.build()) {
+            context.eval(source);
+            Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            Value result = mainFunction.execute();
+            Assert.assertEquals("Should be equal: ", 11, result.asInt());
+        }
     }
 
     @Test
@@ -131,7 +134,7 @@ public class WasmPolyglotTestSuite {
                     mainFunction.execute();
                     Assert.fail("Should have thrown");
                 } catch (PolyglotException pex) {
-                    Assert.assertTrue("Should not throw internal error", !pex.isInternalError());
+                    Assert.assertFalse("Should not throw internal error", pex.isInternalError());
                 }
             }
         }
@@ -155,19 +158,14 @@ public class WasmPolyglotTestSuite {
     @Test
     public void deeplyNestedBrIf() throws IOException, InterruptedException {
         // This code resembles the deeply nested br_if in WebAssembly part of undici
-        StringBuilder wat = new StringBuilder();
         int depth = 256;
-        wat.append("(module (func (export \"main\") (result i32) (block $my_block ");
-        for (int i = 0; i < depth; i++) {
-            wat.append("(block ");
-        }
-        wat.append("i32.const 0 br_if $my_block i32.const 35 i32.const 0 drop drop");
-        for (int i = 0; i < depth; i++) {
-            wat.append(")");
-        }
-        wat.append(") i32.const 42))");
+        final String wat = "(module (func (export \"main\") (result i32) (block $my_block " +
+                        "(block ".repeat(depth) +
+                        "i32.const 0 br_if $my_block i32.const 35 i32.const 0 drop drop" +
+                        ")".repeat(depth) +
+                        ") i32.const 42))";
 
-        ByteSequence bytes = ByteSequence.create(compileWat("test", wat.toString()));
+        ByteSequence bytes = ByteSequence.create(compileWat("test", wat));
         Source source = Source.newBuilder(WasmLanguage.ID, bytes, "main").build();
         try (Context context = Context.create(WasmLanguage.ID)) {
             context.eval(source);
@@ -202,21 +200,23 @@ public class WasmPolyglotTestSuite {
                     "74615f656e6403020a090202000b0400",
                     "412a0b");
 
-    private static final String textOverwriteElement = "(module" +
-                    "  (table 10 funcref)\n" +
-                    "  (type (func (result i32)))\n" +
-                    "  (func $f (result i32)\n" +
-                    "    i32.const 7)\n" +
-                    "  (func $g (result i32)\n" +
-                    "    i32.const 11)\n" +
-                    "  (func (result i32)\n" +
-                    "    i32.const 3\n" +
-                    "    call_indirect (type 0))\n" +
-                    "  (export \"main\" (func 2))\n" +
-                    "  (elem (i32.const 0) $f)\n" +
-                    "  (elem (i32.const 3) $f)\n" +
-                    "  (elem (i32.const 7) $f)\n" +
-                    "  (elem (i32.const 5) $f)\n" +
-                    "  (elem (i32.const 3) $g)\n" +
-                    ")";
+    private static final String textOverwriteElement = """
+                    (module
+                      (table 10 funcref)
+                      (type (func (result i32)))
+                      (func $f (result i32)
+                        i32.const 7)
+                      (func $g (result i32)
+                        i32.const 11)
+                      (func (result i32)
+                        i32.const 3
+                        call_indirect (type 0))
+                      (export "main" (func 2))
+                      (elem (i32.const 0) $f)
+                      (elem (i32.const 3) $f)
+                      (elem (i32.const 7) $f)
+                      (elem (i32.const 5) $f)
+                      (elem (i32.const 3) $g)
+                    )
+                    """;
 }

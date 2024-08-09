@@ -47,23 +47,20 @@ package org.graalvm.wasm.constants;
 public class BytecodeBitEncoding {
     // Labels
 
-    public static final int LABEL_U8_RESULT_SHIFT = 7;
-    public static final int LABEL_U8_RESULT_TYPE_MASK = 0b0110_0000;
-    public static final int LABEL_U8_RESULT_TYPE_NUM = 0b0010_0000;
-    public static final int LABEL_U8_RESULT_TYPE_REF = 0b0100_0000;
-    public static final int LABEL_U8_RESULT_TYPE_MIX = 0b0110_0000;
-    public static final int LABEL_U8_RESULT_TYPE_SHIFT = 5;
-    public static final int LABEL_U8_STACK_VALUE = 0b0001_1111;
+    public static final int LABEL_U8_RESULT_MASK = 0b1100_0000;
+    public static final int LABEL_U8_RESULT_NUM = 0b1000_0000;
+    public static final int LABEL_U8_RESULT_OBJ = 0b1100_0000;
+    public static final int LABEL_U8_STACK_VALUE = 0b0011_1111;
 
     public static final int LABEL_U16_RESULT_TYPE_MASK = 0b1100_0000;
     public static final int LABEL_U16_RESULT_TYPE_NUM = 0b0100_0000;
-    public static final int LABEL_U16_RESULT_TYPE_REF = 0b1000_0000;
+    public static final int LABEL_U16_RESULT_TYPE_OBJ = 0b1000_0000;
     public static final int LABEL_U16_RESULT_TYPE_MIX = 0b1100_0000;
     public static final int LABEL_U16_RESULT_TYPE_SHIFT = 6;
     public static final int LABEL_U16_RESULT_VALUE = 0b0011_1111;
 
     public static final int LABEL_RESULT_TYPE_NUM = 0b0000_0001;
-    public static final int LABEL_RESULT_TYPE_REF = 0b0000_0010;
+    public static final int LABEL_RESULT_TYPE_OBJ = 0b0000_0010;
     public static final int LABEL_RESULT_TYPE_MIX = 0b0000_0011;
 
     public static final int MEMORY_64_FLAG = 0b1000_0000;
@@ -109,12 +106,13 @@ public class BytecodeBitEncoding {
     public static final int DATA_SEG_MEMORY_INDEX_VALUE = 0b0011_1111;
 
     // Runtime data sections
-
+    public static final int DATA_SEG_RUNTIME_HEADER_LENGTH = 1;
     public static final int DATA_SEG_RUNTIME_LENGTH_MASK = 0b1100_0000;
     public static final int DATA_SEG_RUNTIME_LENGTH_INLINE = 0b0000_0000;
     public static final int DATA_SEG_RUNTIME_LENGTH_U8 = 0b0100_0000;
     public static final int DATA_SEG_RUNTIME_LENGTH_U16 = 0b1000_0000;
     public static final int DATA_SEG_RUNTIME_LENGTH_I32 = 0b1100_0000;
+    public static final int DATA_SEG_RUNTIME_UNSAFE_ADDRESS_LENGTH = 8;
 
     // Elem sections
 

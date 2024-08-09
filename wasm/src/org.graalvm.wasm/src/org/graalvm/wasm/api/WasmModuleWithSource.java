@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,54 +40,32 @@
  */
 package org.graalvm.wasm.api;
 
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.WasmModule;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.source.Source;
 
-public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
-    private final Object executable;
-    private final BranchProfile errorBranch = BranchProfile.create();
+/**
+ * Represents a parsed and validated WebAssembly module, which has not yet been instantiated.
+ */
+@SuppressWarnings("static-method")
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "module")
+public final class WasmModuleWithSource implements TruffleObject {
+    final WasmModule module;
+    final Source source;
 
-    public ExecuteInParentContextNode(WasmLanguage language, WasmInstance instance, Object executable) {
-        super(language, instance);
-        this.executable = executable;
+    public WasmModuleWithSource(WasmModule module, Source source) {
+        this.module = module;
+        this.source = source;
     }
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        // Imported executables come from the parent context
-        TruffleContext truffleContext = context.environment().getContext().getParent();
-        Object prev = truffleContext.enter(this);
-        try {
-            return InteropLibrary.getUncached().execute(executable, frame.getArguments());
-        } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
-            errorBranch.enter();
-            throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Call failed: %s", getMessage(e));
-        } finally {
-            truffleContext.leave(this, prev);
-        }
+    public WasmModule module() {
+        return module;
     }
 
-    @TruffleBoundary
-    private static String getMessage(InteropException e) {
-        return e.getMessage();
-    }
-
-    @Override
-    public String builtinNodeName() {
-        return "execute";
+    public Source source() {
+        return source;
     }
 }

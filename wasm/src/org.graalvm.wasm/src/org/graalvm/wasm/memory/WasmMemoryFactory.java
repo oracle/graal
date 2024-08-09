@@ -41,9 +41,16 @@
 package org.graalvm.wasm.memory;
 
 import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.exception.Failure;
+
+import static org.graalvm.wasm.Assert.assertTrue;
 
 public class WasmMemoryFactory {
     public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean shared, boolean unsafeMemory) {
+        if (shared) {
+            assertTrue(unsafeMemory, "Shared memories are only supported when UseUnsafeMemory flag is set.", Failure.SHARED_MEMORY_WITHOUT_UNSAFE);
+        }
+
         if (unsafeMemory) {
             if (maxAllowedSize > Sizes.MAX_MEMORY_INSTANCE_SIZE) {
                 return new NativeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared);
@@ -53,6 +60,19 @@ public class WasmMemoryFactory {
         } else {
             assert maxAllowedSize <= Sizes.MAX_MEMORY_INSTANCE_SIZE;
             return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared);
+        }
+    }
+
+    public static Class<? extends WasmMemory> getMemoryImplementation(long maxAllowedSize, boolean unsafeMemory) {
+        if (unsafeMemory) {
+            if (maxAllowedSize > Sizes.MAX_MEMORY_INSTANCE_SIZE) {
+                return NativeWasmMemory.class;
+            } else {
+                return UnsafeWasmMemory.class;
+            }
+        } else {
+            assert maxAllowedSize <= Sizes.MAX_MEMORY_INSTANCE_SIZE;
+            return ByteArrayWasmMemory.class;
         }
     }
 }

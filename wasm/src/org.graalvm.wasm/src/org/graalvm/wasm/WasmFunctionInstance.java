@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,17 +40,21 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import org.graalvm.wasm.api.InteropArray;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -58,21 +62,36 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 public final class WasmFunctionInstance extends EmbedderDataHolder implements TruffleObject {
     private final WasmContext context;
+    private final WasmInstance moduleInstance;
     private final WasmFunction function;
     private final CallTarget target;
     private final TruffleContext truffleContext;
+    private Object importedFunction;
 
     /**
      * Represents a call target that is a WebAssembly function or an imported function.
      * <p>
      * If the function is imported, then context UID and the function are set to {@code null}.
      */
-    public WasmFunctionInstance(WasmContext context, WasmFunction function, CallTarget target) {
+    public WasmFunctionInstance(WasmInstance moduleInstance, WasmFunction function, CallTarget target) {
+        this(moduleInstance.context(), moduleInstance, function, target);
+    }
+
+    /**
+     * Constructor for custom (test) functions not defined in a wasm module.
+     */
+    public WasmFunctionInstance(WasmContext context, CallTarget target) {
+        this(context, null, null, target);
+    }
+
+    public WasmFunctionInstance(WasmContext context, WasmInstance moduleInstance, WasmFunction function, CallTarget target) {
         Assert.assertNotNull(target, "Call target must be non-null", Failure.UNSPECIFIED_INTERNAL);
         this.context = context;
+        this.moduleInstance = moduleInstance;
         this.function = function;
         this.target = target;
         this.truffleContext = context.environment().getContext();
+        assert ((RootCallTarget) target).getRootNode().getLanguage(WasmLanguage.class) == context.language();
     }
 
     @Override
@@ -84,6 +103,11 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         return context;
     }
 
+    public WasmInstance moduleInstance() {
+        return moduleInstance;
+    }
+
+    @TruffleBoundary
     public String name() {
         if (function == null) {
             return target.toString();
@@ -103,6 +127,14 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         return truffleContext;
     }
 
+    public void setImportedFunction(Object importedFunction) {
+        this.importedFunction = importedFunction;
+    }
+
+    public Object getImportedFunction() {
+        return importedFunction;
+    }
+
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean isExecutable() {
@@ -112,52 +144,102 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
     @ExportMessage
     Object execute(Object[] arguments,
                     @CachedLibrary("this") InteropLibrary self,
-                    @Cached WasmIndirectCallNode callNode) {
+                    @Cached WasmIndirectCallNode callNode) throws ArityException, UnsupportedTypeException {
         TruffleContext c = getTruffleContext();
         Object prev = c.enter(self);
         try {
-            Object result = callNode.execute(target, arguments);
+            Object result = callNode.execute(target, WasmArguments.create(moduleInstance, validateArguments(arguments)));
 
             // For external calls of a WebAssembly function we have to materialize the multi-value
             // stack.
             // At this point the multi-value stack has already been populated, therefore, we don't
             // have to check the size of the multi-value stack.
             if (result == WasmConstant.MULTI_VALUE) {
-                final long[] multiValueStack = context.primitiveMultiValueStack();
-                final Object[] referenceMultiValueStack = context().referenceMultiValueStack();
-                final int resultCount = function.resultCount();
-                CompilerAsserts.partialEvaluationConstant(resultCount);
-                assert multiValueStack.length >= resultCount;
-                assert referenceMultiValueStack.length >= resultCount;
-                final Object[] values = new Object[resultCount];
-                for (int i = 0; i < resultCount; i++) {
-                    byte resultType = function.resultTypeAt(i);
-                    switch (resultType) {
-                        case WasmType.I32_TYPE:
-                            values[i] = (int) multiValueStack[i];
-                            break;
-                        case WasmType.I64_TYPE:
-                            values[i] = multiValueStack[i];
-                            break;
-                        case WasmType.F32_TYPE:
-                            values[i] = Float.intBitsToFloat((int) multiValueStack[i]);
-                            break;
-                        case WasmType.F64_TYPE:
-                            values[i] = Double.longBitsToDouble(multiValueStack[i]);
-                            break;
-                        case WasmType.FUNCREF_TYPE:
-                        case WasmType.EXTERNREF_TYPE:
-                            values[i] = referenceMultiValueStack[i];
-                            break;
-                        default:
-                            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
-                    }
-                }
-                return InteropArray.create(values);
+                WasmLanguage language = context.language();
+                assert language == WasmLanguage.get(null);
+                return multiValueStackAsArray(language);
             }
             return result;
         } finally {
             c.leave(self, prev);
         }
+    }
+
+    private Object[] validateArguments(Object[] arguments) throws ArityException, UnsupportedTypeException {
+        if (function == null) {
+            return arguments;
+        }
+        final int paramCount = function.paramCount();
+        if (arguments.length != paramCount) {
+            throw ArityException.create(paramCount, paramCount, arguments.length);
+        }
+        for (int i = 0; i < paramCount; i++) {
+            byte paramType = function.paramTypeAt(i);
+            Object value = arguments[i];
+            switch (paramType) {
+                case WasmType.I32_TYPE -> {
+                    if (value instanceof Integer) {
+                        continue;
+                    }
+                }
+                case WasmType.I64_TYPE -> {
+                    if (value instanceof Long) {
+                        continue;
+                    }
+                }
+                case WasmType.F32_TYPE -> {
+                    if (value instanceof Float) {
+                        continue;
+                    }
+                }
+                case WasmType.F64_TYPE -> {
+                    if (value instanceof Double) {
+                        continue;
+                    }
+                }
+                case WasmType.V128_TYPE -> {
+                    if (value instanceof Vector128) {
+                        continue;
+                    }
+                }
+                case WasmType.FUNCREF_TYPE -> {
+                    if (value instanceof WasmFunctionInstance || value == WasmConstant.NULL) {
+                        continue;
+                    }
+                }
+                case WasmType.EXTERNREF_TYPE -> {
+                    continue;
+                }
+                default -> throw WasmException.create(Failure.UNKNOWN_TYPE);
+            }
+            throw UnsupportedTypeException.create(arguments);
+        }
+        return arguments;
+    }
+
+    private Object multiValueStackAsArray(WasmLanguage language) {
+        final var multiValueStack = language.multiValueStack();
+        final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
+        final Object[] objectMultiValueStack = multiValueStack.objectStack();
+        final int resultCount = function.resultCount();
+        assert primitiveMultiValueStack.length >= resultCount;
+        assert objectMultiValueStack.length >= resultCount;
+        final Object[] values = new Object[resultCount];
+        for (int i = 0; i < resultCount; i++) {
+            byte resultType = function.resultTypeAt(i);
+            values[i] = switch (resultType) {
+                case WasmType.I32_TYPE -> (int) primitiveMultiValueStack[i];
+                case WasmType.I64_TYPE -> primitiveMultiValueStack[i];
+                case WasmType.F32_TYPE -> Float.intBitsToFloat((int) primitiveMultiValueStack[i]);
+                case WasmType.F64_TYPE -> Double.longBitsToDouble(primitiveMultiValueStack[i]);
+                case WasmType.V128_TYPE, WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> {
+                    Object obj = objectMultiValueStack[i];
+                    objectMultiValueStack[i] = null;
+                    yield obj;
+                }
+                default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
+            };
+        }
+        return InteropArray.create(values);
     }
 }

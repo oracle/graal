@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -146,6 +146,7 @@ public enum Failure {
     UNSUPPORTED_MULTI_VALUE_TYPE(Type.TRAP, "multi-value has to be provided by an array type"),
 
     MEMORY_OVERHEAD_MODE(Type.TRAP, "functions cannot be executed with memory overhead mode enabled"),
+    SHARED_MEMORY_WITHOUT_UNSAFE(Type.TRAP, "shared memories are not supported without Unsafe"),
 
     CALL_STACK_EXHAUSTED(Type.EXHAUSTION, "call stack exhausted"),
     MEMORY_ALLOCATION_FAILED(Type.EXHAUSTION, "could not allocate memory"),
@@ -154,7 +155,9 @@ public enum Failure {
     UNSPECIFIED_INTERNAL(Type.INTERNAL, "unspecified"),
     INCOMPATIBLE_OPTIONS(Type.INTERNAL, "some of the provided options are incompatible"),
 
-    NON_REPRESENTABLE_EXTRA_DATA_VALUE(Type.MALFORMED, "value cannot be represented in extra data");
+    NON_REPRESENTABLE_EXTRA_DATA_VALUE(Type.MALFORMED, "value cannot be represented in extra data"),
+
+    INVALID_LANE_INDEX(Type.INVALID, "invalid lane index");
 
     public enum Type {
         TRAP("trap"),

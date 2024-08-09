@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,11 @@ package org.graalvm.wasm.predefined.wasi;
 
 import java.util.Map;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
@@ -54,18 +56,18 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class WasiEnvironSizesGetNode extends WasmBuiltinRootNode {
 
-    public WasiEnvironSizesGetNode(WasmLanguage language, WasmInstance module) {
+    public WasiEnvironSizesGetNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return environSizesGet((int) args[0], (int) args[1]);
+        return environSizesGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int environSizesGet(int environCountAddress, int environSizeAddress) {
+    private int environSizesGet(WasmMemory memory, int environCountAddress, int environSizeAddress) {
         final Map<String, String> env = getContext().environment().getEnvironment();
         int size = 0;
         for (final Map.Entry<String, String> entry : env.entrySet()) {
@@ -73,8 +75,8 @@ public final class WasiEnvironSizesGetNode extends WasmBuiltinRootNode {
             size += 1; // extra byte needed for the trailing null character
         }
 
-        memory().store_i32(this, environCountAddress, env.size());
-        memory().store_i32(this, environSizeAddress, size);
+        memory.store_i32(this, environCountAddress, env.size());
+        memory.store_i32(this, environSizeAddress, size);
         return Errno.Success.ordinal();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,8 +49,8 @@ import java.util.Objects;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
+import org.graalvm.wasm.WasmContextOptions;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.utils.Assert;
 import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.graalvm.wasm.utils.cases.WasmCase;
 import org.openjdk.jmh.annotations.Fork;
@@ -81,27 +81,36 @@ public abstract class WasmBenchmarkSuiteBase {
 
         @Setup(Level.Trial)
         public void setup() throws IOException, InterruptedException {
-            final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
-            contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,wasi_snapshot_preview1");
-            if (!Objects.isNull(DISABLE_COMPILATION_FLAG)) {
-                contextBuilder.allowExperimentalOptions(true);
-                contextBuilder.option("engine.Compilation", "false");
-            }
-            context = contextBuilder.build();
             benchmarkCase = WasmCase.loadBenchmarkCase(benchmarkResource());
             System.out.println("...::: Benchmark " + benchmarkCase.name() + " :::...");
-            benchmarkCase.getSources(EnumSet.noneOf(WasmBinaryTools.WabtOption.class)).forEach(context::eval);
 
-            // TODO: This should call benchmarkCase.name(), and not main (GR-26734),
-            // but we currently have a hack because the WASI module imports
-            // a memory from a module called main.
-            // We should fix that in the future.
-            Value benchmarkModule = context.getBindings(WasmLanguage.ID).getMember("main");
+            final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+            contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,wasi_snapshot_preview1");
+            contextBuilder.allowExperimentalOptions(true);
+            if (!Objects.isNull(DISABLE_COMPILATION_FLAG)) {
+                contextBuilder.option("engine.Compilation", "false");
+            }
+            benchmarkCase.options().forEach((key, value) -> {
+                if (key instanceof String optionName && value instanceof String optionValue) {
+                    if (optionName.startsWith("wasm.")) {
+                        contextBuilder.option(optionName, optionValue);
+                    }
+                }
+            });
+            context = contextBuilder.build();
+
+            var sources = benchmarkCase.getSources(EnumSet.noneOf(WasmBinaryTools.WabtOption.class));
+            sources.forEach(context::eval);
+
+            String mainModuleName = benchmarkCase.name();
+            Value benchmarkModule = context.getBindings(WasmLanguage.ID).getMember(mainModuleName);
             Value benchmarkSetupOnce = benchmarkModule.getMember("benchmarkSetupOnce");
             benchmarkSetupEach = benchmarkModule.getMember("benchmarkSetupEach");
             benchmarkTeardownEach = benchmarkModule.getMember("benchmarkTeardownEach");
             benchmarkRun = benchmarkModule.getMember("benchmarkRun");
-            Assert.assertNotNull(String.format("No benchmarkRun method in %s.", benchmarkCase.name()), benchmarkRun);
+            if (benchmarkRun == null) {
+                throw new RuntimeException(String.format("No benchmarkRun method in %s.", benchmarkCase.name()));
+            }
 
             if (benchmarkSetupOnce != null) {
                 benchmarkSetupOnce.execute();

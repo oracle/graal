@@ -60,10 +60,16 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -98,45 +104,50 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     private static final String PHASE_SYNC_INLINE_ICON = "\uD83D\uDD37";
     private static final String PHASE_ASYNC_ICON = "\uD83D\uDD36";
     private static final String PHASE_INTERPRETER_ICON = "\uD83E\uDD16";
+    private static final String PHASE_SHARED_ENGINE_ICON = "\uD83D\uDD38";
     private static final int STATUS_ICON_WIDTH = 2;
-    private static final int STATUS_LABEL_WIDTH = 11;
+    private static final int STATUS_LABEL_WIDTH = 12;
     private static final int DEFAULT_INTERPRETER_ITERATIONS = 1;
     private static final int DEFAULT_SYNC_NOINLINE_ITERATIONS = 3;
     private static final int DEFAULT_SYNC_INLINE_ITERATIONS = 3;
     private static final int DEFAULT_ASYNC_ITERATIONS = 100000;
+    private static final int DEFAULT_ASYNC_SHARED_ITERATIONS = 10000;
     private static final int INITIAL_STATE_CHECK_ITERATIONS = 10;
     private static final int STATE_CHECK_PERIODICITY = 2000;
-    private static final ByteArrayOutputStream TEST_OUT = new ByteArrayOutputStream();
 
-    private static Context getInterpretedNoInline(Context.Builder contextBuilder) {
-        contextBuilder.option("engine.Compilation", "false");
-        contextBuilder.option("compiler.Inlining", "false");
-        return contextBuilder.build();
+    private static Map<String, String> getInterpretedNoInline() {
+        return Map.ofEntries(
+                        Map.entry("engine.Compilation", "false"),
+                        Map.entry("compiler.Inlining", "false"));
     }
 
-    private static Context getSyncCompiledNoInline(Context.Builder contextBuilder) {
-        contextBuilder.option("engine.Compilation", "true");
-        contextBuilder.option("engine.BackgroundCompilation", "false");
-        contextBuilder.option("engine.CompileImmediately", "true");
-        contextBuilder.option("compiler.Inlining", "false");
-        return contextBuilder.build();
+    private static Map<String, String> getSyncCompiledNoInline() {
+        return Map.ofEntries(
+                        Map.entry("engine.Compilation", "true"),
+                        Map.entry("engine.BackgroundCompilation", "false"),
+                        Map.entry("engine.CompileImmediately", "true"),
+                        Map.entry("compiler.Inlining", "false"));
     }
 
-    private static Context getSyncCompiledWithInline(Context.Builder contextBuilder) {
-        contextBuilder.option("engine.Compilation", "true");
-        contextBuilder.option("engine.BackgroundCompilation", "false");
-        contextBuilder.option("engine.CompileImmediately", "true");
-        contextBuilder.option("compiler.Inlining", "true");
-        return contextBuilder.build();
+    private static Map<String, String> getSyncCompiledWithInline() {
+        return Map.ofEntries(
+                        Map.entry("engine.Compilation", "true"),
+                        Map.entry("engine.BackgroundCompilation", "false"),
+                        Map.entry("engine.CompileImmediately", "true"),
+                        Map.entry("compiler.Inlining", "true"));
     }
 
-    private static Context getAsyncCompiled(Context.Builder contextBuilder) {
-        contextBuilder.option("engine.Compilation", "true");
-        contextBuilder.option("engine.BackgroundCompilation", "true");
-        contextBuilder.option("engine.CompileImmediately", "false");
-        contextBuilder.option("compiler.Inlining", "false");
-        contextBuilder.option("engine.FirstTierCompilationThreshold", "100");
-        return contextBuilder.build();
+    private static Map<String, String> getAsyncCompiled() {
+        return Map.ofEntries(
+                        Map.entry("engine.Compilation", "true"),
+                        Map.entry("engine.BackgroundCompilation", "true"),
+                        Map.entry("engine.CompileImmediately", "false"),
+                        Map.entry("compiler.Inlining", "false"),
+                        Map.entry("engine.FirstTierCompilationThreshold", "100"));
+    }
+
+    private static Map<String, String> getAsyncCompiledShared() {
+        return getAsyncCompiled();
     }
 
     private static boolean inCI() {
@@ -162,7 +173,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         throw new AssertionFailedError("No start function exported.");
     }
 
-    private static void runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel) throws IOException {
+    private void runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel, ByteArrayOutputStream testOut) throws IOException {
         try {
             // Whereas the test needs memory to be reset between iterations.
             final boolean requiresZeroMemory = Boolean.parseBoolean(testCase.options().getProperty("zero-memory", "false"));
@@ -190,15 +201,15 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
             for (int i = 0; i != iterations; ++i) {
                 try {
-                    TEST_OUT.reset();
+                    testOut.reset();
                     final Value result = arg == null ? mainFunction.execute() : mainFunction.execute(arg);
-                    WasmCase.validateResult(testCase.data().resultValidator(), result, TEST_OUT);
+                    WasmCase.validateResult(testCase.data().resultValidator(), result, testOut);
                 } catch (PolyglotException e) {
                     // If no exception is expected and the program returns with success exit status,
                     // then we check stdout.
                     if (e.isExit() && testCase.data().expectedErrorMessage() == null) {
                         Assert.assertEquals("Program exited with non-zero return code.", e.getExitStatus(), 0);
-                        WasmCase.validateResult(testCase.data().resultValidator(), null, TEST_OUT);
+                        WasmCase.validateResult(testCase.data().resultValidator(), null, testOut);
                     } else if (testCase.data().expectedErrorTime() == WasmCaseData.ErrorType.Validation) {
                         validateThrown(testCase.data(), WasmCaseData.ErrorType.Validation, e);
                         return;
@@ -245,7 +256,6 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 }
             }
         } finally {
-            System.setOut(System.out);
             context.close(true);
         }
     }
@@ -254,20 +264,21 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         return i < INITIAL_STATE_CHECK_ITERATIONS || i % STATE_CHECK_PERIODICITY == 0;
     }
 
-    private static void resetStatus(PrintStream oldOut, String icon, String label) {
-        String formattedLabel = label;
-        if (formattedLabel.length() > STATUS_LABEL_WIDTH) {
-            formattedLabel = formattedLabel.substring(0, STATUS_LABEL_WIDTH);
-        }
-        for (int i = formattedLabel.length(); i < STATUS_LABEL_WIDTH; i++) {
-            formattedLabel += " ";
-        }
+    @SuppressWarnings("static-method")
+    private synchronized void resetStatus(PrintStream oldOut, String icon, String label) {
         if (isPoorShell()) {
             oldOut.println();
             oldOut.print(icon);
-            oldOut.print(formattedLabel);
+            oldOut.print(label);
             oldOut.flush();
         } else {
+            String formattedLabel = label;
+            if (formattedLabel.length() > STATUS_LABEL_WIDTH) {
+                formattedLabel = formattedLabel.substring(0, STATUS_LABEL_WIDTH);
+            }
+            for (int i = formattedLabel.length(); i < STATUS_LABEL_WIDTH; i++) {
+                formattedLabel += " ";
+            }
             eraseStatus(oldOut);
             oldOut.print(icon);
             oldOut.print(formattedLabel);
@@ -281,22 +292,23 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         }
     }
 
-    private WasmTestStatus runTestCase(WasmCase testCase) {
+    private WasmTestStatus runTestCase(WasmCase testCase, Engine sharedEngine) {
+        ByteArrayOutputStream testOut = new ByteArrayOutputStream();
         Path tempWorkingDirectory = null;
         try {
             Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+            if (sharedEngine != null) {
+                contextBuilder.engine(sharedEngine);
+            }
+
             contextBuilder.allowEnvironmentAccess(EnvironmentAccess.NONE);
-            contextBuilder.out(TEST_OUT);
+            contextBuilder.out(testOut);
             contextBuilder.allowExperimentalOptions(true);
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
             }
 
-            if (WasmTestOptions.STORE_CONSTANTS_POLICY != null && !WasmTestOptions.STORE_CONSTANTS_POLICY.equals("")) {
-                contextBuilder.option("wasm.StoreConstantsPolicy", WasmTestOptions.STORE_CONSTANTS_POLICY);
-                System.out.println("wasm.StoreConstantsPolicy: " + WasmTestOptions.STORE_CONSTANTS_POLICY);
-            }
             contextBuilder.option("wasm.Builtins", includedExternalModules());
             contextBuilder.option("wasm.WasiConstantRandomGet", "true");
             final String commandLineArgs = testCase.options().getProperty("command-line-args");
@@ -342,7 +354,6 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 contextBuilder.in(stdin);
             }
 
-            Context context;
             EnumSet<WasmBinaryTools.WabtOption> options = EnumSet.noneOf(WasmBinaryTools.WabtOption.class);
             String threadsOption = testCase.options().getProperty("wasm.Threads");
             if (threadsOption != null && threadsOption.equals("true")) {
@@ -354,31 +365,9 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             }
             ArrayList<Source> sources = testCase.getSources(options);
 
-            // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
-            int interpreterIterations = Integer.parseInt(testCase.options().getProperty("interpreter-iterations", String.valueOf(DEFAULT_INTERPRETER_ITERATIONS)));
-            context = getInterpretedNoInline(contextBuilder);
-            runInContext(testCase, context, sources, interpreterIterations, PHASE_INTERPRETER_ICON, "interpreter");
-
-            // Run in synchronous compiled mode, with inlining turned off.
-            // We need to run the test at least twice like this, since the first run will lead to
-            // de-opts due to empty profiles.
-            int syncNoinlineIterations = Integer.parseInt(testCase.options().getProperty("sync-noinline-iterations", String.valueOf(DEFAULT_SYNC_NOINLINE_ITERATIONS)));
-            context = getSyncCompiledNoInline(contextBuilder);
-            runInContext(testCase, context, sources, syncNoinlineIterations, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl");
-
-            // Run in synchronous compiled mode, with inlining turned on.
-            // We need to run the test at least twice like this, since the first run will lead to
-            // de-opts due to empty profiles.
-            int syncInlineIterations = Integer.parseInt(testCase.options().getProperty("sync-inline-iterations", String.valueOf(DEFAULT_SYNC_INLINE_ITERATIONS)));
-            context = getSyncCompiledWithInline(contextBuilder);
-            runInContext(testCase, context, sources, syncInlineIterations, PHASE_SYNC_INLINE_ICON, "sync,inl");
-
-            // Run with normal, asynchronous compilation.
-            int asyncIterations = Integer.parseInt(testCase.options().getProperty("async-iterations", String.valueOf(DEFAULT_ASYNC_ITERATIONS)));
-            context = getAsyncCompiled(contextBuilder);
-            runInContext(testCase, context, sources, asyncIterations, PHASE_ASYNC_ICON, "async,multi");
+            runInContexts(testCase, contextBuilder, sources, sharedEngine, testOut);
         } catch (InterruptedException | IOException e) {
-            Assert.fail(String.format("Test %s failed: %s", testCase.name(), e.getMessage()));
+            throw new RuntimeException(String.format("Test %s failed: %s", testCase.name(), e.getMessage()));
         } finally {
             if (tempWorkingDirectory != null) {
                 deleteFolder(tempWorkingDirectory.toFile());
@@ -387,13 +376,48 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         return WasmTestStatus.OK;
     }
 
+    private void runInContexts(WasmCase testCase, Context.Builder contextBuilder, ArrayList<Source> sources, Engine sharedEngine, ByteArrayOutputStream testOut) throws IOException {
+        Context context;
+        if (sharedEngine == null) {
+            // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
+            int interpreterIterations = Integer.parseInt(testCase.options().getProperty("interpreter-iterations", String.valueOf(DEFAULT_INTERPRETER_ITERATIONS)));
+            context = contextBuilder.options(getInterpretedNoInline()).build();
+            runInContext(testCase, context, sources, interpreterIterations, PHASE_INTERPRETER_ICON, "interpreter", testOut);
+
+            // Run in synchronous compiled mode, with inlining turned off.
+            // We need to run the test at least twice like this, since the first run will lead to
+            // de-opts due to empty profiles.
+            int syncNoinlineIterations = Integer.parseInt(testCase.options().getProperty("sync-noinline-iterations", String.valueOf(DEFAULT_SYNC_NOINLINE_ITERATIONS)));
+            context = contextBuilder.options(getSyncCompiledNoInline()).build();
+            runInContext(testCase, context, sources, syncNoinlineIterations, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl", testOut);
+
+            // Run in synchronous compiled mode, with inlining turned on.
+            // We need to run the test at least twice like this, since the first run will lead to
+            // de-opts due to empty profiles.
+            int syncInlineIterations = Integer.parseInt(testCase.options().getProperty("sync-inline-iterations", String.valueOf(DEFAULT_SYNC_INLINE_ITERATIONS)));
+            context = contextBuilder.options(getSyncCompiledWithInline()).build();
+            runInContext(testCase, context, sources, syncInlineIterations, PHASE_SYNC_INLINE_ICON, "sync,inl", testOut);
+
+            // Run with normal, asynchronous compilation.
+            int asyncIterations = Integer.parseInt(testCase.options().getProperty("async-iterations", String.valueOf(DEFAULT_ASYNC_ITERATIONS)));
+            context = contextBuilder.options(getAsyncCompiled()).build();
+            runInContext(testCase, context, sources, asyncIterations, PHASE_ASYNC_ICON, "async,multi", testOut);
+        } else {
+            int asyncSharedIterations = testCase.options().containsKey("async-iterations") && !testCase.options().containsKey("async-shared-iterations")
+                            ? Integer.parseInt(testCase.options().getProperty("async-iterations")) / 10
+                            : Integer.parseInt(testCase.options().getProperty("async-shared-iterations", String.valueOf(DEFAULT_ASYNC_SHARED_ITERATIONS)));
+            context = contextBuilder.build();
+            runInContext(testCase, context, sources, asyncSharedIterations, PHASE_SHARED_ENGINE_ICON, "async,shared", testOut);
+        }
+    }
+
     protected String includedExternalModules() {
         return "testutil:testutil";
     }
 
     private static void validateThrown(WasmCaseData data, WasmCaseData.ErrorType phase, PolyglotException e) throws PolyglotException {
         if (data.expectedErrorMessage() == null || !data.expectedErrorMessage().equals(e.getMessage())) {
-            throw e;
+            throw new AssertionError("Expected error message [%s] but was: [%s]".formatted(data.expectedErrorMessage(), e.getMessage()), e);
         }
         Assert.assertEquals("Unexpected error phase.", data.expectedErrorTime(), phase);
     }
@@ -429,6 +453,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         System.out.println("Using runtime: " + Truffle.getRuntime().toString());
         int width = retrieveTerminalWidth();
         int position = 0;
+        ExecutorService pool = WasmTestOptions.SHARED_ENGINE ? Executors.newFixedThreadPool(3) : null;
         for (WasmCase testCase : qualifyingTestCases) {
             int extraWidth = 1 + STATUS_ICON_WIDTH + STATUS_LABEL_WIDTH;
             int requiredWidth = testCase.name().length() + extraWidth;
@@ -444,11 +469,27 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 // and erase the test name.
                 System.out.print(" ");
                 System.out.print(testCase.name());
-                for (int i = 1; i < extraWidth; i++) {
-                    System.out.print(" ");
+                if (!isPoorShell()) {
+                    for (int i = 1; i < extraWidth; i++) {
+                        System.out.print(" ");
+                    }
+                    System.out.flush();
                 }
-                System.out.flush();
-                runTestCase(testCase);
+
+                if (WasmTestOptions.SHARED_ENGINE) {
+                    try (Engine sharedEngine = Engine.newBuilder().allowExperimentalOptions(true).options(getAsyncCompiledShared()).build()) {
+                        Callable<Void> task = () -> {
+                            runTestCase(testCase, sharedEngine);
+                            return null;
+                        };
+                        var tasks = IntStream.range(0, 3).mapToObj(i -> task).toList();
+                        for (var f : pool.invokeAll(tasks)) {
+                            f.get();
+                        }
+                    }
+                } else {
+                    runTestCase(testCase, null);
+                }
                 statusIcon = TEST_PASSED_ICON;
             } catch (Throwable e) {
                 statusIcon = TEST_FAILED_ICON;
@@ -469,6 +510,9 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 }
             }
             position++;
+        }
+        if (pool != null) {
+            pool.shutdownNow();
         }
         System.out.println();
         System.out.println("Finished running: " + suiteName());
@@ -518,7 +562,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     }
 
     protected Collection<? extends WasmCase> filterTestCases(Collection<? extends WasmCase> testCases) {
-        return testCases.stream().filter((WasmCase x) -> filterTestName().test(x.name())).collect(Collectors.toList());
+        return testCases.stream().filter((WasmCase x) -> filterTestName().test(x.name())).filter(Predicate.not(WasmCase::isSkipped)).collect(Collectors.toList());
     }
 
     protected String suiteName() {
@@ -527,7 +571,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
     private static ContextState saveContext(WasmContext context) {
         final MemoryRegistry memories = context.memories().duplicate();
-        final GlobalRegistry globals = context.globals().duplicate(context.getContextOptions().supportBulkMemoryAndRefTypes());
+        final GlobalRegistry globals = context.globals().duplicate();
         return new ContextState(memories, globals, context.fdManager().size());
     }
 

@@ -40,34 +40,43 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
+
 public class WasiPathFileStatGetNode extends WasmBuiltinRootNode {
 
-    public WasiPathFileStatGetNode(WasmLanguage language, WasmInstance instance) {
-        super(language, instance);
+    public WasiPathFileStatGetNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return pathFilestatGet(context, (int) args[0], (int) args[1], (int) args[2], (int) args[3], (int) args[4]);
+        return pathFilestatGet(context, memory(frame),
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1),
+                        (int) WasmArguments.getArgument(args, 2),
+                        (int) WasmArguments.getArgument(args, 3),
+                        (int) WasmArguments.getArgument(args, 4));
     }
 
     @TruffleBoundary
-    private int pathFilestatGet(WasmContext context, int fd, int flags, int pathAddress, int pathLength, int resultAddress) {
+    private int pathFilestatGet(WasmContext context, WasmMemory memory, int fd, int flags, int pathAddress, int pathLength, int resultAddress) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.pathFilestatGet(this, memory(), flags, pathAddress, pathLength, resultAddress).ordinal();
+        return handle.pathFilestatGet(this, memory, flags, pathAddress, pathLength, resultAddress).ordinal();
     }
 
     @Override

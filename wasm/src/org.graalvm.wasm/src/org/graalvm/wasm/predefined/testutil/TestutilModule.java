@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,26 +41,22 @@
 package org.graalvm.wasm.predefined.testutil;
 
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 public class TestutilModule extends BuiltinModule {
-    private static final int NUMBER_OF_FUNCTIONS = 2;
 
     public static class Names {
         public static final String RUN_CUSTOM_INITIALIZATION = "__testutil_run_custom_initialization";
     }
 
     @Override
-    protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), NUMBER_OF_FUNCTIONS);
+    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
+        WasmModule module = WasmModule.createBuiltin(name);
 
-        // Note: in the following methods, the types are not important here, since these methods
-        // are not accessed by Wasm code.
-        defineFunction(instance, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitializationNode(language));
-
-        return instance;
+        defineFunction(context, module, Names.RUN_CUSTOM_INITIALIZATION, types(WasmType.EXTERNREF_TYPE), types(), new RunCustomInitializationNode(language, module));
+        return module;
     }
 }

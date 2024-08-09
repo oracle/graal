@@ -44,6 +44,7 @@ package org.graalvm.wasm.parser.bytecode;
 import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.WasmType;
 
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
@@ -124,6 +125,19 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
         add1(opcode);
         add8(value);
+    }
+
+    /**
+     * Adds an opcode and an i128 immediate value to the bytecode. See {@link Bytecode} for a list
+     * of opcodes.
+     *
+     * @param opcode The opcode
+     * @param value The immediate value
+     */
+    public void add(int opcode, Vector128 value) {
+        assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
+        add1(opcode);
+        add16(value);
     }
 
     /**
@@ -253,13 +267,13 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds an atomic memory access instruction to the bytecode.
+     * Adds an extended (atomic or vector) memory access instruction to the bytecode.
      *
-     * @param opcode The atomic memory opcode
+     * @param opcode The extended memory opcode
      * @param offset The offset value
      * @param indexType64 If the accessed memory has index type 64.
      */
-    public void addAtomicMemoryInstruction(int opcode, int memoryIndex, long offset, boolean indexType64) {
+    public void addExtendedMemoryInstruction(int opcode, int memoryIndex, long offset, boolean indexType64) {
         assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
         if (!indexType64) {
             assert fitsIntoUnsignedInt(offset) : "offset does not fit into int";
@@ -288,14 +302,24 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @return The location of the label in the bytecode.
      */
     public int addLabel(int resultCount, int stackSize, int commonResultType) {
-        assert commonResultType == WasmType.NONE_COMMON_TYPE || commonResultType == WasmType.NUM_COMMON_TYPE || commonResultType == WasmType.REF_COMMON_TYPE ||
+        assert commonResultType == WasmType.NONE_COMMON_TYPE || commonResultType == WasmType.NUM_COMMON_TYPE || commonResultType == WasmType.OBJ_COMMON_TYPE ||
                         commonResultType == WasmType.MIX_COMMON_TYPE : "invalid result type";
         final int location;
-        if (resultCount <= 1 && stackSize <= 31) {
+        if (resultCount == 0 && stackSize <= 63) {
             add1(Bytecode.SKIP_LABEL_U8);
             location = location();
             add1(Bytecode.LABEL_U8);
-            add1(resultCount << BytecodeBitEncoding.LABEL_U8_RESULT_SHIFT | commonResultType << BytecodeBitEncoding.LABEL_U8_RESULT_TYPE_SHIFT | stackSize);
+            add1(stackSize);
+        } else if (resultCount == 1 && stackSize <= 63) {
+            assert commonResultType != BytecodeBitEncoding.LABEL_RESULT_TYPE_MIX : "Single result value must either have number or reference type.";
+            add1(Bytecode.SKIP_LABEL_U8);
+            location = location();
+            add1(Bytecode.LABEL_U8);
+            if (commonResultType == BytecodeBitEncoding.LABEL_RESULT_TYPE_NUM) {
+                add1(BytecodeBitEncoding.LABEL_U8_RESULT_NUM | stackSize);
+            } else if (commonResultType == BytecodeBitEncoding.LABEL_RESULT_TYPE_OBJ) {
+                add1(BytecodeBitEncoding.LABEL_U8_RESULT_OBJ | stackSize);
+            }
         } else if (resultCount <= 63 && fitsIntoUnsignedByte(stackSize)) {
             add1(Bytecode.SKIP_LABEL_U16);
             location = location();

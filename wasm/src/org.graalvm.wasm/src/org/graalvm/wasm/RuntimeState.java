@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,19 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 /**
  * Represents the state of a WebAssembly module.
  */
 @SuppressWarnings("static-method")
-public class RuntimeState {
+public abstract class RuntimeState {
     private static final int INITIAL_GLOBALS_SIZE = 64;
     private static final int INITIAL_TABLES_SIZE = 1;
     private static final int INITIAL_MEMORIES_SIZE = 1;
@@ -206,6 +207,10 @@ public class RuntimeState {
         return module;
     }
 
+    protected WasmInstance instance() {
+        return null;
+    }
+
     public CallTarget target(int index) {
         return targets[index];
     }
@@ -220,7 +225,7 @@ public class RuntimeState {
         return result;
     }
 
-    void setGlobalAddress(int globalIndex, int address) {
+    public void setGlobalAddress(int globalIndex, int address) {
         ensureGlobalsCapacity(globalIndex);
         checkNotLinked();
         globalAddresses[globalIndex] = address;
@@ -232,7 +237,7 @@ public class RuntimeState {
         return result;
     }
 
-    void setTableAddress(int tableIndex, int address) {
+    public void setTableAddress(int tableIndex, int address) {
         ensureTablesCapacity(tableIndex);
         checkNotLinked();
         tableAddresses[tableIndex] = address;
@@ -252,7 +257,7 @@ public class RuntimeState {
         int functionIndex = function.index();
         WasmFunctionInstance functionInstance = functionInstances[functionIndex];
         if (functionInstance == null) {
-            functionInstance = new WasmFunctionInstance(context(), function, target(functionIndex));
+            functionInstance = new WasmFunctionInstance(instance(), function, target(functionIndex));
             functionInstances[functionIndex] = functionInstance;
         }
         return functionInstance;

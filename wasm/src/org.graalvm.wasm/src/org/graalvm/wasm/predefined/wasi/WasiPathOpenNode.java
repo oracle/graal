@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,36 +40,49 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class WasiPathOpenNode extends WasmBuiltinRootNode {
 
-    public WasiPathOpenNode(WasmLanguage language, WasmInstance module) {
+    public WasiPathOpenNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
     @SuppressWarnings("unused")
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return pathOpen(context, (int) args[0], (int) args[1], (int) args[2], (int) args[3], (short) (int) args[4], (long) args[5], (long) args[6], (short) (int) args[7], (int) args[8]);
+        return pathOpen(context, memory(frame),
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1),
+                        (int) WasmArguments.getArgument(args, 2),
+                        (int) WasmArguments.getArgument(args, 3),
+                        (short) (int) WasmArguments.getArgument(args, 4),
+                        (long) WasmArguments.getArgument(args, 5),
+                        (long) WasmArguments.getArgument(args, 6),
+                        (short) (int) WasmArguments.getArgument(args, 7),
+                        (int) WasmArguments.getArgument(args, 8));
     }
 
     @TruffleBoundary
-    private int pathOpen(WasmContext context, int fd, int dirflags, int pathStart, int pathLength, short oflags, long fsRightsBase, long fsRightsInheriting, short fdflags, int fdAddress) {
+    private int pathOpen(WasmContext context, WasmMemory memory, int fd, int dirflags, int pathStart, int pathLength,
+                    short oflags, long fsRightsBase, long fsRightsInheriting, short fdflags, int fdAddress) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.pathOpen(this, memory(), dirflags, pathStart, pathLength, oflags, fsRightsBase, fsRightsInheriting, fdflags, fdAddress).ordinal();
+        return handle.pathOpen(this, memory, dirflags, pathStart, pathLength, oflags, fsRightsBase, fsRightsInheriting, fdflags, fdAddress).ordinal();
     }
 
     @Override

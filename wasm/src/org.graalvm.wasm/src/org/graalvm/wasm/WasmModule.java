@@ -40,19 +40,19 @@
  */
 package org.graalvm.wasm;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.function.BiConsumer;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.debugging.data.DebugFunction;
 import org.graalvm.wasm.debugging.parser.DebugTranslator;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 
@@ -62,7 +62,7 @@ import com.oracle.truffle.api.source.Source;
 @SuppressWarnings("static-method")
 public final class WasmModule extends SymbolTable implements TruffleObject {
     private final String name;
-    private ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
+    private volatile List<LinkAction> linkActions;
     private final ModuleLimits limits;
 
     private Source source;
@@ -74,6 +74,15 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
 
     @CompilationFinal private int debugInfoOffset;
     @CompilationFinal private EconomicMap<Integer, DebugFunction> debugFunctions;
+
+    private static final VarHandle LINK_ACTIONS;
+    static {
+        try {
+            LINK_ACTIONS = MethodHandles.lookup().findVarHandle(WasmModule.class, "linkActions", List.class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
+    }
 
     private WasmModule(String name, ModuleLimits limits) {
         super();
@@ -105,24 +114,18 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         return name;
     }
 
-    public List<BiConsumer<WasmContext, WasmInstance>> linkActions() {
-        return Collections.unmodifiableList(linkActions);
+    public List<LinkAction> getOrRecreateLinkActions() {
+        var result = (List<LinkAction>) LINK_ACTIONS.getAndSet(this, (List<LinkAction>) null);
+        if (result != null) {
+            return result;
+        } else {
+            return WasmInstantiator.recreateLinkActions(this);
+        }
     }
 
-    public void createLinkActions() {
-        linkActions = new ArrayList<>();
-    }
-
-    public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
+    public void addLinkAction(LinkAction action) {
+        assert !isParsed();
         linkActions.add(action);
-    }
-
-    public void removeLinkActions() {
-        this.linkActions = null;
-    }
-
-    public boolean hasLinkActions() {
-        return this.linkActions != null;
     }
 
     public ModuleLimits limits() {
