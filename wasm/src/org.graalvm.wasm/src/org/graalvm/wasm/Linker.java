@@ -666,7 +666,7 @@ public class Linker {
                     break;
                 }
                 default:
-                    fail(Failure.TYPE_MISMATCH, "Invalid bytecode instruction for constant expression: 0x%02X", opcode);
+                    fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X", opcode);
                     break;
             }
         }
@@ -725,7 +725,7 @@ public class Linker {
                 case Bytecode.I64_MUL:
                     break;
                 default:
-                    fail(Failure.TYPE_MISMATCH, "Invalid bytecode instruction for constant expression: 0x%02X", opcode);
+                    fail(Failure.ILLEGAL_OPCODE, "Invalid bytecode instruction for constant expression: 0x%02X", opcode);
                     break;
             }
         }

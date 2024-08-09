@@ -2491,7 +2491,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I32_SUB:
                 case Instructions.I32_MUL:
                     if (!wasmContext.getContextOptions().supportExtendedConstExpressions()) {
-                        fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                        fail(Failure.ILLEGAL_OPCODE, "Invalid instruction for constant expression: 0x%02X", opcode);
                     }
                     state.popChecked(I32_TYPE);
                     state.popChecked(I32_TYPE);
@@ -2512,7 +2512,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I64_SUB:
                 case Instructions.I64_MUL:
                     if (!wasmContext.getContextOptions().supportExtendedConstExpressions()) {
-                        fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                        fail(Failure.ILLEGAL_OPCODE, "Invalid instruction for constant expression: 0x%02X", opcode);
                     }
                     state.popChecked(I64_TYPE);
                     state.popChecked(I64_TYPE);
@@ -2544,12 +2544,12 @@ public class BinaryParser extends BinaryStreamParser {
                             break;
                         }
                         default:
-                            fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X 0x%02X", opcode, vectorOpcode);
+                            fail(Failure.ILLEGAL_OPCODE, "Invalid instruction for constant expression: 0x%02X 0x%02X", opcode, vectorOpcode);
                             break;
                     }
                     break;
                 default:
-                    fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                    fail(Failure.ILLEGAL_OPCODE, "Invalid instruction for constant expression: 0x%02X", opcode);
                     break;
             }
         }
