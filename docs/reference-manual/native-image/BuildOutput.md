@@ -256,10 +256,14 @@ This data typically contains internal information for Native Image and should no
 This shows whether Java deserialization is included in the native executable or not.
 If not included, the attack surface of the executable is reduced as the executable cannot be exploited with attacks based on Java deserialization.
 
-#### <a name="glossary-embedded-sbom"></a>Embedded SBOM
-Number of components and the size of the embedded Software Bill of Materials (SBOM).
-Use `--enable-sbom` to include an SBOM in the native executable.
-For more information, see [Inspection Tool](InspectTool.md)
+#### <a name="glossary-sbom"></a><a name="glossary-embedded-sbom"></a>Software Bill of Material (SBOM)
+This section indicates whether a SBOM was assembled and in what ways it was stored. 
+The storage formats include: `embed`, which embeds the SBOM in the binary; `classpath`, which saves the SBOM to the classpath; and `export`, which includes the SBOM as a JSON build artifact. 
+Use `--enable-sbom` to activate this feature which defaults to the `embed` option. 
+When embedded, the SBOM size is displayed. 
+The number of components is always displayed.
+
+For more information, see [Software Bill of Materials](../../security/native-image.md).
 
 #### <a name="glossary-backwards-edge-cfi"></a>Backwards-Edge Control-Flow Integrity (CFI)
 Control-Flow Integrity (CFI) can be enforced with the experimental `-H:CFI=HW` option.
