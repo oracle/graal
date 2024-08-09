@@ -865,6 +865,7 @@ public class UniverseBuilder {
             referenceMaps.put(type, referenceMap);
             referenceMapEncoder.add(referenceMap);
         }
+        int firstReferenceMapIndex = DynamicHubSupport.singleton().getFirstReferenceMapIndex();
         DynamicHubSupport.singleton().setReferenceMapEncoding(referenceMapEncoder.encodeAll());
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
@@ -911,11 +912,10 @@ public class UniverseBuilder {
             ReferenceMapEncoder.Input referenceMap = referenceMaps.get(type);
             assert referenceMap != null;
             assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
-            long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
+            long globalReferenceMapIndex = firstReferenceMapIndex + referenceMapEncoder.lookupEncoding(referenceMap);
 
             DynamicHub hub = type.getHub();
-            hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset,
-                            referenceMapIndex, type.isInstantiated());
+            hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset, globalReferenceMapIndex, type.isInstantiated());
 
             if (SubstrateOptions.closedTypeWorld()) {
                 CFunctionPointer[] vtable = new CFunctionPointer[type.closedTypeWorldVTable.length];

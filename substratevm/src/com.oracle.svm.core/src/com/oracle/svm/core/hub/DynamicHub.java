@@ -361,7 +361,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * {@link DynamicHubSupport#getReferenceMapEncoding()}.
      */
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
-    private int referenceMapIndex;
+    private int globalReferenceMapIndex;
 
     /**
      * Back link to the SubstrateType used by the substrate meta access. Only used for the subset of
@@ -499,7 +499,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if ((int) referenceMapIndex != referenceMapIndex) {
             throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");
         }
-        this.referenceMapIndex = (int) referenceMapIndex;
+        this.globalReferenceMapIndex = (int) referenceMapIndex;
         this.additionalFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated));
     }
 
@@ -733,8 +733,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getReferenceMapIndex() {
-        return referenceMapIndex;
+    public int getGlobalReferenceMapIndex() {
+        return globalReferenceMapIndex;
     }
 
     public boolean isInstantiated() {
