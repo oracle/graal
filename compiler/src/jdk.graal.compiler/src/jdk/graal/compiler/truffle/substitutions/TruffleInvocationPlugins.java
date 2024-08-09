@@ -89,7 +89,9 @@ public class TruffleInvocationPlugins {
     private static void registerBytecodePlugins(InvocationPlugins plugins, Replacements replacements) {
         plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/bytecode/BytecodeDSLUncheckedAccess;"));
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.bytecode.BytecodeDSLUncheckedAccess", replacements);
-        r.register(new InlineOnlyInvocationPlugin("uncheckedCast", Receiver.class, Object.class, Class.class) {
+
+        r.register(new InlineOnlyInvocationPlugin("uncheckedCast", Receiver.class, Object.class,
+                        Class.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode object, ValueNode clazz) {
@@ -99,8 +101,9 @@ public class TruffleInvocationPlugins {
                     if (javaType == null) {
                         b.push(JavaKind.Object, object);
                     } else {
-                        assert javaType.isConcrete() || javaType.isArray() : "exact type is not a concrete class: " + javaType;
-                        TypeReference type = TypeReference.createExactTrusted(javaType);
+                        assert javaType.isConcrete() || javaType.isArray() : "exact type is not a concrete class: " +
+                                        javaType;
+                        TypeReference type = TypeReference.createTrustedWithoutAssumptions(javaType);
                         Stamp piStamp = StampFactory.object(type, true);
                         b.addPush(JavaKind.Object, PiNode.create(object, piStamp, null));
                     }
