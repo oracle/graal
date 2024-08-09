@@ -2707,6 +2707,7 @@ public class BinaryParser extends BinaryStreamParser {
             module.setElemInstance(currentElemSegmentId, headerOffset, elemType);
             if (mode == SegmentMode.ACTIVE) {
                 assertTrue(module.checkTableIndex(tableIndex), Failure.UNKNOWN_TABLE);
+                module.checkElemType(currentElemSegmentId, module.tableElementType(tableIndex));
                 module.addLinkAction((context, instance, imports) -> {
                     context.linker().resolveElemSegment(context, instance, tableIndex, currentElemSegmentId, currentOffsetAddress,
                                     currentOffsetBytecode, bytecodeOffset, elementCount);
