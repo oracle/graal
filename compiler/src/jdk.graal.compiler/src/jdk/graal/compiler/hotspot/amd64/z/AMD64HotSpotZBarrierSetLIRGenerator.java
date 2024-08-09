@@ -75,6 +75,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -477,6 +478,9 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
         }
         if (isConstantNull) {
             tool.append(new ZStoreNullOp(QWORD, storeAddress, nullCheckState));
+            if (memoryOrder == MemoryOrderMode.VOLATILE) {
+                lirTool.emitMembar(MemoryBarriers.STORE_LOAD);
+            }
         } else {
             tool.getArithmetic().emitStore(lirKind, address, writeValue, nullCheckState, memoryOrder);
         }
