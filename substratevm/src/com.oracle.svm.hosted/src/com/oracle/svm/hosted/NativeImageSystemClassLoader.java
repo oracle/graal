@@ -40,6 +40,7 @@ import java.util.jar.JarFile;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 
 /**
  * NativeImageCustomSystemClassLoader is a minimal {@link ClassLoader} that forwards loading of a
@@ -147,15 +148,44 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         }
     }
 
+    @SuppressFBWarnings(value = "BC_IMPOSSIBLE_INSTANCEOF", justification = "Workaround this https://github.com/spotbugs/spotbugs/issues/2968, RuntimeException cannot be a ClassNotFoundException is a false positive")
+    private static Class<?> loadClass(List<ClassLoader> activeClassLoaders, String name, boolean resolve) throws ClassNotFoundException {
+        ClassNotFoundException classNotFoundException = null;
+        for (ClassLoader loader : activeClassLoaders) {
+            try {
+                /* invoke the "loadClass" method on the current class loader */
+                return ((Class<?>) ReflectionUtil.invokeMethod(loadClass, loader, name, resolve));
+            } catch (Exception e) {
+                if (e instanceof ClassNotFoundException exception) {
+                    classNotFoundException = exception;
+                } else {
+                    throw e;
+                }
+            }
+        }
+        VMError.guarantee(classNotFoundException != null);
+        throw classNotFoundException;
+    }
+
+    private static URL findResource(List<ClassLoader> activeClassLoaders, String name) {
+        for (ClassLoader loader : activeClassLoaders) {
+            // invoke the "findResource" method on the current class loader
+            Object url = ReflectionUtil.invokeMethod(findResource, loader, name);
+            if (url != null) {
+                return (URL) url;
+            }
+        }
+        return null;
+    }
 
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        return ReflectionUtil.invokeMethod(loadClass, getActiveClassLoader(), name, resolve);
+        return loadClass(getActiveClassLoaders(), name, resolve);
     }
 
     @Override
     protected URL findResource(String name) {
-        return ReflectionUtil.invokeMethod(findResources, getActiveClassLoader(), name);
+        return findResource(getActiveClassLoaders(), name);
     }
 
     @Override
@@ -165,9 +195,9 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         ClassLoader activeClassLoader = activeClassLoaders.get(0);
         ClassLoader activeClassLoaderParent = activeClassLoaders.size() > 1 ? activeClassLoaders.get(1) : null;
         if (activeClassLoaderParent != null) {
-            return newCompoundEnumeration(findResources(activeClassLoaderParent, name), findResources(activeClassLoader, name));
+            return newCompoundEnumeration(ReflectionUtil.invokeMethod(findResources, activeClassLoaderParent, name), ReflectionUtil.invokeMethod(findResources, activeClassLoader, name));
         }
-        return findResources(activeClassLoader, name);
+        return ReflectionUtil.invokeMethod(findResources, activeClassLoader, name);
     }
 
     @SuppressWarnings("unchecked")
@@ -192,7 +222,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         if (forNameOrNull(name, false) != null) {
             throw VMError.shouldNotReachHere("The class loader hierarchy already provides a class with the same name as the class submitted for predefinition: " + name);
         }
-        return ReflectionUtil.invokeMethod(defineClass, getActiveClassLoader(), name, array, offset, length);
+        return ReflectionUtil.invokeMethod(defineClass, getActiveClassLoaders().get(0), name, array, offset, length);
     }
 
     @Override
