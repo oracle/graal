@@ -2388,7 +2388,7 @@ public class BinaryParser extends BinaryStreamParser {
         // Table offset expression must be a constant expression with result type i32.
         // https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
         // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-        Pair<Object, byte[]> result = readConstantExpression(I32_TYPE, false);
+        Pair<Object, byte[]> result = readConstantExpression(I32_TYPE, true);
         if (result.getRight() == null) {
             return Pair.create((int) result.getLeft(), null);
         } else {
@@ -2397,7 +2397,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private Pair<Long, byte[]> readLongOffsetExpression() {
-        Pair<Object, byte[]> result = readConstantExpression(I64_TYPE, false);
+        Pair<Object, byte[]> result = readConstantExpression(I64_TYPE, true);
         if (result.getRight() == null) {
             return Pair.create((long) result.getLeft(), null);
         } else {
