@@ -28,6 +28,7 @@ package com.oracle.svm.core.nmt;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.dcmd.DcmdSupport;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -48,5 +49,8 @@ public class NmtFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         RuntimeSupport.getRuntimeSupport().addShutdownHook(NativeMemoryTracking.shutdownHook());
+        if (VMInspectionOptions.hasAttachSupport()) {
+            ImageSingletons.lookup(DcmdSupport.class).registerDcmd(new NmtDcmd());
+        }
     }
 }
