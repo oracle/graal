@@ -59,7 +59,6 @@ import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MergeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
-import com.oracle.graal.pointsto.flow.MonitorEnterTypeFlow;
 import com.oracle.graal.pointsto.flow.NewInstanceTypeFlow;
 import com.oracle.graal.pointsto.flow.NullCheckTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow;
@@ -361,7 +360,6 @@ class PointsToBreakdown {
             names.put(FormalReceiverTypeFlow.class, "formalReceiver");
             names.put(OffsetLoadTypeFlow.LoadIndexedTypeFlow.class, "loadIndexed");
             names.put(MergeTypeFlow.class, "merge");
-            names.put(MonitorEnterTypeFlow.class, "monitorEnter");
             names.put(ProxyTypeFlow.class, "proxy");
             names.put(SourceTypeFlow.class, "source");
             names.put(OffsetStoreTypeFlow.StoreIndexedTypeFlow.class, "storeIndexed");

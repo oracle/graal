@@ -45,7 +45,6 @@ import java.util.stream.StreamSupport;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
-import com.oracle.graal.pointsto.flow.AllSynchronizedTypeFlow;
 import com.oracle.graal.pointsto.flow.AnyPrimitiveSourceTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
@@ -104,7 +103,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
      */
     private final boolean trackPrimitiveValues;
     private AnyPrimitiveSourceTypeFlow anyPrimitiveSourceTypeFlow;
-    private TypeFlow<?> allSynchronizedTypeFlow;
 
     protected final boolean trackTypeFlowInputs;
     protected final boolean reportAnalysisStatistics;
@@ -132,7 +130,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
          * instantiated types yet, so the state is empty at first.
          */
         objectType.getTypeFlow(this, true);
-        allSynchronizedTypeFlow = new AllSynchronizedTypeFlow();
 
         trackTypeFlowInputs = PointstoOptions.TrackInputFlows.getValue(options);
         reportAnalysisStatistics = PointstoOptions.PrintPointsToStatistics.getValue(options);
@@ -258,7 +255,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public void cleanupAfterAnalysis() {
         super.cleanupAfterAnalysis();
-        allSynchronizedTypeFlow = null;
         anyPrimitiveSourceTypeFlow = null;
         unsafeLoads = null;
         unsafeStores = null;
@@ -287,25 +283,13 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return getAllInstantiatedTypeFlow().getState().types(this);
     }
 
-    public TypeFlow<?> getAllSynchronizedTypeFlow() {
-        return allSynchronizedTypeFlow;
-    }
-
     public AnyPrimitiveSourceTypeFlow getAnyPrimitiveSourceTypeFlow() {
         return anyPrimitiveSourceTypeFlow;
     }
 
     @Override
     public Iterable<AnalysisType> getAllSynchronizedTypes() {
-        /*
-         * If all-synchrnonized type flow, i.e., the type flow that keeps track of the types of all
-         * monitor objects, is saturated then we need to assume that any type can be used for
-         * monitors.
-         */
-        if (allSynchronizedTypeFlow.isSaturated()) {
-            return getAllInstantiatedTypes();
-        }
-        return allSynchronizedTypeFlow.getState().types(this);
+        return getAllInstantiatedTypes();
     }
 
     @Override
