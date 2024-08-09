@@ -136,4 +136,9 @@ final class Target_jdk_internal_util_StaticProperty {
     public static String jnuEncoding() {
         return SystemPropertiesSupport.singleton().savedProperties.get("sun.jnu.encoding");
     }
+
+    @Substitute
+    public static String javaLocaleUseOldISOCodes() {
+        return SystemPropertiesSupport.singleton().savedProperties.get("java.locale.useOldISOCodes");
+    }
 }
