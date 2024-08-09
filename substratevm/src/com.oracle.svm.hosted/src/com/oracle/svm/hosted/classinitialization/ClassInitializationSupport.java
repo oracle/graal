@@ -180,10 +180,6 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
             if (allowErrors) {
                 return InitKind.RUN_TIME;
             } else {
-<<<<<<< HEAD
-                return reportInitializationError("Class initialization of " + clazz.getTypeName() + " failed. " +
-                                instructionsToInitializeAtRuntime(clazz), clazz, t);
-=======
                 String msg = "Class initialization of " + clazz.getTypeName() + " failed. " +
                                 instructionsToInitializeAtRuntime(clazz);
 
@@ -203,8 +199,7 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
                     msg = msg + System.lineSeparator();
                 }
 
-                throw UserError.abort(t, "%s", msg);
->>>>>>> 7acf5fa33bc (Add stack trace of class initialization error to message)
+                return reportInitializationError(msg, clazz, t);
             }
         }
     }
