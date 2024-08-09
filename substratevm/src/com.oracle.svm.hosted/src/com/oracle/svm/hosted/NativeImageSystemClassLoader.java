@@ -134,7 +134,6 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     private static final Method defineClass = ReflectionUtil.lookupMethod(ClassLoader.class, "defineClass",
                     String.class, byte[].class, int.class, int.class);
 
-<<<<<<< HEAD
     private static final Constructor<Enumeration<?>> compoundEnumerationConstructor;
     static {
         /* Reuse utility class defined as package-private class in java.lang.ClassLoader.java */
@@ -148,86 +147,19 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         }
     }
 
-    private static Class<?> loadClass(List<ClassLoader> activeClassLoaders, String name, boolean resolve) throws ClassNotFoundException {
-        ClassNotFoundException classNotFoundException = null;
-        for (ClassLoader loader : activeClassLoaders) {
-            try {
-                /* invoke the "loadClass" method on the current class loader */
-                return ((Class<?>) loadClass.invoke(loader, name, resolve));
-            } catch (Exception e) {
-                if (e.getCause() instanceof ClassNotFoundException) {
-                    classNotFoundException = ((ClassNotFoundException) e.getCause());
-                } else {
-                    String message = String.format("Can not load class: %s, with class loader: %s", name, loader);
-                    VMError.shouldNotReachHere(message, e);
-                }
-            }
-        }
-        VMError.guarantee(classNotFoundException != null);
-        throw classNotFoundException;
-    }
 
-    private static URL findResource(List<ClassLoader> activeClassLoaders, String name) {
-        for (ClassLoader loader : activeClassLoaders) {
-            try {
-                // invoke the "findResource" method on the current class loader
-                Object url = findResource.invoke(loader, name);
-                if (url != null) {
-                    return (URL) url;
-                }
-            } catch (ReflectiveOperationException | ClassCastException e) {
-                String message = String.format("Can not find resource: %s using class loader: %s", name, loader);
-                VMError.shouldNotReachHere(message, e);
-            }
-        }
-        return null;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Enumeration<URL> findResources(ClassLoader classLoader, String name) {
-        try {
-            // invoke the "findResources" method on the current class loader
-            return (Enumeration<URL>) findResources.invoke(classLoader, name);
-        } catch (ReflectiveOperationException e) {
-            String message = String.format("Can not find resources: %s using class loader: %s", name, classLoader);
-            VMError.shouldNotReachHere(message, e);
-        }
-
-        return null;
-    }
-
-    static Class<?> defineClass(ClassLoader classLoader, String name, byte[] b, int offset, int length) {
-        try {
-            return (Class<?>) defineClass.invoke(classLoader, name, b, offset, length);
-        } catch (ReflectiveOperationException e) {
-            String message = String.format("Cannot define class %s from byte[%d..%d] using class loader: %s", name, offset, offset + length, classLoader);
-            VMError.shouldNotReachHere(message, e);
-        }
-        return null;
-    }
-
-    @Override
-    protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        return loadClass(getActiveClassLoaders(), name, resolve);
-=======
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         return ReflectionUtil.invokeMethod(loadClass, getActiveClassLoader(), name, resolve);
->>>>>>> f97895f9a42 (Ensure LinkageError during loadClass.invoke is propagated to caller)
     }
 
     @Override
     protected URL findResource(String name) {
-<<<<<<< HEAD
-        return findResource(getActiveClassLoaders(), name);
-=======
-        return ReflectionUtil.invokeMethod(findResource, getActiveClassLoader(), name);
->>>>>>> f97895f9a42 (Ensure LinkageError during loadClass.invoke is propagated to caller)
+        return ReflectionUtil.invokeMethod(findResources, getActiveClassLoader(), name);
     }
 
     @Override
     protected Enumeration<URL> findResources(String name) throws IOException {
-<<<<<<< HEAD
         List<ClassLoader> activeClassLoaders = getActiveClassLoaders();
         assert !activeClassLoaders.isEmpty() && activeClassLoaders.size() <= 2;
         ClassLoader activeClassLoader = activeClassLoaders.get(0);
@@ -245,9 +177,6 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere("Cannot instantiate CompoundEnumeration", e);
         }
-=======
-        return ReflectionUtil.invokeMethod(findResources, getActiveClassLoader(), name);
->>>>>>> f97895f9a42 (Ensure LinkageError during loadClass.invoke is propagated to caller)
     }
 
     public Class<?> forNameOrNull(String name, boolean initialize) {
@@ -263,11 +192,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         if (forNameOrNull(name, false) != null) {
             throw VMError.shouldNotReachHere("The class loader hierarchy already provides a class with the same name as the class submitted for predefinition: " + name);
         }
-<<<<<<< HEAD
-        return defineClass(getActiveClassLoaders().get(0), name, array, offset, length);
-=======
         return ReflectionUtil.invokeMethod(defineClass, getActiveClassLoader(), name, array, offset, length);
->>>>>>> f97895f9a42 (Ensure LinkageError during loadClass.invoke is propagated to caller)
     }
 
     @Override
