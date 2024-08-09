@@ -1,5 +1,5 @@
 ---
-name: "\U0001F6A8 Tools Issue Report"
+name: "🛠️ Tools Issue Report"
 about: Create an issue report for a issue with the Truffle tools (CPUSampler, Coverage tool, etc.)
 title: ''
 labels: tools

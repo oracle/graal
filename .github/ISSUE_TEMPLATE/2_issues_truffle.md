@@ -1,5 +1,5 @@
 ---
-name: "\U0001F6A8 Truffle Issue Report"
+name: "📦 Truffle Issue Report"
 about: Create an issue report for a issue with the Truffle API (Language and Tool implementation, Language interop) and Polyglot API
 title: ''
 labels: truffle
