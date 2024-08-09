@@ -25,6 +25,14 @@ mostly unmodified except for sections guarded with `#ifdef NATIVE_IMAGE`. The Fi
 [`src/svm`](./src/svm) are replacements for files that exist in the OpenJDK, but are completely
 custom. They only provide the minimal required functionality and are specific to SVM.
 
+## Deviation from Hotspot behavior
+
+On Hotspot, some of the values are cached in native code. Since native caching is undesired
+on SVM, we disable it by always returning `true` in `CachedMetric::should_check_metric()`.
+To avoid performance penalties compared to Hotspot, SVM caches those values on the Java side.
+Currently, this only applies to `cpu_limit` and `memory_limit`. For every update of the
+`libsvm_container` code, we should review whether new usages of `CachedMetric` were added.
+
 ## Updating
 
 While the code in `libsvm_container` is completely independent and does not need to be in sync with
