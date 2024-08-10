@@ -361,7 +361,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * {@link DynamicHubSupport#getReferenceMapEncoding()}.
      */
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
-    private int globalReferenceMapIndex;
+    private int referenceMapIndex;
+
+    private final byte layerId;
 
     /**
      * Back link to the SubstrateType used by the substrate meta access. Only used for the subset of
@@ -432,7 +434,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
                     ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus, boolean hasDefaultMethods, boolean declaresDefaultMethods,
-                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, boolean isLinked, String simpleBinaryName, Object declaringClass, String signature, boolean isProxyClass) {
+                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, boolean isLinked, String simpleBinaryName, Object declaringClass, String signature, boolean isProxyClass,
+                    int layerId) {
+        VMError.guarantee(layerId == (byte) layerId, "Layer id %d not in expected range", layerId);
+
         this.hostedJavaClass = hostedJavaClass;
         this.module = hostedJavaClass.getModule();
         this.name = name;
@@ -446,6 +451,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.simpleBinaryName = simpleBinaryName;
         this.declaringClass = declaringClass;
         this.signature = signature;
+        this.layerId = (byte) layerId;
 
         this.flags = NumUtil.safeToUShort(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
                         makeFlag(IS_INTERFACE_FLAG_BIT, hostedJavaClass.isInterface()) |
@@ -499,7 +505,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if ((int) referenceMapIndex != referenceMapIndex) {
             throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");
         }
-        this.globalReferenceMapIndex = (int) referenceMapIndex;
+        this.referenceMapIndex = (int) referenceMapIndex;
         this.additionalFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated));
     }
 
@@ -733,8 +739,18 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getGlobalReferenceMapIndex() {
-        return globalReferenceMapIndex;
+    public int getReferenceMapIndex() {
+        return referenceMapIndex;
+    }
+
+    /**
+     * The identifier of the {@linkplain com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport
+     * layer} that introduces this type which is an index into the array returned by
+     * {@link com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton#getAllLayers}.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int getLayerId() {
+        return layerId;
     }
 
     public boolean isInstantiated() {

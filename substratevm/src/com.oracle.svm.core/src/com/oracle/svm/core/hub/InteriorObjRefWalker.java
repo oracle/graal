@@ -100,23 +100,24 @@ public class InteriorObjRefWalker {
         if (objHub.getHubType() != HubType.INSTANCE && objHub.getHubType() != HubType.REFERENCE_INSTANCE) {
             throw new IllegalArgumentException("Unsupported hub type: " + objHub.getHubType());
         }
-        ObjectReferenceVisitor visitor = new ObjectReferenceVisitor() {
+
+        NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.forLayer(objHub.getLayerId()).getReferenceMapEncoding();
+        long referenceMapIndex = objHub.getReferenceMapIndex();
+
+        return InstanceReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), referenceMapEncoding, referenceMapIndex, new ObjectReferenceVisitor() {
             @Override
             public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
                 offsetConsumer.accept((int) objRef.rawValue());
                 return true;
             }
-        };
-        return walkInstance(null, visitor, objHub, WordFactory.zero());
+        }, null);
     }
 
     @AlwaysInline("Performance critical version")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkInstance(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub, Pointer objPointer) {
-        int globalReferenceMapIndex = objHub.getGlobalReferenceMapIndex();
-        DynamicHubSupport hubSupport = DynamicHubSupport.forGlobalReferenceMapIndex(globalReferenceMapIndex);
-        NonmovableArray<Byte> referenceMapEncoding = hubSupport.getReferenceMapEncoding();
-        int referenceMapIndex = globalReferenceMapIndex - hubSupport.getFirstReferenceMapIndex();
+        NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.forLayer(objHub.getLayerId()).getReferenceMapEncoding();
+        long referenceMapIndex = objHub.getReferenceMapIndex();
 
         // Visit Object reference in the fields of the Object.
         return InstanceReferenceMapDecoder.walkOffsetsFromPointer(objPointer, referenceMapEncoding, referenceMapIndex, visitor, obj);

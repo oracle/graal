@@ -87,6 +87,7 @@ import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.heap.UnknownClass;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -191,6 +192,7 @@ public class SVMHost extends HostVM {
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
     private final MissingRegistrationSupport missingRegistrationSupport;
 
+    private final int layerId;
     private final boolean useBaseLayer;
     private Set<Field> excludedFields;
 
@@ -224,6 +226,7 @@ public class SVMHost extends HostVM {
         }
         fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions, classInitializationSupport);
         ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
+        layerId = DynamicHubSupport.singleton().getLayerId();
         useBaseLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
         if (SubstrateOptions.includeAll()) {
             initializeExcludedFields();
@@ -490,7 +493,7 @@ public class SVMHost extends HostVM {
 
         return new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), superHub, componentHub, sourceFileName, modifiers, hubClassLoader,
                         isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, isLinked, simpleBinaryName,
-                        getDeclaringClass(javaClass), getSignature(javaClass), isProxyClass);
+                        getDeclaringClass(javaClass), getSignature(javaClass), isProxyClass, layerId);
     }
 
     private static final Method getSignature = ReflectionUtil.lookupMethod(Class.class, "getGenericSignature0");
