@@ -3174,14 +3174,21 @@ public class BinaryParser extends BinaryStreamParser {
 
     protected int readAlignHint(int n) {
         final int value = readUnsignedInt32();
-        assertUnsignedIntLess(value, 32, Failure.MALFORMED_MEMOP_FLAGS);
-        assertUnsignedIntLessOrEqual(1 << value, n / 8, Failure.ALIGNMENT_LARGER_THAN_NATURAL);
+        // if bit 6 of the alignment arg is set, then that indicates that an i32 memory index
+        // follows after the alignment bitfield and is not part of the alignment value
+        int align = multiMemory && (value & 0b0100_0000) != 0 ? value - 0b0100_0000 : value;
+        assertUnsignedIntLess(align, 32, Failure.MALFORMED_MEMOP_FLAGS);
+        assertUnsignedIntLessOrEqual(1 << align, n / 8, Failure.ALIGNMENT_LARGER_THAN_NATURAL);
         return value;
     }
 
     protected int readAtomicAlignHint(int n) {
         final int value = readUnsignedInt32();
-        assertIntEqual(1 << value, n / 8, Failure.ATOMIC_ALIGNMENT_NOT_NATURAL);
+        // if bit 6 of the alignment arg is set, then that indicates that an i32 memory index
+        // follows after the alignment bitfield and is not part of the alignment value
+        int align = multiMemory && (value & 0b0100_0000) != 0 ? value - 0b0100_0000 : value;
+        assertUnsignedIntLess(align, 32, Failure.MALFORMED_MEMOP_FLAGS);
+        assertIntEqual(1 << align, n / 8, Failure.ATOMIC_ALIGNMENT_NOT_NATURAL);
         return value;
     }
 
