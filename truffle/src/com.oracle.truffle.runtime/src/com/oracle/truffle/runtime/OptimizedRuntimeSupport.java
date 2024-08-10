@@ -83,6 +83,15 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
+    public long getCallTargetId(CallTarget target) {
+        if (target instanceof OptimizedCallTarget) {
+            return ((OptimizedCallTarget) target).id;
+        } else {
+            return 0;
+        }
+    }
+
+    @Override
     public boolean isLoaded(CallTarget callTarget) {
         return ((OptimizedCallTarget) callTarget).isLoaded();
     }

@@ -47,6 +47,8 @@ They are useful to users and language and tool implementers.
 <!-- BEGIN: expert-engine-options -->
 - `--engine.PreinitializeContexts=` : Preinitialize language contexts for given languages.
 - `--engine.RelaxStaticObjectSafetyChecks` : On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts
+- `--engine.TraceSourceCache` : Print information for source cache misses/evictions/failures.
+- `--engine.TraceSourceCacheDetails` : Print information for all source cache events including hits and uncached misses.
 - `--engine.TraceStackTraceInterval=[1, inf)` : Prints the stack trace for all threads for a time interval. By default 0, which disables the output.
 - `--engine.DebugCacheCompileUseLastTier=true|false` : If true uses the last tier instead of the first tier compiler. By default the last tier compiler is used (default: true).
 - `--engine.BackgroundCompilation=true|false` : Enable asynchronous truffle compilation in background threads (default: true)

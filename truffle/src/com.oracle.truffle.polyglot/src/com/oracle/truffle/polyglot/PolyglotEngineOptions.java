@@ -129,6 +129,12 @@ final class PolyglotEngineOptions {
                     "Enables printing of code sharing related information to the logger. This option is intended to support debugging language implementations.")//
     static final OptionKey<Boolean> TraceCodeSharing = new OptionKey<>(false);
 
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Print information for source cache misses/evictions/failures.")//
+    static final OptionKey<Boolean> TraceSourceCache = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Print information for all source cache events including hits and uncached misses.")//
+    static final OptionKey<Boolean> TraceSourceCacheDetails = new OptionKey<>(false);
+
     enum StaticObjectStorageStrategies {
         DEFAULT,
         ARRAY_BASED,
