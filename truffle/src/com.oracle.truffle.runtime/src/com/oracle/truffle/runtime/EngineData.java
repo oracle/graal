@@ -253,12 +253,14 @@ public final class EngineData {
 
     void onEngineCreated(Object engine) {
         assert this.polyglotEngine == engine;
+        getRuntime().onEngineCreated(this);
         getRuntime().getEngineCacheSupport().onEngineCreated(this);
     }
 
     void onEnginePatch(OptionValues newRuntimeOptions, Function<String, TruffleLogger> newLoggerFactory, SandboxPolicy sandboxPolicy) {
         this.loggerFactory = newLoggerFactory;
         loadOptions(newRuntimeOptions, sandboxPolicy);
+        getRuntime().onEngineCreated(this);
         getRuntime().getEngineCacheSupport().onEnginePatch(this);
     }
 

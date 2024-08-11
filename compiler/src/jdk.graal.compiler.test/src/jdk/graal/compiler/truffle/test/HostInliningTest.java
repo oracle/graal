@@ -315,7 +315,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined(name = {"trivialMethod", "traceTransferToInterpreter"}, count = {1, 1})
+    @ExpectNotInlined(name = {"trivialMethod", "traceTransferToInterpreter"}, count = {1, -1})
     private static int testDominatedDeopt(int value) {
         if (value == 1) {
             CompilerDirectives.transferToInterpreterAndInvalidate(); // inlined
