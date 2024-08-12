@@ -1,5 +1,5 @@
-name: 💥 Share Native Image Crash Report (svm_err_b_*.md)
-description: Share a crash report for GraalVM's Native Image using the generated `svm_err_b_*.md` file
+name: 💥 Share Native Image Build-Time Crash Report
+description: Share a crash report for GraalVM Native Image using the generated `svm_err_b_*.md` file
 title: "[Native Image] Crash Report"
 labels: ["native-image", "crash-report"]
 
@@ -13,7 +13,7 @@ body:
     id: describe_issue
     attributes:
       label: Describe the Issue
-      description: "Describe the error you encountered with GraalVM's Native Image. Provide a clear and concise description of what happened and what you were trying to achieve."
+      description: "Describe the error you encountered with GraalVM Native Image. Provide a clear and concise description of what happened and what you were trying to achieve."
     validations:
       required: true
 
