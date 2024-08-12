@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,26 +38,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.flavors;
+package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import static org.junit.Assert.assertTrue;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.regex.RegexBodyNode;
+import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.result.RegexResult;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
 
-import org.junit.Test;
+public class TRegexLazyBackwardSimpleCGRootNode extends RegexBodyNode {
 
-public class PythonFlagsTest {
+    @Child private TRegexExecutorEntryNode entryNode;
 
-    private static PythonFlags parse(String flags) {
-        return new PythonFlags(flags);
+    public TRegexLazyBackwardSimpleCGRootNode(RegexLanguage language, RegexSource source, TRegexExecutorEntryNode backwardNode) {
+        super(language, source);
+        this.entryNode = insert(backwardNode);
     }
 
-    @Test
-    public void testParseFlags() {
-        assertTrue(parse("L").isLocale());
-        assertTrue(parse("a").isAscii());
-        assertTrue(parse("i").isIgnoreCase());
-        assertTrue(parse("m").isMultiLine());
-        assertTrue(parse("s").isDotAll());
-        assertTrue(parse("u").isUnicodeExplicitlySet());
-        assertTrue(parse("x").isVerbose());
+    @Override
+    public final Object execute(VirtualFrame frame) {
+        final Object[] args = frame.getArguments();
+        assert args.length == 1;
+        final RegexResult receiver = (RegexResult) args[0];
+        int[] result = (int[]) entryNode.execute(frame, receiver.getInput(), receiver.getFromIndex(), receiver.getEnd(), receiver.getRegionFrom(), receiver.getRegionTo(), receiver.getEnd());
+        receiver.setResult(result);
+        return null;
+    }
+
+    @Override
+    public String getEngineLabel() {
+        return "TRegex bck";
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
@@ -168,7 +169,7 @@ public final class OracleDBRegexParser implements RegexParser {
                     break;
                 case quantifier:
                     if (prevKind == Token.Kind.quantifier) {
-                        throw syntaxError(OracleDBErrorMessages.NESTED_QUANTIFIER);
+                        throw syntaxError(OracleDBErrorMessages.NESTED_QUANTIFIER, ErrorCode.InvalidQuantifier);
                     }
                     if (astBuilder.getCurTerm() == null || prevKind == Token.Kind.captureGroupBegin) {
                         // quantifiers without target are ignored
@@ -189,7 +190,7 @@ public final class OracleDBRegexParser implements RegexParser {
                     break;
                 case groupEnd:
                     if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
-                        throw syntaxError(OracleDBErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
+                        throw syntaxError(OracleDBErrorMessages.UNMATCHED_RIGHT_PARENTHESIS, ErrorCode.UnmatchedParenthesis);
                     }
                     astBuilder.popGroup(token);
                     break;
@@ -218,7 +219,7 @@ public final class OracleDBRegexParser implements RegexParser {
             }
         }
         if (!astBuilder.curGroupIsRoot()) {
-            throw syntaxError(OracleDBErrorMessages.UNTERMINATED_GROUP);
+            throw syntaxError(OracleDBErrorMessages.UNTERMINATED_GROUP, ErrorCode.UnmatchedParenthesis);
         }
         if (!literalStringBuffer.isEmpty()) {
             addLiteralString(literalStringBuffer);
@@ -355,7 +356,7 @@ public final class OracleDBRegexParser implements RegexParser {
         literalStringBuffer.clear();
     }
 
-    private RegexSyntaxException syntaxError(String msg) {
-        return RegexSyntaxException.createPattern(source, msg, lexer.getLastTokenPosition());
+    private RegexSyntaxException syntaxError(String msg, ErrorCode errorCode) {
+        return RegexSyntaxException.createPattern(source, msg, lexer.getLastTokenPosition(), errorCode);
     }
 }

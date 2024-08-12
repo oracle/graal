@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,7 +67,7 @@ public final class PythonFlavor extends RegexFlavor {
 
     private PythonFlavor() {
         super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK | USES_LAST_GROUP_RESULT_FIELD |
-                        LOOKBEHINDS_RUN_LEFT_TO_RIGHT | NEEDS_GROUP_START_POSITIONS | HAS_CONDITIONAL_BACKREFERENCES | EMPTY_CHECKS_ON_MANDATORY_LOOP_ITERATIONS);
+                        LOOKBEHINDS_RUN_LEFT_TO_RIGHT | NEEDS_GROUP_START_POSITIONS | HAS_CONDITIONAL_BACKREFERENCES);
     }
 
     @Override

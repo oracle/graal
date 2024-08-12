@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,6 +82,15 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     RegexASTSubtreeRootNode(RegexASTSubtreeRootNode copy, RegexAST ast, CompilationBuffer compilationBuffer) {
         this(copy, ast);
         setGroup(copy.group.copyRecursive(ast, compilationBuffer));
+    }
+
+    @Override
+    public void markAsDead() {
+        super.markAsDead();
+        anchoredInitialState.markAsDead();
+        unAnchoredInitialState.markAsDead();
+        anchoredFinalState.markAsDead();
+        matchFound.markAsDead();
     }
 
     public boolean globalSubTreeIdInitialized() {
@@ -186,6 +195,10 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
         this.anchoredFinalState = anchoredFinalState;
         anchoredFinalState.setParent(this);
         anchoredFinalState.setNext(group);
+    }
+
+    public boolean isFixedWidth() {
+        return getGroup().getMinPath() == getGroup().getMaxPath();
     }
 
     @Override
