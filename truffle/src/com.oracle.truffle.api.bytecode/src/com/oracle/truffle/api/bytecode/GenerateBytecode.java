@@ -338,7 +338,8 @@ public @interface GenerateBytecode {
      * @see #forceTracing()
      * @since 24.2
      */
-    String decisionsFile() default "";
+    // TODO GR-57220
+    // String decisionsFile() default "";
 
     /**
      * Path to files with manually-provided optimization decisions. These files can be used to
@@ -348,7 +349,8 @@ public @interface GenerateBytecode {
      *
      * @since 24.2
      */
-    String[] decisionOverrideFiles() default {};
+    // TODO GR-57220
+    // String[] decisionOverrideFiles() default {};
 
     /**
      * Whether to build the interpreter with tracing. Can also be configured using the
@@ -362,7 +364,8 @@ public @interface GenerateBytecode {
      *
      * @since 24.2
      */
-    boolean forceTracing() default false;
+    // TODO GR-57220
+    // boolean forceTracing() default false;
 
     /**
      * Primitive types for which the interpreter should attempt to avoid boxing.

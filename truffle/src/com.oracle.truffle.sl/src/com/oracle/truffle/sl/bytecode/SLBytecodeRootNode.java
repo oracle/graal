@@ -99,7 +99,6 @@ import com.oracle.truffle.sl.runtime.SLNull;
 
 @GenerateBytecode(//
                 languageClass = SLLanguage.class, //
-                decisionsFile = "decisions.json", //
                 boxingEliminationTypes = {long.class, boolean.class}, //
                 enableUncachedInterpreter = true,
                 /**

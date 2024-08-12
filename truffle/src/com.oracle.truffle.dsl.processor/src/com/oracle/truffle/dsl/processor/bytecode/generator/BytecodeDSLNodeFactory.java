@@ -410,11 +410,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             bytecodeNodeGen.add(tagToClass);
         }
 
-        // Generate a {@link @TracingConfiguration} annotation, if tracing is enabled.
-        if (model.enableTracing) {
-            bytecodeNodeGen.addAnnotationMirror(createTracingMetadata());
-        }
-
         // Define helper methods for throwing exceptions.
         bytecodeNodeGen.add(createSneakyThrow());
         bytecodeNodeGen.add(createAssertionFailed());
@@ -845,30 +840,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         public String bytecodeClassName() {
             return friendlyName + "BytecodeNode";
         }
-    }
-
-    private CodeAnnotationMirror createTracingMetadata() {
-        CodeAnnotationMirror mir = new CodeAnnotationMirror(types.BytecodeTracingMetadata);
-
-        mir.setElementValue("decisionsFile", new CodeAnnotationValue(model.decisionsFilePath));
-
-        List<CodeAnnotationValue> instructionNames = model.getInstructions().stream().map(instr -> new CodeAnnotationValue(instr.name)).collect(Collectors.toList());
-        // instruction opcodes start at 1. Insert a placeholder element to simplify indexing.
-        instructionNames.add(0, new CodeAnnotationValue("NO_INSTRUCTION"));
-        mir.setElementValue("instructionNames", new CodeAnnotationValue(instructionNames));
-
-        List<CodeAnnotationValue> specializationNames = model.getInstructions().stream().filter(InstructionModel::hasNodeImmediate).map(instr -> {
-            CodeAnnotationMirror instructionSpecializationNames = new CodeAnnotationMirror(types.BytecodeTracingMetadata_SpecializationNames);
-            instructionSpecializationNames.setElementValue("instruction", new CodeAnnotationValue(instr.name));
-
-            List<CodeAnnotationValue> specializations = instr.nodeData.getSpecializations().stream().map(spec -> new CodeAnnotationValue(spec.getId())).collect(Collectors.toList());
-            instructionSpecializationNames.setElementValue("specializations", new CodeAnnotationValue(specializations));
-
-            return new CodeAnnotationValue(instructionSpecializationNames);
-        }).collect(Collectors.toList());
-        mir.setElementValue("specializationNames", new CodeAnnotationValue(specializationNames));
-
-        return mir;
     }
 
     private CodeExecutableElement createConstructor(CodeTypeElement initialBytecodeNode) {
@@ -1854,10 +1825,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeVariableElement reachable = new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "reachable");
             reachable.createInitBuilder().string("true");
             builderState.add(reachable);
-
-            if (model.enableTracing) {
-                builderState.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary"));
-            }
 
             if (model.enableYield) {
                 builderState.add(
@@ -4271,21 +4238,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("operationData.frameOffset = parentScope.frameOffset + parentScope.numLocals");
                     }
                     break;
-                case WHILE:
-                    if (model.enableTracing) {
-                        b.statement("basicBlockBoundary[bci] = true");
-                    }
-                    break;
-                case RETURN:
-                    break;
                 case TAG:
                     buildEmitInstruction(b, model.tagEnterInstruction, "nodeId");
                     break;
+                case WHILE:
+                case RETURN:
                 case FINALLY_TRY:
                 case FINALLY_TRY_CATCH:
-                    if (model.enableTracing) {
-                        b.statement("basicBlockBoundary[0] = true");
-                    }
                     break;
             }
 
@@ -4379,9 +4338,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("locals = null");
             b.statement("localsTableIndex = 0");
             b.statement("unresolvedLabels = new HashMap<>()");
-            if (model.enableTracing) {
-                b.statement("basicBlockBoundary = new boolean[33]");
-            }
             if (model.enableYield) {
                 b.statement("continuationLocations = new ArrayList<>()");
             }
@@ -4794,9 +4750,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                          */
                         buildEmitBooleanConverterInstruction(b, shortCircuitInstruction);
                     }
-                    if (model.enableTracing) {
-                        b.statement("basicBlockBoundary[bci] = true");
-                    }
                     // Go through the work list and fill in the branch target for each branch.
                     b.startFor().string("int site : operationData.branchFixupBcis").end().startBlock();
                     b.statement(writeInt("bc", "site", "bci"));
@@ -4814,24 +4767,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case SOURCE:
                     break;
                 case IF_THEN_ELSE:
-                    if (model.enableTracing) {
-                        b.statement("basicBlockBoundary[bci] = true");
-                    }
                     emitCastCurrentOperationData(b, operation);
                     b.statement("markReachable(operationData.thenReachable || operationData.elseReachable)");
                     break;
                 case IF_THEN:
                 case WHILE:
-                    if (model.enableTracing) {
-                        b.statement("basicBlockBoundary[bci] = true");
-                    }
                     b.statement("updateReachable()");
                     break;
                 case CONDITIONAL:
                     emitCastCurrentOperationData(b, operation);
-                    if (model.enableTracing) {
-                        b.statement("basicBlockBoundary[bci] = true");
-                    }
                     b.statement("markReachable(operationData.thenReachable || operationData.elseReachable)");
                     if (model.usesBoxingElimination()) {
                         buildEmitInstruction(b, operation.instruction, emitMergeConditionalArguments(operation.instruction));
@@ -6290,9 +6234,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement(writeInt("bc", "toUpdate", "bci"));
                         b.end();
                         b.end();
-                        if (model.enableTracing) {
-                            b.statement("basicBlockBoundary[bci] = true");
-                        }
                         break;
                     case IF_THEN_ELSE:
                         emitCastOperationData(b, op, "operationSp - 1");
@@ -6316,9 +6257,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement(writeInt("bc", "toUpdate", "bci"));
                         b.end();
                         b.end();
-                        if (model.enableTracing) {
-                            b.statement("basicBlockBoundary[bci] = true");
-                        }
                         break;
                     case CONDITIONAL:
                         emitCastOperationData(b, op, "operationSp - 1");
@@ -6355,9 +6293,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement(writeInt("bc", "toUpdate", "bci"));
                         b.end();
                         b.end();
-                        if (model.enableTracing) {
-                            b.statement("basicBlockBoundary[bci] = true");
-                        }
                         break;
                     case WHILE:
                         emitCastOperationData(b, op, "operationSp - 1");
@@ -6373,9 +6308,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement(writeInt("bc", "toUpdate", "bci"));
                         b.end();
                         b.end();
-                        if (model.enableTracing) {
-                            b.statement("basicBlockBoundary[bci] = true");
-                        }
                         break;
                     case TRY_CATCH:
                         emitCastOperationData(b, op, "operationSp - 1");
@@ -6407,9 +6339,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         buildEmitInstruction(b, model.popInstruction, emitPopArguments("-1"));
                         emitFixFinallyBranchBci(b);
                         b.end();
-                        if (model.enableTracing) {
-                            b.statement("basicBlockBoundary[bci] = true");
-                        }
                         break;
                     case FINALLY_TRY:
                         break;
@@ -6654,16 +6583,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("newBci > bc.length").end().startBlock();
             b.statement("ensureBytecodeCapacity(newBci)");
             b.end();
-
-            if (model.enableTracing) {
-                // since we can mark a start of the BB before it's first instruction is emitted,
-                // basicBlockBoundary must always be at least 1 longer than `bc` array to prevent
-                // ArrayIndexOutOfBoundsException
-                b.startAssign("basicBlockBoundary").startStaticCall(context.getType(Arrays.class), "copyOf");
-                b.string("basicBlockBoundary");
-                b.string("newBci + 1");
-                b.end(2);
-            }
 
             b.end();
 
@@ -9184,9 +9103,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(compFinal(1, new CodeVariableElement(Set.of(FINAL), arrayOf(type(byte.class)), "bytecodes")));
             type.add(compFinal(1, new CodeVariableElement(Set.of(FINAL), arrayOf(type(Object.class)), "constants")));
             type.add(compFinal(1, new CodeVariableElement(Set.of(FINAL), arrayOf(type(int.class)), "handlers")));
-            if (model.enableTracing) {
-                type.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean[].class), "basicBlockBoundary")));
-            }
             type.add(compFinal(1, new CodeVariableElement(Set.of(FINAL), context.getType(int[].class), "locals")));
             type.add(compFinal(1, new CodeVariableElement(Set.of(FINAL), context.getType(int[].class), "sourceInfo")));
             type.add(new CodeVariableElement(Set.of(FINAL), generic(type(List.class), types.Source), "sources"));
@@ -11629,22 +11545,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("FRAMES.setInt(" + localFrame() + ", " + BCI_IDX + ", -1)");
             }
 
-            if (model.enableTracing) {
-                b.declaration(context.getType(boolean[].class), "basicBlockBoundary", "this.basicBlockBoundary");
-                b.declaration(types.ExecutionTracer, "tracer",
-                                CodeTreeBuilder.createBuilder().startStaticCall(types.ExecutionTracer, "get").typeLiteral(bytecodeNodeGen.asType()).end());
-                b.statement("tracer.startRoot(this)");
-
-                b.startTryBlock();
-            }
-
             b.string("loop: ").startWhile().string("true").end().startBlock();
-
-            if (model.enableTracing) {
-                b.startIf().string("basicBlockBoundary[bci]").end().startBlock();
-                b.statement("tracer.traceStartBasicBlock(bci)");
-                b.end();
-            }
 
             // filtered instructions
             List<InstructionModel> instructions = model.getInstructions().stream().//
@@ -11822,12 +11723,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.end(); // while (true)
 
-            if (model.enableTracing) {
-                b.end().startFinallyBlock();
-                b.statement("tracer.endRoot(this)");
-                b.end();
-            }
-
             if (tier.isUncached()) {
                 b.end().startFinallyBlock();
                 b.startStatement();
@@ -11890,14 +11785,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private void buildInstructionCaseBlock(CodeTreeBuilder b, InstructionModel instr) {
             buildInstructionCases(b, instr);
             b.startBlock();
-
-            if (model.enableTracing) {
-                b.startStatement().startCall("tracer.traceInstruction");
-                b.string("bci");
-                b.string(instr.getId());
-                b.string(String.valueOf(instr.signature != null && instr.signature.isVariadic));
-                b.end(2);
-            }
 
             switch (instr.kind) {
                 case BRANCH:
@@ -14203,12 +14090,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 helper.getParameters().add(new CodeVariableElement(types.VirtualFrame, "localFrame"));
             }
 
-            if (!tier.isUncached()) {
-                if (model.enableTracing) {
-                    helper.addParameter(new CodeVariableElement(types.ExecutionTracer, "tracer"));
-                }
-            }
-
             /**
              * These additional parameters mirror the parameters declared in
              * {@link BytecodeDSLNodeGeneratorPlugs#additionalArguments()}. When one is updated, the
@@ -14238,30 +14119,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 CodeTree nodeIndex = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.NODE_PROFILE));
                 CodeTree readNode = CodeTreeBuilder.createBuilder().tree(readNodeProfile(cachedType, nodeIndex)).build();
                 b.declaration(cachedType, "node", readNode);
-
-                if (model.enableTracing) {
-                    b.startBlock();
-
-                    b.startAssign("var specInfo").startStaticCall(types.Introspection, "getSpecializations");
-                    b.string("node");
-                    b.end(2);
-
-                    b.startStatement().startCall("tracer.traceActiveSpecializations");
-                    b.string("bci");
-                    b.string(instr.getId());
-                    b.startNewArray(arrayOf(context.getType(boolean.class)), null);
-                    for (int i = 0; i < instr.nodeData.getSpecializations().size(); i++) {
-                        if (instr.nodeData.getSpecializations().get(i).isFallback()) {
-                            break;
-                        }
-                        b.string("specInfo.get(" + i + ").isActive()");
-                    }
-                    b.end();
-                    b.end(2);
-
-                    b.end();
-                }
-
             }
 
             boolean unexpectedValue = hasUnexpectedExecuteValue(instr);

@@ -111,13 +111,11 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableYield = true, //
                                 enableSerialization = true, //
                                 enableTagInstrumentation = true, //
-                                boxingEliminationTypes = {boolean.class, long.class}, //
-                                decisionsFile = "basic_interpreter_quickening_only.json")),
+                                boxingEliminationTypes = {boolean.class, long.class})),
                 @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
-                                enableTagInstrumentation = true, //
-                                decisionsFile = "basic_interpreter_decisions.json")),
+                                enableTagInstrumentation = true)),
                 @Variant(suffix = "WithGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
@@ -138,16 +136,14 @@ import com.oracle.truffle.api.source.SourceSection;
                                 enableLocalScoping = true, //
                                 enableTagInstrumentation = true, //
                                 enableUncachedInterpreter = true, //
-                                boxingEliminationTypes = {boolean.class, long.class}, //
-                                decisionsFile = "basic_interpreter_decisions.json")),
+                                boxingEliminationTypes = {boolean.class, long.class})),
                 @Variant(suffix = "ProductionGlobalScopes", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableSerialization = true, //
                                 enableLocalScoping = false, //
                                 enableTagInstrumentation = true, //
                                 enableUncachedInterpreter = true, //
-                                boxingEliminationTypes = {boolean.class, long.class}, //
-                                decisionsFile = "basic_interpreter_decisions.json"))
+                                boxingEliminationTypes = {boolean.class, long.class}))
 })
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE, javadoc = "ScOr returns the first truthy operand value.")

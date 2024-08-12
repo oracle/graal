@@ -155,14 +155,6 @@ final class PolyglotEngineOptions {
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Print information for all source cache events including hits and uncached misses.")//
     static final OptionKey<Boolean> TraceSourceCacheDetails = new OptionKey<>(false);
     
-    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
-                    "Enables and sets the state file path for Bytecode DSL tracer") //
-    static final OptionKey<String> BytecodeTracingState = new OptionKey<>("");
-
-    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
-                    "Dumps the Bytecode DSL decisions. This option is indended for debugging corpus tracing decisions.") //
-    static final OptionKey<Boolean> BytecodeDumpDecisions = new OptionKey<>(false);
-
     enum StaticObjectStorageStrategies {
         DEFAULT,
         ARRAY_BASED,

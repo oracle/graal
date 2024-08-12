@@ -55,9 +55,9 @@ import com.oracle.truffle.api.nodes.RootNode;
                 @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableUncachedInterpreter = true)),
                 @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class)),
                 @Variant(suffix = "BoxingEliminated", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, boxingEliminationTypes = {int.class, boolean.class})),
-                @Variant(suffix = "Quickened", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, decisionsFile = "decisions.json")),
+                @Variant(suffix = "Quickened", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class)),
                 @Variant(suffix = "All", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableUncachedInterpreter = true, boxingEliminationTypes = {
-                                int.class, boolean.class}, decisionsFile = "decisions.json"))
+                                int.class, boolean.class}))
 })
 abstract class BytecodeBenchmarkRootNode extends RootNode implements BytecodeRootNode {
 

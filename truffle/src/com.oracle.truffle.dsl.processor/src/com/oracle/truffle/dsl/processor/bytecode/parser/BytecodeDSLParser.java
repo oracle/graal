@@ -46,10 +46,6 @@ import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -75,12 +71,6 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
-import org.graalvm.shadowed.org.json.JSONArray;
-import org.graalvm.shadowed.org.json.JSONException;
-import org.graalvm.shadowed.org.json.JSONObject;
-import org.graalvm.shadowed.org.json.JSONTokener;
-
-import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLBuiltins;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
@@ -91,16 +81,12 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Immediat
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
-import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel;
-import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.CommonInstructionDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.QuickenDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.ResolvedQuickenDecision;
-import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.SuperInstructionDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
 import com.oracle.truffle.dsl.processor.library.ExportsLibrary;
@@ -427,27 +413,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         }
         model.boxingEliminatedTypes = beTypes;
 
-        // optimization decisions & tracing
-        AnnotationValue decisionsFileValue = getTruffleInternalAnnotationValue(typeElement, model, generateBytecodeMirror, "decisionsFile");
-        AnnotationValue decisionsOverrideFilesValue = getTruffleInternalAnnotationValue(typeElement, model, generateBytecodeMirror, "decisionsOverrideFiles");
-        AnnotationValue forceTracing = getTruffleInternalAnnotationValue(typeElement, model, generateBytecodeMirror, "forceTracing");
-        String[] decisionsOverrideFilesPath = new String[0];
-
-        if (decisionsFileValue != null) {
-            model.decisionsFilePath = resolveElementRelativePath(typeElement, (String) decisionsFileValue.getValue());
-
-            if (TruffleProcessorOptions.bytecodeEnableTracing(processingEnv)) {
-                model.enableTracing = true;
-            } else if (forceTracing != null && (boolean) forceTracing.getValue()) {
-                model.addWarning("Bytecode DSL execution tracing is forced on. Use this only during development.");
-                model.enableTracing = true;
-            }
-        }
-
-        if (decisionsOverrideFilesValue != null) {
-            decisionsOverrideFilesPath = ((List<AnnotationValue>) decisionsOverrideFilesValue.getValue()).stream().map(x -> (String) x.getValue()).toArray(String[]::new);
-        }
-
         // error sync
         if (model.hasErrors()) {
             return;
@@ -533,59 +498,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         // parse force quickenings
         List<QuickenDecision> manualQuickenings = parseForceQuickenings(model);
-        boolean enableDecisionsFile = (decisionsFileValue != null || decisionsOverrideFilesValue != null) && !model.enableTracing;
 
-        // apply optimization decisions
-        if (enableDecisionsFile) {
-            model.optimizationDecisions = parseDecisions(model, model.decisionsFilePath, decisionsOverrideFilesPath);
-
-            for (QuickenDecision decision : model.optimizationDecisions.quickenDecisions) {
-                OperationModel operation = null;
-                for (OperationModel current : model.getOperations()) {
-                    if (current.name.equals(decision.operation())) {
-                        operation = current;
-                        break;
-                    }
-                }
-                if (operation == null) {
-                    model.addError("Error reading optimization decisions: Invalid quickened operation %s.", decision.operation());
-                    continue;
-                }
-
-                try {
-                    operation.instruction.nodeData.findSpecializationsByName(decision.specializations());
-                } catch (IllegalArgumentException e) {
-                    model.addError("Error parsing optimization decisions: %s.", e.getMessage());
-                    continue;
-                }
-                manualQuickenings.add(decision);
-            }
-
-            for (SuperInstructionDecision decision : model.optimizationDecisions.superInstructionDecisions) {
-                String resultingInstructionName = "si." + String.join(".", decision.instructions);
-                List<InstructionModel> subInstructions = new ArrayList<>();
-                InstructionModel lastInstruction = null;
-                for (String instrName : decision.instructions) {
-                    InstructionModel subInstruction = model.getInstructionByName(instrName);
-                    if (subInstruction == null) {
-                        model.addError("Error reading optimization decisions: Super-instruction '%s' defines a sub-instruction '%s' which does not exist.", resultingInstructionName, instrName);
-                    } else if (subInstruction.kind == InstructionKind.SUPERINSTRUCTION) {
-                        model.addError("Error reading optimization decisions: Super-instruction '%s' cannot contain another super-instruction '%s'.", resultingInstructionName, instrName);
-                    }
-                    subInstructions.add(subInstruction);
-                    lastInstruction = subInstruction;
-                }
-
-                if (lastInstruction == null) {
-                    // invalid super instruction
-                    continue;
-                }
-
-                InstructionModel instr = model.instruction(InstructionKind.SUPERINSTRUCTION, resultingInstructionName,
-                                lastInstruction.signature);
-                instr.subInstructions = subInstructions;
-            }
-        }
+        // TODO GR-57220
 
         /*
          * If boxing elimination is enabled and the language uses operations with statically known
@@ -1079,22 +993,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         return foundMirror;
     }
 
-    /**
-     * Some features are not yet "public", but we still want to support them internally for testing.
-     * Throw an error if the node is not within a Truffle package.
-     */
-    private static AnnotationValue getTruffleInternalAnnotationValue(TypeElement typeElement, BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror, String field) {
-        AnnotationValue value = ElementUtils.getAnnotationValue(generateBytecodeMirror, field, false);
-        if (value == null) {
-            return null;
-        }
-        String pkg = ElementUtils.getPackageName(typeElement);
-        if (!pkg.startsWith("com.oracle.truffle")) {
-            model.addError(value, "The %s field is not yet supported.", field);
-        }
-        return value;
-    }
-
     private static String createChildBciName(int i) {
         return "child" + i;
     }
@@ -1210,78 +1108,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
     private String errorPrefix() {
         return String.format("Failed to generate code for @%s: ", getSimpleName(types.GenerateBytecode));
-    }
-
-    private String resolveElementRelativePath(Element element, String relativePath) {
-        File filePath = CompilerFactory.getCompiler(element).getEnclosingSourceFile(processingEnv, element);
-        Path parent = Path.of(filePath.getPath()).getParent();
-        assert parent != null;
-        return parent.resolve(relativePath).toAbsolutePath().toString();
-    }
-
-    private static OptimizationDecisionsModel parseDecisions(BytecodeDSLModel model, String decisionsFile, String[] decisionOverrideFiles) {
-        OptimizationDecisionsModel result = new OptimizationDecisionsModel();
-        result.decisionsFilePath = decisionsFile;
-        result.decisionsOverrideFilePaths = decisionOverrideFiles;
-
-        if (decisionsFile != null) {
-            parseDecisionsFile(model, result, decisionsFile, true);
-        }
-
-        return result;
-    }
-
-    private static void parseDecisionsFile(BytecodeDSLModel model, OptimizationDecisionsModel result, String filePath, boolean isMain) {
-        try {
-            // this parsing is very fragile, and error reporting is very useless
-            FileInputStream fi = new FileInputStream(filePath);
-            JSONArray o = new JSONArray(new JSONTokener(fi));
-            for (int i = 0; i < o.length(); i++) {
-                if (o.get(i) instanceof String) {
-                    // strings are treated as comments
-                    continue;
-                } else {
-                    parseDecision(model, result, o.getJSONObject(i));
-                }
-            }
-        } catch (FileNotFoundException ex) {
-            if (isMain) {
-                model.addError("Decisions file '%s' not found. Build & run with tracing enabled to generate it.", filePath);
-            } else {
-                model.addError("Decisions file '%s' not found. Create it, or remove it from decisionOverrideFiles to resolve this error.", filePath);
-            }
-        } catch (JSONException ex) {
-            model.addError("Decisions file '%s' is invalid: %s", filePath, ex);
-        }
-    }
-
-    private static void parseDecision(BytecodeDSLModel model, OptimizationDecisionsModel result, JSONObject decision) {
-        switch (decision.getString("type")) {
-            case "SuperInstruction": {
-                SuperInstructionDecision m = new SuperInstructionDecision();
-                m.id = decision.optString("id");
-                m.instructions = jsonGetStringArray(decision, "instructions");
-                result.superInstructionDecisions.add(m);
-                break;
-            }
-            case "CommonInstruction": {
-                CommonInstructionDecision m = new CommonInstructionDecision();
-                m.id = decision.optString("id");
-                result.commonInstructionDecisions.add(m);
-                break;
-            }
-            case "Quicken": {
-                result.quickenDecisions.add(new QuickenDecision(decision.getString("operation"), Set.of(jsonGetStringArray(decision, "specializations")), null));
-                break;
-            }
-            default:
-                model.addError("Unknown optimization decision type: '%s'.", decision.getString("type"));
-                break;
-        }
-    }
-
-    private static String[] jsonGetStringArray(JSONObject obj, String key) {
-        return ((List<?>) obj.getJSONArray(key).toList()).toArray(String[]::new);
     }
 
     private TypeMirror getTypeMirror(AnnotationValue value) throws AssertionError {

@@ -719,25 +719,6 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError({
-                    "Unknown optimization decision type: 'MadeUpType'.",
-                    "Error reading optimization decisions: Invalid quickened operation MadeUpOperation.",
-                    "Error reading optimization decisions: Super-instruction 'si.made.up.instruction' defines a sub-instruction 'made.up.instruction' which does not exist.",
-    })
-    @GenerateBytecode(languageClass = ErrorLanguage.class, decisionsFile = "bad_decisions.json")
-    public abstract static class OperationDecisionErrorTests extends RootNode implements BytecodeRootNode {
-        protected OperationDecisionErrorTests(TruffleLanguage<?> language, FrameDescriptor builder) {
-            super(language, builder);
-        }
-
-        @Operation
-        public static final class TestOperation {
-            @Specialization
-            public static void doStuff() {
-            }
-        }
-    }
-
     @ExpectError("%")
     @TypeSystem
     private class ErroredTypeSystem {

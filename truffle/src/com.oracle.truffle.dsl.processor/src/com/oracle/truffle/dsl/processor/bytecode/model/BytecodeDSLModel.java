@@ -137,10 +137,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public Set<TypeMirror> boxingEliminatedTypes = Set.of();
     public List<VariableElement> serializedFields;
 
-    public boolean enableTracing;
-    public String decisionsFilePath;
-    public OptimizationDecisionsModel optimizationDecisions;
-
     public OperationModel blockOperation;
     public OperationModel rootOperation;
     public OperationModel conditionalOperation;

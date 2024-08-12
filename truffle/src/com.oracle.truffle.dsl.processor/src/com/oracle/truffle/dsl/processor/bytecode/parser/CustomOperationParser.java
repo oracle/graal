@@ -730,7 +730,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                         new CodeAnnotationValue(createNodeChildAnnotations(customOperation, signature).stream().map(CodeAnnotationValue::new).collect(Collectors.toList())));
         generatedNode.addAnnotationMirror(nodeChildrenAnnotation);
 
-        if (parent.enableTracing || parent.enableSpecializationIntrospection) {
+        if (parent.enableSpecializationIntrospection) {
             generatedNode.addAnnotationMirror(new CodeAnnotationMirror(types.Introspectable));
         }
     }

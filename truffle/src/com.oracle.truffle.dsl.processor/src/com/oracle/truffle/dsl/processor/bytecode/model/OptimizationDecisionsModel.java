@@ -52,7 +52,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
-public class OptimizationDecisionsModel implements PrettyPrintable {
+public class OptimizationDecisionsModel {
 
     /**
      * A quicken model that is designed to be persistable and comparable, so internally uses
@@ -113,26 +113,4 @@ public class OptimizationDecisionsModel implements PrettyPrintable {
     public record ResolvedQuickenDecision(OperationModel operation, List<SpecializationData> specializations, List<TypeMirror> types) {
     }
 
-    public static class SuperInstructionDecision {
-        public String id;
-        public String[] instructions;
-    }
-
-    public static class CommonInstructionDecision {
-        public String id;
-        public String instruction;
-    }
-
-    public String decisionsFilePath;
-    public String[] decisionsOverrideFilePaths;
-    public List<QuickenDecision> quickenDecisions = new ArrayList<>();
-    public List<SuperInstructionDecision> superInstructionDecisions = new ArrayList<>();
-    public List<CommonInstructionDecision> commonInstructionDecisions = new ArrayList<>();
-
-    @Override
-    public void pp(PrettyPrinter printer) {
-        printer.field("quickens", quickenDecisions);
-        printer.field("superInstructions", superInstructionDecisions);
-        printer.field("commonInstructions", commonInstructionDecisions);
-    }
 }

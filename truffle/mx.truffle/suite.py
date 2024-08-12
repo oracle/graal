@@ -474,7 +474,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.exception",
-        "TRUFFLE_JSON",
         "com.oracle.truffle.api.instrumentation",
       ],
       "requires" : [
@@ -579,7 +578,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:ANTLR4",
-        "TRUFFLE_JSON",
       ],
       "requires" : [
         "java.compiler",
@@ -1737,7 +1735,6 @@ suite = {
           "com.oracle.truffle.api.bytecode",
           "com.oracle.truffle.api.bytecode.debug",
           "com.oracle.truffle.api.bytecode.serialization",
-          "com.oracle.truffle.api.bytecode.tracing",
           "com.oracle.truffle.api.profiles",
           "com.oracle.truffle.api.interop",
           "com.oracle.truffle.api.exception",
@@ -1809,8 +1806,7 @@ suite = {
       "distDependencies" : [
         "sdk:COLLECTIONS",
         "sdk:NATIVEIMAGE",
-        "sdk:POLYGLOT",
-        "TRUFFLE_JSON",
+        "sdk:POLYGLOT"
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
@@ -2084,9 +2080,6 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
-      "overlaps" : [
-        "TRUFFLE_JSON",
-      ],
       "graalCompilerSourceEdition": "ignore",
     },
 
