@@ -6,6 +6,14 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-57164 Added support for reading unaligned ints, shorts and long to `ByteArraySupport`.
 * GR-57164 `RootNode.translateStackTraceElement()` is now always consulted for polyglot and debugger stack traces. Stack traces now use the source section, the executable name, the name of the declared meta-object to build `StackTraceElement` instances.
 
+* GR-57164 Added `RootNode.findInstrumentableCallNode(..)` that allows to resolve the instrumentation location given a call node, frame and bytecode index. This allows to store instrumentable nodes in a side-datastructre for bytecode interpreters. Also added `TruffleStackTraceElement.getInstrumentableLocation()` and `FrameInstance.getInstrumentableCallNode()` to access the resolved locations. Tools using the Truffle instrumentation framework are encouraged to use these APIs instead for accessing node locations.
+* GR-57164 The method `Node.reportReplace(...)` is now accessible to subclasses which allows to report replaces without performing a replace. Reporting a replace can be used to invalidate the optimized code of nodes compiled as part of other root nodes.
+* GR-57164 Added `RootNode.prepareForInstrumentation(...)` which allows language to get notified when new tags are materialized in the instrumentation framework. This allows to materialize instrumentable nodes contained in a root node lazily as this method is called prior to any instrumentation.
+* GR-57164 Added `Frame.expect{Type}` methods to Truffle frames. These methods allows to speculatively read a tagged value from a frame and receive an `UnexpectedResultException` if the tag does not match.
+* GR-57164 Added `Frame.copyTo(...)` method to the frame for efficient copying from one frame to the other.
+* GR-57164 Added `AbstractTruffleException.getEncapsulatingSourceSection()` method to the base guest exception method to access the top-most source section of the exception. 
+* GR-57164 Added `InstrumentableNode.findProbe()` to specify how an instrumentable node finds its associated probe. This is useful for bytecode interpreters to store the probe nodes in a separate data structure without associated wrapper nodes.
+* GR-57164 Added `InstrumentableNode.createProbe(SourceSection)` method, which allows to create eager probe nodes for an instrumentable node. Eager probes do not wait for a probe to be inserted and for example all probes for statements can be inserted in a batch. Eager probes are typically used in combination with overriding the `InstrumentableNode.findProbe()` method.
 
 ## Version 24.1.0
 * GR-43839 Added optional parameter to TruffleString.ByteIndexOfCodePointSetNode to choose whether the node may calculate the input string's precise code range.
