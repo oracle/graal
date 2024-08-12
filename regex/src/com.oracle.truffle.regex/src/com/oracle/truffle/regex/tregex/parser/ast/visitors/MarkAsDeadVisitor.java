@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,26 +38,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.flavors;
+package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
-import static org.junit.Assert.assertTrue;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 
-import org.junit.Test;
+public class MarkAsDeadVisitor extends DepthFirstTraversalRegexASTVisitor {
 
-public class PythonFlagsTest {
-
-    private static PythonFlags parse(String flags) {
-        return new PythonFlags(flags);
+    public static void markAsDead(RegexASTNode runRoot) {
+        new MarkAsDeadVisitor().run(runRoot);
     }
 
-    @Test
-    public void testParseFlags() {
-        assertTrue(parse("L").isLocale());
-        assertTrue(parse("a").isAscii());
-        assertTrue(parse("i").isIgnoreCase());
-        assertTrue(parse("m").isMultiLine());
-        assertTrue(parse("s").isDotAll());
-        assertTrue(parse("u").isUnicodeExplicitlySet());
-        assertTrue(parse("x").isVerbose());
+    @Override
+    protected void doVisit(RegexASTNode cur) {
+        cur.markAsDead();
     }
 }

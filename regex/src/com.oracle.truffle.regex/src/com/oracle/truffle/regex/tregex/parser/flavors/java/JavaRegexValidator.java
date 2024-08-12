@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.errors.JavaErrorMessages;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
@@ -117,10 +118,10 @@ public class JavaRegexValidator implements RegexValidator {
                     Token.Quantifier quantifier = (Token.Quantifier) token;
                     // quantifiers of type *, + or ? cannot directly follow another quantifier
                     if (last instanceof Token.Quantifier && quantifier.isSingleChar()) {
-                        throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier));
+                        throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier), ErrorCode.InvalidQuantifier);
                     }
                     if (curTermState == CurTermState.Null && quantifier.isSingleChar()) {
-                        throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier));
+                        throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier), ErrorCode.InvalidQuantifier);
                     }
                     if (quantifier.isPossessive()) {
                         throw new UnsupportedRegexException("possessive quantifiers are not supported");
@@ -145,7 +146,7 @@ public class JavaRegexValidator implements RegexValidator {
                     break;
                 case groupEnd:
                     if (syntaxStack.isEmpty()) {
-                        throw syntaxErrorHere(JsErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
+                        throw syntaxErrorHere(JsErrorMessages.UNMATCHED_RIGHT_PARENTHESIS, ErrorCode.UnmatchedParenthesis);
                     }
                     RegexStackElem poppedElem = syntaxStack.remove(syntaxStack.size() - 1);
                     switch (poppedElem) {
@@ -164,12 +165,12 @@ public class JavaRegexValidator implements RegexValidator {
         }
 
         if (!syntaxStack.isEmpty()) {
-            throw syntaxErrorHere(JavaErrorMessages.UNCLOSED_GROUP);
+            throw syntaxErrorHere(JavaErrorMessages.UNCLOSED_GROUP, ErrorCode.UnmatchedParenthesis);
         }
     }
 
     // Error reporting
-    private RegexSyntaxException syntaxErrorHere(String message) {
-        return RegexSyntaxException.createPattern(source, message, lexer.getLastTokenPosition());
+    private RegexSyntaxException syntaxErrorHere(String message, ErrorCode errorCode) {
+        return RegexSyntaxException.createPattern(source, message, lexer.getLastTokenPosition(), errorCode);
     }
 }

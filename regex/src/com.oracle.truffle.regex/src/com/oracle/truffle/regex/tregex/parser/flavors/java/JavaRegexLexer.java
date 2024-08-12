@@ -48,6 +48,7 @@ import java.util.Locale;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
@@ -378,27 +379,27 @@ public final class JavaRegexLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleBoundedQuantifierOutOfOrder() {
-        return syntaxError(JavaErrorMessages.ILLEGAL_REPETITION);
+        return syntaxError(JavaErrorMessages.ILLEGAL_REPETITION, ErrorCode.InvalidQuantifier);
     }
 
     @Override
     protected Token handleBoundedQuantifierEmptyOrMissingMin() {
-        throw syntaxError(JavaErrorMessages.ILLEGAL_REPETITION);
+        throw syntaxError(JavaErrorMessages.ILLEGAL_REPETITION, ErrorCode.InvalidQuantifier);
     }
 
     @Override
     protected Token handleBoundedQuantifierInvalidCharacter() {
-        throw syntaxError(JavaErrorMessages.UNCLOSED_COUNTED_CLOSURE);
+        throw syntaxError(JavaErrorMessages.UNCLOSED_COUNTED_CLOSURE, ErrorCode.InvalidQuantifier);
     }
 
     @Override
     protected Token handleBoundedQuantifierOverflow(long min, long max) {
-        throw syntaxError(JavaErrorMessages.ILLEGAL_REPETITION);
+        throw syntaxError(JavaErrorMessages.ILLEGAL_REPETITION, ErrorCode.InvalidQuantifier);
     }
 
     @Override
     protected Token handleBoundedQuantifierOverflowMin(long min, long max) {
-        throw syntaxError(JavaErrorMessages.ILLEGAL_REPETITION);
+        throw syntaxError(JavaErrorMessages.ILLEGAL_REPETITION, ErrorCode.InvalidQuantifier);
     }
 
     @Override
@@ -418,12 +419,12 @@ public final class JavaRegexLexer extends RegexLexer {
 
     @Override
     protected void handleGroupRedefinition(String name, int newId, int oldId) {
-        throw syntaxError(JavaErrorMessages.groupRedefinition(name));
+        throw syntaxError(JavaErrorMessages.groupRedefinition(name), ErrorCode.InvalidNamedGroup);
     }
 
     @Override
     protected void handleIncompleteEscapeX() {
-        throw syntaxError(JavaErrorMessages.ILLEGAL_HEX_ESCAPE);
+        throw syntaxError(JavaErrorMessages.ILLEGAL_HEX_ESCAPE, ErrorCode.InvalidEscape);
     }
 
     @Override
@@ -446,7 +447,7 @@ public final class JavaRegexLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleInvalidGroupBeginQ() {
-        return syntaxError(JavaErrorMessages.UNKNOWN_INLINE_MODIFIER);
+        return syntaxError(JavaErrorMessages.UNKNOWN_INLINE_MODIFIER, ErrorCode.InvalidGroup);
     }
 
     @Override
@@ -470,7 +471,7 @@ public final class JavaRegexLexer extends RegexLexer {
 
     @Override
     protected void handleUnfinishedEscape() {
-        throw syntaxError(JavaErrorMessages.UNESCAPED_TRAILING_BACKSLASH);
+        throw syntaxError(JavaErrorMessages.UNESCAPED_TRAILING_BACKSLASH, ErrorCode.InvalidEscape);
     }
 
     @Override
@@ -480,7 +481,7 @@ public final class JavaRegexLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleUnfinishedGroupQ() {
-        return syntaxError(JavaErrorMessages.UNKNOWN_INLINE_MODIFIER);
+        return syntaxError(JavaErrorMessages.UNKNOWN_INLINE_MODIFIER, ErrorCode.InvalidGroup);
     }
 
     @Override
@@ -494,7 +495,7 @@ public final class JavaRegexLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleUnmatchedLeftBracket() {
-        return syntaxError(JavaErrorMessages.UNCLOSED_CHARACTER_CLASS);
+        return syntaxError(JavaErrorMessages.UNCLOSED_CHARACTER_CLASS, ErrorCode.UnmatchedBracket);
     }
 
     @Override
@@ -530,11 +531,11 @@ public final class JavaRegexLexer extends RegexLexer {
                 advance();
             }
             if (!consumingLookahead("}")) {
-                throw syntaxError(JavaErrorMessages.UNCLOSED_CHAR_FAMILY);
+                throw syntaxError(JavaErrorMessages.UNCLOSED_CHAR_FAMILY, ErrorCode.InvalidCharacterClass);
             }
             name = pattern.substring(namePos, position - 1);
             if (name.isEmpty()) {
-                throw syntaxError(JavaErrorMessages.EMPTY_CHAR_FAMILY);
+                throw syntaxError(JavaErrorMessages.EMPTY_CHAR_FAMILY, ErrorCode.InvalidCharacterClass);
             }
         }
         CodePointSet p = null;
@@ -563,7 +564,7 @@ public final class JavaRegexLexer extends RegexLexer {
                     break;
             }
             if (p == null) {
-                throw syntaxError(JavaErrorMessages.unknownUnicodeProperty(name, value));
+                throw syntaxError(JavaErrorMessages.unknownUnicodeProperty(name, value), ErrorCode.InvalidCharacterClass);
             }
         } else {
             if (name.startsWith("In")) {
@@ -588,7 +589,7 @@ public final class JavaRegexLexer extends RegexLexer {
                 }
             }
             if (p == null) {
-                throw syntaxError(JavaErrorMessages.unknownUnicodeCharacterProperty(name));
+                throw syntaxError(JavaErrorMessages.unknownUnicodeCharacterProperty(name), ErrorCode.InvalidCharacterClass);
             }
         }
         if (invert) {
@@ -655,13 +656,13 @@ public final class JavaRegexLexer extends RegexLexer {
                         }
                         if (prev == null) {
                             if (right == null) {
-                                throw syntaxError(JavaErrorMessages.BAD_CLASS_SYNTAX);
+                                throw syntaxError(JavaErrorMessages.BAD_CLASS_SYNTAX, ErrorCode.InvalidCharacterClass);
                             } else {
                                 prev = right;
                             }
                         } else {
                             if (curr == null) {
-                                throw syntaxError(JavaErrorMessages.BAD_INTERSECTION_SYNTAX);
+                                throw syntaxError(JavaErrorMessages.BAD_INTERSECTION_SYNTAX, ErrorCode.InvalidCharacterClass);
                             }
                             prev = prev.createIntersection(curr, compilationBuffer);
                         }
@@ -722,14 +723,14 @@ public final class JavaRegexLexer extends RegexLexer {
                 }
             }
         }
-        throw syntaxError(JavaErrorMessages.UNCLOSED_CHARACTER_CLASS);
+        throw syntaxError(JavaErrorMessages.UNCLOSED_CHARACTER_CLASS, ErrorCode.UnmatchedBracket);
     }
 
     private CodePointSet parseRange(char c) {
         int ch = parseCharClassAtomCodePoint(c);
         if (consumingLookahead('-')) {
             if (atEnd()) {
-                throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE);
+                throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE, ErrorCode.InvalidCharacterClass);
             }
             if (curChar() == ']' || curChar() == '[') {
                 // unmatched '-' is treated as literal
@@ -738,7 +739,7 @@ public final class JavaRegexLexer extends RegexLexer {
             }
             int upper = parseCharClassAtomCodePoint(consumeChar());
             if (upper < ch) {
-                throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE);
+                throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE, ErrorCode.InvalidCharacterClass);
             }
             return CodePointSet.create(ch, upper);
         } else {
@@ -763,14 +764,14 @@ public final class JavaRegexLexer extends RegexLexer {
                     handleUnfinishedEscape();
                 }
                 if (consumeChar() != '<') {
-                    throw syntaxError(JavaErrorMessages.NAMED_CAPTURE_GROUP_REFERENCE_MISSING_BEGIN);
+                    throw syntaxError(JavaErrorMessages.NAMED_CAPTURE_GROUP_REFERENCE_MISSING_BEGIN, ErrorCode.InvalidBackReference);
                 }
                 String groupName = javaParseGroupName();
                 // backward reference
                 if (namedCaptureGroups.containsKey(groupName)) {
                     return Token.createBackReference(getSingleNamedGroupNumber(groupName), false);
                 }
-                throw syntaxError(JavaErrorMessages.unknownGroupReference(groupName));
+                throw syntaxError(JavaErrorMessages.unknownGroupReference(groupName), ErrorCode.InvalidBackReference);
             }
             case 'R' -> {
                 return Token.createLineBreak();
@@ -797,12 +798,12 @@ public final class JavaRegexLexer extends RegexLexer {
         switch (c) {
             case 'b':
                 // \b is only valid as the boundary matcher and not as a character escape
-                throw syntaxError(JavaErrorMessages.ILLEGAL_ESCAPE_SEQUENCE);
+                throw syntaxError(JavaErrorMessages.ILLEGAL_ESCAPE_SEQUENCE, ErrorCode.InvalidEscape);
             case '0':
                 if (lookahead(RegexLexer::isOctalDigit, 1)) {
                     return parseOctal(0, 3);
                 }
-                throw syntaxError(JavaErrorMessages.ILLEGAL_OCT_ESCAPE);
+                throw syntaxError(JavaErrorMessages.ILLEGAL_OCT_ESCAPE, ErrorCode.InvalidEscape);
             case 'u':
                 int n = parseUnicodeHexEscape();
                 if (Character.isHighSurrogate((char) n)) {
@@ -819,36 +820,36 @@ public final class JavaRegexLexer extends RegexLexer {
             case 'x':
                 if (consumingLookahead('{')) {
                     int hex = parseHex(1, 8, Character.MAX_CODE_POINT, () -> {
-                        throw syntaxError(JavaErrorMessages.ILLEGAL_HEX_ESCAPE);
+                        throw syntaxError(JavaErrorMessages.ILLEGAL_HEX_ESCAPE, ErrorCode.InvalidEscape);
                     }, () -> {
-                        throw syntaxError(JavaErrorMessages.HEX_TOO_BIG);
+                        throw syntaxError(JavaErrorMessages.HEX_TOO_BIG, ErrorCode.InvalidEscape);
                     });
                     if (!consumingLookahead('}')) {
-                        throw syntaxError(JavaErrorMessages.UNCLOSED_HEX);
+                        throw syntaxError(JavaErrorMessages.UNCLOSED_HEX, ErrorCode.InvalidEscape);
                     }
                     return hex;
                 }
                 return -1;
             case 'c':
                 if (atEnd()) {
-                    throw syntaxError(JavaErrorMessages.ILLEGAL_CTRL_SEQ);
+                    throw syntaxError(JavaErrorMessages.ILLEGAL_CTRL_SEQ, ErrorCode.InvalidEscape);
                 }
                 return consumeChar() ^ 64;
             case 'N':
                 if (consumingLookahead('{')) {
                     int i = position;
                     if (!findChars('}')) {
-                        throw syntaxError(JavaErrorMessages.UNCLOSED_CHAR_NAME);
+                        throw syntaxError(JavaErrorMessages.UNCLOSED_CHAR_NAME, ErrorCode.InvalidEscape);
                     }
                     advance(); // skip '}'
                     String name = pattern.substring(i, position - 1);
                     try {
                         return Character.codePointOf(name);
                     } catch (IllegalArgumentException x) {
-                        throw syntaxError(JavaErrorMessages.unknownCharacterName(name));
+                        throw syntaxError(JavaErrorMessages.unknownCharacterName(name), ErrorCode.InvalidEscape);
                     }
                 }
-                throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_NAME);
+                throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_NAME, ErrorCode.InvalidEscape);
             case 'a':
                 return 0x7;
             case 'e':
@@ -864,7 +865,7 @@ public final class JavaRegexLexer extends RegexLexer {
         if (consumingLookahead(RegexLexer::isHexDigit, 4)) {
             return Integer.parseInt(pattern, position - 4, position, 16);
         }
-        throw syntaxError(JavaErrorMessages.ILLEGAL_UNICODE_ESC_SEQ);
+        throw syntaxError(JavaErrorMessages.ILLEGAL_UNICODE_ESC_SEQ, ErrorCode.InvalidEscape);
     }
 
     @Override
@@ -873,7 +874,7 @@ public final class JavaRegexLexer extends RegexLexer {
         // digits are not accepted here since they should have been parsed as octal sequence or
         // backreference earlier
         if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
-            throw syntaxError(JavaErrorMessages.ILLEGAL_ESCAPE_SEQUENCE);
+            throw syntaxError(JavaErrorMessages.ILLEGAL_ESCAPE_SEQUENCE, ErrorCode.InvalidEscape);
         }
         return c;
     }
@@ -929,9 +930,9 @@ public final class JavaRegexLexer extends RegexLexer {
         ParseGroupNameResult result = parseGroupName('>');
         switch (result.state) {
             case empty, invalidStart:
-                throw syntaxError(JavaErrorMessages.INVALID_GROUP_NAME_START);
+                throw syntaxError(JavaErrorMessages.INVALID_GROUP_NAME_START, ErrorCode.InvalidNamedGroup);
             case unterminated, invalidRest:
-                throw syntaxError(JavaErrorMessages.INVALID_GROUP_NAME_REST);
+                throw syntaxError(JavaErrorMessages.INVALID_GROUP_NAME_REST, ErrorCode.InvalidNamedGroup);
             case valid:
                 return result.groupName;
             default:
