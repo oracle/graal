@@ -76,8 +76,9 @@ public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
         return nodes.getNode(nodes.count() - 1);
     }
 
+    // TODO GR-57221 currently goes generic but should specialize to long
     @Test
-    @Ignore // TODO not yet properly supported. currently goes generic but should specialize to long
+    @Ignore
     public void testLocals() {
         BoxingEliminationTypeSystemRootNode node = (BoxingEliminationTypeSystemRootNode) parse(b -> {
             b.beginRoot(LANGUAGE);
