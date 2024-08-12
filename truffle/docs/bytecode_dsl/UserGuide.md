@@ -32,6 +32,7 @@ This document explains what you can do in a Bytecode DSL interpreter and how to 
   - [Runtime compilation](#runtime-compilation)
   - [Serialization](#serialization)
   - [Continuations](#continuations)
+  - [Builtins](#builtins)
 
 ## Bytecode DSL from 10,000 feet
 At a high level, there are three phases in the development lifecycle of a Bytecode DSL interpreter.
@@ -502,3 +503,7 @@ Bytecode DSL interpreters can support serialization, which allows a language to 
 ### Continuations
 Bytecode DSL supports single-method continuations, whereby a root node is suspended and can be resumed at a later point in time.
 Continuations can be used to implement language features like coroutines and generators that suspend the state of the current method. See the [Continuations tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/ContinuationsTutorial.java) for more details.
+
+
+### Builtins
+Guest language builtins integrate easily with Bytecode DSL. The [Builtins tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/BuiltinTutorial.java) describes a few different approaches you may wish to use to define your language builtins within Bytecode DSL.
