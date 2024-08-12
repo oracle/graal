@@ -572,7 +572,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 }
 
                 if (signatureCount > 32 && operation.customModel != null) {
-                    // TODO offer a solution for this problem.
+                    // We should eventually offer a solution for this problem, if it comes more
+                    // often in the future.
                     operation.customModel.addWarning(
                                     String.format("This operation expands to '%s' instructions due to boxing elimination.", signatureCount));
                 }

@@ -697,7 +697,7 @@ public final class ProbeNode extends Node {
         return visitor.index;
     }
 
-    final ProbeNode findParentProbe() {
+    ProbeNode findParentProbe() {
         Node node = getParent().getParent();
         while (node != null) {
             ProbeNode probe = null;
