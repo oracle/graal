@@ -39,6 +39,9 @@
  * Set directory to subsystem specific files based
  * on the contents of the mountinfo and cgroup files.
  */
+
+namespace svm_container {
+
 void CgroupV1Controller::set_subsystem_path(char *cgroup_path) {
   stringStream ss;
   if (_root != nullptr && cgroup_path != nullptr) {
@@ -419,3 +422,6 @@ jlong CgroupV1Subsystem::pids_current() {
   CONTAINER_READ_NUMBER_CHECKED(_pids, "/pids.current", "Current number of tasks", pids_current);
   return (jlong)pids_current;
 }
+
+} // namespace svm_container
+

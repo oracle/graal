@@ -36,12 +36,18 @@
 // reversible without loss of information. It doesn't check
 // everything: it isn't intended to make sure that pointer types are
 // compatible, for example.
+
+namespace svm_container {
+
 template <typename T2, typename T1>
 constexpr T2 checked_cast(T1 thing) {
   T2 result = static_cast<T2>(thing);
   assert(static_cast<T1>(result) == thing, "must be");
   return result;
 }
+
+
+} // namespace svm_container
 
 #endif // SHARE_UTILITIES_CHECKEDCAST_HPP
 

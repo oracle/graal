@@ -29,6 +29,9 @@
 
 #include "cgroupSubsystem_linux.hpp"
 
+
+namespace svm_container {
+
 class CgroupV2Controller: public CgroupController {
   private:
     /* the mount path of the cgroup v2 hierarchy */
@@ -135,5 +138,8 @@ class CgroupV2Subsystem: public CgroupSubsystem {
     CachingCgroupController<CgroupMemoryController>* memory_controller() { return _memory; }
     CachingCgroupController<CgroupCpuController>* cpu_controller() { return _cpu; }
 };
+
+
+} // namespace svm_container
 
 #endif // CGROUP_V2_SUBSYSTEM_LINUX_HPP

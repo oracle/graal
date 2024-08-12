@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 /**
@@ -89,7 +88,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+10/src/hotspot/share/runtime/globals.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/debug.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/utilities/debug.hpp")
-class ContainerLibrary {
+public class ContainerLibrary {
     static final int VERSION = 240100;
 
     // keep in sync with svm_container.hpp
@@ -142,14 +141,9 @@ class ContainerLibrary {
 class ContainerLibraryDirectives implements CContext.Directives {
     /**
      * True if {@link ContainerLibrary} should be linked.
-     *
-     * Note that although this method returns {@code true} only for certain GCs, the
-     * {@link CFunction}s defined in {@link ContainerLibrary} are always registered and can be
-     * called even if this method returns {@code false}, as other GCs provide alternative
-     * implementations themselves.
      */
     @Override
     public boolean isInConfiguration() {
-        return Container.isSupported() && (SubstrateOptions.useSerialGC() || SubstrateOptions.useEpsilonGC());
+        return Container.isSupported();
     }
 }

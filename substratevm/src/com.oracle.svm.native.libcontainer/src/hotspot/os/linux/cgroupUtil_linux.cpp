@@ -26,6 +26,9 @@
 
 #include "cgroupUtil_linux.hpp"
 
+
+namespace svm_container {
+
 int CgroupUtil::processor_count(CgroupCpuController* cpu_ctrl, int host_cpus) {
   assert(host_cpus > 0, "physical host cpus must be positive");
   int limit_count = host_cpus;
@@ -48,3 +51,6 @@ int CgroupUtil::processor_count(CgroupCpuController* cpu_ctrl, int host_cpus) {
   log_trace(os, container)("OSContainer::active_processor_count: %d", result);
   return result;
 }
+
+} // namespace svm_container
+

@@ -65,6 +65,9 @@
 #define MEMORY_TYPE_DECLARE_ENUM(type, human_readable) \
   type,
 
+
+namespace svm_container {
+
 enum class MEMFLAGS : uint8_t  {
   MEMORY_TYPES_DO(MEMORY_TYPE_DECLARE_ENUM)
   mt_number_of_types   // number of memory types (mtDontTrack
@@ -79,5 +82,8 @@ MEMORY_TYPES_DO(MEMORY_TYPE_SHORTNAME)
 
 // Make an int version of the sentinel end value.
 constexpr int mt_number_of_types = static_cast<int>(MEMFLAGS::mt_number_of_types);
+
+
+} // namespace svm_container
 
 #endif // SHARE_NMT_MEMFLAGS_HPP
