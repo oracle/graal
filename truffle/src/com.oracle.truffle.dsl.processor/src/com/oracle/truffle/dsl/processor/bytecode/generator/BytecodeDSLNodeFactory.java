@@ -374,7 +374,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         bytecodeNodeGen.add(createEncodeTags());
         if (model.enableTagInstrumentation) {
-            bytecodeNodeGen.add(createResolveInstrumentableCallNode());
+            bytecodeNodeGen.add(createFindInstrumentableCallNode());
         }
 
         // Define a loop counter class to track how many back-edges have been taken.
@@ -543,18 +543,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return ex;
     }
 
-    private CodeExecutableElement createResolveInstrumentableCallNode() {
-        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "resolveInstrumentableCallNode", types.FrameInstance);
-        ex.renameArguments("frame");
+    private CodeExecutableElement createFindInstrumentableCallNode() {
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "findInstrumentableCallNode", types.Node, types.Frame, type(int.class));
+        ex.renameArguments("callNode", "frame", "bytecodeIndex");
         ex.getModifiers().remove(Modifier.ABSTRACT);
         ex.getModifiers().add(Modifier.FINAL);
         CodeTreeBuilder b = ex.createBuilder();
-
-        b.startDeclaration(types.BytecodeLocation, "location").startStaticCall(types.BytecodeLocation, "get").string("frame").end().end();
-        b.startIf().string("location == null || !(location.getBytecodeNode() instanceof AbstractBytecodeNode bytecodeNode)").end().startBlock();
-        b.startReturn().string("super.resolveInstrumentableCallNode(frame)").end();
+        b.startDeclaration(types.BytecodeNode, "bc").startStaticCall(types.BytecodeNode, "get").string("callNode").end().end();
+        b.startIf().string("bc == null || !(bc instanceof AbstractBytecodeNode bytecodeNode)").end().startBlock();
+        b.startReturn().string("super.findInstrumentableCallNode(callNode, frame, bytecodeIndex)").end();
         b.end();
-        b.statement("return bytecodeNode.findInstrumentableCallNode(location.getBytecodeIndex())");
+        b.statement("return bytecodeNode.findInstrumentableCallNode(bytecodeIndex)");
         return ex;
     }
 

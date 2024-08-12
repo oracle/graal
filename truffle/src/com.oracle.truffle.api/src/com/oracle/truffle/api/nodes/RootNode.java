@@ -531,7 +531,7 @@ public abstract class RootNode extends ExecutableNode {
      * <p>
      * This method is invoked repeatedly and should not perform any operation if a set of tags was
      * already prepared before. In other words, this method should stabilize and eventually not
-     * perform any operation.
+     * perform any operation if the same tags were observed before.
      *
      * @since 24.2
      */
@@ -539,8 +539,33 @@ public abstract class RootNode extends ExecutableNode {
         // no default implementation
     }
 
-    protected Node resolveInstrumentableCallNode(FrameInstance instance) {
-        return instance.getCallNode();
+    /**
+     * Returns an instrumentable call node from a node and frame. By default
+     * {@link FrameInstance#getCallNode()} is called. If the returned node is not instrumentable a
+     * the respective {@link Node#getParent() parent} node will be asked until an instrumentable
+     * node is found.
+     * <p>
+     * This method should be implemented if the instrumentable call node is not reachable through
+     * the {@link Node#getParent() parent} chain of a {@link FrameInstance#getCallNode() call node}.
+     * For example, in bytecode interpreters instrumentable nodes may be stored in a
+     * side-datastructure and the instrumentable node must be looked up using the bytecode index.
+     * Overriding this method is intended to implement specify such behavior.
+     * <p>
+     * A {@link Frame frame} parameter is only provided if {@link #isCaptureFramesForTrace(boolean)}
+     * returns <code>true</code>. If the frame is not captured then the frame parameter is
+     * <code>null</code>.
+     * <p>
+     * A <code>bytecodeIndex</code> is provided if {@link #findBytecodeIndex(Node, Frame)} is
+     * implemented. The passed bytecodeIndex typically is the result of calling
+     * {@link #findBytecodeIndex(Node, Frame)}.
+     *
+     * @param callNode the top-most node of the activation or <code>null</code>
+     * @param frame the current frame of the activation or <code>null</code>
+     * @param bytecodeIndex the current bytecode index of the activation or a negative number
+     * @since 24.2
+     */
+    protected Node findInstrumentableCallNode(Node callNode, Frame frame, int bytecodeIndex) {
+        return callNode;
     }
 
     /**

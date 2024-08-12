@@ -52,7 +52,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.impl.Accessor;
 
 final class NodeAccessor extends Accessor {
@@ -215,9 +214,12 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
-        public Node resolveInstrumentableCallNode(RootNode root, FrameInstance frameInstance) {
-            return root.resolveInstrumentableCallNode(frameInstance);
+        public Node findInstrumentableCallNode(RootNode root, Node callNode, Frame frame, int bytecodeIndex) {
+            Node node = root.findInstrumentableCallNode(callNode, frame, bytecodeIndex);
+            assert node == null || node.getRootNode() != null : "Invariant violated: Returned instrumentable call node is not adopted.";
+            return node;
         }
+
     }
 
 }

@@ -271,8 +271,8 @@ public class ErrorTests {
         }
 
         @Override
-        public Node resolveInstrumentableCallNode(FrameInstance instance) {
-            return super.resolveInstrumentableCallNode(instance);
+        protected Node findInstrumentableCallNode(Node callNode, Frame frame, int bytecodeIndex) {
+            return super.findInstrumentableCallNode(callNode, frame, bytecodeIndex);
         }
 
         @Override

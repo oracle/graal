@@ -112,7 +112,6 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameExtensions;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
@@ -225,7 +224,7 @@ public abstract class Accessor {
 
         public abstract boolean isCaptureFramesForTrace(RootNode rootNode, boolean compiled);
 
-        public abstract Node resolveInstrumentableCallNode(RootNode root, FrameInstance callNode);
+        public abstract Node findInstrumentableCallNode(RootNode root, Node callNode, Frame frame, int bytecodeIndex);
     }
 
     public abstract static class SourceSupport extends Support {

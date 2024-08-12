@@ -200,7 +200,7 @@ public final class DebugStackTraceElement {
         if (isHost()) {
             return null;
         }
-        Node node = traceElement.getLocation();
+        Node node = traceElement.getInstrumentableLocation();
         if (node == null) {
             return null;
         }

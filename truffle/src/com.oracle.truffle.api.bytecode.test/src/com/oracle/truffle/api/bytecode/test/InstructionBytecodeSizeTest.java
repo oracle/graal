@@ -97,9 +97,8 @@ public class InstructionBytecodeSizeTest {
         });
 
         ContinueAtSizes size1 = calculateSizes(node);
-        System.out.println(size1);
-        // TODO
-
+        assertTrue(size1.cached() < 8000);
+        assertTrue(size1.uncached() < 8000);
     }
 
     private static int countInstructions(BytecodeRootNode node) throws ClassNotFoundException {
