@@ -108,12 +108,12 @@ public final class SLBytecodeParser extends SLBaseParser {
     private static final boolean FORCE_SERIALIZE = false;
     private static final boolean FORCE_MATERIALZE_COMPLETE = false;
 
-    private static final Class<?>[] EXPRESSION = new Class[]{ExpressionTag.class};
-    private static final Class<?>[] READ_VARIABLE = new Class[]{ExpressionTag.class, ReadVariableTag.class};
-    private static final Class<?>[] WRITE_VARIABLE = new Class[]{ExpressionTag.class, WriteVariableTag.class};
-    private static final Class<?>[] STATEMENT = new Class[]{StatementTag.class};
-    private static final Class<?>[] CONDITION = new Class[]{StatementTag.class, ExpressionTag.class};
-    private static final Class<?>[] CALL = new Class[]{CallTag.class, ExpressionTag.class};
+    private static final Class<?>[] EXPRESSION = new Class<?>[]{ExpressionTag.class};
+    private static final Class<?>[] READ_VARIABLE = new Class<?>[]{ExpressionTag.class, ReadVariableTag.class};
+    private static final Class<?>[] WRITE_VARIABLE = new Class<?>[]{ExpressionTag.class, WriteVariableTag.class};
+    private static final Class<?>[] STATEMENT = new Class<?>[]{StatementTag.class};
+    private static final Class<?>[] CONDITION = new Class<?>[]{StatementTag.class, ExpressionTag.class};
+    private static final Class<?>[] CALL = new Class<?>[]{CallTag.class, ExpressionTag.class};
 
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
         BytecodeParser<SLBytecodeRootNodeGen.Builder> slParser = (b) -> {
