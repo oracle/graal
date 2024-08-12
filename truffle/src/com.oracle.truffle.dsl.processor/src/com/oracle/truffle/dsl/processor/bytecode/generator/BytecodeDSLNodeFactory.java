@@ -105,6 +105,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.SuppressFBWarnings;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.ConstantOperandModel;
@@ -1463,6 +1464,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return ex;
     }
 
+    @SuppressFBWarnings(value = "BSHIFT_WRONG_ADD_PRIORITY", justification = "the shift priority is expected. FindBugs false positive.")
     private CodeExecutableElement createDecode2(CodeTypeElement type) {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, Modifier.STATIC), type(long.class), "decode");
         ex.addParameter(new CodeVariableElement(types.BytecodeConfigEncoder, "encoder"));

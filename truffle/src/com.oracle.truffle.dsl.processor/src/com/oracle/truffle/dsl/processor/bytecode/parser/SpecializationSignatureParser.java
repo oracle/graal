@@ -57,6 +57,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.SuppressFBWarnings;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.ConstantOperandModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.ConstantOperandsModel;
@@ -83,6 +84,7 @@ public class SpecializationSignatureParser {
         this.types = context.getTypes();
     }
 
+    @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "Calls to params poll() as expected. FindBugs false positive.")
     public SpecializationSignature parse(ExecutableElement specialization, MessageContainer errorTarget, ConstantOperandsModel constantOperands) {
         boolean isValid = true;
         boolean isFallback = ElementUtils.findAnnotationMirror(specialization, types.Fallback) != null;
@@ -231,6 +233,7 @@ public class SpecializationSignatureParser {
      * DSL parameters aren't relevant to signature calculations. This helper should be called
      * between each parameter.
      */
+    @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "Calls to params poll() as expected. FindBugs false positive.")
     private static void skipDSLParameters(Queue<? extends VariableElement> queue) {
         while (!queue.isEmpty() && isDSLParameter(queue.peek())) {
             queue.poll();
