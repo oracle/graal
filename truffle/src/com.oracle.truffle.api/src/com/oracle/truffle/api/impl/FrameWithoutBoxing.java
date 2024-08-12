@@ -1063,23 +1063,11 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             return;
         }
 
+        // eventually we might want to optimize this further using Unsafe.
+        // for now System.arrayCopy is fast enough.
         System.arraycopy(getIndexedTags(), srcOffset, o.getIndexedTags(), dstOffset, length);
         System.arraycopy(getIndexedLocals(), srcOffset, o.getIndexedLocals(), dstOffset, length);
         System.arraycopy(getIndexedPrimitiveLocals(), srcOffset, o.getIndexedPrimitiveLocals(), dstOffset, length);
-
-        // TODO: rewrite using Unsafe
-        // int offsetTag = Unsafe.ARRAY_BYTE_BASE_OFFSET + offset * Unsafe.ARRAY_BYTE_INDEX_SCALE;
-        // UNSAFE.copyMemory(getIndexedTags(), offsetTag, o.getIndexedTags(), offsetTag, length *
-        // Unsafe.ARRAY_BYTE_INDEX_SCALE);
-        //
-        // int offsetObj = Unsafe.ARRAY_OBJECT_BASE_OFFSET + offset *
-        // Unsafe.ARRAY_OBJECT_INDEX_SCALE;
-        // UNSAFE.copyMemory(getIndexedLocals(), offsetObj, o.getIndexedLocals(), offsetObj, length
-        // * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
-        //
-        // int offsetLong = Unsafe.ARRAY_LONG_BASE_OFFSET + offset * Unsafe.ARRAY_LONG_INDEX_SCALE;
-        // UNSAFE.copyMemory(getIndexedPrimitiveLocals(), offsetLong, o.getIndexedPrimitiveLocals(),
-        // offsetLong, length * Unsafe.ARRAY_LONG_INDEX_SCALE);
     }
 
     @Override
