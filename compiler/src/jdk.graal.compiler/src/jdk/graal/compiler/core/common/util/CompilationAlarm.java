@@ -63,10 +63,29 @@ public final class CompilationAlarm implements AutoCloseable {
     public static final boolean LOG_PROGRESS_DETECTION = !Services.IS_IN_NATIVE_IMAGE &&
                     Boolean.parseBoolean(GraalServices.getSavedProperty("debug." + CompilationAlarm.class.getName() + ".logProgressDetection"));
 
+    @SuppressWarnings("this-escape")
     private CompilationAlarm(double period) {
-        this.period = period;
-        this.expiration = period == 0.0D ? 0L : System.currentTimeMillis() + (long) (period * 1000);
-        this.previous = currentAlarm.get();
+        reset(period);
+    }
+
+    public void reset(double newPeriod) {
+        if (this != NEVER_EXPIRES) {
+            this.period = newPeriod;
+            this.expiration = newPeriod == 0.0D ? 0L : System.currentTimeMillis() + (long) (newPeriod * 1000);
+        }
+    }
+
+    public void reset(OptionValues options) {
+        double optionPeriod = Options.CompilationExpirationPeriod.getValue(options);
+        if (optionPeriod > 0) {
+            if (Assertions.assertionsEnabled()) {
+                optionPeriod *= 2;
+            }
+            if (Assertions.detailedAssertionsEnabled(options)) {
+                optionPeriod *= 2;
+            }
+            reset(optionPeriod);
+        }
     }
 
     /**
@@ -98,14 +117,26 @@ public final class CompilationAlarm implements AutoCloseable {
      * @return {@code true} if this alarm has been active for more than {@linkplain #getPeriod()
      *         period} seconds, {@code false} otherwise
      */
-    private boolean hasExpired() {
-        return expiration != 0 && System.currentTimeMillis() > expiration;
+    public boolean hasExpired() {
+        return this != NEVER_EXPIRES && System.currentTimeMillis() > expiration;
+    }
+
+    public long elapsed() {
+        return this == NEVER_EXPIRES ? -1 : System.currentTimeMillis() - start();
+    }
+
+    private long start() {
+        return this == NEVER_EXPIRES ? -1 : expiration - (long) (period * 1000);
+    }
+
+    public boolean isEnabled() {
+        return this != NEVER_EXPIRES;
     }
 
     /**
      * Checks whether this alarm {@link #hasExpired()} and if so, raises a bailout exception.
      */
-    private void checkExpiration() {
+    public void checkExpiration() {
         if (hasExpired()) {
             throw new PermanentBailoutException("Compilation exceeded %.3f seconds", period);
         }
@@ -113,28 +144,56 @@ public final class CompilationAlarm implements AutoCloseable {
 
     @Override
     public void close() {
-        currentAlarm.set(previous);
+        if (this != NEVER_EXPIRES) {
+            currentAlarm.set(null);
+            resetProgressDetection();
+        }
     }
 
     /**
      * Expiration period (in seconds) of this alarm.
      */
-    private final double period;
+    private double period;
 
     /**
      * The time at which this alarm expires.
      */
-    private final long expiration;
+    private long expiration;
 
     /**
-     * The previously installed alarm.
+     * The elapsed time so far.
      */
-    private final CompilationAlarm previous;
+    private long elapsedCompilationAlarmPeriod;
+
+    /**
+     * All phases and their timings in a human printable format.
+     */
+    private StringBuilder elapsedPhaseTimes;
+
+    public void setElapsedCompilationAlarmPeriod(long elapsedCompilationAlarmPeriod) {
+        this.elapsedCompilationAlarmPeriod = elapsedCompilationAlarmPeriod;
+    }
+
+    public long getElapsedCompilationAlarmPeriod() {
+        return elapsedCompilationAlarmPeriod;
+    }
+
+    public void appendPhaseTime(String contractorName, long newElapsedCompilationAlarmPeriod) {
+        if (elapsedPhaseTimes == null) {
+            elapsedPhaseTimes = new StringBuilder();
+        }
+        elapsedPhaseTimes.append(contractorName).append("->").append(newElapsedCompilationAlarmPeriod - elapsedCompilationAlarmPeriod).append(";");
+        setElapsedCompilationAlarmPeriod(newElapsedCompilationAlarmPeriod);
+    }
+
+    public StringBuilder getElapsedPhaseTimes() {
+        return elapsedPhaseTimes;
+    }
 
     /**
      * Starts an alarm for setting a time limit on a compilation if there isn't already an active
      * alarm and {@link CompilationAlarm.Options#CompilationExpirationPeriod}{@code > 0}. The
-     * returned value should be used in a try-with-resource statement to disable the alarm once the
+     * returned value can be used in a try-with-resource statement to disable the alarm once the
      * compilation is finished.
      *
      * @return a {@link CompilationAlarm} if there was no current alarm for the calling thread
@@ -149,9 +208,12 @@ public final class CompilationAlarm implements AutoCloseable {
             if (Assertions.detailedAssertionsEnabled(options)) {
                 period *= 2;
             }
-            CompilationAlarm current = new CompilationAlarm(period);
-            currentAlarm.set(current);
-            return current;
+            CompilationAlarm current = currentAlarm.get();
+            if (current == null) {
+                current = new CompilationAlarm(period);
+                currentAlarm.set(current);
+                return current;
+            }
         }
         return null;
     }

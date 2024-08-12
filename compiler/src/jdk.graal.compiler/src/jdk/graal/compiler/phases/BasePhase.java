@@ -501,6 +501,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
              * phase.
              */
             CompilationAlarm.resetProgressDetection();
+            final CompilationAlarm current = CompilationAlarm.current();
+            current.appendPhaseTime(contractorName(), current.elapsed());
         } catch (Throwable t) {
             throw debug.handle(t);
         }

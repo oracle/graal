@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpHandler;
 import jdk.graal.compiler.debug.DebugDumpScope;
@@ -199,6 +200,14 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
                     }
                     properties.put("StageFlags", structuredGraph.getGraphState().getStageFlags());
                     properties.put("speculationLog", structuredGraph.getSpeculationLog() != null ? structuredGraph.getSpeculationLog().toString() : "null");
+
+                    CompilationAlarm currentAlarm = CompilationAlarm.current();
+                    if (currentAlarm.isEnabled()) {
+                        properties.put("elapsedCompilationAlarm", currentAlarm.getElapsedCompilationAlarmPeriod());
+                        if (currentAlarm.getElapsedPhaseTimes() != null) {
+                            properties.put("elapsedPhaseTimes", currentAlarm.getElapsedPhaseTimes().toString());
+                        }
+                    }
                 }
                 if (PrintUnmodifiedGraphs.getValue(options) || lastGraph != graph || lastModCount != graph.getEdgeModificationCount()) {
                     printer.print(debug, graph, properties, nextDumpId(), format, arguments);
