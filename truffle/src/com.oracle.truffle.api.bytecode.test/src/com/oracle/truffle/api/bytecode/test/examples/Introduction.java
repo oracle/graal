@@ -47,7 +47,9 @@ import org.junit.Test;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
@@ -88,7 +90,7 @@ public class Introduction {
 
     @Test
     public void testInterpreter() {
-        var rootNodes = SampleInterpreterGen.create(BytecodeConfig.DEFAULT, b -> {
+        BytecodeParser<SampleInterpreterGen.Builder> parser = b -> {
             // @formatter:off
             b.beginRoot(null); // TruffleLanguage goes here
                 b.beginReturn();
@@ -99,7 +101,8 @@ public class Introduction {
                 b.endReturn();
             b.endRoot();
             // @formatter:on
-        });
+        };
+        BytecodeRootNodes<SampleInterpreter> rootNodes = SampleInterpreterGen.create(BytecodeConfig.DEFAULT, parser);
 
         SampleInterpreter rootNode = rootNodes.getNode(0);
         // System.out.println(rootNode.dump());

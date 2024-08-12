@@ -94,7 +94,7 @@ public abstract class Instruction {
             // avoid materialization of source info
             return null;
         }
-        return bytecode.findSourceLocation(getBytecodeIndex());
+        return bytecode.getSourceLocation(getBytecodeIndex());
     }
 
     public final SourceSection[] getSourceSections() {
@@ -103,7 +103,7 @@ public abstract class Instruction {
             // avoid materialization of source info
             return null;
         }
-        return getBytecodeNode().findSourceLocations(getBytecodeIndex());
+        return getBytecodeNode().getSourceLocations(getBytecodeIndex());
     }
 
     public final int getNextBytecodeIndex() {

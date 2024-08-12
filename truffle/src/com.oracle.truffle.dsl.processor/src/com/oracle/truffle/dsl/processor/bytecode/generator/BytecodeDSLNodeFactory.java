@@ -9095,7 +9095,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.getModifiers().remove(Modifier.ABSTRACT);
             ex.getModifiers().add(Modifier.FINAL);
             CodeTreeBuilder b = ex.createBuilder();
-            b.startReturn().string("findBytecodeNode().findSourceLocations(enterBci)").end();
+            b.startReturn().string("findBytecodeNode().getSourceLocations(enterBci)").end();
             return ex;
         }
 
@@ -9106,7 +9106,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
             // Because of operation nesting, any source section that applies to the tag.enter should
             // apply to the whole tag operation.
-            b.startReturn().string("findBytecodeNode().findSourceLocation(enterBci)").end();
+            b.startReturn().string("findBytecodeNode().getSourceLocation(enterBci)").end();
             return ex;
         }
 
@@ -9274,8 +9274,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             // Define methods for introspecting the bytecode and source.
             type.add(createGetSourceSection());
-            type.add(createFindSourceLocation());
-            type.add(createFindSourceLocations());
+            type.add(createGetSourceLocation());
+            type.add(createGetSourceLocations());
             type.add(createCreateSourceSection());
             type.add(createFindInstruction());
             type.add(createGetSourceInformation());
@@ -10701,8 +10701,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement createFindSourceLocation() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocation", type(int.class));
+        private CodeExecutableElement createGetSourceLocation() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getSourceLocation", type(int.class));
             ex.getModifiers().add(FINAL);
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
@@ -10723,8 +10723,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement createFindSourceLocations() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocations", type(int.class));
+        private CodeExecutableElement createGetSourceLocations() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getSourceLocations", type(int.class));
             ex.getModifiers().add(FINAL);
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();

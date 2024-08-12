@@ -3,10 +3,10 @@
 This document explains what you can do in a Bytecode DSL interpreter and how to do it. Its goal is to introduce Bytecode DSL topics at a conceptual level. For more concrete technical details, please consult the DSL's [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html) and the generated Javadoc for your interpreter. If you haven't already, we recommend reading the [Getting Started guide](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/GettingStarted.java) first.
 
 
-- [Bytecode DSL interpreter lifecycle](#bytecode-dsl-interpreter-lifecycle)
-  - [Phase 1: Interpreter specification](#phase-1-interpreter-specification)
-  - [Phase 2: Bytecode parsing](#phase-2-bytecode-parsing)
-  - [Phase 3: Execution](#phase-3-execution)
+- [Bytecode DSL from 10,000 feet](#bytecode-dsl-from-10000-feet)
+  - [Phase 1: Generating the interpreter](#phase-1-generating-the-interpreter)
+  - [Phase 2: Generating bytecode (parsing)](#phase-2-generating-bytecode-parsing)
+  - [Phase 3: Executing the bytecode](#phase-3-executing-the-bytecode)
 - [Operations](#operations)
   - [Built-in operations](#built-in-operations)
   - [Custom operations](#custom-operations)
@@ -33,14 +33,14 @@ This document explains what you can do in a Bytecode DSL interpreter and how to 
   - [Serialization](#serialization)
   - [Continuations](#continuations)
 
-## Bytecode DSL interpreter lifecycle
-There are three main phases in the development lifecycle of an interpreter.
+## Bytecode DSL from 10,000 feet
+At a high level, there are three phases in the development lifecycle of a Bytecode DSL interpreter.
 As a developer, it is helpful to keep these phases separate in your mind.
 
-### Phase 1: Interpreter specification
-First, you provide a specification for your interpreter.
+### Phase 1: Generating the interpreter
+The interpreter is generated automatically from a Bytecode DSL specification.
 This specification takes the form of a class definition annotated with [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) with some custom operation definitions.
-Operations are discussed in more detail [later](#operations), but it suffices for now to think of them as the semantic building blocks for Bytecode DSL programs. Common behaviour is implemented by built-in operations, and language-specific behaviour is implemented by user-defined custom operations.
+Operations are the semantic building blocks for Bytecode DSL programs (they are discussed in more detail [later](#operations)). Common behaviour is implemented by built-in operations, and language-specific behaviour is implemented by user-defined custom operations.
 
 Below is a very simple example of an interpreter specification with a single custom `Add` operation:
 ```
@@ -56,20 +56,21 @@ public abstract static class SampleInterpreter extends RootNode implements Bytec
 }
 ```
 
-When this class is compiled, the Bytecode DSL annotation processor reads the specification and uses it to generate the `SampleInterpreterGen` class.
+When this class is compiled, the Bytecode DSL annotation processor parses the specification and uses it to generate a `SampleInterpreterGen` class.
 This class defines an instruction set (including instructions for each custom operations), a `Builder` to generate bytecode, an interpreter to execute bytecode, and various supporting code.
-You may find it useful to read through the generate code (it is intended to be human-readable).
+You may find it useful to read through the generated code (it is intended to be human-readable).
 
-### Phase 2: Bytecode parsing
-Now that we have an interpreter, we need to generate a concrete program that it can execute.
+### Phase 2: Generating bytecode (parsing)
+Now that we have an interpreter, we need to generate some concrete bytecode for it it to execute.
 This process is called _parsing_.
+Each method/function in your guest language is parsed to its own bytecode.
 
 Parsers specify a tree of operations by calling a sequence of methods defined on the generated `Builder` class.
 The `Builder` class is responsible for validating the well-formedness of these operations and converting them to low-level bytecodes that implement their behaviour.
 
-Below is a simple example that generates a bytecode program that adds two integer arguments together and returns the result:
+Below is a simple example that generates a bytecode program to add two integer arguments together and return the result:
 ```
-var rootNodes = SampleInterpreterGen.create(BytecodeConfig.DEFAULT, b -> {
+BytecodeParser<SampleInterpreterGen.Builder> parser = (SampleInterpreterGen.Builder b) -> {
     b.beginRoot(null); // TruffleLanguage goes here
         b.beginReturn();
             b.beginAdd();
@@ -78,26 +79,27 @@ var rootNodes = SampleInterpreterGen.create(BytecodeConfig.DEFAULT, b -> {
             b.endAdd();
         b.endReturn();
     b.endRoot();
-});
+}
+BytecodeRootNodes<SampleInterpreter> rootNodes = SampleInterpreterGen.create(BytecodeConfig.DEFAULT, parser);
 ```
 
 You can typically implement a parser using an AST visitor. See the [Parsing tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/ParsingTutorial.java) for an example.
 
-### Phase 3: Execution
+### Phase 3: Executing the bytecode
 The result of parsing is a [`BytecodeRootNodes`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNodes.java) object containing one or more parsed root nodes.
-Each root node contains bytecode that can be executed by calling the root node:
+Each root node has bytecode that can be executed by calling the root node:
 
 ```
 SampleInterpreter rootNode = rootNodes.getNode(0);
 rootNode.getCallTarget().call(40, 2); // produces 42
 ```
 
-The current state of a root node is encapsulated in a [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java).
-This class contains the bytecode, supporting metadata, and any profiling data.
-There are helper methods on the `BytecodeNode` for a variety of use cases, like accessing local variables, computing source information, or introspecting bytecode.
+Custom operations and runtime code sometimes need to access information about the program and its execution state at run time.
+The current state is encapsulated in a [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java), which contains the bytecode, supporting metadata, and any profiling data.
+`BytecodeNode` defines helper methods for accessing local variables, computing source information, introspecting bytecode, and many other use cases.
 It is worth familiarizing yourself with its APIs.
 
-The bytecode node (and the bytecode itself) can change over the execution of a program for various reasons (e.g., [transitioning from uncached to cached](#cached-and-uncached-execution), [reparsing metadata](#reparsing-metadata), [quickening](Optimization.md#quickening)), so you should use `BytecodeRootNode#getBytecodeNode()` to obtain the up-to-date `BytecodeNode` each time you need it.
+The `BytecodeNode` (and the bytecode itself) can change over the execution of a program for various reasons (e.g., [transitioning from uncached to cached](#cached-and-uncached-execution), [reparsing metadata](#reparsing-metadata), [quickening](Optimization.md#quickening)), so you should use `BytecodeRootNode#getBytecodeNode()` to obtain the up-to-date bytecode node each time you need it.
 Custom operations can also `@Bind BytecodeNode` in their specializations (see [Bind parameters](#bind-parameters)).
 
 Note that since the bytecode can change, a bytecode index on its own _does not meaningfully identify a location in the program_: it only has meaning in the context of an accompanying `BytecodeNode`.
@@ -109,11 +111,11 @@ Operations are the basic unit of language semantics in Bytecode DSL.
 Each operation performs some computation and can produce a value.
 For example, the `LoadArgument` operation produces the value of a given argument.
 
-Operations can have children.
-For example, an `Equals` operation may have two child operations that produce its operands.
+An operation can have children that produce inputs to the operation.
+For example, an `Equals` operation may have two child operations that produce the operands to compare for equality.
 Usually, child operations execute before their parent, and their results are passed as arguments to the parent.
 
-A Bytecode DSL program is conceptually a "tree" of operations.
+We specify the semantics for a Bytecode DSL program by building a tree of operations.
 Consider the following pseudocode:
 
 ```
@@ -134,7 +136,7 @@ This code could be represented with the following operation tree:
 ```
 
 Note that while we describe a program as a tree of operations, Bytecode DSL interpreters _do not construct or execute ASTs_.
-The bytecode builder takes an operation tree specification via a sequence of method calls and automatically synthesizes a bytecode program that implements the operation tree.
+The bytecode builder takes an operation tree specification via a sequence of method calls (e.g., `beginIfThen()`, `endIfThen()`) and automatically synthesizes a bytecode program that implements the operation tree.
 
 Bytecode DSL interpreters have two kinds of operations: built-in and custom.
 
@@ -143,14 +145,12 @@ Bytecode DSL interpreters have two kinds of operations: built-in and custom.
 
 Every Bytecode DSL interpreter comes with a predefined set of built-in operations.
 They model common language primitives, such as constant accesses (`LoadConstant`), local variable manipulation (`LoadLocal`, `StoreLocal`), and control flow (`IfThen`, `While`, etc.).
-
-The built-in operations are listed below.
-The precise semantics of these operations are described in the bytecode builder Javadoc.
+The built-in operations are:
 
 
 - `Root`: defines a root node
 - `Return`: returns a value from the root node
-- `Block`: sequences multiple operations
+- `Block`: sequences multiple operations; produces the value of the last operation
 - Value producers
   - `LoadConstant`: produces a non-`null` constant value
   - `LoadNull`: produces `null`
@@ -179,6 +179,9 @@ The precise semantics of these operations are described in the bytecode builder 
 - Continuation operations (see [Continuations](#continuations))
   - `Yield`
 
+
+The built-in operations are described here for discoverability.
+Please refer to the Javadoc of the generated `Builder` methods (e.g., `Builder#beginIfThen`, `Builder#emitLoadConstant`) for their precise semantics.
 
 ### Custom operations
 
@@ -252,7 +255,8 @@ To bind certain Bytecode DSL state directly, you can often omit the expression a
 
 #### Advanced use cases
 
-An operation can take zero or more values for its last dynamic operand by declaring a [`@Variadic`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Variadic.java)` Object[]` as the final dynamic operand.
+An operation can take zero or more values for its last dynamic operand by declaring the last dynamic operand [`@Variadic`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Variadic.java).
+The builder will emit code to collect these values into an `Object[]`.
 
 An operation can also define _constant operands_, which are embedded in the bytecode and produce partial evaluation constant values, by declaring [`@ConstantOperand`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/ConstantOperand.java)s.
 
@@ -283,15 +287,17 @@ b.endBlock();
 
 All local accesses must be (directly or indirectly) nested within the operation that created the local.
 
-`LoadLocal` and `StoreLocal` are the preferred way to access locals because they are efficient and can be [quickened](Optimization.md#quickening).
+`LoadLocal` and `StoreLocal` are the preferred way to access locals because they are efficient and can be quickened to [avoid boxing](Optimization.md#boxing-elimination).
 You can also access locals using [`LocalSetter`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalSetter.java), [`LocalSetterRange`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalSetterRange.java), or various helper methods on the [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java).
+
+It is undefined behaviour to load a local before a value is stored into it.
 
 
 ### Scoping
 
 By default, interpreters use _local scoping_, in which locals are scoped to the enclosing `Root` or `Block` operation.
 When exiting the enclosing operation, locals are cleared and their frame slots are automatically reused.
-Since the set of live locals depends on the location in the code, most of the local accessor methods mentioned above are parameterized by the current `bytecodeIndex`.
+Since the set of live locals depends on the location in the code, most of the local accessor methods on `BytecodeNode` are parameterized by the current `bytecodeIndex`.
 
 Interpreters can alternatively opt to use _global scoping_, in which all locals get a unique position in the frame and live for the entire extent of the root.
 The setting is controlled by the `enableLocalScoping` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
@@ -323,13 +329,14 @@ b.endRoot();
 Materialized accesses should be used carefully.
 It is undefined behaviour to access an outer local that is not currently in scope.
 The bytecode builder endeavours to prevent such errors, but it is not always possible.
-It is also undefined behaviour to access a local using a materialized frame that it does not belong to.
+It is also undefined behaviour to access a local using a materialized frame that does not contain the local (i.e., the frame of a different root node).
 
 
 ## Control flow
 
 The `IfThen`, `IfThenElse`, `Conditional`, and `While` operations can be used for structured control flow.
 Their behaviour is as you would expect.
+`Conditional` produces a value; the rest do not.
 
 For example, the code below declares an `IfThenElse` operation that executes different code depending on the value of the first argument:
 ```
@@ -381,8 +388,8 @@ Bytecode DSL interpreters have three built-in exception handler operations.
 
 - `FinallyTryCatch` has the same behaviour as `FinallyTry`, except it has a `catch` operation (its third child) that it executes when a Truffle exception is thrown.
 
-The bytecode for `finally` operations may be emitted multiple times (e.g., once for each exit point of `try`).
-To support emitting it multiple times, the `finally` operation is defined using a `Runnable` parser that can be repeatedly invoked.
+The bytecode for `finally` operations may be emitted multiple times (once for each exit point of `try`, including at early returns).
+To support emitting it multiple times, the `finally` operation is defined using a `Runnable` parser that can be repeatedly invoked (it must be idempotent).
 The naming of the `FinallyTry` and `FinallyTryCatch` operations reflects the fact that the finally parser is supplied at the beginning of parsing, _not_ that the `finally` operation executes first.
 
 
@@ -393,9 +400,9 @@ The `LoadException` operation can be used within the `catch` operation of a `Try
 Before an exception handler executes, you may wish to intercept the exception for a variety of reasons, like:
 - adding metadata to the exception
 - handling control flow exceptions
-- converting an internal host exception to a guest exception
+- converting an internal host exception (e.g., stack overflow) to a guest exception
 
-To do so, take a look at the hooks `interceptTruffleException`, `interceptControlFlowException`, and `interceptInternalException` defined by [`BytecodeRootNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNode.java).
+[`BytecodeRootNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNode.java) defines a set of hooks (`interceptTruffleException`, `interceptControlFlowException`, and `interceptInternalException`) that you can override.
 These hooks will be invoked before the exception is dispatched to a handler.
 
 ## Advanced features
@@ -403,8 +410,6 @@ These hooks will be invoked before the exception is dispatched to a handler.
 This section describes some of the more advanced features supported by Bytecode DSL interpreters.
 
 ### Cached and uncached execution
-
-It is strongly recommended to enable uncached execution, because it can reduce the footprint of your language and improve start-up times.
 
 By default, Bytecode DSL interpreters execute _cached_, allocating memory to profile conditional branches, operation specializations, and more.
 These profiles allow Truffle compilation to produce highly optimized code.
@@ -415,6 +420,8 @@ When uncached execution is enabled, an interpreter starts executing as uncached.
 No profiling data is collected, and each custom operation executes uncached (i.e., no specialization data is recorded).
 After a certain number of calls or loop iterations, an uncached interpreter will transition to cached, allocating profiling data and preparing the interpreter for compilation.
 
+It is strongly recommended to enable uncached execution, because it can reduce the footprint of your language and improve start-up times.
+
 Most interpreters support uncached execution without any extra development effort.
 However, if your interpreter uses [`@OperationProxy`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/OperationProxy.java), any proxied nodes must be made compatible with uncached execution.
 The Bytecode DSL processor will inform you of any changes that need to be made.
@@ -423,7 +430,7 @@ The Bytecode DSL processor will inform you of any changes that need to be made.
 ### Source information
 
 The `Source` and `SourceSection` operations associate source ranges with each operation in a program.
-There are several methods defined by [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java), like `getSourceLocation` and `findSourceLocation`, that can be used to compute source information for a particular location, frame instance, etc.
+There are several `getSourceLocation` methods defined by [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java) that can be used to compute source information for a particular bytecode index, frame instance, etc.
 
 It is recommended to enclose the `Root` operation in appropriate `Source` and `SourceSection` operations in order to provide accurate source information for the root node.
 The generated root node will override `Node#getSourceSection` to return this information.
@@ -441,8 +448,8 @@ They incur no overhead until they are enabled at a later time (see [Reparsing me
 
 Bytecode DSL supports two forms of instrumentation:
 
-1. [`@Instrumentation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Instrumentation.java) operations, which are emitted and behave just like custom [`@Operation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Operation.java)s. These operations can perform special actions like logging or modifying the value produced by another operation. `@Instrumentation` operations must have no stack effects, so they can either be `void` and have no children, or produce a value and have a single child.
-2. Tag-based instrumentation associates operations with particular instrumentation [`Tag`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/Tag.java)s using `Tag` operations. If these instrumentations are enabled and [`ExecutionEventNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/ExecutionEventNoe.java) sare attached, the bytecode interpreter will invoke the various event callbacks (e.g., `onEnter`, `onReturnValue`) when executing the enclosed operation. Tag-based instrumentation can be enabled using the `enableTagInstrumentation` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
+1. [`@Instrumentation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Instrumentation.java) operations, which are emitted and behave just like custom [`@Operation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Operation.java)s. These operations can perform special actions like logging or modifying the value produced by another operation. `@Instrumentation` operations must have no stack effects, so they can either have no children and produce no value, or have one child and produce a value.
+2. Tag-based instrumentation associates operations with particular instrumentation [`Tag`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/Tag.java)s using `Tag` operations. If these instrumentations are enabled and [`ExecutionEventNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/ExecutionEventNoe.java)s are attached, the bytecode interpreter will invoke the various event callbacks (e.g., `onEnter`, `onReturnValue`) when executing the enclosed operation. Tag-based instrumentation can be enabled using the `enableTagInstrumentation` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
 
 Note: once instrumentations are enabled, they cannot be disabled.
 
@@ -461,7 +468,7 @@ When extra metadata is requested, the parser is invoked again, and is expected t
 The parse result (the [`BytecodeRootNodes`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNodes.java)) keeps a reference to the parser, so keep in mind that any strong references the parser holds may keep heap memory alive (e.g., source file contents or ASTs).
 
 The metadata to include is specified by a [`BytecodeConfig`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeConfig.java).
-There are some predefined configurations like `BytecodeConfig.DEFAULT` for convenience, but you can also specify a specific configuration using a `BytecodeConfig.Builder` (use the static `newConfigBuilder` method on the generated class). Metadata is only added; there is currently no way to reparse with less information.
+There are some predefined configurations like `BytecodeConfig.DEFAULT` for convenience, but you can also specify a specific configuration using a `BytecodeConfig.Builder` (use the static `newConfigBuilder` method on the generated class). Metadata is only added; there is no way to "clear" information by requesting less information in a reparse.
 
 
 ### Bytecode introspection

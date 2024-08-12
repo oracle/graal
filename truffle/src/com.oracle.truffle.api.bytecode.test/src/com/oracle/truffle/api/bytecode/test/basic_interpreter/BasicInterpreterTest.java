@@ -170,7 +170,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testAdd() {
         // return arg0 + arg1;
 
-        RootCallTarget root = parse("add", b -> {
+        RootCallTarget root = parse("add", (BasicInterpreterBuilder b) -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();

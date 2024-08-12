@@ -181,7 +181,7 @@ public abstract class BytecodeNode extends Node {
         if (bci == -1) {
             return null;
         }
-        return findSourceLocation(bci);
+        return getSourceLocation(bci);
     }
 
     /**
@@ -200,7 +200,7 @@ public abstract class BytecodeNode extends Node {
         if (bci == -1) {
             return null;
         }
-        return findSourceLocations(bci);
+        return getSourceLocations(bci);
     }
 
     private int findBytecodeIndexImpl(Frame frame, Node location) {
@@ -241,7 +241,7 @@ public abstract class BytecodeNode extends Node {
         if (bci == -1) {
             return null;
         }
-        return findSourceLocation(bci);
+        return getSourceLocation(bci);
     }
 
     /**
@@ -257,7 +257,7 @@ public abstract class BytecodeNode extends Node {
         if (bci == -1) {
             return null;
         }
-        return findSourceLocations(bci);
+        return getSourceLocations(bci);
     }
 
     /**
@@ -980,7 +980,7 @@ public abstract class BytecodeNode extends Node {
      * @param bytecodeIndex the bytecode index
      * @since 24.2
      */
-    public abstract SourceSection findSourceLocation(int bytecodeIndex);
+    public abstract SourceSection getSourceLocation(int bytecodeIndex);
 
     /**
      * Finds all source locations associated with the given bytecode index. More concrete source
@@ -991,7 +991,7 @@ public abstract class BytecodeNode extends Node {
      * @param bytecodeIndex the bytecode index
      * @since 24.2
      */
-    public abstract SourceSection[] findSourceLocations(int bytecodeIndex);
+    public abstract SourceSection[] getSourceLocations(int bytecodeIndex);
 
     protected abstract Instruction findInstruction(int bytecodeIndex);
 

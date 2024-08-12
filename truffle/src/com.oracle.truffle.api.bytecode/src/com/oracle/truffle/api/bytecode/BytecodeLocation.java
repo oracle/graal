@@ -132,21 +132,21 @@ public final class BytecodeLocation {
     /**
      * Computes the most concrete source location of this bytecode location.
      *
-     * @see BytecodeNode#findSourceLocation(int)
+     * @see BytecodeNode#getSourceLocation(int)
      * @since 24.2
      */
     public SourceSection getSourceLocation() {
-        return bytecodes.findSourceLocation(bci);
+        return bytecodes.getSourceLocation(bci);
     }
 
     /**
      * Computes all source locations of this bytecode location.
      *
-     * @see BytecodeNode#findSourceLocations(int)
+     * @see BytecodeNode#getSourceLocations(int)
      * @since 24.2
      */
     public SourceSection[] getSourceLocations() {
-        return bytecodes.findSourceLocations(bci);
+        return bytecodes.getSourceLocations(bci);
     }
 
     /**

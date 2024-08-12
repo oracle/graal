@@ -281,7 +281,7 @@ abstract class BytecodeNodeWithStoredBci extends RootNode implements BytecodeRoo
 
         public String getSourceCharacters() {
             int bci = bytecode.getBytecodeIndex(frame);
-            return bytecode.findSourceLocation(bci).getCharacters().toString();
+            return bytecode.getSourceLocation(bci).getCharacters().toString();
         }
     }
 
