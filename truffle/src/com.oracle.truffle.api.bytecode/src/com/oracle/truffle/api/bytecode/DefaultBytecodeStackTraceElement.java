@@ -49,6 +49,9 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
 
+/**
+ * Default implementation of a bytecode dsl stack trace element object.
+ */
 @ExportLibrary(InteropLibrary.class)
 final class DefaultBytecodeStackTraceElement implements TruffleObject {
 

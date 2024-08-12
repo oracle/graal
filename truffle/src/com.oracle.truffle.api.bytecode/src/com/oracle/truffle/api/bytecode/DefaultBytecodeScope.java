@@ -59,6 +59,10 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
 
+/**
+ * Default scope implementation reachable using
+ * {@link TagTreeNode#createDefaultScope(Frame, boolean)}.
+ */
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
 final class DefaultBytecodeScope implements TruffleObject {

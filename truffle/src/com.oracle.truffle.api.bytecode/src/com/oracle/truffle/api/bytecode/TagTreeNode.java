@@ -64,6 +64,10 @@ import com.oracle.truffle.api.source.SourceSection;
 @ExportLibrary(DynamicDispatchLibrary.class)
 public abstract class TagTreeNode extends Node implements TagTree {
 
+    protected TagTreeNode(Object token) {
+        BytecodeRootNodes.checkToken(token);
+    }
+
     /**
      * Allows to access the language instance associated with this node.
      *

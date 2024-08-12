@@ -78,8 +78,9 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
      */
     @CompilationFinal(dimensions = 1) protected T[] nodes;
 
-    protected BytecodeRootNodes(BytecodeParser<? extends BytecodeBuilder> parser) {
+    protected BytecodeRootNodes(Object token, BytecodeParser<? extends BytecodeBuilder> parser) {
         this.parser = parser;
+        checkToken(token);
     }
 
     static void checkToken(Object token) {

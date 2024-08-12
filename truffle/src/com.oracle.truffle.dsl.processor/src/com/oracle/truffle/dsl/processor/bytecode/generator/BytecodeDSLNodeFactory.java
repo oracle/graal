@@ -7511,7 +7511,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             javadoc.end();
 
             CodeTreeBuilder b = ctor.createBuilder();
-
+            b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
             b.statement("this.nodes = nodes");
             b.statement("this.reparseReason = reparseReason");
             b.statement("this.parseBytecodes = parseBytecodes");
@@ -7538,7 +7538,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             javadoc.end();
 
             CodeTreeBuilder b = ctor.createBuilder();
-
+            b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
             b.statement("this.nodes = nodes");
             b.statement("this.reparseReason = null");
             b.statement("long encoding = BytecodeConfigEncoderImpl.decode(config)");
@@ -7654,7 +7654,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ctor.addParameter(new CodeVariableElement(parserType, "generator"));
             ctor.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
             CodeTreeBuilder b = ctor.createBuilder();
-            b.statement("super(generator)");
+            b.statement("super(VISIBLE_TOKEN, generator)");
             b.startAssign("this.encoding");
             b.startStaticCall(configEncoder.asType(), "decode").string("config").end();
             b.end();
@@ -8861,7 +8861,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "tags"));
             type.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "enterBci"));
 
-            type.add(createConstructorUsingFields(Set.of(), type));
+            CodeExecutableElement constructor = type.add(createConstructorUsingFields(Set.of(), type, null));
+            CodeTreeBuilder b = constructor.createBuilder();
+            b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
+            b.statement("this.tags = tags");
+            b.statement("this.enterBci = enterBci");
 
             compFinal(type.add(new CodeVariableElement(Set.of(), type(int.class), "returnBci")));
             child(type.add(new CodeVariableElement(Set.of(), arrayOf(type.asType()), "children")));

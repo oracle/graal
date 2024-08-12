@@ -58,8 +58,9 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public abstract class ContinuationRootNode extends RootNode {
 
-    protected ContinuationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected ContinuationRootNode(Object token, TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
+        BytecodeRootNodes.checkToken(token);
     }
 
     /**
