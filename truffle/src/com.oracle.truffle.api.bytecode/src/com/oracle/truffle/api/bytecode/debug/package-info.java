@@ -40,8 +40,9 @@
  */
 
 /**
- * Serialization specific classes for the Bytecode DSL.
+ * Debug utilties for the Bytecode DSL. These features are not intended to be used in production
+ * interpreters for performance reasons.
  *
  * @since 24.2
  */
-package com.oracle.truffle.api.bytecode.serialization;
+package com.oracle.truffle.api.bytecode.debug;
