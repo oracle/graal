@@ -142,16 +142,6 @@ final class FrameExtensionsUnsafe extends FrameExtensions {
     }
 
     @Override
-    public void copyObject(Frame frame, int srcSlot, int dstSlot) {
-        ((FrameWithoutBoxing) frame).unsafeCopyObject(srcSlot, dstSlot);
-    }
-
-    @Override
-    public void copyPrimitive(Frame frame, int srcSlot, int dstSlot) {
-        ((FrameWithoutBoxing) frame).unsafeCopyPrimitive(srcSlot, dstSlot);
-    }
-
-    @Override
     public void clear(Frame frame, int slot) {
         ((FrameWithoutBoxing) frame).unsafeClear(slot);
     }

@@ -178,16 +178,6 @@ final class FrameExtensionsSafe extends FrameExtensions {
     }
 
     @Override
-    public void copyObject(Frame frame, int srcSlot, int dstSlot) {
-        frame.copyObject(srcSlot, dstSlot);
-    }
-
-    @Override
-    public void copyPrimitive(Frame frame, int srcSlot, int dstSlot) {
-        frame.copyPrimitive(srcSlot, dstSlot);
-    }
-
-    @Override
     public void clear(Frame frame, int slot) {
         frame.clear(slot);
     }

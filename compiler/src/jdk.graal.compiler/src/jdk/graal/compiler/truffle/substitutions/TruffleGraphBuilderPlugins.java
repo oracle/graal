@@ -818,32 +818,6 @@ public class TruffleGraphBuilderPlugins {
                 }
             });
 
-            r.register(new RequiredInvocationPlugin(buildCamelCaseName(prefix, "copyPrimitive"), Receiver.class, int.class, int.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot1, ValueNode frameSlot2) {
-                    int frameSlot1Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot1);
-                    int frameSlot2Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot2);
-                    if (frameSlot1Index >= 0 && frameSlot2Index >= 0) {
-                        b.add(new VirtualFrameCopyNode(receiver, frameSlot1Index, frameSlot2Index, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.NON_STATIC_UPDATE));
-                        return true;
-                    }
-                    return false;
-                }
-            });
-
-            r.register(new RequiredInvocationPlugin(buildCamelCaseName(prefix, "copyObject"), Receiver.class, int.class, int.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot1, ValueNode frameSlot2) {
-                    int frameSlot1Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot1);
-                    int frameSlot2Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot2);
-                    if (frameSlot1Index >= 0 && frameSlot2Index >= 0) {
-                        b.add(new VirtualFrameCopyNode(receiver, frameSlot1Index, frameSlot2Index, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.NON_STATIC_UPDATE));
-                        return true;
-                    }
-                    return false;
-                }
-            });
-
             r.register(new RequiredInvocationPlugin(buildCamelCaseName(prefix, "clear"), Receiver.class, int.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot) {

@@ -275,14 +275,14 @@ class ManualUnsafeBytecodeInterpreter extends BaseBytecodeNode {
                 }
                 // (i -- )
                 case OP_ST_LOC: {
-                    FRAMES.copyPrimitive(frame, sp - 1, BYTE_ARRAY_SUPPORT.getShort(localBc, bci + 1));
+                    FRAMES.copy(frame, sp - 1, BYTE_ARRAY_SUPPORT.getShort(localBc, bci + 1));
                     sp -= 1;
                     bci += 2;
                     continue loop;
                 }
                 // ( -- i)
                 case OP_LD_LOC: {
-                    FRAMES.copyPrimitive(frame, BYTE_ARRAY_SUPPORT.getShort(localBc, bci + 1), sp);
+                    FRAMES.copy(frame, BYTE_ARRAY_SUPPORT.getShort(localBc, bci + 1), sp);
                     sp += 1;
                     bci += 2;
                     continue loop;
@@ -604,14 +604,14 @@ class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
                 }
                 // (i -- )
                 case OP_ST_LOC: {
-                    FRAMES.copyPrimitive(frame, sp - 1, BYTES.getShort(localBc, bci + 1));
+                    FRAMES.copy(frame, sp - 1, BYTES.getShort(localBc, bci + 1));
                     sp -= 1;
                     bci += 2;
                     continue loop;
                 }
                 // ( -- i)
                 case OP_LD_LOC: {
-                    FRAMES.copyPrimitive(frame, BYTES.getShort(localBc, bci + 1), sp);
+                    FRAMES.copy(frame, BYTES.getShort(localBc, bci + 1), sp);
                     sp += 1;
                     bci += 2;
                     continue loop;
@@ -726,14 +726,14 @@ class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
                 }
                 // (i -- )
                 case OP_ST_LOC: {
-                    FRAMES.copyObject(frame, sp - 1, BYTES.getShort(localBc, bci + 1));
+                    FRAMES.copy(frame, sp - 1, BYTES.getShort(localBc, bci + 1));
                     sp -= 1;
                     bci += 2;
                     continue loop;
                 }
                 // ( -- i)
                 case OP_LD_LOC: {
-                    FRAMES.copyObject(frame, BYTES.getShort(localBc, bci + 1), sp);
+                    FRAMES.copy(frame, BYTES.getShort(localBc, bci + 1), sp);
                     sp += 1;
                     bci += 2;
                     continue loop;

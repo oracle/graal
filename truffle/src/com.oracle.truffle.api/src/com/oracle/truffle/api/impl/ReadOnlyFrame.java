@@ -82,14 +82,6 @@ class ReadOnlyFrame implements Frame {
         delegate.swap(first, second);
     }
 
-    public void copyObject(int srcSlot, int destSlot) {
-        delegate.copyObject(srcSlot, destSlot);
-    }
-
-    public void copyPrimitive(int srcSlot, int destSlot) {
-        delegate.copyPrimitive(srcSlot, destSlot);
-    }
-
     ReadOnlyFrame(Frame delegate) {
         this.delegate = delegate;
     }

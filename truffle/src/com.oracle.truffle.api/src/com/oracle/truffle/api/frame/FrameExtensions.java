@@ -241,20 +241,6 @@ public abstract class FrameExtensions {
     public abstract void copyTo(Frame srcFrame, int srcOffset, Frame dstFrame, int dstOffset, int length);
 
     /**
-     * Copies an Object from one slot to another.
-     *
-     * @since 24.2
-     */
-    public abstract void copyObject(Frame frame, int srcSlot, int dstSlot);
-
-    /**
-     * Copies a primitive from one slot to another.
-     *
-     * @since 24.2
-     */
-    public abstract void copyPrimitive(Frame frame, int srcSlot, int dstSlot);
-
-    /**
      * Clears a frame slot.
      *
      * @since 24.2

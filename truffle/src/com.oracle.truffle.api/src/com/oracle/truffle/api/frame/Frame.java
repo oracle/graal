@@ -449,7 +449,7 @@ public interface Frame {
      * Check whether the given indexed slot is of type byte.
      * <p>
      * This method should not be used with static slots.
-     * 
+     *
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -462,7 +462,7 @@ public interface Frame {
      * Check whether the given indexed slot is of type boolean.
      * <p>
      * This method should not be used with static slots.
-     * 
+     *
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -475,7 +475,7 @@ public interface Frame {
      * Check whether the given indexed slot is of type int.
      * <p>
      * This method should not be used with static slots.
-     * 
+     *
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -488,7 +488,7 @@ public interface Frame {
      * Check whether the given indexed slot is of type long.
      * <p>
      * This method should not be used with static slots.
-     * 
+     *
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -501,7 +501,7 @@ public interface Frame {
      * Check whether the given indexed slot is of type float.
      * <p>
      * This method should not be used with static slots.
-     * 
+     *
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -514,7 +514,7 @@ public interface Frame {
      * Check whether the given indexed slot is of type double.
      * <p>
      * This method should not be used with static slots.
-     * 
+     *
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -527,7 +527,7 @@ public interface Frame {
      * Checks whether the given indexed slot is static.
      * <p>
      * This method should not be used with static slots.
-     * 
+     *
      * @param slot the slot of the local variable
      * @since 22.2
      */
@@ -920,30 +920,6 @@ public interface Frame {
      * @since 22.3
      */
     default void clearStatic(int slot) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Copies, including the type, from one slot to another. The type must be Object.
-     *
-     * @param srcSlot the slot of the source local variable
-     * @param destSlot the slot of the target local variable
-     * @since 24.2
-     */
-    default void copyObject(int srcSlot, int destSlot) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Copies, including the type, from one slot to another. The type must be primitive.
-     *
-     * @param srcSlot the slot of the source local variable
-     * @param destSlot the slot of the target local variable
-     * @since 24.2
-     */
-    default void copyPrimitive(int srcSlot, int destSlot) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
     }
