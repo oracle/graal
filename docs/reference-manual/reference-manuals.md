@@ -18,6 +18,9 @@ These manuals are aimed at software engineers and developers who already work wi
 
 If you are mostly interested in a specific language runtime on GraalVM, see the following:
 * [Java on Truffle (Espresso)](java-on-truffle/README.md)
-* [JavaScript (GraalJS)](js/README.md)
-* [Python (GraalPy)](python/README.md)
-* [WebAssembly (GraalWasm)](wasm/README.md)
+* [JavaScript and Node.js](js/README.md)
+* [LLVM Languages](llvm/README.md)
+* [Python](python/README.md)
+* [R](r/README.md)
+* [Ruby](ruby/README.md)
+* [WebAssembly](wasm/README.md)
