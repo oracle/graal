@@ -49,6 +49,7 @@ import mx_subst
 import mx_util
 import mx_substratevm_benchmark  # pylint: disable=unused-import
 import mx_substratevm_add_namespace  # pylint: disable=unused-import
+import mx_substratevm_remove_namespace  # pylint: disable=unused-import
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
 from mx_sdk_vm_impl import svm_experimental_options

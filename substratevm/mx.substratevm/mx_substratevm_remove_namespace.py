@@ -25,19 +25,26 @@
 
 # Removes a C++-namespace from the source files.
 # If no command line arguments are passed, the namespace is removed from all files.
-# It is possible to pass filepaths as command line arguments. Then the namespace is only removed from the 
+# It is possible to pass filepaths as command line arguments. Then the namespace is only removed from the
 # specified files.
 
 
+import mx
 import os
 import re
 import argparse
 
-from addNamespace import *
+from mx_substratevm_add_namespace import is_c_file, files_with_cpp_guard, ignore_files
+
+suite = mx.suite("substratevm")
 
 
-def main():
-    parser = argparse.ArgumentParser()
+SVM_REMOVE_NAMESPACE = "svm_remove_namespace"
+
+
+@mx.command(suite, SVM_REMOVE_NAMESPACE)
+def svm_remove_namespace(orig_args):
+    parser = argparse.ArgumentParser(SVM_REMOVE_NAMESPACE)
 
     pathGroup = parser.add_mutually_exclusive_group(required=True)
     pathGroup.add_argument("-d", "--directory", type=str, help="Path to the src-directory for removing the namespace.")
@@ -46,9 +53,9 @@ def main():
     parser.add_argument("-n", "--namespace", required=True, type=str,
                         help="The namespace that gets removed from the files.")
 
-    args = parser.parse_args()
+    args = parser.parse_args(orig_args)
 
-    global namespaceName 
+    global namespaceName
     namespaceName = args.namespace
 
     global namespaceBeginWithGuard
@@ -152,7 +159,3 @@ def remove_namespace_from_file(file, add_cpp_guard):
 
 def remove_if_newline(line):
     return "" if line == "\n" else line
-
-
-if __name__ == "__main__":
-    main()
