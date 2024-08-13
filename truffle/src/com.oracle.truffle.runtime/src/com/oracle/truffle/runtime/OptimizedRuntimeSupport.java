@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -140,7 +140,7 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
             node = node.getParent();
         }
         if (parentNode instanceof RootNode) {
-            CallTarget target = ((RootNode) parentNode).getCallTarget();
+            CallTarget target = OptimizedRuntimeAccessor.NODES.getCallTargetWithoutInitialization((RootNode) parentNode);
             if (target instanceof OptimizedCallTarget) {
                 ((OptimizedCallTarget) target).onLoopCount(count);
             }
