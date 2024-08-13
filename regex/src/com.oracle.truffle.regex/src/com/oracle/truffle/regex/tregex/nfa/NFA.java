@@ -47,6 +47,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
+import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
+import com.oracle.truffle.regex.tregex.automaton.TransitionOp;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TrackerCellAllocator;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -67,6 +70,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     @CompilationFinal(dimensions = 1) private final NFAStateTransition[] transitions;
     @CompilationFinal(dimensions = 1) private final PreCalculatedResultFactory[] preCalculatedResults;
     private final NFAStateTransition initialLoopBack;
+    @CompilationFinal(dimensions = 1) private final TrackerCellAllocator[] trackerCellAllocators;
 
     public NFA(RegexAST ast,
                     NFAState dummyInitialState,
@@ -90,6 +94,11 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         this.states = new NFAState[stateIDCounter.getCount()];
         // reserve last slot for loopBack matcher
         this.transitions = new NFAStateTransition[transitionIDCounter.getCount() + 1];
+        TrackerCellAllocator.Builder[] trackerCellAllocatorBuilders = new TrackerCellAllocator.Builder[ast.getQuantifierCount()];
+        for (int i = 0; i < trackerCellAllocatorBuilders.length; i++) {
+            trackerCellAllocatorBuilders[i] = new TrackerCellAllocator.Builder();
+        }
+
         for (NFAState s : states) {
             assert this.states[s.getId()] == null;
             this.states[s.getId()] = s;
@@ -99,6 +108,30 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
             for (NFAStateTransition t : s.getSuccessors()) {
                 assert this.transitions[t.getId()] == null || (s == dummyInitialState && this.transitions[t.getId()] == t);
                 this.transitions[t.getId()] = t;
+                var operations = t.getOperations(true);
+                var constraints = t.getConstraints(true);
+                for (int i = 0; i < operations.length; i++) {
+                    var op = operations[i];
+                    var qId = TransitionOp.getQId(op);
+                    var target = trackerCellAllocatorBuilders[qId].registerAndGet(t.getTarget().getId());
+                    var src = TransitionOp.getSource(op);
+                    if (src != TransitionOp.NO_SOURCE) {
+                        src = trackerCellAllocatorBuilders[qId].registerAndGet(src);
+                    }
+                    var kind = TransitionOp.getKind(op);
+                    op = TransitionOp.create(qId, src, target, kind);
+                    operations[i] = op;
+                }
+                for (int i = 0; i < constraints.length; i++) {
+                    var cstr = constraints[i];
+                    var qId = TransitionConstraint.getQuantId(cstr);
+                    var src = TransitionConstraint.getStateId(cstr);
+                    src = trackerCellAllocatorBuilders[qId].registerAndGet(src);
+                    var kind = TransitionConstraint.getKind(cstr);
+                    cstr = TransitionConstraint.create(qId, src, kind);
+                    constraints[i] = cstr;
+                }
+
             }
             if (s == dummyInitialState) {
                 for (NFAStateTransition t : s.getPredecessors()) {
@@ -110,6 +143,11 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         if (initialLoopBack != null) {
             assert this.transitions[initialLoopBack.getId()] == null;
             this.transitions[initialLoopBack.getId()] = initialLoopBack;
+        }
+
+        this.trackerCellAllocators = new TrackerCellAllocator[ast.getQuantifierCount()];
+        for (int i = 0; i < trackerCellAllocatorBuilders.length; i++) {
+            trackerCellAllocators[i] = trackerCellAllocatorBuilders[i].build();
         }
     }
 
@@ -246,6 +284,10 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         return transitions.length;
     }
 
+    public TrackerCellAllocator[] getTrackerCellAllocator() {
+        return trackerCellAllocators;
+    }
+
     public boolean isDead() {
         return anchoredEntry != null ? allDead(anchoredEntry) : (reverseAnchoredEntry.getSource().isDead(false) && reverseUnAnchoredEntry.getSource().isDead(false));
     }
@@ -300,6 +342,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         this.ast = original.ast;
         this.preCalculatedResults = original.preCalculatedResults;
         this.states = new NFAState[original.states.length];
+        this.trackerCellAllocators = original.trackerCellAllocators;
         for (NFAState state : original.states) {
             if (state != null) {
                 this.states[state.getId()] = new NFAState(state);

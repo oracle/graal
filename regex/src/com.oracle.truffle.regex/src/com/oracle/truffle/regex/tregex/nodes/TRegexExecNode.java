@@ -92,25 +92,56 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
 
     @Child private RunRegexSearchNode runnerNode;
 
-    public TRegexExecNode(RegexAST ast, TRegexExecutorNode nfaExecutor) {
+    private TRegexExecNode(RegexAST ast, boolean backtrackingMode) {
         super(ast.getLanguage(), ast.getSource(), ast.getFlags().isEitherUnicode());
         this.numberOfCaptureGroups = ast.getNumberOfCaptureGroups();
-        this.nfaNode = new NFARegexSearchNode(createEntryNode(nfaExecutor));
-        this.backtrackingMode = nfaExecutor instanceof TRegexBacktrackingNFAExecutorNode;
         this.regressionTestMode = !backtrackingMode && ast.getOptions().isRegressionTestMode();
+        this.backtrackingMode = backtrackingMode;
         this.sticky = ast.getFlags().isSticky();
         this.optimizeLock = new ReentrantLock();
-        this.runnerNode = insert(nfaNode);
-        if (this.regressionTestMode || !backtrackingMode && ast.getOptions().isGenerateDFAImmediately()) {
-            switchToLazyDFA();
+    }
+
+    public static TRegexExecNode createWithNFA(RegexAST ast, TRegexExecutorNode nfaExecutor) {
+        var backtrackingMode = nfaExecutor instanceof TRegexBacktrackingNFAExecutorNode;
+        var result = new TRegexExecNode(ast, backtrackingMode);
+        result.nfaNode = new NFARegexSearchNode(createEntryNode(ast.getLanguage(), nfaExecutor));
+        result.runnerNode = result.insert(result.nfaNode);
+        if (result.regressionTestMode || !backtrackingMode && ast.getOptions().isGenerateDFAImmediately()) {
+            result.switchToLazyDFA();
             if (!this.regressionTestMode) {
                 nfaNode = null;
             }
         }
-        if (this.regressionTestMode) {
-            regressTestBacktrackingNode = new NFARegexSearchNode(
-                            createEntryNode(TRegexCompiler.compileBacktrackingExecutor(getRegexLanguage(), ((TRegexNFAExecutorNode) nfaNode.getExecutor().unwrap()).getNFA())));
+        if (result.regressionTestMode) {
+            result.regressTestBacktrackingNode = new NFARegexSearchNode(
+                            createEntryNode(ast.getLanguage(),
+                                            TRegexCompiler.compileBacktrackingExecutor(result.getRegexLanguage(), ((TRegexNFAExecutorNode) result.nfaNode.getExecutor().unwrap()).getNFA())));
         }
+        return result;
+    }
+
+    public static TRegexExecNode createWithDFA(RegexAST ast, TRegexExecutorNode nfaExecutor, LazyCaptureGroupRegexSearchNode dfaSearchNode) {
+        var result = new TRegexExecNode(ast, false);
+        result.lazyDFANode = dfaSearchNode;
+        result.runnerNode = result.insert(dfaSearchNode);
+        if (result.regressionTestMode) {
+            var nfaNode = new NFARegexSearchNode(createEntryNode(ast.getLanguage(), nfaExecutor));
+            result.regressTestBacktrackingNode = new NFARegexSearchNode(
+                            createEntryNode(ast.getLanguage(), TRegexCompiler.compileBacktrackingExecutor(result.getRegexLanguage(),
+                                            ((TRegexNFAExecutorNode) nfaNode.getExecutor().unwrap()).getNFA())));
+
+            if (result.lazyDFANode != LAZY_DFA_BAILED_OUT && result.lazyDFANode.isSimpleCG()) {
+                result.regressTestNoSimpleCGLazyDFANode = result.compileLazyDFA(false);
+            }
+
+            if (result.canSwitchToEagerDFA()) {
+                result.compileEagerDFA();
+                if (result.getSource().getOptions().isAlwaysEager()) {
+                    result.switchToEagerDFA(null);
+                }
+            }
+        }
+        return result;
     }
 
     @Override
@@ -233,7 +264,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     }
 
     private boolean nfaProducesSameResult(MaterializedFrame frame, TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, RegexResult result) {
-        if (lazyDFANode == LAZY_DFA_BAILED_OUT) {
+        if (lazyDFANode == LAZY_DFA_BAILED_OUT || nfaNode == null) {
             return true;
         }
         assert !(runnerNode instanceof NFARegexSearchNode);
@@ -373,7 +404,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             try {
                 assert !getSource().getOptions().isBooleanMatch();
                 TRegexDFAExecutorNode executorNode = TRegexCompiler.compileEagerDFAExecutor(getRegexLanguage(), getSource());
-                eagerDFANode = new EagerCaptureGroupRegexSearchNode(createEntryNode(executorNode));
+                eagerDFANode = new EagerCaptureGroupRegexSearchNode(createEntryNode(getRegexLanguage(), executorNode));
             } catch (UnsupportedRegexException e) {
                 Loggers.LOG_BAILOUT_MESSAGES.fine(() -> e.getReason() + ": " + source);
                 eagerDFANode = EAGER_DFA_BAILED_OUT;
@@ -381,11 +412,11 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         }
     }
 
-    public TRegexExecutorEntryNode createEntryNode(TRegexExecutorNode executor) {
+    public static TRegexExecutorEntryNode createEntryNode(RegexLanguage language, TRegexExecutorNode executor) {
         if (executor == null) {
             return null;
         }
-        return TRegexExecutorEntryNode.create(getRegexLanguage(), executor);
+        return TRegexExecutorEntryNode.create(language, executor);
     }
 
     @Override
@@ -418,7 +449,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                         TRegexExecutorEntryNode forwardNode,
                         TRegexExecutorEntryNode backwardNode,
                         TRegexExecutorEntryNode captureGroupNode,
-                        TRegexExecNode rootNode) {
+                        RegexProfile profile) {
             this.forwardEntryNode = forwardNode;
             this.flags = flags;
             this.booleanMatch = source != null && source.getOptions().isBooleanMatch();
@@ -426,7 +457,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             this.backwardEntryNode = backwardNode;
             if (forwardNode == null) {
                 // LAZY_DFA_BAILED_OUT
-                assert language == null && source == null && flags == null && preCalculatedResults == null && backwardNode == null && captureGroupNode == null && rootNode == null;
+                assert language == null && source == null && flags == null && preCalculatedResults == null && backwardNode == null && captureGroupNode == null;
                 backwardCallTarget = null;
                 captureGroupCallTarget = null;
                 return;
@@ -456,7 +487,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                 } else {
                     findStartCallTarget = backwardCallTarget;
                 }
-                captureGroupCallTarget = new RegexRootNode(language, new TRegexLazyCaptureGroupsRootNode(language, source, captureGroupNode, rootNode, findStartCallTarget)).getCallTarget();
+                captureGroupCallTarget = new RegexRootNode(language, new TRegexLazyCaptureGroupsRootNode(language, source, captureGroupNode, profile, findStartCallTarget)).getCallTarget();
             }
         }
 

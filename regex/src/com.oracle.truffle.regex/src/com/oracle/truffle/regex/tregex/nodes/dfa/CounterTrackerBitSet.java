@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,23 +40,27 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-public class BackwardDFAStateNode extends DFAStateNode {
-    public BackwardDFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers, DFASimpleCG simpleCG,
-                    long[][] constraints, long[][] operations, long[][] finalConstraints, long[][] anchoredFinalConstraints) {
-        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, simpleCG, constraints, operations, finalConstraints, anchoredFinalConstraints);
-    }
+/**
+ * Counter tracker backed by a bitset. Very similar to {@link CounterTrackerLong}.
+ */
+public class CounterTrackerBitSet extends AbstractCounterTrackerBitSet {
+    public static final int MAX_N = 6;
+    protected final int fixedOffset;
 
-    protected BackwardDFAStateNode(BackwardDFAStateNode copy, short copyID) {
-        super(copy, copyID);
+    public CounterTrackerBitSet(int min, int max, int numberOfCells, CounterTrackerData.Builder dataBuilder) {
+        super(min, max);
+        assert n <= MAX_N;
+        int size = n * numberOfCells;
+        this.fixedOffset = dataBuilder.getFixedDataSize();
+        dataBuilder.requestFixedSize(size);
     }
 
     @Override
-    public DFAStateNode createNodeSplitCopy(short copyID) {
-        return new BackwardDFAStateNode(this, copyID);
+    int mapId(int sId, long[] fixedData) {
+        return fixedOffset + sId * n;
     }
 
-    int getBackwardPrefixStateIndex() {
-        assert hasBackwardPrefixState();
-        return getSuccessors().length - 1;
+    @Override
+    public void init(long[] fixedData, int[][] intArrays) {
     }
 }

@@ -165,7 +165,7 @@ public class RegexASTPostProcessor {
         @Override
         protected void leave(Group group) {
             if (group.hasQuantifier()) {
-                quantifierExpander.expandQuantifier(group, group.getQuantifier().isUnrollTrivial() || shouldUnroll(group) && shouldUnrollVisitor.shouldUnroll(group));
+                quantifierExpander.expandQuantifier(group, (shouldUnroll(group) && shouldUnrollVisitor.shouldUnroll(group)));
             }
         }
 
@@ -175,18 +175,19 @@ public class RegexASTPostProcessor {
         }
 
         private boolean shouldUnroll(QuantifiableTerm term) {
-            return term.getQuantifier().isUnrollTrivial() || (ast.getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA && term.isUnrollingCandidate());
+            return ast.getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA && (term.getQuantifier().isUnrollTrivial() || term.isUnrollingCandidate(ast.getOptions()));
         }
 
         private static final class ShouldUnrollQuantifierVisitor extends DepthFirstTraversalRegexASTVisitor {
 
-            private Group root;
             private boolean result;
 
             boolean shouldUnroll(Group group) {
                 assert group.hasQuantifier();
+                if (group.getQuantifier().isUnrollTrivial()) {
+                    return true;
+                }
                 result = true;
-                root = group;
                 run(group);
                 return result;
             }
@@ -194,13 +195,6 @@ public class RegexASTPostProcessor {
             @Override
             protected void visit(BackReference backReference) {
                 result = false;
-            }
-
-            @Override
-            protected void visit(Group group) {
-                if (group != root && group.hasNotUnrolledQuantifier()) {
-                    result = false;
-                }
             }
         }
 
@@ -305,7 +299,7 @@ public class RegexASTPostProcessor {
 
             private void expandQuantifier(QuantifiableTerm toExpand, boolean unroll) {
                 assert toExpand.hasQuantifier();
-                assert !unroll || toExpand.isUnrollingCandidate();
+                assert !(unroll && !toExpand.isUnrollingCandidate(ast.getOptions()));
                 clearRegisteredCaptureGroupsVisitor.clear(toExpand);
                 Token.Quantifier quantifier = toExpand.getQuantifier();
                 toExpand.setQuantifier(null);

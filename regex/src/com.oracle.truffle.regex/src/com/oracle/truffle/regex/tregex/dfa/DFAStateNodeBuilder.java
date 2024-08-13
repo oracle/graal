@@ -49,6 +49,7 @@ import com.oracle.truffle.regex.tregex.automaton.BasicState;
 import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
+import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
@@ -75,6 +76,8 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
     private short backwardPrefixState = -1;
     private NFAStateTransition anchoredFinalStateTransition;
     private NFAStateTransition unAnchoredFinalStateTransition;
+    private ObjectArrayBuffer<long[]> anchoredFinalConstraints = null;
+    private ObjectArrayBuffer<long[]> unAnchoredFinalConstraints = null;
     private byte preCalculatedUnAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
     private byte preCalculatedAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
 
@@ -292,15 +295,21 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
             for (NFAStateTransition t : nfaTransitionSet.getTransitions()) {
                 // In forward mode, a state is final if it contains a NFA transition to a NFA state
                 // that has a subsequent transition to a final state
+                // If that subsequent transition has constraints then we group them together
+                // and check them at runtime.
                 NFAState target = t.getTarget(true);
-                if (target.hasTransitionToAnchoredFinalState(true) && anchoredFinalStateTransition == null) {
+                if (target.hasNotGuardedTransitionToAnchoredFinalState(true) && anchoredFinalStateTransition == null) {
                     setAnchoredFinalState();
                     setAnchoredFinalStateTransition(target.getFirstTransitionToFinalState(true));
+                } else if (target.hasGuardedTransitionToAnchoredFinalState()) {
+                    setGuardedAnchoredFinalState();
                 }
-                if (target.hasTransitionToUnAnchoredFinalState(true)) {
+                if (target.hasUnGuardedTransitionToUnAnchoredFinalState(true)) {
                     setUnAnchoredFinalState();
                     setUnAnchoredFinalStateTransition(target.getTransitionToUnAnchoredFinalState(true));
                     return this;
+                } else if (target.hasGuardedTransitionToUnAnchoredFinalState()) {
+                    setGuardedFinalState();
                 }
             }
         } else {
@@ -331,6 +340,55 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
             }
         }
         return this;
+    }
+
+    private void computeAnchoredFinalConstraints() {
+        anchoredFinalConstraints = new ObjectArrayBuffer<>();
+        for (NFAStateTransition t : nfaTransitionSet.getTransitions()) {
+            NFAState target = t.getTarget();
+            if (target.hasGuardedTransitionToAnchoredFinalState()) {
+                anchoredFinalConstraints.addAll(target.getGuardedAnchoredFinalTransition());
+            }
+        }
+    }
+
+    private void computeUnAnchoredFinalConstraints() {
+        unAnchoredFinalConstraints = new ObjectArrayBuffer<>();
+        for (NFAStateTransition t : nfaTransitionSet.getTransitions()) {
+            NFAState target = t.getTarget();
+            if (target.hasGuardedTransitionToFinalState()) {
+                unAnchoredFinalConstraints.addAll(target.getFinalConstraints());
+            }
+        }
+    }
+
+    public long[][] getAnchoredFinalConstraints() {
+        if (!isGuardedAnchoredFinalState()) {
+            return new long[0][];
+        }
+        if (anchoredFinalConstraints == null) {
+            computeAnchoredFinalConstraints();
+        }
+        return anchoredFinalConstraints.toArray(new long[0][]);
+    }
+
+    public long[][] getUnAnchoredFinalConstraints() {
+        if (!isGuardedUnAnchoredFinalState()) {
+            return new long[0][];
+        }
+        if (unAnchoredFinalConstraints == null) {
+            computeUnAnchoredFinalConstraints();
+        }
+        return unAnchoredFinalConstraints.toArray(new long[0][]);
+    }
+
+    public boolean hasNoConstraints() {
+        for (var transition : getSuccessors()) {
+            if (transition.getConstraints().length != 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public String stateSetToString() {
@@ -390,7 +448,7 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
 
     @TruffleBoundary
     @Override
-    protected boolean hasTransitionToUnAnchoredFinalState(boolean forward) {
+    protected boolean hasUnGuardedTransitionToUnAnchoredFinalState(boolean forward) {
         throw new UnsupportedOperationException();
     }
 

@@ -72,6 +72,18 @@ public class LongArrayBuffer extends AbstractArrayBuffer implements Iterable<Lon
         buf = new long[initialSize];
     }
 
+    public LongArrayBuffer() {
+        this(8);
+    }
+
+    /**
+     * Create a long array buffer from a given buffer. Be careful, no copies are done.
+     */
+    public LongArrayBuffer(long[] buf) {
+        this.buf = buf;
+        this.length = buf.length;
+    }
+
     @Override
     int getBufferLength() {
         return buf.length;
@@ -86,17 +98,33 @@ public class LongArrayBuffer extends AbstractArrayBuffer implements Iterable<Lon
         return buf[i];
     }
 
+    public void set(int i, long v) {
+        buf[i] = v;
+    }
+
     public void add(long v) {
         if (length == buf.length) {
-            grow(length * 2);
+            grow(length == 0 ? 1 : length * 2);
         }
         buf[length++] = v;
     }
 
+    public void sort() {
+        Arrays.sort(buf, 0, length);
+    }
+
     public void addAll(long[] v) {
-        ensureCapacity(length + v.length);
-        System.arraycopy(v, 0, buf, length, v.length);
-        length += v.length;
+        addAll(v, v.length);
+    }
+
+    public void addAll(long[] v, int vlength) {
+        ensureCapacity(length + vlength);
+        System.arraycopy(v, 0, buf, length, vlength);
+        length += vlength;
+    }
+
+    public void addAll(LongArrayBuffer v) {
+        addAll(v.buf, v.length);
     }
 
     public long pop() {
@@ -136,6 +164,18 @@ public class LongArrayBuffer extends AbstractArrayBuffer implements Iterable<Lon
     @Override
     public PrimitiveIterator.OfLong iterator() {
         return new LongArrayBufferIterator(buf, length);
+    }
+
+    public LongArrayBuffer copy() {
+        var result = new LongArrayBuffer(this.length);
+        result.addAll(this);
+        return result;
+    }
+
+    public void swap(int i, int j) {
+        var temp = buf[i];
+        buf[i] = buf[j];
+        buf[j] = temp;
     }
 
     private static final class LongArrayBufferIterator implements PrimitiveIterator.OfLong {

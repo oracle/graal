@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,19 +68,20 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
     private int[] requiredStatesIndexMap = null;
     private DFACaptureGroupLazyTransitionBuilder lazyTransition = null;
 
-    DFACaptureGroupTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFA, NFAState> targetStateSet, CodePointSet matcherBuilder, DFAGenerator dfaGen) {
-        super(transitions, targetStateSet, matcherBuilder);
+    DFACaptureGroupTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFA, NFAState> targetStateSet, CodePointSet matcherBuilder, long[] constraints, long[] operations,
+                    DFAGenerator dfaGen) {
+        super(transitions, targetStateSet, matcherBuilder, constraints, operations);
         this.dfaGen = dfaGen;
     }
 
-    DFACaptureGroupTransitionBuilder(CodePointSet matcherBuilder, TransitionSet<NFA, NFAState, NFAStateTransition> transitions, DFAGenerator dfaGen) {
-        super(transitions, matcherBuilder);
+    DFACaptureGroupTransitionBuilder(CodePointSet matcherBuilder, TransitionSet<NFA, NFAState, NFAStateTransition> transitions, long[] constraints, long[] operations, DFAGenerator dfaGen) {
+        super(transitions, matcherBuilder, constraints, operations);
         this.dfaGen = dfaGen;
     }
 
     @Override
     public DFAStateTransitionBuilder createNodeSplitCopy() {
-        return new DFACaptureGroupTransitionBuilder(getCodePointSet(), getTransitionSet(), dfaGen);
+        return new DFACaptureGroupTransitionBuilder(getCodePointSet(), getTransitionSet(), getConstraints(), getOperations(), dfaGen);
     }
 
     public void setLazyTransition(DFACaptureGroupLazyTransitionBuilder lazyTransition) {

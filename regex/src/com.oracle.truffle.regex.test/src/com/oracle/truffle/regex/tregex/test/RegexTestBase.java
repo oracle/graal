@@ -153,6 +153,7 @@ public abstract class RegexTestBase {
 
     void testBoolean(String pattern, String flags, String options, String input, int fromIndex, boolean isMatch) {
         String expectedResult = isMatch ? "Match" : "NoMatch";
+        options = options.isEmpty() ? "BooleanMatch=true" : "BooleanMatch=true," + options;
         try {
             Value compiledRegex = compileRegex(pattern, flags, options, getTRegexEncoding());
             Value result = execRegexBoolean(compiledRegex, getTRegexEncoding(), input, fromIndex);

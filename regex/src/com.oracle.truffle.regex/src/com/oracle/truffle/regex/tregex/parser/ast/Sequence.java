@@ -200,6 +200,9 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
         return size() == 1 && isLiteral();
     }
 
+    /**
+     * Get the quantified expression from it's passthrough sequence.
+     */
     public QuantifiableTerm quantifierPassThroughGetQuantifiedTerm() {
         assert isQuantifierPassThroughSequence();
         assert getParent().isGroup();
