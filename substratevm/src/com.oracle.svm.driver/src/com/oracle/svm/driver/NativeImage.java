@@ -1084,7 +1084,7 @@ public class NativeImage {
         addTargetArguments();
 
         String defaultLibC = OS.getCurrent() == OS.LINUX ? "glibc" : null;
-        targetLibC = getHostedOptionFinalArgument(imageBuilderArgs, oHUseLibC).map(ArgumentEntry::value).orElse(System.getProperty("substratevm.HostLibC", defaultLibC));
+        targetLibC = getHostedOptionFinalArgument(imageBuilderArgs, oHUseLibC).map(e -> e.value).orElse(System.getProperty("substratevm.HostLibC", defaultLibC));
 
         String clibrariesBuilderArg = config.getBuilderCLibrariesPaths().stream()
                         .flatMap(this::resolveTargetSpecificPaths)
