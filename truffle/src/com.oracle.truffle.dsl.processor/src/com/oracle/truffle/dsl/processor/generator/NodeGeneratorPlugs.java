@@ -47,7 +47,6 @@ import java.util.List;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecutionResult;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
@@ -60,8 +59,8 @@ import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
 /**
  * Interface that allows node generators to customize the way {@link FlatNodeGenFactory} generates
- * nodes. A node generator (e.g., {@link BytecodeDSLNodeFactory}) can pass its own implementation of
- * this interface to the {@link FlatNodeGenFactory} during construction, and the factory will
+ * nodes. A node generator (e.g., {@link BytecodeRootNodeElement}) can pass its own implementation
+ * of this interface to the {@link FlatNodeGenFactory} during construction, and the factory will
  * delegate to it.
  */
 public interface NodeGeneratorPlugs {

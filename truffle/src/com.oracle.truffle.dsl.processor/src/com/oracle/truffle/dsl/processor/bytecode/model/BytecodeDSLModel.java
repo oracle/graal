@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
+import static com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.OPCODE_WIDTH;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isPrimitive;
-import static com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.OPCODE_WIDTH;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -67,7 +67,6 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
@@ -78,17 +77,17 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     private final ProcessorContext context;
     public final TypeElement templateType;
     // The generated class.
-    public final CodeTypeElement generatedType;
+    public final String modelName;
     // The abstract class of the builder (different from builderType if GenerateBytecodeTestVariants
     // used)
     public final TypeMirror abstractBuilderType;
 
-    public BytecodeDSLModel(ProcessorContext context, TypeElement templateType, AnnotationMirror mirror, CodeTypeElement generatedType,
+    public BytecodeDSLModel(ProcessorContext context, TypeElement templateType, AnnotationMirror mirror, String name,
                     TypeMirror abstractBuilderType) {
         super(context, templateType, mirror);
         this.context = context;
         this.templateType = templateType;
-        this.generatedType = generatedType;
+        this.modelName = name;
         this.abstractBuilderType = abstractBuilderType;
     }
 
@@ -184,7 +183,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public ExportsData tagTreeNodeLibrary;
 
     public String getName() {
-        return generatedType.getSimpleName().toString();
+        return modelName;
     }
 
     private List<TypeMirror> providedTags;

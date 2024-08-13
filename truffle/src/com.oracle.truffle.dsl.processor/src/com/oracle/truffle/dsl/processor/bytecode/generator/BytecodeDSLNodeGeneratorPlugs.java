@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.generator;
 
-import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory.readConst;
-import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory.readImmediate;
-import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory.readInstruction;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.readConst;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.readImmediate;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.readInstruction;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -83,16 +83,16 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     private final ProcessorContext context;
     private final TypeMirror nodeType;
     private final BytecodeDSLModel model;
-    private final BytecodeDSLNodeFactory bytecodeFactory;
+    private final BytecodeRootNodeElement rootNode;
     private InstructionModel instruction;
 
     private CodeExecutableElement quickenMethod;
 
-    public BytecodeDSLNodeGeneratorPlugs(ProcessorContext context, BytecodeDSLNodeFactory bytecodeFactory, TypeMirror nodeType, BytecodeDSLModel model, InstructionModel instr) {
-        this.bytecodeFactory = bytecodeFactory;
-        this.context = context;
-        this.nodeType = nodeType;
-        this.model = model;
+    public BytecodeDSLNodeGeneratorPlugs(BytecodeRootNodeElement rootNode, InstructionModel instr) {
+        this.rootNode = rootNode;
+        this.model = rootNode.getModel();
+        this.context = rootNode.getContext();
+        this.nodeType = rootNode.getAbstractBytecodeNode().asType();
         this.instruction = instr;
     }
 
@@ -168,13 +168,13 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 if (frameState.getMode().isFastPath()) {
                     b.startStatement();
                     if (!ElementUtils.typeEquals(expectedType, specializedType)) {
-                        b.startStaticCall(bytecodeFactory.lookupExpectMethod(expectedType, specializedType));
+                        b.startStaticCall(rootNode.lookupExpectMethod(expectedType, specializedType));
                     }
                     if (cast != null) {
                         b.startStaticCall(cast.getMethod());
                     }
 
-                    BytecodeDSLNodeFactory.startExpectFrameUnsafe(b, frame, expectedType);
+                    BytecodeRootNodeElement.startExpectFrameUnsafe(b, frame, expectedType);
                     b.string(stackIndex);
                     b.end();
 
@@ -191,7 +191,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                     if (!ElementUtils.isObject(genericType)) {
                         b.cast(specializedType);
                     }
-                    BytecodeDSLNodeFactory.startGetFrameUnsafe(b, frame, null);
+                    BytecodeRootNodeElement.startGetFrameUnsafe(b, frame, null);
                     b.string(stackIndex);
                     b.end();
                     return false;
@@ -200,7 +200,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 if (!ElementUtils.isObject(genericType)) {
                     b.cast(expectedType);
                 }
-                b.string(BytecodeDSLNodeFactory.uncheckedGetFrameObject(frame, stackIndex));
+                b.string(BytecodeRootNodeElement.uncheckedGetFrameObject(frame, stackIndex));
                 return false;
             }
         }
@@ -225,7 +225,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
     @Override
     public void notifySpecialize(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState, SpecializationData specialization) {
         if (model.specializationDebugListener) {
-            bytecodeFactory.emitOnSpecialize(builder, "$bytecode", "$bci", BytecodeDSLNodeFactory.readInstruction("$bc", "$bci"), specialization.getNode().getNodeId() + "$" + specialization.getId());
+            rootNode.emitOnSpecialize(builder, "$bytecode", "$bci", BytecodeRootNodeElement.readInstruction("$bc", "$bci"), specialization.getNode().getNodeId() + "$" + specialization.getId());
         }
 
         if (instruction.hasQuickenings()) {
@@ -270,7 +270,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
         factory.addSpecializationStateParametersTo(method, frameState);
         if (model.specializationDebugListener) {
-            method.addParameter(new CodeVariableElement(bytecodeFactory.getAbstractBytecodeNode().asType(), "$bytecode"));
+            method.addParameter(new CodeVariableElement(rootNode.getAbstractBytecodeNode().asType(), "$bytecode"));
         }
         method.addParameter(new CodeVariableElement(context.getType(byte[].class), "$bc"));
         method.addParameter(new CodeVariableElement(context.getType(int.class), "$bci"));
@@ -360,7 +360,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                     b.newLine().string("  ", sep, "(");
                     b.string("newOperand" + valueIndex);
                     b.string(" = ");
-                    b.startCall(BytecodeDSLNodeFactory.createApplyQuickeningName(specializedType)).string("oldOperand" + valueIndex).end();
+                    b.startCall(BytecodeRootNodeElement.createApplyQuickeningName(specializedType)).string("oldOperand" + valueIndex).end();
                     b.string(") != -1");
                     sep = " && ";
                 }
@@ -380,19 +380,19 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
             if (returnTypeQuickening != null) {
                 b.startIf();
-                b.startCall(BytecodeDSLNodeFactory.createIsQuickeningName(returnTypeQuickening.signature.returnType)).string("$bc[$bci]").end();
+                b.startCall(BytecodeRootNodeElement.createIsQuickeningName(returnTypeQuickening.signature.returnType)).string("$bc[$bci]").end();
                 b.end().startBlock();
                 b.startStatement();
-                b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(returnTypeQuickening));
+                b.string("newInstruction = ").tree(rootNode.createInstructionConstant(returnTypeQuickening));
                 b.end(); // statement
                 b.end().startElseBlock();
                 b.startStatement();
-                b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(quickening));
+                b.string("newInstruction = ").tree(rootNode.createInstructionConstant(quickening));
                 b.end(); // statement
                 b.end();
             } else {
                 b.startStatement();
-                b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(quickening));
+                b.string("newInstruction = ").tree(rootNode.createInstructionConstant(quickening));
                 b.end(); // statement
             }
 
@@ -409,19 +409,19 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         InstructionModel returnTypeQuickening = findReturnTypeQuickening(instruction);
         if (returnTypeQuickening != null) {
             b.startIf();
-            b.startCall(BytecodeDSLNodeFactory.createIsQuickeningName(returnTypeQuickening.signature.returnType)).string("$bc[$bci]").end();
+            b.startCall(BytecodeRootNodeElement.createIsQuickeningName(returnTypeQuickening.signature.returnType)).string("$bc[$bci]").end();
             b.end().startBlock();
             b.startStatement();
-            b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(returnTypeQuickening));
+            b.string("newInstruction = ").tree(rootNode.createInstructionConstant(returnTypeQuickening));
             b.end(); // statement
             b.end().startElseBlock();
             b.startStatement();
-            b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(instruction));
+            b.string("newInstruction = ").tree(rootNode.createInstructionConstant(instruction));
             b.end(); // statement
             b.end(); // else block
         } else {
             b.startStatement();
-            b.string("newInstruction = ").tree(bytecodeFactory.createInstructionConstant(instruction));
+            b.string("newInstruction = ").tree(rootNode.createInstructionConstant(instruction));
             b.end(); // statement
         }
 
@@ -430,14 +430,14 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         for (int valueIndex : boxingEliminated) {
             if (instruction.isShortCircuitConverter()) {
                 b.startIf().string("newOperand" + valueIndex).string(" != -1").end().startBlock();
-                bytecodeFactory.emitQuickeningOperand(b, "$bytecode", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
+                rootNode.emitQuickeningOperand(b, "$bytecode", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
                 b.end(); // if
             } else {
-                bytecodeFactory.emitQuickeningOperand(b, "$bytecode", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
+                rootNode.emitQuickeningOperand(b, "$bytecode", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
             }
         }
 
-        bytecodeFactory.emitQuickening(b, "$bytecode", "$bc", "$bci", null, "newInstruction");
+        rootNode.emitQuickening(b, "$bytecode", "$bc", "$bci", null, "newInstruction");
 
         return method;
     }

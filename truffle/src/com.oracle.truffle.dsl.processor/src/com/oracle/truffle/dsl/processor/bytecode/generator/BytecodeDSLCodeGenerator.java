@@ -91,9 +91,9 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
 
         for (BytecodeDSLModel model : modelList.getModels()) {
             if (modelList.hasErrors()) {
-                results.add(new BytecodeDSLNodeFactory.ErrorRootNodeElement(model));
+                results.add(new BytecodeRootNodeErrorElement(model));
             } else {
-                results.add(new BytecodeDSLNodeFactory(model).create());
+                results.add(new BytecodeRootNodeElement(model));
             }
         }
 

@@ -42,8 +42,6 @@ package com.oracle.truffle.dsl.processor.bytecode.parser;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
-import static javax.lang.model.element.Modifier.FINAL;
-import static javax.lang.model.element.Modifier.PUBLIC;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -85,9 +83,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsMode
 import com.oracle.truffle.dsl.processor.bytecode.model.OptimizationDecisionsModel.ResolvedQuickenDecision;
 import com.oracle.truffle.dsl.processor.bytecode.model.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.parser.SpecializationSignatureParser.SpecializationSignature;
-import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.library.ExportsData;
 import com.oracle.truffle.dsl.processor.library.ExportsLibrary;
 import com.oracle.truffle.dsl.processor.library.ExportsParser;
@@ -209,8 +205,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
     }
 
     private BytecodeDSLModel createBytecodeDSLModel(TypeElement typeElement, AnnotationMirror generateBytecodeMirror, String suffix, TypeMirror abstractBuilderType) {
-        CodeTypeElement generatedType = GeneratorUtils.createClass(typeElement, null, Set.of(PUBLIC, FINAL), typeElement.getSimpleName() + suffix, typeElement.asType());
-        return new BytecodeDSLModel(context, typeElement, generateBytecodeMirror, generatedType, abstractBuilderType);
+        return new BytecodeDSLModel(context, typeElement, generateBytecodeMirror, typeElement.getSimpleName() + suffix, abstractBuilderType);
     }
 
     @SuppressWarnings("unchecked")
