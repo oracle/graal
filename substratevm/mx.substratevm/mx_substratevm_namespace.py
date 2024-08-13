@@ -65,23 +65,11 @@ def svm_add_namespace(orig_args):
 
     args = parser.parse_args(orig_args)
 
-    global namespaceName 
     namespaceName = args.namespace
-
-    global namespaceBeginWithGuard
-    global namespaceEndWithGuard
-    global namespaceBegin
-    global namespaceEnd
-
-    namespaceBeginWithGuard = f"\n#ifdef __cplusplus\n  namespace {namespaceName} {{\n#endif\n\n"
-    namespaceEndWithGuard = f"\n#ifdef __cplusplus\n  }} // namespace {namespaceName}\n#endif\n\n"
-
-    namespaceBegin = f"\nnamespace {namespaceName} {{\n\n"
-    namespaceEnd = f"\n}} // namespace {namespaceName}\n\n"
 
     if args.directory:
         # src-directory specified, add namespace to all files.
-        add_namespace(args.directory)
+        add_namespace(args.directory, namespaceName)
     else:
         for file in args.files:
             if not is_c_file(file):
@@ -90,27 +78,33 @@ def svm_add_namespace(orig_args):
             if not os.path.isfile(file):
                 print(f"Skipping {file}. File does not exist.")
             else:
-                add_namespace_to_file(file, os.path.basename(file) in files_with_cpp_guard)
+                add_namespace_to_file(file, os.path.basename(file) in files_with_cpp_guard, namespaceName)
 
 
 def is_c_file(file):
     return file.endswith(".hpp") or file.endswith(".h") or file.endswith(".cpp") or file.endswith(".c")
 
 
-def add_namespace(svmRootDirectory):
+def add_namespace(svmRootDirectory, namespaceName):
     for subdir, dirs, files in os.walk(svmRootDirectory):
         for file in files:
             if is_c_file(file):
 
                 if file not in ignore_files:
                     print(f"Add namespace to {os.path.join(subdir, file)}")
-                    add_namespace_to_file(os.path.join(subdir, file), file in files_with_cpp_guard)
+                    add_namespace_to_file(os.path.join(subdir, file), file in files_with_cpp_guard, namespaceName)
 
                 else:
                     print(f"Ignore file: {os.path.join(subdir, file)}")
 
 
-def add_namespace_to_file(file, add_cpp_guard):
+def add_namespace_to_file(file, add_cpp_guard, namespaceName):
+    namespaceBeginWithGuard = f"\n#ifdef __cplusplus\n  namespace {namespaceName} {{\n#endif\n\n"
+    namespaceEndWithGuard = f"\n#ifdef __cplusplus\n  }} // namespace {namespaceName}\n#endif\n\n"
+
+    namespaceBegin = f"\nnamespace {namespaceName} {{\n\n"
+    namespaceEnd = f"\n}} // namespace {namespaceName}\n\n"
+
     with open(file, 'r') as f:
         lines = f.readlines()
         insertion_indices = calc_insert_indices(lines)
@@ -120,7 +114,7 @@ def add_namespace_to_file(file, add_cpp_guard):
         for (start, end) in insertion_indices:
             print(f"  start {start}, end {end}")
             while i < start:
-                write_str(sf, lines[i])
+                write_str(sf, lines[i], namespaceName)
                 i += 1
 
             if add_cpp_guard:
@@ -129,7 +123,7 @@ def add_namespace_to_file(file, add_cpp_guard):
                 sf.write(namespaceBegin)
 
             while i < end:
-                write_str(sf, lines[i])
+                write_str(sf, lines[i], namespaceName)
                 i += 1
 
             if add_cpp_guard:
@@ -138,11 +132,11 @@ def add_namespace_to_file(file, add_cpp_guard):
                 sf.write(namespaceEnd)
 
         while i < len(lines):
-            write_str(sf, lines[i])
+            write_str(sf, lines[i], namespaceName)
             i += 1
 
 
-def write_str(file, str):
+def write_str(file, str, namespaceName):
     pattern = re.compile(r"[^a-zA-Z0-9>_]::\w")
     match = pattern.search(str)
 
@@ -379,23 +373,11 @@ def svm_remove_namespace(orig_args):
 
     args = parser.parse_args(orig_args)
 
-    global namespaceName
     namespaceName = args.namespace
-
-    global namespaceBeginWithGuard
-    global namespaceEndWithGuard
-    global namespaceBegin
-    global namespaceEnd
-
-    namespaceBeginWithGuard = f"\n#ifdef __cplusplus\n  namespace {namespaceName} {{\n#endif\n\n"
-    namespaceEndWithGuard = f"\n#ifdef __cplusplus\n  }} // namespace {namespaceName}\n#endif\n\n"
-
-    namespaceBegin = f"\nnamespace {namespaceName} {{\n\n"
-    namespaceEnd = f"\n}} // namespace {namespaceName}\n\n"
 
     if args.directory:
         # src-directory specified, remove namespace from all files.
-        remove_namespace(args.directory)
+        remove_namespace(args.directory, namespaceName)
     else:
         for file in args.files:
             if not is_c_file(file):
@@ -404,23 +386,23 @@ def svm_remove_namespace(orig_args):
             if not os.path.isfile(file):
                 print(f"Skipping {file}. File does not exist.")
             else:
-                remove_namespace_from_file(file, os.path.basename(file) in files_with_cpp_guard)
+                remove_namespace_from_file(file, os.path.basename(file) in files_with_cpp_guard, namespaceName)
 
 
-def remove_namespace(svmRootDirectory):
+def remove_namespace(svmRootDirectory, namespaceName):
     for subdir, dirs, files in os.walk(svmRootDirectory):
         for file in files:
             if is_c_file(file):
 
                 if file not in ignore_files:
                     print(f"Remove namespace from {os.path.join(subdir, file)}")
-                    remove_namespace_from_file(os.path.join(subdir, file), file in files_with_cpp_guard)
+                    remove_namespace_from_file(os.path.join(subdir, file), file in files_with_cpp_guard, namespaceName)
 
                 else:
                     print(f"Ignore file: {os.path.join(subdir, file)}")
 
 
-def remove_namespace_from_file(file, add_cpp_guard):
+def remove_namespace_from_file(file, add_cpp_guard, namespaceName):
     with open(file, 'r') as f:
         lines = f.readlines()
 
