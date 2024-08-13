@@ -1,7 +1,7 @@
 ---
 layout: docs
 toc_group: embedding
-link_title: Embedding Reference
+link_title: Embedding Languages
 permalink: /reference-manual/embed-languages/
 ---
 
