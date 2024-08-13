@@ -1283,6 +1283,24 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return s.createUnavailableSection();
         }
 
+        public SourceSection getSourceSectionAtBCI(int bci) {
+            Source s = getSource();
+            if (s == null) {
+                return null;
+            }
+            if (codeAttribute == null) {
+                return s.createUnavailableSection();
+            }
+            if (bci < 0 || bci >= codeAttribute.getOriginalCode().length) {
+                return s.createUnavailableSection();
+            }
+            int line = codeAttribute.bciToLineNumber(bci);
+            if (line < 0) {
+                return s.createUnavailableSection();
+            }
+            return s.createSection(line);
+        }
+
         public void initRefKind() {
             if (Modifier.isStatic(linkedMethod.getFlags())) {
                 this.refKind = REF_invokeStatic;
