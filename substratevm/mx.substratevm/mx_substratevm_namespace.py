@@ -86,7 +86,7 @@ def is_c_file(file):
 
 
 def add_namespace(svmRootDirectory, namespaceName):
-    for subdir, dirs, files in os.walk(svmRootDirectory):
+    for subdir, _, files in os.walk(svmRootDirectory):
         for file in files:
             if is_c_file(file):
 
@@ -136,23 +136,23 @@ def add_namespace_to_file(file, add_cpp_guard, namespaceName):
             i += 1
 
 
-def write_str(file, str, namespaceName):
+def write_str(file, s, namespaceName):
     pattern = re.compile(r"[^a-zA-Z0-9>_]::\w")
-    match = pattern.search(str)
+    match = pattern.search(s)
 
     while match:
         qualifiedName = ""
         i = 3
-        while is_valid_identifier_character(str[match.start() + i]):
-            qualifiedName += str[match.start() + i]
+        while is_valid_identifier_character(s[match.start() + i]):
+            qualifiedName += s[match.start() + i]
             i += 1
 
         if qualifiedName in qualify_with_namespace:
-            str = str[:match.start() + 1] + namespaceName + str[match.start() + 1:]
+            s = s[:match.start() + 1] + namespaceName + s[match.start() + 1:]
 
-        match = pattern.search(str, match.end())
+        match = pattern.search(s, match.end())
 
-    file.write(str)
+    file.write(s)
 
 
 def calc_insert_indices(lines):
@@ -390,7 +390,7 @@ def svm_remove_namespace(orig_args):
 
 
 def remove_namespace(svmRootDirectory, namespaceName):
-    for subdir, dirs, files in os.walk(svmRootDirectory):
+    for subdir, _, files in os.walk(svmRootDirectory):
         for file in files:
             if is_c_file(file):
 
