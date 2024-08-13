@@ -125,6 +125,7 @@ import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
+import com.oracle.svm.hosted.phases.OpenTypeWorldConvertCallTargetPhase;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport;
 import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
@@ -253,7 +254,7 @@ public class SVMHost extends HostVM {
     @Override
     public boolean analyzedInPriorLayer(AnalysisMethod method) {
         ImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
-        return imageLayerLoader.hasAnalysisParsedGraph(method) || HostedDynamicLayerInfo.singleton().isCompiled(method);
+        return imageLayerLoader.hasAnalysisParsedGraph(method) || HostedDynamicLayerInfo.singleton().compiledInPriorLayer(method);
     }
 
     protected InlineBeforeAnalysisPolicyUtils getInlineBeforeAnalysisPolicyUtils() {
@@ -687,6 +688,10 @@ public class SVMHost extends HostVM {
     }
 
     protected void optimizeAfterParsing(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
+        if (!SubstrateOptions.closedTypeWorld()) {
+            new OpenTypeWorldConvertCallTargetPhase().apply(graph, getProviders(method.getMultiMethodKey()));
+        }
+
         if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions())) {
             if (method.isOriginalMethod()) {
                 /*
@@ -1064,5 +1069,10 @@ public class SVMHost extends HostVM {
 
     public SimulateClassInitializerSupport createSimulateClassInitializerSupport(AnalysisMetaAccess aMetaAccess) {
         return new SimulateClassInitializerSupport(aMetaAccess, this);
+    }
+
+    @Override
+    public Set<AnalysisMethod> loadOpenTypeWorldDispatchTableMethods(AnalysisType type) {
+        return OpenTypeWorldFeature.loadDispatchTable(type);
     }
 }

@@ -204,6 +204,10 @@ public class ImageLayerWriter {
         jsonMap.put(IMAGE_HEAP_SIZE_TAG, String.valueOf(imageHeapSize));
     }
 
+    protected boolean shouldPersistMethod(AnalysisMethod method) {
+        return method.isReachable();
+    }
+
     public void persistAnalysisInfo() {
         persistHook();
 
@@ -223,7 +227,7 @@ public class ImageLayerWriter {
         }
         jsonMap.put(TYPES_TAG, typesMap);
 
-        for (AnalysisMethod method : aUniverse.getMethods().stream().filter(AnalysisMethod::isReachable).toList()) {
+        for (AnalysisMethod method : aUniverse.getMethods().stream().filter(this::shouldPersistMethod).toList()) {
             persistMethod(method);
         }
         jsonMap.put(METHODS_TAG, methodsMap);

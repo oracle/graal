@@ -24,13 +24,24 @@
  */
 package com.oracle.svm.core.config;
 
-import jdk.vm.ci.meta.UnresolvedJavaType;
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.function.Predicate;
+
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -41,6 +52,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 /**
  * Immutable class that holds all sizes and offsets that contribute to the object layout.
@@ -92,6 +104,29 @@ public final class ObjectLayout {
         this.arrayBaseOffset = arrayBaseOffset;
         this.objectHeaderIdentityHashOffset = headerIdentityHashOffset;
         this.identityHashMode = identityHashMode.value;
+
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            int[] currentValues = {
+                            /* this.target, */
+                            this.referenceSize,
+                            this.objectAlignment,
+                            this.alignmentMask,
+                            this.hubOffset,
+                            this.firstFieldOffset,
+                            this.arrayLengthOffset,
+                            this.arrayBaseOffset,
+                            this.objectHeaderIdentityHashOffset,
+                            this.identityHashMode,
+            };
+            var numFields = Arrays.stream(ObjectLayout.class.getDeclaredFields()).filter(Predicate.not(Field::isSynthetic)).count();
+            VMError.guarantee(numFields - 1 == currentValues.length, "Missing fields");
+
+            if (ImageLayerBuildingSupport.buildingInitialLayer()) {
+                ImageSingletons.add(PriorObjectLayout.class, new PriorObjectLayout(currentValues));
+            } else {
+                VMError.guarantee(Arrays.equals(currentValues, ImageSingletons.lookup(PriorObjectLayout.class).priorValues));
+            }
+        }
     }
 
     /** The minimum alignment of objects (instances and arrays). */
@@ -274,6 +309,31 @@ public final class ObjectLayout {
 
         IdentityHashMode(int value) {
             this.value = value;
+        }
+    }
+
+    static class PriorObjectLayout implements LayeredImageSingleton {
+        final int[] priorValues;
+
+        PriorObjectLayout(int[] priorValues) {
+            this.priorValues = priorValues;
+        }
+
+        @Override
+        public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
+            return LayeredImageSingletonBuilderFlags.BUILDTIME_ACCESS_ONLY;
+        }
+
+        @Override
+        public PersistFlags preparePersist(ImageSingletonWriter writer) {
+            writer.writeIntList("priorValues", Arrays.stream(priorValues).boxed().toList());
+            return PersistFlags.CREATE;
+        }
+
+        @SuppressWarnings("unused")
+        public static Object createFromLoader(ImageSingletonLoader loader) {
+            int[] priorValues = loader.readIntList("priorValues").stream().mapToInt(e -> e).toArray();
+            return new PriorObjectLayout(priorValues);
         }
     }
 }
