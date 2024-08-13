@@ -25,16 +25,19 @@
 
 # Adds a C++-namespace to the source files.
 # If no command line arguments are passed, the namespace is added to all files.
-# It is possible to pass filepaths as command line arguments. Then the namespace is only added to the 
+# It is possible to pass filepaths as command line arguments. Then the namespace is only added to the
 # specified files.
 
 
+import mx
 import os
 import re
 import argparse
 
 
-# Names of symbols that are currently accessed globally (e.g., ::swap(...)), but after adding the 
+suite = mx.suite("substratevm")
+
+# Names of symbols that are currently accessed globally (e.g., ::swap(...)), but after adding the
 # namespace are not global symbols anymore.
 qualify_with_namespace = {"swap", "CardTableBarrierSet", "G1BarrierSet", "tty", "badHeapWordVal", "badAddressVal"}
 
@@ -45,10 +48,13 @@ ignore_includes = {"CPU_HEADER(copy)", "OS_HEADER(osThread)"}
 
 files_with_cpp_guard = {"sharedGCStructs.hpp"}
 
+SVM_ADD_NAMESPACE = "svm_add_namespace"
 
-def main():
 
-    parser = argparse.ArgumentParser()
+@mx.command(suite, SVM_ADD_NAMESPACE)
+def svm_add_namespace(orig_args):
+
+    parser = argparse.ArgumentParser(SVM_ADD_NAMESPACE)
 
     pathGroup = parser.add_mutually_exclusive_group(required=True)
     pathGroup.add_argument("-d", "--directory", type=str, help="Path to the src-directory for adding the namespace.")
@@ -57,7 +63,7 @@ def main():
     parser.add_argument("-n", "--namespace", required=True, type=str,
                         help="The namespace that gets added to the files.")
 
-    args = parser.parse_args()
+    args = parser.parse_args(orig_args)
 
     global namespaceName 
     namespaceName = args.namespace
@@ -85,7 +91,7 @@ def main():
                 print(f"Skipping {file}. File does not exist.")
             else:
                 add_namespace_to_file(file, os.path.basename(file) in files_with_cpp_guard)
-            
+
 
 def is_c_file(file):
     return file.endswith(".hpp") or file.endswith(".h") or file.endswith(".cpp") or file.endswith(".c")
@@ -166,7 +172,7 @@ def calc_insert_indices(lines):
             break
 
     # Earliest line for namespace is directly after header, if no #include are following
-    
+
     # Keep track of the current open #ifs in general and inside the namespace, so the namespace is opened and closed
     # on the same level.
     cur_n_open_ifs = 0
@@ -223,7 +229,7 @@ def calc_insert_indices(lines):
                     idx_namespace_end = i
                     end_namespace_open_ifs = cur_n_open_ifs
                     while namespace_n_open_ifs < end_namespace_open_ifs:
-                        # Some #if was opened inside this namespace. Go back and close the namespace before this #if. 
+                        # Some #if was opened inside this namespace. Go back and close the namespace before this #if.
                         idx_namespace_end -= 1
                         if is_if_statement(lines[idx_namespace_end]):
                             end_namespace_open_ifs -= 1
@@ -247,7 +253,7 @@ def calc_insert_indices(lines):
                 elif is_endif_statement(line):
                     cur_n_open_ifs -= 1
                     assert cur_n_open_ifs >= 0
-                    
+
                 strippedLine = line.strip()
                 while strippedLine.endswith("\\"):
                     # Preprocessor statement continues in the next line.
@@ -350,7 +356,3 @@ def is_extern(line):
 
 def is_valid_identifier_character(c):
     return c == '_' or ('a' <= c <= 'z') or ('A' <= c <= 'Z') or ('0' <= c <= '9')
-
-
-if __name__ == "__main__":
-    main()
