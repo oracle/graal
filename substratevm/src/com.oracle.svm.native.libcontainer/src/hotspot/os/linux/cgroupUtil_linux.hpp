@@ -30,10 +30,16 @@
 #include "utilities/globalDefinitions.hpp"
 #include "cgroupSubsystem_linux.hpp"
 
+
+namespace svm_container {
+
 class CgroupUtil: AllStatic {
 
   public:
     static int processor_count(CgroupCpuController* cpu, int host_cpus);
 };
+
+
+} // namespace svm_container
 
 #endif // CGROUP_UTIL_LINUX_HPP

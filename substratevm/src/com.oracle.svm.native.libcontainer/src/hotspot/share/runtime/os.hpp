@@ -38,6 +38,9 @@
 # include <mach/mach_time.h>
 #endif
 
+
+namespace svm_container {
+
 class frame;
 class JvmtiAgent;
 
@@ -155,9 +158,15 @@ const bool ExecMem = true;
 typedef void (*java_call_t)(JavaValue* value, const methodHandle& method, JavaCallArguments* args, JavaThread* thread);
 
 class MallocTracker;
+
+} // namespace svm_container
+
 #endif // !NATIVE_IMAGE
 
 // Preserve errno across a range of calls
+
+
+namespace svm_container {
 
 class ErrnoPreserver {
   int _e;
@@ -1123,5 +1132,8 @@ class os: AllStatic {
 
 extern "C" int SpinPause();
 #endif // !NATIVE_IMAGE
+
+
+} // namespace svm_container
 
 #endif // SHARE_RUNTIME_OS_HPP
