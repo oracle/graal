@@ -112,6 +112,11 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
 
         Iterator<CodeTypeElement> builders = results.stream().map(result -> (CodeTypeElement) ElementUtils.findTypeElement(result, "Builder")).iterator();
 
+        CodeExecutableElement constructor = GeneratorUtils.createConstructorUsingFields(Set.of(Modifier.PROTECTED), abstractBuilderType);
+        constructor.addParameter(new CodeVariableElement(context.getType(Object.class), "token"));
+        constructor.createBuilder().statement("super(token)");
+        abstractBuilderType.add(constructor);
+
         /**
          * Define the abstract methods using the first Builder, then assert that the other Builders
          * have the same set of methods.

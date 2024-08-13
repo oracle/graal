@@ -69,11 +69,12 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class BytecodeLocation {
 
     private final BytecodeNode bytecodes;
-    private final int bci;
+    private final int bytecodeIndex;
 
-    BytecodeLocation(BytecodeNode bytecodes, int bci) {
+    BytecodeLocation(BytecodeNode bytecodes, int bytecodeIndex) {
         this.bytecodes = bytecodes;
-        this.bci = bci;
+        this.bytecodeIndex = bytecodeIndex;
+        assert bytecodes.validateBytecodeIndex(bytecodeIndex);
     }
 
     /**
@@ -84,7 +85,7 @@ public final class BytecodeLocation {
      * @since 24.2
      */
     public int getBytecodeIndex() {
-        return bci;
+        return bytecodeIndex;
     }
 
     /**
@@ -99,7 +100,7 @@ public final class BytecodeLocation {
 
     @Override
     public int hashCode() {
-        return Objects.hash(bytecodes, bci);
+        return Objects.hash(bytecodes, bytecodeIndex);
     }
 
     @Override
@@ -107,7 +108,7 @@ public final class BytecodeLocation {
         if (this == obj) {
             return true;
         } else if (obj instanceof BytecodeLocation other) {
-            return bytecodes == other.bytecodes && bci == other.bci;
+            return bytecodes == other.bytecodes && bytecodeIndex == other.bytecodeIndex;
         } else {
             return false;
         }
@@ -115,7 +116,7 @@ public final class BytecodeLocation {
 
     @Override
     public String toString() {
-        return String.format("BytecodeLocation [bytecode=%s, bci=%d]", bytecodes, bci);
+        return String.format("BytecodeLocation [bytecode=%s, bci=%d]", bytecodes, bytecodeIndex);
     }
 
     /**
@@ -136,7 +137,7 @@ public final class BytecodeLocation {
      * @since 24.2
      */
     public SourceSection getSourceLocation() {
-        return bytecodes.getSourceLocation(bci);
+        return bytecodes.getSourceLocation(bytecodeIndex);
     }
 
     /**
@@ -146,7 +147,7 @@ public final class BytecodeLocation {
      * @since 24.2
      */
     public SourceSection[] getSourceLocations() {
-        return bytecodes.getSourceLocations(bci);
+        return bytecodes.getSourceLocations(bytecodeIndex);
     }
 
     /**
@@ -155,7 +156,7 @@ public final class BytecodeLocation {
      * @since 24.2
      */
     public Instruction getInstruction() {
-        return bytecodes.findInstruction(bci);
+        return bytecodes.findInstruction(bytecodeIndex);
     }
 
     /**
@@ -170,7 +171,7 @@ public final class BytecodeLocation {
         }
         List<ExceptionHandler> found = null;
         for (ExceptionHandler handler : handlers) {
-            if (bci >= handler.getStartBytecodeIndex() && bci < handler.getEndBytecodeIndex()) {
+            if (bytecodeIndex >= handler.getStartBytecodeIndex() && bytecodeIndex < handler.getEndBytecodeIndex()) {
                 if (found == null) {
                     found = new ArrayList<>();
                 }
@@ -192,7 +193,7 @@ public final class BytecodeLocation {
         }
         List<SourceInformation> found = null;
         for (SourceInformation info : sourceInfos) {
-            if (bci >= info.getStartBytecodeIndex() && bci < info.getEndBytecodeIndex()) {
+            if (bytecodeIndex >= info.getStartBytecodeIndex() && bytecodeIndex < info.getEndBytecodeIndex()) {
                 if (found == null) {
                     found = new ArrayList<>();
                 }

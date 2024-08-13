@@ -9199,6 +9199,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createGetSourceLocations());
             type.add(createCreateSourceSection());
             type.add(createFindInstruction());
+            type.add(createValidateBytecodeIndex());
             type.add(createGetSourceInformation());
             type.add(createGetSourceInformationTree());
             type.add(createGetExceptionHandlers());
@@ -9259,6 +9260,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.getModifiers().add(FINAL);
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
+            b.statement("assert validateBytecodeIndex(bci)");
             ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.ExplodeLoop));
             b.startStatement().startStaticCall(types.CompilerAsserts, "partialEvaluationConstant").string("bci").end().end();
 
@@ -9293,6 +9295,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.getModifiers().add(FINAL);
 
             CodeTreeBuilder b = ex.createBuilder();
+            b.statement("assert validateBytecodeIndex(bci)");
             buildVerifyLocalsIndex(b);
             buildVerifyFrameDescriptor(b);
 
@@ -9372,6 +9375,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "setLocalValue" + suffix);
             ex.renameArguments("bci", "frame", "localOffset", "value");
             CodeTreeBuilder b = ex.createBuilder();
+            b.statement("assert validateBytecodeIndex(bci)");
             buildVerifyLocalsIndex(b);
             buildVerifyFrameDescriptor(b);
             b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_IDX + localOffset");
@@ -9639,6 +9643,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getLocalName");
             ex.renameArguments("bci", "localOffset");
             CodeTreeBuilder b = ex.createBuilder();
+            b.statement("assert validateBytecodeIndex(bci)");
             buildVerifyLocalsIndex(b);
             if (model.enableLocalScoping) {
                 b.declaration(type(int.class), "index", "localOffsetToTableIndex(bci, localOffset)");
@@ -9701,6 +9706,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getLocalInfo");
             ex.renameArguments("bci", "localOffset");
             CodeTreeBuilder b = ex.createBuilder();
+            b.statement("assert validateBytecodeIndex(bci)");
             buildVerifyLocalsIndex(b);
 
             if (model.enableLocalScoping) {
@@ -10627,6 +10633,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.getModifiers().add(FINAL);
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
+            b.statement("assert validateBytecodeIndex(bci)");
 
             emitGetSourceInfo(b);
 
@@ -10649,6 +10656,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.getModifiers().add(FINAL);
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
+            b.statement("assert validateBytecodeIndex(bci)");
 
             emitGetSourceInfo(b);
 
@@ -10750,6 +10758,29 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("this").string("bci").string("readValidBytecode(this.bytecodes, bci)");
             b.end();
             b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createValidateBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "validateBytecodeIndex");
+            ex.renameArguments("bci");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.declaration(type(byte[].class), "bc", "this.bytecodes");
+            b.startIf().string("bci < 0 || bci >= bc.length").end().startBlock();
+            b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("Bytecode index out of range.").end().end();
+            b.end();
+
+            b.declaration(type(int.class), "op", "readValidBytecode(bc, bci)");
+
+            int maxId = model.getInstructions().stream().max(Comparator.comparingInt(i -> i.getId())).get().getId();
+            b.startIf().string("op < 0 || op > ").string(maxId).end().startBlock();
+            b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("Invalid op at bytecode index.").end().end();
+            b.end();
+
+            // we could do more validations here, but they would likely be too expensive
+
+            b.returnTrue();
             return ex;
         }
 
@@ -14387,9 +14418,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             continuationRootNodeImpl.add(new CodeVariableElement(Set.of(FINAL), bytecodeNodeGen.asType(), "root"));
             continuationRootNodeImpl.add(new CodeVariableElement(Set.of(FINAL), context.getType(int.class), "sp"));
             continuationRootNodeImpl.add(compFinal(new CodeVariableElement(Set.of(VOLATILE), types.BytecodeLocation, "location")));
-            continuationRootNodeImpl.add(GeneratorUtils.createConstructorUsingFields(
+            CodeExecutableElement constructor = continuationRootNodeImpl.add(GeneratorUtils.createConstructorUsingFields(
                             Set.of(), continuationRootNodeImpl,
                             ElementFilter.constructorsIn(((TypeElement) types.RootNode.asElement()).getEnclosedElements()).stream().filter(x -> x.getParameters().size() == 2).findFirst().get()));
+            CodeTreeBuilder b = constructor.createBuilder();
+            b.statement("super(BytecodeRootNodesImpl.VISIBLE_TOKEN, language, frameDescriptor)");
+            b.statement("this.root = root");
+            b.statement("this.sp = sp");
+            b.statement("this.location = location");
 
             continuationRootNodeImpl.add(createExecute());
             continuationRootNodeImpl.add(createGetSourceRootNode());
