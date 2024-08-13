@@ -72,12 +72,6 @@ public class PhysicalMemory {
         return cachedSize != UNSET_SENTINEL;
     }
 
-    @Uninterruptible(reason = "May only be called during early startup.")
-    public static void setSize(UnsignedWord value) {
-        VMError.guarantee(!isInitialized(), "PhysicalMemorySize must not be initialized yet.");
-        cachedSize = value;
-    }
-
     /**
      * Populates the cache for the size of physical memory in bytes, querying it from the OS if it
      * has not been initialized yet.
@@ -86,15 +80,14 @@ public class PhysicalMemory {
      * a VMOperation or during early stages of a thread or isolate.
      */
     public static void initialize() {
-        if (!isInitialized()) {
-            long memoryLimit = IsolateArgumentParser.getLongOptionValue(IsolateArgumentParser.getOptionIndex(SubstrateOptions.MaxRAM));
-            if (memoryLimit > 0) {
-                cachedSize = WordFactory.unsigned(memoryLimit);
-            } else if (Container.singleton().isContainerized()) {
-                cachedSize = Container.singleton().getPhysicalMemory();
-            } else {
-                cachedSize = OperatingSystem.singleton().getPhysicalMemorySize();
-            }
+        assert !isInitialized() : "Physical memory already initialized.";
+        long memoryLimit = IsolateArgumentParser.getLongOptionValue(IsolateArgumentParser.getOptionIndex(SubstrateOptions.MaxRAM));
+        if (memoryLimit > 0) {
+            cachedSize = WordFactory.unsigned(memoryLimit);
+        } else if (Container.singleton().isContainerized()) {
+            cachedSize = Container.singleton().getPhysicalMemory();
+        } else {
+            cachedSize = OperatingSystem.singleton().getPhysicalMemorySize();
         }
     }
 
