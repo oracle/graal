@@ -48,6 +48,7 @@ import java.util.Set;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.buffer.LongArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.ASTStepVisitor;
 import com.oracle.truffle.regex.tregex.nfa.TransitionGuard;
@@ -397,6 +398,26 @@ public abstract class NFATraversalRegexASTVisitor {
         return transitionGuardsResult;
     }
 
+    /**
+     * Returns whenever whe should add a 'maintain' gard to this transition. Ideally should be done
+     * as part of {@link #getTransitionGuardsOnPath()}
+     * 
+     * @return the group id or -1 if no guards are needed.
+     */
+    protected int needsMaintainGuard() {
+        var parentQuant = root.getParentQuantifier();
+        var otherParent = cur.getParentQuantifier();
+        if (parentQuant != null && parentQuant.equals(otherParent)) {
+            for (var guard : transitionGuardsCanonicalized) {
+                if (TransitionGuard.isQuantifierOp(guard)) {
+                    return -1;
+                }
+            }
+            return parentQuant.getQuantifier().getIndex();
+        }
+        return -1;
+    }
+
     protected void calcTransitionGuardsResult() {
         if (transitionGuardsResult == null) {
             transitionGuardsResult = getTransitionGuards().isEmpty() ? TransitionGuard.NO_GUARDS : getTransitionGuards().toArray();
@@ -577,6 +598,9 @@ public abstract class NFATraversalRegexASTVisitor {
                     // the existence of a mandatory copy of the quantifier loop implies a minimum
                     // greater than zero
                     assert !curGroup.isMandatoryQuantifier() || quantifier.getMin() > 0;
+                    if (isBuildingDFA()) {
+                        throw new UnsupportedRegexException("Cannot compile regex with empty state to DFA/NFA");
+                    }
                     popGroupExit();
                     cur = curTerm;
                     // Set the current group node as the path's target to indicate we want to

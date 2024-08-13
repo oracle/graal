@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,6 +100,10 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
                                     "([-!#-''*+/-9=?A-Z^-~]+(\\.[-!#-''*+/-9=?A-Z^-~]+)*|\"([ ]!#-[^-~ ]|(\\\\[-~ ]))+\")@[0-9A-Za-z]([0-9A-Za-z-]{0,61}[0-9A-Za-z])?(\\.[0-9A-Za-z]([0-9A-Za-z-]{0,61}[0-9A-Za-z])?)+",
                                     "",
                                     "surname.lastname@somewhere.org"),
+                    new ParameterSet("email_no_cg",
+                                    "(?:[-!#-''*+/-9=?A-Z^-~]+(?:\\.[-!#-''*+/-9=?A-Z^-~]+)*|\"(?:[ ]!#-[^-~ ]|(?:\\\\[-~ ]))+\")@[0-9A-Za-z](?:[0-9A-Za-z-]{0,61}[0-9A-Za-z])?(?:\\.[0-9A-Za-z](?:[0-9A-Za-z-]{0,61}[0-9A-Za-z])?)+",
+                                    "",
+                                    "surname.lastname@somewhere.org"),
                     new ParameterSet("email_dfa",
                                     "([-!#-''*+/-9=?A-Z^-~]+(\\.[-!#-''*+/-9=?A-Z^-~]+)*|\"([ ]!#-[^-~ ]|(\\\\[-~ ]))+\")@[0-9A-Za-z]([0-9A-Za-z-]*[0-9A-Za-z])?(\\.[0-9A-Za-z]([0-9A-Za-z-]*[0-9A-Za-z])?)+",
                                     "",
@@ -107,7 +111,44 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
                     new ParameterSet("apache_log",
                                     "(\\S+) (\\S+) (\\S+) \\[([A-Za-z0-9_:/]+\\s[-+]\\d{4})\\] \"(\\S+)\\s?(\\S+)?\\s?(\\S+)?\" (\\d{3}|-) (\\d+|-)\\s?\"?([^\"]*)\"?\\s?\"?([^\"]*)?\"?",
                                     "",
-                                    "205.169.39.63 - - [03/Nov/2022:15:28:53 +0100] \"GET / HTTP/1.1\" 200 911 \"-\" \"Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36\"")
+                                    "205.169.39.63 - - [03/Nov/2022:15:28:53 +0100] \"GET / HTTP/1.1\" 200 911 \"-\" \"Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36\""),
+                    new ParameterSet("bounded_quantifier",
+                                    "a{10,110}-a{2,10}-a{5,12}",
+                                    "",
+                                    "b".repeat(100) + "a".repeat(100) + "-aaaaaa-aaaaaabaa"),
+                    new ParameterSet("simple bounded",
+                                    "a{5,10}b",
+                                    "",
+                                    "a".repeat(200) + "aaaaaab"),
+                    new ParameterSet("complex_transition",
+                                    "[ab]{3,5}[bc]{4,5}d",
+                                    "",
+                                    "aaababbbb-".repeat(10) + "aaababbbbd"),
+                    new ParameterSet("bq large bounds",
+                                    "(?:aa){100,200}b",
+                                    "",
+                                    "aa".repeat(150) + "b"),
+                    new ParameterSet("bq small bounds",
+                                    "(?:aa){10,64}b",
+                                    "",
+                                    "aa".repeat(150) + "b"),
+                    new ParameterSet("bq very large bounds",
+                                    "(?:aa){100,600}b",
+                                    "",
+                                    "aa".repeat(150) + "b"),
+                    new ParameterSet("simple bq very large bounds",
+                                    "a{100,600}b",
+                                    "",
+                                    "aa".repeat(150) + "b"),
+                    new ParameterSet("simple bq very very large bounds",
+                                    "a{100,2600}b",
+                                    "",
+                                    "aa".repeat(150) + "b"),
+                    new ParameterSet("Android",
+                                    "Android[\\- ][\\d]+(?:\\.[\\d]+)(?:\\.[\\d]+|); {0,2}[A-Za-z]{2}[_\\-][A-Za-z]{0,2}\\-? {0,2}; {0,2}(.{1,200}?)( Build[/ ]|\\))",
+                                    "",
+                                    "Mozilla/5.0 (Linux; Android 12; SM-N975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36"),
+
     });
 
     private static Map<String, ParameterSet> createMap(ParameterSet[] parameterSets) {
@@ -122,11 +163,12 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
     public static class BenchState {
 
         // excluded by default:
-        // {"vowels", "date", "ipv4", "ipv6_1", "ipv6_2", "email", "email_dfa", "apache_log"}
+        // {"vowels", "date", "ipv4", "ipv6_1", "ipv6_2", "email_no_cg", "email_dfa", "apache_log"}
         @Param({"ignoreCase", "URL"}) String benchName;
         Context context;
         Pattern javaPattern;
         Value tregexBool;
+        Value tregexBoolNoUnroll;
         Value tregexCG;
         String input;
 
@@ -139,9 +181,12 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
             context.enter();
             ParameterSet p = benchmarks.get(benchName);
             javaPattern = Pattern.compile(p.regex, toJavaFlags(p.flags));
-            tregexBool = context.parse(TRegexTestDummyLanguage.ID, TRegexTestDummyLanguage.BENCH_PREFIX + "GenerateDFAImmediately=true/" + p.regex + '/' + p.flags);
+            tregexBool = context.parse(TRegexTestDummyLanguage.ID,
+                            TRegexTestDummyLanguage.BENCH_PREFIX + "GenerateDFAImmediately=true/" + p.regex + '/' + p.flags);
+            tregexBoolNoUnroll = context.parse(TRegexTestDummyLanguage.ID,
+                            TRegexTestDummyLanguage.BENCH_PREFIX + "QuantifierUnrollThresholdSingleCC=1,QuantifierUnrollThresholdGroup=1,GenerateDFAImmediately=true/" + p.regex + '/' + p.flags);
             tregexCG = context.parse(TRegexTestDummyLanguage.ID, TRegexTestDummyLanguage.BENCH_CG_PREFIX + "GenerateDFAImmediately=true/" + p.regex + '/' + p.flags);
-            input = "_".repeat(200) + p.input;
+            input = p.input;
         }
 
         private static int toJavaFlags(String flags) {
@@ -178,6 +223,11 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
     @Benchmark
     public boolean tregex(BenchState state) {
         return state.tregexBool.execute(state.input, 0).asBoolean();
+    }
+
+    @Benchmark
+    public boolean tregexNoUnroll(BenchState state) {
+        return state.tregexBoolNoUnroll.execute(state.input, 0).asBoolean();
     }
 
     @Benchmark

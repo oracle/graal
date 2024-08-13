@@ -51,6 +51,8 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class JsTests extends RegexTestBase {
 
+    private static final String NEVER_UNROLL_OPT = "QuantifierUnrollThresholdSingleCC=1,QuantifierUnrollThresholdGroup=1";
+
     @Override
     String getEngineOptions() {
         return "";
@@ -95,6 +97,7 @@ public class JsTests extends RegexTestBase {
         test("(a||b){100,200}", "", "ab", 0, true, 0, 2, 1, 2);
         test("(a||b){100,200}?", "", "ab", 0, true, 0, 1, 1, 1);
         test("(a||b){100,200}?$", "", "ab", 0, true, 0, 2, 1, 2);
+        test("(a|){1,20}b", "", "aaaaaaaab", 0, true, 0, 9, 7, 8);
     }
 
     @Test
@@ -284,6 +287,11 @@ public class JsTests extends RegexTestBase {
     }
 
     @Test
+    public void boundedQuantifierInNFAMode() {
+        testBoolean("a{3}b", "", "aab", 0, false);
+    }
+
+    @Test
     public void innerLiteralSurrogates() {
         test("\\udf06", "", "\uD834\uDF06", 0, true, 1, 2);
         test("x?\\udf06", "", "\uD834\uDF06", 0, true, 1, 2);
@@ -317,6 +325,90 @@ public class JsTests extends RegexTestBase {
         test("a(?=b(?<=ab)()|)", "", "ac", 0, true, 0, 1, -1, -1);
         test("a(?=b(?<=ab)()|)", "", "a", 0, true, 0, 1, -1, -1);
         test("a?(?=b(?<=ab)()|)", "", "a", 0, true, 0, 1, -1, -1);
+    }
+
+    @Test
+    public void boundedQuantifierPaperExample1() {
+        testBoolean(".*a.{4,8}a", "y", NEVER_UNROLL_OPT, "---aaaaaaaa", 0, true);
+    }
+
+    @Test
+    public void boundedQuantifierPaperExample2() {
+        testBoolean("(?:a{9})*b", "", NEVER_UNROLL_OPT, "aaaaaaaaaaaaaaab", 0, true);
+    }
+
+    @Test
+    public void boundedQuantifierPaperExample3() {
+        testBoolean(".*a.{9}.", "y", NEVER_UNROLL_OPT, "aaaaaaaaaaa", 0, true);
+    }
+
+    @Test
+    public void boundedQuantifierFixed() {
+        testBoolean("[0-9A-F]{8}", "i", NEVER_UNROLL_OPT,
+                        "OData-EntityId: https://url.com/api/data/v8.2/tests(00000000-0000-0000-0000-000000000001)", 0, true);
+        testBoolean("0{2}", "i", NEVER_UNROLL_OPT,
+                        "0000", 0, true);
+    }
+
+    @Test
+    public void boundedQuantifierNullable() {
+        testBoolean("((?:[0-9A-F]?){8})", "i", NEVER_UNROLL_OPT,
+                        "OData-EntityId: https://url.com/api/data/v8.2/tests(00000000-0000-0000-0000-000000000001)", 0, true);
+    }
+
+    @Test
+    public void dateRegex() {
+        testBoolean("\\d{1,2}/\\d{1,2}/\\d{4}", "y", NEVER_UNROLL_OPT, "09/08/2024", 0, true);
+    }
+
+    @Test
+    public void simpleBoundedQuantifier() {
+        testBoolean(".{2,4}", "sy", NEVER_UNROLL_OPT, "aaaaa", 0, true);
+        testBoolean(".{3,4}", "sy", NEVER_UNROLL_OPT, "aa", 0, false);
+        testBoolean("a[ab]{4,8}a", "", NEVER_UNROLL_OPT, "aaaaaaaa", 0, true);
+    }
+
+    @Test
+    public void multiBoundedQuantifier() {
+        testBoolean("a{2,4}-a{3,4}", "s", NEVER_UNROLL_OPT, "aaa-aa-aaa", 0, true);
+    }
+
+    @Test
+    public void anchoredQuantifier() {
+        testBoolean("(?:ab){2,4}$", "", NEVER_UNROLL_OPT, "aaabab", 0, true);
+    }
+
+    @Test
+    public void boundedQuantifiersWithOverlappingIterations() {
+        testBoolean("(?:aa|aaa){3,6}b", "", NEVER_UNROLL_OPT, "aaaaaab", 0, true);
+        testBoolean("(?:aa|aaa){3,6}b", "", NEVER_UNROLL_OPT, "aaaab", 0, false);
+        testBoolean("(?:aa|aaa){3,6}b", "", NEVER_UNROLL_OPT, "aaaaab", 0, false);
+        testBoolean("(?:aa|aaa){3,6}b", "y", NEVER_UNROLL_OPT, "aaaaaaab", 0, true);
+        testBoolean("(?:aa|aaa){3,6}b", "y", NEVER_UNROLL_OPT, "aaaaaaaaaaaaaaab", 0, true);
+        testBoolean("(?:aa|aaaaa){3,6}b", "y", NEVER_UNROLL_OPT, "aaaaaaab", 0, false);
+    }
+
+    @Test
+    public void email() {
+        var prefix = "john.doe@john.@@";
+        var input = "john.doedodoododododod@foobarbabababrbrbrbrbarbr.com";
+        testBoolean("(?:[-!#-''*+/-9=?A-Z^-~]+(?:\\.[-!#-''*+/-9=?A-Z^-~]+)*|\"(?:[ ]!#-[^-~ ]|(?:\\\\[-~ ]))+\")@[0-9A-Za-z](?:[0-9A-Za-z-]{0,61}[0-9A-Za-z])?(?:\\.[0-9A-Za-z](?:[0-9A-Za-z-]{0,61}[0-9A-Za-z])?)+",
+                        "",
+                        NEVER_UNROLL_OPT,
+                        prefix + input + "     ",
+                        0,
+                        true);
+    }
+
+    @Test
+    public void nestedQuantifier() {
+        testBoolean("(?:a{1,2}){1,2}", "", NEVER_UNROLL_OPT, "bbb", 0, false);
+    }
+
+    @Test
+    public void boundedQuantifierWithInversePriority() {
+        testBoolean(".{4,5}d", "", NEVER_UNROLL_OPT, "aaaadddd", 0, true);
+        testBoolean("a{2,3}d", "", NEVER_UNROLL_OPT, "babaaadaaaaa", 0, true);
     }
 
     @Test
@@ -559,5 +651,10 @@ public class JsTests extends RegexTestBase {
         test("^abc[^]", "m", "abcdabc", 1, false);
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+    }
+
+    @Test
+    public void overlappingBq() {
+        testBoolean("(?=a{2,4})[ab]{4,68}c", "", NEVER_UNROLL_OPT, "aabbbbbbbbbbbbbbbbbbbbbbc", 0, true);
     }
 }

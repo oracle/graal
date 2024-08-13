@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -106,11 +107,7 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
 
     @Override
     public Group copy(RegexAST ast) {
-        Group copy = new Group(this);
-        if (isCapturing()) {
-            ast.registerCaptureGroupCopy(copy);
-        }
-        return ast.register(copy);
+        return ast.register(new Group(this));
     }
 
     @Override
@@ -320,8 +317,8 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     }
 
     @Override
-    public boolean isUnrollingCandidate() {
-        return hasQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdGroup);
+    public boolean isUnrollingCandidate(RegexOptions options) {
+        return hasQuantifier() && getQuantifier().isWithinThreshold(options.quantifierUnrollThresholdGroup);
     }
 
     /**

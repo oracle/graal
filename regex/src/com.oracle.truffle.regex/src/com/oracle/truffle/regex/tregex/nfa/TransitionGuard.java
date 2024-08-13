@@ -87,6 +87,11 @@ public final class TransitionGuard {
          */
         countLtMax,
         /**
+         * Transition is within a quantifier, but not leaving nor entering it. Maintains the value
+         * of the counter.
+         */
+        countMaintain,
+        /**
          * Transition is entering a quantified expression that may match the empty string. Save the
          * current index.
          */
@@ -134,7 +139,8 @@ public final class TransitionGuard {
 
     @CompilationFinal(dimensions = 1) private static final Kind[] KIND_VALUES = Arrays.copyOf(Kind.values(), Kind.values().length);
 
-    private static final EnumSet<Kind> QUANTIFIER_GUARDS = EnumSet.of(Kind.countInc, Kind.countSet1, Kind.countSetMin, Kind.countLtMin, Kind.countGeMin, Kind.countLtMax);
+    private static final EnumSet<Kind> QUANTIFIER_GUARDS = EnumSet.of(Kind.countInc, Kind.countSet1, Kind.countSetMin, Kind.countLtMin, Kind.countGeMin, Kind.countLtMax, Kind.countMaintain);
+    private static final EnumSet<Kind> QUANTIFIER_OP = EnumSet.of(Kind.countInc, Kind.countSet1, Kind.countSetMin, Kind.countMaintain);
     private static final EnumSet<Kind> ZERO_WIDTH_QUANTIFIER_GUARDS = EnumSet.of(Kind.enterZeroWidth, Kind.exitZeroWidth, Kind.escapeZeroWidth);
     private static final EnumSet<Kind> GROUP_NUMBER_GUARDS = EnumSet.of(Kind.updateRecursiveBackrefPointer, Kind.checkGroupMatched, Kind.checkGroupNotMatched);
     private static final EnumSet<Kind> GROUP_BOUNDARY_INDEX_GUARDS = EnumSet.of(Kind.updateCG);
@@ -251,6 +257,14 @@ public final class TransitionGuard {
 
     public static boolean is(long guard, Kind kind) {
         return getKindOrdinal(guard) == kind.ordinal();
+    }
+
+    public static boolean isQuantifierGuard(long guard) {
+        return QUANTIFIER_GUARDS.contains(getKind(guard));
+    }
+
+    public static boolean isQuantifierOp(long guard) {
+        return QUANTIFIER_OP.contains(getKind(guard));
     }
 
     public static int getQuantifierIndex(long guard) {

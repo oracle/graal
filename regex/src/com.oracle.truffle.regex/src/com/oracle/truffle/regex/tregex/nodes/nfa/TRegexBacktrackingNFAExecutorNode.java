@@ -360,6 +360,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         }
         if (innerLiteral != null) {
             locals.setIndex(locals.getFromIndex());
+            CompilerAsserts.partialEvaluationConstant(this);
             int innerLiteralIndex = findInnerLiteral(locals);
             if (injectBranchProbability(EXIT_PROBABILITY, innerLiteralIndex < 0)) {
                 return null;

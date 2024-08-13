@@ -57,6 +57,8 @@ import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
+import com.oracle.truffle.regex.tregex.automaton.TransitionOp;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorBaseNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
@@ -73,14 +75,22 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     public static final int NO_MATCH = -2;
     private final TRegexDFAExecutorProperties props;
     private final int maxNumberOfNFAStates;
+    private final int numberOfNFAStates;
     @CompilationFinal(dimensions = 1) private final TruffleString.CodePointSet[] indexOfParameters;
     @CompilationFinal(dimensions = 1) private final DFAAbstractStateNode[] states;
     @CompilationFinal(dimensions = 1) private final int[] cgResultOrder;
     private final TRegexDFAExecutorDebugRecorder debugRecorder;
+    @CompilationFinal(dimensions = 1) private final int[] quantifierBounds;
+    @CompilationFinal(dimensions = 1) private final CounterTracker[] counterTrackers;
+    @CompilationFinal(dimensions = 1) private final int[] trackerSizes;
+    private final CounterTrackerData.Builder counterDataBuilder;
+    private final boolean regressionTestMode;
 
     @Children private TruffleString.ByteIndexOfCodePointSetNode[] indexOfNodes;
     @Child private TruffleString.ByteIndexOfStringNode indexOfStringNode;
-    /** A TRegexDFAExecutorNode, or TRegexExecutorBaseNodeWrapper when instrumented. */
+    /**
+     * A TRegexDFAExecutorNode, or TRegexExecutorBaseNodeWrapper when instrumented.
+     */
     @Child private TRegexExecutorBaseNode innerLiteralPrefixMatcher;
 
     public TRegexDFAExecutorNode(
@@ -91,10 +101,14 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     TruffleString.CodePointSet[] indexOfParameters,
                     DFAAbstractStateNode[] states,
                     TRegexDFAExecutorDebugRecorder debugRecorder,
-                    TRegexDFAExecutorNode innerLiteralPrefixMatcher) {
+                    TRegexDFAExecutorNode innerLiteralPrefixMatcher,
+                    int[] quantifierBounds,
+                    int numberOfNFAStates,
+                    int[] trackerSizes,
+                    boolean regressionTestMode) {
         this(source, props, numberOfCaptureGroups, calcNumberOfTransitions(source, states), maxNumberOfNFAStates, indexOfParameters, states,
                         props.isGenericCG() && maxNumberOfNFAStates > 1 ? initResultOrder(maxNumberOfNFAStates, numberOfCaptureGroups, props) : null, debugRecorder,
-                        innerLiteralPrefixMatcher);
+                        innerLiteralPrefixMatcher, quantifierBounds, numberOfNFAStates, trackerSizes, regressionTestMode);
     }
 
     public TRegexDFAExecutorNode(
@@ -107,7 +121,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     DFAAbstractStateNode[] states,
                     int[] cgResultOrder,
                     TRegexDFAExecutorDebugRecorder debugRecorder,
-                    TRegexDFAExecutorNode innerLiteralPrefixMatcher) {
+                    TRegexDFAExecutorNode innerLiteralPrefixMatcher,
+                    int[] quantifierBounds,
+                    int numberOfNFAStates,
+                    int[] trackerSizes,
+                    boolean regressionTestMode) {
         super(source, numberOfCaptureGroups, numberOfTransitions);
         this.props = props;
         this.maxNumberOfNFAStates = maxNumberOfNFAStates;
@@ -116,12 +134,34 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         this.cgResultOrder = cgResultOrder;
         this.debugRecorder = debugRecorder;
         this.innerLiteralPrefixMatcher = innerLiteralPrefixMatcher;
+        this.quantifierBounds = quantifierBounds;
+        this.numberOfNFAStates = numberOfNFAStates;
+        this.counterDataBuilder = new CounterTrackerData.Builder();
+        this.counterTrackers = CounterTracker.build(quantifierBounds, trackerSizes, this.counterDataBuilder, regressionTestMode);
+        this.trackerSizes = trackerSizes;
+        this.regressionTestMode = regressionTestMode;
+        checkIfAllOperationsAreSupported();
+    }
+
+    private void checkIfAllOperationsAreSupported() {
+        for (var state : states) {
+            if (state instanceof DFAStateNode dfaState) {
+                for (var operations : dfaState.getOperations()) {
+                    for (var operation : operations) {
+                        var qId = TransitionOp.getQId(operation);
+                        if (!counterTrackers[qId].support(operation)) {
+                            throw new UnsupportedRegexException("Regex has unsupported bounded quantifier");
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private TRegexDFAExecutorNode(TRegexDFAExecutorNode copy, TRegexDFAExecutorNode innerLiteralPrefixMatcher) {
         this(copy.getSource(), copy.props, copy.getNumberOfCaptureGroups(), copy.getNumberOfTransitions(), copy.maxNumberOfNFAStates, copy.indexOfParameters, copy.states, copy.cgResultOrder,
                         copy.debugRecorder,
-                        innerLiteralPrefixMatcher);
+                        innerLiteralPrefixMatcher, copy.quantifierBounds, copy.numberOfNFAStates, copy.trackerSizes, copy.regressionTestMode);
     }
 
     @Override
@@ -227,7 +267,12 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
     @Override
     public TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int maxIndex, int regionFrom, int regionTo, int index) {
-        return new TRegexDFAExecutorLocals(input, fromIndex, maxIndex, regionFrom, regionTo, index, createCGData());
+        long[] fixedData = new long[counterDataBuilder.fixedDataSize()];
+        int[][] intArrays = new int[counterDataBuilder.intArraySize()][];
+        for (var tracker : counterTrackers) {
+            tracker.init(fixedData, intArrays);
+        }
+        return new TRegexDFAExecutorLocals(input, fromIndex, maxIndex, regionFrom, regionTo, index, createCGData(), fixedData, intArrays);
     }
 
     @Override
@@ -271,6 +316,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         CompilerAsserts.partialEvaluationConstant(states);
         CompilerAsserts.partialEvaluationConstant(states.length);
         CompilerAsserts.partialEvaluationConstant(codeRange);
+        CompilerAsserts.partialEvaluationConstant(quantifierBounds);
+
         if (injectBranchProbability(SLOWPATH_PROBABILITY, !validArgs(locals))) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException(String.format("Got illegal args! (fromIndex %d, maxIndex %d, regionFrom: %d, regionTo: %d, initialIndex %d)",
@@ -366,7 +413,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                 }
             } else if (curState instanceof DFAStateNode) {
                 DFAStateNode state = (DFAStateNode) curState;
-                if (ip > IP_TRANSITION_MARKER) {
+                var guards = state.getConstraints();
+                if (ip >= IP_TRANSITION_MARKER) {
                     /*
                      * execute DFA state transition
                      */
@@ -381,7 +429,9 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                      * find matching DFA state transition
                      */
                     inputAdvance(locals);
-                    state.beforeFindSuccessor(locals, this);
+                    if (state.beforeFindSuccessor(locals, this)) {
+                        return 0L;
+                    }
                     boolean canDoIndexOf = isForward() && state.canDoIndexOf(codeRange);
                     CompilerAsserts.partialEvaluationConstant(canDoIndexOf);
                     if (canDoIndexOf && injectBranchProbability(CONTINUE_PROBABILITY, inputHasNext(locals))) {
@@ -428,6 +478,10 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         for (int i = 0; i < successors.length; i++) {
                             if (i == treeSuccessor) {
                                 ip = transitionMatch(state, i);
+                                // Guards matching is not supported (and therefore not used) with
+                                // treeTransitionMatchers
+                                // so no guard checks are needed here
+                                assert guards[i].length == 0;
                                 continue outer;
                             }
                         }
@@ -444,7 +498,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         CharMatcher[] cMatchers = ((SimpleSequentialMatchers) matchers).getMatchers();
                         if (cMatchers != null) {
                             for (int i = 0; i < cMatchers.length; i++) {
-                                if (match(cMatchers, i, c)) {
+                                if (match(cMatchers, guards, locals, i, c)) {
                                     ip = transitionMatch(state, i);
                                     continue outer;
                                 }
@@ -468,7 +522,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                             inputIncNextIndexRaw(locals);
                             if (ascii != null) {
                                 for (int i = 0; i < ascii.length; i++) {
-                                    if (match(ascii, i, c)) {
+                                    if (match(ascii, guards, locals, i, c)) {
                                         ip = transitionMatch(state, i);
                                         continue outer;
                                     }
@@ -511,7 +565,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                     case 0:
                                         if (enc2 != null) {
                                             for (int i = 0; i < enc2.length; i++) {
-                                                if (match(enc2, i, codepoint)) {
+                                                if (match(enc2, guards, locals, i, codepoint)) {
                                                     ip = transitionMatch(state, i);
                                                     continue outer;
                                                 }
@@ -521,7 +575,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                     case 1:
                                         if (enc3 != null) {
                                             for (int i = 0; i < enc3.length; i++) {
-                                                if (match(enc3, i, codepoint)) {
+                                                if (match(enc3, guards, locals, i, codepoint)) {
                                                     ip = transitionMatch(state, i);
                                                     continue outer;
                                                 }
@@ -532,7 +586,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                         if (enc4 != null) {
                                             getAstralProfile().enter();
                                             for (int i = 0; i < enc4.length; i++) {
-                                                if (match(enc4, i, codepoint)) {
+                                                if (match(enc4, guards, locals, i, codepoint)) {
                                                     ip = transitionMatch(state, i);
                                                     continue outer;
                                                 }
@@ -562,7 +616,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                             if (hasLatin1 && (doLatin1 || injectBranchProbability(LATIN1_PROBABILITY, c < 256))) {
                                 CharMatcher[] byteMatchers = asciiOrLatin1Matchers(codeRange, ascii, latin1);
                                 for (int i = 0; i < byteMatchers.length; i++) {
-                                    if (match(byteMatchers, i, c)) {
+                                    if (match(byteMatchers, guards, locals, i, c)) {
                                         ip = transitionMatch(state, i);
                                         continue outer;
                                     }
@@ -570,7 +624,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                             } else if (bmp != null) {
                                 getBMPProfile().enter();
                                 for (int i = 0; i < bmp.length; i++) {
-                                    if (match(bmp, i, c)) {
+                                    if (match(bmp, guards, locals, i, c)) {
                                         ip = transitionMatch(state, i);
                                         continue outer;
                                     }
@@ -608,7 +662,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                     }
                                     if (astral != null) {
                                         for (int i = 0; i < astral.length; i++) {
-                                            if (match(astral, i, c)) {
+                                            if (match(astral, guards, locals, i, c)) {
                                                 ip = transitionMatch(state, i);
                                                 continue outer;
                                             }
@@ -617,7 +671,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                 } else if (latin1 != null && (bmp == null || codeRangeIsSubsetOfLatin1 || injectBranchProbability(LATIN1_PROBABILITY, c < 256))) {
                                     CharMatcher[] byteMatchers = asciiOrLatin1Matchers(codeRange, ascii, latin1);
                                     for (int i = 0; i < byteMatchers.length; i++) {
-                                        if (match(byteMatchers, i, c)) {
+                                        if (match(byteMatchers, guards, locals, i, c)) {
                                             ip = transitionMatch(state, i);
                                             continue outer;
                                         }
@@ -625,7 +679,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                 } else if (bmp != null && codeRange.isSupersetOf(TruffleString.CodeRange.BMP)) {
                                     getBMPProfile().enter();
                                     for (int i = 0; i < bmp.length; i++) {
-                                        if (match(bmp, i, c)) {
+                                        if (match(bmp, guards, locals, i, c)) {
                                             ip = transitionMatch(state, i);
                                             continue outer;
                                         }
@@ -636,7 +690,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                 if (latin1 != null && (codeRangeIsSubsetOfLatin1 || injectBranchProbability(LATIN1_PROBABILITY, c < 256))) {
                                     CharMatcher[] byteMatchers = asciiOrLatin1Matchers(codeRange, ascii, latin1);
                                     for (int i = 0; i < byteMatchers.length; i++) {
-                                        if (match(byteMatchers, i, c)) {
+                                        if (match(byteMatchers, guards, locals, i, c)) {
                                             ip = transitionMatch(state, i);
                                             continue outer;
                                         }
@@ -645,7 +699,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                                 (isCodeRangeValid || injectBranchProbability(BMP_PROBABILITY, !Character.isSurrogate((char) c)))))) {
                                     getBMPProfile().enter();
                                     for (int i = 0; i < bmp.length; i++) {
-                                        if (match(bmp, i, c)) {
+                                        if (match(bmp, guards, locals, i, c)) {
                                             ip = transitionMatch(state, i);
                                             continue outer;
                                         }
@@ -653,7 +707,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                 } else if (astral != null && codeRange.isSupersetOf(TruffleString.CodeRange.VALID)) {
                                     getAstralProfile().enter();
                                     for (int i = 0; i < astral.length; i++) {
-                                        if (match(astral, i, c)) {
+                                        if (match(astral, guards, locals, i, c)) {
                                             ip = transitionMatch(state, i);
                                             continue outer;
                                         }
@@ -752,8 +806,34 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         }
     }
 
-    private static boolean match(CharMatcher[] matchers, int i, final int c) {
-        return matchers[i] != null && matchers[i].match(c);
+    @ExplodeLoop
+    public boolean constraintsAreSatisfied(long[] constraints, TRegexDFAExecutorLocals locals) {
+        for (var constraint : constraints) {
+            var qId = TransitionConstraint.getQuantId(constraint);
+            CompilerAsserts.partialEvaluationConstant(constraint);
+            CompilerAsserts.partialEvaluationConstant(qId);
+            CompilerAsserts.partialEvaluationConstant(counterTrackers[qId]);
+            if (!counterTrackers[qId].canExecute(constraint, locals.getFixedData(), locals.getIntArrays())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @ExplodeLoop
+    private boolean match(CharMatcher[] matchers, long[][] allConstraints, TRegexDFAExecutorLocals locals, int i, final int c) {
+        CompilerAsserts.partialEvaluationConstant(allConstraints);
+        CompilerAsserts.partialEvaluationConstant(allConstraints.length);
+        if (matchers[i] != null && matchers[i].match(c)) {
+            var constraints = allConstraints[i];
+            CompilerAsserts.partialEvaluationConstant(constraints);
+            if (constraints != null) {
+                CompilerAsserts.partialEvaluationConstant(constraints.length);
+                return constraintsAreSatisfied(constraints, locals);
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -773,6 +853,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return state.getId() | IP_TRANSITION_MARKER | (state.getSequentialMatchers().getNoMatchSuccessor() << 16);
     }
 
+    @ExplodeLoop
     private int execTransition(TRegexDFAExecutorLocals locals, DFAStateNode state, int i) {
         CompilerAsserts.partialEvaluationConstant(state);
         CompilerAsserts.partialEvaluationConstant(i);
@@ -780,6 +861,20 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             debugRecorder.recordTransition(locals.getIndex(), state.getId(), i);
         }
         state.successorFound(locals, this, i);
+        CompilerAsserts.partialEvaluationConstant(state.getOperations());
+        CompilerAsserts.partialEvaluationConstant(state.getOperations().length);
+
+        if (i < state.getOperations().length) {
+            var operations = state.getOperations()[i];
+            CompilerAsserts.partialEvaluationConstant(operations);
+            for (long op : operations) {
+                int qId = TransitionOp.getQId(op);
+                CompilerAsserts.partialEvaluationConstant(op);
+                CompilerAsserts.partialEvaluationConstant(qId);
+                CompilerAsserts.partialEvaluationConstant(counterTrackers[qId]);
+                counterTrackers[qId].apply(op, locals.getFixedData(), locals.getIntArrays());
+            }
+        }
         return state.successors[i];
     }
 

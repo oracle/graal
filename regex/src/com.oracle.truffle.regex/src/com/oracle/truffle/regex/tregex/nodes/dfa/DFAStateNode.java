@@ -43,7 +43,9 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
@@ -60,6 +62,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private static final byte FLAG_ANCHORED_FINAL_STATE = 1 << 1;
     private static final byte FLAG_HAS_BACKWARD_PREFIX_STATE = 1 << 2;
     private static final byte FLAG_UTF_16_MUST_DECODE = 1 << 3;
+    private static final byte FLAG_GUARDED_FINAL_STATE = 1 << 4;
+    private static final byte FLAG_GUARDED_ANCHORED_FINAL_STATE = 1 << 5;
 
     private final byte flags;
     private final short loopTransitionIndex;
@@ -67,25 +71,48 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private final byte indexOfIsFast;
     private final Matchers matchers;
     private final DFASimpleCG simpleCG;
+    @CompilationFinal(dimensions = 2) private final long[][] constraints;
+    @CompilationFinal(dimensions = 2) private final long[][] operations;
+    @CompilationFinal(dimensions = 2) private final long[][] unAnchoredFinalConstraints;
+    @CompilationFinal(dimensions = 2) private final long[][] anchoredFinalConstraints;
 
     DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
         this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopTransitionIndex, nodeSplitCopy.indexOfNodeId,
                         nodeSplitCopy.indexOfIsFast, Arrays.copyOf(nodeSplitCopy.getSuccessors(), nodeSplitCopy.getSuccessors().length),
-                        nodeSplitCopy.getMatchers(), nodeSplitCopy.simpleCG);
+                        nodeSplitCopy.getMatchers(), nodeSplitCopy.simpleCG, nodeSplitCopy.constraints, nodeSplitCopy.operations, nodeSplitCopy.unAnchoredFinalConstraints,
+                        nodeSplitCopy.anchoredFinalConstraints);
     }
 
-    public DFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers, DFASimpleCG simpleCG) {
+    public DFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers, DFASimpleCG simpleCG, long[][] constraints,
+                    long[][] operations, long[][] unAnchoredFinalConstraints, long[][] anchoredFinalConstraints) {
         super(id, successors);
         assert id > 0;
         this.flags = flags;
         this.loopTransitionIndex = loopTransitionIndex;
         this.indexOfNodeId = indexOfNodeId;
-        this.indexOfIsFast = indexOfIsFast;
         this.matchers = matchers;
         this.simpleCG = simpleCG;
+        this.constraints = constraints;
+        this.operations = operations;
+        this.unAnchoredFinalConstraints = unAnchoredFinalConstraints;
+        this.anchoredFinalConstraints = anchoredFinalConstraints;
+
+        boolean canIndexOf = true;
+        for (var c : constraints) {
+            if (c.length > 0) {
+                canIndexOf = false;
+                break;
+            }
+        }
+        if (canIndexOf) {
+            this.indexOfIsFast = indexOfIsFast;
+        } else {
+            this.indexOfIsFast = 0;
+        }
     }
 
-    public static byte buildFlags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState, boolean utf16MustDecode) {
+    public static byte buildFlags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState, boolean utf16MustDecode, boolean guardedFinalState,
+                    boolean guardedAnchoredFinalState) {
         byte flags = 0;
         if (finalState) {
             flags |= FLAG_FINAL_STATE;
@@ -98,6 +125,12 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
         if (utf16MustDecode) {
             flags |= FLAG_UTF_16_MUST_DECODE;
+        }
+        if (guardedFinalState) {
+            flags |= FLAG_GUARDED_FINAL_STATE;
+        }
+        if (guardedAnchoredFinalState) {
+            flags |= FLAG_GUARDED_ANCHORED_FINAL_STATE;
         }
         return flags;
     }
@@ -117,6 +150,14 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     public boolean isFinalState() {
         return flagIsSet(FLAG_FINAL_STATE);
+    }
+
+    public boolean isGuardedFinalState() {
+        return flagIsSet(FLAG_GUARDED_FINAL_STATE);
+    }
+
+    public boolean isGuardedAnchoredFinalState() {
+        return flagIsSet(FLAG_GUARDED_ANCHORED_FINAL_STATE);
     }
 
     public boolean isAnchoredFinalState() {
@@ -148,6 +189,14 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return loopTransitionIndex;
     }
 
+    public long[][] getAnchoredFinalConstraints() {
+        return anchoredFinalConstraints;
+    }
+
+    public long[][] getFinalConstraints() {
+        return unAnchoredFinalConstraints;
+    }
+
     boolean treeTransitionMatching() {
         return matchers instanceof AllTransitionsInOneTreeMatcher;
     }
@@ -174,11 +223,12 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     /**
-     * Gets called when a new DFA state is entered.
+     * Gets called when a new DFA state is entered. Returns true whenever the executor can
+     * immediately return the result.
      */
-    void beforeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+    boolean beforeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
-        checkFinalState(locals, executor);
+        return checkFinalState(locals, executor);
     }
 
     /**
@@ -206,7 +256,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
     /**
      * Save the current result iff we are in a final state.
      */
-    private void checkFinalState(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+    @ExplodeLoop
+    private boolean checkFinalState(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(simpleCG);
         if (isFinalState()) {
@@ -216,13 +267,23 @@ public class DFAStateNode extends DFAAbstractStateNode {
                 storeResult(locals, executor, false);
                 applySimpleCGFinalTransition(simpleCG.getTransitionToFinalState(), executor, locals);
             }
+        } else if (isGuardedFinalState()) {
+            for (long[] constrs : getFinalConstraints()) {
+                assert constrs.length > 0;
+                if (executor.constraintsAreSatisfied(constrs, locals)) {
+                    storeResult(locals, executor, false);
+                    return true;
+                }
+            }
         }
+        return false;
     }
 
     /**
      * Gets called if {@link TRegexExecutorNode#getMaxIndex(TRegexExecutorLocals)} is reached (!
      * {@link TRegexExecutorNode#inputHasNext(TRegexExecutorLocals)}).
      */
+    @ExplodeLoop
     void atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         boolean anchored = isAnchoredFinalState() && executor.inputAtEnd(locals);
@@ -233,6 +294,23 @@ public class DFAStateNode extends DFAAbstractStateNode {
                     applySimpleCGFinalTransition(simpleCG.getTransitionToAnchoredFinalState(), executor, locals);
                 } else if (isFinalState()) {
                     applySimpleCGFinalTransition(simpleCG.getTransitionToFinalState(), executor, locals);
+                }
+            }
+        }
+        boolean guardedAnchored = isGuardedAnchoredFinalState() && executor.inputAtEnd(locals);
+        if (isGuardedFinalState()) {
+            for (long[] constrs : getFinalConstraints()) {
+                if (executor.constraintsAreSatisfied(constrs, locals)) {
+                    storeResult(locals, executor, false);
+                    return;
+                }
+            }
+        }
+        if (guardedAnchored) {
+            for (long[] constrs : getAnchoredFinalConstraints()) {
+                if (executor.constraintsAreSatisfied(constrs, locals)) {
+                    storeResult(locals, executor, true);
+                    return;
                 }
             }
         }
@@ -307,9 +385,17 @@ public class DFAStateNode extends DFAAbstractStateNode {
             }
         }
         return Json.obj(Json.prop("id", getId()),
-                        Json.prop("anchoredFinalState", isAnchoredFinalState()),
-                        Json.prop("finalState", isFinalState()),
+                        Json.prop("anchoredFinalState", isAnchoredFinalState() || isGuardedAnchoredFinalState()),
+                        Json.prop("finalState", isFinalState() || isGuardedFinalState()),
                         Json.prop("loopToSelf", hasLoopToSelf()),
                         Json.prop("transitions", transitions));
+    }
+
+    public long[][] getConstraints() {
+        return this.constraints;
+    }
+
+    public long[][] getOperations() {
+        return this.operations;
     }
 }

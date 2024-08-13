@@ -130,6 +130,7 @@ public final class BitSets {
      * Clear all bits from lo (inclusive) to hi (inclusive).
      */
     public static void clearRange(long[] bs, int lo, int hi) {
+        assert lo <= hi;
         int wordIndexLo = wordIndex(lo);
         int wordIndexHi = wordIndex(hi);
         long rangeLo = (~0L) << lo;

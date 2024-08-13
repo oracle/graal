@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,19 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import static com.oracle.truffle.regex.tregex.nfa.TransitionGuard.getQuantifierIndex;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.truffle.regex.util.TBitSet;
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
+import com.oracle.truffle.regex.tregex.automaton.TransitionOp;
+import com.oracle.truffle.regex.tregex.buffer.LongArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
@@ -59,6 +63,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
+import com.oracle.truffle.regex.util.TBitSet;
 
 /**
  * Regex AST visitor that will find convert all NFA successors of a given {@link Term} to
@@ -78,6 +83,8 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
     private final List<ASTStep> curLookAheads = new ArrayList<>();
     private final List<ASTStep> curLookBehinds = new ArrayList<>();
     private final Deque<ASTStep> lookAroundExpansionQueue = new ArrayDeque<>();
+    private final LongArrayBuffer constraintsBuilder = new LongArrayBuffer();
+    private final LongArrayBuffer operationsBuilder = new LongArrayBuffer();
 
     public ASTStepVisitor(RegexAST ast) {
         super(ast);
@@ -146,7 +153,29 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
     protected void visit(RegexASTNode target) {
         assert noPredicatesInGuards(getTransitionGuardsOnPath());
         ASTSuccessor successor = new ASTSuccessor();
-        ASTTransition transition = new ASTTransition(ast.getLanguage());
+        var guards = getTransitionGuardsOnPath();
+
+        operationsBuilder.clear();
+        constraintsBuilder.clear();
+        var id = needsMaintainGuard();
+        if (id != -1) {
+            operationsBuilder.add(TransitionOp.create(id, 0, 0, TransitionOp.maintain));
+        }
+
+        for (var guard : guards) {
+            final int quantifierIndex = getQuantifierIndex(guard);
+            switch (TransitionGuard.getKind(guard)) {
+                case countLtMax -> constraintsBuilder.add(TransitionConstraint.create(quantifierIndex, 0, TransitionConstraint.existLtMax));
+                case countGeMin -> constraintsBuilder.add(TransitionConstraint.create(quantifierIndex, 0, TransitionConstraint.existGeMin));
+                case countLtMin -> constraintsBuilder.add(TransitionConstraint.create(quantifierIndex, 0, TransitionConstraint.existLtMin));
+                case countMaintain -> operationsBuilder.add(TransitionOp.create(quantifierIndex, 0, 0, TransitionOp.maintain));
+                case countInc -> operationsBuilder.add(TransitionOp.create(quantifierIndex, 0, 0, TransitionOp.inc));
+                case countSet1 -> operationsBuilder.add(TransitionOp.create(quantifierIndex, 0, 0, TransitionOp.set1));
+                case countSetMin -> operationsBuilder.add(TransitionOp.create(quantifierIndex, 0, 0, TransitionOp.setMin));
+            }
+        }
+
+        ASTTransition transition = new ASTTransition(ast.getLanguage(), constraintsBuilder.toArray(), operationsBuilder.toArray());
         transition.setGroupBoundaries(getGroupBoundaries());
         TBitSet matchedConditionGroups = getCurrentMatchedConditionGroups();
         transition.setMatchedConditionGroups(matchedConditionGroups);
@@ -154,14 +183,15 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
             assert target instanceof MatchFound;
             transition.setTarget(target.getSubTreeParent().getAnchoredFinalState());
         } else {
-            if (target instanceof CharacterClass) {
-                final CharacterClass charClass = (CharacterClass) target;
+            if (target instanceof CharacterClass charClass) {
                 if (!charClass.getLookBehindEntries().isEmpty()) {
                     ArrayList<ASTStep> newLookBehinds = new ArrayList<>(charClass.getLookBehindEntries().size());
                     for (LookBehindAssertion lb : charClass.getLookBehindEntries()) {
                         final ASTStep lbAstStep = new ASTStep(lb.getGroup(), matchedConditionGroups);
                         assert lb.getGroup().isLiteral();
-                        ASTTransition lbAstTransition = new ASTTransition(ast.getLanguage(), lb.getGroup().getFirstAlternative().getFirstTerm());
+                        ASTTransition lbAstTransition = new ASTTransition(ast.getLanguage(), lb.getGroup().getFirstAlternative().getFirstTerm(),
+                                        TransitionConstraint.NO_CONSTRAINTS,
+                                        TransitionOp.NO_OP);
                         lbAstTransition.setMatchedConditionGroups(matchedConditionGroups);
                         lbAstStep.addSuccessor(new ASTSuccessor(lbAstTransition));
                         newLookBehinds.add(lbAstStep);
@@ -190,7 +220,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
         // getGroupBoundaries and enterZeroWidth guards have no effect when exitZeroWidth and
         // escapeZeroWidth are removed already. Other guards shouldn't be used when building a DFA.
         for (long guard : transitionGuards) {
-            if (!TransitionGuard.is(guard, TransitionGuard.Kind.updateCG) && !TransitionGuard.is(guard, TransitionGuard.Kind.enterZeroWidth)) {
+            if (!TransitionGuard.is(guard, TransitionGuard.Kind.updateCG) && !TransitionGuard.is(guard, TransitionGuard.Kind.enterZeroWidth) && !TransitionGuard.isQuantifierGuard(guard)) {
                 return false;
             }
         }
@@ -234,10 +264,9 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
 
         @Override
         public boolean equals(Object obj) {
-            if (!(obj instanceof ASTStepCacheKey)) {
+            if (!(obj instanceof ASTStepCacheKey that)) {
                 return false;
             }
-            ASTStepCacheKey that = (ASTStepCacheKey) obj;
             return this.root.equals(that.root) && this.canTraverseCaret == that.canTraverseCaret && this.traversableLookBehindAssertions.equals(that.traversableLookBehindAssertions) &&
                             this.matchedConditionGroups.equals(that.matchedConditionGroups);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.nfa;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
+import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -55,14 +56,20 @@ public class ASTTransition implements AbstractTransition<Term, ASTTransition>, J
     private Term target;
     private GroupBoundaries groupBoundaries;
     private TBitSet matchedConditionGroups;
+    private final long[] constraints;
+    private final long[] operations;
 
-    public ASTTransition(RegexLanguage language) {
+    public ASTTransition(RegexLanguage language, long[] constraints, long[] operations) {
         this.groupBoundaries = GroupBoundaries.getEmptyInstance(language);
+        this.constraints = constraints;
+        this.operations = operations;
     }
 
-    public ASTTransition(RegexLanguage language, Term target) {
+    public ASTTransition(RegexLanguage language, Term target, long[] constraints, long[] operations) {
         this.target = target;
         this.groupBoundaries = GroupBoundaries.getEmptyInstance(language);
+        this.constraints = constraints;
+        this.operations = operations;
     }
 
     @TruffleBoundary
@@ -102,6 +109,14 @@ public class ASTTransition implements AbstractTransition<Term, ASTTransition>, J
         this.matchedConditionGroups = matchedConditionGroups;
     }
 
+    public long[] getConstraints() {
+        return constraints;
+    }
+
+    public long[] getOperations() {
+        return operations;
+    }
+
     @Override
     public int hashCode() {
         return target.hashCode();
@@ -116,6 +131,7 @@ public class ASTTransition implements AbstractTransition<Term, ASTTransition>, J
     @Override
     public JsonValue toJson() {
         return Json.obj(Json.prop("target", target.getId()),
-                        Json.prop("groupBoundaries", groupBoundaries));
+                        Json.prop("groupBoundaries", groupBoundaries),
+                        Json.prop("guards", TransitionConstraint.combineToJson(constraints, operations)));
     }
 }

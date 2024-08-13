@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -166,11 +166,16 @@ public final class RegexOptions {
 
     private static final String PARSE_SHORT_ERROR_MSG = "expected a short integer value";
 
+    private static final String QUANTIFIER_UNROLL_THRESHOLD_SINGLE_CC = "QuantifierUnrollThresholdSingleCC";
+    private static final String QUANTIFIER_UNROLL_THRESHOLD_GROUP = "QuantifierUnrollThresholdGroup";
+
     public static final RegexOptions DEFAULT = new RegexOptions(0,
                     (short) TRegexOptions.TRegexMaxDFATransitions,
                     (short) TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize,
                     ECMAScriptFlavor.INSTANCE,
-                    Encodings.UTF_16_RAW, null, null, JAVA_JDK_VERSION_DEFAULT);
+                    Encodings.UTF_16_RAW, null, null, JAVA_JDK_VERSION_DEFAULT,
+                    (short) TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC,
+                    (short) TRegexOptions.TRegexQuantifierUnrollThresholdGroup);
 
     private final int options;
     private final short maxDFASize;
@@ -180,6 +185,8 @@ public final class RegexOptions {
     private final MatchingMode matchingMode;
     private final String pythonLocale;
     private final byte javaJDKVersion;
+    public final short quantifierUnrollThresholdSingleCC;
+    public final short quantifierUnrollThresholdGroup;
 
     private RegexOptions(
                     int options,
@@ -189,7 +196,9 @@ public final class RegexOptions {
                     Encodings.Encoding encoding,
                     MatchingMode matchingMode,
                     String pythonLocale,
-                    byte javaJDKVersion) {
+                    byte javaJDKVersion,
+                    short quantifierUnrollThresholdSingleCC,
+                    short quantifierUnrollThresholdGroup) {
         this.options = options;
         this.maxDFASize = maxDFASize;
         this.maxBackTrackerCompileSize = maxBackTrackerCompileSize;
@@ -198,6 +207,8 @@ public final class RegexOptions {
         this.matchingMode = matchingMode;
         this.pythonLocale = pythonLocale;
         this.javaJDKVersion = javaJDKVersion;
+        this.quantifierUnrollThresholdSingleCC = quantifierUnrollThresholdSingleCC;
+        this.quantifierUnrollThresholdGroup = quantifierUnrollThresholdGroup;
     }
 
     public static Builder builder(Source source, String sourceString) {
@@ -336,11 +347,13 @@ public final class RegexOptions {
     }
 
     public RegexOptions withBooleanMatch() {
-        return new RegexOptions(options | BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion);
+        return new RegexOptions(options | BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion, quantifierUnrollThresholdSingleCC,
+                        quantifierUnrollThresholdGroup);
     }
 
     public RegexOptions withoutBooleanMatch() {
-        return new RegexOptions(options & ~BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion);
+        return new RegexOptions(options & ~BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion, quantifierUnrollThresholdSingleCC,
+                        quantifierUnrollThresholdGroup);
     }
 
     @Override
@@ -459,12 +472,16 @@ public final class RegexOptions {
         private MatchingMode matchingMode;
         private String pythonLocale;
         private byte javaJDKVersion = JAVA_JDK_VERSION_DEFAULT;
+        private short quantifierUnrollThresholdSingleCC;
+        private short quantifierUnrollThresholdGroup;
 
         private Builder(Source source, String sourceString) {
             this.source = source;
             this.src = sourceString;
             this.options = 0;
             this.flavor = ECMAScriptFlavor.INSTANCE;
+            quantifierUnrollThresholdSingleCC = DEFAULT.quantifierUnrollThresholdSingleCC;
+            quantifierUnrollThresholdGroup = DEFAULT.quantifierUnrollThresholdGroup;
         }
 
         @TruffleBoundary
@@ -534,6 +551,18 @@ public final class RegexOptions {
                                 break;
                             case 'L':
                                 pythonLocale = parseStringOption(PYTHON_LOCALE_NAME, "expected a python locale name");
+                                break;
+                            default:
+                                throw optionsSyntaxErrorUnexpectedKey();
+                        }
+                        break;
+                    case 'Q':
+                        switch (lookAheadInKey("QuantifierUnrollThreshold".length())) {
+                            case 'S':
+                                quantifierUnrollThresholdSingleCC = parseShortOption(QUANTIFIER_UNROLL_THRESHOLD_SINGLE_CC);
+                                break;
+                            case 'G':
+                                quantifierUnrollThresholdGroup = parseShortOption(QUANTIFIER_UNROLL_THRESHOLD_GROUP);
                                 break;
                             default:
                                 throw optionsSyntaxErrorUnexpectedKey();
@@ -763,7 +792,8 @@ public final class RegexOptions {
         }
 
         public RegexOptions build() {
-            return new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion);
+            return new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion, quantifierUnrollThresholdSingleCC,
+                            quantifierUnrollThresholdGroup);
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,23 +40,41 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-public class BackwardDFAStateNode extends DFAStateNode {
-    public BackwardDFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers, DFASimpleCG simpleCG,
-                    long[][] constraints, long[][] operations, long[][] finalConstraints, long[][] anchoredFinalConstraints) {
-        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, simpleCG, constraints, operations, finalConstraints, anchoredFinalConstraints);
-    }
-
-    protected BackwardDFAStateNode(BackwardDFAStateNode copy, short copyID) {
-        super(copy, copyID);
-    }
+public record CounterTrackerData(long[] fixedData, int[][] intArrays) {
 
     @Override
-    public DFAStateNode createNodeSplitCopy(short copyID) {
-        return new BackwardDFAStateNode(this, copyID);
+    public String toString() {
+        return "CounterTrackerData[" +
+                        "fixedData=" + fixedData + ", " +
+                        "intArrays=" + intArrays + ']';
     }
 
-    int getBackwardPrefixStateIndex() {
-        assert hasBackwardPrefixState();
-        return getSuccessors().length - 1;
+    public static final class Builder {
+        private int fixedDataSize = 0;
+        private int nIntArray = 0;
+
+        public void requestFixedSize(int requestedSize) {
+            this.fixedDataSize += requestedSize;
+        }
+
+        public void requestIntArray(int nArray) {
+            this.nIntArray += nArray;
+        }
+
+        public int getFixedDataSize() {
+            return fixedDataSize;
+        }
+
+        public int getnIntArraySize() {
+            return nIntArray;
+        }
+
+        public int intArraySize() {
+            return nIntArray;
+        }
+
+        public int fixedDataSize() {
+            return fixedDataSize;
+        }
     }
 }
