@@ -311,22 +311,17 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
              * test against a type, it is not an instance of operation but a null check and an
              * isArray check
              */
-            if (checkedStamp.isObjectStamp() && ((ObjectStamp) checkedStamp).nonNull()) {
-                // without a null check
-                check = graph.addOrUniqueWithInputs(ObjectIsArrayNode.create(effectiveOsrLocal));
-            } else {
-                // add a preceding null check with the same speculation reason
-                check = graph.addOrUniqueWithInputs(LogicNegationNode.create(IsNullNode.create(effectiveOsrLocal)));
-                SpeculationLog.Speculation constant = graph.getSpeculationLog().speculate(reason);
-                FixedGuardNode guard = graph.add(new FixedGuardNode(check, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, constant, false));
-                graph.addAfterFixed(osrStart, guard);
-                PiNode nonNullPi = graph.addOrUnique(new PiNode(effectiveOsrLocal, ((ObjectStamp) checkedStamp).asNonNull(), guard));
+            // add a preceding null check with the same speculation reason
+            check = graph.addOrUniqueWithInputs(LogicNegationNode.create(IsNullNode.create(effectiveOsrLocal)));
+            SpeculationLog.Speculation constant = graph.getSpeculationLog().speculate(reason);
+            FixedGuardNode guard = graph.add(new FixedGuardNode(check, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, constant, false));
+            graph.addAfterFixed(osrStart, guard);
+            PiNode nonNullPi = graph.addOrUnique(new PiNode(effectiveOsrLocal, ((ObjectStamp) checkedStamp).asNonNull(), guard));
 
-                insertionPoint = guard;
+            insertionPoint = guard;
 
-                // with a null check
-                check = graph.addOrUnique(ObjectIsArrayNode.create(nonNullPi));
-            }
+            // with a null check
+            check = graph.addOrUnique(ObjectIsArrayNode.create(nonNullPi));
             checkedStamp = new ObjectStamp(null, false, true, false, true);
         } else {
             check = graph.addOrUniqueWithInputs(InstanceOfNode.createHelper((ObjectStamp) checkedStamp, effectiveOsrLocal, null, null));
