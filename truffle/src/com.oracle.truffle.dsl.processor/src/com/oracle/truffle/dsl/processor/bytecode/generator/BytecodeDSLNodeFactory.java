@@ -5215,12 +5215,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 b.startFor().type(continuationLocation.asType()).string(" continuationLocation : continuationLocations").end().startBlock();
                 b.declaration(type(int.class), "constantPoolIndex", "continuationLocation.constantPoolIndex");
+
+                b.declaration(types.BytecodeLocation, "location");
+                b.startIf().string("continuationLocation.bci == -1").end().startBlock();
+                b.statement("location = null");
+                b.end().startElseBlock();
+                b.startAssign("location").string("bytecodeNode.getBytecodeLocation(continuationLocation.bci)").end();
+                b.end(); // block
+
                 b.startDeclaration(continuationRootNodeImpl.asType(), "continuationRootNode").startNew(continuationRootNodeImpl.asType());
                 b.string("language");
                 b.string("result.getFrameDescriptor()");
                 b.string("result");
                 b.string("continuationLocation.sp");
-                b.startCall("bytecodeNode.getBytecodeLocation").string("continuationLocation.bci").end();
+                b.string("location");
                 b.end(2);
 
                 b.startStatement().startCall("ACCESS.writeObject");
@@ -5518,8 +5526,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(" + operation.getOperationBeginArgumentName(0) + ")"};
                 case YIELD -> {
                     b.declaration(context.getType(short.class), "constantPoolIndex", "allocateContinuationConstant()");
+
+                    b.declaration(type(int.class), "continuationBci");
+                    b.startIf().string("reachable").end().startBlock();
+                    b.statement("continuationBci = bci + " + operation.instruction.getInstructionLength());
+                    b.end().startElseBlock();
+                    b.statement("continuationBci = -1");
+                    b.end();
+
                     b.startStatement().startCall("continuationLocations.add");
-                    b.startNew(continuationLocation.asType()).string("constantPoolIndex").string("bci + " + operation.instruction.getInstructionLength()).string("currentStackHeight").end();
+                    b.startNew(continuationLocation.asType()).string("constantPoolIndex").string("continuationBci").string("currentStackHeight").end();
                     b.end(2); // statement + call
                     b.end();
                     yield new String[]{"constantPoolIndex"};
@@ -9028,6 +9044,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.getModifiers().remove(Modifier.ABSTRACT);
             ex.getModifiers().add(Modifier.FINAL);
             CodeTreeBuilder b = ex.createBuilder();
+
+            b.startIf().string("enterBci == -1").end().startBlock();
+            b.lineComment("only happens for synthetic instrumentable root nodes.");
+            b.statement("return null");
+            b.end();
+
             // Because of operation nesting, any source section that applies to the tag.enter should
             // apply to the whole tag operation.
             b.startReturn().string("findBytecodeNode().getSourceLocation(enterBci)").end();
@@ -10768,14 +10790,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.declaration(type(byte[].class), "bc", "this.bytecodes");
             b.startIf().string("bci < 0 || bci >= bc.length").end().startBlock();
-            b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("Bytecode index out of range.").end().end();
+            b.startThrow().startNew(type(IllegalArgumentException.class)).startGroup().doubleQuote("Bytecode index out of range ").string(" + bci").end().end().end();
             b.end();
 
             b.declaration(type(int.class), "op", "readValidBytecode(bc, bci)");
 
             int maxId = model.getInstructions().stream().max(Comparator.comparingInt(i -> i.getId())).get().getId();
             b.startIf().string("op < 0 || op > ").string(maxId).end().startBlock();
-            b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("Invalid op at bytecode index.").end().end();
+            b.startThrow().startNew(type(IllegalArgumentException.class)).startGroup().doubleQuote("Invalid op at bytecode index ").string(" + op").end().end().end();
             b.end();
 
             // we could do more validations here, but they would likely be too expensive
