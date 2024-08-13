@@ -54,7 +54,9 @@ package com.oracle.truffle.api.memory;
  *
  * <h2>Alignment</h2>
  * <p>
- * Unaligned accesses are allowed.
+ * Unaligned accesses are allowed, but will not constant-fold during partial evaluation. If constant
+ * folding is desired, consider using the unaligned methods (e.g., {@link #getIntUnaligned}) to read
+ * immutable data from unaligned offsets.
  *
  * @since 20.3
  */
@@ -428,6 +430,102 @@ public abstract class ByteArraySupport {
      * @since 22.2
      */
     public abstract void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException;
+
+    /**
+     * Reads the short at the given byte offset from the start of the buffer.
+     *
+     * Unlike {@link #getShort(byte[], int)}, the byte offset does not need to be short-aligned. The
+     * platform may not support atomic unaligned reads, so this method should not be used with
+     * shared mutable data.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the short will be read
+     * @return the short at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
+     * @since 24.2
+     */
+    public abstract short getShortUnaligned(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
+
+    /**
+     * Reads the short at the given byte offset from the start of the buffer.
+     *
+     * Unlike {@link #getShort(byte[], long)}, the byte offset does not need to be short-aligned.
+     * The platform may not support atomic unaligned reads, so this method should not be used with
+     * shared mutable data.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the short will be read
+     * @return the short at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 1}
+     * @since 24.2
+     */
+    public abstract short getShortUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
+     * Reads the int at the given byte offset from the start of the buffer.
+     *
+     * Unlike {@link #getInt(byte[], int)}, the byte offset does not need to be int-aligned. The
+     * platform may not support atomic unaligned reads, so this method should not be used with
+     * shared mutable data.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the int will be read
+     * @return the int at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
+     * @since 24.2
+     */
+    public abstract int getIntUnaligned(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
+
+    /**
+     * Reads the int at the given byte offset from the start of the buffer.
+     *
+     * Unlike {@link #getInt(byte[], long)}, the byte offset does not need to be int-aligned. The
+     * platform may not support atomic unaligned reads, so this method should not be used with
+     * shared mutable data.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the int will be read
+     * @return the int at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 3}
+     * @since 24.2
+     */
+    public abstract int getIntUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
+
+    /**
+     * Reads the long at the given byte offset from the start of the buffer.
+     *
+     * Unlike {@link #getLong(byte[], int)}, the byte offset does not need to be long-aligned. The
+     * platform may not support atomic unaligned reads, so this method should not be used with
+     * shared mutable data.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the long will be read
+     * @return the long at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 24.2
+     */
+    public abstract long getLongUnaligned(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException;
+
+    /**
+     * Reads the long at the given byte offset from the start of the buffer.
+     *
+     * Unlike {@link #getLong(byte[], long)}, the byte offset does not need to be long-aligned. The
+     * platform may not support atomic unaligned reads, so this method should not be used with
+     * shared mutable data.
+     *
+     * @param buffer the byte array to read from
+     * @param byteOffset the byte offset from which the long will be read
+     * @return the long at the given byte offset from the start of the buffer
+     * @throws IndexOutOfBoundsException if and only if
+     *             {@code byteOffset < 0 || byteOffset >= buffer.length - 7}
+     * @since 24.2
+     */
+    public abstract long getLongUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException;
 
     /**
      * Volatile version of {@link #getByte(byte[], long)}.

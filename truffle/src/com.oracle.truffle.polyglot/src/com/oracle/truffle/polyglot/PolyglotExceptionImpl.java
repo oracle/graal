@@ -557,13 +557,9 @@ final class PolyglotExceptionImpl {
             }
         }, new Function<TruffleStackTraceElement, Object>() {
 
-            private boolean firstGuestFrame = true;
-
             @Override
             public Object apply(TruffleStackTraceElement guestFrame) {
-                boolean first = this.firstGuestFrame;
-                this.firstGuestFrame = false;
-                PolyglotExceptionFrame guest = PolyglotExceptionFrame.createGuest(impl, guestFrame, first);
+                PolyglotExceptionFrame guest = PolyglotExceptionFrame.createGuest(impl, guestFrame);
                 if (guest != null) {
                     return apiAccess.newPolyglotStackTraceElement(guest, impl.api);
                 } else {
