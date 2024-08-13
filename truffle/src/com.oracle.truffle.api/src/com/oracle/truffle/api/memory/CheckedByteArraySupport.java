@@ -211,6 +211,42 @@ final class CheckedByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public short getShortUnaligned(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Short.BYTES);
+        return access.getShortUnaligned(buffer, byteOffset);
+    }
+
+    @Override
+    public short getShortUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Short.BYTES);
+        return access.getShortUnaligned(buffer, byteOffset);
+    }
+
+    @Override
+    public int getIntUnaligned(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Integer.BYTES);
+        return access.getIntUnaligned(buffer, byteOffset);
+    }
+
+    @Override
+    public int getIntUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Integer.BYTES);
+        return access.getIntUnaligned(buffer, byteOffset);
+    }
+
+    @Override
+    public long getLongUnaligned(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Long.BYTES);
+        return access.getLongUnaligned(buffer, byteOffset);
+    }
+
+    @Override
+    public long getLongUnaligned(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        checkBounds(buffer, byteOffset, Long.BYTES);
+        return access.getLongUnaligned(buffer, byteOffset);
+    }
+
+    @Override
     public byte getByteVolatile(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
         checkBounds(buffer, byteOffset, Byte.BYTES);
         return access.getByteVolatile(buffer, byteOffset);

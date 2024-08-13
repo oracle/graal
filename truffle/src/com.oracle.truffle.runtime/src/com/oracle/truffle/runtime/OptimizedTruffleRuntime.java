@@ -904,6 +904,10 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     public abstract BackgroundCompileQueue getCompileQueue();
 
+    @SuppressWarnings("unused")
+    protected void onEngineCreated(EngineData engine) {
+    }
+
     @SuppressWarnings("try")
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
