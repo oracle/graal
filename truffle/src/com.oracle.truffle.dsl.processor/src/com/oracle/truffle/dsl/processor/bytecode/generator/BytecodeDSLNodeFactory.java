@@ -10623,7 +10623,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("constants[continuationLocation.constantPoolIndex]");
             b.end();
 
-            b.declaration(types.BytecodeLocation, "newLocation", "newNode.getBytecodeLocation(continuationLocation.bci)");
+            b.declaration(types.BytecodeLocation, "newLocation");
+            b.startIf().string("continuationLocation.bci == -1").end().startBlock();
+            b.statement("newLocation = null");
+            b.end().startElseBlock();
+            b.startAssign("newLocation").string("newNode.getBytecodeLocation(continuationLocation.bci)").end();
+            b.end(); // block
 
             b.startIf().string("bytecodeReparsed").end().startBlock();
             b.startStatement().startCall("continuationRootNode", "updateBytecodeLocation");
