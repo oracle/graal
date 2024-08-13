@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,18 +31,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.container.Container;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.PhysicalMemory.PhysicalMemorySupport;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticallyRegisteredImageSingleton(PhysicalMemorySupport.class)
-class LinuxPhysicalMemorySupportImpl implements PhysicalMemorySupport {
+public class LinuxPhysicalMemorySupportImpl implements PhysicalMemorySupport {
 
     private static final long K = 1024;
 
@@ -113,5 +114,15 @@ class LinuxPhysicalMemorySupportImpl implements PhysicalMemorySupport {
             return Long.parseLong(number);
         }
         return -1;
+    }
+}
+
+@AutomaticallyRegisteredFeature
+class LinuxPhysicalMemorySupportFeature implements InternalFeature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (!ImageSingletons.contains(PhysicalMemorySupport.class)) {
+            ImageSingletons.add(PhysicalMemorySupport.class, new LinuxPhysicalMemorySupportImpl());
+        }
     }
 }
