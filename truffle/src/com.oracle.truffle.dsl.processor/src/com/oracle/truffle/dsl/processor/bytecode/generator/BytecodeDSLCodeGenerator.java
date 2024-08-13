@@ -53,6 +53,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -90,7 +91,7 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
 
         for (BytecodeDSLModel model : modelList.getModels()) {
             if (modelList.hasErrors()) {
-                results.add(new BytecodeDSLNodeFactory.ErrorFactory(model).create());
+                results.add(new BytecodeDSLNodeFactory.ErrorRootNodeElement(model));
             } else {
                 results.add(new BytecodeDSLNodeFactory(model).create());
             }
@@ -105,17 +106,13 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
          * defining the public interface for the Builders. Test code writes parsers using this
          * abstract builder's interface so that the parser can be used to test each variant.
          */
-        CodeTypeElement abstractBuilderType = modelList.getModels().getFirst().abstractBuilderType;
+        CodeTypeElement abstractBuilderType = createAbstractBuilderType(modelList.getModels().getFirst().getTemplateType());
+
         for (BytecodeDSLModel model : modelList.getModels()) {
             assert abstractBuilderType == model.abstractBuilderType;
         }
 
         Iterator<CodeTypeElement> builders = results.stream().map(result -> (CodeTypeElement) ElementUtils.findTypeElement(result, "Builder")).iterator();
-
-        CodeExecutableElement constructor = GeneratorUtils.createConstructorUsingFields(Set.of(Modifier.PROTECTED), abstractBuilderType);
-        constructor.addParameter(new CodeVariableElement(context.getType(Object.class), "token"));
-        constructor.createBuilder().statement("super(token)");
-        abstractBuilderType.add(constructor);
 
         /**
          * Define the abstract methods using the first Builder, then assert that the other Builders
@@ -181,6 +178,18 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
 
         return results;
 
+    }
+
+    public static CodeTypeElement createAbstractBuilderType(TypeElement templateType) {
+        String abstractBuilderName = templateType.getSimpleName() + "Builder";
+        CodeTypeElement abstractBuilderType = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, ElementUtils.findPackageElement(templateType), abstractBuilderName);
+        abstractBuilderType.setSuperClass(ProcessorContext.types().BytecodeBuilder);
+
+        CodeExecutableElement constructor = GeneratorUtils.createConstructorUsingFields(Set.of(Modifier.PROTECTED), abstractBuilderType);
+        constructor.addParameter(new CodeVariableElement(ProcessorContext.getInstance().getType(Object.class), "token"));
+        constructor.createBuilder().statement("super(token)");
+        abstractBuilderType.add(constructor);
+        return abstractBuilderType;
     }
 
     private boolean hasExpectErrors(Element element) {

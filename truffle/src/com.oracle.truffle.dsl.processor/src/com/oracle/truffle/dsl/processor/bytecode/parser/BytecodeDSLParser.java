@@ -44,7 +44,6 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedNam
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PUBLIC;
-import static javax.lang.model.element.Modifier.STATIC;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -72,6 +71,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.TruffleTypes;
+import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLCodeGenerator;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLBuiltins;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModels;
@@ -128,8 +128,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             assert generateBytecodeMirror != null;
             topLevelAnnotationMirror = generateBytecodeMirror;
 
-            CodeTypeElement builderType = createBuilderType(types.BytecodeBuilder);
-            models = List.of(createBytecodeDSLModel(typeElement, generateBytecodeMirror, "Gen", builderType, builderType));
+            models = List.of(createBytecodeDSLModel(typeElement, generateBytecodeMirror, "Gen", types.BytecodeBuilder));
         }
 
         BytecodeDSLModels modelList = new BytecodeDSLModels(context, typeElement, topLevelAnnotationMirror, models);
@@ -158,9 +157,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         boolean enableYield = false;
         boolean enableTagInstrumentation = false;
 
-        String abstractBuilderName = typeElement.getSimpleName() + "Builder";
-        CodeTypeElement abstractBuilderType = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, ElementUtils.findPackageElement(typeElement), abstractBuilderName);
-        abstractBuilderType.setSuperClass(types.BytecodeBuilder);
+        TypeMirror abstractBuilderType = BytecodeDSLCodeGenerator.createAbstractBuilderType(typeElement).asType();
 
         List<BytecodeDSLModel> result = new ArrayList<>();
 
@@ -171,7 +168,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             AnnotationValue generateBytecodeMirrorValue = ElementUtils.getAnnotationValue(variant, "configuration");
             AnnotationMirror generateBytecodeMirror = ElementUtils.resolveAnnotationValue(AnnotationMirror.class, generateBytecodeMirrorValue);
 
-            BytecodeDSLModel model = createBytecodeDSLModel(typeElement, generateBytecodeMirror, suffix, createBuilderType(abstractBuilderType.asType()), abstractBuilderType);
+            BytecodeDSLModel model = createBytecodeDSLModel(typeElement, generateBytecodeMirror, suffix, abstractBuilderType);
 
             if (!first && suffixes.contains(suffix)) {
                 model.addError(variant, suffixValue, "A variant with suffix \"%s\" already exists. Each variant must have a unique suffix.", suffix);
@@ -211,15 +208,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         return result;
     }
 
-    private static CodeTypeElement createBuilderType(TypeMirror superClass) {
-        CodeTypeElement builderType = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "Builder");
-        builderType.setSuperClass(superClass);
-        return builderType;
-    }
-
-    private BytecodeDSLModel createBytecodeDSLModel(TypeElement typeElement, AnnotationMirror generateBytecodeMirror, String suffix, CodeTypeElement builderType, CodeTypeElement abstractBuilderType) {
+    private BytecodeDSLModel createBytecodeDSLModel(TypeElement typeElement, AnnotationMirror generateBytecodeMirror, String suffix, TypeMirror abstractBuilderType) {
         CodeTypeElement generatedType = GeneratorUtils.createClass(typeElement, null, Set.of(PUBLIC, FINAL), typeElement.getSimpleName() + suffix, typeElement.asType());
-        return new BytecodeDSLModel(context, typeElement, generateBytecodeMirror, generatedType, builderType, abstractBuilderType);
+        return new BytecodeDSLModel(context, typeElement, generateBytecodeMirror, generatedType, abstractBuilderType);
     }
 
     @SuppressWarnings("unchecked")

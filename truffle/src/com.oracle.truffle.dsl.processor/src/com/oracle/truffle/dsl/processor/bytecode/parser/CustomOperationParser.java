@@ -125,7 +125,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         dummyBytecodeClass.setEnclosingElement(new GeneratedPackageElement("dummy"));
         return new CustomOperationParser(
                         context,
-                        new BytecodeDSLModel(context, dummyBytecodeClass, null, null, null, null),
+                        new BytecodeDSLModel(context, dummyBytecodeClass, null, null, null),
                         context.getTypes().OperationProxy_Proxyable,
                         true);
     }
