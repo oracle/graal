@@ -228,6 +228,10 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
             }
         }
 
+        if (receiver instanceof ImageHeapInstance imageHeapInstance && imageHeapInstance.isInBaseLayer() && imageHeapInstance.nullFieldValues()) {
+            return null;
+        }
+
         VMError.guarantee(receiver == null || receiver instanceof ImageHeapConstant, "Expected ImageHeapConstant, found: %s", receiver);
         JavaConstant value = null;
         if (returnSimulatedValues) {

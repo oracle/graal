@@ -103,6 +103,10 @@ public final class ImageHeapInstance extends ImageHeapConstant {
         AnalysisError.guarantee(success, "Unexpected field values reference for constant %s", this);
     }
 
+    public boolean nullFieldValues() {
+        return getConstantData().fieldValues == null;
+    }
+
     /**
      * {@link InstanceData#fieldValues} are only set once, in {@link #setFieldValues(Object[])} and
      * shouldn't be accessed before set, i.e., read access is guarded by

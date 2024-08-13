@@ -140,11 +140,7 @@ public abstract class ImageHeapScanner {
                  * GR-52421: the field state needs to be serialized from the base layer analysis
                  */
                 if (field.getJavaKind().isObject()) {
-                    AnalysisType fieldType = field.getType();
-                    if (fieldType.isArray() || (fieldType.isInstanceClass() && !fieldType.isAbstract())) {
-                        fieldType.registerAsInstantiated(field);
-                    }
-                    bb.injectFieldTypes(field, List.of(fieldType), true);
+                    bb.injectFieldTypes(field, List.of(field.getType()), true);
                 }
                 return;
             }

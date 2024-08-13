@@ -35,6 +35,7 @@ import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
+import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -59,10 +60,12 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
     private final boolean isConstructor;
     private final int modifiers;
     private final boolean isSynthetic;
+    private final byte[] code;
     private final int codeSize;
+    private final IntrinsicMethod methodHandleIntrinsic;
 
     public BaseLayerMethod(int id, AnalysisType declaringClass, String name, boolean isVarArgs, ResolvedSignature<AnalysisType> signature, boolean canBeStaticallyBound, boolean isConstructor,
-                    int modifiers, boolean isSynthetic, int codeSize, Annotation[] annotations) {
+                    int modifiers, boolean isSynthetic, byte[] code, int codeSize, IntrinsicMethod methodHandleIntrinsic, Annotation[] annotations) {
         super(annotations);
         this.id = id;
         this.declaringClass = declaringClass.getWrapped();
@@ -73,16 +76,22 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
         this.isConstructor = isConstructor;
         this.modifiers = modifiers;
         this.isSynthetic = isSynthetic;
+        this.code = code;
         this.codeSize = codeSize;
+        this.methodHandleIntrinsic = methodHandleIntrinsic;
     }
 
     public int getBaseLayerId() {
         return id;
     }
 
+    public IntrinsicMethod getMethodHandleIntrinsic() {
+        return methodHandleIntrinsic;
+    }
+
     @Override
     public byte[] getCode() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return code;
     }
 
     @Override

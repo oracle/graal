@@ -29,6 +29,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.C_ENTRY_POIN
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.HUB_IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INITIALIZED_AT_BUILD_TIME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LOCATION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_POINTER_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_OFFSET_TAG;
@@ -63,6 +64,7 @@ import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
@@ -112,6 +114,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         SVMHost svmHost = (SVMHost) hostVM;
         DynamicHub hub = svmHost.dynamicHub(type);
         typeMap.put(HUB_IDENTITY_HASH_CODE_TAG, System.identityHashCode(hub));
+
+        typeMap.put(IS_INITIALIZED_AT_BUILD_TIME_TAG, ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(type));
 
         super.persistType(type, typeMap);
     }
