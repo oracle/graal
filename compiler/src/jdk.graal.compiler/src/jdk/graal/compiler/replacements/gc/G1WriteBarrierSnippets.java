@@ -365,8 +365,6 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
     protected abstract ForeignCallDescriptor printfCallDescriptor();
 
-    protected abstract long referentOffset();
-
     protected boolean isTracingActive(int traceStartCycle) {
         return traceStartCycle > 0 && ((Pointer) WordFactory.pointer(gcTotalCollectionsAddress())).readInt(0) > traceStartCycle;
     }

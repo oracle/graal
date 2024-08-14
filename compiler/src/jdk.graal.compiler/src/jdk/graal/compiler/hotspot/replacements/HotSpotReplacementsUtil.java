@@ -378,26 +378,6 @@ public class HotSpotReplacementsUtil {
         return config.allocatePrefetchStepSize;
     }
 
-    @Fold
-    public static int invocationCounterIncrement(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.invocationCounterIncrement;
-    }
-
-    @Fold
-    public static int invocationCounterOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.invocationCounterOffset;
-    }
-
-    @Fold
-    public static int backedgeCounterOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.backedgeCounterOffset;
-    }
-
-    @Fold
-    public static int invocationCounterShift(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.invocationCounterShift;
-    }
-
     @NodeIntrinsic(value = KlassLayoutHelperNode.class)
     public static native int readLayoutHelper(KlassPointer object);
 
@@ -466,11 +446,6 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static boolean useHeavyMonitors(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.lockingMode == config.lockingModeMonitor;
-    }
-
-    @Fold
     public static boolean useStackLocking(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.lockingMode == config.lockingModeStack;
     }
@@ -493,11 +468,6 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int objectMonitorOwnerOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.objectMonitorOwner;
-    }
-
-    @Fold
-    public static long objectMonitorAnonymousOwner(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.objectMonitorAnonymousOwner;
     }
 
     @Fold
@@ -528,11 +498,6 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int lockMaskInPlace(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.lockMaskInPlace;
-    }
-
-    @Fold
-    public static int ageMaskInPlace(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.ageMaskInPlace;
     }
 
     @Fold
@@ -837,11 +802,6 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity KLASS_MODIFIER_FLAGS_LOCATION = NamedLocationIdentity.immutable("Klass::_modifier_flags");
 
-    @Fold
-    public static int klassModifierFlagsOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.klassModifierFlagsOffset;
-    }
-
     public static final LocationIdentity CLASS_KLASS_LOCATION = new HotSpotOptimizingLocationIdentity("Class._klass") {
         @Override
         public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, CoreProviders tool) {
@@ -939,19 +899,12 @@ public class HotSpotReplacementsUtil {
         return "referent";
     }
 
-    @Fold
     public static long referentOffset(@InjectedParameter MetaAccessProvider metaAccessProvider) {
         return referentField(metaAccessProvider).getOffset();
     }
 
-    @Fold
     public static ResolvedJavaField referentField(@InjectedParameter MetaAccessProvider metaAccessProvider) {
-        return getField(referenceType(metaAccessProvider), referentFieldName());
-    }
-
-    @Fold
-    public static ResolvedJavaType referenceType(@InjectedParameter MetaAccessProvider metaAccessProvider) {
-        return metaAccessProvider.lookupJavaType(Reference.class);
+        return getField(metaAccessProvider.lookupJavaType(Reference.class), referentFieldName());
     }
 
     public static final LocationIdentity OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION = new HotSpotOptimizingLocationIdentity("ObjArrayKlass::_element_klass") {

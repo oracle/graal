@@ -175,11 +175,6 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
         return Log.LOG_PRINTF;
     }
 
-    @Override
-    protected long referentOffset() {
-        return HotSpotReplacementsUtil.referentOffset(INJECTED_METAACCESS);
-    }
-
     public static class Templates extends AbstractTemplates {
         private final SnippetInfo g1PreWriteBarrier;
         private final SnippetInfo g1ReferentReadBarrier;
