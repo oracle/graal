@@ -2276,3 +2276,13 @@ def reimport_libcontainer_files(args):
             mx.warn(f"File not found: {jdk_file}")
             if mx.ask_yes_no(f"Should I delete {path}"):
                 svm_file.unlink()
+
+
+LIBCONTAINER_NAMESPACE = "svm_libcontainer_namespace"
+
+
+@mx.command(suite, LIBCONTAINER_NAMESPACE)
+def svm_libcontainer_namespace(args):
+    libcontainer_project = mx.project("com.oracle.svm.native.libcontainer")
+    for src_dir in  libcontainer_project.source_dirs():
+        mx.command_function("svm_namespace")(args + ["--directory", src_dir , "--namespace", "svm_container"])
