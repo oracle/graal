@@ -506,15 +506,6 @@ public class SubstrateDiagnostics {
         return CodeInfoTable.lookupCodeInfo(possibleIp).isNonNull();
     }
 
-    private static boolean isContainerized() {
-        boolean allowInit = !SubstrateOptions.AsyncSignalSafeDiagnostics.getValue();
-        if (Container.singleton().isInitialized() || allowInit) {
-            return Container.singleton().isContainerized();
-        }
-        // uninitialized and initialization not allowed
-        return false;
-    }
-
     public static class FatalErrorState {
         AtomicWord<IsolateThread> diagnosticThread;
         volatile int diagnosticThunkIndex;
@@ -864,7 +855,7 @@ public class SubstrateDiagnostics {
             Platform platform = ImageSingletons.lookup(Platform.class);
             log.string("Platform: ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
             log.string("Page size: ").unsigned(SubstrateOptions.getPageSize()).newline();
-            log.string("Containerized: ").string(Container.singleton().isInitialized() ? String.valueOf(isContainerized()) : "unknown").newline();
+            log.string("Containerized: ").string(String.valueOf(Container.singleton().isContainerized())).newline();
             log.string("CPU features used for AOT compiled code: ").string(getBuildTimeCpuFeatures()).newline();
             log.indent(false);
         }
@@ -886,7 +877,7 @@ public class SubstrateDiagnostics {
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             log.string("Runtime information:").indent(true);
 
-            if (isContainerized()) {
+            if (Container.singleton().isContainerized()) {
                 log.string("CPU cores (container): ");
                 int processorCount = getContainerActiveProcessorCount();
                 if (processorCount > 0) {
@@ -904,7 +895,7 @@ public class SubstrateDiagnostics {
                 log.string("unknown").newline();
             }
 
-            if (isContainerized()) {
+            if (Container.singleton().isContainerized()) {
                 log.string("Memory (container): ");
                 UnsignedWord memory = getContainerPhysicalMemory();
                 if (memory.aboveThan(0)) {
