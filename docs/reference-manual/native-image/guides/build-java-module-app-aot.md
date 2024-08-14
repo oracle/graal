@@ -78,4 +78,4 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
 ### Related Documentation
 
-- Learn more how you can [access resources for a Java module at runtime](../Resources.md#resources-in-java-modules).
+- Learn more how you can [access resources for a Java module at runtime](../ReachabilityMetadata.md#resources-in-java-modules).

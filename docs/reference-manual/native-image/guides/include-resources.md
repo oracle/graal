@@ -11,7 +11,7 @@ By default, the `native-image` tool does not integrate any Java resource files i
 You must specify resources that should be accessible by your application at runtime.
 
 This guide demonstrates how to register resources to be included in a native executable by providing a resource configuration file.
-See [Accessing Resources in Native Image](../Resources.md) for more ways to include resources.
+See [Accessing Resources in Native Image](../ReachabilityMetadata.md#resources) for more ways to include resources.
 
 ### Prerequisite
 
@@ -64,12 +64,12 @@ In the following example, you run a "fortune teller" application that simulates 
 
 2. Download the [_fortunes.u8_](https://github.com/oracle/graal/blob/3ed4a7ebc5004c51ae310e48be3828cd7c7802c2/docs/reference-manual/native-image/assets/fortunes.u8) resource file and save it in the same directory as _Fortune.java_.
 
-3. Create a configuration file, named _resource-config.json_, and save it in the _META-INF/native-image/_ subdirectory. Register the resource using a [glob pattern](../Resources.md#resource-configuration-file):
+3. Create a configuration file, named _reachability-metadata.json_, and save it in the _META-INF/native-image/_ subdirectory. Register the resource using a [glob pattern](../ReachabilityMetadata.md#resources):
     ```json
     {
-    "globs": [
+      "resources": [
         {
-        "glob": "fortunes.u8"
+          "glob": "fortunes.u8"
         }
       ]
     }
@@ -97,9 +97,9 @@ The information about all included resources will be under the `Resources` tab.
 
 In this demo the path to the resource file is straightforward, but it may be more complex in a real-world use case.
 Resources are specified via globs. For more advanced use-cases, you can register resources using the API methods (see [class RuntimeResourceAccess](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/RuntimeResourceAccess.html)). 
-Learn more about specifying a resource path using a glob and some syntax rules to be observed from [Accessing Resources in Native Image](../Resources.md).
+Learn more about specifying a resource path using a glob and some syntax rules to be observed from [Accessing Resources in Native Image](../ReachabilityMetadata.md#resources).
 
 ### Related Documentation
 
-* [Accessing Resources in Native Image](../Resources.md)
+* [Accessing Resources in Native Image](../ReachabilityMetadata.md#resources)
 * [Resource Metadata in JSON](../ReachabilityMetadata.md#resource-metadata-in-json)
