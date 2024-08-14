@@ -484,11 +484,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int methodCompiledEntryOffset = getFieldOffset("Method::_from_compiled_entry", Integer.class, "address");
 
-    public final int invocationCounterOffset = getFieldOffset("MethodCounters::_invocation_counter", Integer.class, "InvocationCounter");
-    public final int backedgeCounterOffset = getFieldOffset("MethodCounters::_backedge_counter", Integer.class, "InvocationCounter");
-    public final int invocationCounterIncrement = getConstant("InvocationCounter::count_increment", Integer.class);
-    public final int invocationCounterShift = getConstant("InvocationCounter::count_shift", Integer.class);
-
     public final int compilationLevelFullOptimization = getConstant("CompLevel_full_optimization", Integer.class);
 
     public final int heapWordSize = getConstant("HeapWordSize", Integer.class);
