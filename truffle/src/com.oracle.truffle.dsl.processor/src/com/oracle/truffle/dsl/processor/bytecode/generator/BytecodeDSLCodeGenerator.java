@@ -106,10 +106,12 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
          * defining the public interface for the Builders. Test code writes parsers using this
          * abstract builder's interface so that the parser can be used to test each variant.
          */
-        CodeTypeElement abstractBuilderType = createAbstractBuilderType(modelList.getModels().getFirst().getTemplateType());
+        CodeTypeElement abstractBuilderType = (CodeTypeElement) ElementUtils.castTypeElement(modelList.getModels().getFirst().abstractBuilderType);
 
         for (BytecodeDSLModel model : modelList.getModels()) {
-            assert abstractBuilderType == model.abstractBuilderType;
+            if (abstractBuilderType != ElementUtils.castTypeElement(model.abstractBuilderType)) {
+                throw new AssertionError("Invalid builder type.");
+            }
         }
 
         Iterator<CodeTypeElement> builders = results.stream().map(result -> (CodeTypeElement) ElementUtils.findTypeElement(result, "Builder")).iterator();
@@ -186,6 +188,7 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
         abstractBuilderType.setSuperClass(ProcessorContext.types().BytecodeBuilder);
 
         CodeExecutableElement constructor = GeneratorUtils.createConstructorUsingFields(Set.of(Modifier.PROTECTED), abstractBuilderType);
+        constructor.getParameters().clear();
         constructor.addParameter(new CodeVariableElement(ProcessorContext.getInstance().getType(Object.class), "token"));
         constructor.createBuilder().statement("super(token)");
         abstractBuilderType.add(constructor);
