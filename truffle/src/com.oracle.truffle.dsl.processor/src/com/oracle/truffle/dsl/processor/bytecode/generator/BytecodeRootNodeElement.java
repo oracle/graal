@@ -413,7 +413,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         this.add(createAssertionFailed());
 
         // Define methods for cloning the root node.
+        this.add(createIsCloningAllowed());
         this.add(createCloneUninitializedSupported());
+        this.add(new CodeVariableElement(Set.of(Modifier.PRIVATE), generic(types.BytecodeSupport_CloneReferenceList, asType()), "clones"));
         this.add(createCloneUninitialized());
 
         this.add(createFindBytecodeIndex());
@@ -847,6 +849,15 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         return b.build();
     }
 
+    private CodeExecutableElement createIsCloningAllowed() {
+        if (ElementUtils.findInstanceMethod(model.templateType, "isCloningAllowed") != null) {
+            return null;
+        }
+        CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "isCloningAllowed");
+        ex.createBuilder().returnTrue();
+        return ex;
+    }
+
     private CodeExecutableElement createCloneUninitializedSupported() {
         CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "isCloneUninitializedSupported");
         ex.createBuilder().returnTrue();
@@ -857,11 +868,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "cloneUninitialized");
 
         CodeTreeBuilder b = ex.createBuilder();
-
-        b.declaration(this.asType(), "clone", cast(this.asType(), "this.copy()"));
+        b.declaration(this.asType(), "clone");
+        b.startSynchronized("nodes");
+        b.startAssign("clone").cast(this.asType()).string("this.copy()").end();
+        b.statement("clone.clones = null");
         // The base copy method performs a shallow copy of all fields.
         // Some fields should be manually reinitialized to default values.
         b.statement("clone.bytecode = insert(this.bytecode.cloneUninitialized())");
+        b.declaration(generic(types.BytecodeSupport_CloneReferenceList, this.asType()), "localClones", "this.clones");
+        b.startIf().string("localClones == null").end().startBlock();
+        b.startStatement().string("this.clones = localClones = ").startNew(generic(types.BytecodeSupport_CloneReferenceList, this.asType())).end().end();
+        b.end();
+
+        b.statement("localClones.add(clone)");
+        b.end();
+
         emitFence(b);
         b.startReturn().string("clone").end();
 
@@ -1305,6 +1326,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end(2);
             }
         }
+
+        b.startAssert().startStaticCall(type(Thread.class), "holdsLock").string("this.nodes").end().end();
+        b.statement("var cloneReferences = this.clones");
+        b.startIf().string("cloneReferences != null").end().startBlock();
+        b.startStatement();
+        b.string("cloneReferences.forEach((clone) -> ").startCall("clone.updateBytecode");
+        for (VariableElement e : ex.getParameters()) {
+            b.string(e.getSimpleName().toString());
+        }
+        b.end().string(")");
+        b.end(); // statement
+        b.end();
+
         b.startReturn().string("newBytecode").end();
 
         return ex;
@@ -1898,13 +1932,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     private CodeTree createOperationConstant(OperationModel op) {
         return CodeTreeBuilder.createBuilder().staticReference(operationsElement.asType(), op.getConstantName()).build();
-    }
-
-    private static CodeTree cast(TypeMirror type, String value) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.cast(type);
-        b.string(value);
-        return b.build();
     }
 
     private static String safeCastShort(String value) {

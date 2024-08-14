@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CompilerDirectives;
 
@@ -131,4 +134,67 @@ public final class BytecodeSupport {
             return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
         }
     }
+
+    /**
+     * Special list to weakly keep track of clones. Assumes all operations run under a lock. Do not
+     * use directly. We deliberately do not use an memory intensive event queue here, we might leave
+     * around a few empty references here and there.
+     *
+     * @since 24.2
+     */
+    @SuppressWarnings("unchecked")
+    public static final class CloneReferenceList<T> {
+
+        private WeakReference<T>[] references = new WeakReference[4];
+        private int size;
+
+        public void add(T reference) {
+            if (size >= references.length) {
+                resize();
+            }
+            references[size++] = new WeakReference<>(reference);
+        }
+
+        private void resize() {
+            cleanup();
+            if (size >= references.length) {
+                references = Arrays.copyOf(references, references.length * 2);
+            }
+        }
+
+        public void forEach(Consumer<T> forEach) {
+            boolean needsCleanup = false;
+            for (int index = 0; index < size; index++) {
+                T ref = references[index].get();
+                if (ref != null) {
+                    forEach.accept(ref);
+                } else {
+                    needsCleanup = true;
+                }
+            }
+            if (needsCleanup) {
+                cleanup();
+            }
+        }
+
+        private void cleanup() {
+            WeakReference<T>[] refs = this.references;
+            int newIndex = 0;
+            int oldSize = this.size;
+            for (int oldIndex = 0; oldIndex < oldSize; oldIndex++) {
+                WeakReference<T> ref = refs[oldIndex];
+                T referent = ref.get();
+                if (referent != null) {
+                    if (newIndex != oldIndex) {
+                        refs[newIndex] = ref;
+                    }
+                    newIndex++;
+                }
+            }
+            Arrays.fill(refs, newIndex, oldSize, null);
+            size = newIndex;
+        }
+
+    }
+
 }

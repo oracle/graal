@@ -370,6 +370,8 @@ public class TruffleTypes {
     public static final String BytecodeLocation_Name = "com.oracle.truffle.api.bytecode.BytecodeLocation";
     public static final String BytecodeTier_Name = "com.oracle.truffle.api.bytecode.BytecodeTier";
     public static final String BytecodeSupport_Name = "com.oracle.truffle.api.bytecode.BytecodeSupport";
+    public static final String BytecodeSupport_CloneReferenceList_Name = "com.oracle.truffle.api.bytecode.BytecodeSupport.CloneReferenceList";
+
     public static final String ConstantOperand_Name = "com.oracle.truffle.api.bytecode.ConstantOperand";
     public static final String ContinuationResult_Name = "com.oracle.truffle.api.bytecode.ContinuationResult";
     public static final String ContinuationRootNode_Name = "com.oracle.truffle.api.bytecode.ContinuationRootNode";
@@ -431,6 +433,7 @@ public class TruffleTypes {
     public final DeclaredType BytecodeLocation = c.getDeclaredTypeOptional(BytecodeLocation_Name);
     public final DeclaredType BytecodeTier = c.getDeclaredTypeOptional(BytecodeTier_Name);
     public final DeclaredType BytecodeSupport = c.getDeclaredTypeOptional(BytecodeSupport_Name);
+    public final DeclaredType BytecodeSupport_CloneReferenceList = c.getDeclaredTypeOptional(BytecodeSupport_CloneReferenceList_Name);
     public final DeclaredType ConstantOperand = c.getDeclaredTypeOptional(ConstantOperand_Name);
     public final DeclaredType ContinuationResult = c.getDeclaredTypeOptional(ContinuationResult_Name);
     public final DeclaredType ContinuationRootNode = c.getDeclaredTypeOptional(ContinuationRootNode_Name);
