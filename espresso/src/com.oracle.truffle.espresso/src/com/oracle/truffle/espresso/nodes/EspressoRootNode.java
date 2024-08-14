@@ -483,4 +483,12 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     protected final boolean isTrivial() {
         return !methodNode.getMethodVersion().isSynchronized() && methodNode.isTrivial();
     }
+
+    @Override
+    public boolean isInternal() {
+        if (getMethod().isHidden()) {
+            return true;
+        }
+        return super.isInternal();
+    }
 }
