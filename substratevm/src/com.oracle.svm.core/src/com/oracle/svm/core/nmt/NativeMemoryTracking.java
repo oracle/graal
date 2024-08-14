@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -53,20 +54,36 @@ import jdk.graal.compiler.api.replacements.Fold;
  * For tracking memory allocations, we have an internal API (see {@link NativeMemory}) that adds a
  * custom {@link NmtMallocHeader header} to each allocation if NMT is enabled. This header stores
  * data that is needed to properly untrack the memory when it is freed.
+ *
+ * Virtual memory tracking makes the assumption that commits within a reserved region happen neatly.
+ * There will never be overlapping commits and the size requested to be committed/uncommitted is
+ * exactly the size committed/uncommitted. In Hotspot, this assumption is not made, and an internal
+ * model of virtual memory is maintained. However, this assumption currently works in SubstrateVM
+ * because only the heap uses virtual memory, and it always neatly allocates and deallocates chunks.
  */
 public class NativeMemoryTracking {
     private static final UnsignedWord ALIGNMENT = WordFactory.unsigned(16);
     private static final int MAGIC = 0xF0F1F2F3;
+    private static final long KB = 1024;
 
-    private final NmtMallocMemoryInfo[] categories;
-    private final NmtMallocMemoryInfo total;
+    private final NmtMallocMemoryInfo[] mallocCategories;
+    private final NmtVirtualMemoryInfo[] virtualCategories;
+    private final NmtMallocMemoryInfo mallocTotal;
+    private final NmtVirtualMemoryInfo virtualTotal;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public NativeMemoryTracking() {
-        total = new NmtMallocMemoryInfo();
-        categories = new NmtMallocMemoryInfo[NmtCategory.values().length];
-        for (int i = 0; i < categories.length; i++) {
-            categories[i] = new NmtMallocMemoryInfo();
+        mallocTotal = new NmtMallocMemoryInfo();
+        virtualTotal = new NmtVirtualMemoryInfo();
+
+        mallocCategories = new NmtMallocMemoryInfo[NmtCategory.values().length];
+        for (int i = 0; i < mallocCategories.length; i++) {
+            mallocCategories[i] = new NmtMallocMemoryInfo();
+        }
+
+        virtualCategories = new NmtVirtualMemoryInfo[NmtCategory.values().length];
+        for (int i = 0; i < virtualCategories.length; i++) {
+            virtualCategories[i] = new NmtVirtualMemoryInfo();
         }
     }
 
@@ -116,9 +133,9 @@ public class NativeMemoryTracking {
         UnsignedWord allocationSize = header.getAllocationSize();
         UnsignedWord totalSize = allocationSize.add(nmtHeaderSize);
 
-        getInfo(header.getCategory()).track(allocationSize);
-        getInfo(NmtCategory.NMT).track(nmtHeaderSize);
-        total.track(totalSize);
+        getMallocInfo(header.getCategory()).track(allocationSize);
+        getMallocInfo(NmtCategory.NMT).track(nmtHeaderSize);
+        mallocTotal.track(totalSize);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -134,9 +151,9 @@ public class NativeMemoryTracking {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void untrack(UnsignedWord size, int category) {
-        getInfo(category).untrack(size);
-        getInfo(NmtCategory.NMT).untrack(sizeOfNmtHeader());
-        total.untrack(size.add(sizeOfNmtHeader()));
+        getMallocInfo(category).untrack(size);
+        getMallocInfo(NmtCategory.NMT).untrack(sizeOfNmtHeader());
+        mallocTotal.untrack(size.add(sizeOfNmtHeader()));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -152,73 +169,184 @@ public class NativeMemoryTracking {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public long getUsedMemory(NmtCategory category) {
-        return getInfo(category).getUsed();
+    public void trackReserve(long size, NmtCategory category) {
+        getVirtualInfo(category).trackReserved(size);
+        virtualTotal.trackReserved(size);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public long getPeakUsedMemory(NmtCategory category) {
-        return getInfo(category).getPeakUsed();
+    public void trackCommit(long size, NmtCategory category) {
+        getVirtualInfo(category).trackCommitted(size);
+        virtualTotal.trackCommitted(size);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public long getCountAtPeakUsage(NmtCategory category) {
-        return getInfo(category).getCountAtPeakUsage();
+    public void trackUncommit(long size, NmtCategory category) {
+        getVirtualInfo(category).trackUncommit(size);
+        virtualTotal.trackUncommit(size);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public long getTotalCount() {
-        return total.getCount();
+    public void trackFree(long size, NmtCategory category) {
+        getVirtualInfo(category).trackFree(size);
+        virtualTotal.trackFree(size);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public long getTotalUsedMemory() {
-        return total.getUsed();
+    public long getMallocMemory(NmtCategory category) {
+        return getMallocInfo(category).getUsed();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public long getPeakTotalUsedMemory() {
-        return total.getPeakUsed();
+    public long getMallocCount(NmtCategory category) {
+        return getMallocInfo(category).getCount();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public long getCountAtTotalPeakUsage() {
-        return total.getCountAtPeakUsage();
+    public long getPeakMallocMemory(NmtCategory category) {
+        return getMallocInfo(category).getPeakUsed();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getCountAtPeakMallocMemory(NmtCategory category) {
+        return getMallocInfo(category).getCountAtPeakUsage();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getTotalMallocCount() {
+        return mallocTotal.getCount();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getTotalMallocMemory() {
+        return mallocTotal.getUsed();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getPeakTotalMallocMemory() {
+        return mallocTotal.getPeakUsed();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getCountAtPeakTotalMallocMemory() {
+        return mallocTotal.getCountAtPeakUsage();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getReservedVirtualMemory(NmtCategory category) {
+        return NativeMemoryTracking.singleton().getVirtualInfo(category).getReservedSize();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getCommittedVirtualMemory(NmtCategory category) {
+        return getVirtualInfo(category).getCommittedSize();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getPeakReservedVirtualMemory(NmtCategory category) {
+        return getVirtualInfo(category).getPeakReservedSize();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getPeakCommittedVirtualMemory(NmtCategory category) {
+        return getVirtualInfo(category).getPeakCommittedSize();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getTotalReservedVirtualMemory() {
+        return virtualTotal.getReservedSize();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getTotalCommittedVirtualMemory() {
+        return virtualTotal.getCommittedSize();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getPeakTotalReservedVirtualMemory() {
+        return virtualTotal.getPeakReservedSize();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public long getPeakTotalCommittedVirtualMemory() {
+        return virtualTotal.getPeakCommittedSize();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private NmtMallocMemoryInfo getMallocInfo(int category) {
+        assert category < mallocCategories.length;
+        return mallocCategories[category];
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private NmtMallocMemoryInfo getInfo(NmtCategory category) {
-        return getInfo(category.ordinal());
+    private NmtMallocMemoryInfo getMallocInfo(NmtCategory category) {
+        return getMallocInfo(category.ordinal());
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private NmtVirtualMemoryInfo getVirtualInfo(NmtCategory category) {
+        return getVirtualInfo(category.ordinal());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private NmtMallocMemoryInfo getInfo(int category) {
-        assert category < categories.length;
-        return categories[category];
+    private NmtVirtualMemoryInfo getVirtualInfo(int category) {
+        assert category < virtualCategories.length;
+        return virtualCategories[category];
     }
 
     public static RuntimeSupport.Hook shutdownHook() {
-        return isFirstIsolate -> NativeMemoryTracking.singleton().printStatistics();
+        return isFirstIsolate -> {
+            NativeMemoryTracking.singleton().printStatistics();
+        };
+    }
+
+    public static RuntimeSupport.Hook startupHook() {
+        return isFirstIsolate -> {
+            // Gather information about Image Heap virtual memory usage.
+            long size = Heap.getHeap().getImageHeapSize();
+            NativeMemoryTracking.singleton().trackReserve(size, NmtCategory.ImageHeap);
+            NativeMemoryTracking.singleton().trackCommit(size, NmtCategory.ImageHeap);
+        };
     }
 
     private void printStatistics() {
         if (VMInspectionOptions.PrintNMTStatistics.getValue()) {
-            System.out.println();
-            System.out.println("Native memory tracking");
-            System.out.println("  Peak total used memory: " + getPeakTotalUsedMemory() + " bytes");
-            System.out.println("  Total alive allocations at peak usage: " + getCountAtTotalPeakUsage());
-            System.out.println("  Total used memory: " + getTotalUsedMemory() + " bytes");
-            System.out.println("  Total alive allocations: " + getTotalCount());
-
-            for (int i = 0; i < NmtCategory.values().length; i++) {
-                String name = NmtCategory.values()[i].getName();
-                NmtMallocMemoryInfo info = getInfo(i);
-
-                System.out.println("  " + name + " peak used memory: " + info.getPeakUsed() + " bytes");
-                System.out.println("  " + name + " alive allocations at peak: " + info.getCountAtPeakUsage());
-                System.out.println("  " + name + " currently used memory: " + info.getUsed() + " bytes");
-                System.out.println("  " + name + " currently alive allocations: " + info.getCount());
-            }
+            System.out.println(generateReportString());
         }
+    }
+
+    public String generateReportString() {
+
+        StringBuilder stringBuilder = new StringBuilder(3000);
+
+        stringBuilder.append("\n");
+        stringBuilder.append("Native memory tracking").append("\n\n");
+
+        stringBuilder.append("Total").append("\n");
+        long reservedTotal = (getTotalReservedVirtualMemory() + getTotalMallocMemory()) / KB;
+        long committedTotal = (getTotalCommittedVirtualMemory() + getTotalMallocMemory()) / KB;
+        stringBuilder.append("\t").append("(reserved=").append(reservedTotal).append("KB, committed=").append(committedTotal).append("KB)").append("\n");
+        stringBuilder.append("\t").append("(malloc=").append(getTotalMallocMemory() / KB).append("KB, count=").append(getTotalMallocCount()).append(")").append("\n");
+        stringBuilder.append("\t").append("(peak malloc=").append(getPeakTotalMallocMemory() / KB).append("KB, count at peak=").append(getCountAtPeakTotalMallocMemory()).append(")").append("\n");
+        stringBuilder.append("\t").append("(mmap: reserved=").append(getTotalReservedVirtualMemory() / KB).append("KB, committed=").append(getTotalCommittedVirtualMemory() / KB).append("KB)")
+                        .append("\n");
+        stringBuilder.append("\t").append("(mmap: peak reserved=").append(getPeakTotalReservedVirtualMemory() / KB).append("KB, peak committed=").append(getPeakTotalCommittedVirtualMemory() / KB)
+                        .append("KB)").append("\n");
+
+        for (int i = 0; i < NmtCategory.values().length; i++) {
+            NmtCategory category = NmtCategory.values()[i];
+            stringBuilder.append(category.getName()).append("\n");
+            long reserved = (getReservedVirtualMemory(category) + getMallocMemory(category)) / KB;
+            long committed = (getCommittedVirtualMemory(category) + getMallocMemory(category)) / KB;
+            stringBuilder.append("\t").append("(reserved=").append(reserved).append("KB, committed=").append(committed).append("KB)").append("\n");
+            stringBuilder.append("\t").append("(malloc=").append(getMallocMemory(category) / KB).append("KB, count=").append(getMallocCount(category)).append(")").append("\n");
+            stringBuilder.append("\t").append("(peak malloc=").append(getPeakMallocMemory(category) / KB).append("KB, count at peak=").append(getCountAtPeakMallocMemory(category)).append(")")
+                            .append("\n");
+            stringBuilder.append("\t").append("(mmap: reserved=").append(getReservedVirtualMemory(category) / KB).append("KB, committed=").append(getCommittedVirtualMemory(category) / KB)
+                            .append("KB)").append("\n");
+            stringBuilder.append("\t").append("(mmap: peak reserved=").append(getPeakReservedVirtualMemory(category) / KB).append("KB, peak committed=")
+                            .append(getPeakCommittedVirtualMemory(category) / KB).append("KB)").append("\n");
+        }
+        return stringBuilder.toString();
     }
 }

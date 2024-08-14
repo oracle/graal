@@ -115,6 +115,8 @@ public final class HeapImpl extends Heap {
     /** Total number of times when threads waiting for a pending reference list were interrupted. */
     private volatile long refListWaiterWakeUpCounter;
 
+    private volatile long imageHeapSize = -1;
+
     /** Head of the linked list of object pins. */
     private final AtomicReference<PinnedObjectImpl> pinHead = new AtomicReference<>();
 
@@ -473,6 +475,36 @@ public final class HeapImpl extends Heap {
             }
         }
         return !AuxiliaryImageHeap.isPresent() || AuxiliaryImageHeap.singleton().walkObjects(visitor);
+    }
+
+    @Override
+    public long getImageHeapSize() {
+        ImageHeapSizeVisitor visitor = new ImageHeapSizeVisitor();
+        if (imageHeapSize == -1) {
+            for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
+                ImageHeapWalker.walkRegions(info, visitor);
+            }
+            imageHeapSize = visitor.size;
+        }
+        return imageHeapSize;
+    }
+
+    private static class ImageHeapSizeVisitor implements MemoryWalker.ImageHeapRegionVisitor, ObjectVisitor {
+        long size;
+
+        @Override
+        public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
+            if (!access.isWritable(region) && !access.consistsOfHugeObjects(region)) {
+                size += access.getSize(region).rawValue();
+            }
+            return true;
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Allocation is fine: this method traverses only the image heap.")
+        public boolean visitObject(Object o) {
+            return true;
+        }
     }
 
     @Override

@@ -96,6 +96,8 @@ public abstract class Heap {
      */
     public abstract boolean walkImageHeapObjects(ObjectVisitor visitor);
 
+    public abstract long getImageHeapSize();
+
     /**
      * Walk all heap objects except the native image heap objects. Must only be executed as part of
      * a VM operation that causes a safepoint.

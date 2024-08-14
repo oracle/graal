@@ -124,20 +124,25 @@ public class EveryChunkNativePeriodicEvents extends Event {
     private static void emitNmtPeakEvents() {
         NativeMemoryUsageTotalPeakEvent nmtTotalPeakEvent = new NativeMemoryUsageTotalPeakEvent();
 
-        long totalPeakUsed = NativeMemoryTracking.singleton().getPeakTotalUsedMemory();
-        nmtTotalPeakEvent.peakCommitted = totalPeakUsed;
-        nmtTotalPeakEvent.peakReserved = totalPeakUsed;
-        nmtTotalPeakEvent.countAtPeak = NativeMemoryTracking.singleton().getCountAtTotalPeakUsage();
+        long totalPeakMalloc = NativeMemoryTracking.singleton().getPeakTotalMallocMemory();
+        long totalPeakCommitted = NativeMemoryTracking.singleton().getPeakTotalCommittedVirtualMemory();
+        long totalPeakReserved = NativeMemoryTracking.singleton().getPeakTotalReservedVirtualMemory();
+
+        nmtTotalPeakEvent.peakCommitted = totalPeakCommitted + totalPeakMalloc;
+        nmtTotalPeakEvent.peakReserved = totalPeakReserved + totalPeakMalloc;
+        nmtTotalPeakEvent.countAtPeak = NativeMemoryTracking.singleton().getCountAtPeakTotalMallocMemory();
         nmtTotalPeakEvent.commit();
 
         for (NmtCategory nmtCategory : NmtCategory.values()) {
             NativeMemoryUsagePeakEvent nmtPeakEvent = new NativeMemoryUsagePeakEvent();
             nmtPeakEvent.type = nmtCategory.getName();
 
-            long peakUsed = NativeMemoryTracking.singleton().getPeakUsedMemory(nmtCategory);
-            nmtPeakEvent.peakCommitted = peakUsed;
-            nmtPeakEvent.peakReserved = peakUsed;
-            nmtPeakEvent.countAtPeak = NativeMemoryTracking.singleton().getCountAtPeakUsage(nmtCategory);
+            long peakMalloc = NativeMemoryTracking.singleton().getPeakMallocMemory(nmtCategory);
+            long peakCommitted = NativeMemoryTracking.singleton().getPeakCommittedVirtualMemory(nmtCategory);
+            long peakReserved = NativeMemoryTracking.singleton().getPeakReservedVirtualMemory(nmtCategory);
+            nmtPeakEvent.peakCommitted = peakCommitted + peakMalloc;
+            nmtPeakEvent.peakReserved = peakReserved + peakMalloc;
+            nmtPeakEvent.countAtPeak = NativeMemoryTracking.singleton().getCountAtPeakMallocMemory(nmtCategory);
             nmtPeakEvent.commit();
         }
     }
@@ -150,24 +155,27 @@ public class EveryChunkNativePeriodicEvents extends Event {
 
         if (JfrEvent.NativeMemoryUsage.shouldEmit()) {
             for (NmtCategory nmtCategory : nmtCategories) {
-                long usedMemory = NativeMemoryTracking.singleton().getUsedMemory(nmtCategory);
+                long mallocMemory = NativeMemoryTracking.singleton().getMallocMemory(nmtCategory);
+                long committedVM = NativeMemoryTracking.singleton().getCommittedVirtualMemory(nmtCategory);
+                long reservedVM = NativeMemoryTracking.singleton().getReservedVirtualMemory(nmtCategory);
 
                 JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.NativeMemoryUsage);
                 JfrNativeEventWriter.putLong(data, timestamp);
                 JfrNativeEventWriter.putLong(data, nmtCategory.ordinal());
-                JfrNativeEventWriter.putLong(data, usedMemory); // reserved
-                JfrNativeEventWriter.putLong(data, usedMemory); // committed
+                JfrNativeEventWriter.putLong(data, mallocMemory + reservedVM);
+                JfrNativeEventWriter.putLong(data, mallocMemory + committedVM);
                 JfrNativeEventWriter.endSmallEvent(data);
             }
         }
 
         if (JfrEvent.NativeMemoryUsageTotal.shouldEmit()) {
-            long totalUsedMemory = NativeMemoryTracking.singleton().getTotalUsedMemory();
-
+            long totalMallocMemory = NativeMemoryTracking.singleton().getTotalMallocMemory();
+            long totalCommittedVM = NativeMemoryTracking.singleton().getTotalCommittedVirtualMemory();
+            long totalReservedVM = NativeMemoryTracking.singleton().getTotalReservedVirtualMemory();
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.NativeMemoryUsageTotal);
             JfrNativeEventWriter.putLong(data, timestamp);
-            JfrNativeEventWriter.putLong(data, totalUsedMemory); // reserved
-            JfrNativeEventWriter.putLong(data, totalUsedMemory); // committed
+            JfrNativeEventWriter.putLong(data, totalMallocMemory + totalReservedVM);
+            JfrNativeEventWriter.putLong(data, totalMallocMemory + totalCommittedVM);
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }
