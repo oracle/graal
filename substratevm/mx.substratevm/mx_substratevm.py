@@ -2258,6 +2258,15 @@ def reimport_libcontainer_files(args):
     parser.add_argument("--jdk-repo", required=True, help="Path to the OpenJDK repo to import the files from.")
     parsed_args = parser.parse_args(args)
 
+    mx.log(mx.colorize(f"Before reimporting libsvm_container code, the C++ namespace should be removed (`mx {LIBCONTAINER_NAMESPACE} remove).", color="cyan"))
+    # We use mx.ask_question instead of mx.ask_yes_no to avoid being affected by the `-y` flag.
+    if mx.ask_question(f"Do you want to remove libsvm_container namespaces now", '[yn]', None).startswith('y'):
+        mx.command_function(LIBCONTAINER_NAMESPACE)(["remove"])
+        mx.log(mx.colorize("After removing C++ namespace, the result should be committed so that the diff after reimporting is minimal.", color="cyan"))
+        if not mx.ask_question(f"Do you want to continue with the reimport", '[yn]', None).startswith('y'):
+            mx.log("Aborting")
+            return
+
     libcontainer_dir, paths = _get_libcontainer_files(skip_svm_specific=True)
 
     libcontainer_path = pathlib.Path(libcontainer_dir)
@@ -2276,6 +2285,8 @@ def reimport_libcontainer_files(args):
             mx.warn(f"File not found: {jdk_file}")
             if mx.ask_yes_no(f"Should I delete {path}"):
                 svm_file.unlink()
+
+    mx.log(mx.colorize(f"After reviewing all the changes, reapply the C++ namespace (`mx {LIBCONTAINER_NAMESPACE} add).", color="cyan"))
 
 
 LIBCONTAINER_NAMESPACE = "svm_libcontainer_namespace"
