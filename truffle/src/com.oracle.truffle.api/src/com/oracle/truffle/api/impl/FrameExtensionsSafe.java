@@ -42,6 +42,7 @@ package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameExtensions;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 final class FrameExtensionsSafe extends FrameExtensions {
@@ -94,7 +95,11 @@ final class FrameExtensionsSafe extends FrameExtensions {
 
     @Override
     public Object uncheckedGetObject(Frame frame, int slot) {
-        return frame.getObject(slot);
+        try {
+            return frame.getObject(slot);
+        } catch (FrameSlotTypeException e) {
+            return frame.getValue(slot);
+        }
     }
 
     @Override

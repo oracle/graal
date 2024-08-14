@@ -72,7 +72,7 @@ final class BytecodeDSLUncheckedAccess extends BytecodeDSLAccess {
 
     @Override
     public FrameExtensions getFrameExtensions() {
-        return BytecodeAccessor.RUNTIME.getFrameExtensionsSafe();
+        return BytecodeAccessor.RUNTIME.getFrameExtensionsUnsafe();
     }
 
     @Override
