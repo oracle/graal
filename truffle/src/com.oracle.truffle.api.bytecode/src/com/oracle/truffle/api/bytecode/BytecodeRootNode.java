@@ -51,8 +51,8 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
  * bytecode root node should extend {@link com.oracle.truffle.api.nodes.RootNode} and be annotated
  * with {@link GenerateBytecode @GenerateBytecode}.
  * <p>
- * The current bytecode root node can be bound using
- * <code>@Bind("$root") MyBytecodeRootNode root</code> from {@link Operation operations}.
+ * The current bytecode root node can be bound using <code>@Bind MyBytecodeRootNode root</code> from
+ * {@link Operation operations}.
  *
  * @see GenerateBytecode
  * @since 24.2

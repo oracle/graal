@@ -11207,6 +11207,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.declaration(this.asType(), "newNode", "getRoot().ensureSources()");
             b.statement("info = newNode.sourceInfo");
             b.statement("localSources = newNode.sources");
+            b.statement("assert info != null");
+            b.statement("assert localSources != null");
             b.end();
         }
 

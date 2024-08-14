@@ -65,14 +65,28 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Represents the bytecode for an interpreter. The bytecode can change over time; this class
- * encapsulates the current state.
+ * Represents the current bytecode for bytecode DSL root node. The bytecode node may be replaced
+ * over time with newer versions, but do only limited internal mutation. Whenever the
+ * {@link BytecodeConfig bytecode configuration} or the {@link BytecodeTier tier} changes a new
+ * {@link BytecodeNode} is created and automatically replaced.
  * <p>
- * Since an interpreter's bytecode can change over time, a bytecode index (bound using
- * <code>@Bind("$bytecodeIndex")</code>) is only meaningful when accompanied by a
- * {@link BytecodeNode}. The current bytecode node can be bound using
- * <code>@Bind BytecodeNode bytecode</code> with {@link Operation operations}.
+ * The {@link #getTier() tier} of a bytecode node initially always starts out as
+ * {@link BytecodeTier#UNCACHED}. This means that no cached nodes were created yet. It takes number
+ * {@link #setUncachedThreshold(int) uncached threshold} calls and back-edges for the node to
+ * transition to the cached tier. BY default the uncached threshold is 16 if the
+ * {@link GenerateBytecode#enableUncachedInterpreter() uncached generation} is enabled, and 0 if
+ * not. The intention of the uncached bytecode tier is to reduce footprint overhead for root nodes
+ * that are only executed infrequently.
+ * <p>
+ * Since the the number of bytecodes may change between bytecode nodes of a root node, a
+ * bytecodeIndex returned by the the DSL is only valid for a single bytecode node, it is therefore
+ * recommended to use {@link BytecodeLocation} for longer term storage.
+ * <p>
+ * The current bytecode node can be bound using <code>@Bind BytecodeNode bytecode</code> from
+ * {@link Operation operations}. This class is not intended to be subclasses by clients, only by DSL
+ * generated code.
  *
+ * @see BytecodeLocation
  * @since 24.2
  */
 @DefaultExpression("$bytecodeNode")
