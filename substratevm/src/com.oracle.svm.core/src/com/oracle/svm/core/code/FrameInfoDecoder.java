@@ -541,8 +541,8 @@ public class FrameInfoDecoder {
         return (encodedBci & ENCODED_BCI_DURING_CALL_MASK) != 0;
     }
 
-    protected static boolean decodeRethrowException(long encodedBci) {
-        assert encodedBci >= 0 && encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER;
+    public static boolean decodeRethrowException(long encodedBci) {
+        assert encodedBci >= 0 && encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER : encodedBci;
         return (encodedBci & ENCODED_BCI_RETHROW_EXCEPTION_MASK) != 0;
     }
 
