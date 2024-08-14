@@ -429,6 +429,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         this.add(createGetBytecodeRootNode());
 
         this.add(createGetRootNodes());
+        this.addOptional(createCountTowardsStackTraceLimit());
         this.add(createGetSourceSection());
         CodeExecutableElement translateStackTraceElement = this.addOptional(createTranslateStackTraceElement());
         if (translateStackTraceElement != null) {
@@ -895,6 +896,27 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.end();
         b.end();
 
+        return ex;
+    }
+
+    private CodeExecutableElement createCountTowardsStackTraceLimit() {
+        if (ElementUtils.findInstanceMethod(model.templateType, "countsTowardsStackTraceLimit") != null) {
+            return null;
+        }
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "countsTowardsStackTraceLimit");
+        if (ex.getModifiers().contains(Modifier.FINAL)) {
+            // already overridden by the root node.
+            return null;
+        }
+
+        ex.getModifiers().remove(Modifier.ABSTRACT);
+        ex.getModifiers().add(Modifier.FINAL);
+        CodeTreeBuilder b = ex.createBuilder();
+        /*
+         * We do override with false by default to avoid materialization of sources during stack
+         * walking.
+         */
+        b.returnTrue();
         return ex;
     }
 
@@ -8248,7 +8270,25 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createSetNodes() {
-            return GeneratorUtils.createSetter(Set.of(), new CodeVariableElement(arrayOf(BytecodeRootNodeElement.this.asType()), "nodes"));
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "setNodes");
+            ex.addParameter(new CodeVariableElement(arrayOf(BytecodeRootNodeElement.this.asType()), "nodes"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("this.nodes != null").end().startBlock();
+            b.startThrow().startNew(type(AssertionError.class)).end().end();
+            b.end();
+
+            b.statement("this.nodes = nodes");
+            b.startFor().type(BytecodeRootNodeElement.this.asType()).string(" node : nodes").end().startBlock();
+            b.startIf().string("node.getRootNodes() != this").end().startBlock();
+            b.startThrow().startNew(type(AssertionError.class)).end().end();
+            b.end();
+            b.startIf().string("node != nodes[node.buildIndex]").end().startBlock();
+            b.startThrow().startNew(type(AssertionError.class)).end().end();
+            b.end();
+            b.end();
+
+            return ex;
         }
 
         private CodeExecutableElement createGetParserImpl() {
