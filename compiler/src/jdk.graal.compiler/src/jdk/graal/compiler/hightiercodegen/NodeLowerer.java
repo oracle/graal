@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.hightiercodegen;
 
-import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.GraalGraphError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.hightiercodegen.variables.ResolvedVar;
@@ -351,7 +351,7 @@ public abstract class NodeLowerer {
      * ignored.
      */
     protected void handleUnknownNodeType(Node node) {
-        throw GraalError.unimplemented("Could not lower node: " + node);
+        throw new GraalGraphError("No lowerings found for node: %s", node).addContext(node);
     }
 
     protected abstract void lower(BlackholeNode node);
