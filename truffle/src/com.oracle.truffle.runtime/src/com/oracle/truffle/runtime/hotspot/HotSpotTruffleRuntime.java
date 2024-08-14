@@ -113,12 +113,6 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         }
     }
 
-    private static final Boolean TRACE_TRANSFER_TO_INTERPRETER;
-    static {
-        String property = System.getProperty("polyglot.engine.TraceTransferToInterpreter");
-        TRACE_TRANSFER_TO_INTERPRETER = property != null && property.equals("true");
-    }
-
     private static Unsafe getUnsafe() {
         try {
             return Unsafe.getUnsafe();
