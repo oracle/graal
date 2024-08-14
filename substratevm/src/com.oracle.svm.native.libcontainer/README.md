@@ -49,17 +49,22 @@ To help keeping the `@BasedOnJDKFile` annotations up to date, the
 `mx gate --tags check_libcontainer_annotations` command ensures that the actual files and
 annotations are in sync.
 
-To do a full reimport, first remove the C++-namespace from the source code using the
-[`removeNamespace.py`](./scripts/removeNamespace.py)-script, in order to minimize the diff to the files
-from the OpenJDK. Execute it like `python ./scripts/removeNamespace.py -n svm_container -d ./src`.
-Then commit these changes, otherwise the namespace will still show in the diff later.
-Then replace the files in [`src/hotspot`](./src/hotspot) with those from the OpenJDK.
-The `mx reimport-libcontainer-files --jdk-repo path/to/jdk` can help with that. Then reapply all the
-changes (`#ifdef` guards) using the diff tool of your choice. Then, adopt the files in
-[`src/svm`](./src/svm) to provide new functionality, if needed. Then, update the `@BasedOnJDKFile`
-annotations in `ContainerLibrary.java` to reflect the import revision.
-Finally, add the C++-namespace back to the source code using the [`addNamespace.py`](./scripts/addNamespace.py)
-script. Execute it like `python ./scripts/addNamespace.py -n svm_container -d ./src`.
+### Full Reimport
+
+* Remove the C++-namespace from the source code using the
+`mx svm_libcontainer_namespace remove` command, in order to minimize the diff to the files from the OpenJDK.
+It is recommended to commit the changes, otherwise the namespace will still show in the diff later.
+
+* Replace the files in [`src/hotspot`](./src/hotspot) with those from the OpenJDK.
+The `mx reimport-libcontainer-files --jdk-repo path/to/jdk` command can help with that
+and will also offer to run `mx svm_libcontainer_namespace remove`.
+
+* Reapply all the changes (`#ifdef` guards) using the diff tool of your choice.
+Also adopt the files in [`src/svm`](./src/svm) to provide new functionality, if needed.
+
+* Update the `@BasedOnJDKFile` annotations in `ContainerLibrary.java` to reflect the import revision.
+
+* Reapply the C++-namespaces using the `mx svm_libcontainer_namespace add` command.
 
 ## Local Testing
 

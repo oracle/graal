@@ -28,6 +28,7 @@ import pathlib
 import re
 import shutil
 import tempfile
+import textwrap
 from glob import glob
 from contextlib import contextmanager
 from itertools import islice
@@ -48,6 +49,7 @@ import mx_javamodules
 import mx_subst
 import mx_util
 import mx_substratevm_benchmark  # pylint: disable=unused-import
+import mx_substratevm_namespace  # pylint: disable=unused-import
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
 from mx_sdk_vm_impl import svm_experimental_options
@@ -206,7 +208,8 @@ GraalTags = Tags([
     'hellomodule',
     'condconfig',
     'truffle_unittests',
-    'check_libcontainer_annotations'
+    'check_libcontainer_annotations',
+    'check_libcontainer_namespace',
 ])
 
 def vm_native_image_path(config=None):
@@ -453,6 +456,24 @@ def svm_gate_body(args, tasks):
     with Task('Check ContainerLibrary annotations', tasks, tags=[GraalTags.check_libcontainer_annotations]) as t:
         if t:
             mx.command_function("check-libcontainer-annotations")([])
+    with Task('Check libsvm_container namespace', tasks, tags=[GraalTags.check_libcontainer_namespace]) as t:
+        if t:
+            # verify that removing and reapplying the libcontainer namespaces does not lead to a diff
+            mx.command_function(LIBCONTAINER_NAMESPACE)(["remove"])
+            mx.command_function(LIBCONTAINER_NAMESPACE)(["add"])
+            git_output = suite.vc.git_command(suite.vc_dir, ["status", "--untracked-files=no", "--porcelain"])
+            if git_output != "":
+                mx.log_error(f"mx {LIBCONTAINER_NAMESPACE} remove/add modified files:")
+                mx.log_error(mx.colorize(git_output, color="magenta", bright=True, stream=sys.stderr))
+                mx.abort(textwrap.dedent(f"""
+                    This means a change broke the automated libsvm_container namespace handling.
+                    Be sure that this is intentional.
+
+                    You can resolve this by
+                      * reverting the change that causes the diff
+                      * adopting mx {LIBCONTAINER_NAMESPACE} to handle the new case
+                      * disable this gate if there is a good reason for it
+                    """))
 
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
@@ -2257,6 +2278,15 @@ def reimport_libcontainer_files(args):
     parser.add_argument("--jdk-repo", required=True, help="Path to the OpenJDK repo to import the files from.")
     parsed_args = parser.parse_args(args)
 
+    mx.log(mx.colorize(f"Before reimporting libsvm_container code, the C++ namespace should be removed (`mx {LIBCONTAINER_NAMESPACE} remove).", color="cyan"))
+    # We use mx.ask_question instead of mx.ask_yes_no to avoid being affected by the `-y` flag.
+    if mx.ask_question(f"Do you want to remove libsvm_container namespaces now", '[yn]', None).startswith('y'):
+        mx.command_function(LIBCONTAINER_NAMESPACE)(["remove"])
+        mx.log(mx.colorize("After removing C++ namespace, the result should be committed so that the diff after reimporting is minimal.", color="cyan"))
+        if not mx.ask_question(f"Do you want to continue with the reimport", '[yn]', None).startswith('y'):
+            mx.log("Aborting")
+            return
+
     libcontainer_dir, paths = _get_libcontainer_files(skip_svm_specific=True)
 
     libcontainer_path = pathlib.Path(libcontainer_dir)
@@ -2275,3 +2305,15 @@ def reimport_libcontainer_files(args):
             mx.warn(f"File not found: {jdk_file}")
             if mx.ask_yes_no(f"Should I delete {path}"):
                 svm_file.unlink()
+
+    mx.log(mx.colorize(f"After reviewing all the changes, reapply the C++ namespace (`mx {LIBCONTAINER_NAMESPACE} add).", color="cyan"))
+
+
+LIBCONTAINER_NAMESPACE = "svm_libcontainer_namespace"
+
+
+@mx.command(suite, LIBCONTAINER_NAMESPACE)
+def svm_libcontainer_namespace(args):
+    libcontainer_project = mx.project("com.oracle.svm.native.libcontainer")
+    for src_dir in  libcontainer_project.source_dirs():
+        mx.command_function("svm_namespace")(args + ["--directory", src_dir , "--namespace", "svm_container"])
