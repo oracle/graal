@@ -588,6 +588,10 @@ public class TruffleGraphBuilderPlugins {
         registerFrameAccessors(r, types, JavaKind.Float);
         registerFrameAccessors(r, types, JavaKind.Boolean);
         registerFrameAccessors(r, types, JavaKind.Byte);
+
+        int accessTag = types.FrameSlotKind_javaKindToTagIndex.get(JavaKind.Object);
+        registerGet(r, JavaKind.Object, accessTag, "unsafeUncheckedGet", JavaKind.Object.name());
+
         registerOSRFrameTransferMethods(r);
 
         registerFrameTagAccessor(r);
@@ -616,20 +620,11 @@ public class TruffleGraphBuilderPlugins {
         int accessTag = types.FrameSlotKind_javaKindToTagIndex.get(accessKind);
         String nameSuffix = accessKind.name();
         boolean isPrimitiveAccess = accessKind.isPrimitive();
-        String[] indexedGetPrefixes = new String[]{"get", "unsafeGet", "expect", "unsafeExpect", "unsafeUncheckedGet"};
+        String[] indexedGetPrefixes = new String[]{"get", "unsafeGet", "expect", "unsafeExpect"};
         for (String prefix : indexedGetPrefixes) {
-            r.register(new RequiredInvocationPlugin(prefix + nameSuffix, Receiver.class, int.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
-                    int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(frameNode, frameSlotNode);
-                    if (frameSlotIndex >= 0) {
-                        b.addPush(accessKind, new VirtualFrameGetNode(frameNode, frameSlotIndex, accessKind, accessTag, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.NON_STATIC));
-                        return true;
-                    }
-                    return false;
-                }
-            });
+            registerGet(r, accessKind, accessTag, prefix, nameSuffix);
         }
+
         r.register(new RequiredInvocationPlugin("get" + nameSuffix + "Static", Receiver.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
@@ -675,6 +670,20 @@ public class TruffleGraphBuilderPlugins {
                 int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(frameNode, frameSlotNode);
                 if (frameSlotIndex >= 0) {
                     b.addPush(JavaKind.Boolean, new VirtualFrameIsNode(frameNode, frameSlotIndex, accessTag, VirtualFrameAccessType.Indexed));
+                    return true;
+                }
+                return false;
+            }
+        });
+    }
+
+    private static void registerGet(Registration r, JavaKind accessKind, int accessTag, String prefix, String nameSuffix) {
+        r.register(new RequiredInvocationPlugin(prefix + nameSuffix, Receiver.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
+                int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(frameNode, frameSlotNode);
+                if (frameSlotIndex >= 0) {
+                    b.addPush(accessKind, new VirtualFrameGetNode(frameNode, frameSlotIndex, accessKind, accessTag, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.NON_STATIC));
                     return true;
                 }
                 return false;
