@@ -28,6 +28,7 @@ import pathlib
 import re
 import shutil
 import tempfile
+import textwrap
 from glob import glob
 from contextlib import contextmanager
 from itertools import islice
@@ -207,7 +208,8 @@ GraalTags = Tags([
     'hellomodule',
     'condconfig',
     'truffle_unittests',
-    'check_libcontainer_annotations'
+    'check_libcontainer_annotations',
+    'check_libcontainer_namespace',
 ])
 
 def vm_native_image_path(config=None):
@@ -454,6 +456,24 @@ def svm_gate_body(args, tasks):
     with Task('Check ContainerLibrary annotations', tasks, tags=[GraalTags.check_libcontainer_annotations]) as t:
         if t:
             mx.command_function("check-libcontainer-annotations")([])
+    with Task('Check libsvm_container namespace', tasks, tags=[GraalTags.check_libcontainer_namespace]) as t:
+        if t:
+            # verify that removing and reapplying the libcontainer namespaces does not lead to a diff
+            mx.command_function(LIBCONTAINER_NAMESPACE)(["remove"])
+            mx.command_function(LIBCONTAINER_NAMESPACE)(["add"])
+            git_output = suite.vc.git_command(suite.vc_dir, ["status", "--untracked-files=no", "--porcelain"])
+            if git_output != "":
+                mx.log_error(f"mx {LIBCONTAINER_NAMESPACE} remove/add modified files:")
+                mx.log_error(mx.colorize(git_output, color="magenta", bright=True, stream=sys.stderr))
+                mx.abort(textwrap.dedent(f"""
+                    This means a change broke the automated libsvm_container namespace handling.
+                    Be sure that this is intentional.
+
+                    You can resolve this by
+                      * reverting the change that causes the diff
+                      * adopting mx {LIBCONTAINER_NAMESPACE} to handle the new case
+                      * disable this gate if there is a good reason for it
+                    """))
 
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
