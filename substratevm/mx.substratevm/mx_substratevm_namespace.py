@@ -23,12 +23,6 @@
 # questions.
 #
 
-# Adds a C++-namespace to the source files.
-# If no command line arguments are passed, the namespace is added to all files.
-# It is possible to pass filepaths as command line arguments. Then the namespace is only added to the
-# specified files.
-
-
 import mx
 import os
 import re
@@ -48,23 +42,34 @@ ignore_includes = {"CPU_HEADER(copy)", "OS_HEADER(osThread)"}
 
 files_with_cpp_guard = {"sharedGCStructs.hpp"}
 
-SVM_ADD_NAMESPACE = "svm_add_namespace"
+SVM_NAMESPACE = "svm_namespace"
 
 
-@mx.command(suite, SVM_ADD_NAMESPACE)
-def svm_add_namespace(orig_args):
+@mx.command(suite, SVM_NAMESPACE)
+def svm_namespace(args):
 
-    parser = argparse.ArgumentParser(SVM_ADD_NAMESPACE)
+    parser = argparse.ArgumentParser(SVM_NAMESPACE)
+
+    parser.add_argument("command", choices=["add", "remove"], metavar="add/remove",
+                        help="Command whether to add or remove the namespace.")
 
     pathGroup = parser.add_mutually_exclusive_group(required=True)
-    pathGroup.add_argument("-d", "--directory", type=str, help="Path to the src-directory for adding the namespace.")
-    pathGroup.add_argument("-f", "--files", type=str, nargs="+", help="Path to the files for adding the namespace.")
+    pathGroup.add_argument("-d", "--directory", type=str, help="Path to the src-directory for modifying the namespace.")
+    pathGroup.add_argument("-f", "--files", type=str, nargs="+", help="Path to the files for modifying the namespace.")
 
     parser.add_argument("-n", "--namespace", required=True, type=str,
-                        help="The namespace that gets added to the files.")
+                        help="The namespace that gets added or removed to the files.")
 
-    args = parser.parse_args(orig_args)
+    parsed_args = parser.parse_args(args)
 
+    if parsed_args.command == "add":
+        svm_add_namespace(parsed_args)
+    elif parsed_args.command == "remove":
+        svm_remove_namespace(parsed_args)
+    else:
+        mx.abort(f"Unknown command: {parsed_args.command}")
+
+def svm_add_namespace(args):
     namespaceName = args.namespace
 
     if args.directory:
@@ -352,27 +357,7 @@ def is_valid_identifier_character(c):
     return c == '_' or ('a' <= c <= 'z') or ('A' <= c <= 'Z') or ('0' <= c <= '9')
 
 
-# Removes a C++-namespace from the source files.
-# If no command line arguments are passed, the namespace is removed from all files.
-# It is possible to pass filepaths as command line arguments. Then the namespace is only removed from the
-# specified files.
-
-SVM_REMOVE_NAMESPACE = "svm_remove_namespace"
-
-
-@mx.command(suite, SVM_REMOVE_NAMESPACE)
-def svm_remove_namespace(orig_args):
-    parser = argparse.ArgumentParser(SVM_REMOVE_NAMESPACE)
-
-    pathGroup = parser.add_mutually_exclusive_group(required=True)
-    pathGroup.add_argument("-d", "--directory", type=str, help="Path to the src-directory for removing the namespace.")
-    pathGroup.add_argument("-f", "--files", type=str, nargs="+", help="Path to the files for removing the namespace.")
-
-    parser.add_argument("-n", "--namespace", required=True, type=str,
-                        help="The namespace that gets removed from the files.")
-
-    args = parser.parse_args(orig_args)
-
+def svm_remove_namespace(args):
     namespaceName = args.namespace
 
     if args.directory:
