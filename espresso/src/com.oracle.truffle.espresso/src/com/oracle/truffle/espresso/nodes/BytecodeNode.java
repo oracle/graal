@@ -286,6 +286,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -1624,6 +1625,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         }
                     }
                     if (handler != null) {
+                        // If there is a lazy stack trace being collected
+                        // we need to materialize here since the handler is likely
+                        // on a different line than the exception point
+                        TruffleStackTrace.fillIn(wrappedException);
                         clearOperandStack(frame, top);
                         top = startingStackOffset(getMethodVersion().getMaxLocals());
                         checkNoForeignObjectAssumption(wrappedException.getGuestException());
