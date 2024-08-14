@@ -165,7 +165,7 @@ public final class Target_java_lang_ClassLoader {
     @Substitute //
     @SuppressWarnings({"unused"}) //
     private Class<?> findLoadedClass0(String name) {
-        return ClassForNameSupport.singleton().forNameOrNull(name, SubstrateUtil.cast(this, ClassLoader.class));
+        return ClassForNameSupport.forNameOrNull(name, SubstrateUtil.cast(this, ClassLoader.class));
     }
 
     /**

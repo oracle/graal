@@ -52,17 +52,19 @@ public interface RuntimeMetadataDecoder {
 
     ConstructorDescriptor[] parseReachableConstructors(DynamicHub declaringType, int index);
 
-    Class<?>[] parseClasses(int index);
+    Class<?>[] parseClasses(int index, DynamicHub declaringType);
+
+    Class<?>[] parseAllClasses();
 
     RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index);
 
-    Object[] parseObjects(int index);
+    Object[] parseObjects(int index, DynamicHub declaringType);
 
-    Parameter[] parseReflectParameters(Executable executable, byte[] encoding);
+    Parameter[] parseReflectParameters(Executable executable, byte[] encoding, DynamicHub declaringType);
 
-    Object[] parseEnclosingMethod(int index);
+    Object[] parseEnclosingMethod(int index, DynamicHub declaringType);
 
-    byte[] parseByteArray(int index);
+    byte[] parseByteArray(int index, DynamicHub declaringType);
 
     boolean isHiding(int modifiers);
 
@@ -153,12 +155,28 @@ public interface RuntimeMetadataDecoder {
             return ImageSingletons.lookup(MetadataAccessor.class);
         }
 
-        <T> T getObject(int index);
+        default <T> T getObject(int index) {
+            return getObject(index, 0);
+        }
 
-        Class<?> getClass(int index);
+        default Class<?> getClass(int index) {
+            return getClass(index, 0);
+        }
 
-        String getMemberName(int index);
+        default String getMemberName(int index) {
+            return getMemberName(index, 0);
+        }
 
-        String getOtherString(int index);
+        default String getOtherString(int index) {
+            return getOtherString(index, 0);
+        }
+
+        <T> T getObject(int index, int layerId);
+
+        Class<?> getClass(int index, int layerId);
+
+        String getMemberName(int index, int layerId);
+
+        String getOtherString(int index, int layerId);
     }
 }
