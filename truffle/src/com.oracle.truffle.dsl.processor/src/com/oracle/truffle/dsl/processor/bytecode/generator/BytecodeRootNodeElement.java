@@ -224,7 +224,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     private Map<TypeMirror, CodeExecutableElement> expectMethods = new HashMap<>();
 
-    public BytecodeRootNodeElement(BytecodeDSLModel model) {
+    BytecodeRootNodeElement(BytecodeDSLModel model) {
         super(Set.of(PUBLIC, FINAL), ElementKind.CLASS, ElementUtils.findPackageElement(model.getTemplateType()), model.getName());
         if (model.hasErrors()) {
             throw new IllegalArgumentException("Models with errors are not supported.");
@@ -2405,7 +2405,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.addAll(createSourceSectionUnavailableHelpers());
             this.add(createRegisterUnresolvedLabel());
             this.add(createResolveUnresolvedLabel());
-            this.add(createCreateBranchLabelMapping());
 
             for (OperationModel operation : model.getOperations()) {
                 if (omitBuilderMethods(operation)) {
@@ -3511,23 +3510,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.statement(writeInt("bc", "site", "impl.bci"));
             b.end(2);
-
-            return ex;
-        }
-
-        private CodeExecutableElement createCreateBranchLabelMapping() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), generic(HashMap.class, context.getDeclaredType(Integer.class), types.BytecodeLabel),
-                            "createBranchLabelMapping");
-            ex.addParameter(new CodeVariableElement(unresolvedLabelsType, "unresolvedLabels"));
-
-            CodeTreeBuilder b = ex.createBuilder();
-            b.statement("HashMap<Integer, BytecodeLabel> result = new HashMap<>()");
-            b.startFor().string("BytecodeLabel lbl : unresolvedLabels.keySet()").end().startBlock();
-            b.startFor().startGroup().type(context.getDeclaredType(Integer.class)).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
-            b.statement("assert !result.containsKey(site)");
-            b.statement("result.put(site, lbl)");
-            b.end(2);
-            b.startReturn().string("result").end();
 
             return ex;
         }
@@ -7640,7 +7622,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 this.add(createAddConstant());
                 this.add(createAllocateSlot());
-                this.add(createGetConstant());
                 this.add(createToArray());
             }
 
@@ -7677,16 +7658,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.declaration(type(short.class), "index", safeCastShort("constants.size()"));
                 b.statement("constants.add(null)");
                 b.startReturn().string("index").end();
-
-                return ex;
-            }
-
-            private CodeExecutableElement createGetConstant() {
-                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(Object.class),
-                                "getConstant");
-                ex.addParameter(new CodeVariableElement(type(int.class), "index"));
-                CodeTreeBuilder b = ex.createBuilder();
-                b.startReturn().string("constants.get(index)").end();
 
                 return ex;
             }
@@ -9409,7 +9380,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         }
 
-        final void lazyInit() {
+        void lazyInit() {
             this.add(createCreateWrapper());
             this.add(createFindProbe());
             this.add(createIsInstrumentable());

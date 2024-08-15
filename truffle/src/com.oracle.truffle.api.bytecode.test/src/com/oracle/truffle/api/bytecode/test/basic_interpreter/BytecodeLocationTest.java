@@ -43,6 +43,7 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -60,6 +61,30 @@ import com.oracle.truffle.api.source.SourceSection;
 
 @RunWith(Parameterized.class)
 public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
+    @Test
+    public void testGetBytecodeLocation() {
+        Source source = Source.newBuilder("test", "getBytecodeLocation", "baz").build();
+        BasicInterpreter root = parseNode("getBytecodeLocation", b -> {
+            // @formatter:off
+            // collectBcis
+            b.beginSource(source);
+            b.beginSourceSection(0, "getBytecodeLocation".length());
+            b.beginRoot(LANGUAGE);
+                b.beginReturn();
+                b.emitGetBytecodeLocation();
+                b.endReturn();
+            b.endRoot();
+            b.endSourceSection();
+            b.endSource();
+        });
+
+        BytecodeLocation location = (BytecodeLocation) root.getCallTarget().call();
+        SourceSection section = location.getSourceLocation();
+        assertSame(source, section.getSource());
+        assertEquals("getBytecodeLocation", section.getCharacters());
+    }
+
+
     @Test
     public void testStacktrace() {
         /**
@@ -360,7 +385,6 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             // baz
             BytecodeLocation bazLocation = locations.get(1);
             assertNotNull(bazLocation);
-            assertNotEquals(-1, bazLocation);
             SourceSection bazSourceSection = bazLocation.getSourceLocation();
             assertEquals(bazSource, bazSourceSection.getSource());
             if (continuationArgument) {

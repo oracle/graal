@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -105,7 +107,7 @@ public final class LocalSetter {
      * @since 24.2
      */
     public void setShort(BytecodeNode node, int bci, VirtualFrame frame, short value) {
-        node.setLocalValueLong(bci, frame, localOffset, value);
+        node.setLocalValueShort(bci, frame, localOffset, value);
     }
 
     /**
@@ -128,6 +130,15 @@ public final class LocalSetter {
      */
     public void setByte(BytecodeNode node, int bci, VirtualFrame frame, byte value) {
         node.setLocalValueByte(bci, frame, localOffset, value);
+    }
+
+    /**
+     * Stores a float into the local.
+     *
+     * @since 24.2
+     */
+    public void setFloat(BytecodeNode node, int bci, VirtualFrame frame, float value) {
+        node.setLocalValueFloat(bci, frame, localOffset, value);
     }
 
     /**
@@ -164,6 +175,16 @@ public final class LocalSetter {
             return CACHE[offset];
         }
         return new LocalSetter(offset);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof LocalSetter otherSetter && this.localOffset == otherSetter.localOffset;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(localOffset);
     }
 
 }

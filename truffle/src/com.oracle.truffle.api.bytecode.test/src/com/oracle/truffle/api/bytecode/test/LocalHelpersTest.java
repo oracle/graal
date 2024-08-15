@@ -44,6 +44,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static com.oracle.truffle.api.bytecode.test.BytecodeNodeWithLocalIntrospection.GetLocalTagged;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -57,6 +58,7 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -66,6 +68,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -79,10 +82,12 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 @RunWith(Parameterized.class)
 public class LocalHelpersTest {
@@ -148,6 +153,77 @@ public class LocalHelpersTest {
 
         assertEquals(42, root.getCallTarget().call(123, 0));
         assertEquals(123, root.getCallTarget().call(123, 1));
+    }
+
+    @Test
+    public void testGetLocalTagged() {
+        /* @formatter:off
+         *
+         * foo = true
+         * getLocalTagged(BOOLEAN, 0)
+         * foo = (byte) 2
+         * getLocalTagged(BYTE, 0)
+         * ...
+         * foo = "hello"
+         * return getLocalTagged(OBJECT, 0)
+         *
+         * @formatter:on
+         */
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot(null);
+
+            b.beginBlock();
+            BytecodeLocal foo = makeLocal(b, "foo");
+
+            b.beginStoreLocal(foo);
+            b.emitLoadConstant(true);
+            b.endStoreLocal();
+            b.emitGetLocalTagged(GetLocalTagged.BOOLEAN, 0);
+
+            b.beginStoreLocal(foo);
+            b.emitLoadConstant((byte) 2);
+            b.endStoreLocal();
+            b.emitGetLocalTagged(GetLocalTagged.BYTE, 0);
+
+            b.beginStoreLocal(foo);
+            b.emitLoadConstant((short) 42);
+            b.endStoreLocal();
+            b.emitGetLocalTagged(GetLocalTagged.SHORT, 0);
+
+            b.beginStoreLocal(foo);
+            b.emitLoadConstant(42);
+            b.endStoreLocal();
+            b.emitGetLocalTagged(GetLocalTagged.INT, 0);
+
+            b.beginStoreLocal(foo);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+            b.emitGetLocalTagged(GetLocalTagged.LONG, 0);
+
+            b.beginStoreLocal(foo);
+            b.emitLoadConstant(3.14f);
+            b.endStoreLocal();
+            b.emitGetLocalTagged(GetLocalTagged.FLOAT, 0);
+
+            b.beginStoreLocal(foo);
+            b.emitLoadConstant(4.0d);
+            b.endStoreLocal();
+            b.emitGetLocalTagged(GetLocalTagged.DOUBLE, 0);
+
+            b.beginStoreLocal(foo);
+            b.emitLoadConstant("hello");
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.emitGetLocalTagged(GetLocalTagged.OBJECT, 0);
+            b.endReturn();
+
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        assertEquals("hello", root.getCallTarget().call());
     }
 
     @Test
@@ -496,6 +572,7 @@ public class LocalHelpersTest {
          *
          * def bar() {
          *   y = 42
+         *   z = "hello"
          *   <trace>
          * }
          *
@@ -521,10 +598,15 @@ public class LocalHelpersTest {
             b.beginRoot(null);
 
             b.beginBlock();
-            BytecodeLocal y = makeLocal(b, "y");
 
+            BytecodeLocal y = makeLocal(b, "y");
             b.beginStoreLocal(y);
             b.emitLoadConstant(42);
+            b.endStoreLocal();
+
+            BytecodeLocal z = makeLocal(b, "z");
+            b.beginStoreLocal(z);
+            b.emitLoadConstant("hello");
             b.endStoreLocal();
 
             b.beginReturn();
@@ -571,11 +653,19 @@ public class LocalHelpersTest {
 
         // bar
         Object[] barLocals = BytecodeNode.getLocalValues(frames.get(1));
-        assertArrayEquals(new Object[]{42}, barLocals);
+        assertArrayEquals(new Object[]{42, "hello"}, barLocals);
+        Object[] barLocalNames = BytecodeNode.getLocalNames(frames.get(1));
+        assertArrayEquals(new Object[]{"y", "z"}, barLocalNames);
+        BytecodeNode.setLocalValues(frames.get(1), new Object[]{-42, "goodbye"});
+        assertArrayEquals(new Object[]{-42, "goodbye"}, BytecodeNode.getLocalValues(frames.get(1)));
 
         // foo
         Object[] fooLocals = BytecodeNode.getLocalValues(frames.get(2));
         assertArrayEquals(new Object[]{123}, fooLocals);
+        Object[] fooLocalNames = BytecodeNode.getLocalNames(frames.get(2));
+        assertArrayEquals(new Object[]{"x"}, fooLocalNames);
+        BytecodeNode.setLocalValues(frames.get(2), new Object[]{456});
+        assertArrayEquals(new Object[]{456}, BytecodeNode.getLocalValues(frames.get(2)));
     }
 
     @Test
@@ -736,6 +826,54 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
                         @Bind BytecodeNode node,
                         @Bind("$bytecodeIndex") int bci) {
             return node.getLocalValue(bci, frame, i);
+        }
+    }
+
+    @Operation
+    @ConstantOperand(name = "kind", type = int.class)
+    @ConstantOperand(name = "i", type = int.class)
+    public static final class GetLocalTagged {
+        public static final int BOOLEAN = 0;
+        public static final int BYTE = 1;
+        public static final int SHORT = 2;
+        public static final int INT = 3;
+        public static final int LONG = 4;
+        public static final int FLOAT = 5;
+        public static final int DOUBLE = 6;
+        public static final int OBJECT = 7;
+
+        @Specialization
+        public static Object perform(VirtualFrame frame, int kind, int i,
+                        @Bind BytecodeNode node,
+                        @Bind("$bytecodeIndex") int bci) {
+            if (kind == OBJECT) {
+                return node.getLocalValue(bci, frame, i);
+            }
+
+            try {
+                switch (kind) {
+                    case BOOLEAN:
+                        return node.getLocalValueBoolean(bci, frame, i);
+                    case BYTE:
+                        return node.getLocalValueByte(bci, frame, i);
+                    case SHORT:
+                        return node.getLocalValueShort(bci, frame, i);
+                    case INT:
+                        return node.getLocalValueInt(bci, frame, i);
+                    case LONG:
+                        return node.getLocalValueLong(bci, frame, i);
+                    case DOUBLE:
+                        return node.getLocalValueDouble(bci, frame, i);
+                    case FLOAT:
+                        return node.getLocalValueFloat(bci, frame, i);
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+
+                }
+            } catch (UnexpectedResultException ex) {
+                return node.getLocalValue(bci, frame, i);
+            }
+
         }
     }
 

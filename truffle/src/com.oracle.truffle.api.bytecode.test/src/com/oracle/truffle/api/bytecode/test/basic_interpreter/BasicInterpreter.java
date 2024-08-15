@@ -78,7 +78,6 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -183,33 +182,6 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         TestException(String string, Node node, long value) {
             super(string, node);
             this.value = value;
-        }
-    }
-
-    @Override
-    public Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, BytecodeNode bytecodeNode, int bci) throws Throwable {
-        if (ex instanceof EarlyReturnException ret) {
-            return ret.result;
-        }
-        throw ex;
-    }
-
-    @SuppressWarnings({"serial"})
-    public static class EarlyReturnException extends ControlFlowException {
-        private static final long serialVersionUID = 3637685681756424058L;
-
-        public final Object result;
-
-        EarlyReturnException(Object result) {
-            this.result = result;
-        }
-    }
-
-    @Operation
-    static final class EarlyReturn {
-        @Specialization
-        public static void perform(Object result) {
-            throw new EarlyReturnException(result);
         }
     }
 
@@ -323,7 +295,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     @ConstantOperand(type = LocalSetter.class)
     static final class TeeLocal {
         @Specialization
-        public static long doInt(VirtualFrame frame,
+        public static long doLong(VirtualFrame frame,
                         LocalSetter setter,
                         long value,
                         @Bind BytecodeNode bytecode,
@@ -332,13 +304,29 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
             return value;
         }
 
-        @Specialization
+        @Specialization(replaces = "doLong")
         public static Object doGeneric(VirtualFrame frame,
                         LocalSetter setter,
                         Object value,
                         @Bind BytecodeNode bytecode,
                         @Bind("$bytecodeIndex") int bci) {
-            setter.setObject(bytecode, bci, frame, value);
+            if (value instanceof Long l) {
+                setter.setLong(bytecode, bci, frame, l);
+            } else if (value instanceof Integer i) {
+                setter.setInt(bytecode, bci, frame, i);
+            } else if (value instanceof Short s) {
+                setter.setShort(bytecode, bci, frame, s);
+            } else if (value instanceof Byte b) {
+                setter.setByte(bytecode, bci, frame, b);
+            } else if (value instanceof Boolean b) {
+                setter.setBoolean(bytecode, bci, frame, b);
+            } else if (value instanceof Float f) {
+                setter.setFloat(bytecode, bci, frame, f);
+            } else if (value instanceof Double d) {
+                setter.setDouble(bytecode, bci, frame, d);
+            } else {
+                setter.setObject(bytecode, bci, frame, value);
+            }
             return value;
         }
     }
@@ -353,6 +341,9 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
                         long[] value,
                         @Bind BytecodeNode bytecode,
                         @Bind("$bytecodeIndex") int bci) {
+            if (value.length != setter.getLength()) {
+                throw new IllegalArgumentException("TeeLocalRange length mismatch");
+            }
             for (int i = 0; i < value.length; i++) {
                 setter.setLong(bytecode, bci, frame, i, value[i]);
             }
@@ -366,6 +357,9 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
                         Object[] value,
                         @Bind BytecodeNode bytecode,
                         @Bind("$bytecodeIndex") int bci) {
+            if (value.length != setter.getLength()) {
+                throw new IllegalArgumentException("TeeLocalRange length mismatch");
+            }
             for (int i = 0; i < value.length; i++) {
                 setter.setObject(bytecode, bci, frame, i, value[i]);
             }
@@ -396,16 +390,6 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         public static Object doClosureUncached(TestClosure root, @Variadic Object[] args, @Shared @Cached IndirectCallNode callNode) {
             assert args.length == 0 : "not implemented";
             return callNode.call(root.getCallTarget(), root.getFrame());
-        }
-
-        @Specialization(guards = {"callTargetMatches(callTarget, callNode.getCallTarget())"}, limit = "1")
-        public static Object doCallTarget(CallTarget callTarget, @Variadic Object[] args, @Cached("create(callTarget)") DirectCallNode callNode) {
-            return callNode.call(args);
-        }
-
-        @Specialization(replaces = {"doCallTarget"})
-        public static Object doCallTargetUncached(CallTarget callTarget, @Variadic Object[] args, @Shared @Cached IndirectCallNode callNode) {
-            return callNode.call(callTarget, args);
         }
 
         protected static boolean callTargetMatches(CallTarget left, CallTarget right) {
@@ -455,17 +439,19 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
-    public static final class NonNull {
+    public static final class GetSourcePosition {
         @Specialization
-        public static boolean doObject(Object o) {
-            return o != null;
+        public static SourceSection doOperation(VirtualFrame frame,
+                        @Bind Node node,
+                        @Bind BytecodeNode bytecode) {
+            return bytecode.getSourceLocation(frame, node);
         }
     }
 
     @Operation
     public static final class GetSourcePositions {
         @Specialization
-        public static Object doOperation(VirtualFrame frame,
+        public static SourceSection[] doOperation(VirtualFrame frame,
                         @Bind Node node,
                         @Bind BytecodeNode bytecode) {
             return bytecode.getSourceLocations(frame, node);
@@ -494,15 +480,42 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
+    public static final class GetBytecodeLocation {
+        // Note: this is just to test the API. You can bind the BytecodeLocation directly.
+        @Specialization
+        public static BytecodeLocation perform(
+                        VirtualFrame frame,
+                        @Bind Node node,
+                        @Bind BytecodeNode bytecode) {
+            return bytecode.getBytecodeLocation(frame, node);
+        }
+    }
+
+    @Operation
     public static final class CollectBytecodeLocations {
         @Specialization
-        public static List<BytecodeLocation> perform() {
-            List<BytecodeLocation> bytecodeIndices = new ArrayList<>();
+        public static List<BytecodeLocation> perform(
+                        @Bind BytecodeNode bytecode,
+                        @Bind BasicInterpreter currentRootNode) {
+            List<BytecodeLocation> bytecodeLocations = new ArrayList<>();
             Truffle.getRuntime().iterateFrames(f -> {
-                bytecodeIndices.add(BytecodeLocation.get(f));
+                if (f.getCallTarget() instanceof RootCallTarget rct) {
+                    RootNode frameRootNode = rct.getRootNode();
+                    if (frameRootNode instanceof ContinuationRootNode cont) {
+                        frameRootNode = (RootNode) cont.getSourceRootNode();
+                    }
+                    if (currentRootNode == frameRootNode) {
+                        // We already have the bytecode node, no need to search.
+                        bytecodeLocations.add(bytecode.getBytecodeLocation(f));
+                    } else {
+                        bytecodeLocations.add(BytecodeLocation.get(f));
+                    }
+                } else {
+                    bytecodeLocations.add(null);
+                }
                 return null;
             });
-            return bytecodeIndices;
+            return bytecodeLocations;
         }
     }
 

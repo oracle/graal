@@ -41,14 +41,20 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.polyglot.Context;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -84,6 +90,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 
 @RunWith(Parameterized.class)
 public class StackTraceTest extends AbstractInstructionTest {
@@ -129,6 +136,20 @@ public class StackTraceTest extends AbstractInstructionTest {
 
     @Parameter(0) public Run run;
 
+    Context context;
+
+    @Before
+    public void setup() {
+        context = Context.create(BytecodeDSLTestLanguage.ID);
+        context.initialize(BytecodeDSLTestLanguage.ID);
+        context.enter();
+    }
+
+    @After
+    public void tearDown() {
+        context.close();
+    }
+
     @Test
     public void testThrow() {
         int depth = run.depth;
@@ -137,7 +158,7 @@ public class StackTraceTest extends AbstractInstructionTest {
             b.emitDummy();
             b.emitThrowError();
             b.endRoot();
-        }, true);
+        }, true, false);
         StackTraceTestRootNode outer = nodes[nodes.length - 1];
 
         for (int repeat = 0; repeat < REPEATS; repeat++) {
@@ -148,7 +169,7 @@ public class StackTraceTest extends AbstractInstructionTest {
                 List<TruffleStackTraceElement> elements = TruffleStackTrace.getStackTrace(e);
                 assertEquals(nodes.length, elements.size());
                 for (int i = 0; i < nodes.length; i++) {
-                    assertStackElement(elements.get(i), nodes[i]);
+                    assertStackElement(elements.get(i), nodes[i], false);
                 }
             }
         }
@@ -163,7 +184,7 @@ public class StackTraceTest extends AbstractInstructionTest {
             b.emitLoadConstant(new ThrowErrorExecutable());
             b.endThrowErrorBehindInterop();
             b.endRoot();
-        }, true);
+        }, true, false);
         StackTraceTestRootNode outer = nodes[nodes.length - 1];
 
         for (int repeat = 0; repeat < REPEATS; repeat++) {
@@ -174,7 +195,7 @@ public class StackTraceTest extends AbstractInstructionTest {
                 List<TruffleStackTraceElement> elements = TruffleStackTrace.getStackTrace(e);
                 assertEquals(nodes.length, elements.size());
                 for (int i = 0; i < nodes.length; i++) {
-                    assertStackElement(elements.get(i), nodes[i]);
+                    assertStackElement(elements.get(i), nodes[i], false);
                 }
             }
         }
@@ -191,28 +212,72 @@ public class StackTraceTest extends AbstractInstructionTest {
             b.emitCaptureStack();
             b.endReturn();
             b.endRoot();
-        }, true);
+        }, true, false);
         StackTraceTestRootNode outer = nodes[nodes.length - 1];
 
         for (int repeat = 0; repeat < REPEATS; repeat++) {
             List<TruffleStackTraceElement> elements = (List<TruffleStackTraceElement>) outer.getCallTarget().call();
             assertEquals(nodes.length, elements.size());
             for (int i = 0; i < nodes.length; i++) {
-                assertStackElement(elements.get(i), nodes[i]);
+                assertStackElement(elements.get(i), nodes[i], false);
             }
         }
     }
 
-    private void assertStackElement(TruffleStackTraceElement element, StackTraceTestRootNode target) {
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testCaptureWithSources() {
+        int depth = run.depth;
+        Source s = Source.newBuilder(BytecodeDSLTestLanguage.ID, "root0", "root0.txt").build();
+        StackTraceTestRootNode[] nodes = chainCalls(depth, b -> {
+            b.beginSource(s);
+            b.beginSourceSection(0, "root0".length());
+            b.beginRoot(LANGUAGE);
+            b.emitDummy();
+            b.beginReturn();
+            b.emitCaptureStack();
+            b.endReturn();
+            b.endRoot();
+            b.endSourceSection();
+            b.endSource();
+        }, true, true);
+        StackTraceTestRootNode outer = nodes[nodes.length - 1];
+
+        for (int repeat = 0; repeat < REPEATS; repeat++) {
+            List<TruffleStackTraceElement> elements = (List<TruffleStackTraceElement>) outer.getCallTarget().call();
+            assertEquals(nodes.length, elements.size());
+            for (int i = 0; i < nodes.length; i++) {
+                assertStackElement(elements.get(i), nodes[i], true);
+            }
+        }
+    }
+
+    private void assertStackElement(TruffleStackTraceElement element, StackTraceTestRootNode target, boolean checkSources) {
         assertSame(target.getCallTarget(), element.getTarget());
         assertNotNull(element.getLocation());
         BytecodeNode bytecode = target.getBytecodeNode();
         if (run.interpreter.cached) {
             assertSame(bytecode, BytecodeNode.get(element.getLocation()));
+            assertSame(bytecode, BytecodeNode.get(element));
         } else {
             assertSame(bytecode, element.getLocation());
         }
         assertEquals(bytecode.getInstructionsAsList().get(1).getBytecodeIndex(), element.getBytecodeIndex());
+
+        Object interopObject = element.getGuestObject();
+        InteropLibrary lib = InteropLibrary.getFactory().create(interopObject);
+        try {
+            assertTrue(lib.hasExecutableName(interopObject));
+            assertEquals(target.getName(), lib.getExecutableName(interopObject));
+            assertFalse(lib.hasDeclaringMetaObject(interopObject));
+            if (checkSources) {
+                assertTrue(lib.hasSourceLocation(interopObject));
+                assertEquals(target.getName(), lib.getSourceLocation(interopObject).getCharacters());
+            }
+        } catch (UnsupportedMessageException ex) {
+            fail("Interop object could not receive message: " + ex);
+        }
+
     }
 
     @Test
@@ -224,7 +289,7 @@ public class StackTraceTest extends AbstractInstructionTest {
             b.emitDummy();
             b.emitThrowErrorNoLocation();
             b.endRoot();
-        }, false);
+        }, false, false);
         StackTraceTestRootNode outer = nodes[nodes.length - 1];
         for (int repeat = 0; repeat < REPEATS; repeat++) {
             try {
@@ -244,14 +309,22 @@ public class StackTraceTest extends AbstractInstructionTest {
         assertSame(target.getCallTarget(), element.getTarget());
         assertNull(element.getLocation());
         assertEquals(-1, element.getBytecodeIndex());
+        assertNull(BytecodeNode.get(element));
     }
 
-    private StackTraceTestRootNode[] chainCalls(int depth, BytecodeParser<StackTraceTestRootNodeBuilder> innerParser, boolean includeLocation) {
+    private StackTraceTestRootNode[] chainCalls(int depth, BytecodeParser<StackTraceTestRootNodeBuilder> innerParser, boolean includeLocation, boolean includeSources) {
         StackTraceTestRootNode[] nodes = new StackTraceTestRootNode[depth];
         nodes[0] = parse(innerParser);
+        nodes[0].setName("root0");
         for (int i = 1; i < depth; i++) {
             int index = i;
+            String name = "root" + i;
+            Source s = includeSources ? Source.newBuilder(BytecodeDSLTestLanguage.ID, name, name + ".txt").build() : null;
             nodes[i] = parse(b -> {
+                if (includeSources) {
+                    b.beginSource(s);
+                    b.beginSourceSection(0, name.length());
+                }
                 b.beginRoot(LANGUAGE);
                 b.emitDummy();
                 b.beginReturn();
@@ -263,7 +336,12 @@ public class StackTraceTest extends AbstractInstructionTest {
                 }
                 b.endReturn();
                 b.endRoot().depth = index;
+                if (includeSources) {
+                    b.endSourceSection();
+                    b.endSource();
+                }
             });
+            nodes[i].setName(name);
         }
         return nodes;
     }
@@ -285,11 +363,21 @@ public class StackTraceTest extends AbstractInstructionTest {
             super(language, frameDescriptor);
         }
 
+        public String name;
         public int depth;
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
 
         @Override
         public String toString() {
-            return "StackTest[depth=" + depth + "]";
+            return "StackTest[name=" + name + ", depth=" + depth + "]";
         }
 
         // just used to increment the instruction index

@@ -365,6 +365,32 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.beginReturn();
 
             b.beginSourceSection(7, 1);
+            b.emitGetSourcePosition();
+            b.endSourceSection();
+
+            b.endReturn();
+
+            b.endSourceSection();
+            b.endSource();
+            b.endRoot();
+        });
+
+        SourceSection result = (SourceSection) node.getCallTarget().call();
+
+        assertSourceSection(result, source, 7, 1);
+    }
+
+    @Test
+    public void testGetSourcePositions() {
+        Source source = Source.newBuilder("test", "return 1", "testGetSourcePositions").build();
+        BasicInterpreter node = parseNodeWithSource("source", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginSource(source);
+            b.beginSourceSection(0, 8);
+
+            b.beginReturn();
+
+            b.beginSourceSection(7, 1);
             b.emitGetSourcePositions();
             b.endSourceSection();
 

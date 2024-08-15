@@ -326,7 +326,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
             @Specialization
             @TruffleBoundary
             public static void doDefault(Class<?> instrumentationClass,
-                           @Bind BytecodeLocation location) {
+                            @Bind BytecodeLocation location) {
 
                 location.getBytecodeNode().getBytecodeRootNode().getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentation(instrumentationClass).build());
 

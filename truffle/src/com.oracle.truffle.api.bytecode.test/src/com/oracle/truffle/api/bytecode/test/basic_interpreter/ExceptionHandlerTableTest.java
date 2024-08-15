@@ -63,9 +63,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.ExceptionHandler.HandlerKind;
-import com.oracle.truffle.api.bytecode.test.TagTest.TagTestInstrumentation;
-import com.oracle.truffle.api.bytecode.test.TagTest.TagTestLanguage;
-import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 
@@ -171,14 +169,12 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
     }
 
     Context context;
-    Instrumenter instrumenter;
 
     @Before
     public void setup() {
-        context = Context.create(TagTestLanguage.ID);
-        context.initialize(TagTestLanguage.ID);
+        context = Context.create(BytecodeDSLTestLanguage.ID);
+        context.initialize(BytecodeDSLTestLanguage.ID);
         context.enter();
-        instrumenter = context.getEngine().getInstruments().get(TagTestInstrumentation.ID).lookup(Instrumenter.class);
     }
 
     @After

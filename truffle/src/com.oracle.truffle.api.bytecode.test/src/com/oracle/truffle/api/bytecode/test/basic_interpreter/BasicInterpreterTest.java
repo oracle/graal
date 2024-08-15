@@ -102,12 +102,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                 this.arguments = new ArrayList<>();
             }
 
-            @SuppressWarnings("unused")
-            Builder bci(Integer newBci) {
-                this.bci = newBci;
-                return this;
-            }
-
             Builder instrumented(Boolean newInstrumented) {
                 this.instrumented = newInstrumented;
                 return this;
@@ -379,6 +373,20 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         });
 
         assertEquals(45L, root.call(10L));
+    }
+
+    @Test
+    public void testBadLoadConstant() {
+        assertThrowsWithMessage("Invalid builder operation argument: The constant parameter must not be null.",
+                        IllegalArgumentException.class, () -> {
+                            parse("badLoadConstant", b -> {
+                                b.beginRoot(LANGUAGE);
+                                b.beginReturn();
+                                b.emitLoadConstant(null);
+                                b.endReturn();
+                                b.endRoot();
+                            });
+                        });
     }
 
     @Test
@@ -803,7 +811,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testTeeLocal() {
-        // tee(local, 1);
+        // tee(local, 1L);
         // return local;
 
         RootCallTarget root = parse("teeLocal", b -> {
@@ -817,6 +825,65 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             b.beginReturn();
             b.emitLoadLocal(local);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(1L, root.call());
+    }
+
+    @Test
+    public void testTeeLocalDifferentTypes() {
+        // tee(local, arg0);
+        // return local;
+
+        RootCallTarget root = parse("teeLocal", b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal local = b.createLocal();
+
+            b.beginTeeLocal(local);
+            b.emitLoadArgument(0);
+            b.endTeeLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(local);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(1L, root.call(1L));
+        assertEquals(42, root.call(42));
+        assertEquals((short) 12, root.call((short) 12));
+        assertEquals((byte) 2, root.call((byte) 2));
+        assertEquals(true, root.call(true));
+        assertEquals(3.14f, root.call(3.14f));
+        assertEquals(4.0d, root.call(4.0d));
+        assertEquals("hello", root.call("hello"));
+    }
+
+    @Test
+    public void testTeeLargeLocal() {
+        // local0; local1; local2; ...; local63;
+        // tee(local64, 1);
+        // return local;
+
+        RootCallTarget root = parse("teeLocal", b -> {
+            b.beginRoot(LANGUAGE);
+
+            for (int i = 0; i < 64; i++) {
+                b.createLocal();
+            }
+            BytecodeLocal local64 = b.createLocal();
+
+            b.beginTeeLocal(local64);
+            b.emitLoadConstant(1L);
+            b.endTeeLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(local64);
             b.endReturn();
 
             b.endRoot();

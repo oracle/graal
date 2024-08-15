@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -1410,6 +1411,51 @@ public class TagTest extends AbstractInstructionTest {
         assertSourceSection(0, 8, sections[0]);
         assertEquals(1, sections.length);
 
+    }
+
+    @Test
+    public void testDump() {
+        // This test has locals, sources, and tags, which makes it good for code coverage of dumps.
+        Source s = Source.newBuilder("test", "12345678", "name").build();
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginSource(s);
+            b.beginSourceSection(0, 8);
+
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.createLocal();
+            b.beginSourceSection(2, 4);
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(42);
+            b.endTag(ExpressionTag.class);
+            b.endSourceSection();
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(42);
+            b.endTag(ExpressionTag.class);
+            b.endRoot();
+
+            b.endSourceSection();
+            b.endSource();
+        });
+        // Dump should not have source or tag info.
+        BytecodeNode bytecode = node.getBytecodeNode();
+        assertNull(bytecode.getTagTree());
+        String[] dumps = new String[]{node.dump(), bytecode.dump(0)};
+        for (String dump : dumps) {
+            assertTrue(dump.contains("locals(1)"));
+            assertTrue(dump.contains("sourceInformation(-) = Not Available"));
+            assertTrue(dump.contains("tagTree = Not Available"));
+        }
+
+        // On reparse, both should become available.
+        node.getRootNodes().update(BytecodeConfig.COMPLETE);
+        bytecode = node.getBytecodeNode();
+        TagTree tree = bytecode.getTagTree();
+        assertNotNull(tree);
+        for (String dump : new String[]{node.dump(), bytecode.dump(tree.getEnterBytecodeIndex())}) {
+            assertTrue(dump.contains("locals(1)"));
+            assertTrue(dump.contains("sourceInformation(2)"));
+            assertTrue(dump.contains("tagTree(3)"));
+        }
     }
 
     @Test
