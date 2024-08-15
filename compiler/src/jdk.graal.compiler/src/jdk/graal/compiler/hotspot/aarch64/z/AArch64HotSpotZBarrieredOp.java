@@ -60,6 +60,6 @@ public abstract class AArch64HotSpotZBarrieredOp extends AArch64LIRInstruction {
     }
 
     protected void emitBarrier(CompilationResultBuilder crb, AArch64MacroAssembler masm, boolean isNotStrong) {
-        AArch64HotSpotZBarrierSetLIRGenerator.emitLoadBarrier(crb, masm, config, asRegister(result), callTarget, loadAddress.toAddress(), this, null, false, isNotStrong);
+        AArch64HotSpotZBarrierSetLIRGenerator.emitLoadBarrier(crb, masm, config, asRegister(result), callTarget, loadAddress.toAddress(), this, false, isNotStrong);
     }
 }

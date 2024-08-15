@@ -56,6 +56,6 @@ public class AArch64HotSpotXAtomicReadAndWriteOp extends AArch64AtomicMove.Atomi
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         super.emitCode(crb, masm);
         AArch64Address address = AArch64Address.createBaseRegisterOnlyAddress(64, asRegister(addressValue));
-        AArch64HotSpotXBarrierSetLIRGenerator.emitBarrier(crb, masm, null, asRegister(resultValue), config, callTarget, address, this, null);
+        AArch64HotSpotXBarrierSetLIRGenerator.emitBarrier(crb, masm, null, asRegister(resultValue), config, callTarget, address, this);
     }
 }

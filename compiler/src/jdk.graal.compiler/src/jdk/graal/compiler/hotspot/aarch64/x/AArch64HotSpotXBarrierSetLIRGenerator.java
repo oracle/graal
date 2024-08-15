@@ -38,7 +38,6 @@ import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-import jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotBackend;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.lir.LIRFrameState;
@@ -46,7 +45,6 @@ import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.lir.aarch64.AArch64Call;
-import jdk.graal.compiler.lir.aarch64.AArch64FrameMap;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.aarch64.AArch64Kind;
@@ -75,14 +73,12 @@ public class AArch64HotSpotXBarrierSetLIRGenerator implements AArch64ReadBarrier
 
     /**
      * Emits the basic Z read barrier pattern with some customization. Normally this code is used
-     * from a {@link LIRInstruction} where the frame has already been set up. If an
-     * {@link AArch64FrameMap} is passed then a frame will be setup and torn down around the call.
-     * The call itself is done with a special stack-only calling convention that saves and restores
-     * all registers around the call. This simplifies the code generation as no extra registers are
-     * required.
+     * from a {@link LIRInstruction} where the frame has already been set up. The call itself is
+     * done with a special stack-only calling convention that saves and restores all registers
+     * around the call. This simplifies the code generation as no extra registers are required.
      */
     public static void emitBarrier(CompilationResultBuilder crb, AArch64MacroAssembler masm, Label success, Register resultReg, GraalHotSpotVMConfig config, ForeignCallLinkage callTarget,
-                    AArch64Address address, LIRInstruction op, AArch64FrameMap frameMap) {
+                    AArch64Address address, LIRInstruction op) {
         assert !resultReg.equals(address.getBase()) && !resultReg.equals(address.getOffset()) : Assertions.errorMessage(resultReg, address, op);
 
         final Label entryPoint = new Label();
@@ -108,10 +104,6 @@ public class AArch64HotSpotXBarrierSetLIRGenerator implements AArch64ReadBarrier
             crb.getLIR().addSlowPath(op, () -> {
                 masm.bind(entryPoint);
 
-                if (frameMap != null) {
-                    AArch64HotSpotBackend.rawEnter(crb, frameMap, masm, config, false);
-                }
-
                 CallingConvention cc = callTarget.getOutgoingCallingConvention();
                 AArch64Address cArg0 = (AArch64Address) crb.asAddress(cc.getArgument(0));
                 AArch64Address cArg1 = (AArch64Address) crb.asAddress(cc.getArgument(1));
@@ -128,10 +120,6 @@ public class AArch64HotSpotXBarrierSetLIRGenerator implements AArch64ReadBarrier
                 masm.str(64, addressReg, cArg1);
                 AArch64Call.directCall(crb, masm, callTarget, AArch64Call.isNearCall(callTarget) ? null : scratch1, null);
                 masm.ldr(64, resultReg, cArg0);
-
-                if (frameMap != null) {
-                    AArch64HotSpotBackend.rawLeave(crb, config);
-                }
 
                 // Return to inline code
                 masm.jmp(continuation);

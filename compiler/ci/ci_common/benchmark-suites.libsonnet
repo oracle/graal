@@ -123,7 +123,7 @@
     run+: [
       self.benchmark_cmd + ["specjbb2015", "--"] + self.extra_vm_args
     ],
-    timelimit: "3:00:00",
+    timelimit: "5:00:00",
     forks_batches:: null,
     forks_timelimit:: null,
     min_jdk_version:: 8,

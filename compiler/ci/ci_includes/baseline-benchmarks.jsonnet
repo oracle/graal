@@ -70,7 +70,6 @@
     c.monthly + hw.e3 + jdk + cc.c2                         + cc.serialgc_mode + bench.microservice_benchmarks,
     c.monthly + hw.e3 + jdk + cc.c2                         + cc.pargc_mode    + bench.microservice_benchmarks,
     c.monthly + hw.e3 + jdk + cc.c2                         + cc.zgc_mode      + bench.microservice_benchmarks,
-    c.monthly + hw.e3 + jdk + cc.c2                         + cc.gen_zgc_mode  + bench.microservice_benchmarks,
     ]
   for jdk in cc.product_jdks
   ]),
