@@ -48,8 +48,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hotspot.GetCompilerConfig;
 import com.oracle.svm.graal.hotspot.GetJNIConfig;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.jni.JNIFeature;
-import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.serviceprovider.LibGraalService;
@@ -128,27 +126,8 @@ public final class GuestGraalFeature implements Feature {
         }
     }
 
-    private GuestGraalFeature() {
-        // GuestGraalFieldsOffsetsFeature implements InternalFeature which is in
-        // the non-public package com.oracle.svm.core.feature
-        accessModulesToClass(ModuleSupport.Access.EXPORT, GuestGraalFeature.class, "org.graalvm.nativeimage.builder");
-
-        // GuestGraalFeature accesses a few Graal classes (see import statements above)
-        accessModulesToClass(ModuleSupport.Access.EXPORT, GuestGraalFeature.class, "jdk.graal.compiler");
-    }
-
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        /*
-         * LibGraal needs JNIFeature for the upcalls from HotSpot and ReflectionFeature to construct
-         * exceptions in jdk.internal.vm.TranslatedException.create(). However, both of these
-         * features are automatically registered (i.e. annotated by @AutomaticallyRegisteredFeature)
-         * so no need to explicitly add them here. Simply trying to look them up ensures that they
-         * are available.
-         */
-        ImageSingletons.lookup(ReflectionFeature.class);
-        ImageSingletons.lookup(JNIFeature.class);
-
         return List.of(GuestGraalFieldsOffsetsFeature.class);
     }
 
@@ -196,6 +175,13 @@ public final class GuestGraalFeature implements Feature {
      */
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        // GuestGraal uses a number of classes in org.graalvm.nativeimage.builder
+        accessModulesToClass(ModuleSupport.Access.EXPORT, GuestGraalFeature.class,
+                        "org.graalvm.nativeimage.builder");
+
+        // GuestGraalFeature accesses a few Graal classes (see import statements above)
+        accessModulesToClass(ModuleSupport.Access.EXPORT, GuestGraalFeature.class, "jdk.graal.compiler");
+
         ImageSingletons.add(NativeBridgeSupport.class, new GuestGraalNativeBridgeSupport());
         // Target_jdk_graal_compiler_serviceprovider_VMSupport.getIsolateID needs access to
         // org.graalvm.nativeimage.impl.IsolateSupport
