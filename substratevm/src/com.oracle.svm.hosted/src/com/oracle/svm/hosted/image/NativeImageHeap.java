@@ -657,7 +657,7 @@ public final class NativeImageHeap implements ImageHeap {
         return hostedType;
     }
 
-    static RuntimeException reportIllegalType(Object object, Object reason) {
+    public static RuntimeException reportIllegalType(Object object, Object reason) {
         throw reportIllegalType(object, reason, "");
     }
 
