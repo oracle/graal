@@ -365,13 +365,13 @@ public class PolyglotTypeMappings {
 
                 // reconstruct on guest side
                 StaticObject guestMathContext = toEspresso.getAllocator().createNew(meta.java_math_MathContext);
-                meta.java_math_MathContext_init.invokeDirect(guestMathContext, precision);
+                meta.java_math_MathContext_init.invokeDirectSpecial(guestMathContext, precision);
 
                 StaticObject guestBigInteger = toEspresso.getAllocator().createNew(meta.java_math_BigInteger);
-                meta.java_math_BigInteger_init.invokeDirect(guestBigInteger, toByteArray(bigInteger, meta));
+                meta.java_math_BigInteger_init.invokeDirectSpecial(guestBigInteger, toByteArray(bigInteger, meta));
 
                 StaticObject guestBigDecimal = toEspresso.getAllocator().createNew(meta.java_math_BigDecimal);
-                meta.java_math_BigDecimal_init.invokeDirect(guestBigDecimal, guestBigInteger, scale, guestMathContext);
+                meta.java_math_BigDecimal_init.invokeDirectSpecial(guestBigDecimal, guestBigInteger, scale, guestMathContext);
                 return guestBigDecimal;
             } catch (InteropException e) {
                 throw UnsupportedTypeException.create(new Object[]{value}, "Could not cast foreign object to BigDecimal", e);
@@ -443,7 +443,7 @@ public class PolyglotTypeMappings {
             } catch (UnsupportedMessageException e) {
                 guestMessage = StaticObject.NULL;
             }
-            messageConstructor.invokeDirect(result, guestMessage);
+            messageConstructor.invokeDirectSpecial(result, guestMessage);
             /*
              * The back trace of the guest exception wrapper must be set to the foreign exception
              * object, then the back trace is retained in the guest code and the stackTrace field

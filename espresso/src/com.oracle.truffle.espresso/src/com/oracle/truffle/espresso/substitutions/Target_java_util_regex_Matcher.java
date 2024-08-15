@@ -360,14 +360,15 @@ public final class Target_java_util_regex_Matcher {
                 long size = getArraySize(keys, arrayInterop);
 
                 StaticObject guestMap = meta.java_util_HashMap.allocateInstance();
-                meta.java_util_HashMap_init.invokeDirect(guestMap, (int) size);
+                meta.java_util_HashMap_init.invokeDirectSpecial(guestMap, (int) size);
 
                 for (long i = 0; i < size; i++) {
                     String key = getKey(keys, i, stringInterop, arrayInterop);
                     Object value = getValue(map, key, mapInterop);
                     StaticObject guestKey = meta.toGuestString(key);
 
-                    Object integerValue = meta.java_lang_Integer_valueOf.invokeDirect(value);
+                    Object integerValue = meta.java_lang_Integer_valueOf.invokeDirectStatic(value);
+                    // no need for virtual dispatch, we know the receiver type
                     meta.java_util_HashMap_put.invokeDirect(guestMap, guestKey, integerValue);
                 }
                 meta.java_util_regex_Pattern_namedGroups_field.setObject(patternObject, guestMap);
@@ -531,7 +532,7 @@ public final class Target_java_util_regex_Matcher {
     private static void compileFallBackIfRequired(StaticObject self, Meta meta) {
         StaticObject parentPattern = meta.java_util_regex_Matcher_parentPattern.getObject(self);
         if (StaticObject.isNull(meta.java_util_regex_Pattern_root.getObject(parentPattern))) {
-            meta.java_util_regex_Pattern_compile.invokeDirect(parentPattern);
+            meta.java_util_regex_Pattern_compile.invokeDirectSpecial(parentPattern);
             reallocateGroupsArrayIfNecessary(self, parentPattern, meta);
 
             int localCount = meta.java_util_regex_Pattern_localCount.getInt(parentPattern);

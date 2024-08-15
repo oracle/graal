@@ -786,7 +786,7 @@ public final class VM extends NativeEnv {
         assert self.getKlass() instanceof ObjectKlass;
         if (((ObjectKlass) self.getKlass()).hasFinalizer(meta.getContext())) {
             profiler.profile(2);
-            meta.java_lang_ref_Finalizer_register.invokeDirect(null, clone);
+            meta.java_lang_ref_Finalizer_register.invokeDirectStatic(clone);
         }
 
         return clone;
@@ -1442,7 +1442,7 @@ public final class VM extends NativeEnv {
         Meta meta = context.getMeta();
         try {
             if (pendingException != null) {
-                meta.java_lang_Thread_dispatchUncaughtException.invokeDirect(currentThread, pendingException);
+                meta.java_lang_Thread_dispatchUncaughtException.invokeDirectVirtual(currentThread, pendingException);
             }
 
             getThreadAccess().terminate(currentThread);
@@ -1452,8 +1452,7 @@ public final class VM extends NativeEnv {
                 String exception = ex.getKlass().getExternalName();
                 String threadName = getThreadAccess().getThreadName(currentThread);
                 context.getLogger().warning(String.format("Exception: %s thrown while terminating thread \"%s\"", exception, threadName));
-                Method printStackTrace = ex.getKlass().lookupMethod(Name.printStackTrace, Signature._void);
-                printStackTrace.invokeDirect(ex);
+                meta.java_lang_Throwable_printStackTrace.invokeDirectVirtual(ex);
             } catch (EspressoException ee) {
                 String exception = ee.getGuestException().getKlass().getExternalName();
                 context.getLogger().warning(String.format("Exception: %s thrown while trying to print stack trace", exception));
@@ -2492,7 +2491,7 @@ public final class VM extends NativeEnv {
     public @JavaType(internalName = "Ljava/lang/AssertionStatusDirectives;") StaticObject JVM_AssertionStatusDirectives(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused) {
         Meta meta = getMeta();
         StaticObject instance = meta.java_lang_AssertionStatusDirectives.allocateInstance(getContext());
-        meta.java_lang_AssertionStatusDirectives.lookupMethod(Name._init_, Signature._void).invokeDirect(instance);
+        meta.java_lang_AssertionStatusDirectives.lookupMethod(Name._init_, Signature._void).invokeDirectSpecial(instance);
         meta.java_lang_AssertionStatusDirectives_classes.set(instance, meta.java_lang_String.allocateReferenceArray(0));
         meta.java_lang_AssertionStatusDirectives_classEnabled.set(instance, meta._boolean.allocatePrimitiveArray(0));
         meta.java_lang_AssertionStatusDirectives_packages.set(instance, meta.java_lang_String.allocateReferenceArray(0));
@@ -2527,7 +2526,7 @@ public final class VM extends NativeEnv {
 
     private boolean isTrustedLoader(StaticObject loader) {
         StaticObject nonDelLoader = nonReflectionClassLoader(loader);
-        StaticObject systemLoader = (StaticObject) getMeta().java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+        StaticObject systemLoader = (StaticObject) getMeta().java_lang_ClassLoader_getSystemClassLoader.invokeDirectStatic();
         while (StaticObject.notNull(systemLoader)) {
             if (systemLoader == nonDelLoader) {
                 return true;
@@ -2561,7 +2560,7 @@ public final class VM extends NativeEnv {
             }
             StaticObject pd = JVM_GetProtectionDomain(klass.mirror());
             if (pd != StaticObject.NULL) {
-                return (boolean) getMeta().java_security_ProtectionDomain_impliesCreateAccessControlContext.invokeDirect(pd);
+                return (boolean) getMeta().java_security_ProtectionDomain_impliesCreateAccessControlContext.invokeDirectVirtual(pd);
             }
         }
         return true;
@@ -2770,7 +2769,7 @@ public final class VM extends NativeEnv {
     private @JavaType(internalName = "Ljava/security/AccessControlContext;") StaticObject createDummyACC() {
         Klass pdKlass = getMeta().java_security_ProtectionDomain;
         StaticObject pd = pdKlass.allocateInstance(getContext());
-        getMeta().java_security_ProtectionDomain_init_CodeSource_PermissionCollection.invokeDirect(pd, StaticObject.NULL, StaticObject.NULL);
+        getMeta().java_security_ProtectionDomain_init_CodeSource_PermissionCollection.invokeDirectSpecial(pd, StaticObject.NULL, StaticObject.NULL);
         StaticObject context = StaticObject.wrap(new StaticObject[]{pd}, getMeta());
         return createACC(context, false, StaticObject.NULL);
     }
@@ -2882,7 +2881,7 @@ public final class VM extends NativeEnv {
                             !meta.java_lang_RuntimeException.isAssignableFrom(e.getGuestException().getKlass())) {
                 profiler.profile(3);
                 StaticObject wrapper = meta.java_security_PrivilegedActionException.allocateInstance(getContext());
-                getMeta().java_security_PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getGuestException());
+                getMeta().java_security_PrivilegedActionException_init_Exception.invokeDirectSpecial(wrapper, e.getGuestException());
                 throw meta.throwException(wrapper);
             }
             profiler.profile(4);
@@ -3224,7 +3223,7 @@ public final class VM extends NativeEnv {
                 } else {
                     guestName = getJavaVersion().java9OrLater() ? StaticObject.NULL : meta.toGuestString("");
                 }
-                parameterInit.invokeDirect(/* this */ instance,
+                parameterInit.invokeDirectSpecial(/* this */ instance,
                                 /* name */ guestName,
                                 /* modifiers */ entry.getAccessFlags(),
                                 /* executable */ executable,

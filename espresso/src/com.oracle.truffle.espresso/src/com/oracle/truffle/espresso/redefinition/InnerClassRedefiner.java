@@ -177,7 +177,7 @@ public final class InnerClassRedefiner {
                 byte[] classBytes = null;
                 StaticObject resourceGuestString = context.getMeta().toGuestString(innerName + ".class");
                 assert context.getCurrentPlatformThread() != null;
-                StaticObject inputStream = (StaticObject) context.getMeta().java_lang_ClassLoader_getResourceAsStream.invokeDirect(definingLoader, resourceGuestString);
+                StaticObject inputStream = (StaticObject) context.getMeta().java_lang_ClassLoader_getResourceAsStream.invokeDirectVirtual(definingLoader, resourceGuestString);
                 if (StaticObject.notNull(inputStream)) {
                     classBytes = readAllBytes(inputStream);
                 } else {
@@ -203,7 +203,7 @@ public final class InnerClassRedefiner {
         int readLen;
 
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            while ((readLen = (int) context.getMeta().java_io_InputStream_read.invokeDirect(inputStream, guestBuf, 0, buf.length)) != -1) {
+            while ((readLen = (int) context.getMeta().java_io_InputStream_read.invokeDirectVirtual(inputStream, guestBuf, 0, buf.length)) != -1) {
                 byte[] bytes = guestBuf.unwrap(context.getLanguage());
                 outputStream.write(bytes, 0, readLen);
             }
@@ -211,7 +211,7 @@ public final class InnerClassRedefiner {
         } catch (IOException ex) {
             return new byte[0];
         } finally {
-            context.getMeta().java_io_InputStream_close.invokeDirect(inputStream);
+            context.getMeta().java_io_InputStream_close.invokeDirectVirtual(inputStream);
         }
     }
 

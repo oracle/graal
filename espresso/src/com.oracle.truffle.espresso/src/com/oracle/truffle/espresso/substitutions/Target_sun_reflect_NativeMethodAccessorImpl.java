@@ -370,14 +370,23 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "wrong number of arguments!");
         }
 
-        Object[] adjustedArgs = new Object[argsLen];
+        int argsOffset = 0;
+        int adjustedArgsLen = argsLen;
+        if (!reflectedMethod.isStatic()) {
+            adjustedArgsLen += 1;
+            argsOffset = 1;
+        }
+        Object[] adjustedArgs = new Object[adjustedArgsLen];
+        if (!reflectedMethod.isStatic()) {
+            adjustedArgs[0] = receiver;
+        }
         for (int i = 0; i < argsLen; ++i) {
             StaticObject paramTypeMirror = parameterTypes.get(language, i);
             Klass paramKlass = paramTypeMirror.getMirrorKlass(meta);
             Object arg;
             if (isForeignArray) {
                 try {
-                    adjustedArgs[i] = toEspressoNode.execute(interop.readArrayElement(rawForeign, i), paramKlass);
+                    adjustedArgs[i + argsOffset] = toEspressoNode.execute(interop.readArrayElement(rawForeign, i), paramKlass);
                 } catch (UnsupportedTypeException | UnsupportedMessageException | InvalidArrayIndexException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "unable to read argument from foreign object!");
@@ -386,13 +395,13 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                 arg = args.get(language, i);
                 // Throws guest IllegalArgumentException if the
                 // parameter cannot be casted or widened.
-                adjustedArgs[i] = checkAndWiden(meta, (StaticObject) arg, paramKlass);
+                adjustedArgs[i + argsOffset] = checkAndWiden(meta, (StaticObject) arg, paramKlass);
             }
         }
 
         Object result;
         try {
-            result = method.invokeDirect(receiver, adjustedArgs);
+            result = method.invokeDirect(adjustedArgs);
         } catch (EspressoException e) {
             throw meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, e.getGuestException());
         }

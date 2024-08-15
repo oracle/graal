@@ -384,7 +384,7 @@ public final class Management extends NativeEnv {
                 StaticObject stackTrace = Target_java_lang_Thread.getStackTrace(thread, actualMaxDepth, getContext(), node);
 
                 StaticObject threadInfo = meta.java_lang_management_ThreadInfo.allocateInstance(getContext());
-                init.invokeDirect( /* this */ threadInfo,
+                init.invokeDirectSpecial( /* this */ threadInfo,
                                 /* t */ thread,
                                 /* state */ threadStatus,
                                 /* lockObj */ lockObj,
@@ -438,7 +438,7 @@ public final class Management extends NativeEnv {
                             boolean isHeap = h.getType() == MemoryType.HEAP;
                             long usageThreshold = h.isUsageThresholdSupported() ? 0 : -1;
                             long gcThreshold = h.isCollectionUsageThresholdSupported() ? 0 : -1;
-                            return (StaticObject) meta.sun_management_ManagementFactory_createMemoryPool.invokeDirect(null, name, isHeap, usageThreshold, gcThreshold);
+                            return (StaticObject) meta.sun_management_ManagementFactory_createMemoryPool.invokeDirectStatic(name, isHeap, usageThreshold, gcThreshold);
                         });
                         MemoryPoolMXBean hostProbe = reverseMemoryPools.putIfAbsent(guestBean, hostBean);
                         assert hostProbe == null || hostProbe == hostBean;
@@ -505,12 +505,12 @@ public final class Management extends NativeEnv {
                             factory = h -> {
                                 getLogger().fine(() -> "GetMemoryManagers: creating " + h.getName());
                                 // TODO use GarbageCollectorExtImpl
-                                return (StaticObject) meta.sun_management_ManagementFactory_createGarbageCollector.invokeDirect(null, meta.toGuestString(h.getName()), StaticObject.NULL);
+                                return (StaticObject) meta.sun_management_ManagementFactory_createGarbageCollector.invokeDirectStatic(meta.toGuestString(h.getName()), StaticObject.NULL);
                             };
                         } else {
                             factory = h -> {
                                 getLogger().fine(() -> "GetMemoryManagers: creating " + h.getName());
-                                return (StaticObject) meta.sun_management_ManagementFactory_createMemoryManager.invokeDirect(null, meta.toGuestString(h.getName()));
+                                return (StaticObject) meta.sun_management_ManagementFactory_createMemoryManager.invokeDirectStatic(meta.toGuestString(h.getName()));
                             };
                         }
                         StaticObject guestBean = memoryManagers.computeIfAbsent(hostBean, factory);
@@ -577,7 +577,7 @@ public final class Management extends NativeEnv {
 
     private StaticObject asGuestUsage(MemoryUsage usage, Meta meta) {
         StaticObject guestUsage = meta.java_lang_management_MemoryUsage.allocateInstance(getContext());
-        getMemoryUsageInit().invokeDirect(guestUsage, usage.getInit(), usage.getUsed(), usage.getCommitted(), usage.getMax());
+        getMemoryUsageInit().invokeDirectSpecial(guestUsage, usage.getInit(), usage.getUsed(), usage.getCommitted(), usage.getMax());
         return guestUsage;
     }
 
