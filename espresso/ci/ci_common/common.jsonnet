@@ -59,7 +59,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     assert !with_native_image || with_compiler,
     guard+: {
       includes: [
-        "<graal>/.git/**",
+        "<graal>/.git/**",  # This ensure the .git directory is preserved in apply-predicates
         "<graal>/sdk/**",
         "<graal>/truffle/**",
         "<graal>/espresso/**",
@@ -67,8 +67,10 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
         "<graal>/regex/**",
         "<graal>/sulong/**",
         "<graal>/pyproject.toml",
-      ] + base.basic_guard_includes + (if with_compiler then [
         "<graal>/common.json",
+        "<graal>/ci.jsonnet",
+        "<graal>/ci/**",
+      ] + base.basic_guard_includes + (if with_compiler then [
         "<graal>/compiler/**",
       ] + base.compiler_guard_includes else []) + (if with_native_image then [
         "<graal>/substratevm/**",
