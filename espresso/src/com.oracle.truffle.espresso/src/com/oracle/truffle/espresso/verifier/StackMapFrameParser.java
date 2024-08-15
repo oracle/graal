@@ -37,9 +37,10 @@ import static com.oracle.truffle.espresso.verifier.MethodVerifier.failFormat;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.failFormatNoFallback;
 
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.classfile.ParserException;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 
 public final class StackMapFrameParser<T extends StackMapFrameParser.FrameState> {
 
@@ -121,12 +122,13 @@ public final class StackMapFrameParser<T extends StackMapFrameParser.FrameState>
         this.stream = new ClassfileStream(stackMapTable.getData(), null);
     }
 
-    public static <State extends FrameState> void parse(FrameBuilder<State> builder, StackMapTableAttribute stackMapTable, State firstFrame, int initialLastLocal) {
+    public static <State extends FrameState> void parse(FrameBuilder<State> builder, StackMapTableAttribute stackMapTable, State firstFrame, int initialLastLocal)
+                    throws ParserException.ClassFormatError {
         new StackMapFrameParser<>(builder, stackMapTable).parseStackMapTableAttribute(firstFrame, initialLastLocal);
     }
 
     @SuppressWarnings("unchecked")
-    private void parseStackMapTableAttribute(T firstFrame, int initialLastLocal) {
+    private void parseStackMapTableAttribute(T firstFrame, int initialLastLocal) throws ParserException.ClassFormatError {
         T previous = firstFrame;
         int bci = 0;
         boolean first = true;
@@ -173,7 +175,7 @@ public final class StackMapFrameParser<T extends StackMapFrameParser.FrameState>
         throw EspressoError.shouldNotReachHere();
     }
 
-    private StackMapFrame parseStackMapFrame() {
+    private StackMapFrame parseStackMapFrame() throws ParserException.ClassFormatError {
         int frameType = stream.readU1();
         if (frameType < SAME_FRAME_BOUND) {
             return new SameFrame(frameType);
@@ -225,7 +227,7 @@ public final class StackMapFrameParser<T extends StackMapFrameParser.FrameState>
         throw failFormat("Unrecognized StackMapFrame tag: " + frameType);
     }
 
-    private VerificationTypeInfo parseVerificationTypeInfo() {
+    private VerificationTypeInfo parseVerificationTypeInfo() throws ParserException.ClassFormatError {
         int tag = stream.readU1();
         if (tag < ITEM_InitObject) {
             return PrimitiveTypeInfo.get(tag);
