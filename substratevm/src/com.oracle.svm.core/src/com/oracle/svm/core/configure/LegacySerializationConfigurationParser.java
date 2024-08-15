@@ -28,7 +28,6 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
@@ -85,18 +84,11 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
         if (lambdaCapturingType) {
             checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Collections.singleton(CONDITIONAL_KEY));
         } else {
-            checkAttributes(data, "serialization descriptor object", Collections.emptySet(), Arrays.asList(TYPE_KEY, NAME_KEY, CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
-            checkHasExactlyOneAttribute(data, "serialization descriptor object", List.of(TYPE_KEY, NAME_KEY));
+            checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
         }
 
-        Optional<TypeDescriptorWithOrigin> target = parseTypeOrName(data, false);
-        if (target.isEmpty()) {
-            return;
-        }
-        ConfigurationTypeDescriptor targetSerializationClass = target.get().typeDescriptor();
-        boolean definedAsType = target.get().definedAsType();
-
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, definedAsType);
+        ConfigurationTypeDescriptor targetSerializationClass = new NamedConfigurationTypeDescriptor(asString(data.get(NAME_KEY)));
+        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, false);
         var condition = conditionResolver.resolveCondition(unresolvedCondition);
         if (!condition.isPresent()) {
             return;

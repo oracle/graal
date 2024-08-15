@@ -265,12 +265,9 @@ public abstract class ConfigurationParser {
     protected record TypeDescriptorWithOrigin(ConfigurationTypeDescriptor typeDescriptor, boolean definedAsType) {
     }
 
-    protected static Optional<TypeDescriptorWithOrigin> parseTypeOrName(EconomicMap<String, Object> data, boolean treatAllNameEntriesAsType) {
-        Object typeObject = data.get(TYPE_KEY);
+    protected static Optional<TypeDescriptorWithOrigin> parseName(EconomicMap<String, Object> data, boolean treatAllNameEntriesAsType) {
         Object name = data.get(NAME_KEY);
-        if (typeObject != null) {
-            return parseTypeContents(typeObject).map(typeDescriptor -> new TypeDescriptorWithOrigin(typeDescriptor, true));
-        } else if (name != null) {
+        if (name != null) {
             NamedConfigurationTypeDescriptor typeDescriptor = new NamedConfigurationTypeDescriptor(asString(name));
             return Optional.of(new TypeDescriptorWithOrigin(typeDescriptor, treatAllNameEntriesAsType));
         } else {
