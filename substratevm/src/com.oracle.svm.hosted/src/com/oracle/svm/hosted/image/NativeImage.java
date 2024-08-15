@@ -107,8 +107,8 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.RelocatableBuffer.Info;
+import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.PriorLayerSymbolTracker;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -509,9 +509,8 @@ public abstract class NativeImage extends AbstractImage {
             defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() - heapLayout.getStartOffset());
             defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() + heapLayout.getWritableSize() - heapLayout.getStartOffset());
 
-            var symbolTracker = PriorLayerSymbolTracker.singletonOrNull();
-            if (symbolTracker != null) {
-                symbolTracker.defineSymbols(objectFile);
+            if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                HostedDynamicLayerInfo.singleton().defineSymbolsForPriorLayerMethods(objectFile);
             }
 
             // Mark the sections with the relocations from the maps.
@@ -947,14 +946,6 @@ public abstract class NativeImage extends AbstractImage {
 
                 final Map<String, HostedMethod> methodsBySignature = new HashMap<>();
                 // 1. fq with return type
-
-                if (codeCache.getBaseLayerMethods() != null) {
-                    // register base layer methods symbols
-                    var symbolTracker = PriorLayerSymbolTracker.singletonOrNull();
-                    for (HostedMethod current : codeCache.getBaseLayerMethods()) {
-                        symbolTracker.registerPriorLayerReference(current);
-                    }
-                }
 
                 for (Pair<HostedMethod, CompilationResult> pair : codeCache.getOrderedCompilations()) {
                     HostedMethod current = pair.getLeft();

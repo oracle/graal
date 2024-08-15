@@ -114,7 +114,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     @Override
     protected void initializeBaseLayerMethod(AnalysisMethod analysisMethod, EconomicMap<String, Object> methodData) {
-        if (!HostedDynamicLayerInfo.singleton().isCompiled(analysisMethod.getId()) && hasAnalysisParsedGraph(analysisMethod)) {
+        if (!HostedDynamicLayerInfo.singleton().isCompiled(analysisMethod) && hasAnalysisParsedGraph(analysisMethod)) {
             /*
              * GR-55294: When the analysis elements from the base layer will be able to be
              * materialized after the analysis, this will not be needed anymore.

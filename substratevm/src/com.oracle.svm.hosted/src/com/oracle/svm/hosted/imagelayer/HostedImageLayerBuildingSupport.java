@@ -29,6 +29,7 @@ import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromPath;
 import static com.oracle.svm.core.SubstrateOptions.LayerCreate;
 import static com.oracle.svm.core.SubstrateOptions.LayerUse;
 import static com.oracle.svm.core.SubstrateOptions.imageLayerEnabledHandler;
+import static com.oracle.svm.core.SubstrateOptions.imageLayerCreateEnabledHandler;
 import static com.oracle.svm.hosted.imagelayer.LayerArchiveSupport.MODULE_OPTION;
 import static com.oracle.svm.hosted.imagelayer.LayerArchiveSupport.PACKAGE_OPTION;
 
@@ -130,9 +131,11 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
 
                 SubstrateOptions.LayeredBaseImageAnalysis.update(values, true);
                 SubstrateOptions.ClosedTypeWorld.update(values, false);
-                SubstrateOptions.StripDebugInfo.update(values, false);
                 if (imageLayerEnabledHandler != null) {
                     imageLayerEnabledHandler.onOptionEnabled(values);
+                }
+                if (imageLayerCreateEnabledHandler != null) {
+                    imageLayerCreateEnabledHandler.onOptionEnabled(values);
                 }
                 SubstrateOptions.UseContainerSupport.update(values, false);
             }

@@ -359,8 +359,8 @@ public class UniverseBuilder {
         }
 
         HostedMethod hMethod = HostedMethod.create(hUniverse, aMethod, hDeclaringClass, signature, constantPool, sHandlers);
-        if (HostedImageLayerBuildingSupport.buildingExtensionLayer() && HostedDynamicLayerInfo.singleton().isCompiled(hMethod.wrapped.getId())) {
-            hMethod.setCompiledInPriorLayer();
+        if (HostedImageLayerBuildingSupport.buildingExtensionLayer()) {
+            HostedDynamicLayerInfo.singleton().registerHostedMethod(hMethod);
         }
 
         boolean isCFunction = aMethod.getAnnotation(CFunction.class) != null;

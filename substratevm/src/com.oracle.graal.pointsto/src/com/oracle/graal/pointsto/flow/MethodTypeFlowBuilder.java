@@ -620,7 +620,7 @@ public class MethodTypeFlowBuilder {
         assert !processed : "can only call apply once per MethodTypeFlowBuilder";
         processed = true;
 
-        if (bb.getHostVM().useBaseLayer() && method.isInBaseLayer()) {
+        if (method.analyzedInPriorLayer()) {
             /*
              * We don't need to analyze this method. We already know its return type state from the
              * open world analysis. We just install a return flow to link it with its uses.
