@@ -190,7 +190,9 @@ final class NodeClassImpl extends NodeClass {
 
     @Override
     public Iterator<Node> makeIterator(Node node) {
-        assert clazz.isInstance(node);
+        if (!clazz.isInstance(node)) {
+            throw new ClassCastException();
+        }
         return new NodeIterator(this, node, fields);
     }
 
