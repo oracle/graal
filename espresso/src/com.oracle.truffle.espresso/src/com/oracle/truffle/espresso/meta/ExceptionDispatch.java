@@ -108,21 +108,21 @@ public final class ExceptionDispatch extends ContextAccessImpl {
 
     @CompilerDirectives.TruffleBoundary
     private static void doFullInit(StaticObject ex, ObjectKlass klass, StaticObject message, StaticObject cause) {
-        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_String_Throwable).invokeDirect(ex, message, cause);
+        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_String_Throwable).invokeDirectSpecial(ex, message, cause);
     }
 
     @CompilerDirectives.TruffleBoundary
     private static void doCauseInit(StaticObject ex, ObjectKlass klass, StaticObject cause) {
-        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_Throwable).invokeDirect(ex, cause);
+        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_Throwable).invokeDirectSpecial(ex, cause);
     }
 
     @CompilerDirectives.TruffleBoundary
     private static void doMessageInit(StaticObject ex, ObjectKlass klass, StaticObject message) {
-        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_String).invokeDirect(ex, message);
+        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_String).invokeDirectSpecial(ex, message);
     }
 
     @CompilerDirectives.TruffleBoundary
     private static void doInit(StaticObject ex, ObjectKlass klass) {
-        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void).invokeDirect(ex);
+        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void).invokeDirectSpecial(ex);
     }
 }

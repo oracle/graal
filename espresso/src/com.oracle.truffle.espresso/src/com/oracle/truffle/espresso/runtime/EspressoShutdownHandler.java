@@ -142,7 +142,7 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
     void destroyVM() {
         waitForClose();
         try {
-            getMeta().java_lang_Shutdown_shutdown.invokeDirect(null);
+            getMeta().java_lang_Shutdown_shutdown.invokeDirectStatic();
         } catch (AbstractTruffleException e) {
             /* Suppress guest exception so as not to bypass teardown */
         }

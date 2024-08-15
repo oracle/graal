@@ -956,7 +956,7 @@ public class Field extends Member<Type> implements FieldRef {
                         ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
                         : StaticObject.NULL;
         if (meta.getJavaVersion().java15OrLater()) {
-            meta.java_lang_reflect_Field_init.invokeDirect(
+            meta.java_lang_reflect_Field_init.invokeDirectSpecial(
                             /* this */ instance,
                             /* declaringKlass */ getDeclaringKlass().mirror(),
                             /* name */ meta.getStrings().intern(getName()),
@@ -967,7 +967,7 @@ public class Field extends Member<Type> implements FieldRef {
                             /* signature */ meta.toGuestString(getGenericSignature()),
                             /* annotations */ runtimeVisibleAnnotations);
         } else {
-            meta.java_lang_reflect_Field_init.invokeDirect(
+            meta.java_lang_reflect_Field_init.invokeDirectSpecial(
                             /* this */ instance,
                             /* declaringKlass */ getDeclaringKlass().mirror(),
                             /* name */ meta.getStrings().intern(getName()),

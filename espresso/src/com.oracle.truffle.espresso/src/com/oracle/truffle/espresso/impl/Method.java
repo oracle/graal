@@ -498,26 +498,55 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      * e.g. Host (boxed) Integer represents int, guest Integer doesn't.
      */
     @TruffleBoundary
-    public Object invokeDirect(Object self, Object... args) {
+    public Object invokeDirect(Object... args) {
         EspressoThreadLocalState tls = getLanguage().getThreadLocalState();
         // Impossible to call from guest code, so what is above is illegal for continuations.
         tls.blockContinuationSuspension();
         try {
             getContext().getJNI().clearPendingException();
-            if (isStatic()) {
-                assert args.length == Signatures.parameterCount(getParsedSignature());
-                getDeclaringKlass().safeInitialize();
-                return getCallTarget().call(args);
-            } else {
-                assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature()) + (isStatic() ? 0 : 1);
-                Object[] fullArgs = new Object[args.length + 1];
-                System.arraycopy(args, 0, fullArgs, 1, args.length);
-                fullArgs[0] = self;
-                return getCallTarget().call(fullArgs);
-            }
+            assert !isStatic();
+            assert args.length == Signatures.parameterCount(getParsedSignature()) + 1;
+            assert getDeclaringKlass().isAssignableFrom(((StaticObject) args[0]).getKlass());
+            return getCallTarget().call(args);
         } finally {
             tls.unblockContinuationSuspension();
         }
+    }
+
+    @TruffleBoundary
+    public Object invokeDirectStatic(Object... args) {
+        EspressoThreadLocalState tls = getLanguage().getThreadLocalState();
+        // Impossible to call from guest code, so what is above is illegal for continuations.
+        tls.blockContinuationSuspension();
+        try {
+            getContext().getJNI().clearPendingException();
+            assert isStatic();
+            assert args.length == Signatures.parameterCount(getParsedSignature());
+            getDeclaringKlass().safeInitialize();
+            return getCallTarget().call(args);
+        } finally {
+            tls.unblockContinuationSuspension();
+        }
+    }
+
+    @TruffleBoundary
+    public Object invokeDirectVirtual(Object... args) {
+        assert getVTableIndex() >= 0;
+        StaticObject self = (StaticObject) args[0];
+        return self.getKlass().vtableLookup(getVTableIndex()).invokeDirect(args);
+    }
+
+    @TruffleBoundary
+    public Object invokeDirectInterface(Object... args) {
+        assert getITableIndex() >= 0;
+        StaticObject self = (StaticObject) args[0];
+        return ((ObjectKlass) self.getKlass()).itableLookup(getDeclaringKlass(), getITableIndex()).invokeDirect(args);
+    }
+
+    @TruffleBoundary
+    public Object invokeDirectSpecial(Object... args) {
+        assert isFinalFlagSet() || getDeclaringKlass().isFinalFlagSet() || isPrivate() || isConstructor();
+        return invokeDirect(args);
     }
 
     public boolean isClassInitializer() {
@@ -1085,7 +1114,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         StaticObject instance = meta.java_lang_reflect_Constructor.allocateInstance(getContext());
-        meta.java_lang_reflect_Constructor_init.invokeDirect(
+        meta.java_lang_reflect_Constructor_init.invokeDirectSpecial(
                         /* this */ instance,
                         /* declaringKlass */ getDeclaringKlass().mirror(),
                         /* parameterTypes */ parameterTypes,
@@ -1151,7 +1180,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         StaticObject instance = meta.java_lang_reflect_Method.allocateInstance(meta.getContext());
 
-        meta.java_lang_reflect_Method_init.invokeDirect(
+        meta.java_lang_reflect_Method_init.invokeDirectSpecial(
                         /* this */ instance,
                         /* declaringClass */ getDeclaringKlass().mirror(),
                         /* name */ getContext().getStrings().intern(getName()),
