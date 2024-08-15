@@ -177,6 +177,7 @@ class NativeImageBenchmarkConfig:
         base_image_build_args += ['-H:+ReportExceptionStackTraces']
         base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
         base_image_build_args += self.system_properties
+        base_image_build_args += self.build_report_args(vm.is_gate, vm.graalvm_edition)
 
         # Path to the X.nib bundle file --bundle-apply is specified
         bundle_apply_path = self.get_bundle_path_if_present()
@@ -262,6 +263,11 @@ class NativeImageBenchmarkConfig:
 
         if bundle_create_path and Stage.INSTRUMENT_IMAGE in bm_suite.stages_info.effective_stages:
             mx.warn("Building instrumented benchmarks with --bundle-create is untested and may behave in unexpected ways")
+
+    def build_report_args(self, is_gate: bool, graalvm_edition: str):
+        # Generate Build Report only when the benchmark is a part of EE gate.
+        return ['--emit=build-report'] if is_gate and graalvm_edition == "ee" else []
+
 
     def get_build_output_json_file(self, stage: Stage) -> Path:
         """
