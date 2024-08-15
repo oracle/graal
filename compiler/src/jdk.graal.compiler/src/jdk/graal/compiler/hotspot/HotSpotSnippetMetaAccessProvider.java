@@ -74,9 +74,12 @@ public class HotSpotSnippetMetaAccessProvider implements MetaAccessProvider {
     public ResolvedJavaType lookupJavaType(JavaConstant constant) {
         if (constant instanceof SnippetObjectConstant objectConstant) {
             Class<?> clazz = objectConstant.asObject(Object.class).getClass();
-            ResolvedJavaType type = lookupJavaType(clazz);
-            GraalError.guarantee(type != null, "Type of compiler object %s missing from encoded snippet types: %s", constant, clazz.getName());
-            return type;
+            if (IS_IN_NATIVE_IMAGE && HotSpotReplacementsImpl.isGraalClass(clazz)) {
+                ResolvedJavaType type = HotSpotReplacementsImpl.getEncodedSnippets().lookupSnippetType(clazz);
+                GraalError.guarantee(type != null, "Type of compiler object %s missing from encoded snippet types: %s", constant, clazz.getName());
+                return type;
+            }
+            return delegate.lookupJavaType(clazz);
         }
         if (constant instanceof HotSpotObjectConstant hsConstant) {
             Object object = hsConstant.asObject(Object.class);
