@@ -1341,11 +1341,42 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.statement("var cloneReferences = this.clones");
         b.startIf().string("cloneReferences != null").end().startBlock();
         b.startStatement();
-        b.string("cloneReferences.forEach((clone) -> ").startCall("clone.updateBytecode");
-        for (VariableElement e : ex.getParameters()) {
-            b.string(e.getSimpleName().toString());
+        b.string("cloneReferences.forEach((clone) -> ").startBlock();
+
+        b.declaration(abstractBytecodeNode.asType(), "cloneOldBytecode");
+        b.declaration(abstractBytecodeNode.asType(), "cloneNewBytecode");
+        b.startDoBlock();
+        b.statement("cloneOldBytecode = clone.bytecode");
+        b.statement("cloneNewBytecode = clone.insert(this.bytecode.cloneUninitialized())");
+
+        b.startIf().string("bytecodes_ == null").end().startBlock();
+        b.lineComment("When bytecode doesn't change, nodes are reused and should be re-adopted.");
+        b.statement("cloneNewBytecode.adoptNodesAfterUpdate()");
+        b.end();
+        emitFence(b);
+        b.end().startDoWhile().startCall("!BYTECODE_UPDATER", "compareAndSet").string("clone").string("cloneOldBytecode").string("cloneNewBytecode").end().end();
+        b.newLine();
+        if (model.isBytecodeUpdatable()) {
+            b.startIf().string("bytecodes_ != null").end().startBlock();
+            b.startStatement().startCall("cloneOldBytecode.invalidate");
+            b.string("cloneNewBytecode");
+            b.string("reason");
+            b.end(2);
+            b.end();
+            if (model.enableYield) {
+                // We need to patch the BytecodeNodes for continuations.
+                b.startStatement().startCall("cloneOldBytecode.updateContinuationRootNodes");
+                b.string("cloneNewBytecode");
+                b.string("reason");
+                b.string("continuationLocations");
+                b.string("bytecodes_ != null");
+                b.end(2);
+            }
         }
-        b.end().string(")");
+
+        b.end();
+        b.end(); // block
+        b.string(")");
         b.end(); // statement
         b.end();
 
@@ -9383,6 +9414,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createFindProbe());
             this.add(createIsInstrumentable());
             this.add(createHasTag());
+            this.add(createCopy());
             this.add(createGetSourceSection());
             this.add(createGetSourceSections());
             this.add(createCreateSourceSection());
@@ -9550,6 +9582,17 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
+        private CodeExecutableElement createCopy() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.Node, "copy");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startDeclaration(asType(), "copy").cast(asType()).string("super.copy()").end();
+            b.statement("copy.probe = null");
+            b.statement("return copy");
+            return ex;
+        }
+
         private CodeExecutableElement createHasTag() {
             CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "hasTag");
             ex.renameArguments("tag");
@@ -9590,6 +9633,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.statement("this.probe = localProbe = insert(root.createProbe(null))");
             b.end();
             b.statement("return localProbe");
+
+            this.add(createCopy());
+        }
+
+        private CodeExecutableElement createCopy() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.Node, "copy");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startDeclaration(asType(), "copy").cast(asType()).string("super.copy()").end();
+            b.statement("copy.probe = null");
+            b.statement("return copy");
+            return ex;
         }
 
     }
@@ -11614,11 +11670,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startReturn();
             b.startNew(tier.friendlyName + "BytecodeNode");
             for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
-                if (cloneUninitializedNeedsUnquickenedBytecode() && var.getSimpleName().contentEquals("bytecodes")) {
-                    b.startCall("unquickenBytecode").string("this.bytecodes").end();
+                b.startGroup();
+                if (var.getSimpleName().contentEquals("tagRoot")) {
+                    b.string("tagRoot != null ? ").cast(tagRootNode.asType()).string("tagRoot.deepCopy() : null");
+                } else if (var.getSimpleName().contentEquals("bytecodes")) {
+                    if (cloneUninitializedNeedsUnquickenedBytecode()) {
+                        b.startCall("unquickenBytecode").string("this.bytecodes").end();
+                    } else {
+                        b.startStaticCall(type(Arrays.class), "copyOf");
+                        b.string("this.bytecodes").string("this.bytecodes.length");
+                        b.end();
+                    }
                 } else {
                     b.string("this.", var.getSimpleName().toString());
                 }
+                b.end();
             }
             if (tier.isCached() && usesLocalTags()) {
                 b.string("this.localTags_.length");

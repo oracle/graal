@@ -40,40 +40,60 @@
  */
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 
+import org.graalvm.polyglot.Context;
+import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
+import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.Instruction.Argument;
+import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
 public class SplittingTest extends AbstractBasicInterpreterTest {
 
+    Context context;
+
     @Before
     public void before() {
         // we can only perform this test if the runtime enables splitting
-        Assume.assumeNotNull(split(parseNode("explicitBindings", b -> {
+        Assume.assumeNotNull(split(parseNode("dummy", b -> {
             b.beginRoot(LANGUAGE);
             b.endRoot();
         })));
+        context = Context.create();
+        context.enter();
+    }
+
+    @After
+    public void leave() {
+        if (context != null) {
+            context.close();
+        }
     }
 
     @Test
     public void testBytecodeUpdateInSplits() {
         Source s = Source.newBuilder("", "", "test.name").build();
-        BasicInterpreter original = parseNode("explicitBindings", b -> {
+        BasicInterpreter original = parseNode("bytecodeUpdateInSplits", b -> {
             b.beginSource(s);
             b.beginSourceSection(0, 0);
             b.beginRoot(LANGUAGE);
             b.beginTag(StatementTag.class);
             b.beginReturn();
-            b.emitExplicitBindingsTest();
+            b.emitLoadConstant(42L);
             b.endReturn();
             b.endTag(StatementTag.class);
             b.endRoot();
@@ -103,6 +123,88 @@ public class SplittingTest extends AbstractBasicInterpreterTest {
         assertNotNull(original.getBytecodeNode().getTagTree());
         assertNotNull(split0.getBytecodeNode().getTagTree());
         assertNotNull(split1.getBytecodeNode().getTagTree());
+    }
+
+    @Test
+    public void testIndepentProfile() {
+        Source s = Source.newBuilder("", "", "test.name").build();
+        BasicInterpreter original = parseNode("indepentProfile", b -> {
+            b.beginSource(s);
+            b.beginSourceSection(0, 0);
+            b.beginRoot(LANGUAGE);
+            b.beginTag(StatementTag.class);
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitLoadConstant(21L);
+            b.emitLoadConstant(21L);
+            b.endAddOperation();
+            b.endReturn();
+            b.endTag(StatementTag.class);
+            b.endRoot();
+            b.endSourceSection();
+            b.endSource();
+        });
+
+        BasicInterpreter split0 = split(original);
+        assertNotSame(original, split0);
+
+        assertEquals(42L, original.getCallTarget().call());
+        assertEquals(42L, split0.getCallTarget().call());
+
+        original.getRootNodes().update(BytecodeConfig.COMPLETE); // materialize tags
+
+        // tag tree must not be shared between bytecode nodes
+        assertNotSameOrNull(original.getBytecodeNode().getTagTree(), split0.getBytecodeNode().getTagTree());
+        assertNotSameOrNull(findNode(original.getBytecodeNode(), "c.AddOperation"), findNode(split0.getBytecodeNode(), "c.AddOperation"));
+
+        assertEquals(42L, original.getCallTarget().call());
+        assertEquals(42L, split0.getCallTarget().call());
+
+        // create an additional split after execution
+        BasicInterpreter split1 = split(original);
+
+        // tag tree must not be shared between bytecode nodes
+        assertNotSameOrNull(original.getBytecodeNode().getTagTree(), split0.getBytecodeNode().getTagTree());
+        assertNotSameOrNull(original.getBytecodeNode().getTagTree(), split1.getBytecodeNode().getTagTree());
+        assertNotSameOrNull(split0.getBytecodeNode().getTagTree(), split1.getBytecodeNode().getTagTree());
+
+        assertNotSameOrNull(findNode(original.getBytecodeNode(), "c.AddOperation"), findNode(split0.getBytecodeNode(), "c.AddOperation"));
+        assertNotSameOrNull(findNode(original.getBytecodeNode(), "c.AddOperation"), findNode(split1.getBytecodeNode(), "c.AddOperation"));
+        assertNotSameOrNull(findNode(split0.getBytecodeNode(), "c.AddOperation"), findNode(split1.getBytecodeNode(), "c.AddOperation"));
+
+        assertEquals(42L, original.getCallTarget().call());
+        assertEquals(42L, split0.getCallTarget().call());
+    }
+
+    private static void assertNotSameOrNull(Object expected, Object actual) {
+        if (expected == null) {
+            assertNull(actual);
+        } else {
+            assertNotSame(expected, actual);
+        }
+    }
+
+    private static final Node findNode(BytecodeNode node, String name) {
+        Instruction instr = findInstruction(node, name);
+        if (instr == null) {
+            return null;
+        }
+        for (Argument arg : instr.getArguments()) {
+            if (arg.getKind() == Kind.NODE_PROFILE) {
+                return arg.asCachedNode();
+            }
+        }
+        return null;
+
+    }
+
+    private static final Instruction findInstruction(BytecodeNode node, String name) {
+        for (Instruction instruction : node.getInstructions()) {
+            if (instruction.getName().contains(name)) {
+                return instruction;
+            }
+        }
+        return null;
     }
 
     private static BasicInterpreter split(BasicInterpreter node) {
