@@ -98,7 +98,6 @@ import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DeoptSourceFrameInfo;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
-import com.oracle.svm.hosted.imagelayer.PriorLayerSymbolTracker;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -129,7 +128,6 @@ import jdk.vm.ci.meta.VMConstant;
 public abstract class NativeImageCodeCache {
 
     private final Map<Constant, Object> embeddedConstants = new HashMap<>();
-    private final Set<HostedMethod> baseLayerMethods;
 
     public static class Options {
         @Option(help = "Verify that all possible deoptimization entry points have been properly compiled and registered in the metadata")//
@@ -151,11 +149,7 @@ public abstract class NativeImageCodeCache {
     private final Map<Constant, String> constantReasons = new HashMap<>();
 
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilationResultMap, NativeImageHeap imageHeap) {
-        this(compilationResultMap, imageHeap, ImageSingletons.lookup(Platform.class), null);
-    }
-
-    public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilationResultMap, NativeImageHeap imageHeap, Set<HostedMethod> baseLayerMethods) {
-        this(compilationResultMap, imageHeap, ImageSingletons.lookup(Platform.class), baseLayerMethods);
+        this(compilationResultMap, imageHeap, ImageSingletons.lookup(Platform.class));
     }
 
     public void purge() {
@@ -165,14 +159,8 @@ public abstract class NativeImageCodeCache {
 
     @SuppressWarnings("this-escape")//
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform) {
-        this(compilations, imageHeap, targetPlatform, null);
-    }
-
-    @SuppressWarnings("this-escape")//
-    public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform, Set<HostedMethod> baseLayerMethods) {
         this.compilations = compilations;
         this.imageHeap = imageHeap;
-        this.baseLayerMethods = baseLayerMethods;
         this.dataSection = new DataSection();
         this.targetPlatform = targetPlatform;
         this.orderedCompilations = computeCompilationOrder(compilations);
@@ -206,10 +194,6 @@ public abstract class NativeImageCodeCache {
 
     public List<Pair<HostedMethod, CompilationResult>> getOrderedCompilations() {
         return orderedCompilations;
-    }
-
-    public Set<HostedMethod> getBaseLayerMethods() {
-        return baseLayerMethods;
     }
 
     public abstract int codeSizeFor(HostedMethod method);
@@ -410,13 +394,9 @@ public abstract class NativeImageCodeCache {
             }
         }));
 
-        var symbolTracker = PriorLayerSymbolTracker.singletonOrNull();
         configurationExecutables.forEach((declaringClass, classMethods) -> classMethods.forEach((analysisMethod, reflectMethod) -> {
             if (includedMethods.add(analysisMethod)) {
                 HostedMethod method = hUniverse.lookup(analysisMethod);
-                if (analysisMethod.isInBaseLayer()) {
-                    symbolTracker.registerPriorLayerReference(method);
-                }
                 Object accessor = reflectionSupport.getAccessor(analysisMethod);
                 runtimeMetadataEncoder.addReflectionExecutableMetadata(hMetaAccess, method, reflectMethod, accessor);
             }

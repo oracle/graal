@@ -198,6 +198,7 @@ public class SubstrateOptions {
     public static final String KEEP_ALIVE_PREFIX = "-keepalive";
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
     public static OptionEnabledHandler<Boolean> imageLayerEnabledHandler;
+    public static OptionEnabledHandler<Boolean> imageLayerCreateEnabledHandler;
 
     @Fold
     public static boolean getSourceLevelDebug() {
@@ -431,6 +432,10 @@ public class SubstrateOptions {
 
     public static void setImageLayerEnabledHandler(OptionEnabledHandler<Boolean> updateHandler) {
         SubstrateOptions.imageLayerEnabledHandler = updateHandler;
+    }
+
+    public static void setImageLayerCreateEnabledHandler(OptionEnabledHandler<Boolean> updateHandler) {
+        SubstrateOptions.imageLayerCreateEnabledHandler = updateHandler;
     }
 
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
@@ -856,8 +861,6 @@ public class SubstrateOptions {
      */
     @Option(help = "Use linker option to prevent unreferenced symbols in image.")//
     public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN);
-    @Option(help = "Ignore undefined symbols referenced from the built image.")//
-    public static final HostedOptionKey<Boolean> IgnoreUndefinedReferences = new HostedOptionKey<>(false);
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
     @Option(help = "Compatibility option to make symbols used for the image heap global. " +

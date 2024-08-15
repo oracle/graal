@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
@@ -41,7 +40,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -384,10 +382,10 @@ public abstract class NonSnippetLowerings {
                          * address offset of the text section start and then add in the offset for
                          * this specific method.
                          */
-                        Pair<CGlobalDataInfo, Integer> methodLocation = DynamicImageLayerInfo.singleton().getPriorLayerMethodLocation(targetMethod);
+                        var methodLocation = DynamicImageLayerInfo.singleton().getPriorLayerMethodLocation(targetMethod);
                         AddressNode methodPointerAddress = graph.addOrUniqueWithInputs(
-                                        new OffsetAddressNode(new CGlobalDataLoadAddressNode(methodLocation.getLeft()),
-                                                        ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), methodLocation.getRight())));
+                                        new OffsetAddressNode(new CGlobalDataLoadAddressNode(methodLocation.base()),
+                                                        ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), methodLocation.offset())));
                         loweredCallTarget = createIndirectCall(graph, callTarget, parameters, method, signature, callType, invokeKind, methodPointerAddress);
                     } else if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
                         loweredCallTarget = createDirectCall(graph, callTarget, parameters, signature, callType, invokeKind, targetMethod, node);

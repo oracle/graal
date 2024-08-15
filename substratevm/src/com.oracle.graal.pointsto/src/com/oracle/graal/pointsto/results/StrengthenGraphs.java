@@ -227,7 +227,7 @@ public abstract class StrengthenGraphs {
             return;
         }
 
-        if (method.isInBaseLayer()) {
+        if (method.analyzedInPriorLayer()) {
             useSharedLayerGraph(method);
             return;
         }
