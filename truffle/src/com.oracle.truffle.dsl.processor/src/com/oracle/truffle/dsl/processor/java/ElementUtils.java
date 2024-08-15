@@ -2175,4 +2175,16 @@ public class ElementUtils {
         return workaround;
     }
 
+    public static ExecutableElement findOverride(ExecutableElement method, TypeElement type) {
+        TypeElement searchType = type;
+        while (searchType != null && !elementEquals(method.getEnclosingElement(), searchType)) {
+            ExecutableElement override = findInstanceMethod(searchType, method.getSimpleName().toString(), method.getParameters().stream().map((p -> p.asType())).toArray(TypeMirror[]::new));
+            if (override != null) {
+                return override;
+            }
+            searchType = castTypeElement(searchType.getSuperclass());
+        }
+        return null;
+    }
+
 }

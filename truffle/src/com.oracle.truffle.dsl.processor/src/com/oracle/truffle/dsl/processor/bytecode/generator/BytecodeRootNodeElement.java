@@ -413,10 +413,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         this.add(createAssertionFailed());
 
         // Define methods for cloning the root node.
-        this.add(createIsCloningAllowed());
-        this.add(createCloneUninitializedSupported());
+        this.addOptional(createIsCloningAllowed());
+        this.addOptional(createCloneUninitializedSupported());
         this.add(new CodeVariableElement(Set.of(Modifier.PRIVATE), generic(types.BytecodeSupport_CloneReferenceList, asType()), "clones"));
-        this.add(createCloneUninitialized());
+        this.addOptional(createCloneUninitialized());
 
         this.add(createFindBytecodeIndex());
         this.add(createIsCaptureFramesForTrace());
@@ -850,7 +850,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     }
 
     private CodeExecutableElement createIsCloningAllowed() {
-        if (ElementUtils.findInstanceMethod(model.templateType, "isCloningAllowed") != null) {
+        ExecutableElement executable = ElementUtils.findOverride(ElementUtils.findMethod(types.RootNode, "isCloningAllowed"), model.templateType);
+        if (executable != null) {
             return null;
         }
         CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "isCloningAllowed");
@@ -859,12 +860,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     }
 
     private CodeExecutableElement createCloneUninitializedSupported() {
+        ExecutableElement executable = ElementUtils.findOverride(ElementUtils.findMethod(types.RootNode, "isCloneUninitializedSupported"), model.templateType);
+        if (executable != null && executable.getModifiers().contains(Modifier.FINAL)) {
+            return null;
+        }
+
         CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "isCloneUninitializedSupported");
         ex.createBuilder().returnTrue();
         return ex;
     }
 
     private CodeExecutableElement createCloneUninitialized() {
+        ExecutableElement executable = ElementUtils.findOverride(ElementUtils.findMethod(types.RootNode, "cloneUninitialized"), model.templateType);
+        if (executable != null && executable.getModifiers().contains(Modifier.FINAL)) {
+            return null;
+        }
         CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "cloneUninitialized");
 
         CodeTreeBuilder b = ex.createBuilder();
@@ -916,12 +926,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.string("stackTraceElement");
         b.end();
         b.end();
-
         return ex;
     }
 
     private CodeExecutableElement createCountTowardsStackTraceLimit() {
-        if (ElementUtils.findInstanceMethod(model.templateType, "countsTowardsStackTraceLimit") != null) {
+        ExecutableElement executable = ElementUtils.findOverride(ElementUtils.findMethod(types.RootNode, "countsTowardsStackTraceLimit"), model.templateType);
+        if (executable != null) {
             return null;
         }
         CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "countsTowardsStackTraceLimit");
@@ -1577,11 +1587,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         return expectMethod;
     }
 
-    TypeMirror type(Class<?> c) {
+    private TypeMirror type(Class<?> c) {
         return context.getType(c);
     }
 
-    DeclaredType declaredType(Class<?> t) {
+    private DeclaredType declaredType(Class<?> t) {
         return context.getDeclaredType(t);
     }
 
@@ -1591,16 +1601,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     private boolean usesLocalTags() {
         return model.enableLocalScoping && model.usesBoxingElimination();
-    }
-
-    static Object[] merge(Object[] array0, Object[] array1) {
-        assert array0.length >= 8;
-        assert array1.length > 0;
-
-        Object[] newArray = new Object[array0.length + array1.length];
-        System.arraycopy(array0, 0, newArray, 0, array0.length);
-        System.arraycopy(array1, 0, newArray, array0.length, array0.length);
-        return newArray;
     }
 
     private void serializationWrapException(CodeTreeBuilder b, Runnable r) {
@@ -2122,35 +2122,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     static CodeTreeBuilder startExpectFrameUnsafe(CodeTreeBuilder b, String frame, TypeMirror type) {
         return startExpectFrame(b, frame, type, true);
-    }
-
-    static CodeTreeBuilder startIsFrame(CodeTreeBuilder b, String frame, TypeMirror type) {
-        String methodName;
-        switch (type.getKind()) {
-            case BOOLEAN:
-                methodName = "isBoolean";
-                break;
-            case BYTE:
-                methodName = "isByte";
-                break;
-            case INT:
-                methodName = "isInt";
-                break;
-            case LONG:
-                methodName = "isLong";
-                break;
-            case FLOAT:
-                methodName = "isFloat";
-                break;
-            case DOUBLE:
-                methodName = "isDouble";
-                break;
-            default:
-                methodName = "isObject";
-                break;
-        }
-        b.startCall(frame, methodName);
-        return b;
     }
 
     static CodeTreeBuilder startExpectFrame(CodeTreeBuilder b, String frame, TypeMirror type, boolean unsafe) {
