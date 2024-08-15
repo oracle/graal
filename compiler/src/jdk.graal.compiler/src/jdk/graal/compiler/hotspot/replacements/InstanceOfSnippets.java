@@ -88,7 +88,8 @@ import jdk.vm.ci.meta.TriState;
  *
  * The type tests implemented are described in the paper
  * <a href="http://dl.acm.org/citation.cfm?id=583821"> Fast subtype checking in the HotSpot JVM</a>
- * by Cliff Click and John Rose.
+ * by Cliff Click and John Rose, with the adaption on the secondary supers hashed lookup algorithm
+ * described in JDK-8180450 (see comments in {@link TypeCheckSnippetUtils#checkSelfAndSupers}).
  */
 public class InstanceOfSnippets implements Snippets {
 
@@ -265,15 +266,15 @@ public class InstanceOfSnippets implements Snippets {
 
             this.instanceofWithProfile = snippet(providers, InstanceOfSnippets.class, "instanceofWithProfile");
             this.instanceofExact = snippet(providers, InstanceOfSnippets.class, "instanceofExact");
-            this.instanceofPrimary = snippet(providers, InstanceOfSnippets.class, "instanceofPrimary");
+            this.instanceofPrimary = snippet(providers, InstanceOfSnippets.class, "instanceofPrimary", PRIMARY_SUPERS_LOCATION);
             if (JavaVersionUtil.JAVA_SPEC == 21) {
                 this.instanceofSecondary = snippet(providers, InstanceOfSnippets.class, "instanceofSecondary", SECONDARY_SUPER_CACHE_LOCATION);
-                this.instanceofDynamic = snippet(providers, InstanceOfSnippets.class, "instanceofDynamic", SECONDARY_SUPER_CACHE_LOCATION);
-                this.isAssignableFrom = snippet(providers, InstanceOfSnippets.class, "isAssignableFrom", SECONDARY_SUPER_CACHE_LOCATION);
+                this.instanceofDynamic = snippet(providers, InstanceOfSnippets.class, "instanceofDynamic", PRIMARY_SUPERS_LOCATION, SECONDARY_SUPER_CACHE_LOCATION);
+                this.isAssignableFrom = snippet(providers, InstanceOfSnippets.class, "isAssignableFrom", PRIMARY_SUPERS_LOCATION, SECONDARY_SUPER_CACHE_LOCATION);
             } else {
                 this.instanceofSecondary = snippet(providers, InstanceOfSnippets.class, "instanceofSecondary");
-                this.instanceofDynamic = snippet(providers, InstanceOfSnippets.class, "instanceofDynamic");
-                this.isAssignableFrom = snippet(providers, InstanceOfSnippets.class, "isAssignableFrom");
+                this.instanceofDynamic = snippet(providers, InstanceOfSnippets.class, "instanceofDynamic", PRIMARY_SUPERS_LOCATION);
+                this.isAssignableFrom = snippet(providers, InstanceOfSnippets.class, "isAssignableFrom", PRIMARY_SUPERS_LOCATION);
             }
 
             this.counters = new Counters(factory);

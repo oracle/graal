@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 package jdk.graal.compiler.core.test;
 
 import static java.lang.reflect.Modifier.isStatic;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 import static jdk.graal.compiler.nodes.ConstantNode.getConstantNodes;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
@@ -98,9 +100,11 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.FullInfopointNode;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ProxyNode;
 import jdk.graal.compiler.nodes.ReturnNode;
@@ -110,6 +114,7 @@ import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.StructuredGraph.Builder;
 import jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -118,6 +123,8 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.java.AccessFieldNode;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
 import jdk.graal.compiler.nodes.spi.Replacements;
@@ -268,6 +275,18 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected static void safepoint() {
+    }
+
+    /**
+     * Prevent canonicalization on {@code input} until after given graph {@code stage}.
+     * {@code stage} must be constant for this to work.
+     */
+    protected static <T> T delayConstantFoldingUntil(T input, GraphState.StageFlag stage) {
+        return delayConstantFoldingUntil(input, stage.ordinal());
+    }
+
+    private static <T> T delayConstantFoldingUntil(T input, @SuppressWarnings("unused") int stage) {
+        return input;
     }
 
     protected Suites createSuites(OptionValues opts) {
@@ -499,7 +518,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * If the {@link jdk.graal.compiler.nodes.OptimizationLog} is enabled, the logs of the "actual"
      * graph are emitted.
      *
-     * @param addGaphsToDebugContext if true, a scope is opened that contains {@code expected} and
+     * @param addGraphsToDebugContext if true, a scope is opened that contains {@code expected} and
      *            {@code actual} in its context so that these graphs are dumped when the comparison
      *            fails and {@code DumpOnError=true}
      */
@@ -508,7 +527,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                     StructuredGraph actual,
                     boolean excludeVirtual,
                     boolean checkConstants,
-                    boolean addGaphsToDebugContext) {
+                    boolean addGraphsToDebugContext) {
         DebugContext debug = actual.getDebug();
         actual.getOptimizationLog().emit();
 
@@ -517,7 +536,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         String mismatchString = compareGraphStrings(expected, expectedString, actual, actualString);
 
         // Open a scope so that `expected` and `actual` are dumped if DumpOnError=true
-        try (DebugContext.Scope scope = addGaphsToDebugContext ? debug.scope("GraphEqualsTest", expected, actual) : null) {
+        try (DebugContext.Scope scope = addGraphsToDebugContext ? debug.scope("GraphEqualsTest", expected, actual) : null) {
             if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(actual)) {
                 debug.dump(DebugContext.BASIC_LEVEL, expected, "Node count not matching - expected");
                 debug.dump(DebugContext.BASIC_LEVEL, actual, "Node count not matching - actual");
@@ -529,7 +548,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 Assert.fail(mismatchString);
             }
         } catch (AssertionError e) {
-            if (!addGaphsToDebugContext) {
+            if (!addGraphsToDebugContext) {
                 throw e;
             }
             throw debug.handle(e);
@@ -1176,7 +1195,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * Used to produce a graph for a method about to be compiled by
      * {@link #compile(ResolvedJavaMethod, StructuredGraph)} if the second parameter to that method
      * is null.
-     *
+     * <p>
      * The default implementation in {@link GraalCompilerTest} is to call {@link #parseEager}.
      */
     protected StructuredGraph parseForCompile(ResolvedJavaMethod method, OptionValues options) {
@@ -1634,7 +1653,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     /**
      * Registers extra invocation plugins for this test. The extra plugins are removed in the
      * {@link #afterTest()} method.
-     *
+     * <p>
      * Subclasses overriding this method should always call the same method on the super class in
      * case it wants to register plugins.
      *
@@ -1669,6 +1688,41 @@ public abstract class GraalCompilerTest extends GraalTest {
                 return true;
             }
         });
+        invocationPlugins.register(GraalCompilerTest.class, new InvocationPlugin("delayConstantFoldingUntil", Object.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input, ValueNode stage) {
+                assert stage.isConstant();
+                GraphState.StageFlag stageFlag = GraphState.StageFlag.values()[stage.asJavaConstant().asInt()];
+                b.addPush(JavaKind.Object, new DelayConstantFoldingNode(input, stageFlag));
+                return true;
+            }
+        });
+    }
+
+    /**
+     * Temporary node that canonicalizes to its value after given graph stage.
+     */
+    @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
+    public static class DelayConstantFoldingNode extends FloatingNode implements Canonicalizable {
+        public static final NodeClass<DelayConstantFoldingNode> TYPE = NodeClass.create(DelayConstantFoldingNode.class);
+
+        private final GraphState.StageFlag stage;
+        @Input ValueNode value;
+
+        public DelayConstantFoldingNode(ValueNode value, GraphState.StageFlag stage) {
+            super(TYPE, value.stamp(NodeView.DEFAULT));
+
+            this.value = value;
+            this.stage = stage;
+        }
+
+        @Override
+        public Node canonical(CanonicalizerTool tool) {
+            if (graph() != null && graph().isAfterStage(stage)) {
+                return value;
+            }
+            return this;
+        }
     }
 
     /**
@@ -1779,7 +1833,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     /**
      * Returns a {@link java.util.Random} generator with a global seed specified by
      * {@link #SEED_PROPERTY_NAME} if it exists.
-     *
+     * <p>
      * The used seed printed to stdout for reproducing test failures.
      */
     public static Random getRandomInstance() {
