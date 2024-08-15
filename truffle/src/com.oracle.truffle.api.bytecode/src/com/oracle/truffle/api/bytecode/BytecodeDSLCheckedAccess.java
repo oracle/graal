@@ -76,46 +76,4 @@ final class BytecodeDSLCheckedAccess extends BytecodeDSLAccess {
         return clazz.cast(obj);
     }
 
-    // Exposed for testing.
-
-    public static short readShortBigEndian(byte[] arr, int index) {
-        return (short) (((arr[index] & 0xFF) << 8) | (arr[index + 1] & 0xFF));
-    }
-
-    public static short readShortLittleEndian(byte[] arr, int index) {
-        return (short) ((arr[index] & 0xFF) | ((arr[index + 1] & 0xFF) << 8));
-    }
-
-    public static int readIntBigEndian(byte[] arr, int index) {
-        return ((arr[index] & 0xFF) << 24) | ((arr[index + 1] & 0xFF) << 16) | ((arr[index + 2] & 0xFF) << 8) | (arr[index + 3] & 0xFF);
-    }
-
-    public static int readIntLittleEndian(byte[] arr, int index) {
-        return (arr[index] & 0xFF) | ((arr[index + 1] & 0xFF) << 8) | ((arr[index + 2] & 0xFF) << 16) | ((arr[index + 3] & 0xFF) << 24);
-    }
-
-    public static void writeShortBigEndian(byte[] arr, int index, short value) {
-        arr[index] = (byte) (value >> 8);
-        arr[index + 1] = (byte) value;
-    }
-
-    public static void writeShortLittleEndian(byte[] arr, int index, short value) {
-        arr[index] = (byte) value;
-        arr[index + 1] = (byte) (value >> 8);
-    }
-
-    public static void writeIntBigEndian(byte[] arr, int index, int value) {
-        arr[index] = (byte) (value >> 24);
-        arr[index + 1] = (byte) (value >> 16);
-        arr[index + 2] = (byte) (value >> 8);
-        arr[index + 3] = (byte) value;
-    }
-
-    public static void writeIntLittleEndian(byte[] arr, int index, int value) {
-        arr[index] = (byte) (value);
-        arr[index + 1] = (byte) (value >> 8);
-        arr[index + 2] = (byte) (value >>> 16);
-        arr[index + 3] = (byte) (value >> 24);
-    }
-
 }
