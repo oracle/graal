@@ -26,7 +26,6 @@ package com.oracle.svm.core.configure;
 
 import java.net.URI;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,7 +37,7 @@ import com.oracle.svm.core.TypeResult;
 
 final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigurationParser<C, T> {
 
-    private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("name", "type", "allDeclaredConstructors", "allPublicConstructors",
+    private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
                     "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
                     "allDeclaredClasses", "allRecordComponents", "allPermittedSubclasses", "allNestMembers", "allSigners",
                     "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
@@ -59,10 +58,9 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
 
     @Override
     protected void parseClass(EconomicMap<String, Object> data) {
-        checkAttributes(data, "reflection class descriptor object", Collections.emptyList(), OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS);
-        checkHasExactlyOneAttribute(data, "reflection class descriptor object", List.of(NAME_KEY, TYPE_KEY));
+        checkAttributes(data, "reflection class descriptor object", List.of(NAME_KEY), OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS);
 
-        Optional<TypeDescriptorWithOrigin> type = parseTypeOrName(data, treatAllNameEntriesAsType);
+        Optional<TypeDescriptorWithOrigin> type = parseName(data, treatAllNameEntriesAsType);
         if (type.isEmpty()) {
             return;
         }
