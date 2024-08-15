@@ -369,9 +369,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
          * footprint we don't do that here.
          */
         node.getBytecodeNode().setUncachedThreshold(0);
-        if (builtinNode.getParent() == null) {
-            node.getBytecodeNode().insert(builtinNode);
-        }
         return node;
     }
 

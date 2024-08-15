@@ -41,6 +41,7 @@
 package com.oracle.truffle.sl.bytecode;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -226,15 +227,17 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
         static Object doInBounds(VirtualFrame frame,
                         SLBuiltinNode builtin,
                         int argumentCount,
+                        @Bind Node bytecode,
                         @Bind("frame.getArguments()") Object[] arguments) {
-            return doInvoke(frame, builtin, arguments);
+            return doInvoke(frame, bytecode, builtin, arguments);
         }
 
         @Fallback
         @ExplodeLoop
         static Object doOutOfBounds(VirtualFrame frame,
                         SLBuiltinNode builtin,
-                        int argumentCount) {
+                        int argumentCount,
+                        @Bind Node bytecode) {
             Object[] originalArguments = frame.getArguments();
             Object[] arguments = new Object[argumentCount];
             for (int i = 0; i < argumentCount; i++) {
@@ -244,11 +247,20 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
                     arguments[i] = SLNull.SINGLETON;
                 }
             }
-            return doInvoke(frame, builtin, arguments);
+            return doInvoke(frame, bytecode, builtin, arguments);
         }
 
-        private static Object doInvoke(VirtualFrame frame, SLBuiltinNode builtin, Object[] arguments) {
+        private static Object doInvoke(VirtualFrame frame, Node node, SLBuiltinNode builtin, Object[] arguments) {
             try {
+                if (builtin.getParent() == null) {
+                    /*
+                     * The builtin node is passed as constant and might not yet be adopted. It is
+                     * important to adopt with the current node and not with the bytecode node to
+                     * not break stack trace generation.
+                     */
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    node.insert(builtin);
+                }
                 return builtin.execute(frame, arguments);
             } catch (UnsupportedSpecializationException e) {
                 throw SLException.typeError(e.getNode(), e.getSuppliedValues());
