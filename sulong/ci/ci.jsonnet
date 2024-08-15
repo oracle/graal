@@ -27,7 +27,10 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     guard+: {
       includes+: [
         # sulong and its dependencies
-        "<graal>/.git/**",
+        "<graal>/.git/**",  # This ensure the .git directory is preserved in apply-predicates
+        "<graal>/ci.jsonnet",
+        "<graal>/ci/**",
+        "<graal>/common.json",
         "<graal>/sdk/**",
         "<graal>/truffle/**",
         "<graal>/sulong/**",
@@ -35,7 +38,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
         "<graal>/compiler/**",
         "<graal>/regex/**",
         "<graal>/java-benchmarks/**",
-        "<graal>/common.json",
       ] + (if standalone then [
         # substratevm and its dependencies
         "<graal>/substratevm/**",
