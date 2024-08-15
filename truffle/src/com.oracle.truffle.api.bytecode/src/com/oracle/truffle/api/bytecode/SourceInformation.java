@@ -86,6 +86,11 @@ public abstract class SourceInformation {
      */
     public abstract SourceSection getSourceSection();
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.2
+     */
     @Override
     public String toString() {
         SourceSection sourceSection = getSourceSection();

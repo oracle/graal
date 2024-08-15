@@ -71,7 +71,6 @@ public class TruffleProcessorOptions {
     private static final String GenerateSpecializationStatisticsOptionName = "GenerateSpecializationStatistics";
     private static final String GenerateSlowPathOnlyOptionName = "GenerateSlowPathOnly";
     private static final String GenerateSlowPathOnlyFilterOptionName = "GenerateSlowPathOnlyFilter";
-    private static final String BytecodeEnableTracingOptionName = "BytecodeEnableTracing";
     private static final String SuppressAllWarnings = "SuppressAllWarnings";
     private static final String SuppressWarnings = "SuppressWarnings";
     private static final String CacheSharingWarningsEnabledOptionName = "cacheSharingWarningsEnabled";
@@ -155,11 +154,6 @@ public class TruffleProcessorOptions {
         } else {
             return Integer.parseInt(value);
         }
-    }
-
-    public static boolean bytecodeEnableTracing(ProcessingEnvironment env) {
-        String value = env.getOptions().get(OptionsPrefix + BytecodeEnableTracingOptionName);
-        return value == null ? false : Boolean.parseBoolean(value);
     }
 
     public static Set<String> getSupportedOptions() {

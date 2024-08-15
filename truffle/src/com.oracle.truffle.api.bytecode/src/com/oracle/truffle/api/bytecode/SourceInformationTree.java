@@ -75,8 +75,13 @@ public abstract class SourceInformationTree extends SourceInformation {
      */
     public abstract List<SourceInformationTree> getChildren();
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.2
+     */
     @Override
-    public String toString() {
+    public final String toString() {
         return toString(0);
     }
 

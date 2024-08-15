@@ -64,6 +64,11 @@ import com.oracle.truffle.api.source.SourceSection;
 @ExportLibrary(DynamicDispatchLibrary.class)
 public abstract class TagTreeNode extends Node implements TagTree {
 
+    /**
+     * Internal constructor for generated code. Do not use.
+     *
+     * @since 24.2
+     */
     protected TagTreeNode(Object token) {
         BytecodeRootNodes.checkToken(token);
     }
@@ -105,8 +110,13 @@ public abstract class TagTreeNode extends Node implements TagTree {
         return new DefaultBytecodeScope(this, frame, nodeEnter);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.2
+     */
     @Override
-    public String toString() {
+    public final String toString() {
         StringBuilder b = new StringBuilder();
         b.append(format(this));
 
