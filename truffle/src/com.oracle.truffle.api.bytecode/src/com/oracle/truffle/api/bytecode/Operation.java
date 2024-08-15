@@ -77,7 +77,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
  *
  * @since 24.2
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.TYPE})
 public @interface Operation {
 

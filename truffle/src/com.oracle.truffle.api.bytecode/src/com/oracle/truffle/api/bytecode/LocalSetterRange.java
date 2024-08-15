@@ -152,6 +152,13 @@ public final class LocalSetterRange {
         return array;
     }
 
+    /**
+     * Creates a local setter range given an array of bytecode locals created by the builder. The
+     * array of bytecode locals must locals with consective localOffset. The returned value may
+     * return an interned instance of {@link LocalSetterRange} to improve memory footprint.
+     *
+     * @since 24.2
+     */
     public static LocalSetterRange constantOf(BytecodeLocal[] locals) {
         if (locals.length == 0) {
             return CACHE[0][0];

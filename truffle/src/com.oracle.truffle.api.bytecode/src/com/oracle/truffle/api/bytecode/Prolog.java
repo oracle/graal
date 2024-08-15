@@ -60,7 +60,7 @@ import java.lang.annotation.Target;
  * @see EpilogReturn
  * @see EpilogExceptional
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.TYPE})
 public @interface Prolog {
 }

@@ -148,6 +148,11 @@ public final class BytecodeSupport {
         private WeakReference<T>[] references = new WeakReference[4];
         private int size;
 
+        /**
+         * Adds a new reference to the list. Note references cannot be removed.
+         *
+         * @since 24.2
+         */
         public void add(T reference) {
             if (size >= references.length) {
                 resize();
@@ -162,6 +167,11 @@ public final class BytecodeSupport {
             }
         }
 
+        /**
+         * Walks all references contained in the list.
+         *
+         * @since 24.2
+         */
         public void forEach(Consumer<T> forEach) {
             boolean needsCleanup = false;
             for (int index = 0; index < size; index++) {

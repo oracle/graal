@@ -59,7 +59,7 @@ import java.lang.annotation.Target;
  *
  * @since 24.2
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.TYPE)
 public @interface GenerateBytecodeTestVariants {
     /**
@@ -74,7 +74,7 @@ public @interface GenerateBytecodeTestVariants {
      *
      * @since 24.2
      */
-    @Retention(RetentionPolicy.RUNTIME)
+    @Retention(RetentionPolicy.SOURCE)
     @Target(ElementType.TYPE)
     @interface Variant {
         /**

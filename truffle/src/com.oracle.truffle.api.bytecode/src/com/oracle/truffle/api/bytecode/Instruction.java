@@ -53,42 +53,123 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Introspection class modeling an instruction in a bytecode interpreter.
+ * Represents metadata for an instruction in a bytecode node.
  * <p>
  * Compatibility note: The data contained in instruction classes is subject to change without notice
  * between Truffle versions. This introspection API is therefore intended to be used for debugging
  * and tracing purposes only. Do not rely on instructions for your language semantics.
+ * <p>
+ * The current instruction can be bound using <code>@Bind Instruction instruction</code> from
+ * {@link Operation operations}. This class is not intended to be subclasses by clients, only by DSL
+ * generated code.
  *
- * @since 24.2
  * @see BytecodeNode#getInstructions()
  * @see BytecodeNode#getInstructionsAsList()
  * @see BytecodeNode#getInstruction(int)
+ * @since 24.2
  */
 @DefaultExpression("$bytecodeNode.getInstruction($bytecodeIndex)")
 public abstract class Instruction {
 
+    /**
+     * Internal constructor for generated code. Do not use.
+     *
+     * @since 24.2
+     */
     protected Instruction(Object token) {
         BytecodeRootNodes.checkToken(token);
     }
 
+    /**
+     * Returns the bytecode node this instruction stems from.
+     *
+     * @since 24.2
+     */
     public abstract BytecodeNode getBytecodeNode();
 
+    /**
+     * Returns the bytecode index of this instruction. A bytecode index is only valid for a given
+     * {@link BytecodeNode}, it is therefore recommended to use {@link #getLocation()} instead
+     * whenever possible.
+     *
+     * @ee {@link #getLocation()}
+     * @since 24.2
+     */
     public abstract int getBytecodeIndex();
 
+    /**
+     * Returns the length of this instruction in number of bytes.
+     *
+     * @since 24.2
+     */
     public abstract int getLength();
 
+    /**
+     * Converts this instruction pointer into a bytecode location. It is recommended to use
+     * {@link BytecodeLocation} to persist a bytecode location instead of using instruction.
+     *
+     * @since 24.2
+     */
     public final BytecodeLocation getLocation() {
         return getBytecodeNode().getBytecodeLocation(getBytecodeIndex());
     }
 
+    /**
+     * Returns the name of this instruction. The name of the instruction is purely for human
+     * consumption and no structure should be assumed. If two instructions have the same instruction
+     * name then they also have the same {@link #getOperationCode() operation code}.
+     * <p>
+     * It is guaranteed that the name is no longer mutating after the instruction object was
+     * created. The name of an instruction at a {@link BytecodeLocation location} may otherwise
+     * change during execution due to quickening and other optimizations.
+     *
+     * @see #getOperationCode()
+     * @since 24.2
+     */
     public abstract String getName();
 
+    /**
+     * Returns the operation code of this instruction. The operation code of the instruction is
+     * purely for human consumption and no values should be assumed. If two instructions have the
+     * same instruction operation code then they also have the same {@link #getName() name}.
+     * <p>
+     * It is guaranteed that the operation code is no longer mutating after the instruction object
+     * was created. The operation code of an instruction at a {@link BytecodeLocation location} may
+     * otherwise change during execution due to quickening and other optimizations.
+     *
+     * @see #getName()
+     * @since 24.2
+     */
     public abstract int getOperationCode();
 
+    /**
+     * Returns an immutable list of immediate arguments for this instructions. The number of
+     * arguments of an instruction remain stable during execution. The argument values on the other
+     * hand may get mutated by bytecode execution.
+     *
+     * @since 24.2
+     */
     public abstract List<Argument> getArguments();
 
+    /**
+     * Returns <code>true</code> if this instruction represents a bytecode or tag instrumentation
+     * instruction, else <code>false</code>. Instrumentation instructions may get inserted
+     * dynamically during execution, e.g. if a tag is materialized or an {@link Instrumentation} is
+     * enabled {@link BytecodeRootNodes#update(BytecodeConfig) configured}.
+     *
+     * @since 24.2
+     */
     public abstract boolean isInstrumentation();
 
+    /**
+     * Returns the most concrete source section associated with this instruction. If no source
+     * section is available for this instruction or source sections have not yet been materialized,
+     * then <code>null</code> is returned. Source sections may be materialized by calling
+     * {@link BytecodeRootNodes#update(BytecodeConfig) update} with
+     * {@link BytecodeConfig#WITH_SOURCE}.
+     *
+     * @since 24.2
+     */
     public final SourceSection getSourceSection() {
         BytecodeNode bytecode = getBytecodeNode();
         if (bytecode.getSourceInformation() == null) {
@@ -98,6 +179,15 @@ public abstract class Instruction {
         return bytecode.getSourceLocation(getBytecodeIndex());
     }
 
+    /**
+     * Returns all source section associated with this instruction starting with the most concrete
+     * source section. If no source sections are available, then an empty array is returned. If
+     * source sections have not yet been materialized, then <code>null</code> is returned. Source
+     * sections may be materialized by calling {@link BytecodeRootNodes#update(BytecodeConfig)
+     * update} with {@link BytecodeConfig#WITH_SOURCE}.
+     *
+     * @since 24.2
+     */
     public final SourceSection[] getSourceSections() {
         BytecodeNode bytecode = getBytecodeNode();
         if (bytecode.getSourceInformation() == null) {
@@ -107,17 +197,46 @@ public abstract class Instruction {
         return getBytecodeNode().getSourceLocations(getBytecodeIndex());
     }
 
+    /**
+     * Returns the bytecode index of the next instruction. This method is useful to quickly find the
+     * next instruction. The next bytecode index is computed as <code>{@link #getBytecodeIndex()} +
+     * {@link #getLength()}</code>.
+     * <p>
+     * The next bytecode index may no longer be a valid index if this instruction is the last
+     * instruction. Use {@link BytecodeNode#getInstructions()} to walk all instructions efficiently
+     * and safely. Since the bytecode encoding is variable length, there is no efficient way to get
+     * to the previous bytecode index. Only forward traversial is efficient. If random access is
+     * desired use {@link BytecodeNode#getInstructionsAsList()}.
+     *
+     * @since 24.2
+     */
     public final int getNextBytecodeIndex() {
         return getBytecodeIndex() + getLength();
     }
 
+    /**
+     * Returns the next instruction object. Implemented by generated code, intended for internal use
+     * only.
+     *
+     * @since 24.2
+     */
     protected abstract Instruction next();
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.2
+     */
     @Override
     public final int hashCode() {
         return Objects.hash(getBytecodeNode(), getBytecodeIndex(), getOperationCode());
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.2
+     */
     @Override
     public final boolean equals(Object obj) {
         if (this == obj) {
@@ -129,8 +248,13 @@ public abstract class Instruction {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.2
+     */
     @Override
-    public String toString() {
+    public final String toString() {
         return formatInstruction(-1, this, 40, 60);
     }
 
@@ -171,48 +295,152 @@ public abstract class Instruction {
         return b.toString();
     }
 
+    /**
+     * Represents metadata for an argument of an instruction in a bytecode node.
+     * <p>
+     * Compatibility note: The data contained in instruction classes is subject to change without
+     * notice between Truffle versions. This introspection API is therefore intended to be used for
+     * debugging and tracing purposes only. Do not rely on instructions for your language semantics.
+     *
+     * @see Instruction#getArguments()
+     * @since 24.2
+     */
     public abstract static class Argument {
 
+        /**
+         * Internal constructor for generated code. Do not use.
+         *
+         * @since 24.2
+         */
         protected Argument(Object token) {
             BytecodeRootNodes.checkToken(token);
         }
 
+        /**
+         * Returns the {@link Kind} of this argument. Depending on the kind you may use any of the
+         * as prefixed methods.
+         *
+         * @since 24.2
+         */
         public abstract Kind getKind();
 
+        /**
+         * Returns a humand readable name for this argument. This could be for example
+         * <code>"localOffset"</code> for a local variable access instruction. Arguments with the
+         * same {@link #getKind()} may have different {@link #getName() names}. A name is typically
+         * more descriptive than just the kind and should be preferred over the kind for debug
+         * output.
+         *
+         * @since 24.2
+         */
         public abstract String getName();
 
-        public int asInteger() {
+        /**
+         * Converts this argument to an <code>int</code> value. This method is only supported for
+         * for the following kind: {@link Kind#INTEGER}. If called for arguments of other kinds then
+         * an {@link UnsupportedOperationException} is thrown.
+         *
+         * @since 24.2
+         */
+        public int asInteger() throws UnsupportedOperationException {
             throw unsupported();
         }
 
+        /**
+         * Converts this argument to an bytecodeIndex. This method is only supported for for the
+         * following kind: {@link Kind#BYTECODE_INDEX}. If called for arguments of other kinds then
+         * an {@link UnsupportedOperationException} is thrown. The returned value is valid bytecode
+         * index of the underlying {@link Instruction#getBytecodeNode() bytecode node} and can be
+         * used to be converted to a {@link BytecodeLocation}.
+         *
+         * @since 24.2
+         */
         public int asBytecodeIndex() {
             throw unsupported();
         }
 
+        /**
+         * Converts this argument to a object constant. This method is only supported for for the
+         * following kind: {@link Kind#CONSTANT}. If called for arguments of other kinds then an
+         * {@link UnsupportedOperationException} is thrown.
+         *
+         * @since 24.2
+         */
         public Object asConstant() {
             throw unsupported();
         }
 
+        /**
+         * Converts this argument to a {@link Node cached node}. This method is only supported for
+         * for the following kind: {@link Kind#NODE_PROFILE}. If called for arguments of other kinds
+         * then an {@link UnsupportedOperationException} is thrown. The returned value is never
+         * <code>null</code>.
+         *
+         * @since 24.2
+         */
         public Node asCachedNode() {
             throw unsupported();
         }
 
+        /**
+         * Converts this argument to a {@link TagTreeNode tag tree node}. This method is only
+         * supported for for the following kind: {@link Kind#TAG_NODE}. If called for arguments of
+         * other kinds then an {@link UnsupportedOperationException} is thrown. The returned value
+         * is never <code>null</code>.
+         *
+         * @since 24.2
+         */
         public TagTreeNode asTagNode() {
             throw unsupported();
         }
 
+        /**
+         * Converts this argument to a localOffset. This method is only supported for for the
+         * following kind: {@link Kind#LOCAL_OFFSET}. If called for arguments of other kinds then an
+         * {@link UnsupportedOperationException} is thrown. This index may be used to access locals
+         * with the local local access methods in {@link BytecodeNode}.
+         *
+         * @see BytecodeNode#getLocalValue(int, com.oracle.truffle.api.frame.Frame, int)
+         * @since 24.2
+         */
         public int asLocalOffset() {
             throw unsupported();
         }
 
+        /**
+         * Converts this argument to a localIndex. This method is only supported for for the
+         * following kind: {@link Kind#LOCAL_INDEX}. If called for arguments of other kinds then an
+         * {@link UnsupportedOperationException} is thrown. The local index can be used to index
+         * into the list of {@link BytecodeNode#getLocals() locals}.
+         *
+         * @see BytecodeNode#getLocals()
+         * @since 24.2
+         */
         public int asLocalIndex() {
             throw unsupported();
         }
 
+        /**
+         * Converts this argument to a {@link BranchProfile branch profile}. This method is only
+         * supported for for the following kind: {@link Kind#BRANCH_PROFILE}. If called for
+         * arguments of other kinds then an {@link UnsupportedOperationException} is thrown. The
+         * returned value is never <code>null</code>.
+         *
+         * @since 24.2
+         */
         public BranchProfile asBranchProfile() {
             throw unsupported();
         }
 
+        /**
+         * Converts this argument to a {@link SpecializationInfo specialization info}. This method
+         * is only supported for for the following kind: {@link Kind#NODE_PROFILE}. If called for
+         * arguments of other kinds then an {@link UnsupportedOperationException} is thrown. The
+         * specialization info is only available if
+         * {@link GenerateBytecode#enableSpecializationIntrospection()} is set to <code>true</code>.
+         *
+         * @since 24.2
+         */
         public final List<SpecializationInfo> getSpecializationInfo() {
             Node n = asCachedNode();
             if (Introspection.isIntrospectable(n)) {
@@ -226,6 +454,11 @@ public abstract class Instruction {
             return new UnsupportedOperationException(String.format("Not supported for argument type %s.", getKind()));
         }
 
+        /**
+         * {@inheritDoc}
+         *
+         * @since 24.2
+         */
         @Override
         public final String toString() {
             switch (getKind()) {
@@ -315,19 +548,109 @@ public abstract class Instruction {
             throw new AssertionError(String.format("Unhandled array type %s", array));
         }
 
+        /**
+         * Represents kind of an {@link Argument}.
+         *
+         * @since 24.2
+         */
         public enum Kind {
+            /**
+             * A constant argument to the instruction. Typically constants are used to encode
+             * {@link ConstantOperand} and loadConstant builtin operations.
+             *
+             * @see Argument#asConstant()
+             * @since 24.2
+             */
             CONSTANT,
+
+            /**
+             * A bytecode index argument to the instruction. Typically a bytecode indices are used
+             * to encode branch targets.
+             *
+             * @see Argument#asBytecodeIndex()
+             * @since 24.2
+             */
             BYTECODE_INDEX,
+
+            /**
+             * A integer argument to the instruction. Typically a integer arguments are used to
+             * encode argument indices and other constants.
+             *
+             * @see Argument#asInteger()
+             * @since 24.2
+             */
             INTEGER,
+
+            /**
+             * A localOffset argument to the instruction. Typically a localOffset arguments are used
+             * to encode arguments of load local builtin instructions.
+             *
+             * @see Argument#asLocalOffset()
+             * @since 24.2
+             */
             LOCAL_OFFSET,
+
+            /**
+             * A localIndex argument to the instruction. Typically a localIndex arguments are used
+             * to encode arguments of load local builtin instructions.
+             *
+             * @see Argument#asLocalIndex()
+             * @since 24.2
+             */
             LOCAL_INDEX,
+
+            /**
+             * A node profile argument to the instruction. Typically a node profile arguments are
+             * used to encode cached nodes.
+             *
+             * @see Argument#asCachedNode()
+             * @since 24.2
+             */
             NODE_PROFILE,
+
+            /**
+             * A branch profile argument to the instruction. Typically a branch profile is used for
+             * branch instructions.
+             *
+             * @see Argument#asBranchProfile()
+             * @since 24.2
+             */
             BRANCH_PROFILE,
             TAG_NODE;
         }
 
-        public record BranchProfile(int index, int trueCount, int falseCount) {
+        /**
+         * Represents a branch profile.
+         *
+         * @since 24.2
+         */
+        public record BranchProfile(
+                        /**
+                         * The index of the profile for the branch profile table.
+                         *
+                         * @since 24.2
+                         */
+                        int index,
 
+                        /**
+                         * The number of times this conditional branch was taken.
+                         *
+                         * @since 24.2
+                         */
+                        int trueCount,
+
+                        /**
+                         * The number of times this conditional branch was not taken.
+                         *
+                         * @since 24.2
+                         */
+                        int falseCount) {
+
+            /**
+             * Returns the frequency recorded by this profile.
+             *
+             * @since 24.2
+             */
             public double getFrequency() {
                 int total = trueCount + falseCount;
                 if (total == 0) {
@@ -336,6 +659,11 @@ public abstract class Instruction {
                 return ((double) trueCount) / ((double) total);
             }
 
+            /**
+             * {@inheritDoc}
+             *
+             * @since 24.2
+             */
             @Override
             public String toString() {
                 if (trueCount + falseCount == 0) {

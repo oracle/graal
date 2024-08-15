@@ -107,6 +107,11 @@ public abstract class ExceptionHandler {
         throw new UnsupportedOperationException("getTagTree() is not supported for handler kind: " + getKind());
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.2
+     */
     @Override
     public final String toString() {
         String description;
@@ -128,23 +133,31 @@ public abstract class ExceptionHandler {
 
     /**
      * Represents the kind of the exception handler.
+     *
+     * @since 24.2
      */
     public enum HandlerKind {
 
         /**
          * Handler directly emitted with the bytecode builder.
+         *
+         * @since 24.2
          */
         CUSTOM,
 
         /**
          * A special handler which handles tag instrumentation exceptional behavior. Only emitted if
          * {@link GenerateBytecode#enableTagInstrumentation() tag instrumentation} is enabled.
+         *
+         * @since 24.2
          */
         TAG,
 
         /**
          * A special handler which handles epilog exceptional behavior. Only emitted if the language
          * specifies an {@link EpilogExceptional} annotated operation.
+         *
+         * @since 24.2
          */
         EPILOG,
 

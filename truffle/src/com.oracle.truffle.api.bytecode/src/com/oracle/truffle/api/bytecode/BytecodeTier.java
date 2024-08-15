@@ -49,6 +49,21 @@ import com.oracle.truffle.api.dsl.Bind;
  */
 @Bind.DefaultExpression("$bytecodeNode.getTier()")
 public enum BytecodeTier {
+
+    /**
+     * The uncached bytecode tier does not collect profiling feedback. This means that that the node
+     * was either never executed or the {@link BytecodeNode#setUncachedThreshold(int) uncached
+     * threshold} did not yet reach zero.
+     *
+     * @since 24.2
+     */
     UNCACHED,
+
+    /**
+     * The cached bytecode tier does collect profiling feedback. This means that the bytecode
+     * interpreter is already collecting profiling information.
+     *
+     * @since 24.2
+     */
     CACHED;
 }

@@ -61,7 +61,7 @@ public abstract class LocalVariable {
      *
      * @since 24.2
      */
-    public LocalVariable(Object token) {
+    protected LocalVariable(Object token) {
         BytecodeRootNodes.checkToken(token);
     }
 
@@ -126,6 +126,11 @@ public abstract class LocalVariable {
      */
     public abstract Object getName();
 
+    /**
+     * {@inheritDoc}
+     * 
+     * @since 24.2
+     */
     @Override
     public String toString() {
         StringBuilder b = new StringBuilder("LocalVariable[");

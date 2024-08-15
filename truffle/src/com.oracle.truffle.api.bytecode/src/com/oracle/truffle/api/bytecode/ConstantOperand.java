@@ -75,7 +75,7 @@ import com.oracle.truffle.api.bytecode.ConstantOperand.Repeat;
  *
  * @since 24.2
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.TYPE})
 @Repeatable(Repeat.class)
 public @interface ConstantOperand {
@@ -135,7 +135,7 @@ public @interface ConstantOperand {
      *
      * @since 24.2
      */
-    @Retention(RetentionPolicy.RUNTIME)
+    @Retention(RetentionPolicy.SOURCE)
     @Target(ElementType.TYPE)
     public @interface Repeat {
         /**

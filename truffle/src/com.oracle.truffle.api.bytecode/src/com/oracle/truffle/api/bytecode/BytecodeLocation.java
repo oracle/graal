@@ -98,11 +98,21 @@ public final class BytecodeLocation {
         return bytecodes;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.2
+     */
     @Override
     public int hashCode() {
         return Objects.hash(bytecodes, bytecodeIndex);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.2
+     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -114,13 +124,18 @@ public final class BytecodeLocation {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.2
+     */
     @Override
     public String toString() {
         return String.format("BytecodeLocation [bytecode=%s, bci=%d]", bytecodes, bytecodeIndex);
     }
 
     /**
-     * Dumps the bytecode, highlighting this location in the result.
+     * Dumps the bytecode debug information, highlighting this location in the result.
      *
      * @return dump string
      * @see BytecodeNode#dump(BytecodeLocation)
@@ -141,7 +156,8 @@ public final class BytecodeLocation {
     }
 
     /**
-     * Computes all source locations of this bytecode location.
+     * Computes all source locations of this bytecode location. Returns an empty array if no source
+     * locations are available. Returns the most concrete source location first.
      *
      * @see BytecodeNode#getSourceLocations(int)
      * @since 24.2
@@ -151,7 +167,8 @@ public final class BytecodeLocation {
     }
 
     /**
-     * Computes the bytecode instruction at this location.
+     * Returns the bytecode instruction at this location which provides additional debug information
+     * for debugging and tracing.
      *
      * @since 24.2
      */
@@ -160,7 +177,8 @@ public final class BytecodeLocation {
     }
 
     /**
-     * Returns all exception handlers that span over this bytecode location.
+     * Returns all exception handlers that span over this bytecode location. Returns an empty list
+     * if no exception handlers span over this location. Returns never <code>null</code>.
      *
      * @since 24.2
      */

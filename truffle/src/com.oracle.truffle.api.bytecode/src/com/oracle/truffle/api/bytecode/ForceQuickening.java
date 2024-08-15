@@ -86,7 +86,7 @@ import com.oracle.truffle.api.dsl.Specialization;
  *
  * @since 24.2
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.METHOD})
 @Repeatable(Repeat.class)
 public @interface ForceQuickening {
@@ -107,7 +107,7 @@ public @interface ForceQuickening {
      *
      * @since 24.2
      */
-    @Retention(RetentionPolicy.RUNTIME)
+    @Retention(RetentionPolicy.SOURCE)
     @Target({ElementType.METHOD})
     public @interface Repeat {
         /**

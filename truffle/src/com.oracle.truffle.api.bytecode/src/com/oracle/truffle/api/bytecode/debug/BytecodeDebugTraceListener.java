@@ -44,6 +44,11 @@ import java.io.PrintStream;
 
 import com.oracle.truffle.api.bytecode.Instruction;
 
+/**
+ * Implement this class to quickly get some debug output for events in the bytecode node.
+ *
+ * @since 24.2
+ */
 public interface BytecodeDebugTraceListener extends BytecodeDebugListener {
 
     default void onQuicken(Instruction before, Instruction after) {

@@ -47,10 +47,13 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Default implementation of a bytecode dsl stack trace element object.
+ * Default implementation of a bytecode dsl stack trace element object. This implementation is used
+ * for implementing {@link RootNode#translateStackTraceElement(TruffleStackTraceElement)} of
+ * bytecode root nodes unless otherwise specified.
  */
 @ExportLibrary(InteropLibrary.class)
 final class DefaultBytecodeStackTraceElement implements TruffleObject {

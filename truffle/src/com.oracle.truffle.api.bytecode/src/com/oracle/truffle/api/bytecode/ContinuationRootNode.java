@@ -58,6 +58,11 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public abstract class ContinuationRootNode extends RootNode {
 
+    /**
+     * Internal constructor for generated code. Do not use.
+     *
+     * @since 24.2
+     */
     protected ContinuationRootNode(Object token, TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
         BytecodeRootNodes.checkToken(token);
@@ -77,6 +82,11 @@ public abstract class ContinuationRootNode extends RootNode {
      */
     public abstract BytecodeLocation getLocation();
 
+    /**
+     * Internal method implemented by the generated code. Do not use.
+     *
+     * @since 24.2
+     */
     protected abstract Frame findFrame(Frame frame);
 
 }

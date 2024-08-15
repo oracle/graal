@@ -63,12 +63,6 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
     final AtomicInteger quickeningCount = new AtomicInteger();
     final AtomicInteger specializeCount = new AtomicInteger();
 
-    public void onBytecodeInvalidation(BytecodeNode node) {
-        if (traceInstrumentation) {
-            System.out.printf("Invalidate bytecodes: %n", node.toString());
-        }
-    }
-
     public void onBytecodeStackTransition(Instruction source, Instruction target) {
         if (traceInstrumentation) {
             System.out.printf("On stack transition: %s%n", source.getLocation().getBytecodeNode().getRootNode());

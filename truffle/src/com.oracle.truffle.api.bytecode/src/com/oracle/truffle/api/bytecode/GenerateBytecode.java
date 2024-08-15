@@ -94,7 +94,7 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * @since 24.2
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.TYPE})
 public @interface GenerateBytecode {
     /**

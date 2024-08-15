@@ -59,7 +59,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
  *
  * @since 24.2
  */
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.TYPE)
 @Repeatable(Repeat.class)
 public @interface OperationProxy {
@@ -90,10 +90,17 @@ public @interface OperationProxy {
      *
      * @since 24.2
      */
-    @Retention(RetentionPolicy.RUNTIME)
+    // Note: CLASS retention to support parsing from other compilation units
+    @Retention(RetentionPolicy.CLASS)
     @Target(ElementType.TYPE)
     @interface Proxyable {
 
+        /**
+         * Whether a proxable node allows use for uncached. If uncached use is enabled additional
+         * validations are performed for the node.
+         *
+         * @since 24.2
+         */
         boolean allowUncached() default false;
 
     }
@@ -111,7 +118,7 @@ public @interface OperationProxy {
      *
      * @since 24.2
      */
-    @Retention(RetentionPolicy.RUNTIME)
+    @Retention(RetentionPolicy.SOURCE)
     @Target(ElementType.TYPE)
     public @interface Repeat {
         /**

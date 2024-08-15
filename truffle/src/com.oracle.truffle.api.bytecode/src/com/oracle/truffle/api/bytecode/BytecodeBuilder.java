@@ -58,16 +58,13 @@ package com.oracle.truffle.api.bytecode;
 @SuppressWarnings("static-method")
 public abstract class BytecodeBuilder {
 
-    protected BytecodeBuilder(Object token) {
-        BytecodeRootNodes.checkToken(token);
-    }
-
     /**
-     * Default constructor for a {@link BytecodeBuilder}.
+     * Internal constructor for generated code. Do not use.
      *
      * @since 24.2
      */
-    public BytecodeBuilder() {
+    protected BytecodeBuilder(Object token) {
+        BytecodeRootNodes.checkToken(token);
     }
 
 }

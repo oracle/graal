@@ -54,6 +54,11 @@ public final class BytecodeEncodingException extends RuntimeException {
         super(reason);
     }
 
+    /**
+     * Creates a bytecode encoding exception with a reason string.
+     *
+     * @since 24.2
+     */
     public static BytecodeEncodingException create(String reason) {
         return new BytecodeEncodingException(reason);
     }

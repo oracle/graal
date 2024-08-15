@@ -44,28 +44,57 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.Instruction;
 
 /**
- * Subclass this bytecode node to get additional debug event that are normally not available. Useful
- * for testing and debugging.
+ * Base interface for a bytecode root node to get additional debug event that are normally not
+ * available. Useful for testing and debugging.
+ * <p>
+ * Warning: Do not deploy with implementing this listener in production. It causes severe
+ * performance degradation.
+ *
+ * @since 24.2
  */
 @SuppressWarnings("unused")
 public interface BytecodeDebugListener {
 
-    @SuppressWarnings("unused")
+    /**
+     * Invoked when an operation or instrumentation specializes itself.
+     *
+     * @since 24.2
+     */
     default void onSpecialize(Instruction instruction, String specialization) {
     }
 
+    /**
+     * Invoked when a bytecode node performs an on-stack transition. On stack transitions may happen
+     * if additional bytecode or tag instrumentations are applied during execution while the current
+     * method is on-stack.
+     *
+     * @since 24.2
+     */
     default void onBytecodeStackTransition(Instruction source, Instruction target) {
     }
 
-    default void onBytecodeInvalidation(BytecodeNode node) {
-    }
-
+    /**
+     * Invoked when an instruction is invalidated. Instructions are invalidated to make bytecode
+     * nodes leave the current bytecode loop and update its own bytecodes.
+     *
+     * @since 24.2
+     */
     default void onInvalidateInstruction(Instruction before, Instruction after) {
     }
 
+    /**
+     * Invoked when an instruction was quickened.
+     *
+     * @since 24.2
+     */
     default void onQuicken(Instruction before, Instruction after) {
     }
 
+    /**
+     * Invoked when an operand was quickened due to boxing elimination.
+     *
+     * @since 24.2
+     */
     default void onQuickenOperand(Instruction baseInstruction, int operandIndex, Instruction operandBefore, Instruction operandAfter) {
     }
 
