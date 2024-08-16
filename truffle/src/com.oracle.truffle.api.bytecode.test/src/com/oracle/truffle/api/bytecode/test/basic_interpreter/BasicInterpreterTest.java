@@ -53,6 +53,7 @@ import static org.junit.Assume.assumeTrue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.junit.Test;
@@ -67,11 +68,16 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instruction.Argument;
+import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
 import com.oracle.truffle.api.bytecode.SourceInformation;
+import com.oracle.truffle.api.bytecode.SourceInformationTree;
 import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
+import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.source.Source;
@@ -85,10 +91,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     private record ExpectedArgument(String name, Argument.Kind kind, Object value) {
     }
 
-    private record ExpectedInstruction(String name, Integer bci, Boolean instrumented, ExpectedArgument[] arguments) {
+    private record ExpectedInstruction(String name, Integer bci, Boolean instrumented, ExpectedArgument[] arguments, Set<String> activeSpecializations) {
 
         private ExpectedInstruction withBci(Integer newBci) {
-            return new ExpectedInstruction(name, newBci, instrumented, arguments);
+            return new ExpectedInstruction(name, newBci, instrumented, arguments, activeSpecializations);
         }
 
         static final class Builder {
@@ -96,10 +102,12 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             Integer bci;
             Boolean instrumented;
             List<ExpectedArgument> arguments;
+            Set<String> activeSpecializations;
 
             private Builder(String name) {
                 this.name = name;
                 this.arguments = new ArrayList<>();
+                this.activeSpecializations = null;
             }
 
             Builder instrumented(Boolean newInstrumented) {
@@ -112,8 +120,13 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                 return this;
             }
 
+            Builder specializations(String... newActiveSpecializations) {
+                this.activeSpecializations = Set.of(newActiveSpecializations);
+                return this;
+            }
+
             ExpectedInstruction build() {
-                return new ExpectedInstruction(name, bci, instrumented, arguments.toArray(new ExpectedArgument[0]));
+                return new ExpectedInstruction(name, bci, instrumented, arguments.toArray(new ExpectedArgument[0]), activeSpecializations);
             }
         }
 
@@ -157,6 +170,17 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                 };
                 assertEquals(expectedArgument.value, actualValue);
             }
+        }
+
+        if (expected.activeSpecializations != null) {
+            List<Argument> nodeArgs = actual.getArguments().stream().filter(arg -> arg.getKind() == Kind.NODE_PROFILE).toList();
+            assertEquals(1, nodeArgs.size());
+            List<SpecializationInfo> specializations = nodeArgs.get(0).getSpecializationInfo();
+            Set<String> activeSpecializations = specializations.stream() //
+                            .filter(SpecializationInfo::isActive) //
+                            .map(SpecializationInfo::getMethodName) //
+                            .collect(Collectors.toSet());
+            assertEquals(expected.activeSpecializations, activeSpecializations);
         }
     }
 
@@ -2052,6 +2076,20 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         instr("load.argument").arg("index", Argument.Kind.INTEGER, 1).build(),
                         instr("c.AddOperation").build(),
                         instr("return").build());
+
+        node.getBytecodeNode().setUncachedThreshold(0);
+        assertEquals(42L, node.getCallTarget().call(40L, 2L));
+        assertEquals("Hello world", node.getCallTarget().call("Hello ", "world"));
+
+        assertInstructionsEqual(node.getBytecodeNode().getInstructionsAsList(),
+                        instr("load.argument").arg("index", Argument.Kind.INTEGER, 0).build(),
+                        instr("load.argument").arg("index", Argument.Kind.INTEGER, 1).build(),
+                        instr("c.AddOperation").specializations("addLongs", "addStrings").build(),
+                        instr("return").build());
+
+        // Normally, this method is called on parse with uninitialized bytecode.
+        // Explicitly test here after initialization.
+        testIntrospectionInvariants(node.getBytecodeNode());
     }
 
     @Test
@@ -2418,7 +2456,9 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             )
         );
         // @formatter:on
-        expected.assertTreeEquals(bytecode.getSourceInformationTree());
+        SourceInformationTree tree = bytecode.getSourceInformationTree();
+        expected.assertTreeEquals(tree);
+        assertTrue(tree.toString().contains("return (a + b) + 2"));
     }
 
     @Test
@@ -2657,5 +2697,65 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
                         "load.argument",
                         "c.AddConstantOperationAtEnd",
                         "return");
+    }
+
+    @Test
+    public void testInvalidBciArgument() {
+        // Check that BytecodeNode methods taking a bytecode index sanitize bad inputs.
+        Source s = Source.newBuilder("test", "x = 42; return x", "test.test").build();
+        BasicInterpreter node = parseNodeWithSource("invalidBciArgument", b -> {
+            b.beginSource(s);
+            b.beginSourceSection(0, 16);
+            b.beginRoot(LANGUAGE);
+            BytecodeLocal x = b.createLocal("x", null);
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+            b.beginYield();
+            b.emitLoadConstant(5L);
+            b.endYield();
+            b.beginReturn();
+            b.emitLoadLocal(x);
+            b.endReturn();
+            b.endRoot();
+            b.endSourceSection();
+            b.endSource();
+        });
+
+        BytecodeNode bytecode = node.getBytecodeNode();
+        assertThrows(IllegalArgumentException.class, () -> bytecode.getBytecodeLocation(-1));
+        assertThrows(IllegalArgumentException.class, () -> bytecode.getSourceLocation(-1));
+        assertThrows(IllegalArgumentException.class, () -> bytecode.getSourceLocations(-1));
+        assertThrows(IllegalArgumentException.class, () -> bytecode.getInstruction(-1));
+        assertThrows(IllegalArgumentException.class, () -> bytecode.getLocalNames(-1));
+        assertThrows(IllegalArgumentException.class, () -> bytecode.getLocalInfos(-1));
+        assertThrows(IllegalArgumentException.class, () -> bytecode.getLocalCount(-1));
+        int localOffset = bytecode.getLocals().get(0).getLocalOffset();
+        assertThrows(IllegalArgumentException.class, () -> bytecode.getLocalName(-1, localOffset));
+        assertThrows(IllegalArgumentException.class, () -> bytecode.getLocalInfo(-1, localOffset));
+
+        ContinuationResult cont = (ContinuationResult) node.getCallTarget().call();
+        Frame frame = cont.getFrame();
+        BytecodeNode contBytecode = cont.getBytecodeLocation().getBytecodeNode();
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValues(-1, frame));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValue(-1, frame, localOffset));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueInt(-1, frame, localOffset));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueFloat(-1, frame, localOffset));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueLong(-1, frame, localOffset));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueDouble(-1, frame, localOffset));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueShort(-1, frame, localOffset));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueByte(-1, frame, localOffset));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.getLocalValueBoolean(-1, frame, localOffset));
+
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValues(-1, frame, new Object[]{"hello"}));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValue(-1, frame, localOffset, "hello"));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueInt(-1, frame, localOffset, 42));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueFloat(-1, frame, localOffset, 3.14f));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueLong(-1, frame, localOffset, 42L));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueDouble(-1, frame, localOffset, 4.0d));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueShort(-1, frame, localOffset, (short) 24));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueByte(-1, frame, localOffset, (byte) 4));
+        assertThrows(IllegalArgumentException.class, () -> contBytecode.setLocalValueBoolean(-1, frame, localOffset, true));
+
     }
 }

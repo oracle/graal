@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.bytecode;
 
-import java.util.Objects;
-
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 

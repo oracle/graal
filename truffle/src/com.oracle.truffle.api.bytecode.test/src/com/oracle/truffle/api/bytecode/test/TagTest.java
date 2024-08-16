@@ -1435,28 +1435,51 @@ public class TagTest extends AbstractInstructionTest {
             b.beginTag(ExpressionTag.class);
             b.emitLoadConstant(42);
             b.endTag(ExpressionTag.class);
+
+            // Test printing of array constants.
+            b.emitLoadConstant(new Object[]{"Hello", "world"});
+            b.emitLoadConstant(new long[]{123L, 456L});
+            b.emitLoadConstant(new int[]{123, 456});
+            b.emitLoadConstant(new short[]{12, 34});
+            b.emitLoadConstant(new char[]{'a', 'b'});
+            b.emitLoadConstant(new byte[]{1, 2});
+            b.emitLoadConstant(new double[]{3.14d, 12.3d});
+            b.emitLoadConstant(new float[]{4.0f, 6.28f});
+            b.emitLoadConstant(new boolean[]{true, false});
+
             b.endRoot();
 
             b.endSourceSection();
             b.endSource();
         });
-        // Dump should not have source or tag info.
         BytecodeNode bytecode = node.getBytecodeNode();
         assertNull(bytecode.getTagTree());
         String[] dumps = new String[]{node.dump(), bytecode.dump(0)};
         for (String dump : dumps) {
+            assertTrue(dump.contains("constant(Object[] [Hello, world])"));
+            assertTrue(dump.contains("constant(long[] [123, 456])"));
+            assertTrue(dump.contains("constant(int[] [123, 456])"));
+            assertTrue(dump.contains("constant(short[] [12, 34])"));
+            assertTrue(dump.contains("constant(char[] [a, b])"));
+            assertTrue(dump.contains("constant(byte[] [1, 2])"));
+            assertTrue(dump.contains("constant(double[] [3.14, 12.3])"));
+            assertTrue(dump.contains("constant(float[] [4.0, 6.28])"));
+            assertTrue(dump.contains("constant(boolean[] [true, false])"));
             assertTrue(dump.contains("locals(1)"));
+            // Dump should not have source or tag info.
+            assertTrue(dump.contains("exceptionHandlers(0)"));
             assertTrue(dump.contains("sourceInformation(-) = Not Available"));
             assertTrue(dump.contains("tagTree = Not Available"));
         }
 
-        // On reparse, both should become available.
         node.getRootNodes().update(BytecodeConfig.COMPLETE);
         bytecode = node.getBytecodeNode();
         TagTree tree = bytecode.getTagTree();
         assertNotNull(tree);
         for (String dump : new String[]{node.dump(), bytecode.dump(tree.getEnterBytecodeIndex())}) {
-            assertTrue(dump.contains("locals(1)"));
+            // On reparse, source and tag information becomes available. The tags introduce
+            // exception handlers too.
+            assertTrue(dump.contains("exceptionHandlers(3)"));
             assertTrue(dump.contains("sourceInformation(2)"));
             assertTrue(dump.contains("tagTree(3)"));
         }

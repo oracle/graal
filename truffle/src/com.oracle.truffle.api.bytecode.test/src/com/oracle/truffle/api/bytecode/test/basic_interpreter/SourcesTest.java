@@ -161,6 +161,52 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testSourceSplitByUnwind() {
+        // When an operation emits unwind instructions, we have to close and reopen the bc range
+        // that a source section applies to.
+        Source source = Source.newBuilder("test", "try finally", "test.test").build();
+        BasicInterpreter node = parseNodeWithSource("sourceSplitByUnwind", b -> {
+            b.beginSource(source);
+            b.beginSourceSection(0, 11);
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry(() -> {
+                b.beginSourceSection(4, 7); // finally
+                b.emitVoidOperation();
+                b.endSourceSection();
+            });
+
+            b.beginSourceSection(0, 3); // try
+            b.beginIfThen();
+            b.emitLoadArgument(0);
+            b.beginReturn(); // early return causes finally handler to be emitted.
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endIfThen();
+            b.endSourceSection();
+            b.endFinallyTry();
+
+            b.beginReturn();
+            b.emitLoadConstant(123L);
+            b.endReturn();
+
+            b.endRoot();
+            b.endSourceSection();
+            b.endSource();
+        });
+
+        BytecodeNode bytecode = node.getBytecodeNode();
+
+        assertSourceInformationTree(bytecode, est("try finally",
+                        est("try"), // before early return
+                        est("finally"), // inlined finally
+                        est("try"), // after early return
+                        est("finally"), // fallthrough finally
+                        est("finally") // exceptional finally
+        ));
+    }
+
+    @Test
     public void testRootNodeSourceSection() {
         Source source = Source.newBuilder("test", "0123456789", "test.test").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {

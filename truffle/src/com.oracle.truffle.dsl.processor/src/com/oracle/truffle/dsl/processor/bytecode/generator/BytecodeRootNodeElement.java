@@ -8953,6 +8953,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             Set<String> generated = new HashSet<>();
             for (ImmediateKind kind : ImmediateKind.values()) {
+                if (kind == ImmediateKind.LOCAL_INDEX && !(model.usesBoxingElimination() && model.enableLocalScoping)) {
+                    // Local index is only used with BE and local scoping.
+                    continue;
+                }
+
                 String className = getImmediateClassName(kind);
                 if (generated.contains(className)) {
                     continue;
@@ -9115,8 +9120,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     return "ConstantArgument";
                 case LOCAL_OFFSET:
                     return "LocalOffsetArgument";
-                case SHORT:
                 case LOCAL_INDEX:
+                    return "LocalIndexArgument";
+                case SHORT:
                 case LOCAL_ROOT:
                 case STACK_POINTER:
                     return "IntegerArgument";
@@ -9130,14 +9136,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private List<Element> getArgumentFields(ImmediateKind kind) {
             return switch (kind) {
-                case SHORT, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> List.of(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "width"));
+                case SHORT, LOCAL_ROOT, STACK_POINTER -> List.of(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "width"));
                 default -> List.of();
             };
         }
 
         private static List<String> getImmediateArgumentArgs(ImmediateKind kind) {
             return switch (kind) {
-                case SHORT, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> List.of(Integer.toString(kind.width.byteSize));
+                case SHORT, LOCAL_ROOT, STACK_POINTER -> List.of(Integer.toString(kind.width.byteSize));
                 default -> List.of();
             };
         }
@@ -9191,13 +9197,15 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         this.add(createAsBytecodeIndex());
                         break;
                     case SHORT:
-                    case LOCAL_INDEX:
                     case LOCAL_ROOT:
                     case STACK_POINTER:
                         this.add(createAsInteger());
                         break;
                     case LOCAL_OFFSET:
                         this.add(createAsLocalOffset());
+                        break;
+                    case LOCAL_INDEX:
+                        this.add(createAsLocalIndex());
                         break;
                     case CONSTANT:
                         this.add(createAsConstant());
@@ -9273,6 +9281,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     throw new AssertionError("encoding changed");
                 }
                 b.string(readShortSafe("bc", "bci")).string(" - USER_LOCALS_START_INDEX");
+                b.end();
+                return ex;
+            }
+
+            private CodeExecutableElement createAsLocalIndex() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asLocalIndex");
+                ex.getModifiers().add(Modifier.FINAL);
+                CodeTreeBuilder b = ex.createBuilder();
+                b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
+                b.startReturn();
+                if (ImmediateKind.LOCAL_INDEX.width != ImmediateWidth.SHORT) {
+                    throw new AssertionError("encoding changed");
+                }
+                b.string(readShortSafe("bc", "bci"));
                 b.end();
                 return ex;
             }
@@ -9369,7 +9391,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     case BYTECODE_INDEX -> "BYTECODE_INDEX";
                     case CONSTANT -> "CONSTANT";
                     case LOCAL_OFFSET -> "LOCAL_OFFSET";
-                    case SHORT, LOCAL_INDEX, LOCAL_ROOT, STACK_POINTER -> "INTEGER";
+                    case LOCAL_INDEX -> "LOCAL_INDEX";
+                    case SHORT, LOCAL_ROOT, STACK_POINTER -> "INTEGER";
                     case NODE_PROFILE -> "NODE_PROFILE";
                     case TAG_NODE -> "TAG_NODE";
                 };

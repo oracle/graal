@@ -265,7 +265,7 @@ public abstract class AbstractBasicInterpreterTest {
         return result;
     }
 
-    private static void testIntrospectionInvariants(BytecodeNode bytecode) {
+    protected static void testIntrospectionInvariants(BytecodeNode bytecode) {
         List<Instruction> instructions = bytecode.getInstructionsAsList();
         int instructionIndex = 0;
         int endBytecodeIndex = 0;
@@ -330,6 +330,7 @@ public abstract class AbstractBasicInterpreterTest {
                         if (bytecode.getTier() == BytecodeTier.CACHED) {
                             assertNotNull(node);
                             assertSame(bytecode, node.getParent());
+                            assertNotNull(arg.getSpecializationInfo());
                         } else {
                             assertNull(node);
                         }
