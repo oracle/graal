@@ -192,6 +192,18 @@ final class Target_java_security_Provider {
     private static Target_java_security_Provider_ServiceKey previousKey;
 }
 
+@TargetClass(value = java.security.Provider.class, innerClass = "Service")
+final class Target_java_security_Provider_Service {
+
+    /**
+     * The field is lazily initialized on first access. We already have the necessary reflection
+     * configuration for the reflective lookup at image run time.
+     */
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private Object constructorCache;
+}
+
 @Platforms(Platform.HOSTED_ONLY.class)
 class ServiceKeyComputer implements FieldValueTransformer {
     @Override

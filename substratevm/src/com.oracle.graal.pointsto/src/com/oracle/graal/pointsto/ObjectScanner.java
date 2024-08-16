@@ -183,6 +183,12 @@ public class ObjectScanner {
 
         } catch (UnsupportedFeatureException ex) {
             unsupportedFeatureDuringFieldScan(bb, field, receiver, ex, reason);
+        } catch (AnalysisError analysisError) {
+            if (analysisError.getCause() instanceof UnsupportedFeatureException ex) {
+                unsupportedFeatureDuringFieldScan(bb, field, receiver, ex, reason);
+            } else {
+                throw analysisError;
+            }
         }
     }
 
