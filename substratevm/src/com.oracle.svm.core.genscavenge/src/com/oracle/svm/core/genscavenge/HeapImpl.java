@@ -489,20 +489,12 @@ public final class HeapImpl extends Heap {
         return imageHeapSize;
     }
 
-    private static class ImageHeapSizeVisitor implements MemoryWalker.ImageHeapRegionVisitor, ObjectVisitor {
+    private static class ImageHeapSizeVisitor implements MemoryWalker.ImageHeapRegionVisitor {
         long size;
 
         @Override
         public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
-            if (!access.isWritable(region) && !access.consistsOfHugeObjects(region)) {
-                size += access.getSize(region).rawValue();
-            }
-            return true;
-        }
-
-        @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Allocation is fine: this method traverses only the image heap.")
-        public boolean visitObject(Object o) {
+            size += access.getSize(region).rawValue();
             return true;
         }
     }
