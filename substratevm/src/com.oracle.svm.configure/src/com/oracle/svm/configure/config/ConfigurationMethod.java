@@ -25,6 +25,7 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -85,15 +86,10 @@ public class ConfigurationMethod implements JsonPrintable {
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        writer.append('{');
-        writer.quote("name").append(':').quote(name).append(',');
-        writer.quote("parameterTypes").append(":[");
-        String prefix = "";
-        for (String type : SignatureUtil.toParameterTypes(internalSignature)) {
-            writer.append(prefix).quote(type);
-            prefix = ",";
-        }
-        writer.append("] }");
+        writer.appendObjectStart();
+        writer.quote("name").appendFieldSeparator().quote(name).appendSeparator();
+        writer.quote("parameterTypes").appendFieldSeparator().print(Arrays.asList(SignatureUtil.toParameterTypes(internalSignature)));
+        writer.appendObjectEnd();
     }
 
     @Override

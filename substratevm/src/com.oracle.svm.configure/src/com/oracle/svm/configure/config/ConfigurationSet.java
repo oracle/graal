@@ -40,6 +40,7 @@ import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredi
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.graal.compiler.util.json.JsonWriter;
 
@@ -71,9 +72,10 @@ public class ConfigurationSet {
                         other.predefinedClassesConfiguration.copy());
     }
 
+    @SuppressWarnings("unchecked")
     public ConfigurationSet() {
         this(new TypeConfiguration(REFLECTION_KEY), new TypeConfiguration(JNI_KEY), new ResourceConfiguration(), new ProxyConfiguration(), new SerializationConfiguration(),
-                        new PredefinedClassesConfiguration(new Path[0], hash -> false));
+                        new PredefinedClassesConfiguration(Collections.emptyList(), hash -> false));
     }
 
     private ConfigurationSet mutate(ConfigurationSet other, Mutator mutator) {
@@ -161,8 +163,8 @@ public class ConfigurationSet {
         ConfigurationFile reachabilityMetadataFile = ConfigurationFile.REACHABILITY_METADATA;
         for (Path path : configFilePathResolver.apply(reachabilityMetadataFile)) {
             writtenFiles.add(path);
-            JsonWriter writer = new JsonWriter(path);
-            writer.appendObjectStart().indent().newline();
+            JsonWriter writer = new JsonPrettyWriter(path);
+            writer.appendObjectStart();
             boolean first = true;
             for (ConfigurationFile configFile : ConfigurationFile.agentGeneratedFiles()) {
                 JsonPrintable configuration = configSupplier.apply(configFile);
@@ -178,10 +180,14 @@ public class ConfigurationSet {
                         }
                     }
                 } else {
+                    if (configuration instanceof ConfigurationBase<?, ?> configurationBase && configurationBase.isEmpty()) {
+                        /* Do not add an empty field when there are no entries */
+                        continue;
+                    }
                     if (first) {
                         first = false;
                     } else {
-                        writer.appendSeparator().newline();
+                        writer.appendSeparator();
                     }
                     if (!configFile.equals(ConfigurationFile.RESOURCES)) {
                         /*
@@ -193,7 +199,7 @@ public class ConfigurationSet {
                     configSupplier.apply(configFile).printJson(writer);
                 }
             }
-            writer.unindent().newline().appendObjectEnd();
+            writer.appendObjectEnd();
             writer.close();
         }
         return writtenFiles;

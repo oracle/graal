@@ -35,6 +35,7 @@ import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
@@ -44,6 +45,7 @@ import java.util.stream.Collectors;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.util.VMError;
+import jdk.graal.compiler.phases.common.LazyValue;
 
 public class ConfigurationFileCollection {
     public static final Function<IOException, Exception> FAIL_ON_EXCEPTION = e -> e;
@@ -161,7 +163,7 @@ public class ConfigurationFileCollection {
         return proxyConfiguration;
     }
 
-    public PredefinedClassesConfiguration loadPredefinedClassesConfig(Path[] classDestinationDirs, Predicate<String> shouldExcludeClassesWithHash,
+    public PredefinedClassesConfiguration loadPredefinedClassesConfig(List<LazyValue<Path>> classDestinationDirs, Predicate<String> shouldExcludeClassesWithHash,
                     Function<IOException, Exception> exceptionHandler) throws Exception {
         PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(classDestinationDirs, shouldExcludeClassesWithHash);
         loadConfig(predefinedClassesConfigPaths, predefinedClassesConfiguration.createParser(false), exceptionHandler);
@@ -182,7 +184,7 @@ public class ConfigurationFileCollection {
         return serializationConfiguration;
     }
 
-    public ConfigurationSet loadConfigurationSet(Function<IOException, Exception> exceptionHandler, Path[] predefinedConfigClassDestinationDirs,
+    public ConfigurationSet loadConfigurationSet(Function<IOException, Exception> exceptionHandler, List<LazyValue<Path>> predefinedConfigClassDestinationDirs,
                     Predicate<String> predefinedConfigClassWithHashExclusionPredicate) throws Exception {
         return new ConfigurationSet(loadReflectConfig(exceptionHandler), loadJniConfig(exceptionHandler), loadResourceConfig(exceptionHandler), loadProxyConfig(exceptionHandler),
                         loadSerializationConfig(exceptionHandler),
