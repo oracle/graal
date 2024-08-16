@@ -106,9 +106,7 @@ As a next step, we recommend reading the [Getting Started guide](https://github.
 For more technical details about Bytecode DSL, consult the [User guide](UserGuide.md) and [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html).
 See also the guides and tutorials on [optimization](Optimization.md), [serialization][serialization], and [continuations][continuations].
 
-The Bytecode DSL implementations for [SimpleLanguage](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.sl/src/com/oracle/truffle/sl/bytecode/SLBytecodeRootNode.java) and [GraalPython](https://github.com/oracle/graalpython/blob/master/graalpython/com.oracle.graal.python/src/com/oracle/graal/python/nodes/bytecode_dsl/PBytecodeDSLRootNode.java) may also serve as useful references.
-
-
+The Bytecode DSL implementation for [SimpleLanguage](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.sl/src/com/oracle/truffle/sl/bytecode/SLBytecodeRootNode.java) may also serve as a useful reference.
 
 
 [serialization]: https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/SerializationTutorial.java
