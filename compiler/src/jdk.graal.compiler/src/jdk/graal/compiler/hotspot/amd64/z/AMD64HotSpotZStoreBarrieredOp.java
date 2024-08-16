@@ -24,10 +24,12 @@
  */
 package jdk.graal.compiler.hotspot.amd64.z;
 
+import static jdk.graal.compiler.hotspot.amd64.z.AMD64HotSpotZBarrierSetLIRGenerator.zColor;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
+import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
@@ -74,8 +76,15 @@ public abstract class AMD64HotSpotZStoreBarrieredOp extends AMD64LIRInstruction 
         this.storeKind = storeKind;
     }
 
-    protected void emitStoreBarrier(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register resultValue, Register writeValue, boolean isInitMemory, LIRFrameState state) {
-        AMD64HotSpotZBarrierSetLIRGenerator.emitStoreBarrier(crb, masm, this, config, storeAddress.toAddress(), resultValue, writeValue, storeKind, asRegister(tmp), asRegister(tmp2), callTarget,
-                        state, isInitMemory);
+    protected void emitStoreBarrier(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register resultReg, Register writeValue, boolean emitPreWriteBarrier, LIRFrameState state) {
+        if (emitPreWriteBarrier) {
+            AMD64HotSpotZBarrierSetLIRGenerator.emitStoreBarrier(crb, masm, this, config, storeAddress.toAddress(), resultReg, storeKind, asRegister(tmp), asRegister(tmp2), callTarget,
+                            state);
+        }
+        if (writeValue != null) {
+            Assembler.guaranteeDifferentRegisters(writeValue, resultReg);
+            masm.movq(resultReg, writeValue);
+            zColor(crb, masm, resultReg);
+        }
     }
 }

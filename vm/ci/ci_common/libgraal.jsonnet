@@ -39,7 +39,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     # Tests that dropping libgraal into OracleJDK works (see mx_vm_gate.py)
     downloads +: if utils.contains(self.name, 'labsjdk-21') then {"ORACLEJDK_JAVA_HOME" : graal_common.jdks_data["oraclejdk21"]} else {}
   },
-  libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
+  libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC']),
+  libgraal_compiler_singlegen_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
   # enable economy mode building with the -Ob flag
   libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']) + {
     environment+: {
@@ -71,7 +72,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
   # -ea assertions are enough to keep execution time reasonable
   libgraal_truffle: self.libgraal_truffle_base(),
-  libgraal_truffle_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
+  libgraal_truffle_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC']),
+  libgraal_truffle_singlegen_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
   # enable economy mode building with the -Ob flag
   libgraal_truffle_quickbuild: self.libgraal_truffle_base(['-Ob']),
 
@@ -211,6 +213,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     for task in [
       "libgraal_compiler_zgc",
       "libgraal_truffle_zgc",
+      "libgraal_compiler_singlegen_zgc",
+      "libgraal_truffle_singlegen_zgc",
     ]
   ],
 

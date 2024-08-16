@@ -45,7 +45,7 @@ public class AArch64HotSpotZPreWriteBarrierOp extends AArch64HotSpotZStoreBarrie
     public static final LIRInstructionClass<AArch64HotSpotZPreWriteBarrierOp> TYPE = LIRInstructionClass.create(AArch64HotSpotZPreWriteBarrierOp.class);
 
     @Alive({REG}) protected Value writeValue;
-    private final boolean isInitMemory;
+    private final boolean emitPreWriteBarrier;
     @State protected LIRFrameState state;
 
     protected AArch64HotSpotZPreWriteBarrierOp(Value writeValue,
@@ -56,17 +56,17 @@ public class AArch64HotSpotZPreWriteBarrierOp extends AArch64HotSpotZStoreBarrie
                     ForeignCallLinkage callTarget,
                     AllocatableValue result,
                     ZWriteBarrierSetLIRGeneratorTool.StoreKind storeKind,
-                    boolean isInitMemory,
+                    boolean emitPreWriteBarrier,
                     LIRFrameState state) {
         super(TYPE, result, loadAddress, tmp, tmp2, config, callTarget, storeKind);
         this.writeValue = writeValue;
-        this.isInitMemory = isInitMemory;
+        this.emitPreWriteBarrier = emitPreWriteBarrier;
         this.state = state;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        if (!isInitMemory) {
+        if (emitPreWriteBarrier) {
             AArch64HotSpotZBarrierSetLIRGenerator.emitStoreBarrier(crb, masm, this, config, storeAddress.toAddress(), asRegister(result),
                             storeKind, callTarget, state);
         }

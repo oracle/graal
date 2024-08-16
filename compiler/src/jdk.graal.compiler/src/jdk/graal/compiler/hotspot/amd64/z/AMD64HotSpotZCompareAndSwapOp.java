@@ -78,8 +78,7 @@ public final class AMD64HotSpotZCompareAndSwapOp extends AMD64HotSpotZStoreBarri
         GraalError.guarantee(accessKind == AMD64Kind.QWORD, "ZGC only supports uncompressed oops");
         assert LIRValueUtil.differentRegisters(cmpValue, newValue, storeAddress);
 
-        Register newReg = asRegister(newValue);
-        emitStoreBarrier(crb, masm, asRegister(tmp), newReg, false, null);
+        emitStoreBarrier(crb, masm, asRegister(tmp), asRegister(newValue), true, null);
         Register ref1 = asRegister(cmpValue);
         AMD64HotSpotZBarrierSetLIRGenerator.zColor(crb, masm, ref1);
         if (crb.target.isMP) {
