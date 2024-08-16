@@ -46,8 +46,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
-import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.Bind.DefaultExpression;
+import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
@@ -349,9 +349,8 @@ public abstract class Instruction {
         /**
          * Converts this argument to an bytecodeIndex. This method is only supported for for the
          * following kind: {@link Kind#BYTECODE_INDEX}. If called for arguments of other kinds then
-         * an {@link UnsupportedOperationException} is thrown. The returned value is valid bytecode
-         * index of the underlying {@link Instruction#getBytecodeNode() bytecode node} and can be
-         * used to be converted to a {@link BytecodeLocation}.
+         * an {@link UnsupportedOperationException} is thrown. If the returned value is >= 0 then
+         * the bytecode index can be used to be converted to a {@link BytecodeLocation}.
          *
          * @since 24.2
          */
@@ -374,7 +373,7 @@ public abstract class Instruction {
          * Converts this argument to a {@link Node cached node}. This method is only supported for
          * for the following kind: {@link Kind#NODE_PROFILE}. If called for arguments of other kinds
          * then an {@link UnsupportedOperationException} is thrown. The returned value is never
-         * <code>null</code>.
+         * <code>null</code> if the {@link BytecodeTier} is {@link BytecodeTier#CACHED}.
          *
          * @since 24.2
          */

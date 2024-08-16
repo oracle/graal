@@ -42,7 +42,10 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -68,16 +71,25 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
+import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
+import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.Instruction.Argument;
+import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
+import com.oracle.truffle.api.bytecode.LocalVariable;
+import com.oracle.truffle.api.bytecode.SourceInformation;
 import com.oracle.truffle.api.bytecode.SourceInformationTree;
+import com.oracle.truffle.api.bytecode.TagTreeNode;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
@@ -245,7 +257,195 @@ public abstract class AbstractBasicInterpreterTest {
         if (testSerialize) {
             assertBytecodeNodesEqual(result, doRoundTrip(interpreterClass, config, result));
         }
+
+        for (BasicInterpreter interpreter : result.getNodes()) {
+            testIntrospectionInvariants(interpreter.getBytecodeNode());
+        }
+
         return result;
+    }
+
+    private static void testIntrospectionInvariants(BytecodeNode bytecode) {
+        List<Instruction> instructions = bytecode.getInstructionsAsList();
+        int instructionIndex = 0;
+        int endBytecodeIndex = 0;
+        for (Instruction instr : bytecode.getInstructions()) {
+            assertTrue(instr.getBytecodeIndex() >= 0);
+            assertSame(bytecode, instr.getBytecodeNode());
+            assertTrue(instr.getLength() > 0);
+            assertEquals(instr.getBytecodeIndex(), instr.getLocation().getBytecodeIndex());
+            assertEquals(bytecode, instr.getLocation().getBytecodeNode());
+            assertNotNull(instr.getName());
+            assertTrue(instr.getNextBytecodeIndex() > 0);
+            assertTrue(instr.getOperationCode() > 0);
+
+            endBytecodeIndex = Math.max(endBytecodeIndex, instr.getNextBytecodeIndex());
+
+            // not failing
+            instr.getSourceSection();
+            instr.getSourceSections();
+            instr.isInstrumentation();
+
+            assertNotNull(instr.hashCode());
+            assertEquals(instr, instructions.get(instructionIndex));
+
+            for (Argument arg : instr.getArguments()) {
+                assertNotNull(arg.getName());
+
+                switch (arg.getKind()) {
+                    case BRANCH_PROFILE:
+                        assertNotNull(arg.asBranchProfile());
+                        break;
+                    case BYTECODE_INDEX:
+                        int index = arg.asBytecodeIndex();
+                        if (index >= 0) {
+                            assertNotNull(BytecodeLocation.get(bytecode, index));
+                        }
+                        break;
+                    case CONSTANT:
+                        assertNotNull(arg.asConstant());
+                        break;
+                    case INTEGER:
+                        // not failing
+                        arg.asInteger();
+                        break;
+                    case LOCAL_INDEX:
+                        int localIndex = arg.asLocalIndex();
+                        if (!instr.getName().contains("local.mat") &&
+                                        !instr.getName().contains("clear.local")) {
+                            assertNotNull(bytecode.getLocals().get(localIndex));
+                        }
+                        break;
+                    case LOCAL_OFFSET:
+                        int offset = arg.asLocalOffset();
+                        assertTrue(offset >= 0);
+                        if (!instr.getName().contains("local.mat") &&
+                                        !instr.getName().contains("clear.local")) {
+                            int count = bytecode.getLocalCount(instr.getBytecodeIndex());
+                            assertTrue(offset >= 0 && offset < count);
+                        }
+                        break;
+                    case NODE_PROFILE:
+                        Node node = arg.asCachedNode();
+                        if (bytecode.getTier() == BytecodeTier.CACHED) {
+                            assertNotNull(node);
+                            assertSame(bytecode, node.getParent());
+                        } else {
+                            assertNull(node);
+                        }
+                        break;
+                    case TAG_NODE:
+                        TagTreeNode tag = arg.asTagNode();
+                        assertNotNull(BytecodeLocation.get(bytecode, tag.getEnterBytecodeIndex()));
+                        assertNotNull(BytecodeLocation.get(bytecode, tag.getReturnBytecodeIndex()));
+                        assertSame(bytecode, tag.getBytecodeNode());
+                        assertNotNull(tag.toString());
+                        break;
+                    default:
+                        throw new AssertionError("New unhandled kind.");
+                }
+
+                if (instructions.size() < 100) { // keep runtime reasonable
+                    if (arg.getKind() != Kind.BRANCH_PROFILE) {
+                        assertThrows(UnsupportedOperationException.class, () -> arg.asBranchProfile());
+                    }
+
+                    if (arg.getKind() != Kind.BYTECODE_INDEX) {
+                        assertThrows(UnsupportedOperationException.class, () -> arg.asBytecodeIndex());
+                    }
+
+                    if (arg.getKind() != Kind.CONSTANT) {
+                        assertThrows(UnsupportedOperationException.class, () -> arg.asConstant());
+                    }
+
+                    if (arg.getKind() != Kind.INTEGER) {
+                        assertThrows(UnsupportedOperationException.class, () -> arg.asInteger());
+                    }
+
+                    if (arg.getKind() != Kind.LOCAL_INDEX) {
+                        assertThrows(UnsupportedOperationException.class, () -> arg.asLocalIndex());
+                    }
+
+                    if (arg.getKind() != Kind.LOCAL_OFFSET) {
+                        assertThrows(UnsupportedOperationException.class, () -> arg.asLocalOffset());
+                    }
+
+                    if (arg.getKind() != Kind.NODE_PROFILE) {
+                        assertThrows(UnsupportedOperationException.class, () -> arg.asCachedNode());
+                    }
+
+                    if (arg.getKind() != Kind.TAG_NODE) {
+                        assertThrows(UnsupportedOperationException.class, () -> arg.asTagNode());
+                    }
+                }
+                assertNotNull(arg.toString());
+            }
+
+            assertNotNull(instr.toString());
+
+            instructionIndex++;
+        }
+
+        if (bytecode.getSourceInformation() != null) {
+            for (SourceInformation source : bytecode.getSourceInformation()) {
+                assertNotNull(source.toString());
+                assertNotNull(BytecodeLocation.get(bytecode, source.getStartBytecodeIndex()));
+                if (source.getEndBytecodeIndex() < endBytecodeIndex) {
+                    assertNotNull(BytecodeLocation.get(bytecode, source.getEndBytecodeIndex()));
+                }
+                assertNotNull(source.getSourceSection());
+            }
+        }
+        List<LocalVariable> locals = bytecode.getLocals();
+        for (LocalVariable local : locals) {
+            // if local scoping
+            assertTrue(local.getLocalOffset() >= 0);
+            assertEquals(local, local);
+            // not failing
+            local.getTypeProfile();
+            assertNotNull(local.toString());
+
+            if (local.getStartIndex() != -1) {
+                assertNotNull(BytecodeLocation.get(bytecode, local.getStartIndex()));
+                assertTrue(local.getStartIndex() < local.getEndIndex());
+
+                if (locals.size() < 1000) {
+                    assertEquals(local.getInfo(), bytecode.getLocalInfo(local.getStartIndex(), local.getLocalOffset()));
+                    assertEquals(local.getName(), bytecode.getLocalName(local.getStartIndex(), local.getLocalOffset()));
+                    assertTrue(local.getLocalOffset() < bytecode.getLocalCount(local.getStartIndex()));
+                }
+            } else {
+                assertEquals(-1, local.getEndIndex());
+                if (locals.size() < 1000) {
+                    assertEquals(local.getName(), bytecode.getLocalName(0, local.getLocalOffset()));
+                    assertEquals(local.getInfo(), bytecode.getLocalInfo(0, local.getLocalOffset()));
+                }
+            }
+
+        }
+
+        SourceInformationTree tree = bytecode.getSourceInformationTree();
+        if (tree != null) {
+
+            testSourceTree(bytecode, null, tree);
+        }
+
+    }
+
+    private static void testSourceTree(BytecodeNode bytecode, SourceInformationTree parent, SourceInformationTree tree) {
+        if (parent != null) {
+            assertNotNull(tree.getSourceSection());
+        } else {
+            tree.getSourceSection();
+            // toString is too expensive to do for every tree entry.
+            assertNotNull(tree.toString());
+        }
+
+        assertNotNull(BytecodeLocation.get(bytecode, tree.getStartBytecodeIndex()));
+
+        for (SourceInformationTree child : tree.getChildren()) {
+            testSourceTree(bytecode, tree, child);
+        }
     }
 
     public static <T extends BasicInterpreter> BytecodeRootNodes<T> doRoundTrip(Class<? extends BasicInterpreter> interpreterClass, BytecodeConfig config, BytecodeRootNodes<BasicInterpreter> nodes) {
