@@ -351,7 +351,6 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         }
 
         @Specialization
-        @ExplodeLoop
         public static Object doGeneric(VirtualFrame frame,
                         LocalSetterRange setter,
                         Object[] value,
@@ -361,7 +360,23 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
                 throw new IllegalArgumentException("TeeLocalRange length mismatch");
             }
             for (int i = 0; i < value.length; i++) {
-                setter.setObject(bytecode, bci, frame, i, value[i]);
+                if (value[i] instanceof Long l) {
+                    setter.setLong(bytecode, bci, frame, i, l);
+                } else if (value[i] instanceof Integer n) {
+                    setter.setInt(bytecode, bci, frame, i, n);
+                } else if (value[i] instanceof Short s) {
+                    setter.setShort(bytecode, bci, frame, i, s);
+                } else if (value[i] instanceof Byte b) {
+                    setter.setByte(bytecode, bci, frame, i, b);
+                } else if (value[i] instanceof Boolean b) {
+                    setter.setBoolean(bytecode, bci, frame, i, b);
+                } else if (value[i] instanceof Float f) {
+                    setter.setFloat(bytecode, bci, frame, i, f);
+                } else if (value[i] instanceof Double d) {
+                    setter.setDouble(bytecode, bci, frame, i, d);
+                } else {
+                    setter.setObject(bytecode, bci, frame, i, value[i]);
+                }
             }
             return value;
         }

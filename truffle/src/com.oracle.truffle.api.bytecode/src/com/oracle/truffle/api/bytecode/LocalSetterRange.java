@@ -127,6 +127,50 @@ public final class LocalSetterRange {
     }
 
     /**
+     * Stores a short into the local at the given offset into the range.
+     *
+     * @since 24.2
+     */
+    public void setShort(BytecodeNode bytecode, int bci, VirtualFrame frame, int offset, short value) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        checkBounds(offset);
+        bytecode.setLocalValueShort(bci, frame, start + offset, value);
+    }
+
+    /**
+     * Stores a boolean into the local at the given offset into the range.
+     *
+     * @since 24.2
+     */
+    public void setBoolean(BytecodeNode bytecode, int bci, VirtualFrame frame, int offset, boolean value) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        checkBounds(offset);
+        bytecode.setLocalValueBoolean(bci, frame, start + offset, value);
+    }
+
+    /**
+     * Stores a byte into the local at the given offset into the range.
+     *
+     * @since 24.2
+     */
+    public void setByte(BytecodeNode bytecode, int bci, VirtualFrame frame, int offset, byte value) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        checkBounds(offset);
+        bytecode.setLocalValueByte(bci, frame, start + offset, value);
+    }
+
+    /**
+     * Stores a float into the local at the given offset into the range.
+     *
+     * @since 24.2
+     */
+    public void setFloat(BytecodeNode bytecode, int bci, VirtualFrame frame, int offset, float value) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        checkBounds(offset);
+        bytecode.setLocalValueFloat(bci, frame, start + offset, value);
+    }
+
+    /**
      * Stores a double into the local at the given offset into the range.
      *
      * @since 24.2

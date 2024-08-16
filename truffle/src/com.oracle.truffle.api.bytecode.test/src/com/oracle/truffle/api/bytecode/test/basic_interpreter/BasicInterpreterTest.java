@@ -942,6 +942,37 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testTeeLocalRangeDifferentTypes() {
+        // teeRange([local1, local2, ..., local8], arg0)
+        // return local8
+
+        RootCallTarget root = parse("teeLocalRange", b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal local1 = b.createLocal();
+            BytecodeLocal local2 = b.createLocal();
+            BytecodeLocal local3 = b.createLocal();
+            BytecodeLocal local4 = b.createLocal();
+            BytecodeLocal local5 = b.createLocal();
+            BytecodeLocal local6 = b.createLocal();
+            BytecodeLocal local7 = b.createLocal();
+            BytecodeLocal local8 = b.createLocal();
+
+            b.beginTeeLocalRange(new BytecodeLocal[]{local1, local2, local3, local4, local5, local6, local7, local8});
+            b.emitLoadArgument(0);
+            b.endTeeLocalRange();
+
+            b.beginReturn();
+            b.emitLoadLocal(local8);
+            b.endReturn();
+
+            b.endRoot();
+        });
+        Object[] arg0 = new Object[]{1L, 42, (short) 12, (byte) 2, true, 3.14f, 4.0d, "hello"};
+        assertEquals("hello", root.call(new Object[]{arg0}));
+    }
+
+    @Test
     public void testTeeLocalRangeEmptyRange() {
         // teeRange([], []));
         // return 42;
