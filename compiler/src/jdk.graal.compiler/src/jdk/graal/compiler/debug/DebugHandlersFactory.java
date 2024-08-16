@@ -29,10 +29,12 @@ import java.util.List;
 
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 
 /**
  * Factory for creating {@link DebugHandler}s.
  */
+@LibGraalService
 public interface DebugHandlersFactory {
 
     /**
