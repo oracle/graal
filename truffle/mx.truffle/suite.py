@@ -287,7 +287,9 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.bytecode",
+        "sdk:POLYGLOT",
+        "com.oracle.truffle.api.instrumentation",
+        "com.oracle.truffle.api.exception",
       ],
       "requires" : [
         "java.logging",
