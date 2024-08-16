@@ -112,7 +112,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private static final long[] EMPTY_LONG_ARRAY = {};
     private static final byte[] EMPTY_BYTE_ARRAY = {};
 
-    static final Unsafe UNSAFE = initUnsafe();
+    private static final Unsafe UNSAFE = initUnsafe();
 
     static {
         assert OBJECT_TAG == FrameSlotKind.Object.tag;
@@ -584,26 +584,6 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
         verifyIndexedSet(first, secondTag);
         verifyIndexedSet(second, firstTag);
-        unsafePutObject(referenceLocals, getObjectOffset(first), secondValue, OBJECT_LOCATION);
-        unsafePutLong(primitiveLocals, getPrimitiveOffset(first), secondPrimitiveValue, PRIMITIVE_LOCATION);
-        unsafePutObject(referenceLocals, getObjectOffset(second), firstValue, OBJECT_LOCATION);
-        unsafePutLong(primitiveLocals, getPrimitiveOffset(second), firstPrimitiveValue, PRIMITIVE_LOCATION);
-    }
-
-    void unsafeSwap(int first, int second) {
-        final Object[] referenceLocals = getIndexedLocals();
-        final long[] primitiveLocals = getIndexedPrimitiveLocals();
-
-        byte firstTag = unsafeGetIndexedTag(first);
-        Object firstValue = unsafeGetObject(referenceLocals, getObjectOffset(first), true, OBJECT_LOCATION);
-        long firstPrimitiveValue = unsafeGetLong(primitiveLocals, getPrimitiveOffset(first), true, PRIMITIVE_LOCATION);
-
-        byte secondTag = unsafeGetIndexedTag(second);
-        Object secondValue = unsafeGetObject(referenceLocals, getObjectOffset(second), true, OBJECT_LOCATION);
-        long secondPrimitiveValue = unsafeGetLong(primitiveLocals, getPrimitiveOffset(second), true, PRIMITIVE_LOCATION);
-
-        unsafeVerifyIndexedSet(first, secondTag);
-        unsafeVerifyIndexedSet(second, firstTag);
         unsafePutObject(referenceLocals, getObjectOffset(first), secondValue, OBJECT_LOCATION);
         unsafePutLong(primitiveLocals, getPrimitiveOffset(first), secondPrimitiveValue, PRIMITIVE_LOCATION);
         unsafePutObject(referenceLocals, getObjectOffset(second), firstValue, OBJECT_LOCATION);
@@ -1126,5 +1106,4 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private void setStaticSlotTag(int slot, byte tag) {
         indexedTags[slot] = tag;
     }
-
 }

@@ -294,6 +294,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                 if (parent != null) {
                     return parent.resolveVariable(variable);
                 }
+
                 return null;
         }
     }

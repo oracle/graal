@@ -40,7 +40,7 @@
  */
 
 /**
- * Debug utilties for the Bytecode DSL. These features are not intended to be used in production
+ * Debug utilities for the Bytecode DSL. These features are not intended to be used in production
  * interpreters for performance reasons.
  *
  * @since 24.2

@@ -154,7 +154,7 @@ final class PolyglotEngineOptions {
 
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Print information for all source cache events including hits and uncached misses.")//
     static final OptionKey<Boolean> TraceSourceCacheDetails = new OptionKey<>(false);
-    
+
     enum StaticObjectStorageStrategies {
         DEFAULT,
         ARRAY_BASED,

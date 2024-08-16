@@ -1,7 +1,0 @@
-[
-	{
-		"type": "Quicken",
-		"operation": "Add",
-		"specializations": ["doInts"]
-	}
-]

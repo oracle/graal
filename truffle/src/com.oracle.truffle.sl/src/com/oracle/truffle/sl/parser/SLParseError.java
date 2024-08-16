@@ -87,7 +87,7 @@ public class SLParseError extends AbstractTruffleException {
 
     @ExportMessage(name = "getSourceLocation")
     @TruffleBoundary
-    SourceSection getSourceLocation() throws UnsupportedMessageException {
+    SourceSection getSourceSection() throws UnsupportedMessageException {
         if (source == null) {
             throw UnsupportedMessageException.create();
         }

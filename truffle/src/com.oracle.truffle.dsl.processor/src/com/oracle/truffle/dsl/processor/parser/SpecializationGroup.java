@@ -401,12 +401,10 @@ public final class SpecializationGroup {
         if (hasFallthrough) {
             return true;
         }
-
         SpecializationGroup lastChild = getLast();
         if (lastChild != null) {
             return lastChild.hasFallthrough();
         }
-
         return false;
     }
 
@@ -414,12 +412,10 @@ public final class SpecializationGroup {
         if (hasFallthrough) {
             return true;
         }
-
         SpecializationGroup lastChild = getLast();
         if (lastChild != null) {
             return lastChild.hasFallthroughInSlowPath();
         }
-
         return false;
     }
 }

@@ -80,8 +80,8 @@ public abstract class AbstractSLTest {
     protected Engine.Builder newEngineBuilder(String... languages) {
         var b = Engine.newBuilder(languages);
         b.allowExperimentalOptions(true);
+        b.option("sl.UseBytecode", Boolean.toString(mode.isBytecode()));
         if (mode.isBytecode()) {
-            b.option("sl.UseBytecode", "true");
             if (mode == RunMode.BYTECODE_CACHED) {
                 b.option("sl.ForceBytecodeTier", "UNCACHED");
             } else if (mode == RunMode.BYTECODE_UNCACHED) {
@@ -90,8 +90,6 @@ public abstract class AbstractSLTest {
                 assert mode == RunMode.BYTECODE_DEFAULT;
                 b.option("sl.ForceBytecodeTier", "");
             }
-        } else {
-            b.option("sl.UseBytecode", "false");
         }
         return b;
     }
@@ -99,11 +97,7 @@ public abstract class AbstractSLTest {
     protected Context.Builder newContextBuilder(String... languages) {
         var b = Context.newBuilder(languages);
         b.allowExperimentalOptions(true);
-        if (mode.isBytecode()) {
-            b.option("sl.UseBytecode", "true");
-        } else {
-            b.option("sl.UseBytecode", "false");
-        }
+        b.option("sl.UseBytecode", Boolean.toString(mode.isBytecode()));
         return b;
     }
 
