@@ -74,6 +74,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -623,7 +624,7 @@ public class SLInstrumentTest extends AbstractSLTest {
     /**
      * Test that we reenter a node whose execution was interrupted. Unwind just the one node off.
      */
-    // @Test
+    @Test
     public void testRedoIO() throws Throwable {
         String code = "function main() {\n" +
                         "  a = readln();\n" +
@@ -659,7 +660,7 @@ public class SLInstrumentTest extends AbstractSLTest {
         assertFalse(redoIO.beforePop);
     }
 
-    private static class RuntimeInterruptedException extends RuntimeException {
+    private static class RuntimeInterruptedException extends AbstractTruffleException {
         private static final long serialVersionUID = -4735601164894088571L;
     }
 
