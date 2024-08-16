@@ -47,7 +47,7 @@ public class NmtFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        RuntimeSupport.getRuntimeSupport().addInitializationHook(NativeMemoryTracking.initializationHook());
         RuntimeSupport.getRuntimeSupport().addShutdownHook(NativeMemoryTracking.shutdownHook());
-        RuntimeSupport.getRuntimeSupport().addStartupHook(NativeMemoryTracking.startupHook());
     }
 }

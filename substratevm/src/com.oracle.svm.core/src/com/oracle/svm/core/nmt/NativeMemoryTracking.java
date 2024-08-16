@@ -58,8 +58,7 @@ import jdk.graal.compiler.api.replacements.Fold;
  * Virtual memory tracking makes the assumption that commits within a reserved region happen neatly.
  * There will never be overlapping commits and the size requested to be committed/uncommitted is
  * exactly the size committed/uncommitted. In Hotspot, this assumption is not made, and an internal
- * model of virtual memory is maintained. However, this assumption currently works in SubstrateVM
- * because only the heap uses virtual memory, and it always neatly allocates and deallocates chunks.
+ * model of virtual memory is maintained.
  */
 public class NativeMemoryTracking {
     private static final UnsignedWord ALIGNMENT = WordFactory.unsigned(16);
@@ -67,23 +66,23 @@ public class NativeMemoryTracking {
     private static final long KB = 1024;
 
     private final NmtMallocMemoryInfo[] mallocCategories;
-    private final NmtVirtualMemoryInfo[] virtualCategories;
+    private final NmtVirtualMemoryInfo[] virtualMemCategories;
     private final NmtMallocMemoryInfo mallocTotal;
-    private final NmtVirtualMemoryInfo virtualTotal;
+    private final NmtVirtualMemoryInfo virtualMemTotal;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public NativeMemoryTracking() {
         mallocTotal = new NmtMallocMemoryInfo();
-        virtualTotal = new NmtVirtualMemoryInfo();
+        virtualMemTotal = new NmtVirtualMemoryInfo();
 
         mallocCategories = new NmtMallocMemoryInfo[NmtCategory.values().length];
         for (int i = 0; i < mallocCategories.length; i++) {
             mallocCategories[i] = new NmtMallocMemoryInfo();
         }
 
-        virtualCategories = new NmtVirtualMemoryInfo[NmtCategory.values().length];
-        for (int i = 0; i < virtualCategories.length; i++) {
-            virtualCategories[i] = new NmtVirtualMemoryInfo();
+        virtualMemCategories = new NmtVirtualMemoryInfo[NmtCategory.values().length];
+        for (int i = 0; i < virtualMemCategories.length; i++) {
+            virtualMemCategories[i] = new NmtVirtualMemoryInfo();
         }
     }
 
@@ -169,27 +168,47 @@ public class NativeMemoryTracking {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void trackReserve(UnsignedWord size, NmtCategory category) {
+        trackReserve(size.rawValue(), category);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void trackReserve(long size, NmtCategory category) {
         getVirtualInfo(category).trackReserved(size);
-        virtualTotal.trackReserved(size);
+        virtualMemTotal.trackReserved(size);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void trackCommit(UnsignedWord size, NmtCategory category) {
+        trackCommit(size.rawValue(), category);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void trackCommit(long size, NmtCategory category) {
         getVirtualInfo(category).trackCommitted(size);
-        virtualTotal.trackCommitted(size);
+        virtualMemTotal.trackCommitted(size);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void trackUncommit(UnsignedWord size, NmtCategory category) {
+        trackUncommit(size.rawValue(), category);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void trackUncommit(long size, NmtCategory category) {
         getVirtualInfo(category).trackUncommit(size);
-        virtualTotal.trackUncommit(size);
+        virtualMemTotal.trackUncommit(size);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void trackFree(UnsignedWord size, NmtCategory category) {
+        trackFree(size.rawValue(), category);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void trackFree(long size, NmtCategory category) {
         getVirtualInfo(category).trackFree(size);
-        virtualTotal.trackFree(size);
+        virtualMemTotal.trackFree(size);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -234,7 +253,7 @@ public class NativeMemoryTracking {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getReservedVirtualMemory(NmtCategory category) {
-        return NativeMemoryTracking.singleton().getVirtualInfo(category).getReservedSize();
+        return getVirtualInfo(category).getReservedSize();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -254,31 +273,30 @@ public class NativeMemoryTracking {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getTotalReservedVirtualMemory() {
-        return virtualTotal.getReservedSize();
+        return virtualMemTotal.getReservedSize();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getTotalCommittedVirtualMemory() {
-        return virtualTotal.getCommittedSize();
+        return virtualMemTotal.getCommittedSize();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getPeakTotalReservedVirtualMemory() {
-        return virtualTotal.getPeakReservedSize();
+        return virtualMemTotal.getPeakReservedSize();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getPeakTotalCommittedVirtualMemory() {
-        return virtualTotal.getPeakCommittedSize();
+        return virtualMemTotal.getPeakCommittedSize();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private NmtMallocMemoryInfo getMallocInfo(int category) {
-        assert category < mallocCategories.length;
         return mallocCategories[category];
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private NmtMallocMemoryInfo getMallocInfo(NmtCategory category) {
         return getMallocInfo(category.ordinal());
     }
@@ -288,24 +306,22 @@ public class NativeMemoryTracking {
         return getVirtualInfo(category.ordinal());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private NmtVirtualMemoryInfo getVirtualInfo(int category) {
-        assert category < virtualCategories.length;
-        return virtualCategories[category];
+        return virtualMemCategories[category];
+    }
+
+    public static RuntimeSupport.Hook initializationHook() {
+        return isFirstIsolate -> {
+            // Track the image heap virtual memory usage.
+            NativeMemoryTracking.singleton().trackReserve(Heap.getHeap().getImageHeapReservedBytes(), NmtCategory.ImageHeap);
+            NativeMemoryTracking.singleton().trackCommit(Heap.getHeap().getImageHeapCommittedBytes(), NmtCategory.ImageHeap);
+        };
     }
 
     public static RuntimeSupport.Hook shutdownHook() {
         return isFirstIsolate -> {
             NativeMemoryTracking.singleton().printStatistics();
-        };
-    }
-
-    public static RuntimeSupport.Hook startupHook() {
-        return isFirstIsolate -> {
-            // Gather information about Image Heap virtual memory usage.
-            long size = Heap.getHeap().getImageHeapSize();
-            NativeMemoryTracking.singleton().trackReserve(size, NmtCategory.ImageHeap);
-            NativeMemoryTracking.singleton().trackCommit(size, NmtCategory.ImageHeap);
         };
     }
 
@@ -316,37 +332,37 @@ public class NativeMemoryTracking {
     }
 
     public String generateReportString() {
+        String lineBreak = System.lineSeparator();
 
-        StringBuilder stringBuilder = new StringBuilder(3000);
+        StringBuilder result = new StringBuilder(3000);
+        result.append(lineBreak);
+        result.append("Native memory tracking").append(lineBreak).append(lineBreak);
 
-        stringBuilder.append("\n");
-        stringBuilder.append("Native memory tracking").append("\n\n");
-
-        stringBuilder.append("Total").append("\n");
+        result.append("Total").append(lineBreak);
         long reservedTotal = (getTotalReservedVirtualMemory() + getTotalMallocMemory()) / KB;
         long committedTotal = (getTotalCommittedVirtualMemory() + getTotalMallocMemory()) / KB;
-        stringBuilder.append("\t").append("(reserved=").append(reservedTotal).append("KB, committed=").append(committedTotal).append("KB)").append("\n");
-        stringBuilder.append("\t").append("(malloc=").append(getTotalMallocMemory() / KB).append("KB, count=").append(getTotalMallocCount()).append(")").append("\n");
-        stringBuilder.append("\t").append("(peak malloc=").append(getPeakTotalMallocMemory() / KB).append("KB, count at peak=").append(getCountAtPeakTotalMallocMemory()).append(")").append("\n");
-        stringBuilder.append("\t").append("(mmap: reserved=").append(getTotalReservedVirtualMemory() / KB).append("KB, committed=").append(getTotalCommittedVirtualMemory() / KB).append("KB)")
-                        .append("\n");
-        stringBuilder.append("\t").append("(mmap: peak reserved=").append(getPeakTotalReservedVirtualMemory() / KB).append("KB, peak committed=").append(getPeakTotalCommittedVirtualMemory() / KB)
-                        .append("KB)").append("\n");
+        result.append("    ").append("(reserved=").append(reservedTotal).append("KB, committed=").append(committedTotal).append("KB)").append(lineBreak);
+        result.append("    ").append("(malloc=").append(getTotalMallocMemory() / KB).append("KB, count=").append(getTotalMallocCount()).append(")").append(lineBreak);
+        result.append("    ").append("(peak malloc=").append(getPeakTotalMallocMemory() / KB).append("KB, count at peak=").append(getCountAtPeakTotalMallocMemory()).append(")").append(lineBreak);
+        result.append("    ").append("(mmap: reserved=").append(getTotalReservedVirtualMemory() / KB).append("KB, committed=").append(getTotalCommittedVirtualMemory() / KB).append("KB)")
+                        .append(lineBreak);
+        result.append("    ").append("(mmap: peak reserved=").append(getPeakTotalReservedVirtualMemory() / KB).append("KB, peak committed=").append(getPeakTotalCommittedVirtualMemory() / KB)
+                        .append("KB)").append(lineBreak);
 
         for (int i = 0; i < NmtCategory.values().length; i++) {
             NmtCategory category = NmtCategory.values()[i];
-            stringBuilder.append(category.getName()).append("\n");
+            result.append(category.getName()).append(lineBreak);
             long reserved = (getReservedVirtualMemory(category) + getMallocMemory(category)) / KB;
             long committed = (getCommittedVirtualMemory(category) + getMallocMemory(category)) / KB;
-            stringBuilder.append("\t").append("(reserved=").append(reserved).append("KB, committed=").append(committed).append("KB)").append("\n");
-            stringBuilder.append("\t").append("(malloc=").append(getMallocMemory(category) / KB).append("KB, count=").append(getMallocCount(category)).append(")").append("\n");
-            stringBuilder.append("\t").append("(peak malloc=").append(getPeakMallocMemory(category) / KB).append("KB, count at peak=").append(getCountAtPeakMallocMemory(category)).append(")")
-                            .append("\n");
-            stringBuilder.append("\t").append("(mmap: reserved=").append(getReservedVirtualMemory(category) / KB).append("KB, committed=").append(getCommittedVirtualMemory(category) / KB)
-                            .append("KB)").append("\n");
-            stringBuilder.append("\t").append("(mmap: peak reserved=").append(getPeakReservedVirtualMemory(category) / KB).append("KB, peak committed=")
-                            .append(getPeakCommittedVirtualMemory(category) / KB).append("KB)").append("\n");
+            result.append("    ").append("(reserved=").append(reserved).append("KB, committed=").append(committed).append("KB)").append(lineBreak);
+            result.append("    ").append("(malloc=").append(getMallocMemory(category) / KB).append("KB, count=").append(getMallocCount(category)).append(")").append(lineBreak);
+            result.append("    ").append("(peak malloc=").append(getPeakMallocMemory(category) / KB).append("KB, count at peak=").append(getCountAtPeakMallocMemory(category)).append(")")
+                            .append(lineBreak);
+            result.append("    ").append("(mmap: reserved=").append(getReservedVirtualMemory(category) / KB).append("KB, committed=").append(getCommittedVirtualMemory(category) / KB)
+                            .append("KB)").append(lineBreak);
+            result.append("    ").append("(mmap: peak reserved=").append(getPeakReservedVirtualMemory(category) / KB).append("KB, peak committed=")
+                            .append(getPeakCommittedVirtualMemory(category) / KB).append("KB)").append(lineBreak);
         }
-        return stringBuilder.toString();
+        return result.toString();
     }
 }

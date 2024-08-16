@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.VMInspectionOptions;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -41,8 +40,6 @@ import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicUnsigned;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
@@ -96,10 +93,7 @@ final class HeapChunkProvider {
             if (result.isNull()) {
                 throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_OUT_OF_MEMORY_ERROR);
             }
-            if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
-                NativeMemoryTracking.singleton().trackReserve(chunkSize.rawValue(), NmtCategory.JavaHeap);
-                NativeMemoryTracking.singleton().trackCommit(chunkSize.rawValue(), NmtCategory.JavaHeap);
-            }
+
             AlignedHeapChunk.initialize(result, chunkSize);
         }
         assert HeapChunk.getTopOffset(result).equal(AlignedHeapChunk.getObjectsStartOffset());
@@ -250,10 +244,7 @@ final class HeapChunkProvider {
         if (result.isNull()) {
             throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_OUT_OF_MEMORY_ERROR);
         }
-        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
-            NativeMemoryTracking.singleton().trackReserve(chunkSize.rawValue(), NmtCategory.JavaHeap);
-            NativeMemoryTracking.singleton().trackCommit(chunkSize.rawValue(), NmtCategory.JavaHeap);
-        }
+
         UnalignedHeapChunk.initialize(result, chunkSize);
         assert objectSize.belowOrEqual(HeapChunk.availableObjectMemory(result)) : "UnalignedHeapChunk insufficient for requested object";
 
@@ -315,22 +306,12 @@ final class HeapChunkProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void freeAlignedChunk(AlignedHeader chunk) {
-        UnsignedWord size = HeapParameters.getAlignedHeapChunkSize();
-        ChunkBasedCommittedMemoryProvider.get().freeAlignedChunk(chunk, size, HeapParameters.getAlignedHeapChunkAlignment());
-        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
-            NativeMemoryTracking.singleton().trackUncommit(size.rawValue(), NmtCategory.JavaHeap);
-            NativeMemoryTracking.singleton().trackFree(size.rawValue(), NmtCategory.JavaHeap);
-        }
+        ChunkBasedCommittedMemoryProvider.get().freeAlignedChunk(chunk, HeapParameters.getAlignedHeapChunkSize(), HeapParameters.getAlignedHeapChunkAlignment());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void freeUnalignedChunk(UnalignedHeader chunk) {
-        UnsignedWord size = unalignedChunkSize(chunk);
-        ChunkBasedCommittedMemoryProvider.get().freeUnalignedChunk(chunk, size);
-        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
-            NativeMemoryTracking.singleton().trackUncommit(size.rawValue(), NmtCategory.JavaHeap);
-            NativeMemoryTracking.singleton().trackFree(size.rawValue(), NmtCategory.JavaHeap);
-        }
+        ChunkBasedCommittedMemoryProvider.get().freeUnalignedChunk(chunk, unalignedChunkSize(chunk));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

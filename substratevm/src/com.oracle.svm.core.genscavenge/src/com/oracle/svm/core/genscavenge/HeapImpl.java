@@ -75,6 +75,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
@@ -114,8 +115,6 @@ public final class HeapImpl extends Heap {
     private volatile long refListOfferCounter;
     /** Total number of times when threads waiting for a pending reference list were interrupted. */
     private volatile long refListWaiterWakeUpCounter;
-
-    private volatile long imageHeapSize = -1;
 
     /** Head of the linked list of object pins. */
     private final AtomicReference<PinnedObjectImpl> pinHead = new AtomicReference<>();
@@ -464,6 +463,17 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
+    public UnsignedWord getImageHeapReservedBytes() {
+        return ImageHeapProvider.get().getImageHeapAddressSpaceSize();
+    }
+
+    @Override
+    public UnsignedWord getImageHeapCommittedBytes() {
+        int imageHeapOffset = HeapImpl.getHeapImpl().getImageHeapOffsetInAddressSpace();
+        return ImageHeapProvider.get().getImageHeapAddressSpaceSize().subtract(imageHeapOffset);
+    }
+
+    @Override
     public boolean walkImageHeapObjects(ObjectVisitor visitor) {
         VMOperation.guaranteeInProgressAtSafepoint("Must only be called at a safepoint");
         if (visitor == null) {
@@ -475,28 +485,6 @@ public final class HeapImpl extends Heap {
             }
         }
         return !AuxiliaryImageHeap.isPresent() || AuxiliaryImageHeap.singleton().walkObjects(visitor);
-    }
-
-    @Override
-    public long getImageHeapSize() {
-        ImageHeapSizeVisitor visitor = new ImageHeapSizeVisitor();
-        if (imageHeapSize == -1) {
-            for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
-                ImageHeapWalker.walkRegions(info, visitor);
-            }
-            imageHeapSize = visitor.size;
-        }
-        return imageHeapSize;
-    }
-
-    private static class ImageHeapSizeVisitor implements MemoryWalker.ImageHeapRegionVisitor {
-        long size;
-
-        @Override
-        public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
-            size += access.getSize(region).rawValue();
-            return true;
-        }
     }
 
     @Override

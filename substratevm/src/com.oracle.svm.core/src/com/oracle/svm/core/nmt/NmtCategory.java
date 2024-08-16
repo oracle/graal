@@ -37,7 +37,9 @@ public enum NmtCategory {
     GC("GC"),
     /** Heap dumping infrastructure. */
     HeapDump("Heap Dump"),
+    /** Image heap (may include GC-specific data). */
     ImageHeap("Image Heap"),
+    /** Collected Java heap (may include GC-specific data). */
     JavaHeap("Java Heap"),
     /** Java Flight Recorder. */
     JFR("JFR"),

@@ -37,9 +37,13 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.nmt.NativeMemoryTracking;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.core.util.VMError;
 
 public abstract class AbstractCommittedMemoryProvider implements CommittedMemoryProvider {
     @Uninterruptible(reason = "Still being initialized.")
@@ -71,11 +75,11 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
 
     @Override
     public Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, true);
+        return allocate(nbytes, alignment, true, NmtCategory.Code);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
+    protected Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable, NmtCategory nmtCategory) {
         Pointer reserved = WordFactory.nullPointer();
         if (!UnsignedUtils.isAMultiple(getGranularity(), alignment)) {
             reserved = VirtualMemoryProvider.get().reserve(size, alignment, executable);
@@ -95,41 +99,28 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
             return nullPointer();
         }
         assert reserved.isNull() || reserved.equal(committed);
-        tracker.track(size);
+
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NativeMemoryTracking.singleton().trackReserve(size, nmtCategory);
+            NativeMemoryTracking.singleton().trackCommit(size, nmtCategory);
+        }
         return committed;
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void freeExecutableMemory(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
-        free(start, nbytes);
+        free(start, nbytes, NmtCategory.Code);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void free(PointerBase start, UnsignedWord nbytes) {
-        if (VirtualMemoryProvider.get().free(start, nbytes) == 0) {
-            tracker.untrack(nbytes);
-        }
-    }
-
-    private final VirtualMemoryTracker tracker = new VirtualMemoryTracker();
-
-    public static class VirtualMemoryTracker {
-
-        private UnsignedWord totalAllocated;
-
-        public VirtualMemoryTracker() {
-            this.totalAllocated = WordFactory.zero();
+    protected static void free(PointerBase start, UnsignedWord nbytes, NmtCategory nmtCategory) {
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NativeMemoryTracking.singleton().trackUncommit(nbytes, nmtCategory);
+            NativeMemoryTracking.singleton().trackFree(nbytes, nmtCategory);
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void track(UnsignedWord size) {
-            totalAllocated = totalAllocated.add(size);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void untrack(UnsignedWord size) {
-            totalAllocated = totalAllocated.subtract(size);
-        }
+        int result = VirtualMemoryProvider.get().free(start, nbytes);
+        VMError.guarantee(result == 0, "Error while freeing virtual memory.");
     }
 }

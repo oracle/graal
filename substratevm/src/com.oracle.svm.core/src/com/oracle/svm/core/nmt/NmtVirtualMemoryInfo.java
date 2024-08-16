@@ -28,10 +28,11 @@ package com.oracle.svm.core.nmt;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 
 class NmtVirtualMemoryInfo {
 
@@ -44,7 +45,7 @@ class NmtVirtualMemoryInfo {
     NmtVirtualMemoryInfo() {
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void trackReserved(long size) {
         long newReservedSize = reservedSize.addAndGet(size);
         updatePeak(newReservedSize, peakReservedSize);
@@ -60,7 +61,6 @@ class NmtVirtualMemoryInfo {
     void trackUncommit(long size) {
         long lastSize = committedSize.addAndGet(-size);
         assert lastSize >= 0;
-
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -71,13 +71,10 @@ class NmtVirtualMemoryInfo {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void updatePeak(long newSize, AtomicLong peakToUpdate) {
-        long oldPeak = peakToUpdate.get();
-        while (oldPeak < newSize) {
-            if (peakToUpdate.compareAndSet(oldPeak, newSize)) {
-                return;
-            }
+        long oldPeak;
+        do {
             oldPeak = peakToUpdate.get();
-        }
+        } while (newSize > oldPeak && !peakToUpdate.compareAndSet(oldPeak, newSize));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
