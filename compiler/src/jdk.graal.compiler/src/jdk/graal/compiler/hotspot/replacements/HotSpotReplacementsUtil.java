@@ -319,6 +319,8 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity JAVA_THREAD_LOCK_STACK_LOCATION = NamedLocationIdentity.mutable("JavaThread::_lock_stack");
 
+    public static final LocationIdentity JAVA_THREAD_OM_CACHE_LOCATION = NamedLocationIdentity.mutable("JavaThread::_om_cache");
+
     @Fold
     public static JavaKind getWordKind() {
         return runtime().getHostJVMCIBackend().getCodeCache().getTarget().wordJavaKind;
@@ -494,23 +496,23 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static int unlockedMask(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.unlockedMask;
+    public static boolean useObjectMonitorTable(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.useObjectMonitorTable;
     }
 
     @Fold
-    public static int monitorMask(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.monitorMask;
+    public static int unlockedValue(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.unlockedValue;
+    }
+
+    @Fold
+    public static int monitorValue(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.monitorValue;
     }
 
     @Fold
     public static int objectMonitorOwnerOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.objectMonitorOwner;
-    }
-
-    @Fold
-    public static long objectMonitorAnonymousOwner(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.objectMonitorAnonymousOwner;
     }
 
     @Fold
@@ -666,7 +668,7 @@ public class HotSpotReplacementsUtil {
         return config.secondarySupersOffset;
     }
 
-    public static final LocationIdentity DISPLACED_MARK_WORD_LOCATION = NamedLocationIdentity.mutable("DisplacedMarkWord");
+    public static final LocationIdentity BASICLOCK_METADATA_LOCATION = NamedLocationIdentity.mutable("BasicLock::_metadata");
 
     public static final LocationIdentity OBJECT_MONITOR_OWNER_LOCATION = NamedLocationIdentity.mutable("ObjectMonitor::_owner");
 
@@ -679,8 +681,8 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity OBJECT_MONITOR_SUCC_LOCATION = NamedLocationIdentity.mutable("ObjectMonitor::_succ");
 
     @Fold
-    public static int lockDisplacedMarkOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.basicLockDisplacedHeaderOffset;
+    public static int lockMetadataOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.basicLockMetadataOffset;
     }
 
     @Fold
@@ -696,6 +698,21 @@ public class HotSpotReplacementsUtil {
     @Fold
     static int javaThreadLockStackEndOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.lockStackEndOffset;
+    }
+
+    @Fold
+    static int javaThreadOomCacheOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadOmCacheOffset;
+    }
+
+    @Fold
+    static int omCacheOopToOopDifference(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.omCacheOopToOopDifference;
+    }
+
+    @Fold
+    static int omCacheOopToMonitorDifference(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.omCacheOopToMonitorDifference;
     }
 
     @Fold
