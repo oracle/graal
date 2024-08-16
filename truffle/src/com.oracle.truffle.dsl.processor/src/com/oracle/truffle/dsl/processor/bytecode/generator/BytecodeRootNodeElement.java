@@ -1660,7 +1660,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         // Otherwise, in order to override it in user code, it must be protected. The only widening
         // we need to worry about is from protected -> public.
-        assert ElementUtils.getVisibility(result.getModifiers()) == Modifier.PROTECTED;
+        if (ElementUtils.getVisibility(result.getModifiers()) != Modifier.PROTECTED) {
+            throw new AssertionError("Unexpected visibility of root node override.");
+        }
 
         ExecutableElement override = ElementUtils.findInstanceMethod(model.templateType, name, parameterTypes);
         if (override != null && ElementUtils.getVisibility(override.getModifiers()) == Modifier.PUBLIC) {
@@ -3669,7 +3671,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private void addEndOperationDoc(OperationModel operation, CodeExecutableElement ex) {
-            assert operation.hasChildren();
+            if (!operation.hasChildren()) {
+                throw new AssertionError("tried generating end method for operation with no children");
+            }
 
             List<String> lines = new ArrayList<>(1);
             lines.add(getBuilderMethodJavadocHeader("Ends", operation));
@@ -3698,7 +3702,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private void addBeginRootOperationDoc(OperationModel rootOperation, CodeExecutableElement ex) {
-            assert rootOperation.kind == OperationKind.ROOT;
+            if (rootOperation.kind != OperationKind.ROOT) {
+                throw new AssertionError("tried generating beginRoot doc for non-root operation");
+            }
 
             List<String> lines = new ArrayList<>(2);
             lines.add("Begins a new root node.");
@@ -4945,7 +4951,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.string(" || operationStack[i].operation == ").tree(createOperationConstant(model.finallyTryCatchOperation));
             b.end().startBlock();
 
-            assert getDataClassName(model.finallyTryOperation).equals(getDataClassName(model.finallyTryCatchOperation));
+            if (!getDataClassName(model.finallyTryOperation).equals(getDataClassName(model.finallyTryCatchOperation))) {
+                throw new AssertionError("FinallyTry and FinallyTryCatch operations have different data classes.");
+            }
             b.startDeclaration(type(int.class), "finallyHandlerSp");
             b.startParantheses();
             emitCastOperationDataUnchecked(b, model.finallyTryOperation, "i");
@@ -5301,7 +5309,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             for (OperationArgument arg : operation.operationBeginArguments) {
                 ex.addParameter(arg.toVariableElement());
             }
-            assert operation.operationEndArguments.length == 0;
+            if (operation.operationEndArguments.length != 0) {
+                throw new AssertionError("operation with no children has end arguments. they should all be at the beginning");
+            }
 
             addBeginOrEmitOperationDoc(operation, ex);
 
@@ -5360,7 +5370,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 case BRANCH -> buildEmitBranch(b, operation);
                 case LOAD_EXCEPTION -> buildEmitLoadException(b, operation);
                 default -> {
-                    assert operation.instruction != null;
+                    if (operation.instruction == null) {
+                        throw new AssertionError("operation did not have instruction");
+                    }
                     buildEmitOperationInstruction(b, operation, constantOperandIndices);
                 }
             }
@@ -5487,7 +5499,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private String[] buildCustomInitializer(CodeTreeBuilder b, OperationModel operation, InstructionModel instruction, String customChildBci, String sp, List<String> constantOperandIndices) {
-            assert operation.kind != OperationKind.CUSTOM_SHORT_CIRCUIT;
+            if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
+                throw new AssertionError("short circuit operations should not be emitted directly.");
+            }
 
             if (instruction.signature.isVariadic) {
                 // Before emitting a variadic instruction, we need to emit instructions to merge all
@@ -5655,9 +5669,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
-            assert groupedOperations.containsKey(BeforeChildKind.EXCEPTION_HANDLER);
-            assert groupedOperations.get(BeforeChildKind.EXCEPTION_HANDLER).size() == 2;
-            for (OperationModel op : groupedOperations.get(BeforeChildKind.EXCEPTION_HANDLER)) {
+            List<OperationModel> exceptionHandlerOperations = groupedOperations.get(BeforeChildKind.EXCEPTION_HANDLER);
+            if (exceptionHandlerOperations == null || exceptionHandlerOperations.size() != 2) {
+                throw new AssertionError("Expected exactly 2 exception handler operations, but a different number was found.");
+            }
+            for (OperationModel op : exceptionHandlerOperations) {
                 b.startCase().tree(createOperationConstant(op)).end();
 
                 b.startBlock();
@@ -6303,7 +6319,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             InstructionEncoding loadVariadicEncoding = model.loadVariadicInstruction[0].getInstructionEncoding();
             for (int i = 1; i < model.loadVariadicInstruction.length; i++) {
-                assert loadVariadicEncoding.equals(model.loadVariadicInstruction[i].getInstructionEncoding());
+                if (!loadVariadicEncoding.equals(model.loadVariadicInstruction[i].getInstructionEncoding())) {
+                    throw new AssertionError("load.variadic instruction did not match expected encoding.");
+                }
             }
 
             b.startStatement().startCall(ensureDoEmitInstructionCreated(model.loadVariadicInstruction[0]).getSimpleName().toString());
@@ -6860,7 +6878,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         buildEmitInstruction(b, model.tagLeaveValueInstruction, buildTagLeaveArguments(model.tagLeaveValueInstruction));
                         b.statement("childBci = bci - " + model.tagLeaveValueInstruction.getInstructionLength());
                     } else {
-                        assert operationKind == OperationKind.BRANCH;
+                        if (operationKind != OperationKind.BRANCH) {
+                            throw new AssertionError("unexpected operation kind used for unwind code generation.");
+                        }
                         buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
                     }
                     b.statement("doCreateExceptionHandler(operationData.handlerStartBci, bci, HANDLER_TAG_EXCEPTIONAL, operationData.nodeId, operationData.startStackHeight)");
@@ -9201,11 +9221,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private static String readShortSafe(String array, String index) {
-                return String.format("SAFE_BYTES.getByte(%s, %s)", array, index);
+                return String.format("SAFE_BYTES.getShort(%s, %s)", array, index);
             }
 
             private static String readIntSafe(String array, String index) {
-                return String.format("SAFE_BYTES.getByte(%s, %s)", array, index);
+                return String.format("SAFE_BYTES.getInt(%s, %s)", array, index);
             }
 
             private static String readConstSafe(String index) {
@@ -9249,7 +9269,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
                 b.startReturn();
-                assert ImmediateKind.LOCAL_OFFSET.width == ImmediateWidth.SHORT;
+                if (ImmediateKind.LOCAL_OFFSET.width != ImmediateWidth.SHORT) {
+                    throw new AssertionError("encoding changed");
+                }
                 b.string(readShortSafe("bc", "bci")).string(" - USER_LOCALS_START_INDEX");
                 b.end();
                 return ex;
@@ -9262,8 +9284,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
                 b.declaration(type(Object[].class), "constants", "this.bytecode.constants");
                 b.startReturn();
-                assert ImmediateKind.CONSTANT.width == ImmediateWidth.SHORT;
-                b.string(readConstSafe(readShortSafe("bc", "bci")));
+                if (ImmediateKind.CONSTANT.width != ImmediateWidth.INT) {
+                    throw new AssertionError("encoding changed");
+                }
+                b.string(readConstSafe(readIntSafe("bc", "bci")));
                 b.end();
                 return ex;
             }
@@ -9278,7 +9302,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
                 b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
                 b.startReturn();
-                assert ImmediateKind.NODE_PROFILE.width == ImmediateWidth.INT;
+                if (ImmediateKind.NODE_PROFILE.width != ImmediateWidth.INT) {
+                    throw new AssertionError("encoding changed");
+                }
                 b.string("cachedNodes[", readIntSafe("bc", "bci"), "]");
                 b.end();
                 return ex;
@@ -9294,7 +9320,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("return null");
                 b.end();
                 b.startReturn();
-                assert ImmediateKind.TAG_NODE.width == ImmediateWidth.INT;
+                if (ImmediateKind.TAG_NODE.width != ImmediateWidth.INT) {
+                    throw new AssertionError("encoding changed");
+                }
                 b.tree(readTagNodeSafe(CodeTreeBuilder.singleString(readIntSafe("bc", "bci"))));
                 b.end();
                 return ex;
@@ -9305,7 +9333,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
-                assert ImmediateKind.BRANCH_PROFILE.width == ImmediateWidth.INT;
+                if (ImmediateKind.BRANCH_PROFILE.width != ImmediateWidth.INT) {
+                    throw new AssertionError("encoding changed");
+                }
                 b.declaration(type(int.class), "index", readIntSafe("bc", "bci"));
                 b.declaration(type(int[].class), "profiles", "this.bytecode.getBranchProfiles()");
                 b.startIf().string("profiles == null").end().startBlock();
@@ -11696,7 +11726,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 List<InstructionModel> instructions = quickenedGroup.getValue();
                 int instructionLength = instructions.get(0).getInstructionLength();
                 for (InstructionModel instruction : instructions) {
-                    assert instruction.getInstructionLength() == instructionLength;
+                    if (instruction.getInstructionLength() != instructionLength) {
+                        throw new AssertionError("quickened group has multiple different instruction lengths");
+                    }
                     b.startCase().tree(createInstructionConstant(instruction)).end();
                 }
                 b.startCaseBlock();
