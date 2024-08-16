@@ -31,9 +31,11 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import jdk.graal.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
@@ -46,11 +48,11 @@ import jdk.graal.compiler.util.Digest;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class PredefinedClassesConfiguration extends ConfigurationBase<PredefinedClassesConfiguration, PredefinedClassesConfiguration.Predicate> {
-    private final Path[] classDestinationDirs;
+    private final List<LazyValue<Path>> classDestinationDirs;
     private final ConcurrentMap<String, ConfigurationPredefinedClass> classes = new ConcurrentHashMap<>();
     private final java.util.function.Predicate<String> shouldExcludeClassWithHash;
 
-    public PredefinedClassesConfiguration(Path[] classDestinationDirs, java.util.function.Predicate<String> shouldExcludeClassWithHash) {
+    public PredefinedClassesConfiguration(List<LazyValue<Path>> classDestinationDirs, java.util.function.Predicate<String> shouldExcludeClassWithHash) {
         this.classDestinationDirs = classDestinationDirs;
         this.shouldExcludeClassWithHash = shouldExcludeClassWithHash;
     }
@@ -98,9 +100,9 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
             return;
         }
         if (classDestinationDirs != null) {
-            for (Path dir : classDestinationDirs) {
+            for (LazyValue<Path> dir : classDestinationDirs) {
                 try {
-                    Files.write(dir.resolve(getFileName(hash)), classData);
+                    Files.write(dir.get().resolve(getFileName(hash)), classData);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -121,11 +123,11 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
             } catch (Exception ignored) {
                 localBaseDir = null;
             }
-            for (Path destDir : classDestinationDirs) {
-                if (!destDir.equals(localBaseDir)) {
+            for (LazyValue<Path> destDir : classDestinationDirs) {
+                if (!destDir.get().equals(localBaseDir)) {
                     try {
                         String fileName = getFileName(hash);
-                        Path target = destDir.resolve(fileName);
+                        Path target = destDir.get().resolve(fileName);
                         if (baseUri != null) {
                             try (InputStream is = PredefinedClassesConfigurationParser.openClassdataStream(baseUri, hash)) {
                                 Files.copy(is, target, StandardCopyOption.REPLACE_EXISTING);

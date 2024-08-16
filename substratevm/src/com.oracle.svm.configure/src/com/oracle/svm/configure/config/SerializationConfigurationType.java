@@ -66,15 +66,23 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        writer.append('{').indent().newline();
+        printJson(writer, SerializationConfigurationParser.TYPE_KEY);
+    }
+
+    public void printLegacyJson(JsonWriter writer) throws IOException {
+        printJson(writer, SerializationConfigurationParser.NAME_KEY);
+    }
+
+    private void printJson(JsonWriter writer, String key) throws IOException {
+        writer.appendObjectStart();
         ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
-        writer.quote(SerializationConfigurationParser.TYPE_KEY).append(':').quote(qualifiedJavaName);
+        writer.quote(key).appendFieldSeparator().quote(qualifiedJavaName);
         if (qualifiedCustomTargetConstructorJavaName != null) {
-            writer.append(',').newline();
-            writer.quote(SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY).append(':')
+            writer.appendSeparator();
+            writer.quote(SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY).appendFieldSeparator()
                             .quote(qualifiedCustomTargetConstructorJavaName);
         }
-        writer.unindent().newline().append('}');
+        writer.appendObjectEnd();
     }
 
     @Override

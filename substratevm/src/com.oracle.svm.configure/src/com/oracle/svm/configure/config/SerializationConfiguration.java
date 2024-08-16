@@ -27,7 +27,7 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,7 +42,7 @@ import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 
 import jdk.graal.compiler.java.LambdaUtils;
-import jdk.graal.compiler.util.json.JsonPrintable;
+import jdk.graal.compiler.util.json.JsonPrinter;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public final class SerializationConfiguration extends ConfigurationBase<SerializationConfiguration, SerializationConfiguration.Predicate>
@@ -111,26 +111,22 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         List<SerializationConfigurationType> listOfCapturedClasses = new ArrayList<>(serializations);
-        Collections.sort(listOfCapturedClasses);
-        printSerializationClasses(writer, listOfCapturedClasses);
+        JsonPrinter.printCollection(writer, listOfCapturedClasses, Comparator.naturalOrder(), SerializationConfigurationType::printJson);
     }
 
     @Override
     public void printLegacyJson(JsonWriter writer) throws IOException {
-        writer.append('{').indent().newline();
+        writer.appendObjectStart();
         List<SerializationConfigurationType> listOfCapturedClasses = new ArrayList<>(serializations);
-        Collections.sort(listOfCapturedClasses);
-        writer.quote("types").append(":");
-        printSerializationClasses(writer, listOfCapturedClasses);
-        writer.append(",").newline();
+        writer.quote("types").appendFieldSeparator();
+        JsonPrinter.printCollection(writer, listOfCapturedClasses, Comparator.naturalOrder(), SerializationConfigurationType::printLegacyJson);
+        writer.appendSeparator();
         List<SerializationConfigurationLambdaCapturingType> listOfCapturingClasses = new ArrayList<>(lambdaSerializationCapturingTypes);
-        listOfCapturingClasses.sort(new SerializationConfigurationLambdaCapturingType.SerializationConfigurationLambdaCapturingTypesComparator());
-        writer.quote("lambdaCapturingTypes").append(":");
-        printSerializationClasses(writer, listOfCapturingClasses);
-        writer.append(",").newline().quote("proxies").append(":");
+        writer.quote("lambdaCapturingTypes").appendFieldSeparator();
+        JsonPrinter.printCollection(writer, listOfCapturingClasses, Comparator.naturalOrder(), SerializationConfigurationLambdaCapturingType::printJson);
+        writer.appendSeparator().quote("proxies").appendFieldSeparator();
         printProxies(writer);
-        writer.unindent().newline();
-        writer.append('}');
+        writer.appendObjectEnd();
     }
 
     @Override
@@ -146,26 +142,6 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     private void printProxies(JsonWriter writer) throws IOException {
         List<ConditionalElement<List<String>>> lists = new ArrayList<>(interfaceListsSerializableProxies);
         ProxyConfiguration.printProxyInterfaces(writer, lists);
-    }
-
-    private static void printSerializationClasses(JsonWriter writer, List<? extends JsonPrintable> serializationConfigurationTypes) throws IOException {
-        writer.append('[');
-        writer.indent();
-
-        printSerializationTypes(serializationConfigurationTypes, writer);
-
-        writer.unindent().newline();
-        writer.append("]");
-    }
-
-    private static void printSerializationTypes(List<? extends JsonPrintable> serializationConfigurationTypes, JsonWriter writer) throws IOException {
-        String prefix = "";
-
-        for (JsonPrintable type : serializationConfigurationTypes) {
-            writer.append(prefix).newline();
-            type.printJson(writer);
-            prefix = ",";
-        }
     }
 
     @Override

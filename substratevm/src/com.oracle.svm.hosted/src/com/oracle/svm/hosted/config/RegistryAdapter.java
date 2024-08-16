@@ -30,7 +30,6 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -114,7 +113,7 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
 
     private TypeResult<Class<?>> resolveProxyType(ProxyConfigurationTypeDescriptor typeDescriptor) {
         String typeName = typeDescriptor.toString();
-        List<TypeResult<Class<?>>> interfaceResults = Arrays.stream(typeDescriptor.interfaceNames()).map(name -> resolveNamedType(new NamedConfigurationTypeDescriptor(name), false)).toList();
+        List<TypeResult<Class<?>>> interfaceResults = typeDescriptor.interfaceNames().stream().map(name -> resolveNamedType(new NamedConfigurationTypeDescriptor(name), false)).toList();
         List<Class<?>> interfaces = new ArrayList<>();
         for (TypeResult<Class<?>> intf : interfaceResults) {
             if (!intf.isPresent()) {

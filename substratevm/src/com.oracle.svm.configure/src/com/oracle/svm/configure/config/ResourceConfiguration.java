@@ -352,19 +352,19 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     }
 
     void printResourcesJson(JsonWriter writer) throws IOException {
-        writer.quote(RESOURCES_KEY).append(':').append('{').indent().newline();
-        writer.quote("includes").append(':');
+        writer.quote(RESOURCES_KEY).appendFieldSeparator().appendObjectStart();
+        writer.quote("includes").appendFieldSeparator();
         JsonPrinter.printCollection(writer, addedResources, ConditionalElement.comparator(), ResourceConfiguration::conditionalRegexElementJson);
         if (!ignoredResources.isEmpty()) {
-            writer.append(',').newline();
-            writer.quote("excludes").append(':');
+            writer.appendSeparator();
+            writer.quote("excludes").appendFieldSeparator();
             JsonPrinter.printCollection(writer, ignoredResources.keySet(), ConditionalElement.comparator(), ResourceConfiguration::conditionalRegexElementJson);
         }
-        writer.unindent().newline().append('}');
+        writer.appendObjectEnd();
     }
 
     void printBundlesJson(JsonWriter writer) throws IOException {
-        writer.quote(BUNDLES_KEY).append(':');
+        writer.quote(BUNDLES_KEY).appendFieldSeparator();
         JsonPrinter.printCollection(writer, bundles.keySet(), ConditionalElement.comparator(), (p, w) -> printResourceBundle(bundles.get(p), w));
     }
 
@@ -379,23 +379,23 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     }
 
     private static void printResourceBundle(BundleConfiguration config, JsonWriter writer) throws IOException {
-        writer.append('{').indent().newline();
+        writer.appendObjectStart();
         ConfigurationConditionPrintable.printConditionAttribute(config.condition, writer);
-        writer.quote("name").append(':').quote(config.baseName);
+        writer.quote("name").appendFieldSeparator().quote(config.baseName);
         if (!config.locales.isEmpty()) {
-            writer.append(',').newline().quote("locales").append(":");
+            writer.appendSeparator().quote("locales").appendFieldSeparator();
             JsonPrinter.printCollection(writer, config.locales, Comparator.naturalOrder(), (String p, JsonWriter w) -> w.quote(p));
         }
         if (!config.classNames.isEmpty()) {
-            writer.append(',').newline().quote("classNames").append(":");
+            writer.appendSeparator().quote("classNames").appendFieldSeparator();
             JsonPrinter.printCollection(writer, config.classNames, Comparator.naturalOrder(), (String p, JsonWriter w) -> w.quote(p));
         }
-        writer.unindent().newline().append('}');
+        writer.appendObjectEnd();
     }
 
     @Override
     public boolean isEmpty() {
-        return addedResources.isEmpty() && bundles.isEmpty();
+        return addedResources.isEmpty() && bundles.isEmpty() && addedGlobs.isEmpty();
     }
 
     @Override
@@ -414,20 +414,20 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     private static void conditionalGlobElementJson(ConditionalElement<ResourceEntry> p, JsonWriter w) throws IOException {
         String pattern = p.element().pattern();
         String module = p.element().module();
-        w.append('{').indent().newline();
+        w.appendObjectStart();
         ConfigurationConditionPrintable.printConditionAttribute(p.condition(), w);
         if (module != null) {
-            w.quote("module").append(':').quote(module).append(',').newline();
+            w.quote("module").appendFieldSeparator().quote(module).appendSeparator();
         }
-        w.quote("glob").append(':').quote(pattern);
-        w.unindent().newline().append('}');
+        w.quote("glob").appendFieldSeparator().quote(pattern);
+        w.appendObjectEnd();
     }
 
     private static void conditionalRegexElementJson(ConditionalElement<String> p, JsonWriter w) throws IOException {
-        w.append('{').indent().newline();
+        w.appendObjectStart();
         ConfigurationConditionPrintable.printConditionAttribute(p.condition(), w);
-        w.quote("pattern").append(':').quote(p.element());
-        w.unindent().newline().append('}');
+        w.quote("pattern").appendFieldSeparator().quote(p.element());
+        w.appendObjectEnd();
     }
 
     public interface Predicate {
