@@ -43,6 +43,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -83,6 +84,12 @@ public class DeoptimizationRuntime {
                 Log.log().string("]").newline();
             }
 
+        } catch (Throwable t) {
+            /*
+             * If an error was thrown during this deoptimization stage we likely will be in an
+             * inconsistent state from which execution cannot proceed.
+             */
+            throw VMError.shouldNotReachHere(t);
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
