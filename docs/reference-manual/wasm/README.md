@@ -1,5 +1,5 @@
 ---
-layout: docs-experimental
+layout: docs
 toc_group: wasm
 link_title: GraalWasm 
 permalink: /reference-manual/wasm/
