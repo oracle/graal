@@ -78,6 +78,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -182,6 +183,33 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         TestException(String string, Node node, long value) {
             super(string, node);
             this.value = value;
+        }
+    }
+
+    @Override
+    public Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, BytecodeNode bytecodeNode, int bci) throws Throwable {
+        if (ex instanceof EarlyReturnException ret) {
+            return ret.result;
+        }
+        throw ex;
+    }
+
+    @SuppressWarnings({"serial"})
+    public static class EarlyReturnException extends ControlFlowException {
+        private static final long serialVersionUID = 3637685681756424058L;
+
+        public final Object result;
+
+        EarlyReturnException(Object result) {
+            this.result = result;
+        }
+    }
+
+    @Operation
+    static final class EarlyReturn {
+        @Specialization
+        public static void perform(Object result) {
+            throw new EarlyReturnException(result);
         }
     }
 
