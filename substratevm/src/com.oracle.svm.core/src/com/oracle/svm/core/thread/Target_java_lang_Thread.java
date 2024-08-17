@@ -30,7 +30,6 @@ import java.lang.Thread.UncaughtExceptionHandler;
 import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ThreadFactory;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
@@ -50,9 +49,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
-import com.oracle.svm.core.jdk.ContinuationsNotSupported;
-import com.oracle.svm.core.jdk.ContinuationsSupported;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
@@ -60,8 +56,6 @@ import com.oracle.svm.core.jdk.JDK20OrEarlier;
 import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDK21OrLater;
-import com.oracle.svm.core.jdk.LoomJDK;
-import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
@@ -195,7 +189,6 @@ public final class Target_java_lang_Thread {
 
     /** @see JavaThreads#setCurrentThreadLockHelper */
     @Inject //
-    @TargetElement(onlyWith = ContinuationsSupported.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object lockHelper;
 
@@ -298,19 +291,6 @@ public final class Target_java_lang_Thread {
     @AnnotateOriginal
     public native boolean isDaemon();
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Substitute
-    @TargetElement(onlyWith = ContinuationsNotSupported.class)
-    static Thread currentThread() {
-        Thread thread = PlatformThreads.currentThread.get();
-        if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.dynamicAssert(thread != null, "Thread has not been set yet");
-        } else {
-            assert thread != null : "Thread has not been set yet";
-        }
-        return thread;
-    }
-
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
     static Thread currentCarrierThread() {
@@ -321,14 +301,12 @@ public final class Target_java_lang_Thread {
 
     /** On HotSpot, a field in C++ class {@code JavaThread}. Loads and stores are unordered. */
     @Inject //
-    @TargetElement(onlyWith = ContinuationsSupported.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Thread vthread = null;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
-    @TargetElement(name = "currentThread", onlyWith = ContinuationsSupported.class)
-    static Thread currentVThread() {
+    static Thread currentThread() {
         Thread thread = JavaThreads.getCurrentThreadOrNull();
         if (GraalDirectives.inIntrinsic()) {
             ReplacementsUtil.dynamicAssert(thread != null, "Thread has not been set yet");
@@ -400,7 +378,9 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
     private Target_java_lang_Thread(String name, int characteristics, boolean bound) {
-        VMError.guarantee(!bound, "Bound virtual threads are not supported");
+        if (bound) {
+            this.threadData = new ThreadData();
+        }
 
         /* Non-0 instance field initialization. */
         this.interruptLock = new Object();
@@ -415,6 +395,13 @@ public final class Target_java_lang_Thread {
 
         if (JavaVersionUtil.JAVA_SPEC >= 20) {
             this.scopedValueBindings = NEW_THREAD_BINDINGS;
+        }
+        if (bound) {
+            ThreadGroup g = Target_java_lang_Thread_Constants.VTHREAD_GROUP;
+            int pri = Thread.NORM_PRIORITY;
+            JavaThreads.initThreadFields(this, g, null, -1, pri, true);
+
+            PlatformThreads.setThreadStatus(JavaThreads.fromTarget(this), ThreadStatus.NEW);
         }
     }
 
@@ -462,11 +449,6 @@ public final class Target_java_lang_Thread {
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     public boolean isInterrupted() {
         return JavaThreads.isInterrupted(JavaThreads.fromTarget(this));
-    }
-
-    @Substitute
-    public static boolean interrupted() {
-        return JavaThreads.getAndClearInterrupt(Thread.currentThread());
     }
 
     /**
@@ -600,12 +582,6 @@ public final class Target_java_lang_Thread {
         PlatformThreads.sleep(nanos);
     }
 
-    @Substitute
-    @TargetElement
-    public void join(long millis) throws InterruptedException {
-        JavaThreads.join(JavaThreads.fromTarget(this), millis);
-    }
-
     /**
      * Returns <tt>true</tt> if and only if the current thread holds the monitor lock on the
      * specified object.
@@ -659,36 +635,7 @@ public final class Target_java_lang_Thread {
 
     /** Carrier threads only: the current innermost continuation. */
     @Alias //
-    @TargetElement(onlyWith = LoomJDK.class) //
     Target_jdk_internal_vm_Continuation cont;
-
-    @Alias
-    @TargetElement(onlyWith = LoomJDK.class)
-    public static native Target_java_lang_Thread_Builder ofVirtual();
-
-    @Substitute
-    @TargetElement(name = "ofVirtual", onlyWith = {JDK19OrLater.class, NotLoomJDK.class})
-    public static Target_java_lang_Thread_Builder ofVirtualWithoutLoom() {
-        if (Target_jdk_internal_misc_PreviewFeatures.isEnabled()) {
-            if (DeoptimizationSupport.enabled()) {
-                throw new UnsupportedOperationException("Virtual threads are not supported together with Truffle JIT compilation.");
-            }
-            if (SubstrateOptions.useLLVMBackend()) {
-                throw new UnsupportedOperationException("Virtual threads are not supported together with the LLVM backend.");
-            }
-        } else {
-            Target_jdk_internal_misc_PreviewFeatures.ensureEnabled(); // throws
-        }
-        throw VMError.shouldNotReachHereSubstitution();
-    }
-
-    @Substitute
-    @TargetElement(name = "startVirtualThread", onlyWith = {JDK19OrLater.class, NotLoomJDK.class})
-    static Thread startVirtualThreadWithoutLoom(Runnable task) {
-        Objects.requireNonNull(task);
-        ofVirtualWithoutLoom(); // throws
-        throw VMError.shouldNotReachHereSubstitution();
-    }
 
     @Substitute
     @TargetElement(onlyWith = {JDK19OrLater.class, JDK19OrEarlier.class})
@@ -742,7 +689,7 @@ public final class Target_java_lang_Thread {
     @TargetElement(onlyWith = JDK20OrLater.class)
     static void setScopedValueBindings(Object bindings) {
         Target_java_lang_Thread thread = SubstrateUtil.cast(PlatformThreads.currentThread.get(), Target_java_lang_Thread.class);
-        if (LoomSupport.isEnabled() && thread.vthread != null) {
+        if (thread.vthread != null) {
             thread = SubstrateUtil.cast(thread.vthread, Target_java_lang_Thread.class);
         }
         thread.scopedValueBindings = bindings;
@@ -800,12 +747,6 @@ public final class Target_java_lang_Thread {
     native long threadId();
 }
 
-@TargetClass(value = Thread.class, innerClass = "Builder", onlyWith = JDK19OrLater.class)
-interface Target_java_lang_Thread_Builder {
-    @Alias
-    ThreadFactory factory();
-}
-
 @TargetClass(value = Thread.class, innerClass = "Constants", onlyWith = JDK19OrLater.class)
 final class Target_java_lang_Thread_Constants {
     // Checkstyle: stop
@@ -815,6 +756,8 @@ final class Target_java_lang_Thread_Constants {
     @Alias //
     @TargetElement(onlyWith = JDK20OrEarlier.class) //
     static ClassLoader NOT_SUPPORTED_CLASSLOADER;
+
+    @Alias static ThreadGroup VTHREAD_GROUP;
     // Checkstyle: resume
 }
 
@@ -845,7 +788,7 @@ final class Target_java_lang_Thread_FieldHolder {
 }
 
 @Substitute//
-@TargetClass(value = Thread.class, innerClass = "ThreadIdentifiers", onlyWith = LoomJDK.class)
+@TargetClass(value = Thread.class, innerClass = "ThreadIdentifiers")
 final class Target_java_lang_Thread_ThreadIdentifiers {
     @Substitute//
     static long next() {
@@ -857,13 +800,4 @@ final class Target_java_lang_Thread_ThreadIdentifiers {
 interface Target_sun_nio_ch_Interruptible {
     @Alias
     void interrupt(Thread t);
-}
-
-@TargetClass(className = "jdk.internal.misc.PreviewFeatures", onlyWith = JDK19OrLater.class)
-final class Target_jdk_internal_misc_PreviewFeatures {
-    @Alias
-    static native boolean isEnabled();
-
-    @Alias
-    static native void ensureEnabled();
 }

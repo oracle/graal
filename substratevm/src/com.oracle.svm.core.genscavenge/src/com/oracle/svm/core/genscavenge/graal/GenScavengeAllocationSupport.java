@@ -36,6 +36,7 @@ import com.oracle.svm.core.genscavenge.ThreadLocalAllocation;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.thread.ContinuationSupport;
 
 public class GenScavengeAllocationSupport implements GCAllocationSupport {
     private static final SubstrateForeignCallDescriptor SLOW_NEW_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewInstance", true);
@@ -46,7 +47,7 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
 
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(UNCONDITIONAL_FOREIGN_CALLS);
-        if (Continuation.isSupported()) {
+        if (ContinuationSupport.isSupported()) {
             foreignCalls.register(SLOW_NEW_STORED_CONTINUATION);
         }
         if (Pod.RuntimeSupport.isPresent()) {

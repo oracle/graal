@@ -29,7 +29,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
-import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -38,10 +37,12 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.JavaThreads;
-import com.oracle.svm.core.thread.VirtualThreads;
+import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -263,16 +264,16 @@ public final class ClassInitializationInfo {
         }
 
         boolean pinned = false;
-        if (VirtualThreads.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
+        if (ContinuationSupport.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
             // See comment on field `initThread`
-            VirtualThreads.singleton().pinCurrent();
+            Target_jdk_internal_vm_Continuation.pin();
             pinned = true;
         }
         try {
             doInitialize(info, hub);
         } finally {
             if (pinned) {
-                VirtualThreads.singleton().unpinCurrent();
+                Target_jdk_internal_vm_Continuation.unpin();
             }
         }
     }

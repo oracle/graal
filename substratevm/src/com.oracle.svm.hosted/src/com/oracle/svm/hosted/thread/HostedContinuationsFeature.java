@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.ContinuationsFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.util.ReflectionUtil;
@@ -45,7 +46,7 @@ public class HostedContinuationsFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (Continuation.isSupported()) {
+        if (ContinuationSupport.isSupported()) {
             // limit the analysis optimizations performed on continuation return location
             ((FeatureImpl.BeforeAnalysisAccessImpl) access).registerOpaqueMethodReturn(ReflectionUtil.lookupMethod(Continuation.class, "enter1", boolean.class));
         }

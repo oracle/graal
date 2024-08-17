@@ -45,7 +45,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -75,6 +74,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
@@ -113,6 +113,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.misc.Unsafe;
+import org.graalvm.nativeimage.c.function.CodePointer;
 
 /**
  * Implements operations on platform threads, which are typical {@link Thread Java threads} which
@@ -151,12 +152,6 @@ public abstract class PlatformThreads {
      * {@link FastThreadLocalLong#set(long)}).
      */
     static final FastThreadLocalLong currentVThreadId = FastThreadLocalFactory.createLong("PlatformThreads.currentVThreadId").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
-
-    /**
-     * A thread-local helper object for locking. Use only if each {@link Thread} corresponds to an
-     * {@link IsolateThread}, otherwise use {@link Target_java_lang_Thread#lockHelper}.
-     */
-    static final FastThreadLocalObject<Object> lockHelper = FastThreadLocalFactory.createObject(Object.class, "PlatformThreads.lockHelper").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     /**
      * Tracks the number of threads that have been started, but are not yet executing Java code. For
@@ -325,27 +320,6 @@ public abstract class PlatformThreads {
         }
     }
 
-    static void join(Thread thread, long millis) throws InterruptedException {
-        assert !isVirtual(thread);
-        // Checkstyle: allow synchronization
-        synchronized (thread) {
-            if (millis > 0) {
-                if (thread.isAlive()) {
-                    final long startTime = System.nanoTime();
-                    long delay = millis;
-                    do {
-                        thread.wait(delay);
-                    } while (thread.isAlive() && (delay = millis - TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime)) > 0);
-                }
-            } else {
-                while (thread.isAlive()) {
-                    thread.wait(0);
-                }
-            }
-        }
-        // Checkstyle: disallow synchronization
-    }
-
     /**
      * Joins all non-daemon threads. If the current thread is itself a non-daemon thread, it does
      * not attempt to join itself.
@@ -398,7 +372,7 @@ public abstract class PlatformThreads {
         long stackSize;
         Target_java_lang_Thread tjlt = toTarget(thread);
         long threadSpecificStackSize = (JavaVersionUtil.JAVA_SPEC >= 19) ? tjlt.holder.stackSize : tjlt.stackSize;
-        if (threadSpecificStackSize != 0) {
+        if (threadSpecificStackSize > 0) {
             /* If the user set a thread stack size at thread creation, then use that. */
             stackSize = threadSpecificStackSize;
         } else {
@@ -495,7 +469,7 @@ public abstract class PlatformThreads {
     @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")
     static void setCurrentThread(Thread carrier, Thread thread) {
         assert carrier == currentThread.get();
-        assert thread == carrier || (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(thread));
+        assert thread == carrier || isVirtual(thread);
         toTarget(carrier).vthread = (thread != carrier) ? thread : null;
         currentVThreadId.set(JavaThreads.getThreadId(thread));
     }
@@ -924,7 +898,8 @@ public abstract class PlatformThreads {
     static StackTraceElement[] getStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP) {
         assert !isVirtual(thread);
         if (thread != null && thread == currentThread.get()) {
-            return StackTraceUtils.getStackTrace(filterExceptions, callerSP, WordFactory.nullPointer());
+            Pointer startSP = getCarrierSPOrElse(thread, callerSP);
+            return StackTraceUtils.getStackTrace(filterExceptions, startSP, WordFactory.nullPointer());
         }
         assert !filterExceptions : "exception stack traces can be taken only for the current thread";
         return StackTraceUtils.asyncGetStackTrace(thread);
@@ -932,20 +907,38 @@ public abstract class PlatformThreads {
 
     static void visitCurrentStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
         assert !isVirtual(Thread.currentThread());
-        StackTraceUtils.visitCurrentThreadStackFrames(callerSP, WordFactory.nullPointer(), visitor);
+        Pointer startSP = getCarrierSPOrElse(Thread.currentThread(), callerSP);
+        StackTraceUtils.visitCurrentThreadStackFrames(startSP, WordFactory.nullPointer(), visitor);
     }
 
-    public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
+    static StackTraceElement[] getStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
         assert thread != null && !isVirtual(thread);
+        Pointer carrierSP = getCarrierSPOrElse(thread, WordFactory.nullPointer());
         IsolateThread isolateThread = getIsolateThread(thread);
         if (isolateThread == CurrentIsolate.getCurrentThread()) {
+            Pointer startSP = carrierSP.isNonNull() ? carrierSP : callerSP;
             /*
              * Internal frames from the VMOperation handling show up in the stack traces, but we are
              * OK with that.
              */
-            return StackTraceUtils.getStackTrace(false, callerSP, WordFactory.nullPointer());
+            return StackTraceUtils.getStackTrace(false, startSP, WordFactory.nullPointer());
         }
-        return StackTraceUtils.getThreadStackTraceAtSafepoint(isolateThread, WordFactory.nullPointer());
+        if (carrierSP.isNonNull()) { // mounted virtual thread, skip its frames
+            CodePointer carrierIP = FrameAccess.singleton().readReturnAddress(carrierSP);
+            return StackTraceUtils.getThreadStackTraceAtSafepoint(carrierSP, WordFactory.nullPointer(), carrierIP);
+         }
+         return StackTraceUtils.getThreadStackTraceAtSafepoint(isolateThread, WordFactory.nullPointer());
+    }
+
+    static Pointer getCarrierSPOrElse(Thread carrier, Pointer other) {
+        Target_jdk_internal_vm_Continuation cont = toTarget(carrier).cont;
+        while (cont != null) {
+            if (cont.getScope() == Target_java_lang_VirtualThread.VTHREAD_SCOPE) {
+                return cont.internal.getBaseSP();
+            }
+            cont = cont.getParent();
+        }
+        return other;
     }
 
     static Map<Thread, StackTraceElement[]> getAllStackTraces() {
@@ -1168,7 +1161,9 @@ public abstract class PlatformThreads {
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
                 Thread thread = PlatformThreads.fromVMThread(cur);
                 if (thread != null) {
-                    result.put(thread, StackTraceUtils.getStackTraceAtSafepoint(thread));
+                    if (!thread.isVirtual()) { // filter BoundVirtualThread
+                        result.put(thread, StackTraceUtils.getStackTraceAtSafepoint(thread));
+                    }
                 }
             }
         }
@@ -1186,7 +1181,7 @@ public abstract class PlatformThreads {
         protected void operate() {
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
                 Thread thread = PlatformThreads.fromVMThread(cur);
-                if (thread != null) {
+                if (thread != null && !thread.isVirtual()) { // filter BoundVirtualThread
                     result.add(thread);
                 }
             }

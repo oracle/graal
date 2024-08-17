@@ -37,7 +37,6 @@ import java.util.SplittableRandom;
 import java.util.concurrent.ThreadLocalRandom;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -52,20 +51,12 @@ public final class DisallowedImageHeapObjects {
         RuntimeException raise(String msg, Object obj, String initializerAction);
     }
 
-    private static final Class<?> CANCELLABLE_CLASS;
-    private static final Class<?> JDK_VIRTUAL_THREAD_CLASS;
-    private static final Class<?> CONTINUATION_CLASS;
-    private static final Method CONTINUATION_IS_STARTED_METHOD;
-    private static final Class<?> CLEANER_CLEANABLE_CLASS;
-    private static final Class<?> LEGACY_CLEANER_CLASS;
-    static {
-        CANCELLABLE_CLASS = ReflectionUtil.lookupClass(false, "sun.nio.fs.Cancellable");
-        JDK_VIRTUAL_THREAD_CLASS = ReflectionUtil.lookupClass(true, "java.lang.VirtualThread");
-        CONTINUATION_CLASS = ReflectionUtil.lookupClass(true, "jdk.internal.vm.Continuation");
-        CONTINUATION_IS_STARTED_METHOD = (CONTINUATION_CLASS == null) ? null : ReflectionUtil.lookupMethod(CONTINUATION_CLASS, "isStarted");
-        CLEANER_CLEANABLE_CLASS = ReflectionUtil.lookupClass(false, "jdk.internal.ref.CleanerImpl$CleanerCleanable");
-        LEGACY_CLEANER_CLASS = ReflectionUtil.lookupClass(false, "jdk.internal.ref.Cleaner");
-    }
+    private static final Class<?> CANCELLABLE_CLASS = ReflectionUtil.lookupClass(false, "sun.nio.fs.Cancellable");
+    private static final Class<?> VIRTUAL_THREAD_CLASS = ReflectionUtil.lookupClass(false, "java.lang.VirtualThread");
+    private static final Class<?> CONTINUATION_CLASS = ReflectionUtil.lookupClass(false, "jdk.internal.vm.Continuation");
+    private static final Method CONTINUATION_IS_STARTED_METHOD = ReflectionUtil.lookupMethod(CONTINUATION_CLASS, "isStarted");
+    private static final Class<?> CLEANER_CLEANABLE_CLASS = ReflectionUtil.lookupClass(false, "jdk.internal.ref.CleanerImpl$CleanerCleanable");
+    private static final Class<?> LEGACY_CLEANER_CLASS = ReflectionUtil.lookupClass(false, "jdk.internal.ref.Cleaner");
 
     public static void check(Object obj, DisallowedObjectReporter reporter) {
         if (((obj instanceof Random) && !(obj instanceof ThreadLocalRandom)) || obj instanceof SplittableRandom) {
@@ -75,9 +66,8 @@ public final class DisallowedImageHeapObjects {
         }
 
         /* Started platform threads */
-        if (obj instanceof Thread) {
-            final Thread asThread = (Thread) obj;
-            if (VirtualThreads.isSupported() && (VirtualThreads.singleton().isVirtual(asThread) || (JDK_VIRTUAL_THREAD_CLASS != null && JDK_VIRTUAL_THREAD_CLASS.isInstance(asThread)))) {
+        if (obj instanceof Thread asThread) {
+            if (VIRTUAL_THREAD_CLASS.isInstance(asThread)) {
                 // allowed unless the thread is mounted, in which case it references its carrier
                 // thread and fails
             } else if (asThread.getState() != Thread.State.NEW && asThread.getState() != Thread.State.TERMINATED) {
@@ -86,7 +76,7 @@ public final class DisallowedImageHeapObjects {
                                 asThread, "Prevent threads from starting during image generation, or a started thread from being included in the image.");
             }
         }
-        if (SubstrateUtil.HOSTED && CONTINUATION_CLASS != null && CONTINUATION_CLASS.isInstance(obj)) {
+        if (SubstrateUtil.HOSTED && CONTINUATION_CLASS.isInstance(obj)) {
             boolean isStarted;
             try {
                 isStarted = (Boolean) CONTINUATION_IS_STARTED_METHOD.invoke(obj);

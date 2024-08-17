@@ -34,33 +34,11 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.JDK19OrLater;
-import com.oracle.svm.core.jdk.LoomJDK;
-import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.util.VMError;
 
-@TargetClass(className = "Continuation", classNameProvider = Package_jdk_internal_vm_helper.class, onlyWith = {JDK19OrLater.class, NotLoomJDK.class})
-@Substitute
-@SuppressWarnings("unused")
-final class Target_jdk_internal_vm_Continuation__WithoutLoom {
-    @Substitute
-    static boolean yield(Target_jdk_internal_vm_ContinuationScope scope) {
-        throw VMError.shouldNotReachHereAtRuntime();
-    }
-
-    @Substitute
-    static void pin() {
-        throw VMError.shouldNotReachHereAtRuntime();
-    }
-
-    @Substitute
-    static void unpin() {
-        throw VMError.shouldNotReachHereAtRuntime();
-    }
-}
-
-@TargetClass(className = "Continuation", classNameProvider = Package_jdk_internal_vm_helper.class, onlyWith = LoomJDK.class)
+@TargetClass(className = "Continuation", classNameProvider = Package_jdk_internal_vm_helper.class)
 public final class Target_jdk_internal_vm_Continuation {
     @Substitute
     private static void registerNatives() {
@@ -70,7 +48,7 @@ public final class Target_jdk_internal_vm_Continuation {
     Runnable target;
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    Continuation internal;
+    public Continuation internal;
 
     /** Treated as unsigned, located in native class {@code ContinuationEntry} in JDK code. */
     @Inject//
@@ -98,7 +76,7 @@ public final class Target_jdk_internal_vm_Continuation {
         if (cont != null) {
             while (true) {
                 if (cont.pinCount != 0) {
-                    return LoomSupport.FREEZE_PINNED_CS;
+                    return ContinuationSupport.FREEZE_PINNED_CS;
                 }
                 if (cont.getParent() == null) {
                     break;
@@ -110,10 +88,10 @@ public final class Target_jdk_internal_vm_Continuation {
             }
             JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(CurrentIsolate.getCurrentThread());
             if (anchor.isNonNull() && cont.internal.getBaseSP().aboveThan(anchor.getLastJavaSP())) {
-                return LoomSupport.FREEZE_PINNED_NATIVE;
+                return ContinuationSupport.FREEZE_PINNED_NATIVE;
             }
         }
-        return LoomSupport.FREEZE_OK;
+        return ContinuationSupport.FREEZE_OK;
     }
 
     @Substitute
@@ -183,7 +161,7 @@ public final class Target_jdk_internal_vm_Continuation {
     }
 
     @Substitute
-    static void pin() {
+    public static void pin() {
         Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
         if (carrier.cont != null) {
             if (carrier.cont.pinCount + 1 == 0) { // unsigned arithmetic
@@ -194,7 +172,7 @@ public final class Target_jdk_internal_vm_Continuation {
     }
 
     @Substitute
-    static void unpin() {
+    public static void unpin() {
         Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
         if (carrier.cont != null) {
             if (carrier.cont.pinCount == 0) {

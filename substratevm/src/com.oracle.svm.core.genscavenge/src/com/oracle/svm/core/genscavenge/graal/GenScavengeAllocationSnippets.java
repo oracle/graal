@@ -58,7 +58,6 @@ import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.thread.ContinuationSupport;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -130,7 +129,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
             this.baseTemplates = baseTemplates;
             formatObject = snippet(providers, GenScavengeAllocationSnippets.class, "formatObjectSnippet");
             formatArray = snippet(providers, GenScavengeAllocationSnippets.class, "formatArraySnippet");
-            formatStoredContinuation = Continuation.isSupported() ? snippet(providers, GenScavengeAllocationSnippets.class, "formatStoredContinuation") : null;
+            formatStoredContinuation = ContinuationSupport.isSupported() ? snippet(providers, GenScavengeAllocationSnippets.class, "formatStoredContinuation") : null;
             formatPod = Pod.RuntimeSupport.isPresent() ? snippet(providers,
                             GenScavengeAllocationSnippets.class,
                             "formatPodSnippet",
@@ -141,7 +140,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
         public void registerLowering(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
             lowerings.put(FormatObjectNode.class, new FormatObjectLowering());
             lowerings.put(FormatArrayNode.class, new FormatArrayLowering());
-            if (Continuation.isSupported()) {
+            if (ContinuationSupport.isSupported()) {
                 lowerings.put(FormatStoredContinuationNode.class, new FormatStoredContinuationLowering());
             }
             if (Pod.RuntimeSupport.isPresent()) {

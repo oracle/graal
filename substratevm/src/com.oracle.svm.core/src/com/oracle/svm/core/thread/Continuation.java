@@ -44,14 +44,6 @@ import com.oracle.svm.core.util.VMError;
 /** Foundation for {@linkplain Target_jdk_internal_vm_Continuation Project Loom} support. */
 @InternalVMMethod
 public final class Continuation {
-    @Fold
-    public static boolean isSupported() {
-        return LoomSupport.isEnabled();
-    }
-
-    public static final int YIELDING = -2;
-    public static final int FREEZE_OK = LoomSupport.FREEZE_OK;
-
     private final Runnable target;
 
     public StoredContinuation stored;
@@ -185,7 +177,7 @@ public final class Continuation {
 
     /**
      * @return {@link Integer} because we return here via {@link KnownIntrinsics#farReturn} and pass
-     *         boxed {@link #FREEZE_OK} as result code.
+     *         boxed {@link ContinuationSupport#FREEZE_OK} as result code.
      */
     @NeverInline("Accesses caller stack pointer and return address.")
     private Integer yield0() {
@@ -217,7 +209,7 @@ public final class Continuation {
     }
 
     private static final class TryPreemptOperation extends JavaVMOperation {
-        int preemptStatus = FREEZE_OK;
+        int preemptStatus = ContinuationSupport.FREEZE_OK;
 
         final Continuation cont;
         final Thread thread;
@@ -235,7 +227,7 @@ public final class Continuation {
             Pointer returnSP = cont.sp;
             CodePointer returnIP = cont.ip;
             preemptStatus = StoredContinuationAccess.allocateToPreempt(cont, baseSP, vmThread);
-            if (preemptStatus == FREEZE_OK) {
+            if (preemptStatus == ContinuationSupport.FREEZE_OK) {
                 cont.sp = WordFactory.nullPointer();
                 cont.baseSP = WordFactory.nullPointer();
                 cont.ip = WordFactory.nullPointer();
