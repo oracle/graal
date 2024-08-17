@@ -129,7 +129,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // of the mark word.
     public final int lockingMode = getFlag("LockingMode", Integer.class);
 
-    public final int lockingModeMonitor = getConstant("LockingMode::LM_MONITOR", Integer.class, 0, JDK >= 22);
     public final int lockingModeStack = getConstant("LockingMode::LM_LEGACY", Integer.class, 1, JDK >= 22);
     public final int lockingModeLightweight = getConstant("LockingMode::LM_LIGHTWEIGHT", Integer.class, 2, JDK >= 22);
 
@@ -348,7 +347,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int frameInterpreterFrameLastSpOffset = getConstant("frame::interpreter_frame_last_sp_offset", Integer.class, 0, osArch.equals("amd64"));
 
     public final int lockMaskInPlace = getConstant("markWord::lock_mask_in_place", Integer.class);
-    public final int ageMaskInPlace = getConstant("markWord::age_mask_in_place", Integer.class);
     public final int unlockedValue = getConstant("markWord::unlocked_value", Integer.class);
     public final int monitorValue = getConstant("markWord::monitor_value", Integer.class);
 
@@ -377,11 +375,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int uninitializedIdentityHashCodeValue = getConstant("markWord::no_hash", Integer.class);
 
     public final int methodCompiledEntryOffset = getFieldOffset("Method::_from_compiled_entry", Integer.class, "address");
-
-    public final int invocationCounterOffset = getFieldOffset("MethodCounters::_invocation_counter", Integer.class, "InvocationCounter");
-    public final int backedgeCounterOffset = getFieldOffset("MethodCounters::_backedge_counter", Integer.class, "InvocationCounter");
-    public final int invocationCounterIncrement = getConstant("InvocationCounter::count_increment", Integer.class);
-    public final int invocationCounterShift = getConstant("InvocationCounter::count_shift", Integer.class);
 
     public final int compilationLevelFullOptimization = getConstant("CompLevel_full_optimization", Integer.class);
 

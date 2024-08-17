@@ -24,13 +24,9 @@
  */
 package jdk.graal.compiler.hotspot;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
@@ -39,14 +35,9 @@ import jdk.vm.ci.hotspot.HotSpotVMEventListener;
 public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
 
     private HotSpotGraalRuntime runtime;
-    private List<HotSpotCodeCacheListener> listeners;
 
     HotSpotGraalVMEventListener(HotSpotGraalRuntime runtime) {
         setRuntime(runtime);
-        listeners = new ArrayList<>();
-        for (HotSpotCodeCacheListener listener : GraalServices.load(HotSpotCodeCacheListener.class)) {
-            listeners.add(listener);
-        }
     }
 
     void setRuntime(HotSpotGraalRuntime runtime) {
@@ -71,9 +62,6 @@ public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
         }
         if (debug.isLogEnabled()) {
             debug.log("%s", codeCache.disassemble(installedCode));
-        }
-        for (HotSpotCodeCacheListener listener : listeners) {
-            listener.notifyInstall(codeCache, installedCode, compiledCode);
         }
     }
 

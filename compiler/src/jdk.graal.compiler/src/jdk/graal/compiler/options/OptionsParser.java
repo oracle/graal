@@ -30,9 +30,12 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Formatter;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -47,11 +50,25 @@ import org.graalvm.collections.MapCursor;
 public class OptionsParser {
 
     /**
-     * The set of compiler options available in libgraal. These correspond to the reachable
-     * {@link OptionKey}s discovered during Native Image static analysis. This field is only
-     * non-null when {@link OptionsParser} is loaded by the GuestGraal class loader.
+     * Info about libgraal options.
+     *
+     * @param descriptors set of compiler options available in libgraal. These correspond to the
+     *            reachable {@link OptionKey}s discovered during Native Image static analysis. This
+     *            field is only non-null when {@link OptionsParser} is loaded by the GuestGraal
+     *            class loader.
+     * @param enterpriseOptions {@linkplain OptionKey#getName() names} of enterprise options
      */
-    private static EconomicMap<String, OptionDescriptor> libgraalOptionDescriptors;
+    public record LibGraalOptionsInfo(EconomicMap<String, OptionDescriptor> descriptors, Set<String> enterpriseOptions) {
+        public static LibGraalOptionsInfo create() {
+            return new LibGraalOptionsInfo(EconomicMap.create(), new HashSet<>());
+        }
+    }
+
+    /**
+     * Compiler options info available in libgraal. This field is only non-null when
+     * {@link OptionsParser} is loaded by the GuestGraal class loader.
+     */
+    private static LibGraalOptionsInfo libgraalOptions;
 
     /**
      * Gets an iterable of available {@link OptionDescriptors}.
@@ -59,10 +76,9 @@ public class OptionsParser {
     @ExcludeFromJacocoGeneratedReport("contains libgraal-only path")
     public static Iterable<OptionDescriptors> getOptionsLoader() {
         if (IS_IN_NATIVE_IMAGE) {
-            GraalError.guarantee(libgraalOptionDescriptors != null, "missing options");
-            return List.of(new OptionDescriptorsMap(libgraalOptionDescriptors));
+            return List.of(new OptionDescriptorsMap(Objects.requireNonNull(libgraalOptions.descriptors, "missing options")));
         }
-        boolean inGuestGraal = libgraalOptionDescriptors != null;
+        boolean inGuestGraal = libgraalOptions != null;
         if (inGuestGraal && IS_BUILDING_NATIVE_IMAGE) {
             /*
              * Graal code is being run in the context of the GuestGraal loader while building
@@ -82,10 +98,11 @@ public class OptionsParser {
     }
 
     @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
-    public static void setLibgraalOptionDescriptors(EconomicMap<String, OptionDescriptor> descriptors) {
+    public static LibGraalOptionsInfo setLibgraalOptions(LibGraalOptionsInfo info) {
         GraalError.guarantee(IS_BUILDING_NATIVE_IMAGE, "Can only set libgraal compiler options when building libgraal");
-        GraalError.guarantee(libgraalOptionDescriptors == null, "Libgraal compiler options must be set exactly once");
-        OptionsParser.libgraalOptionDescriptors = descriptors;
+        GraalError.guarantee(libgraalOptions == null, "Libgraal compiler options must be set exactly once");
+        OptionsParser.libgraalOptions = info;
+        return info;
     }
 
     /**
@@ -337,5 +354,14 @@ public class OptionsParser {
             }
         }
         return found;
+    }
+
+    static boolean isEnterpriseOption(OptionDescriptor desc) {
+        if (IS_IN_NATIVE_IMAGE) {
+            return Objects.requireNonNull(libgraalOptions.enterpriseOptions, "missing options").contains(desc.getName());
+        }
+        Class<?> declaringClass = desc.getDeclaringClass();
+        String module = declaringClass.getModule().getName();
+        return module != null && module.contains("enterprise");
     }
 }

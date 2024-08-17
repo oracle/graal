@@ -77,7 +77,7 @@ public abstract class HotSpotG1BarrierSetLIRTool implements G1BarrierSetLIRTool 
 
     @Override
     public byte dirtyCardValue() {
-        return HotSpotReplacementsUtil.dirtyCardValue(config);
+        return config.dirtyCardValue;
     }
 
     @Override

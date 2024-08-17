@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.graal.hotspot.guestgraal;
 
-import java.util.HashMap;
-import java.util.List;
-
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -43,7 +40,6 @@ public class GuestGraalCompilerSupport {
     public final EconomicMap<Class<?>, Object> nodeClasses = ImageHeapMap.create();
     public final EconomicMap<Class<?>, Object> instructionClasses = ImageHeapMap.create();
     public final EconomicMap<Class<?>, Object> compositeValueClasses = ImageHeapMap.create();
-    public HashMap<Class<?>, EconomicMap<Class<?>, List<Object>>> matchRuleRegistry;
 
     protected EconomicMap<Class<?>, Object> basePhaseStatistics = ImageHeapMap.create();
     protected EconomicMap<Class<?>, Object> lirPhaseStatistics = ImageHeapMap.create();
@@ -52,14 +48,6 @@ public class GuestGraalCompilerSupport {
     static void registerStatistics(Class<?> phaseSubClass, EconomicMap<Class<?>, Object> cache, Object newStatistics) {
         assert !cache.containsKey(phaseSubClass);
         cache.put(phaseSubClass, newStatistics);
-    }
-
-    public HashMap<Class<?>, EconomicMap<Class<?>, List<Object>>> getMatchRuleRegistry() {
-        return matchRuleRegistry;
-    }
-
-    public void setMatchRuleRegistry(HashMap<Class<?>, EconomicMap<Class<?>, List<Object>>> matchRuleRegistry) {
-        this.matchRuleRegistry = matchRuleRegistry;
     }
 
     public static GuestGraalCompilerSupport get() {

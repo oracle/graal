@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot;
+package jdk.graal.compiler.serviceprovider;
 
-import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-public interface HotSpotCodeCacheListener {
-    /**
-     * Notifies this object on successful install into the CodeCache.
-     *
-     * @param codeCache the code cache into which the code was installed
-     * @param installedCode the code that was installed
-     * @param compiledCode the compiled code from which {@code installedCode} was produced
-     */
-    default void notifyInstall(HotSpotCodeCacheProvider codeCache, InstalledCode installedCode, CompiledCode compiledCode) {
-
-    }
+/**
+ * Annotates a service type that is used in libgraal via a call to {@link GraalServices#load(Class)}
+ * or {@link GraalServices#loadSingle(Class, boolean)}}.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface LibGraalService {
 }
