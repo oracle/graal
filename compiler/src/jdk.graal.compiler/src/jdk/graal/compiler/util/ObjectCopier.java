@@ -441,7 +441,7 @@ public class ObjectCopier {
      * Encodes {@code root} to a String using {@code encoder}.
      */
     public static String encode(Encoder encoder, Object root) {
-        int rootId = encoder.makeId(root, ObjectPath.of("[root]")).id();
+        int rootId = encoder.makeId(root, ObjectPath.of("[root:" + root.getClass().getName() + "]")).id();
         GraalError.guarantee(rootId == 1, "The root object should have id of 1, not %d", rootId);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (PrintStream ps = new PrintStream(baos)) {
@@ -901,18 +901,27 @@ public class ObjectCopier {
                     checkIllegalValue(LocationIdentity.class, obj, objectPath, "must come from a static field");
                     checkIllegalValue(HashSet.class, obj, objectPath, "hashes are typically not stable across VM executions");
 
-                    ClassInfo classInfo = classInfos.computeIfAbsent(clazz, this::makeClassInfo);
+                    ClassInfo classInfo = makeClassInfo(clazz, objectPath);
                     for (Field f : classInfo.fields().values()) {
-                        makeId(f.getType(), objectPath.add(f.getName() + ":type"));
+                        String fieldName = f.getDeclaringClass().getSimpleName() + "#" + f.getName();
+                        makeId(f.getType(), objectPath.add(fieldName + ":type"));
                         if (!f.getType().isPrimitive()) {
                             Object fieldValue = readField(f, obj);
-                            makeId(fieldValue, objectPath.add(f.getName()));
+                            makeId(fieldValue, objectPath.add(fieldName));
                         }
                     }
                 }
 
             }
             return objectToId.get(obj);
+        }
+
+        private ClassInfo makeClassInfo(Class<?> clazz, ObjectPath objectPath) {
+            try {
+                return classInfos.computeIfAbsent(clazz, this::makeClassInfo);
+            } catch (Throwable e) {
+                throw new GraalError(e, "Error creating ClassInfo%n  Path: %s", objectPath);
+            }
         }
 
         private void encode(PrintStream out) {
