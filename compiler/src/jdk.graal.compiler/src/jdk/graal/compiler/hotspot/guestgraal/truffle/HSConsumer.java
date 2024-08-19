@@ -37,7 +37,7 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 final class HSConsumer extends HSIndirectHandle implements Consumer<OptimizedAssumptionDependency> {
 
-    private static final MethodHandle consumeOptimizedAssumptionDependency = getHostMethodHandleOrFail(ConsumeOptimizedAssumptionDependency);
+    private static final Handles HANDLES = new Handles();
 
     HSConsumer(Object hsHandle) {
         super(hsHandle);
@@ -65,9 +65,13 @@ final class HSConsumer extends HSIndirectHandle implements Consumer<OptimizedAss
             installedCode = runtime().translate(dependency.getInstalledCode());
         }
         try {
-            consumeOptimizedAssumptionDependency.invoke(hsHandle, compilableHsHandle, installedCode);
+            HANDLES.consumeOptimizedAssumptionDependency.invoke(hsHandle, compilableHsHandle, installedCode);
         } catch (Throwable t) {
             throw handleException(t);
         }
+    }
+
+    private static final class Handles {
+        final MethodHandle consumeOptimizedAssumptionDependency = getHostMethodHandleOrFail(ConsumeOptimizedAssumptionDependency);
     }
 }

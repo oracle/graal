@@ -34,13 +34,7 @@ import static jdk.graal.compiler.hotspot.guestgraal.truffle.HSIndirectHandle.han
  */
 final class NativeImageHostCalls {
 
-    private static final MethodHandle initializeHost = getHostMethodHandleOrFail("initializeHost");
-    private static final MethodHandle createLocalHandleForLocalReference = getHostMethodHandleOrFail("createLocalHandleForLocalReference");
-    private static final MethodHandle createLocalHandleForWeakGlobalReference = getHostMethodHandleOrFail("createLocalHandleForWeakGlobalReference");
-    private static final MethodHandle createGlobalHandle = getHostMethodHandleOrFail("createGlobalHandle");
-    private static final MethodHandle isSameObject = getHostMethodHandleOrFail("isSameObject");
-    private static final MethodHandle getObjectClass = getHostMethodHandleOrFail("getObjectClass");
-    private static final MethodHandle createTruffleCompilerOptionDescriptor = getHostMethodHandleOrFail("createTruffleCompilerOptionDescriptor");
+    private static final Handles HANDLES = new Handles();
 
     private NativeImageHostCalls() {
     }
@@ -49,7 +43,7 @@ final class NativeImageHostCalls {
 
     static void initializeHost(long runtimeClass) {
         try {
-            initializeHost.invoke(runtimeClass);
+            HANDLES.initializeHost.invoke(runtimeClass);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -57,7 +51,7 @@ final class NativeImageHostCalls {
 
     static Object createLocalHandleForLocalReference(long jniLocalHandle) {
         try {
-            return createLocalHandleForLocalReference.invoke(jniLocalHandle);
+            return HANDLES.createLocalHandleForLocalReference.invoke(jniLocalHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -65,7 +59,7 @@ final class NativeImageHostCalls {
 
     static Object createLocalHandleForWeakGlobalReference(long jniLocalHandle) {
         try {
-            return createLocalHandleForWeakGlobalReference.invoke(jniLocalHandle);
+            return HANDLES.createLocalHandleForWeakGlobalReference.invoke(jniLocalHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -73,7 +67,7 @@ final class NativeImageHostCalls {
 
     static Object createGlobalHandle(Object hsHandle) {
         try {
-            return createGlobalHandle.invoke(hsHandle);
+            return HANDLES.createGlobalHandle.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -81,7 +75,7 @@ final class NativeImageHostCalls {
 
     static boolean isSameObject(Object o1, Object o2) {
         try {
-            return (boolean) isSameObject.invoke(o1, o2);
+            return (boolean) HANDLES.isSameObject.invoke(o1, o2);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -89,7 +83,7 @@ final class NativeImageHostCalls {
 
     static long getObjectClass(Object o) {
         try {
-            return (long) getObjectClass.invoke(o);
+            return (long) HANDLES.getObjectClass.invoke(o);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -97,9 +91,19 @@ final class NativeImageHostCalls {
 
     static Object createTruffleCompilerOptionDescriptor(String name, int type, boolean deprecated, String help, String deprecationMessage) {
         try {
-            return createTruffleCompilerOptionDescriptor.invoke(name, type, deprecated, help, deprecationMessage);
+            return HANDLES.createTruffleCompilerOptionDescriptor.invoke(name, type, deprecated, help, deprecationMessage);
         } catch (Throwable t) {
             throw handleException(t);
         }
+    }
+
+    private static final class Handles {
+        final MethodHandle initializeHost = getHostMethodHandleOrFail("initializeHost");
+        final MethodHandle createLocalHandleForLocalReference = getHostMethodHandleOrFail("createLocalHandleForLocalReference");
+        final MethodHandle createLocalHandleForWeakGlobalReference = getHostMethodHandleOrFail("createLocalHandleForWeakGlobalReference");
+        final MethodHandle createGlobalHandle = getHostMethodHandleOrFail("createGlobalHandle");
+        final MethodHandle isSameObject = getHostMethodHandleOrFail("isSameObject");
+        final MethodHandle getObjectClass = getHostMethodHandleOrFail("getObjectClass");
+        final MethodHandle createTruffleCompilerOptionDescriptor = getHostMethodHandleOrFail("createTruffleCompilerOptionDescriptor");
     }
 }

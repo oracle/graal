@@ -45,14 +45,7 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 final class HSTruffleCompilationTask extends HSIndirectHandle implements TruffleCompilationTask {
 
-    private static final MethodHandle isCancelled = getHostMethodHandleOrFail(IsCancelled);
-    private static final MethodHandle hasNextTier = getHostMethodHandleOrFail(HasNextTier);
-    private static final MethodHandle isLastTier = getHostMethodHandleOrFail(IsLastTier);
-    private static final MethodHandle getPosition = getHostMethodHandleOrFail(GetPosition);
-    private static final MethodHandle addTargetToDequeue = getHostMethodHandleOrFail(AddTargetToDequeue);
-    private static final MethodHandle setCallCounts = getHostMethodHandleOrFail(SetCallCounts);
-    private static final MethodHandle addInlinedTarget = getHostMethodHandleOrFail(AddInlinedTarget);
-    private static final MethodHandle getDebugProperties = getHostMethodHandleOrFail(GetDebugProperties);
+    private static final Handles HANDLES = new Handles();
 
     HSTruffleCompilationTask(Object hsHandle) {
         super(hsHandle);
@@ -61,7 +54,7 @@ final class HSTruffleCompilationTask extends HSIndirectHandle implements Truffle
     @Override
     public boolean isCancelled() {
         try {
-            return (boolean) isCancelled.invoke(hsHandle);
+            return (boolean) HANDLES.isCancelled.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -70,7 +63,7 @@ final class HSTruffleCompilationTask extends HSIndirectHandle implements Truffle
     @Override
     public boolean isLastTier() {
         try {
-            return (boolean) isLastTier.invoke(hsHandle);
+            return (boolean) HANDLES.isLastTier.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -79,7 +72,7 @@ final class HSTruffleCompilationTask extends HSIndirectHandle implements Truffle
     @Override
     public boolean hasNextTier() {
         try {
-            return (boolean) hasNextTier.invoke(hsHandle);
+            return (boolean) HANDLES.hasNextTier.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -90,7 +83,7 @@ final class HSTruffleCompilationTask extends HSIndirectHandle implements Truffle
         long nodeHandle = runtime().translate(node);
         Object positionHsHandle;
         try {
-            positionHsHandle = getPosition.invoke(hsHandle, nodeHandle);
+            positionHsHandle = HANDLES.getPosition.invoke(hsHandle, nodeHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -104,7 +97,7 @@ final class HSTruffleCompilationTask extends HSIndirectHandle implements Truffle
     @Override
     public void addTargetToDequeue(TruffleCompilable target) {
         try {
-            addTargetToDequeue.invoke(hsHandle, ((HSTruffleCompilable) target).hsHandle);
+            HANDLES.addTargetToDequeue.invoke(hsHandle, ((HSTruffleCompilable) target).hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -113,7 +106,7 @@ final class HSTruffleCompilationTask extends HSIndirectHandle implements Truffle
     @Override
     public void setCallCounts(int total, int inlined) {
         try {
-            setCallCounts.invoke(hsHandle, total, inlined);
+            HANDLES.setCallCounts.invoke(hsHandle, total, inlined);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -122,7 +115,7 @@ final class HSTruffleCompilationTask extends HSIndirectHandle implements Truffle
     @Override
     public void addInlinedTarget(TruffleCompilable target) {
         try {
-            addInlinedTarget.invoke(hsHandle, ((HSTruffleCompilable) target).hsHandle);
+            HANDLES.addInlinedTarget.invoke(hsHandle, ((HSTruffleCompilable) target).hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -133,9 +126,20 @@ final class HSTruffleCompilationTask extends HSIndirectHandle implements Truffle
     public Map<String, Object> getDebugProperties(JavaConstant node) {
         try {
             long nodeHandle = runtime().translate(node);
-            return (Map<String, Object>) getDebugProperties.invoke(hsHandle, nodeHandle);
+            return (Map<String, Object>) HANDLES.getDebugProperties.invoke(hsHandle, nodeHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
+    }
+
+    private static final class Handles {
+        final MethodHandle isCancelled = getHostMethodHandleOrFail(IsCancelled);
+        final MethodHandle hasNextTier = getHostMethodHandleOrFail(HasNextTier);
+        final MethodHandle isLastTier = getHostMethodHandleOrFail(IsLastTier);
+        final MethodHandle getPosition = getHostMethodHandleOrFail(GetPosition);
+        final MethodHandle addTargetToDequeue = getHostMethodHandleOrFail(AddTargetToDequeue);
+        final MethodHandle setCallCounts = getHostMethodHandleOrFail(SetCallCounts);
+        final MethodHandle addInlinedTarget = getHostMethodHandleOrFail(AddInlinedTarget);
+        final MethodHandle getDebugProperties = getHostMethodHandleOrFail(GetDebugProperties);
     }
 }

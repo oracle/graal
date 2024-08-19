@@ -29,6 +29,7 @@ import jdk.graal.compiler.debug.DebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
+import jdk.vm.ci.services.Services;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -79,22 +80,26 @@ public class BuildTime {
     }
 
     static MethodHandle getHostMethodHandleOrFail(String name) {
-        /*
-         * Native-image initializes BuildTime also in the platform classloader. In this case we
-         * return null.
-         */
-        ClassLoader myLoader = BuildTime.class.getClassLoader();
-        if (myLoader == null || myLoader == ClassLoader.getPlatformClassLoader() || myLoader == ClassLoader.getSystemClassLoader()) {
-            return null;
-        }
-        if (hostMethods == null) {
-            hostMethods = initializeHostMethods();
-        }
-        MethodHandle handle = hostMethods.get(name);
-        if (handle != null) {
-            return handle;
+        if (Services.IS_BUILDING_NATIVE_IMAGE) {
+            /*
+             * Native-image initializes BuildTime also in the platform classloader. In this case we
+             * return null.
+             */
+            ClassLoader myLoader = BuildTime.class.getClassLoader();
+            if (myLoader == null || myLoader == ClassLoader.getPlatformClassLoader() || myLoader == ClassLoader.getSystemClassLoader()) {
+                return null;
+            }
+            if (hostMethods == null) {
+                hostMethods = initializeHostMethods();
+            }
+            MethodHandle handle = hostMethods.get(name);
+            if (handle != null) {
+                return handle;
+            } else {
+                throw new NoSuchElementException(name);
+            }
         } else {
-            throw new NoSuchElementException(name);
+            throw new IllegalStateException("Should not be reachable in the libgraal execution time");
         }
     }
 

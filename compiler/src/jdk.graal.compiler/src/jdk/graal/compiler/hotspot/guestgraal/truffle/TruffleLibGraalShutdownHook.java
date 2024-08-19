@@ -54,7 +54,7 @@ public class TruffleLibGraalShutdownHook extends JVMCIServiceLocator {
 
     static class ShutdownHook implements HotSpotVMEventListener {
 
-        private static final MethodHandle onIsolateShutdown = getHostMethodHandleOrFail(Id.OnIsolateShutdown);
+        private static final Handles HANDLES = new Handles();
 
         ShutdownHook() {
         }
@@ -62,12 +62,16 @@ public class TruffleLibGraalShutdownHook extends JVMCIServiceLocator {
         @Override
         public void notifyShutdown() {
             try {
-                onIsolateShutdown.invoke(IsolateUtil.getIsolateID());
+                HANDLES.onIsolateShutdown.invoke(IsolateUtil.getIsolateID());
             } catch (RuntimeException | Error e) {
                 throw e;
             } catch (Throwable t) {
                 throw new RuntimeException(t);
             }
         }
+    }
+
+    private static final class Handles {
+        final MethodHandle onIsolateShutdown = getHostMethodHandleOrFail(Id.OnIsolateShutdown);
     }
 }

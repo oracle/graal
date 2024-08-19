@@ -80,6 +80,7 @@ public final class GraalEntryPoint {
         return HotSpotTruffleCompilationSupport.getLazyCompilerConfigurationName();
     }
 
+    @SuppressWarnings("try")
     public static void doCompile(Object compiler, Object taskHsHandle, Object compilableHsHandle, Object listenerHsHandle) {
         HotSpotTruffleCompilerImpl truffleCompiler = (HotSpotTruffleCompilerImpl) compiler;
         HSTruffleCompilationTask task = taskHsHandle == null ? null : new HSTruffleCompilationTask(taskHsHandle);

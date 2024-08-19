@@ -40,11 +40,7 @@ import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMet
 
 final class HSTruffleCompilerListener extends HSIndirectHandle implements TruffleCompilerListener {
 
-    private static final MethodHandle onSuccess = getHostMethodHandleOrFail(OnSuccess);
-    private static final MethodHandle onTruffleTierFinished = getHostMethodHandleOrFail(OnTruffleTierFinished);
-    private static final MethodHandle onGraalTierFinished = getHostMethodHandleOrFail(OnGraalTierFinished);
-    private static final MethodHandle onFailure = getHostMethodHandleOrFail(OnFailure);
-    private static final MethodHandle onCompilationRetry = getHostMethodHandleOrFail(OnCompilationRetry);
+    private static final Handles HANDLES = new Handles();
 
     HSTruffleCompilerListener(Object hsHandle) {
         super(hsHandle);
@@ -55,7 +51,7 @@ final class HSTruffleCompilerListener extends HSIndirectHandle implements Truffl
         Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
         Object hsTask = ((HSTruffleCompilationTask) task).hsHandle;
         try {
-            onSuccess.invoke(hsHandle, hsCompilable, hsTask, graphInfo, compilationResultInfo, tier);
+            HANDLES.onSuccess.invoke(hsHandle, hsCompilable, hsTask, graphInfo, compilationResultInfo, tier);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -66,7 +62,7 @@ final class HSTruffleCompilerListener extends HSIndirectHandle implements Truffl
         Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
         Object hsTask = ((HSTruffleCompilationTask) task).hsHandle;
         try {
-            onTruffleTierFinished.invoke(hsHandle, hsCompilable, hsTask, graph);
+            HANDLES.onTruffleTierFinished.invoke(hsHandle, hsCompilable, hsTask, graph);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -76,7 +72,7 @@ final class HSTruffleCompilerListener extends HSIndirectHandle implements Truffl
     public void onGraalTierFinished(TruffleCompilable compilable, GraphInfo graph) {
         Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
         try {
-            onGraalTierFinished.invoke(hsHandle, hsCompilable, graph);
+            HANDLES.onGraalTierFinished.invoke(hsHandle, hsCompilable, graph);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -86,7 +82,7 @@ final class HSTruffleCompilerListener extends HSIndirectHandle implements Truffl
     public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
         Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
         try {
-            onFailure.invoke(hsHandle, hsCompilable, reason, bailout, permanentBailout, tier, lazyStackTrace);
+            HANDLES.onFailure.invoke(hsHandle, hsCompilable, reason, bailout, permanentBailout, tier, lazyStackTrace);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -97,9 +93,17 @@ final class HSTruffleCompilerListener extends HSIndirectHandle implements Truffl
         Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
         Object hsTask = ((HSTruffleCompilationTask) task).hsHandle;
         try {
-            onCompilationRetry.invoke(hsHandle, hsCompilable, hsTask);
+            HANDLES.onCompilationRetry.invoke(hsHandle, hsCompilable, hsTask);
         } catch (Throwable t) {
             throw handleException(t);
         }
+    }
+
+    private static final class Handles {
+        final MethodHandle onSuccess = getHostMethodHandleOrFail(OnSuccess);
+        final MethodHandle onTruffleTierFinished = getHostMethodHandleOrFail(OnTruffleTierFinished);
+        final MethodHandle onGraalTierFinished = getHostMethodHandleOrFail(OnGraalTierFinished);
+        final MethodHandle onFailure = getHostMethodHandleOrFail(OnFailure);
+        final MethodHandle onCompilationRetry = getHostMethodHandleOrFail(OnCompilationRetry);
     }
 }

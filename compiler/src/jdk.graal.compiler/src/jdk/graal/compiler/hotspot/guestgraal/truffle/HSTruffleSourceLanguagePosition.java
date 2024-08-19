@@ -41,14 +41,7 @@ import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMet
 
 final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements TruffleSourceLanguagePosition {
 
-    private static final MethodHandle getOffsetStart = getHostMethodHandleOrFail(GetOffsetStart);
-    private static final MethodHandle getOffsetEnd = getHostMethodHandleOrFail(GetOffsetEnd);
-    private static final MethodHandle getLineNumber = getHostMethodHandleOrFail(GetLineNumber);
-    private static final MethodHandle getLanguage = getHostMethodHandleOrFail(GetLanguage);
-    private static final MethodHandle getDescription = getHostMethodHandleOrFail(GetDescription);
-    private static final MethodHandle getURI = getHostMethodHandleOrFail(GetURI);
-    private static final MethodHandle getNodeClassName = getHostMethodHandleOrFail(GetNodeClassName);
-    private static final MethodHandle getNodeId = getHostMethodHandleOrFail(GetNodeId);
+    private static final Handles HANDLES = new Handles();
 
     HSTruffleSourceLanguagePosition(Object hsHandle) {
         super(hsHandle);
@@ -57,7 +50,7 @@ final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements 
     @Override
     public String getDescription() {
         try {
-            return (String) getDescription.invoke(hsHandle);
+            return (String) HANDLES.getDescription.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -66,7 +59,7 @@ final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements 
     @Override
     public int getOffsetEnd() {
         try {
-            return (int) getOffsetEnd.invoke(hsHandle);
+            return (int) HANDLES.getOffsetEnd.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -75,7 +68,7 @@ final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements 
     @Override
     public int getOffsetStart() {
         try {
-            return (int) getOffsetStart.invoke(hsHandle);
+            return (int) HANDLES.getOffsetStart.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -84,7 +77,7 @@ final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements 
     @Override
     public int getLineNumber() {
         try {
-            return (int) getLineNumber.invoke(hsHandle);
+            return (int) HANDLES.getLineNumber.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -94,7 +87,7 @@ final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements 
     public URI getURI() {
         String uri;
         try {
-            uri = (String) getURI.invoke(hsHandle);
+            uri = (String) HANDLES.getURI.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -104,7 +97,7 @@ final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements 
     @Override
     public String getLanguage() {
         try {
-            return (String) getLanguage.invoke(hsHandle);
+            return (String) HANDLES.getLanguage.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -113,7 +106,7 @@ final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements 
     @Override
     public int getNodeId() {
         try {
-            return (int) getNodeId.invoke(hsHandle);
+            return (int) HANDLES.getNodeId.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -122,9 +115,20 @@ final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements 
     @Override
     public String getNodeClassName() {
         try {
-            return (String) getNodeClassName.invoke(hsHandle);
+            return (String) HANDLES.getNodeClassName.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
+    }
+
+    private static final class Handles {
+        final MethodHandle getOffsetStart = getHostMethodHandleOrFail(GetOffsetStart);
+        final MethodHandle getOffsetEnd = getHostMethodHandleOrFail(GetOffsetEnd);
+        final MethodHandle getLineNumber = getHostMethodHandleOrFail(GetLineNumber);
+        final MethodHandle getLanguage = getHostMethodHandleOrFail(GetLanguage);
+        final MethodHandle getDescription = getHostMethodHandleOrFail(GetDescription);
+        final MethodHandle getURI = getHostMethodHandleOrFail(GetURI);
+        final MethodHandle getNodeClassName = getHostMethodHandleOrFail(GetNodeClassName);
+        final MethodHandle getNodeId = getHostMethodHandleOrFail(GetNodeId);
     }
 }

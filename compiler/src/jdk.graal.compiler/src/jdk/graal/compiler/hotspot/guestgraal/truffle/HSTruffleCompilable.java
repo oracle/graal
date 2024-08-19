@@ -55,22 +55,7 @@ import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMet
 
 final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompilable {
 
-    private static final MethodHandle getFailedSpeculationsAddress = getHostMethodHandleOrFail(GetFailedSpeculationsAddress);
-    private static final MethodHandle getCompilerOptions = getHostMethodHandleOrFail(GetCompilerOptions);
-    private static final MethodHandle engineId = getHostMethodHandleOrFail(EngineId);
-    private static final MethodHandle prepareForCompilation = getHostMethodHandleOrFail(PrepareForCompilation);
-    private static final MethodHandle isTrivial = getHostMethodHandleOrFail(IsTrivial);
-    private static final MethodHandle asJavaConstant = getHostMethodHandleOrFail(AsJavaConstant);
-    private static final MethodHandle getCompilableName = getHostMethodHandleOrFail(GetCompilableName);
-    private static final MethodHandle createStringSupplier = getHostMethodHandleOrFail(CreateStringSupplier);
-    private static final MethodHandle onCompilationFailed = getHostMethodHandleOrFail(OnCompilationFailed);;
-    private static final MethodHandle getNonTrivialNodeCount = getHostMethodHandleOrFail(GetNonTrivialNodeCount);
-    private static final MethodHandle countDirectCallNodes = getHostMethodHandleOrFail(CountDirectCallNodes);
-    private static final MethodHandle getCompilableCallCount = getHostMethodHandleOrFail(GetCompilableCallCount);
-    private static final MethodHandle compilableToString = getHostMethodHandleOrFail(CompilableToString);
-    private static final MethodHandle cancelCompilation = getHostMethodHandleOrFail(CancelCompilation);
-    private static final MethodHandle isSameOrSplit = getHostMethodHandleOrFail(IsSameOrSplit);
-    private static final MethodHandle getKnownCallSiteCount = getHostMethodHandleOrFail(GetKnownCallSiteCount);
+    private static final Handles HANDLES = new Handles();
 
     /**
      * Handle to {@code speculationLog} field of the {@code OptimizedCallTarget}.
@@ -88,7 +73,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
         Long res = cachedFailedSpeculationsAddress;
         if (res == null) {
             try {
-                res = (long) getFailedSpeculationsAddress.invoke(hsHandle);
+                res = (long) HANDLES.getFailedSpeculationsAddress.invoke(hsHandle);
                 cachedFailedSpeculationsAddress = res;
             } catch (Throwable t) {
                 throw handleException(t);
@@ -101,7 +86,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     @SuppressWarnings("unchecked")
     public Map<String, String> getCompilerOptions() {
         try {
-            return (Map<String, String>) getCompilerOptions.invoke(hsHandle);
+            return (Map<String, String>) HANDLES.getCompilerOptions.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -110,7 +95,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     @Override
     public long engineId() {
         try {
-            return (long) engineId.invoke(hsHandle);
+            return (long) HANDLES.engineId.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -119,7 +104,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     @Override
     public void prepareForCompilation() {
         try {
-            prepareForCompilation.invoke(hsHandle);
+            HANDLES.prepareForCompilation.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -128,7 +113,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     @Override
     public boolean isTrivial() {
         try {
-            return (boolean) isTrivial.invoke(hsHandle);
+            return (boolean) HANDLES.isTrivial.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -138,7 +123,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     public JavaConstant asJavaConstant() {
         long constantHandle;
         try {
-            constantHandle = (long) asJavaConstant.invoke(hsHandle);
+            constantHandle = (long) HANDLES.asJavaConstant.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -148,8 +133,8 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     @Override
     public void onCompilationFailed(Supplier<String> serializedException, boolean suppressed, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
         try {
-            Object serializedExceptionHsHandle = createStringSupplier.invoke(serializedException);
-            onCompilationFailed.invoke(hsHandle, serializedExceptionHsHandle, suppressed, bailout, permanentBailout, graphTooBig);
+            Object serializedExceptionHsHandle = HANDLES.createStringSupplier.invoke(serializedException);
+            HANDLES.onCompilationFailed.invoke(hsHandle, serializedExceptionHsHandle, suppressed, bailout, permanentBailout, graphTooBig);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -165,7 +150,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
         String res = cachedName;
         if (res == null) {
             try {
-                res = (String) getCompilableName.invoke(hsHandle);
+                res = (String) HANDLES.getCompilableName.invoke(hsHandle);
                 cachedName = res;
             } catch (Throwable t) {
                 throw handleException(t);
@@ -179,7 +164,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
         String res = cachedString;
         if (res == null) {
             try {
-                res = (String) compilableToString.invoke(hsHandle);
+                res = (String) HANDLES.compilableToString.invoke(hsHandle);
                 cachedString = res;
             } catch (Throwable t) {
                 throw handleException(t);
@@ -191,7 +176,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     @Override
     public int getNonTrivialNodeCount() {
         try {
-            return (int) getNonTrivialNodeCount.invoke(hsHandle);
+            return (int) HANDLES.getNonTrivialNodeCount.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -200,7 +185,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     @Override
     public int countDirectCallNodes() {
         try {
-            return (int) countDirectCallNodes.invoke(hsHandle);
+            return (int) HANDLES.countDirectCallNodes.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -209,7 +194,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     @Override
     public int getCallCount() {
         try {
-            return (int) getCompilableCallCount.invoke(hsHandle);
+            return (int) HANDLES.getCompilableCallCount.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -218,7 +203,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     @Override
     public boolean cancelCompilation(CharSequence reason) {
         try {
-            return (boolean) cancelCompilation.invoke(hsHandle, reason);
+            return (boolean) HANDLES.cancelCompilation.invoke(hsHandle, reason);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -227,7 +212,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     @Override
     public boolean isSameOrSplit(TruffleCompilable ast) {
         try {
-            return (boolean) isSameOrSplit.invoke(hsHandle, ast == null ? null : ((HSTruffleCompilable) ast).hsHandle);
+            return (boolean) HANDLES.isSameOrSplit.invoke(hsHandle, ast == null ? null : ((HSTruffleCompilable) ast).hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -236,9 +221,28 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     @Override
     public int getKnownCallSiteCount() {
         try {
-            return (int) getKnownCallSiteCount.invoke(hsHandle);
+            return (int) HANDLES.getKnownCallSiteCount.invoke(hsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
+    }
+
+    private static final class Handles {
+        final MethodHandle getFailedSpeculationsAddress = getHostMethodHandleOrFail(GetFailedSpeculationsAddress);
+        final MethodHandle getCompilerOptions = getHostMethodHandleOrFail(GetCompilerOptions);
+        final MethodHandle engineId = getHostMethodHandleOrFail(EngineId);
+        final MethodHandle prepareForCompilation = getHostMethodHandleOrFail(PrepareForCompilation);
+        final MethodHandle isTrivial = getHostMethodHandleOrFail(IsTrivial);
+        final MethodHandle asJavaConstant = getHostMethodHandleOrFail(AsJavaConstant);
+        final MethodHandle getCompilableName = getHostMethodHandleOrFail(GetCompilableName);
+        final MethodHandle createStringSupplier = getHostMethodHandleOrFail(CreateStringSupplier);
+        final MethodHandle onCompilationFailed = getHostMethodHandleOrFail(OnCompilationFailed);;
+        final MethodHandle getNonTrivialNodeCount = getHostMethodHandleOrFail(GetNonTrivialNodeCount);
+        final MethodHandle countDirectCallNodes = getHostMethodHandleOrFail(CountDirectCallNodes);
+        final MethodHandle getCompilableCallCount = getHostMethodHandleOrFail(GetCompilableCallCount);
+        final MethodHandle compilableToString = getHostMethodHandleOrFail(CompilableToString);
+        final MethodHandle cancelCompilation = getHostMethodHandleOrFail(CancelCompilation);
+        final MethodHandle isSameOrSplit = getHostMethodHandleOrFail(IsSameOrSplit);
+        final MethodHandle getKnownCallSiteCount = getHostMethodHandleOrFail(GetKnownCallSiteCount);
     }
 }

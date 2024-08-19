@@ -62,15 +62,7 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 final class HSTruffleCompilerRuntime extends HSIndirectHandle implements TruffleCompilerRuntime {
 
-    private static final MethodHandle getPartialEvaluationMethodInfo = getHostMethodHandleOrFail(GetPartialEvaluationMethodInfo);
-    private static final MethodHandle getHostMethodInfo = getHostMethodHandleOrFail(GetHostMethodInfo);
-    private static final MethodHandle onCodeInstallation = getHostMethodHandleOrFail(OnCodeInstallation);
-    private static final MethodHandle registerOptimizedAssumptionDependency = getHostMethodHandleOrFail(RegisterOptimizedAssumptionDependency);
-    private static final MethodHandle isValueType = getHostMethodHandleOrFail(IsValueType);
-    private static final MethodHandle getConstantFieldInfo = getHostMethodHandleOrFail(GetConstantFieldInfo);
-    private static final MethodHandle log = getHostMethodHandleOrFail(Log);
-    private static final MethodHandle createStringSupplier = getHostMethodHandleOrFail(CreateStringSupplier);
-    private static final MethodHandle isSuppressedFailure = getHostMethodHandleOrFail(IsSuppressedFailure);
+    private static final Handles HANDLES = new Handles();
 
     static final String COMPILER_VERSION = HotSpotTruffleCompilationSupport.readCompilerVersion();
 
@@ -101,7 +93,7 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
         long methodHandle = runtime().translate(method);
         byte[] array;
         try {
-            array = (byte[]) getPartialEvaluationMethodInfo.invoke(hsHandle, methodHandle);
+            array = (byte[]) HANDLES.getPartialEvaluationMethodInfo.invoke(hsHandle, methodHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -118,7 +110,7 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
         long methodHandle = runtime().translate(method);
         boolean[] res;
         try {
-            res = (boolean[]) getHostMethodInfo.invoke(hsHandle, methodHandle);
+            res = (boolean[]) HANDLES.getHostMethodInfo.invoke(hsHandle, methodHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -139,7 +131,7 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
     public void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode) {
         long installedCodeHandle = runtime().translate(installedCode);
         try {
-            onCodeInstallation.invoke(hsHandle, ((HSTruffleCompilable) compilable).hsHandle, installedCodeHandle);
+            HANDLES.onCodeInstallation.invoke(hsHandle, ((HSTruffleCompilable) compilable).hsHandle, installedCodeHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -150,7 +142,7 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
         long optimizedAssumptionHandle = runtime().translate(optimizedAssumption);
         Object hsDependencyHandle;
         try {
-            hsDependencyHandle = registerOptimizedAssumptionDependency.invoke(hsHandle, optimizedAssumptionHandle);
+            hsDependencyHandle = HANDLES.registerOptimizedAssumptionDependency.invoke(hsHandle, optimizedAssumptionHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -161,7 +153,7 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
     public boolean isValueType(ResolvedJavaType type) {
         long typeHandle = runtime().translate(type);
         try {
-            return (boolean) isValueType.invoke(hsHandle, typeHandle);
+            return (boolean) HANDLES.isValueType.invoke(hsHandle, typeHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -190,7 +182,7 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
         long typeHandle = runtime().translate(enclosingType);
         int rawValue;
         try {
-            rawValue = (int) getConstantFieldInfo.invoke(hsHandle, typeHandle, isStatic, fieldIndex);
+            rawValue = (int) HANDLES.getConstantFieldInfo.invoke(hsHandle, typeHandle, isStatic, fieldIndex);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -247,7 +239,7 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
     @Override
     public void log(String loggerId, TruffleCompilable compilable, String message) {
         try {
-            log.invoke(hsHandle, loggerId, ((HSTruffleCompilable) compilable).hsHandle, message);
+            HANDLES.log.invoke(hsHandle, loggerId, ((HSTruffleCompilable) compilable).hsHandle, message);
         } catch (Throwable t) {
             throw handleException(t);
         }
@@ -256,10 +248,22 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
     @Override
     public boolean isSuppressedFailure(TruffleCompilable compilable, Supplier<String> serializedException) {
         try {
-            Object supplierHsHandle = createStringSupplier.invoke(serializedException);
-            return (boolean) isSuppressedFailure.invoke(hsHandle, ((HSTruffleCompilable) compilable).hsHandle, supplierHsHandle);
+            Object supplierHsHandle = HANDLES.createStringSupplier.invoke(serializedException);
+            return (boolean) HANDLES.isSuppressedFailure.invoke(hsHandle, ((HSTruffleCompilable) compilable).hsHandle, supplierHsHandle);
         } catch (Throwable t) {
             throw handleException(t);
         }
+    }
+
+    private static final class Handles {
+        final MethodHandle getPartialEvaluationMethodInfo = getHostMethodHandleOrFail(GetPartialEvaluationMethodInfo);
+        final MethodHandle getHostMethodInfo = getHostMethodHandleOrFail(GetHostMethodInfo);
+        final MethodHandle onCodeInstallation = getHostMethodHandleOrFail(OnCodeInstallation);
+        final MethodHandle registerOptimizedAssumptionDependency = getHostMethodHandleOrFail(RegisterOptimizedAssumptionDependency);
+        final MethodHandle isValueType = getHostMethodHandleOrFail(IsValueType);
+        final MethodHandle getConstantFieldInfo = getHostMethodHandleOrFail(GetConstantFieldInfo);
+        final MethodHandle log = getHostMethodHandleOrFail(Log);
+        final MethodHandle createStringSupplier = getHostMethodHandleOrFail(CreateStringSupplier);
+        final MethodHandle isSuppressedFailure = getHostMethodHandleOrFail(IsSuppressedFailure);
     }
 }
