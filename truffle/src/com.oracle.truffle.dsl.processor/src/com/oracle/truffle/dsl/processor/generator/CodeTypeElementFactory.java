@@ -53,4 +53,17 @@ public abstract class CodeTypeElementFactory<M> {
 
     protected final TruffleTypes types = ProcessorContext.getInstance().getTypes();
 
+    /**
+     * Factory that produces nothing. Can be used in an {@link AnnotationProcessor} that only
+     * performs validation (and no code generation).
+     */
+    public static <M> CodeTypeElementFactory<M> noOpFactory() {
+        return new CodeTypeElementFactory<>() {
+            @Override
+            public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, M m) {
+                return null;
+            }
+        };
+    }
+
 }

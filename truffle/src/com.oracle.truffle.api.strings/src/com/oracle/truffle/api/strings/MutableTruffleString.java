@@ -307,7 +307,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
 
         @Specialization
         static MutableTruffleString fromTruffleString(TruffleString a, Encoding expectedEncoding,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached TruffleString.ToIndexableNode toIndexableNode) {
             return createCopying(node, a, expectedEncoding, toIndexableNode);
         }
@@ -362,7 +362,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
 
         @Specialization(guards = "a.isNative() || a.isImmutable()")
         static MutableTruffleString fromTruffleString(AbstractTruffleString a, Encoding expectedEncoding,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached TruffleString.ToIndexableNode toIndexableNode) {
             return createCopying(node, a, expectedEncoding, toIndexableNode);
         }
@@ -680,7 +680,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
 
         @Specialization(guards = "!a.isCompatibleToIntl(encoding) || a.isImmutable()")
         static MutableTruffleString transcodeAndCopy(AbstractTruffleString a, Encoding encoding, TranscodingErrorHandler errorHandler,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached TruffleString.InternalSwitchEncodingNode switchEncodingNode,
                         @Cached AsMutableTruffleStringNode asMutableTruffleStringNode) {
             TruffleString switched = switchEncodingNode.execute(node, a, encoding, errorHandler);
@@ -738,7 +738,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
 
         @Specialization(guards = "!a.isCompatibleToIntl(targetEncoding) || a.isImmutable()")
         static MutableTruffleString reinterpret(AbstractTruffleString a, Encoding expectedEncoding, Encoding targetEncoding,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached TruffleString.ToIndexableNode toIndexableNode) {
             a.checkEncoding(expectedEncoding);
             int byteLength = a.byteLength(expectedEncoding);

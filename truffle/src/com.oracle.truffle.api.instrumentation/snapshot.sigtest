@@ -154,6 +154,8 @@ meth public abstract boolean isInstrumentable()
 meth public abstract com.oracle.truffle.api.instrumentation.InstrumentableNode$WrapperNode createWrapper(com.oracle.truffle.api.instrumentation.ProbeNode)
 meth public boolean hasTag(java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>)
 meth public com.oracle.truffle.api.instrumentation.InstrumentableNode materializeInstrumentableNodes(java.util.Set<java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>>)
+meth public com.oracle.truffle.api.instrumentation.ProbeNode createProbe(com.oracle.truffle.api.source.SourceSection)
+meth public com.oracle.truffle.api.instrumentation.ProbeNode findProbe()
 meth public com.oracle.truffle.api.nodes.Node findNearestNodeAt(int,int,java.util.Set<java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>>)
 meth public com.oracle.truffle.api.nodes.Node findNearestNodeAt(int,java.util.Set<java.lang.Class<? extends com.oracle.truffle.api.instrumentation.Tag>>)
 meth public java.lang.Object getNodeObject()
@@ -235,7 +237,7 @@ meth public void onResume(com.oracle.truffle.api.frame.VirtualFrame)
 meth public void onReturnValue(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 meth public void onYield(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 supr com.oracle.truffle.api.nodes.Node
-hfds ASSERT_ENTER_RETURN_PARITY,SEEN_REENTER,SEEN_RETURN,SEEN_UNWIND,SEEN_UNWIND_NEXT,UNWIND_ACTION_IGNORED,chain,context,handler,retiredNodeReference,seen,version
+hfds ASSERT_ENTER_RETURN_PARITY,SEEN_REENTER,SEEN_RETURN,SEEN_UNWIND,SEEN_UNWIND_NEXT,UNWIND_ACTION_IGNORED,chain,context,eagerProbe,handler,retiredNodeReference,seen,version
 hcls EventChainNode,EventFilterChainNode,EventProviderChainNode,EventProviderWithInputChainNode,InputChildContextLookup,InputChildIndexLookup,InputValueChainNode,InstrumentableChildVisitor,RetiredNodeReference
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.instrumentation.ProvidedTags
@@ -506,6 +508,7 @@ intf com.oracle.truffle.api.nodes.NodeInterface
 intf java.lang.Cloneable
 meth protected final java.util.concurrent.locks.Lock getLock()
 meth protected final void notifyInserted(com.oracle.truffle.api.nodes.Node)
+meth protected final void reportReplace(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
 meth protected void onReplace(com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
 meth public boolean isAdoptable()
 meth public com.oracle.truffle.api.nodes.Node copy()

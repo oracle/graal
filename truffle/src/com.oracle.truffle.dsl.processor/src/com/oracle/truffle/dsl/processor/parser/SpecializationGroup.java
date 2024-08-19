@@ -408,4 +408,14 @@ public final class SpecializationGroup {
         return false;
     }
 
+    public boolean hasFallthroughInSlowPath() {
+        if (hasFallthrough) {
+            return true;
+        }
+        SpecializationGroup lastChild = getLast();
+        if (lastChild != null) {
+            return lastChild.hasFallthroughInSlowPath();
+        }
+        return false;
+    }
 }

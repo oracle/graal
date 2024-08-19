@@ -71,6 +71,7 @@ import org.antlr.v4.runtime.TokenStream;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
+import com.oracle.truffle.dsl.processor.bytecode.parser.BytecodeDSLParser;
 import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
@@ -164,7 +165,7 @@ public abstract class DSLExpression {
                     if (resolvedVar != null && !resolvedVar.getModifiers().contains(Modifier.STATIC) &&
                                     (resolvedVar.getEnclosingElement() == null || resolvedVar.getEnclosingElement().getKind() != ElementKind.METHOD)) {
                         String name = resolvedVar.getSimpleName().toString();
-                        if (!name.equals("null")) {
+                        if (!name.equals(NodeParser.SYMBOL_NULL)) {
                             bindsReceiver.set(true);
                         }
                     }
@@ -199,7 +200,19 @@ public abstract class DSLExpression {
                     if (resolvedVar != null && !resolvedVar.getModifiers().contains(Modifier.STATIC) &&
                                     (resolvedVar.getEnclosingElement() == null || resolvedVar.getEnclosingElement().getKind() != ElementKind.METHOD)) {
                         String name = resolvedVar.getSimpleName().toString();
-                        if (!name.equals("null") && !name.equals("this") && !name.equals(NodeParser.NODE_KEYWORD)) {
+
+                        boolean binds = switch (name) {
+                            case NodeParser.SYMBOL_THIS, //
+                                            NodeParser.SYMBOL_NODE, //
+                                            NodeParser.SYMBOL_NULL, //
+                                            BytecodeDSLParser.SYMBOL_ROOT_NODE, //
+                                            BytecodeDSLParser.SYMBOL_BYTECODE_NODE, //
+                                            BytecodeDSLParser.SYMBOL_BYTECODE_INDEX //
+                                -> false;
+                            default -> true;
+
+                        };
+                        if (binds) {
                             bindsReceiver.set(true);
                         }
                     }
@@ -218,6 +231,33 @@ public abstract class DSLExpression {
 
         });
         return bindsReceiver.get();
+    }
+
+    /**
+     * Whether the given symbol is bound.
+     */
+    public boolean isSymbolBoundBound(TypeMirror type, String symbolName) {
+        final AtomicBoolean bindsSymbol = new AtomicBoolean(false);
+        accept(new AbstractDSLExpressionVisitor() {
+
+            @Override
+            public void visitVariable(Variable var) {
+                if (var.getReceiver() == null) {
+                    VariableElement resolvedVar = var.getResolvedVariable();
+                    if (resolvedVar != null && !resolvedVar.getModifiers().contains(Modifier.STATIC) &&
+                                    (resolvedVar.getEnclosingElement() == null || resolvedVar.getEnclosingElement().getKind() != ElementKind.METHOD)) {
+                        String name = resolvedVar.getSimpleName().toString();
+                        if (name.equals(symbolName)) {
+                            if (ElementUtils.isAssignable(resolvedVar.asType(), type)) {
+                                bindsSymbol.set(true);
+                            }
+                        }
+                    }
+                }
+            }
+
+        });
+        return bindsSymbol.get();
     }
 
     public static DSLExpression resolve(DSLExpressionResolver resolver, MessageContainer container, String annotationValueName, DSLExpression expression, String originalString) {
