@@ -118,12 +118,12 @@ import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
-import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.extended.JavaWriteNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
+import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.ForeignCallPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
@@ -606,10 +606,10 @@ public class HotSpotGraphBuilderPlugins {
                     b.add(new ArrayCopyCallNode(foreignCalls, wordTypes, value, srcBegin, newArray, ConstantNode.forInt(0), length, JavaKind.Char, LocationIdentity.init(), false, true, true,
                                     vmConfig.heapWordSize));
 
-                    // Writes to init must be protected by a FixedValueAnchorNode so that floating
+                    // Writes to init must be protected by a PublishWritesNode so that floating
                     // reads don't bypass the ArrayCopyCallNode above.
                     b.pop(JavaKind.Object);
-                    b.addPush(JavaKind.Object, new FixedValueAnchorNode(newArray));
+                    b.addPush(JavaKind.Object, new PublishWritesNode(newArray));
                 }
                 return true;
             }

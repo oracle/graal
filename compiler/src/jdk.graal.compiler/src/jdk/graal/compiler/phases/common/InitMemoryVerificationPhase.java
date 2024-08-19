@@ -40,6 +40,7 @@ import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.memory.AddressableMemoryAccess;
@@ -95,6 +96,7 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
 
         private void processIdentity(LocationIdentity identity, MemoryKill checkpoint, Data state) {
             if (!(checkpoint instanceof AddressableMemoryAccess)) {
+                // TODO: handle kills without a node generically
                 return;
             }
             ValueNode addressBase = ((AddressableMemoryAccess) checkpoint).getAddress().getBase();
@@ -110,12 +112,20 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private void processPublish(PublishWritesNode publish, Data currentState) {
-            if (publish.allocation() instanceof AbstractNewObjectNode newObject) {
+        private void markPublished(ValueNode node, Data currentState) {
+            if (node instanceof ValuePhiNode phi) {
+                for (ValueNode value : phi.values()) {
+                    markPublished(value, currentState);
+                }
+            } else if (node instanceof AbstractNewObjectNode newObject) {
                 AllocData data = currentState.allocData.get(newObject);
-                assert data != null : "trying to publish non registered alloc: " + publish;
+                assert data != null : "trying to publish non registered alloc: " + newObject;
                 data.publish();
             }
+        }
+
+        private void processPublish(PublishWritesNode publish, Data currentState) {
+            markPublished(publish.allocation(), currentState);
         }
 
         private boolean checkNoLiveKills(Data state) {
