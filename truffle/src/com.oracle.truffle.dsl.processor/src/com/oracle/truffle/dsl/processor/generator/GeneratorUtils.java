@@ -104,6 +104,13 @@ public class GeneratorUtils {
         return builder.build();
     }
 
+    public static CodeTree createNeverPartOfCompilation() {
+        ProcessorContext context = ProcessorContext.getInstance();
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startStatement().startStaticCall(context.getTypes().CompilerAsserts, "neverPartOfCompilation").end(2);
+        return builder.build();
+    }
+
     public static CodeTree createShouldNotReachHere() {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
@@ -126,9 +133,12 @@ public class GeneratorUtils {
     }
 
     public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz) {
-        TypeElement superClass = fromTypeMirror(clazz.getSuperclass());
-        ExecutableElement constructor = findConstructor(superClass);
-        return createConstructorUsingFields(modifiers, clazz, constructor);
+        ExecutableElement superConstructor = null;
+        if (clazz.getSuperclass() != null) {
+            TypeElement superClass = fromTypeMirror(clazz.getSuperclass());
+            superConstructor = findConstructor(superClass);
+        }
+        return createConstructorUsingFields(modifiers, clazz, superConstructor);
     }
 
     public static void addBoundaryOrTransferToInterpreter(CodeExecutableElement method, CodeTreeBuilder builder) {
@@ -290,7 +300,10 @@ public class GeneratorUtils {
 
     public static CodeTypeElement createClass(Template sourceModel, TemplateMethod sourceMethod, Set<Modifier> modifiers, String simpleName, TypeMirror superType) {
         TypeElement templateType = sourceModel.getTemplateType();
+        return createClass(templateType, sourceMethod, modifiers, simpleName, superType);
+    }
 
+    public static CodeTypeElement createClass(TypeElement templateType, TemplateMethod sourceMethod, Set<Modifier> modifiers, String simpleName, TypeMirror superType) {
         ProcessorContext context = ProcessorContext.getInstance();
 
         PackageElement pack = ElementUtils.findPackageElement(templateType);
@@ -379,6 +392,27 @@ public class GeneratorUtils {
         }
         CodeExecutableElement result = CodeExecutableElement.clone(method);
         result.renameArguments(argumentNames);
+        result.getModifiers().remove(Modifier.DEFAULT);
+        return result;
+    }
+
+    public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName) {
+        return overrideImplement(type, methodName, (TypeMirror[]) null);
+    }
+
+    public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName, TypeMirror... parameterTypes) {
+        ExecutableElement method = ElementUtils.findInstanceMethod((TypeElement) type.asElement(), methodName, parameterTypes);
+        if (method == null) {
+            return null;
+        }
+        return overrideImplement(method);
+    }
+
+    public static CodeExecutableElement overrideImplement(ExecutableElement method) {
+        CodeExecutableElement result = CodeExecutableElement.clone(method);
+        result.getModifiers().remove(Modifier.ABSTRACT);
+        result.getModifiers().remove(Modifier.DEFAULT);
+        addOverride(result);
         return result;
     }
 

@@ -111,9 +111,11 @@ import com.oracle.truffle.api.TruffleSafepoint.InterruptibleFunction;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameExtensions;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
@@ -188,6 +190,8 @@ public abstract class Accessor {
 
         public abstract List<TruffleStackTraceElement> findAsynchronousFrames(CallTarget target, Frame frame);
 
+        public abstract void prepareForInstrumentation(RootNode root, Set<Class<?>> tags);
+
         public abstract int getRootNodeBits(RootNode root);
 
         public abstract void setRootNodeBits(RootNode root, int bits);
@@ -219,6 +223,8 @@ public abstract class Accessor {
         public abstract int findBytecodeIndex(RootNode rootNode, Node callNode, Frame frame);
 
         public abstract boolean isCaptureFramesForTrace(RootNode rootNode, boolean compiled);
+
+        public abstract Node findInstrumentableCallNode(RootNode root, Node callNode, Frame frame, int bytecodeIndex);
     }
 
     public abstract static class SourceSupport extends Support {
@@ -1163,6 +1169,14 @@ public abstract class Accessor {
 
         public abstract DirectCallNode createDirectCallNode(CallTarget target);
 
+        public final FrameExtensions getFrameExtensionsSafe() {
+            return FrameExtensionsSafe.INSTANCE;
+        }
+
+        public final FrameExtensions getFrameExtensionsUnsafe() {
+            return FrameExtensionsUnsafe.INSTANCE;
+        }
+
         /**
          * Reports the execution count of a loop.
          *
@@ -1348,6 +1362,20 @@ public abstract class Accessor {
 
     }
 
+    public abstract static class MemorySupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.memory.MemoryAccessor$MemorySupportImpl";
+
+        protected MemorySupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract ByteArraySupport getNativeUnsafe();
+
+        public abstract ByteArraySupport getNativeChecked();
+
+    }
+
     public final void transferOSRFrameStaticSlot(FrameWithoutBoxing sourceFrame, FrameWithoutBoxing targetFrame, int slot) {
         sourceFrame.transferOSRStaticSlot(targetFrame, slot);
     }
@@ -1375,6 +1403,7 @@ public abstract class Accessor {
         private static final Accessor.InstrumentProviderSupport INSTRUMENT_PROVIDER;
         private static final Accessor.ForeignSupport FOREIGN;
         private static final DynamicObjectSupport DYNAMIC_OBJECT;
+        private static final Accessor.MemorySupport MEMORY_SUPPORT;
 
         static {
             // Eager load all accessors so the above fields are all set and all methods are
@@ -1394,6 +1423,7 @@ public abstract class Accessor {
             INSTRUMENT_PROVIDER = loadSupport(InstrumentProviderSupport.IMPL_CLASS_NAME);
             FOREIGN = loadSupport(ForeignSupport.IMPL_CLASS_NAME);
             DYNAMIC_OBJECT = loadSupport(DynamicObjectSupport.IMPL_CLASS_NAME);
+            MEMORY_SUPPORT = loadSupport(MemorySupport.IMPL_CLASS_NAME);
         }
 
         @SuppressWarnings("unchecked")
@@ -1432,6 +1462,7 @@ public abstract class Accessor {
                         "com.oracle.truffle.api.impl.DefaultRuntimeAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.runtime.OptimizedRuntimeAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.dsl.DSLAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.bytecode.BytecodeAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.ImplAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.memory.MemoryFenceAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.library.LibraryAccessor".equals(thisClassName) ||
@@ -1504,6 +1535,10 @@ public abstract class Accessor {
 
     public final DynamicObjectSupport dynamicObjectSupport() {
         return Constants.DYNAMIC_OBJECT;
+    }
+
+    public final MemorySupport memorySupport() {
+        return Constants.MEMORY_SUPPORT;
     }
 
     /**

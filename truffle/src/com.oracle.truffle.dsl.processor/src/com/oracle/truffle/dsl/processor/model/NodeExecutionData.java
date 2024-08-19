@@ -120,4 +120,9 @@ public class NodeExecutionData {
         return childName;
     }
 
+    @Override
+    public String toString() {
+        return "NodeExecutionData[child=" + child + ", name=" + name + ", index=" + index + "]";
+    }
+
 }

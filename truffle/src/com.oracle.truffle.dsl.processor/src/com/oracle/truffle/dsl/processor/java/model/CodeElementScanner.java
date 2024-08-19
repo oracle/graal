@@ -55,7 +55,7 @@ public abstract class CodeElementScanner<R, P> extends ElementScanner8<R, P> {
     @Override
     public final R visitExecutable(ExecutableElement e, P p) {
         if (!(e instanceof CodeExecutableElement)) {
-            throw new ClassCastException(e.toString());
+            throw new ClassCastException(e.toString() + " in " + e.getEnclosingElement().toString());
         }
         return visitExecutable(cast(e, CodeExecutableElement.class), p);
     }

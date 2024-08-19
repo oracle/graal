@@ -8,6 +8,15 @@ supr java.lang.Object
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Bind
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
+innr public abstract interface static !annotation DefaultExpression
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.String value()
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.dsl.Bind$DefaultExpression
+ outer com.oracle.truffle.api.dsl.Bind
+ anno 0 java.lang.annotation.Inherited()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.String value()
 
