@@ -1687,8 +1687,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             if (sourceSection != null) {
                 return sourceSection;
             }
-            Node location = getLocation();
-            SourceSection section = location != null ? location.getEncapsulatingSourceSection() : null;
+            SourceSection section = getEncapsulatingSourceSection();
             if (section == null) {
                 throw UnsupportedMessageException.create();
             }

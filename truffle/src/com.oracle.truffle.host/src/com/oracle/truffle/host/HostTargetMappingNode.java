@@ -154,7 +154,7 @@ abstract class HostTargetMappingNode extends Node {
         @Specialization
         protected static Object doDefault(Object receiver, @SuppressWarnings("unused") HostTargetMapping cachedMapping,
                         HostContext context, InteropLibrary interop, boolean checkOnly,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached InlinedConditionProfile acceptsProfile,
                         @Cached(value = "allowsImplementation(context, cachedMapping.sourceType)", allowUncached = true) Boolean allowsImplementation,
                         @Cached(inline = true) HostToTypeNode toHostRecursive) {
