@@ -455,7 +455,7 @@ public class CountedLoopInfo {
     }
 
     public boolean isExactTripCount() {
-        return loop.loop().getNaturalExits().size() == 1;
+        return loop.getCFGLoop().getNaturalExits().size() == 1;
     }
 
     public ValueNode exactTripCountNode() {

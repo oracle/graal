@@ -795,7 +795,7 @@ public abstract class LoopTransformations {
     }
 
     public static boolean isUnrollableLoop(Loop loop) {
-        if (!loop.isCounted() || !loop.counted().getLimitCheckedIV().isConstantStride() || !loop.loop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
+        if (!loop.isCounted() || !loop.counted().getLimitCheckedIV().isConstantStride() || !loop.getCFGLoop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
                         loop.loopBegin().loopExits().count() > 1 || loop.counted().isInverted()) {
             // loops without exits can be unrolled, inverted loops cannot be unrolled without
             // protecting their first iteration
@@ -825,10 +825,10 @@ public abstract class LoopTransformations {
             // Flow-less loops to partial unroll for now. 3 blocks corresponds to an if that either
             // exits or continues the loop. There might be fixed and floating work within the loop
             // as well.
-            if (loop.loop().getBlocks().size() < 3) {
+            if (loop.getCFGLoop().getBlocks().size() < 3) {
                 return true;
             }
-            condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s too large to unroll %s ", loopBegin, loop.loop().getBlocks().size());
+            condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s too large to unroll %s ", loopBegin, loop.getCFGLoop().getBlocks().size());
         }
         return false;
     }
