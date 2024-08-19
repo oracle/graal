@@ -176,7 +176,7 @@ final class NFISignature implements TruffleObject {
 
         @ExportMessage
         Object readArrayElement(long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile ioob) throws InvalidArrayIndexException {
             if (index == 0) {
                 return "bind";
@@ -210,7 +210,7 @@ final class NFISignature implements TruffleObject {
 
         @Specialization(guards = "isBind(member)")
         static Object doBind(NFISignature signature, @SuppressWarnings("unused") String member, Object[] args,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary("signature") SignatureLibrary signatureLibrary,
                         @Shared("invokeException") @Cached InlinedBranchProfile exception) throws ArityException {
             if (args.length != 1) {
@@ -222,7 +222,7 @@ final class NFISignature implements TruffleObject {
 
         @Specialization(guards = "isCreateClosure(member)")
         static Object doCreateClosure(NFISignature signature, @SuppressWarnings("unused") String member, Object[] args,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary("signature") SignatureLibrary signatureLibrary,
                         @Shared("invokeException") @Cached InlinedBranchProfile exception) throws ArityException {
             if (args.length != 1) {

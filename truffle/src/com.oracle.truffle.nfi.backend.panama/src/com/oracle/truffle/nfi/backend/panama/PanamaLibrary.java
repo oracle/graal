@@ -106,7 +106,7 @@ final class PanamaLibrary implements TruffleObject {
 
     @ExportMessage
     Object readMember(String symbol,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Cached InlinedBranchProfile exception) throws UnknownIdentifierException {
         @SuppressWarnings("preview")
         Optional<MemorySegment> ret = doLookup(symbol);
