@@ -31,6 +31,7 @@ import java.lang.annotation.Target;
 import java.lang.ref.WeakReference;
 
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -53,7 +54,6 @@ import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.monitor.MonitorSupport;
 
-import jdk.graal.compiler.nodes.FrameState;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 
