@@ -26,10 +26,10 @@ package jdk.graal.compiler.phases.common.util;
 
 import java.util.EnumSet;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph.NodeEvent;
@@ -62,10 +62,17 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 public class LoopUtility {
 
     public static long addExact(int bits, long a, long b) {
-        if (bits == 32) {
-            int ia = (int) a;
-            int ib = (int) b;
-            assert ia == a && ib == b : Assertions.errorMessage("Conversions must be lossless", bits, a, b, ia, ib);
+        if (bits == 8) {
+            byte ba = NumUtil.safeToByte(a, true);
+            byte bb = NumUtil.safeToByte(b, true);
+            return addExact(ba, bb);
+        } else if (bits == 16) {
+            short sa = NumUtil.safeToShort(a, true);
+            short sb = NumUtil.safeToShort(b, true);
+            return addExact(sa, sb);
+        } else if (bits == 32) {
+            int ia = NumUtil.safeToInt(a, true);
+            int ib = NumUtil.safeToInt(b, true);
             return Math.addExact(ia, ib);
         } else if (bits == 64) {
             return Math.addExact(a, b);
@@ -75,10 +82,17 @@ public class LoopUtility {
     }
 
     public static long subtractExact(int bits, long a, long b) {
-        if (bits == 32) {
-            int ia = (int) a;
-            int ib = (int) b;
-            assert ia == a && ib == b : Assertions.errorMessage("Conversions must be lossless", bits, a, b, ia, ib);
+        if (bits == 8) {
+            byte ba = NumUtil.safeToByte(a, true);
+            byte bb = NumUtil.safeToByte(b, true);
+            return subExact(ba, bb);
+        } else if (bits == 16) {
+            short sa = NumUtil.safeToShort(a, true);
+            short sb = NumUtil.safeToShort(b, true);
+            return subExact(sa, sb);
+        } else if (bits == 32) {
+            int ia = NumUtil.safeToInt(a, true);
+            int ib = NumUtil.safeToInt(b, true);
             return Math.subtractExact(ia, ib);
         } else if (bits == 64) {
             return Math.subtractExact(a, b);
@@ -88,16 +102,79 @@ public class LoopUtility {
     }
 
     public static long multiplyExact(int bits, long a, long b) {
-        if (bits == 32) {
-            int ia = (int) a;
-            int ib = (int) b;
-            assert ia == a && ib == b : Assertions.errorMessage("Conversions must be lossless", bits, a, b, ia, ib);
+        if (bits == 8) {
+            byte ba = NumUtil.safeToByte(a, true);
+            byte bb = NumUtil.safeToByte(b, true);
+            return mulExact(ba, bb);
+        } else if (bits == 16) {
+            short sa = NumUtil.safeToShort(a, true);
+            short sb = NumUtil.safeToShort(b, true);
+            return mulExact(sa, sb);
+        } else if (bits == 32) {
+            int ia = NumUtil.safeToInt(a, true);
+            int ib = NumUtil.safeToInt(b, true);
             return Math.multiplyExact(ia, ib);
         } else if (bits == 64) {
             return Math.multiplyExact(a, b);
         } else {
             throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
         }
+    }
+
+    private static byte addExact(byte x, byte y) {
+        int iR = x + y;
+        byte bR = (byte) iR;
+        if (iR != bR) {
+            throw new ArithmeticException("byte overflow");
+        }
+        return bR;
+    }
+
+    private static byte subExact(byte x, byte y) {
+        int iR = x - y;
+        byte bR = (byte) iR;
+        if (iR != bR) {
+            throw new ArithmeticException("byte overflow");
+        }
+        return bR;
+    }
+
+    private static byte mulExact(byte x, byte y) {
+        // first check no overflow in int range
+        int iR = Math.multiplyExact(x, y);
+        byte bR = (byte) iR;
+        if (iR != bR) {
+            throw new ArithmeticException("byte overflow");
+        }
+        return bR;
+    }
+
+    private static short addExact(short x, short y) {
+        int iR = x + y;
+        short bR = (short) iR;
+        if (iR != bR) {
+            throw new ArithmeticException("short overflow");
+        }
+        return bR;
+    }
+
+    private static short subExact(short x, short y) {
+        int iR = x - y;
+        short bR = (short) iR;
+        if (iR != bR) {
+            throw new ArithmeticException("short overflow");
+        }
+        return bR;
+    }
+
+    private static short mulExact(short x, short y) {
+        // first check no overflow in int range
+        int iR = Math.multiplyExact(x, y);
+        short bR = (short) iR;
+        if (iR != bR) {
+            throw new ArithmeticException("short overflow");
+        }
+        return bR;
     }
 
     public static boolean canTakeAbs(long l, int bits) {

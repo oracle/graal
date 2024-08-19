@@ -33,7 +33,6 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -92,6 +91,7 @@ import jdk.graal.compiler.nodes.util.IntegerHelper;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 
 public abstract class LoopTransformations {
 
@@ -787,7 +787,7 @@ public abstract class LoopTransformations {
         final int bits = ((IntegerStamp) loop.counted().getLimitCheckedIV().valueNode().stamp(NodeView.DEFAULT)).getBits();
         long stride = loop.counted().getLimitCheckedIV().constantStride();
         try {
-            NumUtil.addExact(stride, stride, bits);
+            LoopUtility.addExact(bits, stride, stride);
             return false;
         } catch (ArithmeticException ae) {
             return true;
