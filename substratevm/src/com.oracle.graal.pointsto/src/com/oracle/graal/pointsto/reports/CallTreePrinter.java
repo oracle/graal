@@ -57,6 +57,7 @@ import java.util.stream.Stream;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -182,18 +183,7 @@ public final class CallTreePrinter {
 
     public void buildCallTree() {
         /* Add all the roots to the tree. */
-        List<AnalysisMethod> roots = new ArrayList<>();
-        for (AnalysisMethod m : bb.getUniverse().getMethods()) {
-            if (m.isDirectRootMethod() && m.isSimplyImplementationInvoked()) {
-                roots.add(m);
-            }
-            if (m.isVirtualRootMethod()) {
-                for (AnalysisMethod impl : m.collectMethodImplementations(false)) {
-                    AnalysisError.guarantee(impl.isImplementationInvoked());
-                    roots.add(impl);
-                }
-            }
-        }
+        List<AnalysisMethod> roots = AnalysisUniverse.getCallTreeRoots(bb.getUniverse());
 
         roots.sort(methodComparator);
         for (AnalysisMethod m : roots) {
