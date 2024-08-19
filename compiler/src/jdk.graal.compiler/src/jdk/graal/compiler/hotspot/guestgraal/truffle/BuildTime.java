@@ -41,7 +41,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.function.Consumer;
 
 /**
  * Class used to initialize Truffle and Graal compiler in the image build time.
@@ -56,22 +55,8 @@ public class BuildTime {
 
     /**
      * Configures Truffle and graal compiler for libgraal.
-     *
-     * @param initializeInBuildTime callback used to initialize classes in build-time.
-     *
      */
-    public static void configureGraalForLibGraal(Consumer<Class<?>> initializeInBuildTime) {
-        initializeInBuildTime.accept(BuildTime.class);
-        initializeInBuildTime.accept(NativeImageHostCalls.class);
-        initializeInBuildTime.accept(TruffleLibGraalShutdownHook.ShutdownHook.class);
-        initializeInBuildTime.accept(HSConsumer.class);
-        initializeInBuildTime.accept(HSTruffleCompilable.class);
-        initializeInBuildTime.accept(HSTruffleCompilationTask.class);
-        initializeInBuildTime.accept(HSTruffleCompilerListener.class);
-        initializeInBuildTime.accept(HSTruffleCompilerRuntime.class);
-        initializeInBuildTime.accept(HSTruffleSourceLanguagePosition.class);
-        initializeInBuildTime.accept(HSTruffleCompilerListener.class);
-
+    public static void configureGraalForLibGraal() {
         GraalServices.load(TruffleCallBoundaryInstrumentationFactory.class);
         GraalServices.load(TruffleHostEnvironment.Lookup.class);
         GraalServices.load(DebugHandlersFactory.class);

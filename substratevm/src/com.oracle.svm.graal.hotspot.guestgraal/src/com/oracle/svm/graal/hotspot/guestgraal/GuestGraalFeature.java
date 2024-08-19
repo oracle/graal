@@ -183,6 +183,9 @@ public final class GuestGraalFeature implements Feature {
         // GuestGraalFeature accesses a few Graal classes (see import statements above)
         accessModulesToClass(ModuleSupport.Access.EXPORT, GuestGraalFeature.class, "jdk.graal.compiler");
 
+        // GuestGraalTruffleToLibGraalEntryPoints access TruffleToLibGraal.Id
+        accessModulesToClass(ModuleSupport.Access.EXPORT, GuestGraalFeature.class, "org.graalvm.truffle.compiler");
+
         ImageSingletons.add(NativeBridgeSupport.class, new GuestGraalNativeBridgeSupport());
         // Target_jdk_graal_compiler_serviceprovider_VMSupport.getIsolateID needs access to
         // org.graalvm.nativeimage.impl.IsolateSupport
@@ -432,9 +435,8 @@ public final class GuestGraalFeature implements Feature {
         Class<?> truffleBuildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime");
         MethodHandle getLookup = mhl.findStatic(truffleBuildTimeClass, "getLookup", methodType(Lookup.class, Lookup.class));
         ImageSingletons.add(GuestGraalTruffleToLibGraalEntryPoints.class, new GuestGraalTruffleToLibGraalEntryPoints((Lookup) getLookup.invoke(mhl)));
-        MethodHandle truffleConfigureGraalForLibGraal = mhl.findStatic(truffleBuildTimeClass, "configureGraalForLibGraal", methodType(void.class, Consumer.class));
-        Consumer<Class<?>> initializeInBuildTime = RuntimeClassInitialization::initializeAtBuildTime;
-        truffleConfigureGraalForLibGraal.invoke(initializeInBuildTime);
+        MethodHandle truffleConfigureGraalForLibGraal = mhl.findStatic(truffleBuildTimeClass, "configureGraalForLibGraal", methodType(void.class));
+        truffleConfigureGraalForLibGraal.invoke();
     }
 
     @SuppressWarnings("try")
