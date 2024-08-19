@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,27 +38,49 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.nodes.util;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.SLException;
+import com.oracle.truffle.sl.nodes.SLExpressionNode;
 
-public final class SLUndefinedNameException extends SLException {
+@NodeChild
+@NodeInfo(shortName = "toBoolean")
+@OperationProxy.Proxyable(allowUncached = true)
+public abstract class SLToBooleanNode extends SLExpressionNode {
 
-    private static final long serialVersionUID = 1L;
+    @Override
+    public abstract boolean executeBoolean(VirtualFrame vrame);
 
-    @TruffleBoundary
-    public static SLUndefinedNameException undefinedFunction(Node location, Object name) {
-        throw new SLUndefinedNameException("Undefined function: " + name, location);
+    @Specialization
+    public static boolean doBoolean(boolean value) {
+        return value;
     }
 
-    @TruffleBoundary
-    public static SLUndefinedNameException undefinedProperty(Node location, Object name) {
-        throw new SLUndefinedNameException("Undefined property: " + name, location);
+    @Specialization(guards = "lib.isBoolean(value)", limit = "3")
+    public static boolean doInterop(Object value,
+                    @Bind Node node,
+                    @CachedLibrary("value") InteropLibrary lib) {
+        try {
+            return lib.asBoolean(value);
+        } catch (UnsupportedMessageException e) {
+            return doFallback(value, node);
+        }
     }
 
-    private SLUndefinedNameException(String message, Node node) {
-        super(message, node);
+    @Fallback
+    public static boolean doFallback(Object value, @Bind Node node) {
+        throw SLException.typeError(node, "toBoolean", value);
     }
+
 }
