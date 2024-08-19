@@ -113,16 +113,13 @@ public class NumUtil {
     }
 
     public static byte safeToByte(long v) {
-        return safeToByte(v, false);
+        assert isByte(v);
+        return (byte) v;
     }
 
-    public static byte safeToByte(long v, boolean throwAE) {
-        if (throwAE) {
-            if (!isByte(v)) {
-                throw new ArithmeticException(String.format("%s is not a byteF", v));
-            }
-        } else {
-            assert isByte(v);
+    public static byte safeToByteAE(long v) {
+        if (!isByte(v)) {
+            throw new ArithmeticException(String.format("%s is not a byteF", v));
         }
         return (byte) v;
     }
@@ -133,16 +130,14 @@ public class NumUtil {
     }
 
     public static short safeToShort(long v) {
-        return safeToShort(v, false);
+        assert isShort(v);
+        return (short) v;
+
     }
 
-    public static short safeToShort(long v, boolean throwAE) {
-        if (throwAE) {
-            if (!isShort(v)) {
-                throw new ArithmeticException(String.format("%s is not a short", v));
-            }
-        } else {
-            assert isShort(v);
+    public static short safeToShortAE(long v) {
+        if (!isShort(v)) {
+            throw new ArithmeticException(String.format("%s is not a short", v));
         }
         return (short) v;
     }
@@ -153,16 +148,13 @@ public class NumUtil {
     }
 
     public static int safeToInt(long v) {
-        return safeToInt(v, false);
+        assert isInt(v);
+        return (int) v;
     }
 
-    public static int safeToInt(long v, boolean throwAE) {
-        if (throwAE) {
-            if (!isInt(v)) {
-                throw new ArithmeticException(String.format("%s is not an int", v));
-            }
-        } else {
-            assert isInt(v);
+    public static int safeToIntAE(long v) {
+        if (!isInt(v)) {
+            throw new ArithmeticException(String.format("%s is not an int", v));
         }
         return (int) v;
     }

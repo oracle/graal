@@ -63,16 +63,16 @@ public class LoopUtility {
 
     public static long addExact(int bits, long a, long b) {
         if (bits == 8) {
-            byte ba = NumUtil.safeToByte(a, true);
-            byte bb = NumUtil.safeToByte(b, true);
+            byte ba = NumUtil.safeToByteAE(a);
+            byte bb = NumUtil.safeToByteAE(b);
             return addExact(ba, bb);
         } else if (bits == 16) {
-            short sa = NumUtil.safeToShort(a, true);
-            short sb = NumUtil.safeToShort(b, true);
+            short sa = NumUtil.safeToShortAE(a);
+            short sb = NumUtil.safeToShortAE(b);
             return addExact(sa, sb);
         } else if (bits == 32) {
-            int ia = NumUtil.safeToInt(a, true);
-            int ib = NumUtil.safeToInt(b, true);
+            int ia = NumUtil.safeToIntAE(a);
+            int ib = NumUtil.safeToIntAE(b);
             return Math.addExact(ia, ib);
         } else if (bits == 64) {
             return Math.addExact(a, b);
@@ -83,16 +83,16 @@ public class LoopUtility {
 
     public static long subtractExact(int bits, long a, long b) {
         if (bits == 8) {
-            byte ba = NumUtil.safeToByte(a, true);
-            byte bb = NumUtil.safeToByte(b, true);
+            byte ba = NumUtil.safeToByteAE(a);
+            byte bb = NumUtil.safeToByteAE(b);
             return subExact(ba, bb);
         } else if (bits == 16) {
-            short sa = NumUtil.safeToShort(a, true);
-            short sb = NumUtil.safeToShort(b, true);
+            short sa = NumUtil.safeToShortAE(a);
+            short sb = NumUtil.safeToShortAE(b);
             return subExact(sa, sb);
         } else if (bits == 32) {
-            int ia = NumUtil.safeToInt(a, true);
-            int ib = NumUtil.safeToInt(b, true);
+            int ia = NumUtil.safeToIntAE(a);
+            int ib = NumUtil.safeToIntAE(b);
             return Math.subtractExact(ia, ib);
         } else if (bits == 64) {
             return Math.subtractExact(a, b);
@@ -103,16 +103,16 @@ public class LoopUtility {
 
     public static long multiplyExact(int bits, long a, long b) {
         if (bits == 8) {
-            byte ba = NumUtil.safeToByte(a, true);
-            byte bb = NumUtil.safeToByte(b, true);
+            byte ba = NumUtil.safeToByteAE(a);
+            byte bb = NumUtil.safeToByteAE(b);
             return mulExact(ba, bb);
         } else if (bits == 16) {
-            short sa = NumUtil.safeToShort(a, true);
-            short sb = NumUtil.safeToShort(b, true);
+            short sa = NumUtil.safeToShortAE(a);
+            short sb = NumUtil.safeToShortAE(b);
             return mulExact(sa, sb);
         } else if (bits == 32) {
-            int ia = NumUtil.safeToInt(a, true);
-            int ib = NumUtil.safeToInt(b, true);
+            int ia = NumUtil.safeToIntAE(a);
+            int ib = NumUtil.safeToIntAE(b);
             return Math.multiplyExact(ia, ib);
         } else if (bits == 64) {
             return Math.multiplyExact(a, b);
