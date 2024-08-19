@@ -79,7 +79,7 @@ public final class NodeObjectDescriptorKeys implements TruffleObject {
     }
 
     @ExportMessage
-    Object readArrayElement(long index, @Bind("$node") Node node, @Cached InlinedBranchProfile exception) throws InvalidArrayIndexException {
+    Object readArrayElement(long index, @Bind Node node, @Cached InlinedBranchProfile exception) throws InvalidArrayIndexException {
         if (!isArrayElementReadable(index)) {
             exception.enter(node);
             throw InvalidArrayIndexException.create(index);
