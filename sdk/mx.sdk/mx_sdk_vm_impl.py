@@ -831,6 +831,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
         else:
             _metadata_dict = OrderedDict()
 
+        _metadata_dict['IMPLEMENTOR'] = mx_sdk_vm.get_implementor(_src_jdk_dir)
         _metadata_dict.setdefault('JAVA_VERSION', _src_jdk.version)
         _metadata_dict.setdefault('OS_NAME', get_graalvm_os())
         _metadata_dict.setdefault('OS_ARCH', mx.get_arch())
@@ -1725,7 +1726,14 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
     def build(self):
         def with_source(dep):
             return not isinstance(dep, mx.Dependency) or (_include_sources(dep.qualifiedName()) and dep.isJARDistribution() and not dep.is_stripped())
-        vendor_info = {'vendor-version': graalvm_vendor_version()}
+        vendor_info = {
+            # 'vendor': mx_sdk_vm.get_implementor(_src_jdk_dir),
+            # 'vm-vendor': mx_sdk_vm.get_implementor(_src_jdk_dir),
+            'vendor-version': graalvm_vendor_version(),
+            # 'vendor-url': 'https://www.graalvm.org/',
+            'vendor-bug-url': 'https://github.com/oracle/graal/issues',
+            'vendor-vm-bug-url': 'https://github.com/oracle/graal/issues',
+        }
         out_dir = self.subject.output_directory()
 
         build_dir = mx_util.ensure_dir_exists(out_dir + ".build")

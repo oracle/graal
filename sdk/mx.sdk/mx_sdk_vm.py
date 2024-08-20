@@ -1213,6 +1213,10 @@ def extra_installable_qualifiers(jdk_home, ce_edition, oracle_edition):
     return oracle_edition if is_ee_jdk(jdk_home) else ce_edition
 
 
+def get_implementor(jdk_home):
+    return 'Oracle Corporation' if is_ee_jdk(jdk_home) else 'GraalVM Community'
+
+
 @mx.command(_suite, 'verify-graalvm-configs')
 def _verify_graalvm_configs(args):
     parser = ArgumentParser(prog='mx verify-graalvm-configs', description='Verify registered GraalVM configs')
