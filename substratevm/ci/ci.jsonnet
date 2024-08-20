@@ -110,10 +110,10 @@
   // START MAIN BUILD DEFINITION
   local task_dict = {
     "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp") + eclipse + jdt + maven + mx_build_exploded + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk20": gate + t("30:00"),
+      "linux:amd64:jdk17": gate + t("30:00"),
     }),
     "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk20": gate + gdb("10.2") + t("55:00"),
+      "linux:amd64:jdk17": gate + gdb("10.2") + t("55:00"),
       "windows:amd64:jdk17": gate + t("1:30:00"),
     }) + variants({
       "optlevel:quickbuild": {
