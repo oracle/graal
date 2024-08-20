@@ -75,7 +75,7 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
          * We do not currently validate the forType. But in the future we want to lookup the runtime
          * per type. So in theory multiple truffle runtimes can be loaded.
          */
-        HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(NativeImageHostCalls.createGlobalHandle(runtimeLocalHandle), NativeImageHostCalls.getObjectClass(runtimeLocalHandle));
+        HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(NativeImageHostCalls.createGlobalHandle(runtimeLocalHandle, true), NativeImageHostCalls.getObjectClass(runtimeLocalHandle));
         this.previousRuntime = environment = new LibGraalTruffleHostEnvironment(runtime, runtime().getHostJVMCIBackend().getMetaAccess());
         return environment;
     }

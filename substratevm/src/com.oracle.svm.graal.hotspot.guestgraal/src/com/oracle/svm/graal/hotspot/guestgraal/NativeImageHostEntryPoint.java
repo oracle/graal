@@ -57,11 +57,11 @@ public final class NativeImageHostEntryPoint {
         return localRef.isNull() ? null : new HSObject(scope, localRef);
     }
 
-    public static Object createGlobalHandle(Object hsHandle) {
+    public static Object createGlobalHandle(Object hsHandle, boolean allowGlobalDuplicates) {
         if (hsHandle == null) {
             return null;
         }
-        return new HSObject(JNIMethodScope.env(), ((HSObject) hsHandle).getHandle());
+        return new HSObject(JNIMethodScope.env(), ((HSObject) hsHandle).getHandle(), allowGlobalDuplicates, false);
     }
 
     public static boolean isSameObject(Object o1, Object o2) {

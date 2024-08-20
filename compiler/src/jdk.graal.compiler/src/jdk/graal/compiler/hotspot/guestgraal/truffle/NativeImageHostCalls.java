@@ -65,9 +65,9 @@ final class NativeImageHostCalls {
         }
     }
 
-    static Object createGlobalHandle(Object hsHandle) {
+    static Object createGlobalHandle(Object hsHandle, boolean allowGlobalDuplicates) {
         try {
-            return HANDLES.createGlobalHandle.invoke(hsHandle);
+            return HANDLES.createGlobalHandle.invoke(hsHandle, allowGlobalDuplicates);
         } catch (Throwable t) {
             throw handleException(t);
         }
