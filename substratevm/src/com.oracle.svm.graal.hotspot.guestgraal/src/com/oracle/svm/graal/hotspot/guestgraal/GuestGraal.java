@@ -124,6 +124,7 @@ final class GuestGraal {
     private final MethodHandle getSavedProperty;
     private final MethodHandle ttyPrintf;
     private final MethodHandle compileMethod;
+    private final MethodHandle hashConstantOopFields;
     private final MethodHandle attachCurrentThread;
     private final MethodHandle detachCurrentThread;
 
@@ -139,6 +140,7 @@ final class GuestGraal {
         this.getSavedProperty = handles.get("getSavedProperty");
         this.ttyPrintf = handles.get("ttyPrintf");
         this.compileMethod = handles.get("compileMethod");
+        this.hashConstantOopFields = handles.get("hashConstantOopFields");
         this.attachCurrentThread = handles.get("attachCurrentThread");
         this.detachCurrentThread = handles.get("detachCurrentThread");
     }
@@ -256,8 +258,6 @@ final class GuestGraal {
                     int stackTraceCapacity,
                     long timeAndMemBufferAddress,
                     long profilePathBufferAddress) {
-        // Todo fixme: Use LibGraalJNIMethodScope. Do call to guest and to find out if we have Java
-        // frame anchor
         try (JNIMethodScope jniScope = new JNIMethodScope("compileMethod", jniEnv)) {
             if (methodHandle == 0L) {
                 return 0L;
@@ -300,6 +300,24 @@ final class GuestGraal {
              * reference handling manually when a compilation finishes.
              */
             doReferenceHandling();
+        }
+    }
+
+    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_test_LibGraalCompilerTest_hashConstantOopFields", include = GuestGraalFeature.IsEnabled.class)
+    private static long hashConstantOopFields(JNIEnv jniEnv,
+                    PointerBase jclass,
+                    @CEntryPoint.IsolateThreadContext long isolateThread,
+                    long typeHandle,
+                    boolean useScope,
+                    int iterations,
+                    int oopsPerIteration,
+                    boolean verbose) {
+        try (JNIMethodScope scope = new JNIMethodScope("hashConstantOopFields", jniEnv)) {
+            Runnable doReferenceHandling = GuestGraal::doReferenceHandling;
+            return (long) singleton().hashConstantOopFields.invoke(typeHandle, useScope, iterations, oopsPerIteration, verbose, doReferenceHandling);
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(jniEnv, t);
+            return 0;
         }
     }
 
