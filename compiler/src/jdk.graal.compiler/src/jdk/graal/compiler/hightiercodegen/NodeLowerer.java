@@ -102,7 +102,6 @@ import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
 import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
-import jdk.graal.compiler.replacements.nodes.IdentityHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.ObjectClone;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.word.WordCastNode;
@@ -324,8 +323,6 @@ public abstract class NodeLowerer {
             lower((BlackholeNode) node);
         } else if (node instanceof ReachabilityFenceNode) {
             lower((ReachabilityFenceNode) node);
-        } else if (node instanceof IdentityHashCodeNode) {
-            lower((IdentityHashCodeNode) node);
         } else if (node instanceof ClassIsAssignableFromNode) {
             lower((ClassIsAssignableFromNode) node);
         } else if (node instanceof DynamicNewInstanceNode n) {
@@ -489,8 +486,6 @@ public abstract class NodeLowerer {
     protected abstract void lower(UnwindNode node);
 
     protected abstract void lower(NegateNode node);
-
-    protected abstract void lower(IdentityHashCodeNode node);
 
     protected abstract void lower(ClassIsAssignableFromNode node);
 
