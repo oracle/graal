@@ -1736,15 +1736,6 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         }
         out_dir = self.subject.output_directory()
 
-        build_dir = mx_util.ensure_dir_exists(out_dir + ".build")
-
-        release_file_source = join(_src_jdk_dir, 'release')
-        release_file_temp = join(build_dir, 'release')
-        _sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
-        _metadata = BaseGraalVmLayoutDistribution._get_metadata(_sorted_suites, release_file_source)
-        with open(release_file_temp, 'w') as f:
-            f.write(_metadata)
-
         if _jlink_libraries():
             use_upgrade_module_path = mx.get_env('MX_BUILD_EXPLODED') == 'true'
 
@@ -1756,8 +1747,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
                                  vendor_info=vendor_info,
                                  use_upgrade_module_path=use_upgrade_module_path,
                                  default_to_jvmci=self.subject.default_to_jvmci,
-                                 missing_export_target_action=self.subject.missing_export_target_action,
-                                 release_file=release_file_temp)
+                                 missing_export_target_action=self.subject.missing_export_target_action)
         else:
             mx.warn("--no-jlinking flag used. The resulting VM will be HotSpot, not GraalVM")
             if exists(out_dir):
@@ -1765,8 +1755,11 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
             shutil.copytree(_src_jdk.home, out_dir, symlinks=True)
             built = True
 
-        # release_file = join(out_dir, 'release')
-        # mx.copyfile(src=release_file_temp, dst=release_file)
+        release_file = join(out_dir, 'release')
+        _sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
+        _metadata = BaseGraalVmLayoutDistribution._get_metadata(_sorted_suites, release_file)
+        with open(release_file, 'w') as f:
+            f.write(_metadata)
 
         with open(self._config_file(), 'w') as f:
             f.write('\n'.join(self._config()))
