@@ -347,6 +347,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             graphBuilderConfig = graphBuilderConfig.withEagerResolving(true);
             graphBuilderConfig = graphBuilderConfig.withUnresolvedIsError(true);
         }
+        if (graalRuntime.getVMConfig().alwaysSafeConstructors) {
+            graphBuilderConfig = graphBuilderConfig.withAlwaysSafeConstructors();
+        }
         GraphBuilderPhase newGraphBuilderPhase = new HotSpotGraphBuilderPhase(graphBuilderConfig);
         newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
         if (isOSR) {
