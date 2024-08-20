@@ -159,10 +159,6 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         return invokeKind;
     }
 
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/nodes/MacroNode.java
-    protected FrameState stateAfter() {
-        return null;
-=======
     @Override
     public StampPair getReturnStamp() {
         return returnStamp;
@@ -185,31 +181,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
 
     @Override
     public FrameState stateAfter() {
-        return stateAfter;
-    }
-
-    @Override
-    public void setStateAfter(FrameState x) {
-        assert x == null || x.isAlive() : "frame state must be in a graph";
-        updateUsages(stateAfter, x);
-        stateAfter = x;
-    }
-
-    @Override
-    public final boolean hasSideEffect() {
-        return true;
-    }
-
-    /**
-     * Returns {@link LocationIdentity#any()}. This node needs to kill any location because it might
-     * get {@linkplain MacroInvokable#replaceWithInvoke() replaced with an invoke} and
-     * {@link InvokeNode#getKilledLocationIdentity()} kills {@link LocationIdentity#any()} and the
-     * kill location must not get broader.
-     */
-    @Override
-    public final LocationIdentity getKilledLocationIdentity() {
-        return LocationIdentity.any();
->>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/nodes/MacroNode.java
+        return null;
     }
 
     @Override
@@ -236,18 +208,8 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         return LocationIdentity.any();
     }
 
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/nodes/MacroNode.java
     protected InvokeNode createInvoke() {
-        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, getArguments().toArray(new ValueNode[0]), returnStamp, null));
-=======
-    /**
-     * Replace this node with the equivalent invoke. If we are falling back to the original invoke
-     * then the stamp of the current node isn't permitted to be different than the actual invoke
-     * because this would leave the graph in an inconsistent state.
-     */
-    protected InvokeNode createInvoke(boolean verifyStamp) {
         MethodCallTargetNode callTarget = createCallTarget();
->>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/nodes/MacroNode.java
         InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci, getLocationIdentity()));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());

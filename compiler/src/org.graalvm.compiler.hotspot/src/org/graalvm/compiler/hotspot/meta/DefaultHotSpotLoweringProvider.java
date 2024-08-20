@@ -70,24 +70,16 @@ import org.graalvm.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
 import org.graalvm.compiler.hotspot.nodes.KlassBeingInitializedCheckNode;
 import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/meta/DefaultHotSpotLoweringProvider.java
 import org.graalvm.compiler.hotspot.nodes.aot.InitializeKlassNode;
 import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantNode;
 import org.graalvm.compiler.hotspot.nodes.aot.ResolveDynamicConstantNode;
 import org.graalvm.compiler.hotspot.nodes.aot.ResolveMethodAndLoadCountersNode;
 import org.graalvm.compiler.hotspot.nodes.profiling.ProfileNode;
-=======
-import org.graalvm.compiler.hotspot.nodes.VirtualThreadUpdateJFRNode;
->>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/hotspot/meta/DefaultHotSpotLoweringProvider.java
 import org.graalvm.compiler.hotspot.nodes.type.HotSpotNarrowOopStamp;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/meta/DefaultHotSpotLoweringProvider.java
-=======
-import org.graalvm.compiler.hotspot.replacements.DigestBaseSnippets;
->>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/hotspot/meta/DefaultHotSpotLoweringProvider.java
 import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets;
@@ -107,11 +99,7 @@ import org.graalvm.compiler.hotspot.replacements.RegisterFinalizerSnippets;
 import org.graalvm.compiler.hotspot.replacements.StringToBytesSnippets;
 import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.hotspot.replacements.UnsafeSnippets;
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/meta/DefaultHotSpotLoweringProvider.java
 import org.graalvm.compiler.hotspot.replacements.aot.ResolveConstantSnippets;
-=======
-import org.graalvm.compiler.hotspot.replacements.VirtualThreadUpdateJFRSnippets;
->>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/hotspot/meta/DefaultHotSpotLoweringProvider.java
 import org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import org.graalvm.compiler.hotspot.replacements.profiling.ProfileSnippets;
 import org.graalvm.compiler.hotspot.stubs.ForeignCallSnippets;

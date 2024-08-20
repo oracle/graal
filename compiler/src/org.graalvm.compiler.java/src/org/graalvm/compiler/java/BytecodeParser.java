@@ -1664,14 +1664,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             }
 
             ValueNode[] args = frameState.popArguments(resolvedTarget.getSignature().getParameterCount(false));
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.java/src/org/graalvm/compiler/java/BytecodeParser.java
-            Invoke invoke = appendInvoke(InvokeKind.Static, resolvedTarget, args);
-            if (invoke != null && classInit[0] != null) {
-                invoke.setClassInit(classInit[0]);
-            }
-=======
-            appendInvoke(InvokeKind.Static, resolvedTarget, args, null);
->>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/java/BytecodeParser.java
+            appendInvoke(InvokeKind.Static, resolvedTarget, args);
         } else {
             handleUnresolvedInvoke(target, InvokeKind.Static);
         }
@@ -1693,14 +1686,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     protected void genInvokeInterface(JavaType referencedType, JavaMethod target) {
         if (callTargetIsResolved(target) && (referencedType == null || referencedType instanceof ResolvedJavaType)) {
             ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(true));
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.java/src/org/graalvm/compiler/java/BytecodeParser.java
-            Invoke invoke = appendInvoke(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
-            if (invoke != null) {
-                invoke.callTarget().setReferencedType((ResolvedJavaType) referencedType);
-            }
-=======
-            appendInvoke(InvokeKind.Interface, (ResolvedJavaMethod) target, args, (ResolvedJavaType) referencedType);
->>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/java/BytecodeParser.java
+            appendInvoke(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
         } else {
             handleUnresolvedInvoke(target, InvokeKind.Interface);
         }
@@ -1847,16 +1833,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     private boolean forceInliningEverything;
 
     @Override
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.java/src/org/graalvm/compiler/java/BytecodeParser.java
-    public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
-=======
     public Invokable handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
-        GraalError.guarantee(invokeKind != InvokeKind.Interface, "Interface invoke needs a referencedType");
-        return handleReplacedInvoke(invokeKind, targetMethod, args, inlineEverything, null);
-    }
-
-    public Invokable handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything, ResolvedJavaType referencedType) {
->>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/java/BytecodeParser.java
         boolean previous = forceInliningEverything;
         forceInliningEverything = previous || inlineEverything;
         try {
@@ -1875,24 +1852,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         createNonInlinedInvoke(exceptionEdgeAction, bci(), callTarget, resultType);
     }
 
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.java/src/org/graalvm/compiler/java/BytecodeParser.java
-    protected Invoke appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args) {
-=======
-    protected Invokable appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args, ResolvedJavaType referencedType) {
-        if (!parsingIntrinsic() && DeoptALot.getValue(options)) {
-            append(new DeoptimizeNode(DeoptimizationAction.None, RuntimeConstraint));
-            JavaKind resultType = initialTargetMethod.getSignature().getReturnKind();
-            frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, graph));
-            return null;
-        }
-
-        if (initialInvokeKind.hasReceiver()) {
-            args[0] = maybeEmitExplicitNullCheck(args[0]);
-            /* This check must be done before any de-virtualization of the invoke. */
-            args[0] = maybeEmitIncompatibleClassChangeErrorCheck(args[0], initialInvokeKind, referencedType);
-        }
-
->>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/java/BytecodeParser.java
+    protected Invokable appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args) {
         ResolvedJavaMethod targetMethod = initialTargetMethod;
         InvokeKind invokeKind = initialInvokeKind;
         if (initialInvokeKind.isIndirect()) {

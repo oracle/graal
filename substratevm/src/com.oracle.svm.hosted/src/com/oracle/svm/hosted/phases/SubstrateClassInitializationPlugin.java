@@ -61,8 +61,8 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
     @Override
     public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState) {
         if (EnsureClassInitializedNode.needsRuntimeInitialization(builder.getMethod().getDeclaringClass(), type)) {
-<<<<<<< HEAD
-            emitEnsureClassInitialized(builder, SubstrateObjectConstant.forObject(host.dynamicHub(type)), frameState.get());
+            SnippetReflectionProvider snippetReflection = builder.getSnippetReflection();
+            emitEnsureClassInitialized(builder, snippetReflection.forObject(host.dynamicHub(type)), frameState.get());
             /*
              * The classInit value is only registered with Invoke nodes. Since we do not need that,
              * we ensure it is null.
@@ -70,10 +70,6 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
             if (classInit != null) {
                 classInit[0] = null;
             }
-=======
-            SnippetReflectionProvider snippetReflection = builder.getSnippetReflection();
-            emitEnsureClassInitialized(builder, snippetReflection.forObject(host.dynamicHub(type)), frameState.get());
->>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes)
             return true;
         }
         return false;

@@ -249,13 +249,8 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/IntrinsicGraphBuilder.java
-    public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything) {
-        throw GraalError.shouldNotReachHere();
-=======
     public Invokable handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything) {
-        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
->>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/IntrinsicGraphBuilder.java
+        throw GraalError.shouldNotReachHere();
     }
 
     @Override
@@ -354,11 +349,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/IntrinsicGraphBuilder.java
-    public FrameState getIntrinsicReturnState(JavaKind returnKind, ValueNode retVal) {
-=======
-    public FrameState getInvocationPluginReturnState(JavaKind kind, ValueNode retVal) {
->>>>>>> b538877586c (Preserve ResolvedMethodHandleCallTargetNode when creating MacroNodes):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/IntrinsicGraphBuilder.java
+    public FrameState getIntrinsicReturnState(JavaKind kind, ValueNode retVal) {
         return getGraph().add(new FrameState(AFTER_BCI));
     }
 
