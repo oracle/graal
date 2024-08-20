@@ -901,7 +901,8 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   vendor_info=None,
                   dedup_legal_notices=True,
                   use_upgrade_module_path=False,
-                  default_to_jvmci=False):
+                  default_to_jvmci=False,
+                  release_file=None):
     """
     Uses jlink from `jdk` to create a new JDK image in `dst_jdk_dir` with `module_dists` and
     their dependencies added to the JDK image, replacing any existing modules of the same name.
@@ -1103,7 +1104,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                     jlink.append(f'--{name}={value}')
                     jlink_persist.append(f'--{name}="{value}"')
 
-            release_file = join(jdk.home, 'release')
+            release_file = release_file or join(jdk.home, 'release')
             if isfile(release_file):
                 jlink.append(f'--release-info={release_file}')
 

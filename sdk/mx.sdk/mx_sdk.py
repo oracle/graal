@@ -248,14 +248,16 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   with_source=lambda x: True,
                   vendor_info=None,
                   use_upgrade_module_path=False,
-                  default_to_jvmci=False):
+                  default_to_jvmci=False,
+                  release_file=None):
     return mx_sdk_vm.jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                                    root_module_names=root_module_names,
                                    missing_export_target_action=missing_export_target_action,
                                    with_source=with_source,
                                    vendor_info=vendor_info,
                                    use_upgrade_module_path=use_upgrade_module_path,
-                                   default_to_jvmci=default_to_jvmci)
+                                   default_to_jvmci=default_to_jvmci,
+                                   release_file=release_file)
 
 class GraalVMJDKConfig(mx.JDKConfig):
     """
