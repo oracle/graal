@@ -1798,7 +1798,15 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         return ArrayLengthNode.create(array, getConstantReflection());
     }
 
+    protected boolean needBarrierAfterFieldStore(ResolvedJavaField field) {
+        return method.isConstructor() && (field.isFinal() || graphBuilderConfig.alwaysSafeConstructors());
+    }
+
     protected void genStoreField(ValueNode receiver, ResolvedJavaField field, ValueNode value) {
+        if (needBarrierAfterFieldStore(field)) {
+            finalBarrierRequired = true;
+        }
+
         StoreFieldNode storeFieldNode = new StoreFieldNode(receiver, field, maskSubWordValue(value, field.getJavaKind()));
         append(storeFieldNode);
         storeFieldNode.setStateAfter(this.createFrameState(stream.nextBCI(), storeFieldNode));
@@ -5278,9 +5286,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             }
         }
 
-        if (field.isFinal() && method.isConstructor()) {
-            finalBarrierRequired = true;
-        }
         genStoreField(receiver, field, value);
     }
 
