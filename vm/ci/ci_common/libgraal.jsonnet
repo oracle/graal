@@ -118,7 +118,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
       '*/graal-compiler.log',
       '*/graal-compiler-ctw.log'
     ],
-    timelimit: '1:00:00',
+    timelimit: '3:00:00',
   },
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
