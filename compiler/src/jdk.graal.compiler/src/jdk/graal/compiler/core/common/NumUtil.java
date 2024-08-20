@@ -119,7 +119,7 @@ public class NumUtil {
 
     public static byte safeToByteAE(long v) {
         if (!isByte(v)) {
-            throw new ArithmeticException(String.format("%s is not a byteF", v));
+            throw new ArithmeticException(String.format("%s is not a byte", v));
         }
         return (byte) v;
     }

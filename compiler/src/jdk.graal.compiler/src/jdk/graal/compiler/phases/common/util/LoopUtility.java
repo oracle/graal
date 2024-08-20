@@ -77,7 +77,7 @@ public class LoopUtility {
         } else if (bits == 64) {
             return Math.addExact(a, b);
         } else {
-            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes but is " + bits);
         }
     }
 
@@ -97,7 +97,7 @@ public class LoopUtility {
         } else if (bits == 64) {
             return Math.subtractExact(a, b);
         } else {
-            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes but is " + bits);
         }
     }
 
@@ -117,7 +117,7 @@ public class LoopUtility {
         } else if (bits == 64) {
             return Math.multiplyExact(a, b);
         } else {
-            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes but is " + bits);
         }
     }
 
@@ -140,8 +140,7 @@ public class LoopUtility {
     }
 
     private static byte mulExact(byte x, byte y) {
-        // first check no overflow in int range
-        int iR = Math.multiplyExact(x, y);
+        int iR = x * y;
         byte bR = (byte) iR;
         if (iR != bR) {
             throw new ArithmeticException("byte overflow");
@@ -168,8 +167,7 @@ public class LoopUtility {
     }
 
     private static short mulExact(short x, short y) {
-        // first check no overflow in int range
-        int iR = Math.multiplyExact(x, y);
+        int iR = x * y;
         short bR = (short) iR;
         if (iR != bR) {
             throw new ArithmeticException("short overflow");
@@ -205,7 +203,7 @@ public class LoopUtility {
                 return Math.abs(l);
             }
         } else {
-            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes but is " + bits);
         }
     }
 
