@@ -93,22 +93,22 @@ public class ResourceConfigurationTest {
             ResourcesRegistry<UnresolvedConfigurationCondition> registry = new ResourcesRegistry<>() {
 
                 @Override
-                public void addResources(UnresolvedConfigurationCondition condition, String pattern) {
+                public void addResources(UnresolvedConfigurationCondition condition, String pattern, Object origin) {
                     addedResources.add(pattern);
                 }
 
                 @Override
-                public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob) {
+                public void addGlob(UnresolvedConfigurationCondition condition, String module, String glob, Object origin) {
                     throw VMError.shouldNotReachHere("Unused function.");
                 }
 
                 @Override
-                public void addResourceEntry(Module module, String resourcePath) {
+                public void addResourceEntry(Module module, String resourcePath, Object origin) {
                     throw VMError.shouldNotReachHere("Unused function.");
                 }
 
                 @Override
-                public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
+                public void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin) {
                 }
 
                 @Override

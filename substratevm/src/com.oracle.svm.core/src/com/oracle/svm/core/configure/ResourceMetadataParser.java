@@ -35,7 +35,7 @@ final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
     public void parseAndRegister(Object json, URI origin) {
         Object resourcesJson = getFromGlobalFile(json, RESOURCES_KEY);
         if (resourcesJson != null) {
-            parseGlobsObject(resourcesJson);
+            parseGlobsObject(resourcesJson, origin);
         }
         Object bundlesJson = getFromGlobalFile(json, BUNDLES_KEY);
         if (bundlesJson != null) {

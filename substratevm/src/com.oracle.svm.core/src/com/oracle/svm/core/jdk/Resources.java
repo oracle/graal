@@ -50,6 +50,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.ClassLoaderSupport.ConditionWithOrigin;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
@@ -124,7 +125,18 @@ public final class Resources {
      */
     private long lastModifiedTime = INVALID_TIMESTAMP;
 
+    private GlobTrieNode<ConditionWithOrigin> resourcesTrieRoot;
+
     Resources() {
+    }
+
+    public GlobTrieNode<ConditionWithOrigin> getResourcesTrieRoot() {
+        return resourcesTrieRoot;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setResourcesTrieRoot(GlobTrieNode<ConditionWithOrigin> resourcesTrieRoot) {
+        this.resourcesTrieRoot = resourcesTrieRoot;
     }
 
     public EconomicMap<ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> getResourceStorage() {
@@ -337,7 +349,7 @@ public final class Resources {
 
                 String glob = GlobUtils.transformToTriePath(resourceName, moduleName);
                 String canonicalGlob = GlobUtils.transformToTriePath(canonicalResourceName, moduleName);
-                GlobTrieNode globsTrie = ImageSingletons.lookup(GlobTrieNode.class);
+                GlobTrieNode<ConditionWithOrigin> globsTrie = getResourcesTrieRoot();
                 if (CompressedGlobTrie.match(globsTrie, glob) ||
                                 CompressedGlobTrie.match(globsTrie, canonicalGlob)) {
                     return null;
