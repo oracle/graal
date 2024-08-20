@@ -520,15 +520,13 @@ public class StandardGraphBuilderPlugins {
             Class<?> javaClass = getJavaClass(kind);
             String kindName = getKindName(isSunMiscUnsafe, kind);
             boolean isLogic = true;
-            JavaKind returnKind = JavaKind.Boolean.getStackKind();
             if (casPrefix.startsWith("compareAndExchange")) {
                 isLogic = false;
-                returnKind = kind.isNumericInteger() ? kind.getStackKind() : kind;
             }
             for (String memoryOrderString : memoryOrders) {
                 MemoryOrderMode memoryOrder = memoryOrderString.equals("") ? MemoryOrderMode.VOLATILE : MemoryOrderMode.valueOf(memoryOrderString.toUpperCase());
                 r.register5(casPrefix + kindName + memoryOrderString, Receiver.class, Object.class, long.class, javaClass, javaClass,
-                                new UnsafeCompareAndSwapPlugin(returnKind, kind, memoryOrder, isLogic, explicitUnsafeNullChecks));
+                                new UnsafeCompareAndSwapPlugin(returnKindkind, memoryOrder, isLogic, explicitUnsafeNullChecks));
             }
         }
     }
@@ -541,46 +539,11 @@ public class StandardGraphBuilderPlugins {
             Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
             JavaKind[] supportedJavaKinds = {JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object};
 
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
             registerUnsafePlugins(r, false, explicitUnsafeNullChecks);
             registerUnsafeUnalignedPlugins(r, explicitUnsafeNullChecks);
             registerUnsafeGetAndOpPlugins(r, explicitUnsafeNullChecks, supportedJavaKinds, JavaVersionUtil.JAVA_SPEC > 11 ? "Reference" : "Object");
             registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "weakCompareAndSet", new String[]{"", "Acquire", "Release", "Plain"}, supportedJavaKinds);
             registerUnsafeAtomicsPlugins(r, false, explicitUnsafeNullChecks, "compareAndExchange", new String[]{"Acquire", "Release"}, supportedJavaKinds);
-=======
-        Registration jdkInternalMiscUnsafe = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
-
-        registerUnsafePlugins0(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks);
-        registerUnsafeUnalignedPlugins(jdkInternalMiscUnsafe, explicitUnsafeNullChecks);
-
-        supportedJavaKinds = new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object};
-        registerUnsafeGetAndOpPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, supportedJavaKinds);
-        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "weakCompareAndSet", supportedJavaKinds, VOLATILE, ACQUIRE, RELEASE, PLAIN);
-        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "compareAndExchange", supportedJavaKinds, ACQUIRE, RELEASE);
-
-        supportedJavaKinds = new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object};
-        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "compareAndSet", supportedJavaKinds, VOLATILE);
-        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "compareAndExchange", supportedJavaKinds, VOLATILE);
-
-        jdkInternalMiscUnsafe.register(new AllocateUninitializedArrayPlugin("allocateUninitializedArray0", false));
-    }
-
-    private static void registerUnsafeAtomicsPlugins(Registration r, boolean isSunMiscUnsafe, boolean explicitUnsafeNullChecks, String casPrefix, JavaKind[] supportedJavaKinds,
-                    MemoryOrderMode... memoryOrders) {
-        for (JavaKind kind : supportedJavaKinds) {
-            Class<?> javaClass = getJavaClass(kind);
-            for (String kindName : getKindNames(isSunMiscUnsafe, kind)) {
-                boolean isLogic = true;
-                if (casPrefix.startsWith("compareAndExchange")) {
-                    isLogic = false;
-                }
-                for (MemoryOrderMode memoryOrder : memoryOrders) {
-                    String name = casPrefix + kindName + memoryOrderModeToMethodSuffix(memoryOrder);
-                    r.register(new UnsafeCompareAndSwapPlugin(kind, memoryOrder, isLogic, explicitUnsafeNullChecks,
-                                    name, Receiver.class, Object.class, long.class, javaClass, javaClass));
-                }
-            }
->>>>>>> 96a195b17d7 (Fix pushed return type of unsafe plugins):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
         }
     }
 
@@ -596,9 +559,8 @@ public class StandardGraphBuilderPlugins {
 
         for (JavaKind kind : unsafeJavaKinds) {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
             String kindName = kind == JavaKind.Object ? objectKindName : kind.name();
-            r.register4("getAndSet" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks) {
+            r.register4("getAndSet" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, kind, explicitUnsafeNullChecks) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
                     // Emits a null-check for the otherwise unused receiver
@@ -609,11 +571,7 @@ public class StandardGraphBuilderPlugins {
             });
 
             if (kind != JavaKind.Boolean && kind.isNumericInteger()) {
-                r.register4("getAndAdd" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks) {
-=======
-            for (String kindName : getKindNames(isSunMiscUnsafe, kind)) {
-                r.register(new UnsafeAccessPlugin(kind, kind, explicitUnsafeNullChecks, "getAndSet" + kindName, Receiver.class, Object.class, long.class, javaClass) {
->>>>>>> 96a195b17d7 (Fix pushed return type of unsafe plugins):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
+                r.register4("getAndAdd" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, kind, explicitUnsafeNullChecks) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
                         // Emits a null-check for the otherwise unused receiver
@@ -622,21 +580,6 @@ public class StandardGraphBuilderPlugins {
                         return true;
                     }
                 });
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
-=======
-
-                if (kind != JavaKind.Boolean && kind.isNumericInteger()) {
-                    r.register(new UnsafeAccessPlugin(kind, kind, explicitUnsafeNullChecks, "getAndAdd" + kindName, Receiver.class, Object.class, long.class, javaClass) {
-                        @Override
-                        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
-                            // Emits a null-check for the otherwise unused receiver
-                            unsafe.get();
-                            createUnsafeAccess(object, b, (obj, loc) -> new AtomicReadAndAddNode(obj, offset, delta, kind, loc));
-                            return true;
-                        }
-                    });
-                }
->>>>>>> 96a195b17d7 (Fix pushed return type of unsafe plugins):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
             }
         }
     }
@@ -1205,15 +1148,9 @@ public class StandardGraphBuilderPlugins {
         protected final JavaKind returnKind;
         private final boolean explicitUnsafeNullChecks;
 
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
-        public UnsafeAccessPlugin(JavaKind kind, boolean explicitUnsafeNullChecks) {
-            unsafeAccessKind = kind;
-=======
-        public UnsafeAccessPlugin(JavaKind unsafeAccessKind, JavaKind returnKind, boolean explicitUnsafeNullChecks, String name, Type... argumentTypes) {
-            super(name, argumentTypes);
+        public UnsafeAccessPlugin(JavaKind unsafeAccessKind, JavaKind returnKind, boolean explicitUnsafeNullChecks) {
             this.unsafeAccessKind = unsafeAccessKind;
             this.returnKind = returnKind;
->>>>>>> 96a195b17d7 (Fix pushed return type of unsafe plugins):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
             this.explicitUnsafeNullChecks = explicitUnsafeNullChecks;
         }
 
@@ -1301,13 +1238,8 @@ public class StandardGraphBuilderPlugins {
             this(returnKind, MemoryOrderMode.PLAIN, explicitUnsafeNullChecks);
         }
 
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
         public UnsafeGetPlugin(JavaKind kind, MemoryOrderMode memoryOrder, boolean explicitUnsafeNullChecks) {
-            super(kind, explicitUnsafeNullChecks);
-=======
-        public UnsafeGetPlugin(JavaKind kind, MemoryOrderMode memoryOrder, boolean explicitUnsafeNullChecks, String name, Type... argumentTypes) {
-            super(kind, kind, explicitUnsafeNullChecks, name, argumentTypes);
->>>>>>> 96a195b17d7 (Fix pushed return type of unsafe plugins):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
+            super(kind, kind, explicitUnsafeNullChecks);
             this.memoryOrder = memoryOrder;
         }
 
@@ -1359,13 +1291,8 @@ public class StandardGraphBuilderPlugins {
             this(kind, MemoryOrderMode.PLAIN, explicitUnsafeNullChecks);
         }
 
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
         private UnsafePutPlugin(JavaKind kind, MemoryOrderMode memoryOrder, boolean explicitUnsafeNullChecks) {
-            super(kind, explicitUnsafeNullChecks);
-=======
-        private UnsafePutPlugin(JavaKind kind, MemoryOrderMode memoryOrder, boolean explicitUnsafeNullChecks, String name, Type... argumentTypes) {
-            super(kind, JavaKind.Void, explicitUnsafeNullChecks, name, argumentTypes);
->>>>>>> 96a195b17d7 (Fix pushed return type of unsafe plugins):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
+            super(kind, JavaKind.Void, explicitUnsafeNullChecks);
             this.memoryOrder = memoryOrder;
         }
 
@@ -1411,14 +1338,8 @@ public class StandardGraphBuilderPlugins {
         private final MemoryOrderMode memoryOrder;
         private final boolean isLogic;
 
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
         public UnsafeCompareAndSwapPlugin(JavaKind returnKind, JavaKind accessKind, MemoryOrderMode memoryOrder, boolean isLogic, boolean explicitUnsafeNullChecks) {
-            super(returnKind, explicitUnsafeNullChecks);
-=======
-        public UnsafeCompareAndSwapPlugin(JavaKind accessKind, MemoryOrderMode memoryOrder, boolean isLogic, boolean explicitUnsafeNullChecks,
-                        String name, Type... argumentTypes) {
-            super(accessKind, isLogic ? JavaKind.Boolean : accessKind, explicitUnsafeNullChecks, name, argumentTypes);
->>>>>>> 96a195b17d7 (Fix pushed return type of unsafe plugins):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/StandardGraphBuilderPlugins.java
+            super(returnKind, isLogic ? JavaKind.Boolean : accessKind, explicitUnsafeNullChecks);
             this.memoryOrder = memoryOrder;
             this.isLogic = isLogic;
         }

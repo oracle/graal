@@ -32,7 +32,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -409,7 +408,6 @@ public class InliningLog {
         }
     }
 
-    @NodeInfo
     public static final class PlaceholderInvokable implements Invokable {
         private final int bci;
         private final ResolvedJavaMethod callerMethod;
