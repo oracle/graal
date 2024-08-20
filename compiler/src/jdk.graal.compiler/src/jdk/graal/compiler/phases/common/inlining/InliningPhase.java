@@ -50,7 +50,7 @@ public class InliningPhase extends AbstractInliningPhase {
          * in reasonable time.
          */
         @Option(help = "Per-compilation method inlining exploration limit before giving up (use 0 to disable)", type = OptionType.Debug)//
-        public static final OptionKey<Integer> MethodInlineBailoutLimit = new OptionKey<>(5000);
+        public static final OptionKey<Integer> MethodInlineBailoutLimit = new OptionKey<>(1000);
     }
 
     private final InliningPolicy inliningPolicy;
