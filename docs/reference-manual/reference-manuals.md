@@ -14,7 +14,7 @@ These manuals are aimed at software engineers and developers who already work wi
 * Learn more about [GraalVM as a Java Virtual Machine](java/README.md) and its optimizing just-in-time compiler, [Graal Compiler](java/compiler.md).
 * Developers interested in embedding other languages into Java, proceed to [Embedding Languages](embedding/embed-languages.md).
 * Developers interested in building interpreters for programming languages which then run on GraalVM, continue to the [Truffle language implementation framework documentation](../../truffle/docs/README.md).
-* To learn more about security considerations in GraalVM, check the [Security Guide](security/security-guide.md).
+* To learn more about security considerations in GraalVM, check the [Security Guide](../security/security-guide.md).
 
 If you are mostly interested in a specific language runtime on GraalVM, see the following:
 * [Java on Truffle](java-on-truffle/README.md)
