@@ -1592,6 +1592,7 @@ suite = {
                     "org.graalvm.nativeimage.Platform",
                     "jdk.graal.compiler.options.OptionDescriptors",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
+                    "com.oracle.svm.hosted.NativeImageGeneratorRunnerProvider",
                     "java.util.spi.ResourceBundleControlProvider",
                     "com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistration",
                 ],

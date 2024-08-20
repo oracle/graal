@@ -262,6 +262,8 @@ def registered_graalvm_components(stage1=False):
 def _get_component_type_base(c, graalvm_dist_for_substitutions=None):
     if isinstance(c, mx_sdk.GraalVmLanguage):
         result = '<jre_base>/languages/'
+    elif isinstance(c, mx_sdk.GraalVmSvmTool):
+        result = _get_svm_component_base(graalvm_dist_for_substitutions) + '/tools/'
     elif isinstance(c, mx_sdk.GraalVmTool):
         result = '<jre_base>/tools/'
     elif isinstance(c, mx_sdk.GraalVmJdkComponent):
@@ -269,9 +271,7 @@ def _get_component_type_base(c, graalvm_dist_for_substitutions=None):
     elif isinstance(c, mx_sdk.GraalVmJreComponent):
         result = '<jre_base>/lib/'
     elif isinstance(c, mx_sdk.GraalVMSvmMacro):
-        # Get the 'svm' component, even if it's not part of the GraalVM image
-        svm_component = mx_sdk_vm.graalvm_component_by_name('svm', fatalIfMissing=True)
-        result = _get_component_type_base(svm_component, graalvm_dist_for_substitutions=graalvm_dist_for_substitutions) + svm_component.dir_name + '/macros/'
+        result = _get_svm_component_base(graalvm_dist_for_substitutions) + '/macros/'
     elif isinstance(c, mx_sdk.GraalVmComponent):
         result = '<jdk_base>/'
     else:
@@ -279,6 +279,12 @@ def _get_component_type_base(c, graalvm_dist_for_substitutions=None):
     if graalvm_dist_for_substitutions is not None:
         result = graalvm_dist_for_substitutions.path_substitutions.substitute(result)
     return result
+
+
+def _get_svm_component_base(graalvm_dist_for_substitutions=None) -> str:
+    # Get the 'svm' component, even if it's not part of the GraalVM image
+    svm_component = mx_sdk_vm.graalvm_component_by_name('svm', fatalIfMissing=True)
+    return _get_component_type_base(svm_component, graalvm_dist_for_substitutions=graalvm_dist_for_substitutions) + svm_component.dir_name
 
 
 def _get_jdk_base(jdk):
