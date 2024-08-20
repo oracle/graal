@@ -93,7 +93,9 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
       "LibGraal Compiler:CompilationTimeout:JIT",
       "LibGraal Compiler:CTW",
       "LibGraal Compiler:DaCapo",
-      "LibGraal Compiler:ScalaDaCapo"
+      "LibGraal Compiler:ScalaDaCapo",
+      "LibGraal Truffle:unittest",
+      "LibGraal Compiler:CompilationTimeout:Truffle"
     ] +
     # Renaissance is missing the msvc redistributable on Windows [GR-50132]
     if self.os == "windows" then [] else ["LibGraal Compiler:Renaissance"],
@@ -101,12 +103,13 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     run+: [
       ['mx', '--env', guestgraal_env, 'build'],
       ['set-export', 'JNIUTILS_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'JNIUTILS']],
+      ['set-export', 'NATIVEBRIDGE_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'NATIVEBRIDGE']],
       ['set-export', 'GUESTGRAAL_LIBRARY_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'GUESTGRAAL_LIBRARY']],
     ] + (if vm.edition == "ee" then [
       ['set-export', 'ENTERPRISE_GUESTGRAAL_LIBRARY_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'ENTERPRISE_GUESTGRAAL_LIBRARY']]
     ] else []) + [
       ['mx', '--env', guestgraal_env, 'native-image', '-J-esa', '-J-ea', '-esa', '-ea',
-       '-p', '$JNIUTILS_PATH',
+       '-p', '$JNIUTILS_PATH' + pathsep + '$NATIVEBRIDGE_PATH',
        '-cp', '$GUESTGRAAL_LIBRARY_PATH' + pathsep + '$ENTERPRISE_GUESTGRAAL_LIBRARY_PATH',
        '-H:+UnlockExperimentalVMOptions', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases'],
       ['mx', '--env', guestgraal_env, 'gate', '--task', std.join(",", tasks), '--extra-vm-argument=-XX:JVMCILibPath=$PWD/' + vm.vm_dir],
