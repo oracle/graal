@@ -1009,7 +1009,7 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
             base_dir = '{base_name}{vm_dist_name}_{jdk_type}_{version}'.format(
                 base_name=base_name,
                 vm_dist_name=('_' + vm_dist_name) if vm_dist_name else '',
-                jdk_type='jdk' if mx_sdk_vm.ee_implementor() else 'openjdk',
+                jdk_type='jdk' if mx_sdk_vm.is_ee_jdk() else 'openjdk',
                 version=graalvm_version(version_type='base-dir')
             )
             name_prefix = '{base_name}{vm_dist_name}_java{jdk_version}'.format(
@@ -4382,7 +4382,7 @@ def graalvm_vendor_version():
     # GraalVM CE 17.0.1+4.1
     # Oracle GraalVM 17.0.1+4.1
     return '{vendor} {version}'.format(
-        vendor=('Oracle ' + _graalvm_base_name) if mx_sdk_vm.ee_implementor() else (_graalvm_base_name + ' CE'),
+        vendor=('Oracle ' + _graalvm_base_name) if mx_sdk_vm.is_ee_jdk() else (_graalvm_base_name + ' CE'),
         version=graalvm_version(version_type='vendor')
     )
 

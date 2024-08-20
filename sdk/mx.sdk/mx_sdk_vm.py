@@ -1184,31 +1184,32 @@ def format_release_file(release_dict, skip_quoting=None):
     return '\n'.join(('{}={}' if k in skip_quoting else '{}="{}"').format(k, v) for k, v in release_dict.items())
 
 
-def ee_implementor(jdk_home=base_jdk().home):
+def is_ee_jdk(jdk_home=base_jdk().home):
     """
-    Returns True if the value of the `IMPLEMENTOR` field of the `release` file of a given JDK is `Oracle Corporation`
+    Returns True if the value of the `SOURCE` field of the `release` file of a given JDK contains an `open` entry
     :type jdk_home: str | None
     :rtype bool
     """
     release_file_path = join(jdk_home, 'release')
     release_dict = parse_release_file(release_file_path)
-    implementor = release_dict.get('IMPLEMENTOR')
-    if implementor is not None:
-        return implementor == 'Oracle Corporation'
+    sources = release_dict.get('SOURCE').split(' ')
+    if sources is not None:
+        # Oracle JDKs have OpenJDK in their SOURCE entry
+        return any((source.startswith('open:') for source in sources))
     else:
-        mx.warn(f"Release file for '{jdk_home}' ({release_file_path}) is missing the IMPLEMENTOR field")
+        mx.warn(f"Release file for '{jdk_home}' ({release_file_path}) is missing the SOURCE field")
         return False
 
 
 def extra_installable_qualifiers(jdk_home, ce_edition, oracle_edition):
     """
-    Returns the edition name depending on the value of the `IMPLEMENTOR` field of the `release` file of a given JDK.
+    Returns the edition name depending on the value of the `is_ee_jdk`.
     :type jdk_home: str
     :type ce_edition: list[str] | None
     :type oracle_edition: list[str] | None
     :rtype: list[str] | None
     """
-    return oracle_edition if ee_implementor(jdk_home) else ce_edition
+    return oracle_edition if is_ee_jdk(jdk_home) else ce_edition
 
 
 @mx.command(_suite, 'verify-graalvm-configs')
