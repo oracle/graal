@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,9 +101,8 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * The maximum practical size of this memory instance (measured in number of
      * {@link Sizes#MEMORY_PAGE_SIZE pages}).
      * <p>
-     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary},
-     * {@link Sizes#MAX_MEMORY_INSTANCE_SIZE the GraalWasm limit} and any additional limit (the JS
-     * API for example has lower limits).
+     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary} and
+     * the limit imposed by the implementation.
      * <p>
      * This is different from {@link #declaredMaxSize()}, which can be higher.
      */

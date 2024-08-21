@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,13 +63,15 @@ import com.oracle.truffle.api.nodes.Node;
 final class ByteArrayWasmMemory extends WasmMemory {
     private byte[] dynamicBuffer;
 
+    public static final long MAX_ALLOWED_SIZE = Integer.MAX_VALUE / MEMORY_PAGE_SIZE;
+
     private ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
         super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, shared);
         this.dynamicBuffer = allocateStatic(initialSize * MEMORY_PAGE_SIZE);
     }
 
-    ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean shared) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, indexType64, shared);
+    ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, Math.min(declaredMaxSize, MAX_ALLOWED_SIZE), indexType64, shared);
     }
 
     private byte[] buffer() {
@@ -93,14 +95,15 @@ final class ByteArrayWasmMemory extends WasmMemory {
         if (extraPageSize == 0) {
             invokeGrowCallback();
             return previousSize;
-        } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
-            // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE)
-            // ensure computation of targetByteSize does not overflow.
-            final long targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
+        } else if (compareUnsigned(extraPageSize, maxAllowedSize()) <= 0 && compareUnsigned(previousSize + extraPageSize, maxAllowedSize()) <= 0) {
+            // Condition above and limit on maxAllowedSize (see
+            // ByteArrayWasmMemory#MAX_ALLOWED_SIZE) ensure computation of targetByteSize does not
+            // overflow.
+            final long targetByteSize = multiplyExact(addExact(previousSize, extraPageSize), MEMORY_PAGE_SIZE);
             final byte[] currentBuffer = buffer();
             allocate(targetByteSize);
             System.arraycopy(currentBuffer, 0, buffer(), 0, currentBuffer.length);
-            currentMinSize = size() + extraPageSize;
+            currentMinSize = previousSize + extraPageSize;
             invokeGrowCallback();
             return previousSize;
         } else {

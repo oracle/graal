@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,6 +71,8 @@ public final class UnsafeWasmMemory extends WasmMemory {
 
     private ByteBuffer buffer;
 
+    public static final long MAX_ALLOWED_SIZE = Integer.MAX_VALUE / MEMORY_PAGE_SIZE;
+
     private static final Unsafe unsafe;
     private static final long addressOffset;
     private static final VarHandle SIZE_FIELD;
@@ -83,8 +85,8 @@ public final class UnsafeWasmMemory extends WasmMemory {
         this.startAddress = getBufferAddress(buffer);
     }
 
-    UnsafeWasmMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean shared) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, indexType64, shared);
+    UnsafeWasmMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, Math.min(declaredMaxSize, MAX_ALLOWED_SIZE), indexType64, shared);
     }
 
     @TruffleBoundary
@@ -144,9 +146,9 @@ public final class UnsafeWasmMemory extends WasmMemory {
         if (extraPageSize == 0) {
             invokeGrowCallback();
             return previousSize;
-        } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(previousSize + extraPageSize, maxAllowedSize) <= 0) {
-            // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
-            // computation of targetByteSize does not overflow.
+        } else if (compareUnsigned(extraPageSize, maxAllowedSize()) <= 0 && compareUnsigned(previousSize + extraPageSize, maxAllowedSize()) <= 0) {
+            // Condition above and limit on maxAllowedSize (see UnsafeWasmMemory#MAX_ALLOWED_SIZE)
+            // ensure computation of targetByteSize does not overflow.
             final long targetByteSize = multiplyExact(addExact(previousSize, extraPageSize), MEMORY_PAGE_SIZE);
             final long sourceByteSize = byteSize();
             ByteBuffer updatedBuffer = allocateBuffer(targetByteSize);
