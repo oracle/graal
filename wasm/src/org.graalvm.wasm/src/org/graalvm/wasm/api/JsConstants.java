@@ -63,7 +63,7 @@ public final class JsConstants {
     private static final int MULTI_VALUE_RESULT_COUNT_LIMIT = 1000;
     private static final int LOCAL_COUNT_LIMIT = 50000;
     private static final int TABLE_SIZE_LIMIT = 10000000;
-    private static final int MEMORY_SIZE_LIMIT = 32767;
+    private static final int MEMORY_SIZE_LIMIT = 65536;
 
     public static final ModuleLimits JS_LIMITS = new ModuleLimits(
                     MODULE_SIZE_LIMIT,
