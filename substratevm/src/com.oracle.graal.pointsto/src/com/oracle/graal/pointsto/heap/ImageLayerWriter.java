@@ -33,6 +33,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CAN_BE_STATI
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_JAVA_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CODE_SIZE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.COMPONENT_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CONSTANTS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CONSTANTS_TO_RELINK_TAG;
@@ -54,14 +55,23 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANCE_TAG
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INTERFACES_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INTRINSIC_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_CONSTRUCTOR_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_DIRECT_ROOT_METHOD;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_ENUM_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_IMPLEMENTATION_INVOKED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INITIALIZED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INSTANTIATED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INTERFACE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INTERNAL_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INTRINSIC_METHOD;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INVOKED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_LINKED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_REACHABLE;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_SYNTHETIC_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_UNSAFE_ALLOCATED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_VAR_ARGS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_VIRTUAL_ROOT_METHOD;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHODS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_HANDLE_INTRINSIC_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.MODIFIERS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_FIELD_ID_TAG;
@@ -117,6 +127,7 @@ import jdk.graal.compiler.util.ObjectCopier;
 import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -295,6 +306,10 @@ public class ImageLayerWriter {
         }
         typeMap.put(INTERFACES_TAG, Arrays.stream(type.getInterfaces()).map(AnalysisType::getId).toList());
         typeMap.put(ANNOTATIONS_TAG, Arrays.stream(AnnotationAccess.getAnnotationTypes(type)).map(Class::getName).toList());
+
+        typeMap.put(IS_INSTANTIATED, type.isInstantiated());
+        typeMap.put(IS_UNSAFE_ALLOCATED, type.isUnsafeAllocated());
+        typeMap.put(IS_REACHABLE, type.isReachable());
     }
 
     /**
@@ -327,8 +342,22 @@ public class ImageLayerWriter {
         methodMap.put(MODIFIERS_TAG, method.getModifiers());
         methodMap.put(IS_CONSTRUCTOR_TAG, method.isConstructor());
         methodMap.put(IS_SYNTHETIC_TAG, method.isSynthetic());
+        byte[] code = method.getCode();
+        if (code != null) {
+            methodMap.put(CODE_TAG, getString(JavaKind.Byte, method.getCode()));
+        }
         methodMap.put(CODE_SIZE_TAG, method.getCodeSize());
+        IntrinsicMethod intrinsicMethod = aUniverse.getBigbang().getConstantReflectionProvider().getMethodHandleAccess().lookupMethodHandleIntrinsic(method);
+        if (intrinsicMethod != null) {
+            methodMap.put(METHOD_HANDLE_INTRINSIC_TAG, intrinsicMethod.name());
+        }
         methodMap.put(ANNOTATIONS_TAG, Arrays.stream(AnnotationAccess.getAnnotationTypes(method)).map(Class::getName).toList());
+
+        methodMap.put(IS_VIRTUAL_ROOT_METHOD, method.isVirtualRootMethod());
+        methodMap.put(IS_DIRECT_ROOT_METHOD, method.isDirectRootMethod());
+        methodMap.put(IS_INVOKED, method.isSimplyInvoked());
+        methodMap.put(IS_IMPLEMENTATION_INVOKED, method.isSimplyImplementationInvoked());
+        methodMap.put(IS_INTRINSIC_METHOD, method.isIntrinsicMethod());
 
         imageLayerWriterHelper.persistMethod(method, methodMap);
     }

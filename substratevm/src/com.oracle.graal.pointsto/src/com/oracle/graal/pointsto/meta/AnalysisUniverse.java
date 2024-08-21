@@ -215,6 +215,9 @@ public class AnalysisUniverse implements Universe {
         AnalysisType result = optionalLookup(type);
         if (result == null) {
             result = createType(type);
+            if (hostVM.useBaseLayer()) {
+                imageLayerLoader.initializeBaseLayerType(result);
+            }
         }
         assert typesById[result.getId()].equals(result) : result;
         return result;
@@ -372,11 +375,20 @@ public class AnalysisUniverse implements Universe {
             return null;
         }
         AnalysisField newValue = analysisFactory.createField(this, field);
-        AnalysisField oldValue = fields.putIfAbsent(field, newValue);
-        if (oldValue == null && newValue.isInBaseLayer()) {
-            getImageLayerLoader().initializeBaseLayerField(newValue);
+        AnalysisField result = fields.computeIfAbsent(field, f -> {
+            if (newValue.isInBaseLayer()) {
+                getImageLayerLoader().addBaseLayerField(newValue);
+            }
+            return newValue;
+        });
+
+        if (result.equals(newValue)) {
+            if (newValue.isInBaseLayer()) {
+                getImageLayerLoader().initializeBaseLayerField(newValue);
+            }
         }
-        return oldValue != null ? oldValue : newValue;
+
+        return result;
     }
 
     @Override
@@ -418,15 +430,22 @@ public class AnalysisUniverse implements Universe {
             return null;
         }
         AnalysisMethod newValue = analysisFactory.createMethod(this, method);
-        AnalysisMethod oldValue = methods.putIfAbsent(method, newValue);
+        AnalysisMethod result = methods.computeIfAbsent(method, m -> {
+            if (newValue.isInBaseLayer()) {
+                getImageLayerLoader().addBaseLayerMethod(newValue);
+            }
+            return newValue;
+        });
 
-        if (oldValue == null) {
+        if (result.equals(newValue)) {
             if (newValue.isInBaseLayer()) {
                 getImageLayerLoader().initializeBaseLayerMethod(newValue);
             }
+
             prepareMethodImplementations(newValue);
         }
-        return oldValue != null ? oldValue : newValue;
+
+        return result;
     }
 
     /** Prepare information that {@link AnalysisMethod#collectMethodImplementations} needs. */

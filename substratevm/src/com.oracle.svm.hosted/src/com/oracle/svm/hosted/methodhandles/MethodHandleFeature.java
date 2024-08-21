@@ -429,9 +429,13 @@ public class MethodHandleFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        int numTypes = access.getUniverse().getTypes().size();
         access.rescanRoot(typedAccessors);
         access.rescanRoot(typedCollectors);
         access.rescanObject(runtimeMethodTypeInternTable);
+        if (numTypes != access.getUniverse().getTypes().size()) {
+            access.requireAnalysisIteration();
+        }
     }
 
     private static void scanBoundMethodHandle(DuringAnalysisAccess a, Class<?> bmhSubtype) {

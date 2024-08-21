@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
@@ -94,7 +95,13 @@ public class DynamicHubInitializer {
         Class<?> javaClass = type.getJavaClass();
         DynamicHub hub = hostVM.dynamicHub(type);
 
-        registerPackage(heapScanner, javaClass, hub);
+        /*
+         * Since the javaClass is java.lang.Object for BaseLayerTypes, the java.lang package would
+         * be registered in the wrong class loader.
+         */
+        if (!(type.getWrapped() instanceof BaseLayerType)) {
+            registerPackage(heapScanner, javaClass, hub);
+        }
 
         boolean rescan = true;
         /*

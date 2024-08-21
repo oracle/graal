@@ -78,8 +78,18 @@ public class ImageLayerSnapshotUtil {
     public static final String CAN_BE_STATICALLY_BOUND_TAG = "can be statically bound";
     public static final String IS_CONSTRUCTOR_TAG = "is constructor";
     public static final String IS_SYNTHETIC_TAG = "is synthetic";
+    public static final String CODE_TAG = "code";
     public static final String CODE_SIZE_TAG = "code size";
+    public static final String METHOD_HANDLE_INTRINSIC_TAG = "method handle intrinsic";
+    public static final String IS_VIRTUAL_ROOT_METHOD = "is virtual root method";
+    public static final String IS_DIRECT_ROOT_METHOD = "is direct root method";
+    public static final String IS_INVOKED = "is invoked";
+    public static final String IS_IMPLEMENTATION_INVOKED = "is implementation invoked";
+    public static final String IS_INTRINSIC_METHOD = "is intrinsic method";
     public static final String ANNOTATIONS_TAG = "annotations";
+    public static final String IS_INSTANTIATED = "is instantiated";
+    public static final String IS_UNSAFE_ALLOCATED = "is unsafe allocated";
+    public static final String IS_REACHABLE = "is reachable";
     public static final String CLASS_NAME_TAG = "class name";
     public static final String MODIFIERS_TAG = "modifiers";
     public static final String POSITION_TAG = "position";
@@ -109,6 +119,7 @@ public class ImageLayerSnapshotUtil {
     public static final String THROW_ALLOCATED_OBJECT_TAG = "throw allocated object";
     public static final String IDENTITY_HASH_CODE_TAG = "identityHashCode";
     public static final String HUB_IDENTITY_HASH_CODE_TAG = "hub identityHashCode";
+    public static final String IS_INITIALIZED_AT_BUILD_TIME_TAG = "is initialized at build time";
     public static final String ID_TAG = "id";
     public static final String ANALYSIS_PARSED_GRAPH_TAG = "analysis parsed graph";
     public static final String STRENGTHENED_GRAPH_TAG = "strengthened graph";
@@ -204,8 +215,8 @@ public class ImageLayerSnapshotUtil {
     }
 
     @SuppressWarnings("unused")
-    public GraphDecoder getGraphDecoder(ImageLayerLoader imageLayerLoader, SnippetReflectionProvider snippetReflectionProvider) {
-        return new GraphDecoder(EncodedGraph.class.getClassLoader(), imageLayerLoader);
+    public GraphDecoder getGraphDecoder(ImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider) {
+        return new GraphDecoder(EncodedGraph.class.getClassLoader(), imageLayerLoader, analysisMethod);
     }
 
     public static class GraphEncoder extends ObjectCopier.Encoder {
@@ -215,7 +226,7 @@ public class ImageLayerSnapshotUtil {
             addBuiltin(new NodeClassBuiltIn());
             addBuiltin(new ImageHeapConstantBuiltIn(imageLayerWriter, null));
             addBuiltin(new AnalysisTypeBuiltIn(imageLayerWriter, null));
-            addBuiltin(new AnalysisMethodBuiltIn(imageLayerWriter, null));
+            addBuiltin(new AnalysisMethodBuiltIn(imageLayerWriter, null, null));
             addBuiltin(new AnalysisFieldBuiltIn(imageLayerWriter, null));
             addBuiltin(new FieldLocationIdentityBuiltIn(imageLayerWriter, null));
             addBuiltin(new NamedLocationIdentityArrayBuiltIn());
@@ -224,12 +235,12 @@ public class ImageLayerSnapshotUtil {
 
     public static class GraphDecoder extends ObjectCopier.Decoder {
         @SuppressWarnings("this-escape")
-        public GraphDecoder(ClassLoader classLoader, ImageLayerLoader imageLayerLoader) {
+        public GraphDecoder(ClassLoader classLoader, ImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod) {
             super(classLoader);
             addBuiltin(new NodeClassBuiltIn());
             addBuiltin(new ImageHeapConstantBuiltIn(null, imageLayerLoader));
             addBuiltin(new AnalysisTypeBuiltIn(null, imageLayerLoader));
-            addBuiltin(new AnalysisMethodBuiltIn(null, imageLayerLoader));
+            addBuiltin(new AnalysisMethodBuiltIn(null, imageLayerLoader, analysisMethod));
             addBuiltin(new AnalysisFieldBuiltIn(null, imageLayerLoader));
             addBuiltin(new FieldLocationIdentityBuiltIn(null, imageLayerLoader));
             addBuiltin(new NamedLocationIdentityArrayBuiltIn());
@@ -304,11 +315,13 @@ public class ImageLayerSnapshotUtil {
     public static class AnalysisMethodBuiltIn extends ObjectCopier.Builtin {
         private final ImageLayerWriter imageLayerWriter;
         private final ImageLayerLoader imageLayerLoader;
+        private final AnalysisMethod analysisMethod;
 
-        protected AnalysisMethodBuiltIn(ImageLayerWriter imageLayerWriter, ImageLayerLoader imageLayerLoader) {
+        protected AnalysisMethodBuiltIn(ImageLayerWriter imageLayerWriter, ImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod) {
             super(AnalysisMethod.class, PointsToAnalysisMethod.class);
             this.imageLayerWriter = imageLayerWriter;
             this.imageLayerLoader = imageLayerLoader;
+            this.analysisMethod = analysisMethod;
         }
 
         @Override
@@ -334,7 +347,11 @@ public class ImageLayerSnapshotUtil {
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, String encoding, String encoded) {
-            return imageLayerLoader.getAnalysisMethod(Integer.parseInt(encoded));
+            int id = Integer.parseInt(encoded);
+            if (id == analysisMethod.getId()) {
+                return analysisMethod;
+            }
+            return imageLayerLoader.getAnalysisMethod(id);
         }
     }
 

@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -53,6 +54,9 @@ final class AnalysisMethodHandleAccessProvider implements MethodHandleAccessProv
     @Override
     public IntrinsicMethod lookupMethodHandleIntrinsic(ResolvedJavaMethod method) {
         ResolvedJavaMethod original = OriginalMethodProvider.getOriginalMethod(method);
+        if (original instanceof BaseLayerMethod baseLayerMethod) {
+            return baseLayerMethod.getMethodHandleIntrinsic();
+        }
         if (original == null) {
             return null;
         }
