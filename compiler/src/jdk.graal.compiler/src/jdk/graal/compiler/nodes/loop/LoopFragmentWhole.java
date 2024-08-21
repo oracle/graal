@@ -63,7 +63,7 @@ public class LoopFragmentWhole extends LoopFragment {
     @Override
     public NodeBitMap nodes() {
         if (nodes == null) {
-            CFGLoop<HIRBlock> loop = loop().loop();
+            CFGLoop<HIRBlock> loop = loop().getCFGLoop();
             NodeBitMap loopNodes = graph().createNodeBitMap();
             LoopFragment.computeNodes(loopNodes, graph(), loop(), LoopFragment.toHirBlocks(loop.getBlocks()), LoopFragment.toHirBlocks(loop.getLoopExits()));
             nodes = loopNodes;

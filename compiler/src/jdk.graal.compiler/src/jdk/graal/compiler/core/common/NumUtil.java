@@ -27,7 +27,6 @@ package jdk.graal.compiler.core.common;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.CodeUtil;
 
 /**
@@ -113,8 +112,15 @@ public class NumUtil {
         return (byte) v;
     }
 
-    public static byte safeToByte(int v) {
+    public static byte safeToByte(long v) {
         assert isByte(v);
+        return (byte) v;
+    }
+
+    public static byte safeToByteAE(long v) {
+        if (!isByte(v)) {
+            throw new ArithmeticException(String.format("%s is not a byte", v));
+        }
         return (byte) v;
     }
 
@@ -123,8 +129,16 @@ public class NumUtil {
         return (short) v;
     }
 
-    public static short safeToShort(int v) {
+    public static short safeToShort(long v) {
         assert isShort(v);
+        return (short) v;
+
+    }
+
+    public static short safeToShortAE(long v) {
+        if (!isShort(v)) {
+            throw new ArithmeticException(String.format("%s is not a short", v));
+        }
         return (short) v;
     }
 
@@ -135,6 +149,13 @@ public class NumUtil {
 
     public static int safeToInt(long v) {
         assert isInt(v);
+        return (int) v;
+    }
+
+    public static int safeToIntAE(long v) {
+        if (!isInt(v)) {
+            throw new ArithmeticException(String.format("%s is not an int", v));
+        }
         return (int) v;
     }
 
@@ -296,16 +317,6 @@ public class NumUtil {
             hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
         }
         return new String(hexChars, StandardCharsets.UTF_8);
-    }
-
-    public static long addExact(long a, long b, int bits) {
-        if (bits == 32) {
-            return Math.addExact((int) a, (int) b);
-        } else if (bits == 64) {
-            return Math.addExact(a, b);
-        } else {
-            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
-        }
     }
 
     /**
