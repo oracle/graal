@@ -323,7 +323,7 @@ public class StampFactory {
                 assert reference == null || !reference.getType().equals(resolvedJavaType);
                 TypeReference uncheckedType;
                 ResolvedJavaType elementalImplementor = elementalType.getSingleImplementor();
-                if (elementalImplementor != null && !elementalType.equals(elementalImplementor)) {
+                if (!resolvedJavaType.isArray() && elementalImplementor != null && !elementalType.equals(elementalImplementor)) {
                     ResolvedJavaType implementor = elementalImplementor;
                     ResolvedJavaType t = resolvedJavaType;
                     while (t.isArray()) {

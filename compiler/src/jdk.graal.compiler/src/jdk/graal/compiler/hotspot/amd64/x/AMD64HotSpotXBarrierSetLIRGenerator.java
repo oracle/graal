@@ -42,7 +42,6 @@ import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
-import jdk.graal.compiler.hotspot.amd64.AMD64HotSpotBackend;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -88,7 +87,7 @@ public class AMD64HotSpotXBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
      * required.
      */
     public static void emitBarrier(CompilationResultBuilder crb, AMD64MacroAssembler masm, Label success, Register resultReg, GraalHotSpotVMConfig config, ForeignCallLinkage callTarget,
-                    AMD64Address address, LIRInstruction op, AMD64HotSpotBackend.HotSpotFrameContext frameContext) {
+                    AMD64Address address, LIRInstruction op) {
         assert !resultReg.equals(address.getBase()) && !resultReg.equals(address.getIndex()) : Assertions.errorMessage(resultReg, address);
 
         final Label entryPoint = new Label();
@@ -104,10 +103,6 @@ public class AMD64HotSpotXBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
         crb.getLIR().addSlowPath(op, () -> {
             masm.bind(entryPoint);
 
-            if (frameContext != null) {
-                frameContext.rawEnter(crb);
-            }
-
             CallingConvention cc = callTarget.getOutgoingCallingConvention();
             AMD64Address cArg0 = (AMD64Address) crb.asAddress(cc.getArgument(0));
             AMD64Address cArg1 = (AMD64Address) crb.asAddress(cc.getArgument(1));
@@ -117,10 +112,6 @@ public class AMD64HotSpotXBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
             masm.movq(cArg1, resultReg);
             AMD64Call.directCall(crb, masm, callTarget, null, false, null);
             masm.movq(resultReg, cArg0);
-
-            if (frameContext != null) {
-                frameContext.rawLeave(crb);
-            }
 
             // Return to inline code
             masm.jmp(continuation);

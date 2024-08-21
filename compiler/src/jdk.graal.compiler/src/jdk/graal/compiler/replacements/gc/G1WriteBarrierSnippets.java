@@ -64,7 +64,6 @@ import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.word.Word;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Implementation of the write barriers for the G1 garbage collector.
@@ -365,10 +364,6 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     protected abstract ForeignCallDescriptor validateObjectCallDescriptor();
 
     protected abstract ForeignCallDescriptor printfCallDescriptor();
-
-    protected abstract ResolvedJavaType referenceType();
-
-    protected abstract long referentOffset();
 
     protected boolean isTracingActive(int traceStartCycle) {
         return traceStartCycle > 0 && ((Pointer) WordFactory.pointer(gcTotalCollectionsAddress())).readInt(0) > traceStartCycle;

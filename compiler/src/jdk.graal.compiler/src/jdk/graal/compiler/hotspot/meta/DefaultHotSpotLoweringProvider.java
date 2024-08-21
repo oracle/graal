@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
@@ -191,6 +192,7 @@ import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.nodes.spi.StampProvider;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
 import jdk.graal.compiler.replacements.IsArraySnippets;
@@ -246,6 +248,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     /**
      * Service provider interface for discovering {@link Extension}s.
      */
+    @LibGraalService
     public interface Extensions {
         /**
          * Gets the extensions provided by this object.
@@ -322,7 +325,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         assertionSnippets = new AssertionSnippets.Templates(options, providers);
         logSnippets = new LogSnippets.Templates(options, providers);
         arraycopySnippets = arraycopySnippetTemplates;
-        identityHashCodeSnippets = new IdentityHashCodeSnippets.Templates(new HotSpotHashCodeSnippets(), options, providers, HotSpotReplacementsUtil.MARK_WORD_LOCATION);
         isArraySnippets = new IsArraySnippets.Templates(new HotSpotIsArraySnippets(), options, providers);
         objectCloneSnippets = new ObjectCloneSnippets.Templates(options, providers);
         foreignCallSnippets = new ForeignCallSnippets.Templates(options, providers);
@@ -349,6 +351,11 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 ext.initialize(providers, options, config, (HotSpotHostForeignCallsProvider) foreignCalls, factories);
             }
         }
+    }
+
+    @Override
+    protected IdentityHashCodeSnippets.Templates createIdentityHashCodeSnippets(OptionValues options, Providers providers) {
+        return new IdentityHashCodeSnippets.Templates(new HotSpotHashCodeSnippets(), options, providers, HotSpotReplacementsUtil.MARK_WORD_LOCATION);
     }
 
     public HotSpotAllocationSnippets.Templates getAllocationSnippets() {
@@ -1145,5 +1152,10 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
     private void lowerRegisterFinalizer(RegisterFinalizerNode n, LoweringTool tool) {
         registerFinalizerSnippets.lower(n, tool);
+    }
+
+    @Override
+    public GraalHotSpotVMConfig getVMConfig() {
+        return runtime.getVMConfig();
     }
 }

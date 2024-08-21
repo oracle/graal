@@ -34,7 +34,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -61,6 +60,7 @@ import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -164,8 +164,6 @@ public class CompileQueue {
     protected final List<Policy> policies;
     protected CompletionExecutor executor;
     protected final ConcurrentMap<HostedMethod, CompileTask> compilations;
-    /** Collect referenced base layer methods. They will be registered as external symbols. */
-    protected final Set<HostedMethod> baseLayerMethods;
     protected final RuntimeConfiguration runtimeConfig;
     protected final MetaAccessProvider metaAccess;
     private Suites regularSuites = null;
@@ -182,6 +180,14 @@ public class CompileQueue {
 
     private final boolean printMethodHistogram = NativeImageOptions.PrintMethodHistogram.getValue();
     private final boolean optionAOTTrivialInline = SubstrateOptions.AOTTrivialInline.getValue();
+
+    /**
+     * Indicates we need to force compilation of all possible methods so that all calls to the prior
+     * layers have a target.
+     *
+     * The criteria for this will become more nuanced as part of GR-57021.
+     */
+    private final boolean layeredForceCompilation = ImageLayerBuildingSupport.buildingSharedLayer() && !SubstrateOptions.UseSharedLayerGraphs.getValue();
 
     public record UnpublishedTrivialMethods(CompilationGraph unpublishedGraph, boolean newlyTrivial) {
     }
@@ -372,12 +378,6 @@ public class CompileQueue {
         this.featureHandler = featureHandler;
         this.graphTransplanter = createGraphTransplanter();
         this.defaultParseHooks = new ParseHooks(this);
-
-        if (universe.hostVM().useBaseLayer()) {
-            this.baseLayerMethods = ConcurrentHashMap.newKeySet();
-        } else {
-            this.baseLayerMethods = null;
-        }
 
         callForReplacements(debug, runtimeConfig);
     }
@@ -637,24 +637,21 @@ public class CompileQueue {
                      */
                     continue;
                 }
+                if (layeredForceCompilation || layeredForceCompilation(hMethod)) {
+                    // when layered force compilation is enabled we try to parse all graphs
+                    if (method.wrapped.getAnalyzedGraph() != null) {
+                        ensureParsed(method, null, new EntryPointReason());
+                    }
+                    continue;
+                }
                 if (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod) ||
                                 hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isSimplyImplementationInvoked()) {
-                    if (compiledInPriorLayer(hMethod)) {
-                        baseLayerMethods.add(hMethod);
-                    }
-                    if (hasGraph(hMethod)) {
-                        ensureParsed(hMethod, null, new EntryPointReason());
-                    }
+                    ensureParsed(hMethod, null, new EntryPointReason());
                 }
                 if (hMethod.wrapped.isVirtualRootMethod()) {
                     for (HostedMethod impl : hMethod.getImplementations()) {
-                        if (compiledInPriorLayer(impl)) {
-                            baseLayerMethods.add(impl);
-                        }
                         VMError.guarantee(impl.wrapped.isImplementationInvoked());
-                        if (hasGraph(impl)) {
-                            ensureParsed(impl, null, new EntryPointReason());
-                        }
+                        ensureParsed(impl, null, new EntryPointReason());
                     }
                 }
             }
@@ -664,22 +661,12 @@ public class CompileQueue {
         for (SubstrateForeignCallLinkage linkage : foreignCallsProvider.getForeignCalls().values()) {
             HostedMethod method = (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess());
             if (method.wrapped.isDirectRootMethod() && method.wrapped.isSimplyImplementationInvoked()) {
-                if (compiledInPriorLayer(method)) {
-                    baseLayerMethods.add(method);
-                }
-                if (hasGraph(method)) {
-                    ensureParsed(method, null, new EntryPointReason());
-                }
+                ensureParsed(method, null, new EntryPointReason());
             }
             if (method.wrapped.isVirtualRootMethod()) {
                 for (HostedMethod impl : method.getImplementations()) {
-                    if (compiledInPriorLayer(impl)) {
-                        baseLayerMethods.add(impl);
-                    }
                     VMError.guarantee(impl.wrapped.isImplementationInvoked());
-                    if (hasGraph(impl)) {
-                        ensureParsed(impl, null, new EntryPointReason());
-                    }
+                    ensureParsed(impl, null, new EntryPointReason());
                 }
             }
         }
@@ -938,33 +925,40 @@ public class CompileQueue {
                     continue;
                 }
 
-                if (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod) ||
-                                hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isSimplyImplementationInvoked()) {
-                    if (compiledInPriorLayer(hMethod)) {
-                        baseLayerMethods.add(hMethod);
-                    }
-                    if (canBeCompiled(hMethod)) {
+                if (layeredForceCompilation || layeredForceCompilation(hMethod)) {
+                    /*
+                     * when layeredForceCompilation is enabled we try to parse all graphs.
+                     */
+                    if (method.compilationInfo.getCompilationGraph() != null) {
                         ensureCompiled(hMethod, new EntryPointReason());
                     }
+                    continue;
+                }
+
+                if (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod) ||
+                                hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isSimplyImplementationInvoked()) {
+                    ensureCompiled(hMethod, new EntryPointReason());
                 }
                 if (hMethod.wrapped.isVirtualRootMethod()) {
                     MultiMethod.MultiMethodKey key = hMethod.getMultiMethodKey();
                     assert key != DEOPT_TARGET_METHOD && key != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD : "unexpected method as virtual root " + hMethod;
                     for (HostedMethod impl : hMethod.getImplementations()) {
-                        if (compiledInPriorLayer(impl)) {
-                            baseLayerMethods.add(impl);
-                        }
                         VMError.guarantee(impl.wrapped.isImplementationInvoked());
-                        if (canBeCompiled(impl)) {
-                            ensureCompiled(impl, new EntryPointReason());
-                        }
+                        ensureCompiled(impl, new EntryPointReason());
                     }
-                }
-                if (hMethod.wrapped.isIntrinsicMethod() && hMethod.wrapped.isInBaseLayer()) {
-                    baseLayerMethods.add(hMethod);
                 }
             }
         }
+    }
+
+    private static boolean layeredForceCompilation(HostedMethod hMethod) {
+        /*
+         * If a method from a base layer interface is not compiled in a prior layer but is in the
+         * vtable of a type from a new layer, the method needs to be compiled as there would be a
+         * missing symbol otherwise.
+         */
+        return hMethod.wrapped.isInBaseLayer() && !hMethod.isCompiledInPriorLayer() && hMethod.getDeclaringClass().isInterface() &&
+                        Arrays.stream(hMethod.getDeclaringClass().getSubTypes()).anyMatch(t -> !t.getWrapped().isInBaseLayer() && hMethod.isInVirtualMethodTable(t));
     }
 
     public void scheduleDeoptTargets() {
@@ -982,7 +976,19 @@ public class CompileQueue {
         }
     }
 
+    private static boolean parseInCurrentLayer(HostedMethod method) {
+        var hasAnalyzedGraph = method.wrapped.getAnalyzedGraph() != null;
+        if (!hasAnalyzedGraph) {
+            assert method.isCompiledInPriorLayer() || method.compilationInfo.inParseQueue.get() : method;
+        }
+        return hasAnalyzedGraph;
+    }
+
     protected void ensureParsed(HostedMethod method, HostedMethod callerMethod, CompileReason reason) {
+        if (!parseInCurrentLayer(method)) {
+            return;
+        }
+
         if (!(NativeImageOptions.AllowFoldMethods.getValue() || method.getAnnotation(Fold.class) == null ||
                         (callerMethod != null && metaAccess.lookupJavaType(GeneratedFoldInvocationPlugin.class).isAssignableFrom(callerMethod.getDeclaringClass())))) {
             throw VMError.shouldNotReachHere("Parsing method annotated with @" + Fold.class.getSimpleName() + ": " +
@@ -1070,13 +1076,8 @@ public class CompileQueue {
     private void ensureParsed(HostedMethod method, CompileReason reason, CallTargetNode targetNode, HostedMethod invokeTarget, boolean isIndirect) {
         if (isIndirect) {
             for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
-                if (compiledInPriorLayer(invokeImplementation)) {
-                    baseLayerMethods.add(invokeImplementation);
-                }
                 handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
-                if (hasGraph(invokeImplementation)) {
-                    ensureParsed(invokeImplementation, method, new VirtualCallReason(method, invokeImplementation, reason));
-                }
+                ensureParsed(invokeImplementation, method, new VirtualCallReason(method, invokeImplementation, reason));
             }
         } else {
             /*
@@ -1090,27 +1091,10 @@ public class CompileQueue {
              * implementation invoked status.
              */
             if (invokeTarget.wrapped.isSimplyImplementationInvoked() || invokeTarget.wrapped.isInBaseLayer()) {
-                if (compiledInPriorLayer(invokeTarget)) {
-                    baseLayerMethods.add(invokeTarget);
-                }
                 handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
-                if (hasGraph(invokeTarget)) {
-                    ensureParsed(invokeTarget, method, new DirectCallReason(method, reason));
-                }
+                ensureParsed(invokeTarget, method, new DirectCallReason(method, reason));
             }
         }
-    }
-
-    private static boolean compiledInPriorLayer(HostedMethod method) {
-        return method.isCompiledInPriorLayer() || (!SubstrateOptions.UseSharedLayerGraphs.getValue() && method.wrapped.isInBaseLayer());
-    }
-
-    private static boolean hasGraph(HostedMethod method) {
-        return !method.wrapped.isInBaseLayer() || method.wrapped.getAnalyzedGraph() != null;
-    }
-
-    private static boolean canBeCompiled(HostedMethod method) {
-        return !method.wrapped.isInBaseLayer() || method.compilationInfo.getCompilationGraph() != null;
     }
 
     @SuppressWarnings("unused")
@@ -1181,6 +1165,13 @@ public class CompileQueue {
     }
 
     protected void ensureCompiled(HostedMethod method, CompileReason reason) {
+        if (method.isCompiledInPriorLayer()) {
+            /*
+             * Since this method was compiled in a prior layer we should not compile it again.
+             */
+            return;
+        }
+
         CompilationInfo compilationInfo = method.compilationInfo;
         assert method.getMultiMethodKey() != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
 
@@ -1353,20 +1344,10 @@ public class CompileQueue {
             if (infopoint instanceof Call call) {
                 HostedMethod callTarget = (HostedMethod) call.target;
                 if (call.direct || isDynamicallyResolvedCall(result, call)) {
-                    if (compiledInPriorLayer(callTarget)) {
-                        baseLayerMethods.add(callTarget);
-                    }
-                    if (canBeCompiled(callTarget)) {
-                        ensureCompiled(callTarget, new DirectCallReason(method, reason));
-                    }
+                    ensureCompiled(callTarget, new DirectCallReason(method, reason));
                 } else if (callTarget != null && callTarget.getImplementations() != null) {
                     for (HostedMethod impl : callTarget.getImplementations()) {
-                        if (compiledInPriorLayer(impl)) {
-                            baseLayerMethods.add(impl);
-                        }
-                        if (canBeCompiled(impl)) {
-                            ensureCompiled(impl, new VirtualCallReason(method, callTarget, reason));
-                        }
+                        ensureCompiled(impl, new VirtualCallReason(method, callTarget, reason));
                     }
                 }
             }
@@ -1390,19 +1371,10 @@ public class CompileQueue {
                 if (constant instanceof SubstrateMethodPointerConstant) {
                     MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
                     HostedMethod referencedMethod = (HostedMethod) pointer.getMethod();
-                    if (compiledInPriorLayer(referencedMethod)) {
-                        baseLayerMethods.add(referencedMethod);
-                    }
-                    if (canBeCompiled(referencedMethod)) {
-                        ensureCompiled(referencedMethod, new MethodPointerConstantReason(method, referencedMethod, reason));
-                    }
+                    ensureCompiled(referencedMethod, new MethodPointerConstantReason(method, referencedMethod, reason));
                 }
             }
         }
-    }
-
-    public Set<HostedMethod> getBaseLayerMethods() {
-        return baseLayerMethods;
     }
 
     public Map<HostedMethod, CompilationResult> getCompilationResults() {

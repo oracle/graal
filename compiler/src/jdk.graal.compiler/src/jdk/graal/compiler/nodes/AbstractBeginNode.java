@@ -145,6 +145,14 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
         return hasSpeculationFence;
     }
 
+    /**
+     * Determines if the optimizer is allowed to move guards from the current begin to earlier
+     * points in control flow.
+     */
+    public boolean mustNotMoveAttachedGuards() {
+        return false;
+    }
+
     private static class BlockNodeIterator implements Iterator<FixedNode> {
 
         private FixedNode current;

@@ -26,6 +26,7 @@ package jdk.graal.compiler.truffle.host;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 
@@ -151,6 +152,7 @@ public abstract class TruffleHostEnvironment {
         return lookup.lookup(relativeTo);
     }
 
+    @LibGraalService
     public interface Lookup {
 
         TruffleHostEnvironment lookup(ResolvedJavaType type);

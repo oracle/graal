@@ -441,6 +441,10 @@ class GraalVMSvmMacro(GraalVmComponent):
     pass
 
 
+class GraalVmSvmTool(GraalVmComponent):
+    pass
+
+
 class GraalVmJdkComponent(GraalVmComponent):
     pass
 

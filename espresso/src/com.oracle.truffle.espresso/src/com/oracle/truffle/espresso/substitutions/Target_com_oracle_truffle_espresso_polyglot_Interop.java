@@ -624,7 +624,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         private StaticObject toGuestBigInteger(Meta meta, BigInteger bigInteger) {
             byte[] bytes = bigInteger.toByteArray();
             StaticObject guestBigInteger = getAllocator().createNew(meta.java_math_BigInteger);
-            meta.java_math_BigInteger_init.invokeDirect(guestBigInteger, StaticObject.wrap(bytes, meta));
+            meta.java_math_BigInteger_init.invokeDirectSpecial(guestBigInteger, StaticObject.wrap(bytes, meta));
             return guestBigInteger;
         }
     }

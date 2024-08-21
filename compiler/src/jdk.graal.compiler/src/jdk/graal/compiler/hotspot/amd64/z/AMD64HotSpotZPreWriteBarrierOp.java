@@ -47,7 +47,7 @@ public class AMD64HotSpotZPreWriteBarrierOp extends AMD64HotSpotZStoreBarrieredO
     public static final LIRInstructionClass<AMD64HotSpotZPreWriteBarrierOp> TYPE = LIRInstructionClass.create(AMD64HotSpotZPreWriteBarrierOp.class);
 
     @Alive({REG, ILLEGAL}) protected Value writeValue;
-    private final boolean isInitMemory;
+    private final boolean emitPreWriteBarrier;
     @State protected LIRFrameState state;
 
     protected AMD64HotSpotZPreWriteBarrierOp(Value writeValue,
@@ -58,16 +58,16 @@ public class AMD64HotSpotZPreWriteBarrierOp extends AMD64HotSpotZStoreBarrieredO
                     ForeignCallLinkage callTarget,
                     AllocatableValue result,
                     StoreKind storeKind,
-                    boolean isInitMemory,
+                    boolean emitPreWriteBarrier,
                     LIRFrameState state) {
         super(TYPE, result, loadAddress, tmp, tmp2, config, callTarget, storeKind);
         this.writeValue = writeValue;
-        this.isInitMemory = isInitMemory;
+        this.emitPreWriteBarrier = emitPreWriteBarrier;
         this.state = state;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        emitStoreBarrier(crb, masm, asRegister(result), isIllegal(writeValue) ? null : asRegister(writeValue), isInitMemory, state);
+        emitStoreBarrier(crb, masm, asRegister(result), isIllegal(writeValue) ? null : asRegister(writeValue), emitPreWriteBarrier, state);
     }
 }

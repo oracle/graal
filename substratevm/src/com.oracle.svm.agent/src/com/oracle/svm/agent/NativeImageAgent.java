@@ -75,6 +75,7 @@ import com.oracle.svm.configure.filters.HierarchyFilterNode;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
@@ -85,6 +86,8 @@ import com.oracle.svm.jvmtiagentbase.Support;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
+
+import jdk.graal.compiler.phases.common.LazyValue;
 
 public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHandleSet> {
     private static final String AGENT_NAME = "native-image-agent";
@@ -338,7 +341,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                         tracingResultWriter = new ConfigurationWithOriginsWriter(configWithOriginsTracer);
                     }
                 } else {
-                    Path[] predefinedClassDestDirs = {Files.createDirectories(configOutputDirPath.resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR))};
+                    List<LazyValue<Path>> predefinedClassDestDirs = List.of(PredefinedClassesConfigurationParser.directorySupplier(configOutputDirPath));
                     Function<IOException, Exception> handler = e -> {
                         if (e instanceof NoSuchFileException) {
                             warn("file " + ((NoSuchFileException) e).getFile() + " for merging could not be found, skipping");
@@ -543,9 +546,11 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 throw unexpectedlyModified(configOutputLockFilePath);
             }
             expectUnmodified(configOutputLockFilePath);
-            if (!mostRecent.equals(expectedConfigModifiedBefore)) {
-                throw unexpectedlyModified(configOutputDirPath);
-            }
+            /*
+             * Checking for the modification of the whole configuration directory is not possible
+             * since predefined classes configuration outputs folders and files during the agent
+             * run.
+             */
 
             Path[] targetFilePaths = new Path[tempFilePaths.size()];
             for (int i = 0; i < tempFilePaths.size(); i++) {

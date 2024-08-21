@@ -33,7 +33,6 @@ import java.util.regex.PatternSyntaxException;
 
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.OptionOrigin;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.util.LogUtils;
@@ -83,8 +82,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.showNewline();
                 nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, false);
                 nativeImage.showNewline();
-                nativeImage.optionRegistry.showOptions(null, true, nativeImage::showMessage);
-                nativeImage.showNewline();
                 System.exit(ExitStatus.OK.getValue());
                 return true;
             case "--version":
@@ -98,8 +95,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 singleArgumentCheck(args, headArg);
                 nativeImage.showMessage(HELP_EXTRA_TEXT);
                 nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, true);
-                nativeImage.showNewline();
-                nativeImage.optionRegistry.showOptions(OptionUtils.MacroOptionKind.Macro, true, nativeImage::showMessage);
                 nativeImage.showNewline();
                 System.exit(ExitStatus.OK.getValue());
                 return true;

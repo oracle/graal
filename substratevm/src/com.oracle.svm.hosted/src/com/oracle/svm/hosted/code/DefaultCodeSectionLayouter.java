@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot;
+package com.oracle.svm.hosted.code;
 
-import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import java.util.List;
+import java.util.Map;
 
-public interface HotSpotCodeCacheListener {
-    /**
-     * Notifies this object on successful install into the CodeCache.
-     *
-     * @param codeCache the code cache into which the code was installed
-     * @param installedCode the code that was installed
-     * @param compiledCode the compiled code from which {@code installedCode} was produced
-     */
-    default void notifyInstall(HotSpotCodeCacheProvider codeCache, InstalledCode installedCode, CompiledCode compiledCode) {
+import com.oracle.svm.hosted.meta.HostedMethod;
+import jdk.graal.compiler.code.CompilationResult;
 
+public class DefaultCodeSectionLayouter implements CodeSectionLayouter {
+    @Override
+    public List<HostedMethod> layout(Map<HostedMethod, CompilationResult> compilations) {
+        return compilations.keySet().stream().toList();
     }
 }

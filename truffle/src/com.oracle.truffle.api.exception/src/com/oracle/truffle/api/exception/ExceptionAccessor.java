@@ -286,7 +286,7 @@ final class ExceptionAccessor extends Accessor {
         @Override
         public boolean assertGuestObject(Object guestObject) {
             if (guestObject == null) {
-                throw new AssertionError("Guest object must be null.");
+                throw new AssertionError("Guest object must not be null.");
             }
             InteropLibrary interop = InteropLibrary.getUncached();
             if (interop.hasExecutableName(guestObject)) {

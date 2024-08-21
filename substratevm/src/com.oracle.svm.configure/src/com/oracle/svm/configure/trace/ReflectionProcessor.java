@@ -37,6 +37,7 @@ import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemb
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.configure.config.TypeConfiguration;
@@ -78,12 +79,16 @@ class ReflectionProcessor extends AbstractProcessor {
                 expectSize(args, 2);
                 String module = (String) args.get(0);
                 String resource = (String) args.get(1);
-                resourceConfiguration.addGlobPattern(condition, resource, module);
+                if (!AccessAdvisor.shouldIgnoreResourceLookup(lazyValue(resource))) {
+                    resourceConfiguration.addGlobPattern(condition, resource, module);
+                }
                 return;
             }
             case "getResource", "getSystemResource", "getSystemResourceAsStream", "getResources", "getSystemResources" -> {
                 String literal = singleElement(args);
-                resourceConfiguration.addGlobPattern(condition, literal, null);
+                if (!AccessAdvisor.shouldIgnoreResourceLookup(lazyValue(literal))) {
+                    resourceConfiguration.addGlobPattern(condition, literal, null);
+                }
                 return;
             }
         }
@@ -203,8 +208,10 @@ class ReflectionProcessor extends AbstractProcessor {
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
                     parameterTypes = Collections.emptyList();
                 }
-                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), declaration, accessibility);
-                if (!clazzOrDeclaringClass.equals(clazz)) {
+                if (accessibility == ConfigurationMemberAccessibility.ACCESSED) {
+                    configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), declaration, accessibility);
+                }
+                if (accessibility == ConfigurationMemberAccessibility.QUERIED || (!trackReflectionMetadata && !clazzOrDeclaringClass.equals(clazz))) {
                     configuration.getOrCreateType(condition, clazz);
                 }
                 break;
@@ -225,7 +232,10 @@ class ReflectionProcessor extends AbstractProcessor {
                 }
                 String signature = SignatureUtil.toInternalSignature(parameterTypes);
                 assert clazz.equals(clazzOrDeclaringClass) : "Constructor can only be accessed via declaring class";
-                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, declaration, accessibility);
+                ConfigurationType configurationType = configuration.getOrCreateType(condition, clazzOrDeclaringClass);
+                if (accessibility == ConfigurationMemberAccessibility.ACCESSED) {
+                    configurationType.addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, declaration, accessibility);
+                }
                 break;
             }
 
@@ -284,7 +294,7 @@ class ReflectionProcessor extends AbstractProcessor {
     @SuppressWarnings("unchecked")
     private static ConfigurationTypeDescriptor descriptorForClass(Object clazz) {
         if (clazz instanceof List<?>) {
-            return new ProxyConfigurationTypeDescriptor(((List<String>) clazz).toArray(String[]::new));
+            return new ProxyConfigurationTypeDescriptor((List<String>) clazz);
         } else {
             return new NamedConfigurationTypeDescriptor((String) clazz);
         }

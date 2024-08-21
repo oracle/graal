@@ -280,7 +280,7 @@ public class ReadNode extends FloatableAccessNode
         }
         if (locationIdentity instanceof CanonicalizableLocation) {
             CanonicalizableLocation canonicalize = (CanonicalizableLocation) locationIdentity;
-            ValueNode result = canonicalize.canonicalizeRead(read, object, offset, tool);
+            ValueNode result = canonicalize.canonicalizeRead(read, object, offset, view, tool);
             assert result != null;
             assert result.stamp(view).isCompatible(read.stamp(view)) : Assertions.errorMessageContext("result", result, "read", read);
             return result;

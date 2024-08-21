@@ -73,15 +73,8 @@ public class Container {
         return ImageSingletons.lookup(Container.class);
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean isInitialized() {
-        return STATE.get().readWord(0) != State.UNINITIALIZED;
-    }
-
     /**
-     * Determines whether the image runs containerized, potentially initializing container support
-     * if not yet initialized. If initialization is not desired, calls to this method must be
-     * guarded by {@link #isInitialized()}.
+     * Determines whether the image runs containerized.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isContainerized() {
@@ -90,16 +83,15 @@ public class Container {
         }
 
         UnsignedWord value = STATE.get().readWord(0);
-        if (value == State.UNINITIALIZED) {
-            value = initialize();
-        }
-
         assert value == State.CONTAINERIZED || value == State.NOT_CONTAINERIZED;
         return value == State.CONTAINERIZED;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static UnsignedWord initialize() {
+    public static void initialize() {
+        if (!isSupported()) {
+            return;
+        }
         Pointer statePtr = STATE.get();
         UnsignedWord value = statePtr.compareAndSwapWord(0, State.UNINITIALIZED, State.INITIALIZING, LocationIdentity.ANY_LOCATION);
         if (value == State.UNINITIALIZED) {
@@ -126,12 +118,11 @@ public class Container {
         VMError.guarantee(value != State.ERROR_LIBCONTAINER_TOO_OLD, "native-image tries to use a libsvm_container version that is too old");
         VMError.guarantee(value != State.ERROR_LIBCONTAINER_TOO_NEW, "native-image tries to use a libsvm_container version that is too new");
         VMError.guarantee(value == State.CONTAINERIZED || value == State.NOT_CONTAINERIZED, "unexpected libsvm_container initialize result");
-        return value;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getActiveProcessorCount() {
-        VMError.guarantee(isInitialized() && isContainerized());
+        VMError.guarantee(isContainerized());
 
         long currentMs = System.currentTimeMillis();
         if (currentMs > activeProcessorCountTimeoutMs) {
@@ -143,13 +134,13 @@ public class Container {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getCachedActiveProcessorCount() {
-        VMError.guarantee(isInitialized() && isContainerized());
+        VMError.guarantee(isContainerized());
         return cachedActiveProcessorCount;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord getPhysicalMemory() {
-        VMError.guarantee(isInitialized() && isContainerized());
+        VMError.guarantee(isContainerized());
 
         long currentMs = System.currentTimeMillis();
         if (currentMs > physicalMemoryTimeoutMs) {
@@ -161,13 +152,13 @@ public class Container {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public UnsignedWord getCachedPhysicalMemory() {
-        VMError.guarantee(isInitialized() && isContainerized());
+        VMError.guarantee(isContainerized());
         return cachedPhysicalMemorySize;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getMemoryLimitInBytes() {
-        VMError.guarantee(isInitialized() && isContainerized());
+        VMError.guarantee(isContainerized());
 
         long currentMs = System.currentTimeMillis();
         if (currentMs > memoryLimitInBytesTimeoutMs) {
@@ -179,7 +170,7 @@ public class Container {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public long getCachedMemoryLimitInBytes() {
-        VMError.guarantee(isInitialized() && isContainerized());
+        VMError.guarantee(isContainerized());
         return cachedMemoryLimitInBytes;
     }
 

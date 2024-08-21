@@ -178,13 +178,6 @@
     }
   },
 
-  gen_zgc_mode:: {
-    platform+:: "-gen-zgc",
-    environment+: {
-      "JVM_CONFIG"+: "-gen-zgc",
-    }
-  },
-
   serialgc_mode:: {
     platform+:: "-serialgc",
     environment+: {

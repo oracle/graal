@@ -84,7 +84,7 @@ public final class CFunctionCallStubMethod extends CCallStubMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
-        assert purpose != Purpose.PREPARE_RUNTIME_COMPILATION || allowRuntimeCompilation();
+        VMError.guarantee(purpose != Purpose.PREPARE_RUNTIME_COMPILATION || allowRuntimeCompilation(), "Cannot compile cfunction transitions into runtime compiled methods");
 
         return super.buildGraph(debug, method, providers, purpose);
     }

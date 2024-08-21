@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
@@ -147,21 +148,24 @@ public class HeapBreakdownProvider {
             long metadataSize = objectLayout.getArraySize(JavaKind.Byte, metadataByteLength, true);
             addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "reflection metadata", "#glossary-reflection-metadata"), metadataSize, 1);
         }
-        /* Extract byte[] for resources. */
-        long resourcesByteArraySize = 0;
-        int resourcesByteArrayCount = 0;
-        for (ConditionalRuntimeValue<ResourceStorageEntryBase> resourceList : Resources.singleton().resources()) {
-            if (resourceList.getValueUnconditionally().hasData()) {
-                for (byte[] resource : resourceList.getValueUnconditionally().getData()) {
-                    resourcesByteArraySize += objectLayout.getArraySize(JavaKind.Byte, resource.length, true);
-                    resourcesByteArrayCount++;
+        ProgressReporter reporter = ProgressReporter.singleton();
+        /* GR-57350: This condition can be removed once resources are adapted for Layered Images */
+        if (!ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            /* Extract byte[] for resources. */
+            long resourcesByteArraySize = 0;
+            int resourcesByteArrayCount = 0;
+            for (ConditionalRuntimeValue<ResourceStorageEntryBase> resourceList : Resources.singleton().resources()) {
+                if (resourceList.getValueUnconditionally().hasData()) {
+                    for (byte[] resource : resourceList.getValueUnconditionally().getData()) {
+                        resourcesByteArraySize += objectLayout.getArraySize(JavaKind.Byte, resource.length, true);
+                        resourcesByteArrayCount++;
+                    }
                 }
             }
-        }
-        ProgressReporter reporter = ProgressReporter.singleton();
-        reporter.recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteArraySize);
-        if (resourcesByteArraySize > 0) {
-            addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "embedded resources", "#glossary-embedded-resources"), resourcesByteArraySize, resourcesByteArrayCount);
+            reporter.recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteArraySize);
+            if (resourcesByteArraySize > 0) {
+                addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "embedded resources", "#glossary-embedded-resources"), resourcesByteArraySize, resourcesByteArrayCount);
+            }
         }
         /* Extract byte[] for graph encodings. */
         if (graphEncodingByteLength >= 0) {

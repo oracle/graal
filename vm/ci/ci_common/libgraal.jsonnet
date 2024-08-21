@@ -39,7 +39,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     # Tests that dropping libgraal into OracleJDK works (see mx_vm_gate.py)
     downloads +: if utils.contains(self.name, 'labsjdk-21') then {"ORACLEJDK_JAVA_HOME" : graal_common.jdks_data["oraclejdk21"]} else {}
   },
-  libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
+  libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC']),
+  libgraal_compiler_singlegen_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
   # enable economy mode building with the -Ob flag
   libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']) + {
     environment+: {
@@ -71,7 +72,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
   # -ea assertions are enough to keep execution time reasonable
   libgraal_truffle: self.libgraal_truffle_base(),
-  libgraal_truffle_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
+  libgraal_truffle_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC']),
+  libgraal_truffle_singlegen_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC', '-XX:-ZGenerational']),
   # enable economy mode building with the -Ob flag
   libgraal_truffle_quickbuild: self.libgraal_truffle_base(['-Ob']),
 
@@ -80,6 +82,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
   # Gate for guestgraal
   guestgraal_compiler:: {
+    local pathsep = if self.os == "windows" then ";" else ":",
     local guestgraal_env = std.strReplace(vm.libgraal_env, "libgraal", "guestgraal"),
     # LibGraal gate tasks currently expected to work
     local tasks = [
@@ -97,9 +100,14 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
     run+: [
       ['mx', '--env', guestgraal_env, 'build'],
+      ['set-export', 'JNIUTILS_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'JNIUTILS']],
+      ['set-export', 'GUESTGRAAL_LIBRARY_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'GUESTGRAAL_LIBRARY']],
+    ] + (if vm.edition == "ee" then [
+      ['set-export', 'ENTERPRISE_GUESTGRAAL_LIBRARY_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'ENTERPRISE_GUESTGRAAL_LIBRARY']]
+    ] else []) + [
       ['mx', '--env', guestgraal_env, 'native-image', '-J-esa', '-J-ea', '-esa', '-ea',
-       '-p', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'JNIUTILS'],
-       '-cp', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'GUESTGRAAL_LIBRARY'],
+       '-p', '$JNIUTILS_PATH',
+       '-cp', '$GUESTGRAAL_LIBRARY_PATH' + pathsep + '$ENTERPRISE_GUESTGRAAL_LIBRARY_PATH',
        '-H:+UnlockExperimentalVMOptions', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases'],
       ['mx', '--env', guestgraal_env, 'gate', '--task', std.join(",", tasks), '--extra-vm-argument=-XX:JVMCILibPath=$PWD/' + vm.vm_dir],
     ],
@@ -119,11 +127,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
     "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {},
     "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
-  } + if repo_config.graalvm_edition == "ce" then
-  {
-    # GuestGraal on EE is still under construction
     "gate-vm-guestgraal_compiler-labsjdk-latest-linux-amd64": {}
-  } else {},
+  },
 
   local gates = g.as_gates(gate_jobs),
 
@@ -181,10 +186,9 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
       "libgraal_compiler",
       "libgraal_truffle",
       "libgraal_compiler_quickbuild",
-      "libgraal_truffle_quickbuild"
-    ] +
-    # GuestGraal on EE is still under construction
-    (if repo_config.graalvm_edition == "ce" then ["guestgraal_compiler"] else [])
+      "libgraal_truffle_quickbuild",
+      "guestgraal_compiler"
+    ]
   ],
 
   local adjust_windows_version(gate) = (
@@ -211,6 +215,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     for task in [
       "libgraal_compiler_zgc",
       "libgraal_truffle_zgc",
+      "libgraal_compiler_singlegen_zgc",
+      "libgraal_truffle_singlegen_zgc",
     ]
   ],
 

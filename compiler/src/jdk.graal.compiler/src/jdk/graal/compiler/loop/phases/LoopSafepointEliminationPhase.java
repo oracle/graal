@@ -127,7 +127,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         if (Options.RemoveLoopSafepoints.getValue(graph.getOptions())) {
             loops.detectCountedLoops();
             for (Loop loop : loops.countedLoops()) {
-                if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
+                if (loop.getCFGLoop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
                     boolean hasSafepoint = false;
                     for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                         hasSafepoint |= loopEnd.canSafepoint();
@@ -165,7 +165,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
             }
             for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                 HIRBlock b = loops.getCFG().blockFor(loopEnd);
-                blocks: while (b != loop.loop().getHeader()) {
+                blocks: while (b != loop.getCFGLoop().getHeader()) {
                     assert b != null;
                     for (FixedNode node : b.getNodes()) {
                         boolean canDisableSafepoint = canDisableSafepoint(node, context);

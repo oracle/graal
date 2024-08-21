@@ -97,7 +97,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
          * Marker for ImageSingleton keys which cannot have a value installed. This can happen when
          * a {@link LayeredImageSingleton} specified {@link PersistFlags#FORBIDDEN}.
          */
-        private static final Object SINGLETON_INSTALLATION_FOBIDDEN = new Object();
+        private static final Object SINGLETON_INSTALLATION_FORBIDDEN = new Object();
 
         /**
          * The {@link ImageSingletons} removes static state from the image generator, and in theory
@@ -146,7 +146,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         }
 
         private void installPriorSingletonInfo(SVMImageLayerLoader info) {
-            var result = info.loadImageSingletons(SINGLETON_INSTALLATION_FOBIDDEN);
+            var result = info.loadImageSingletons(SINGLETON_INSTALLATION_FORBIDDEN);
             Set<Class<?>> installedKeys = new HashSet<>();
             for (var entry : result.entrySet()) {
                 Object singletonToInstall = entry.getKey();
@@ -247,7 +247,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             Object result = configObjects.get(key);
             if (result == null) {
                 throw UserError.abort("ImageSingletons do not contain key %s", key.getTypeName());
-            } else if (result == SINGLETON_INSTALLATION_FOBIDDEN) {
+            } else if (result == SINGLETON_INSTALLATION_FORBIDDEN) {
                 throw UserError.abort("A LayeredImageSingleton was installed in a prior layer which forbids creating the singleton in a subsequent layer. Key %s", key.getTypeName());
             } else if (result instanceof RuntimeOnlyWrapper wrapper) {
                 if (!stripRuntimeOnly) {
@@ -263,7 +263,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
         boolean doContains(Class<?> key) {
             checkKey(key);
             var value = configObjects.get(key);
-            return value != null && value != SINGLETON_INSTALLATION_FOBIDDEN;
+            return value != null && value != SINGLETON_INSTALLATION_FORBIDDEN;
         }
 
         private static void checkKey(Class<?> key) {

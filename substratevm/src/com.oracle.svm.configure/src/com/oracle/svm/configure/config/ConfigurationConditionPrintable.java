@@ -37,9 +37,9 @@ import jdk.graal.compiler.util.json.JsonWriter;
 final class ConfigurationConditionPrintable {
     static void printConditionAttribute(UnresolvedConfigurationCondition condition, JsonWriter writer) throws IOException {
         if (!condition.isAlwaysTrue()) {
-            writer.quote(CONDITIONAL_KEY).append(":{");
-            writer.quote(condition.isRuntimeChecked() ? TYPE_REACHED_KEY : TYPE_REACHABLE_KEY).append(':').quote(condition.getTypeName());
-            writer.append("},").newline();
+            writer.quote(CONDITIONAL_KEY).appendFieldSeparator().appendObjectStart();
+            writer.quote(condition.isRuntimeChecked() ? TYPE_REACHED_KEY : TYPE_REACHABLE_KEY).appendFieldSeparator().quote(condition.getTypeName());
+            writer.appendObjectEnd().appendSeparator();
         }
     }
 }

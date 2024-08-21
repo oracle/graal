@@ -24,23 +24,28 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.svm.hosted.image.NativeImage.localSymbolNameForMethod;
+
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
@@ -58,6 +63,7 @@ import jdk.graal.compiler.debug.Assertions;
 public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements LayeredImageSingleton {
     private final Map<Integer, Integer> methodIdToOffsetMap;
     private final CGlobalData<PointerBase> cGlobalData;
+    private Set<HostedMethod> priorLayerHostedMethods = new HashSet<>();
 
     HostedDynamicLayerInfo() {
         this(0, null, new HashMap<>());
@@ -74,26 +80,43 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
     }
 
     @Override
-    public Pair<CGlobalDataInfo, Integer> getPriorLayerMethodLocation(SharedMethod sMethod) {
+    public PriorLayerMethodLocation getPriorLayerMethodLocation(SharedMethod sMethod) {
         assert ImageLayerBuildingSupport.buildingExtensionLayer() : "This should only be called within extension images. Within the initial layer the direct calls can be performed";
         HostedMethod method = (HostedMethod) sMethod;
         assert method.wrapped.isInBaseLayer() && methodIdToOffsetMap.containsKey(method.getWrapped().getId()) : method;
 
         var basePointer = CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalData);
         var offset = methodIdToOffsetMap.get(method.getWrapped().getId());
-        return Pair.create(basePointer, offset);
+        return new PriorLayerMethodLocation(basePointer, offset);
     }
 
-    public boolean isCompiled(int id) {
-        return methodIdToOffsetMap.containsKey(id);
+    public boolean isCompiled(AnalysisMethod aMethod) {
+        assert !BuildPhaseProvider.isCompileQueueFinished();
+        return methodIdToOffsetMap.containsKey(aMethod.getId());
     }
 
     void registerOffset(HostedMethod method) {
+        assert BuildPhaseProvider.isCompileQueueFinished();
         int offset = method.getCodeAddressOffset();
         int methodID = method.getWrapped().getId();
 
         assert !methodIdToOffsetMap.containsKey(methodID) : Assertions.errorMessage("Duplicate entry", methodID, offset);
         methodIdToOffsetMap.put(methodID, offset);
+    }
+
+    public void registerHostedMethod(HostedMethod hMethod) {
+        assert !BuildPhaseProvider.isHostedUniverseBuilt();
+        AnalysisMethod aMethod = hMethod.getWrapped();
+        if (isCompiled(aMethod)) {
+            assert aMethod.isInBaseLayer() : hMethod;
+            priorLayerHostedMethods.add(hMethod);
+            hMethod.setCompiledInPriorLayer();
+        }
+    }
+
+    public void defineSymbolsForPriorLayerMethods(ObjectFile objectFile) {
+        assert BuildPhaseProvider.isHeapLayoutFinished();
+        priorLayerHostedMethods.forEach(m -> objectFile.createUndefinedSymbol(localSymbolNameForMethod(m), 0, true));
     }
 
     @Override

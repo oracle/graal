@@ -120,6 +120,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private final int id;
     /** Marks a method loaded from a base layer. */
     private final boolean isInBaseLayer;
+    private final boolean analyzedInPriorLayer;
     private final boolean hasNeverInlineDirective;
     private final ExceptionHandler[] exceptionHandlers;
     private final LocalVariableTable localVariableTable;
@@ -209,7 +210,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         qualifiedName = format("%H.%n(%P)");
         modifiers = wrapped.getModifiers();
 
-        if (universe.hostVM().useBaseLayer()) {
+        if (universe.hostVM().useBaseLayer() && declaringClass.isInBaseLayer()) {
             int mid = universe.getImageLayerLoader().lookupHostedMethodInBaseLayer(this);
             if (mid != -1) {
                 /*
@@ -226,6 +227,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             id = universe.computeNextMethodId();
             isInBaseLayer = false;
         }
+        analyzedInPriorLayer = isInBaseLayer && universe.hostVM().analyzedInPriorLayer(this);
 
         ExceptionHandler[] original = wrapped.getExceptionHandlers();
         exceptionHandlers = new ExceptionHandler[original.length];
@@ -268,6 +270,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         wrapped = original.wrapped;
         id = original.id;
         isInBaseLayer = original.isInBaseLayer;
+        analyzedInPriorLayer = original.analyzedInPriorLayer;
         declaringClass = original.declaringClass;
         signature = original.signature;
         hasNeverInlineDirective = original.hasNeverInlineDirective;
@@ -376,6 +379,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public boolean isInBaseLayer() {
         return isInBaseLayer;
+    }
+
+    public boolean analyzedInPriorLayer() {
+        return analyzedInPriorLayer;
     }
 
     /**
@@ -513,6 +520,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return AtomicUtils.isSet(this, isDirectRootMethodUpdater);
     }
 
+    public boolean isSimplyInvoked() {
+        return AtomicUtils.isSet(this, isInvokedUpdater);
+    }
+
     public boolean isSimplyImplementationInvoked() {
         return AtomicUtils.isSet(this, isImplementationInvokedUpdater);
     }
@@ -524,7 +535,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return isIntrinsicMethod() || isVirtualRootMethod() || isDirectRootMethod() || AtomicUtils.isSet(this, isInvokedUpdater);
     }
 
-    protected Object getInvokedReason() {
+    public Object getInvokedReason() {
         return isInvoked;
     }
 

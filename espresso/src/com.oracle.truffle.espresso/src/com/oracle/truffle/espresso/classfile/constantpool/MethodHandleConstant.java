@@ -190,8 +190,7 @@ public interface MethodHandleConstant extends PoolConstant {
 
         private ResolvedConstant linkMethodHandleConstant(Klass accessingKlass, Meta meta, StaticObject mtype, Klass mklass, Symbol<Name> refName) {
             StaticObject mname = meta.toGuestString(refName);
-            return new Resolved((StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant.invokeDirect(
-                            null,
+            return new Resolved((StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant.invokeDirectStatic(
                             accessingKlass.mirror(), (int) refKind,
                             mklass.mirror(), mname, mtype));
         }

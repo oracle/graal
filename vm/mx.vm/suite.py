@@ -33,7 +33,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "698f12ddc8452ded090663f9698892a003c5f815",
+                "version": "81bbd9c495c89582240664ad26e74cb232820e66",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -42,14 +42,14 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "698f12ddc8452ded090663f9698892a003c5f815",
+                "version": "81bbd9c495c89582240664ad26e74cb232820e66",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
             },
             {
                 "name": "truffleruby",
-                "version": "60344290e312370a937cbf46b0a9099158318edc",
+                "version": "744778c585529dff8032d79507ae2ec38037909a",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "dbc2cb268c287ce9d3fac57ccbbe23076b90d10a",
+                "version": "16d2e4c600114af0b58787f5e74b7ec907ac0d4f",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -65,7 +65,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "0a015a52e92dc40e312aa1ecd1f9e402a5244dce",
+                "version": "7e3c3f760ff708678f2a7bc77dd2093e4fd02b41",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},

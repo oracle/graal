@@ -65,6 +65,7 @@ import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
@@ -231,6 +232,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (parameters.reservedSpaceSize().equal(0)) {
             parameters.setReservedSpaceSize(WordFactory.unsigned(parsedArgs.read(IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize))));
         }
+        Container.initialize();
 
         WordPointer isolatePtr = StackValue.get(WordPointer.class);
         int error = Isolates.create(isolatePtr, parameters);
@@ -310,6 +312,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @NeverInline("GR-24649")
     private static int initializeIsolateInterruptibly1(CEntryPointCreateIsolateParameters parameters) {
         /*
+         * Initialize the physical memory size. This must be done as early as possible because we
+         * must not trigger GC before PhysicalMemory is initialized.
+         */
+        PhysicalMemory.initialize();
+
+        /*
          * The VM operation thread must be started early as no VM operations can be scheduled before
          * this thread is fully started. The isolate teardown may also use VM operations.
          */
@@ -387,9 +395,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         /* Adjust stack overflow boundary of main thread. */
         StackOverflowCheck.singleton().updateStackOverflowBoundary();
-
-        /* Initialize the physical memory size. */
-        PhysicalMemory.size();
 
         assert !isolateInitialized;
         isolateInitialized = true;

@@ -532,7 +532,7 @@ public final class ClassRedefinition {
             // new super interface must be loaded eagerly then
             StaticObject resourceGuestString = oldKlass.getMeta().toGuestString(Types.binaryName(klassType));
             try {
-                StaticObject loadedClass = (StaticObject) oldKlass.getMeta().java_lang_ClassLoader_loadClass.invokeDirect(oldKlass.getDefiningClassLoader(), resourceGuestString);
+                StaticObject loadedClass = (StaticObject) oldKlass.getMeta().java_lang_ClassLoader_loadClass.invokeDirectVirtual(oldKlass.getDefiningClassLoader(), resourceGuestString);
                 klass = loadedClass.getMirrorKlass();
             } catch (Throwable t) {
                 throw new RedefinitionNotSupportedException(ErrorCodes.ABSENT_INFORMATION);
