@@ -67,7 +67,8 @@ public final class GraphState {
                     StageFlag.LOW_TIER_LOWERING,
                     StageFlag.EXPAND_LOGIC,
                     StageFlag.ADDRESS_LOWERING,
-                    StageFlag.REMOVE_OPAQUE_VALUES);
+                    StageFlag.REMOVE_OPAQUE_VALUES,
+                    StageFlag.FINAL_SCHEDULE);
     private static final EnumSet<StageFlag> ENTERPRISE_MID_TIER_MANDATORY_STAGES = EnumSet.of(
                     StageFlag.OPTIMISTIC_ALIASING,
                     StageFlag.GUARD_LOWERING,
@@ -633,6 +634,7 @@ public final class GraphState {
         FINAL_CANONICALIZATION,
         REMOVE_OPAQUE_VALUES,
         TARGET_VECTOR_LOWERING,
+        FINAL_SCHEDULE
     }
 
     /**

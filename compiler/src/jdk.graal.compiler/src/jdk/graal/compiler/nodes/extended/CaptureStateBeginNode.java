@@ -78,4 +78,9 @@ public class CaptureStateBeginNode extends BeginStateSplitNode implements Canoni
 
         return super.verifyNode();
     }
+
+    @Override
+    public boolean mustNotMoveAttachedGuards() {
+        return true;
+    }
 }

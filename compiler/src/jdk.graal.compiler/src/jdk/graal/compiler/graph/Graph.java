@@ -1486,10 +1486,14 @@ public class Graph implements EventCounter {
 
     private static final TimerKey DuplicateGraph = DebugContext.timer("DuplicateGraph");
 
-    @SuppressWarnings({"all", "try"})
     public EconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements) {
+        return addDuplicates(newNodes, oldGraph, estimatedNodeCount, replacements, true);
+    }
+
+    @SuppressWarnings({"all", "try"})
+    public EconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements, boolean applyGVN) {
         try (DebugCloseable s = DuplicateGraph.start(getDebug())) {
-            return NodeClass.addGraphDuplicate(this, oldGraph, estimatedNodeCount, newNodes, replacements);
+            return NodeClass.addGraphDuplicate(this, oldGraph, estimatedNodeCount, newNodes, replacements, applyGVN);
         }
     }
 

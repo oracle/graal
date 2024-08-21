@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.phases.common;
 
+import java.util.ListIterator;
 import java.util.Optional;
 
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -45,10 +46,8 @@ import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.FloatingGuardPhase;
-import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.graph.ScheduledNodeIterator;
-
-import java.util.ListIterator;
+import jdk.graal.compiler.phases.schedule.SchedulePhase;
 
 /**
  * This phase lowers {@link GuardNode GuardNodes} into corresponding control-flow structure and
@@ -68,12 +67,13 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> implements Floa
 
         private boolean useGuardIdAsDebugId;
 
-        LowerGuards(boolean useGuardIdAsDebugId) {
+        LowerGuards(boolean useGuardIdAsDebugId, ScheduleResult schedule) {
+            super(schedule);
             this.useGuardIdAsDebugId = useGuardIdAsDebugId;
         }
 
         @Override
-        protected void processNode(Node node, HIRBlock block, ScheduleResult schedule, ListIterator<Node> iter) {
+        protected void processNode(Node node, HIRBlock block, ListIterator<Node> iter) {
             if (node instanceof GuardNode) {
                 GuardNode guard = (GuardNode) node;
                 FixedWithNextNode lowered = guard.lowerGuard();
@@ -146,6 +146,6 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> implements Floa
 
     private static void processBlock(HIRBlock block, ScheduleResult schedule) {
         DebugContext debug = block.getBeginNode().getDebug();
-        new LowerGuards(debug.isDumpEnabledForMethod() || debug.isLogEnabledForMethod()).processNodes(block, schedule);
+        new LowerGuards(debug.isDumpEnabledForMethod() || debug.isLogEnabledForMethod(), schedule).processNodes(block);
     }
 }

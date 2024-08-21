@@ -29,23 +29,25 @@ import static jdk.graal.compiler.nodeinfo.InputType.State;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.AbstractStateSplit;
+import jdk.graal.compiler.nodes.DeoptimizingNode;
 import jdk.graal.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
-import org.graalvm.word.LocationIdentity;
 
 /**
  * See comments in {@link CFunctionPrologueNode} for details.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8, allowedUsageTypes = {Memory})
-public final class CFunctionEpilogueNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill, ControlFlowAnchored, DeoptBefore {
+public final class CFunctionEpilogueNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill, ControlFlowAnchored, DeoptBefore, DeoptimizingNode.DeoptAfter {
     public static final NodeClass<CFunctionEpilogueNode> TYPE = NodeClass.create(CFunctionEpilogueNode.class);
 
     private final int oldThreadStatus;
@@ -106,4 +108,5 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
     public boolean canUseAsStateDuring() {
         return true;
     }
+
 }

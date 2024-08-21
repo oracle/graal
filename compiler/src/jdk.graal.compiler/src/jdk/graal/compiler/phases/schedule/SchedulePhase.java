@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.phases.schedule;
 
-import static org.graalvm.collections.Equivalence.IDENTITY;
 import static jdk.graal.compiler.core.common.GraalOptions.GuardPriorities;
 import static jdk.graal.compiler.core.common.GraalOptions.OptScheduleOutOfLoops;
+import static org.graalvm.collections.Equivalence.IDENTITY;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,8 +40,9 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Function;
 
-import jdk.graal.compiler.phases.BasePhase;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
@@ -93,7 +94,8 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.options.OptionValues;
-import org.graalvm.word.LocationIdentity;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.tiers.LowTierContext;
 
 public final class SchedulePhase extends BasePhase<CoreProviders> {
 
@@ -140,6 +142,33 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
     public SchedulePhase(SchedulingStrategy strategy, boolean immutableGraph) {
         this.selectedStrategy = strategy;
         this.immutableGraph = immutableGraph;
+    }
+
+    /**
+     * Last schedule to be run in any phase plan in the compiler. After this no further
+     * optimizations or transformations must happen that would require a re-scheduling of the graph.
+     */
+    public static class FinalSchedulePhase extends BasePhase<LowTierContext> {
+
+        @Override
+        public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+            return NotApplicable.ifAny(
+                            NotApplicable.ifApplied(this, StageFlag.FINAL_SCHEDULE, graphState),
+                            NotApplicable.unlessRunAfter(this, StageFlag.ADDRESS_LOWERING, graphState));
+        }
+
+        @Override
+        protected void run(StructuredGraph graph, LowTierContext context) {
+            new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS).apply(graph, context);
+
+        }
+
+        @Override
+        public void updateGraphState(GraphState graphState) {
+            super.updateGraphState(graphState);
+            graphState.setAfterStage(StageFlag.FINAL_SCHEDULE);
+        }
+
     }
 
     public static SchedulingStrategy getDefaultStrategy(OptionValues options) {

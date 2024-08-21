@@ -861,6 +861,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     static EconomicMap<Node, Node> addGraphDuplicate(final Graph graph, final Graph oldGraph, int estimatedNodeCount, Iterable<? extends Node> nodes, final Graph.DuplicationReplacement replacements) {
+        return addGraphDuplicate(graph, oldGraph, estimatedNodeCount, nodes, replacements, true);
+    }
+
+    static EconomicMap<Node, Node> addGraphDuplicate(final Graph graph, final Graph oldGraph, int estimatedNodeCount, Iterable<? extends Node> nodes, final Graph.DuplicationReplacement replacements,
+                    boolean applyGVN) {
         final EconomicMap<Node, Node> newNodes;
         int denseThreshold = oldGraph.getNodeCount() + oldGraph.getNodesDeletedSinceLastCompression() >> 4;
         if (estimatedNodeCount > denseThreshold) {
@@ -871,7 +876,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             newNodes = EconomicMap.create(Equivalence.IDENTITY);
         }
         graph.beforeNodeDuplication(oldGraph);
-        createNodeDuplicates(graph, nodes, replacements, newNodes);
+        createNodeDuplicates(graph, nodes, replacements, newNodes, applyGVN);
 
         InplaceUpdateClosure replacementClosure = new InplaceUpdateClosure() {
 
@@ -910,7 +915,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         return newNodes;
     }
 
-    private static void createNodeDuplicates(final Graph graph, Iterable<? extends Node> nodes, final Graph.DuplicationReplacement replacements, final EconomicMap<Node, Node> newNodes) {
+    private static void createNodeDuplicates(final Graph graph, Iterable<? extends Node> nodes, final Graph.DuplicationReplacement replacements, final EconomicMap<Node, Node> newNodes,
+                    boolean applyGVN) {
         for (Node node : nodes) {
             if (node != null) {
                 assert !node.isDeleted() : "trying to duplicate deleted node: " + node;
@@ -922,7 +928,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     assert replacement != null;
                     newNodes.put(node, replacement);
                 } else {
-                    Node newNode = node.clone(graph, WithAllEdges);
+                    Node newNode = node.clone(graph, WithAllEdges, applyGVN);
                     assert newNode.getNodeClass().isLeafNode() || newNode.hasNoUsages() : Assertions.errorMessageContext("newNode", newNode);
                     assert newNode.getClass() == node.getClass() : Assertions.errorMessageContext("newNode", newNode, "node", node);
                     newNodes.put(node, newNode);

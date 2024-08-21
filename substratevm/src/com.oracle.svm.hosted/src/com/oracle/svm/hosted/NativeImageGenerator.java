@@ -311,6 +311,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
 import jdk.graal.compiler.phases.common.FrameStateAssignmentPhase;
 import jdk.graal.compiler.phases.common.LoopSafepointInsertionPhase;
+import jdk.graal.compiler.phases.common.TransplantGraphsPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
@@ -1634,6 +1635,7 @@ public class NativeImageGenerator {
 
         BasePhase<CoreProviders> addressLoweringPhase = backend.newAddressLoweringPhase(runtimeCallProviders.getCodeCache());
         lowTier.replacePlaceholder(AddressLoweringPhase.class, addressLoweringPhase);
+        lowTier.replacePlaceholder(TransplantGraphsPhase.class, new TransplantGraphsPhase(createSuitesForLateSnippetTemplate(suites)));
 
         /*
          * Graal inserts only loop safepoints. We want a SafepointNode also before every return. Our
@@ -1681,6 +1683,18 @@ public class NativeImageGenerator {
         }
 
         return suites;
+    }
+
+    private static Suites createSuitesForLateSnippetTemplate(Suites regularCompileSuites) {
+
+        Suites s = regularCompileSuites.copy();
+
+        removePhases(s, Speculative.class);
+        removePhases(s, FloatingGuardPhase.class);
+
+        s.getLowTier().removeAllPlaceHolderOfType(TransplantGraphsPhase.class);
+
+        return s;
     }
 
     private static void removePhases(Suites suites, Class<?> c) {
