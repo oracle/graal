@@ -202,7 +202,7 @@ public abstract class LoopFragment {
         Loop originalLoopEx = original().loop();
         ControlFlowGraph cfg = originalLoopEx.loopsData().getCFG();
         for (LoopExitNode exit : originalLoopEx.loopBegin().loopExits().snapshot()) {
-            if (!originalLoopEx.loop().isLoopExit(cfg.blockFor(exit))) {
+            if (!originalLoopEx.getCFGLoop().isLoopExit(cfg.blockFor(exit))) {
                 // this LoopExitNode is too low, we need to remove it otherwise it will be below
                 // merged exits
                 exit.removeExit();
@@ -520,7 +520,7 @@ public abstract class LoopFragment {
         StructuredGraph graph = graph();
         this.introducedPhis = new ArrayList<>();
         this.introducedMerges = new ArrayList<>();
-        for (AbstractBeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().loop().getLoopExits())) {
+        for (AbstractBeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().getCFGLoop().getLoopExits())) {
             FixedNode next = earlyExit.next();
             if (earlyExit.isDeleted() || !this.original().contains(earlyExit)) {
                 continue;

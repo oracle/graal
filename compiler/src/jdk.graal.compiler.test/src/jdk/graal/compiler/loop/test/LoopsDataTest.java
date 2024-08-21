@@ -74,18 +74,18 @@ public class LoopsDataTest extends GraalCompilerTest {
     public void sanityTests() {
         LoopsData loops = getLoopsData();
         Assert.assertEquals(8, loops.outerFirst().size());
-        Assert.assertEquals(1, loops.outerFirst().get(0).loop().getDepth());
-        Assert.assertEquals(1, loops.outerFirst().get(1).loop().getDepth());
-        Assert.assertEquals(2, loops.outerFirst().get(2).loop().getDepth());
-        Assert.assertEquals(3, loops.outerFirst().get(3).loop().getDepth());
-        Assert.assertEquals(2, loops.outerFirst().get(4).loop().getDepth());
-        Assert.assertEquals(2, loops.outerFirst().get(5).loop().getDepth());
-        Assert.assertEquals(3, loops.outerFirst().get(6).loop().getDepth());
-        Assert.assertEquals(4, loops.outerFirst().get(7).loop().getDepth());
+        Assert.assertEquals(1, loops.outerFirst().get(0).getCFGLoop().getDepth());
+        Assert.assertEquals(1, loops.outerFirst().get(1).getCFGLoop().getDepth());
+        Assert.assertEquals(2, loops.outerFirst().get(2).getCFGLoop().getDepth());
+        Assert.assertEquals(3, loops.outerFirst().get(3).getCFGLoop().getDepth());
+        Assert.assertEquals(2, loops.outerFirst().get(4).getCFGLoop().getDepth());
+        Assert.assertEquals(2, loops.outerFirst().get(5).getCFGLoop().getDepth());
+        Assert.assertEquals(3, loops.outerFirst().get(6).getCFGLoop().getDepth());
+        Assert.assertEquals(4, loops.outerFirst().get(7).getCFGLoop().getDepth());
 
         for (Loop loop : loops.loops()) {
             if (loop.parent() != null) {
-                Assert.assertEquals(loop.parent().loop().getDepth() + 1, loop.loop().getDepth());
+                Assert.assertEquals(loop.parent().getCFGLoop().getDepth() + 1, loop.getCFGLoop().getDepth());
             }
         }
     }

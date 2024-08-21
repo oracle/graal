@@ -89,7 +89,7 @@ public class Loop {
     /**
      * The corresponding {@link ControlFlowGraph} loop data structure.
      */
-    protected final CFGLoop<HIRBlock> loop;
+    protected final CFGLoop<HIRBlock> cfgLoop;
     /**
      * The corresponding fragment that describes the body nodes of this loop.
      */
@@ -118,7 +118,7 @@ public class Loop {
     protected int size = -1;
 
     protected Loop(CFGLoop<HIRBlock> loop, LoopsData data) {
-        this.loop = loop;
+        this.cfgLoop = loop;
         this.data = data;
     }
 
@@ -130,8 +130,8 @@ public class Loop {
         return data.getCFG().localLoopFrequencySource(loopBegin());
     }
 
-    public CFGLoop<HIRBlock> loop() {
-        return loop;
+    public CFGLoop<HIRBlock> getCFGLoop() {
+        return cfgLoop;
     }
 
     public LoopFragmentInside inside() {
@@ -179,7 +179,7 @@ public class Loop {
     }
 
     public LoopBeginNode loopBegin() {
-        return (LoopBeginNode) loop().getHeader().getBeginNode();
+        return (LoopBeginNode) getCFGLoop().getHeader().getBeginNode();
     }
 
     public FixedNode predecessor() {
@@ -201,10 +201,10 @@ public class Loop {
     }
 
     public Loop parent() {
-        if (loop.getParent() == null) {
+        if (cfgLoop.getParent() == null) {
             return null;
         }
-        return data.loop(loop.getParent());
+        return data.loop(cfgLoop.getParent());
     }
 
     public int size() {
@@ -223,7 +223,7 @@ public class Loop {
 
     @Override
     public String toString() {
-        return (countedLoopChecked && isCounted() ? "CountedLoop [" + counted() + "] " : "Loop ") + "(depth=" + loop().getDepth() + ") " + loopBegin();
+        return (countedLoopChecked && isCounted() ? "CountedLoop [" + counted() + "] " : "Loop ") + "(depth=" + getCFGLoop().getDepth() + ") " + loopBegin();
     }
 
     private class InvariantPredicate implements NodePredicate {
@@ -423,7 +423,7 @@ public class Loop {
 
     public boolean isCfgLoopExit(AbstractBeginNode begin) {
         HIRBlock block = data.getCFG().blockFor(begin);
-        return loop.getDepth() > block.getLoopDepth() || loop.isNaturalExit(block);
+        return cfgLoop.getDepth() > block.getLoopDepth() || cfgLoop.isNaturalExit(block);
     }
 
     public LoopsData loopsData() {
@@ -440,7 +440,7 @@ public class Loop {
         work.add(firstSuccBlock);
         while (!work.isEmpty()) {
             HIRBlock b = work.remove();
-            if (loop().isLoopExit(b)) {
+            if (getCFGLoop().isLoopExit(b)) {
                 assert !exits.contains(b.getBeginNode());
                 exits.add(b.getBeginNode());
             } else if (blocks.add(b.getBeginNode())) {
@@ -451,7 +451,7 @@ public class Loop {
                      * of the current split. this is generally not part of the branch, but after the
                      * branch.
                      */
-                    if (loop.getBlocks().contains(d) && firstSuccBlock.getPostdominator() != d) {
+                    if (cfgLoop.getBlocks().contains(d) && firstSuccBlock.getPostdominator() != d) {
                         if (!visited.isMarked(d.getBeginNode())) {
                             visited.mark(d.getBeginNode());
                             work.add(d);
