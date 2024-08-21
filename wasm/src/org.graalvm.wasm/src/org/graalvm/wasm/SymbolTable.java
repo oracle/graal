@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1009,22 +1009,17 @@ public abstract class SymbolTable {
         }
     }
 
-    private long maxAllowedSize(long declaredMaxSize, boolean indexType64) {
-        return minUnsigned(declaredMaxSize, module().limits().memoryInstanceSizeLimit(indexType64));
-    }
-
     public void allocateMemory(int index, long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared, boolean multiMemory, boolean useUnsafeMemory) {
         checkNotParsed();
-        final long maxAllowedSize = maxAllowedSize(declaredMaxSize, indexType64);
-        addMemory(index, declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared, multiMemory, useUnsafeMemory);
+        addMemory(index, declaredMinSize, declaredMaxSize, indexType64, shared, multiMemory, useUnsafeMemory);
         module().addLinkAction((context, instance, imports) -> {
             module().limits().checkMemoryInstanceSize(declaredMinSize, indexType64);
             final WasmMemory wasmMemory;
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Initialize an empty memory when in memory overhead mode.
-                wasmMemory = WasmMemoryFactory.createMemory(0, 0, 0, false, false, useUnsafeMemory);
+                wasmMemory = WasmMemoryFactory.createMemory(0, 0, false, false, useUnsafeMemory);
             } else {
-                wasmMemory = WasmMemoryFactory.createMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared, useUnsafeMemory);
+                wasmMemory = WasmMemoryFactory.createMemory(declaredMinSize, declaredMaxSize, indexType64, shared, useUnsafeMemory);
             }
             final int memoryAddress = context.memories().register(wasmMemory);
             final WasmMemory allocatedMemory = context.memories().memory(memoryAddress);
@@ -1034,7 +1029,7 @@ public abstract class SymbolTable {
 
     public void importMemory(String moduleName, String memoryName, int index, long initSize, long maxSize, boolean typeIndex64, boolean shared, boolean multiMemory, boolean useUnsafeMemory) {
         checkNotParsed();
-        addMemory(index, initSize, maxSize, maxAllowedSize(maxSize, typeIndex64), typeIndex64, shared, multiMemory, useUnsafeMemory);
+        addMemory(index, initSize, maxSize, typeIndex64, shared, multiMemory, useUnsafeMemory);
         final ImportDescriptor importedMemory = new ImportDescriptor(moduleName, memoryName, ImportIdentifier.MEMORY, index, numImportedSymbols());
         importedMemories.put(index, importedMemory);
         importSymbol(importedMemory);
@@ -1043,13 +1038,13 @@ public abstract class SymbolTable {
         });
     }
 
-    void addMemory(int index, long minSize, long maxSize, long maxAllowedSize, boolean indexType64, boolean shared, boolean multiMemory, boolean useUnsafeMemory) {
+    void addMemory(int index, long minSize, long maxSize, boolean indexType64, boolean shared, boolean multiMemory, boolean useUnsafeMemory) {
         if (!multiMemory) {
             assertTrue(importedMemories.size() == 0, "A memory has already been imported in the module.", Failure.MULTIPLE_MEMORIES);
             assertTrue(memoryCount == 0, "A memory has already been declared in the module.", Failure.MULTIPLE_MEMORIES);
         }
         ensureMemoryCapacity(index);
-        var memoryImpl = WasmMemoryFactory.getMemoryImplementation(maxAllowedSize, useUnsafeMemory);
+        var memoryImpl = WasmMemoryFactory.getMemoryImplementation(maxSize, useUnsafeMemory);
         final MemoryInfo memory = new MemoryInfo(minSize, maxSize, indexType64, shared, memoryImpl);
         memories[index] = memory;
         memoryCount++;

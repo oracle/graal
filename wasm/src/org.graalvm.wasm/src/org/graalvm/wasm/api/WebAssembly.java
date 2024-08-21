@@ -61,7 +61,6 @@ import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
@@ -540,7 +539,7 @@ public class WebAssembly extends Dictionary {
         if (!refTypes && elemKind == TableKind.externref) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be anyfunc. Enable reference types to support externref");
         }
-        final int maxAllowedSize = WasmMath.minUnsigned(maximum, JS_LIMITS.tableInstanceSizeLimit());
+        final int maxAllowedSize = minUnsigned(maximum, JS_LIMITS.tableInstanceSizeLimit());
         return new WasmTable(initial, maximum, maxAllowedSize, elemKind.byteValue(), initialValue);
     }
 
@@ -719,9 +718,8 @@ public class WebAssembly extends Dictionary {
         } else if (Long.compareUnsigned(initial, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min memory size exceeds implementation limit");
         }
-        final long maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
         final WasmContext context = WasmContext.get(null);
-        return WasmMemoryFactory.createMemory(initial, maximum, maxAllowedSize, false, shared, context.getContextOptions().useUnsafeMemory());
+        return WasmMemoryFactory.createMemory(initial, maximum, false, shared, context.getContextOptions().useUnsafeMemory());
     }
 
     private static Object memGrow(Object[] args) {
@@ -740,7 +738,8 @@ public class WebAssembly extends Dictionary {
     public static long memGrow(WasmMemory memory, int delta) {
         final long previousSize = memory.grow(delta);
         if (previousSize == -1) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Cannot grow memory above max limit");
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError,
+                            StrictMath.addExact(memory.size(), delta) <= memory.declaredMaxSize() ? "Cannot grow memory above implementation limit" : "Cannot grow memory above max limit");
         }
         return previousSize;
     }

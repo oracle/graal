@@ -194,9 +194,8 @@ public class WasmInstantiator {
             } else {
                 linkActions.add((context, instance, imports) -> {
                     final ModuleLimits limits = instance.module().limits();
-                    final long maxAllowedSize = WasmMath.minUnsigned(memoryMaxSize, limits.memoryInstanceSizeLimit());
                     limits.checkMemoryInstanceSize(memoryMinSize, memoryIndexType64);
-                    final WasmMemory wasmMemory = WasmMemoryFactory.createMemory(memoryMinSize, memoryMaxSize, maxAllowedSize, memoryIndexType64, memoryShared,
+                    final WasmMemory wasmMemory = WasmMemoryFactory.createMemory(memoryMinSize, memoryMaxSize, memoryIndexType64, memoryShared,
                                     context.getContextOptions().useUnsafeMemory());
                     final int address = context.memories().register(wasmMemory);
                     final WasmMemory allocatedMemory = context.memories().memory(address);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,9 @@ import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
+import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -65,6 +67,8 @@ final class NativeWasmMemory extends WasmMemory {
     private long startAddress;
     private long size;
 
+    public static final long MAX_ALLOWED_SIZE = Sizes.MAX_MEMORY_64_INSTANCE_SIZE;
+
     private static final Unsafe unsafe;
     private static final VarHandle SIZE_FIELD;
 
@@ -75,8 +79,8 @@ final class NativeWasmMemory extends WasmMemory {
         this.startAddress = allocate(byteSize);
     }
 
-    NativeWasmMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean shared) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, indexType64, shared);
+    NativeWasmMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, WasmMath.minUnsigned(declaredMaxSize, MAX_ALLOWED_SIZE), indexType64, shared);
     }
 
     private static long allocate(long byteSize) {
@@ -106,9 +110,9 @@ final class NativeWasmMemory extends WasmMemory {
         if (extraPageSize == 0) {
             invokeGrowCallback();
             return previousSize;
-        } else if (Long.compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && Long.compareUnsigned(previousSize + extraPageSize, maxAllowedSize) <= 0) {
-            // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
-            // computation of targetByteSize does not overflow.
+        } else if (Long.compareUnsigned(extraPageSize, maxAllowedSize()) <= 0 && Long.compareUnsigned(previousSize + extraPageSize, maxAllowedSize()) <= 0) {
+            // Condition above and limit on maxAllowedSize (see NativeWasmMemory#MAX_ALLOWED_SIZE)
+            // ensure computation of targetByteSize does not overflow.
             final long targetByteSize = Math.multiplyExact(Math.addExact(previousSize, extraPageSize), MEMORY_PAGE_SIZE);
             final long updatedSize = previousSize + extraPageSize;
             try {
