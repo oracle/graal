@@ -44,6 +44,7 @@ import jdk.graal.compiler.phases.common.OptimizeOffsetAddressPhase;
 import jdk.graal.compiler.phases.common.ProfileCompiledMethodsPhase;
 import jdk.graal.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
 import jdk.graal.compiler.phases.common.RemoveOpaqueValuePhase;
+import jdk.graal.compiler.phases.common.TransplantGraphsPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
@@ -99,7 +100,14 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(new RemoveOpaqueValuePhase());
 
-        appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));
+        appendPhase(new SchedulePhase.FinalSchedulePhase());
+
+        /*
+         * TransplantLowTierSnippetPhase is marked as placeholder phase because we can only
+         * instantiate it once we have a suites object for the callee graphs available at some later
+         * vm specific time.
+         */
+        appendPhase(new PlaceholderPhase<>(TransplantGraphsPhase.class));
     }
 
     public final CanonicalizerPhase getCanonicalizerWithoutGVN() {

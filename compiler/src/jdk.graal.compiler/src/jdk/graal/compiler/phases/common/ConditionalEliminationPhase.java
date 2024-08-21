@@ -85,7 +85,6 @@ import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import jdk.graal.compiler.nodes.extended.CaptureStateBeginNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
@@ -238,14 +237,6 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             return "MoveGuardsUpwards - anchorBlock=" + anchorBlock;
         }
 
-        /**
-         * Guards cannot be moved above CaptureStateBeginNodes in order to ensure deoptimizations
-         * are always attached to valid FrameStates.
-         */
-        private static boolean disallowUpwardGuardMovement(HIRBlock b) {
-            return b.getBeginNode() instanceof CaptureStateBeginNode;
-        }
-
         @Override
         @SuppressWarnings("try")
         public HIRBlock enter(HIRBlock b) {
@@ -278,7 +269,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
              */
             boolean updateAnchorBlock = b.getDominator() == null ||
                             b.getDominator().getPostdominator() != b ||
-                            disallowUpwardGuardMovement(b);
+                            b.getBeginNode().mustNotMoveAttachedGuards();
             if (updateAnchorBlock) {
                 // New anchor.
                 anchorBlock = b;

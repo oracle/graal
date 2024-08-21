@@ -194,7 +194,9 @@ public class SubstrateGraphKit extends GraphKit {
 
         boolean emitTransition = StatusSupport.isValidStatus(newThreadStatus);
         if (emitTransition) {
-            append(new CFunctionPrologueNode(newThreadStatus));
+            CFunctionPrologueNode prolog = new CFunctionPrologueNode(newThreadStatus);
+            append(prolog);
+            prolog.setStateAfter(frameState.create(bci(), prolog));
         }
 
         /*

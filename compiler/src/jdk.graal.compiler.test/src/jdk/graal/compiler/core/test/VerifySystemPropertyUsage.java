@@ -86,6 +86,9 @@ public class VerifySystemPropertyUsage extends VerifyPhase<CoreProviders> {
         } else if (packageName.startsWith("ai.onnxruntime")) {
             // Do not verify the ONNX Java Inference Runtime.
             return;
+        } else if (holderQualified.equals("jdk.graal.compiler.hotspot.HotSpotReplacementsImpl") && caller.getName().equals("registerSnippet")) {
+            // We allow opening snippet registration in jargraal unit tests.
+            return;
         }
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
