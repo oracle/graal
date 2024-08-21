@@ -288,7 +288,7 @@ final class CompactingOldGeneration extends OldGeneration {
 
         Timer oldFixupImageHeapTimer = timers.oldFixupImageHeap.open();
         try {
-            for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
+            for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
                 GCImpl.walkImageHeapRoots(info, fixupVisitor);
             }
             if (AuxiliaryImageHeap.isPresent()) {

@@ -914,8 +914,7 @@ public class UniverseBuilder {
             long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
 
             DynamicHub hub = type.getHub();
-            hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset,
-                            referenceMapIndex, type.isInstantiated());
+            hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset, referenceMapIndex, type.isInstantiated());
 
             if (SubstrateOptions.closedTypeWorld()) {
                 CFunctionPointer[] vtable = new CFunctionPointer[type.closedTypeWorldVTable.length];

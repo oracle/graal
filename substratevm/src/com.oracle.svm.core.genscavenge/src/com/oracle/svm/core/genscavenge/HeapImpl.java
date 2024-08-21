@@ -69,6 +69,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SystemGCEvent;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
@@ -105,7 +106,6 @@ public final class HeapImpl extends Heap {
     private final ObjectHeaderImpl objectHeaderImpl = new ObjectHeaderImpl();
     private final GCImpl gcImpl;
     private final RuntimeCodeInfoGCSupportImpl runtimeCodeInfoGcSupport;
-    private final ImageHeapInfo firstImageHeapInfo = new ImageHeapInfo();
     private final HeapAccounting accounting = new HeapAccounting();
 
     /** Head of the linked list of currently pending (ready to be enqueued) {@link Reference}s. */
@@ -140,9 +140,9 @@ public final class HeapImpl extends Heap {
         return (HeapImpl) heap;
     }
 
-    @Fold
-    public static ImageHeapInfo getFirstImageHeapInfo() {
-        return getHeapImpl().firstImageHeapInfo;
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static ImageHeapInfo[] getImageHeapInfos() {
+        return MultiLayeredImageSingleton.getAllLayers(ImageHeapInfo.class);
     }
 
     @Fold
@@ -177,7 +177,7 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInPrimaryImageHeap(Pointer objPointer) {
-        for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
+        for (ImageHeapInfo info : getImageHeapInfos()) {
             if (info.isInImageHeap(objPointer)) {
                 return true;
             }
@@ -284,9 +284,10 @@ public final class HeapImpl extends Heap {
         getChunkProvider().logFreeChunks(log);
     }
 
+    @SuppressWarnings("static-method")
     void logImageHeapPartitionBoundaries(Log log) {
         log.string("Native image heap boundaries:").indent(true);
-        for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
+        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
             info.print(log);
         }
         log.indent(false);
@@ -331,8 +332,8 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getClassCount() {
-        int count = firstImageHeapInfo.dynamicHubCount;
-        for (ImageHeapInfo info = firstImageHeapInfo.next; info != null; info = info.next) {
+        int count = 0;
+        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
             count += info.dynamicHubCount;
         }
         return count;
@@ -354,7 +355,7 @@ public final class HeapImpl extends Heap {
         int dynamicHubCount = getClassCount();
 
         ArrayList<Class<?>> list = new ArrayList<>(dynamicHubCount);
-        for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
+        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
             ImageHeapWalker.walkRegions(info, new ClassListBuilderVisitor(list.size() + info.dynamicHubCount, list));
         }
 
@@ -467,7 +468,7 @@ public final class HeapImpl extends Heap {
         if (visitor == null) {
             return true;
         }
-        for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
+        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
             if (!ImageHeapWalker.walkImageHeapObjects(info, visitor)) {
                 return false;
             }
@@ -731,7 +732,7 @@ public final class HeapImpl extends Heap {
     }
 
     private boolean printLocationInfo(Log log, Pointer ptr, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
-        for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
+        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
             if (info.isInReadOnlyRegularPartition(ptr)) {
                 log.string("points into the image heap (read-only)");
                 return true;
