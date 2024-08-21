@@ -345,6 +345,7 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MacroInvokableMarker;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -435,7 +436,6 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.util.ValueMergeUtil;
-import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
@@ -1903,8 +1903,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                     if (TraceParserPlugins.getValue(options)) {
                         traceWithContext("used invocation plugin for %s", targetMethod.format("%h.%n(%p)"));
                     }
-                    if (lastInstr instanceof MacroInvokable && graph.isNew(pluginMark, lastInstr)) {
-                        return (MacroInvokable) lastInstr;
+                    if (lastInstr instanceof MacroInvokableMarker && graph.isNew(pluginMark, lastInstr)) {
+                        return (MacroInvokableMarker) lastInstr;
                     }
                     return null;
                 }
@@ -1962,9 +1962,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             // This invoke must never be later inlined as an intrinsic so restrict this call site to
             // normal invoke handling.
             invoke.setInlineControl(Invoke.InlineControl.BytecodesOnly);
-        }
-        if (referencedType != null) {
-            invoke.callTarget().setReferencedType(referencedType);
         }
         return invoke;
     }

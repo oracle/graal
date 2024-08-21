@@ -526,7 +526,7 @@ public class StandardGraphBuilderPlugins {
             for (String memoryOrderString : memoryOrders) {
                 MemoryOrderMode memoryOrder = memoryOrderString.equals("") ? MemoryOrderMode.VOLATILE : MemoryOrderMode.valueOf(memoryOrderString.toUpperCase());
                 r.register5(casPrefix + kindName + memoryOrderString, Receiver.class, Object.class, long.class, javaClass, javaClass,
-                                new UnsafeCompareAndSwapPlugin(returnKindkind, memoryOrder, isLogic, explicitUnsafeNullChecks));
+                                new UnsafeCompareAndSwapPlugin(kind, kind, memoryOrder, isLogic, explicitUnsafeNullChecks));
             }
         }
     }

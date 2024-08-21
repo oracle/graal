@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * invocation drops these arguments which means the interpreter won't find them.
  */
 @NodeInfo
-public final class ResolvedMethodHandleCallTargetNode extends MethodCallTargetNode implements Lowerable {
+public final class ResolvedMethodHandleCallTargetNode extends MethodCallTargetNode, ResolvedMethodHandleCallTargetNodeMarker implements Lowerable {
 
     public static final NodeClass<ResolvedMethodHandleCallTargetNode> TYPE = NodeClass.create(ResolvedMethodHandleCallTargetNode.class);
 
