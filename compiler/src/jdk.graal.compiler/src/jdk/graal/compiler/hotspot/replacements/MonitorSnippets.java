@@ -328,8 +328,8 @@ public class MonitorSnippets implements Snippets {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/aaaa86b57172d45d1126c50efc270c6e49aba7a5/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L580-L681",
-              sha1 = "b8ed14b9452ca81095d6e0ccc49f0948c8b7812c")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/bd4160cea8b6b0fcf0507199ed76a12f5d0aaba9/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L580-L739",
+              sha1 = "ec1ab37868e6a441b9afc988a8bf45f630863e9f")
     // @formatter:on
     @SuppressWarnings("unused")
     private static boolean tryLightweightLocking(Object object, Word lock, Word mark, Word thread, boolean trace, Counters counters, Register stackPointerRegister) {
@@ -451,8 +451,8 @@ public class MonitorSnippets implements Snippets {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/aaaa86b57172d45d1126c50efc270c6e49aba7a5/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L683-L822",
-              sha1 = "9254c9e734304a65365bd67dbff5809501c0d28f")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/bd4160cea8b6b0fcf0507199ed76a12f5d0aaba9/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L741-L890",
+              sha1 = "1c68e25285d8a4de454c2d075ae6bac4e2e3e3d5")
     // @formatter:on
     private static boolean tryLightweightUnlocking(Object object, Word thread, boolean trace, Counters counters) {
         // Load top
