@@ -210,7 +210,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         qualifiedName = format("%H.%n(%P)");
         modifiers = wrapped.getModifiers();
 
-        if (universe.hostVM().useBaseLayer()) {
+        if (universe.hostVM().useBaseLayer() && declaringClass.isInBaseLayer()) {
             int mid = universe.getImageLayerLoader().lookupHostedMethodInBaseLayer(this);
             if (mid != -1) {
                 /*
@@ -520,6 +520,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return AtomicUtils.isSet(this, isDirectRootMethodUpdater);
     }
 
+    public boolean isSimplyInvoked() {
+        return AtomicUtils.isSet(this, isInvokedUpdater);
+    }
+
     public boolean isSimplyImplementationInvoked() {
         return AtomicUtils.isSet(this, isImplementationInvokedUpdater);
     }
@@ -531,7 +535,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return isIntrinsicMethod() || isVirtualRootMethod() || isDirectRootMethod() || AtomicUtils.isSet(this, isInvokedUpdater);
     }
 
-    protected Object getInvokedReason() {
+    public Object getInvokedReason() {
         return isInvoked;
     }
 

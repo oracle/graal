@@ -637,7 +637,7 @@ public class CompileQueue {
                      */
                     continue;
                 }
-                if (layeredForceCompilation) {
+                if (layeredForceCompilation || layeredForceCompilation(hMethod)) {
                     // when layered force compilation is enabled we try to parse all graphs
                     if (method.wrapped.getAnalyzedGraph() != null) {
                         ensureParsed(method, null, new EntryPointReason());
@@ -925,7 +925,7 @@ public class CompileQueue {
                     continue;
                 }
 
-                if (layeredForceCompilation) {
+                if (layeredForceCompilation || layeredForceCompilation(hMethod)) {
                     /*
                      * when layeredForceCompilation is enabled we try to parse all graphs.
                      */
@@ -949,6 +949,16 @@ public class CompileQueue {
                 }
             }
         }
+    }
+
+    private static boolean layeredForceCompilation(HostedMethod hMethod) {
+        /*
+         * If a method from a base layer interface is not compiled in a prior layer but is in the
+         * vtable of a type from a new layer, the method needs to be compiled as there would be a
+         * missing symbol otherwise.
+         */
+        return hMethod.wrapped.isInBaseLayer() && !hMethod.isCompiledInPriorLayer() && hMethod.getDeclaringClass().isInterface() &&
+                        Arrays.stream(hMethod.getDeclaringClass().getSubTypes()).anyMatch(t -> !t.getWrapped().isInBaseLayer() && hMethod.isInVirtualMethodTable(t));
     }
 
     public void scheduleDeoptTargets() {

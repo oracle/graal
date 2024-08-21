@@ -50,6 +50,8 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -164,6 +166,9 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      * arbitrary user code.
      */
     public boolean maybeInitializeAtBuildTime(ResolvedJavaType type) {
+        if (type instanceof AnalysisType analysisType && analysisType.getWrapped() instanceof BaseLayerType baseLayerType) {
+            return baseLayerType.initializedAtBuildTime();
+        }
         return maybeInitializeAtBuildTime(OriginalClassProvider.getJavaClass(type));
     }
 

@@ -472,6 +472,10 @@ public class SimulateClassInitializerSupport {
                         .recordInlinedMethods(analysisParsedGraph.getEncodedGraph().isRecordingInlinedMethods())
                         .build();
 
+        if (classInitializer.isInBaseLayer()) {
+            throw SimulateClassInitializerAbortException.doAbort(clusterMember, result, "The class initializer was already simulated in the base layer.");
+        }
+
         try (var scope = debug.scope("SimulateClassInitializerGraphDecoder", result)) {
 
             var decoder = createGraphDecoder(clusterMember, bb, result);
