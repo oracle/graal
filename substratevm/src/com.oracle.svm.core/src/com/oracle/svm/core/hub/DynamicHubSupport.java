@@ -39,15 +39,13 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 
 @AutomaticallyRegisteredImageSingleton
-public final class DynamicHubSupport implements MultiLayeredImageSingleton {
+public final class DynamicHubSupport implements MultiLayeredImageSingleton, UnsavedSingleton {
 
-    private final int layerId;
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class) private int maxTypeId;
     @UnknownObjectField(availability = AfterHostedUniverse.class) private byte[] referenceMapEncoding;
 
@@ -68,18 +66,6 @@ public final class DynamicHubSupport implements MultiLayeredImageSingleton {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHubSupport() {
-        this(0);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private DynamicHubSupport(int layerId) {
-        this.layerId = layerId;
-    }
-
-    /** @see com.oracle.svm.core.hub.DynamicHub#getLayerId() */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public int getLayerId() {
-        return layerId;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -105,16 +91,5 @@ public final class DynamicHubSupport implements MultiLayeredImageSingleton {
     @Override
     public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
         return LayeredImageSingletonBuilderFlags.ALL_ACCESS;
-    }
-
-    @Override
-    public PersistFlags preparePersist(ImageSingletonWriter writer) {
-        writer.writeInt("layerId", layerId);
-        return PersistFlags.CREATE;
-    }
-
-    public static Object createFromLoader(ImageSingletonLoader loader) {
-        int previousLayerId = loader.readInt("layerId");
-        return new DynamicHubSupport(1 + previousLayerId);
     }
 }

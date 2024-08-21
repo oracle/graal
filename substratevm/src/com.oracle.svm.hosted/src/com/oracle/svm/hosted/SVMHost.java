@@ -87,11 +87,11 @@ import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.heap.UnknownClass;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.ReferenceType;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
@@ -226,7 +226,7 @@ public class SVMHost extends HostVM {
         }
         fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions, classInitializationSupport);
         ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
-        layerId = DynamicHubSupport.singleton().getLayerId();
+        layerId = ImageLayerBuildingSupport.buildingImageLayer() ? DynamicImageLayerInfo.singleton().layerNumber : 0;
         useBaseLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
         if (SubstrateOptions.includeAll()) {
             initializeExcludedFields();
