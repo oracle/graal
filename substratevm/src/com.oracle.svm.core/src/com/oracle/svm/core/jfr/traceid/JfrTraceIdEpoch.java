@@ -43,6 +43,7 @@ public class JfrTraceIdEpoch {
     private static final long EPOCH_1_BIT = 0b10;
 
     private boolean epoch;
+    private int epochGeneration;
 
     @Fold
     public static JfrTraceIdEpoch getInstance() {
@@ -57,6 +58,7 @@ public class JfrTraceIdEpoch {
     public void changeEpoch() {
         assert VMOperation.isInProgressAtSafepoint();
         epoch = !epoch;
+        epochGeneration++;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -72,6 +74,11 @@ public class JfrTraceIdEpoch {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean currentEpoch() {
         return epoch;
+    }
+
+    @Uninterruptible(reason = "Avoid epoch changing while checking generation.", callerMustBe = true)
+    public int currentEpochGeneration() {
+        return epochGeneration;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

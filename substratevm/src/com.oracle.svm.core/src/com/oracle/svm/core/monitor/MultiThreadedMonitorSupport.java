@@ -260,7 +260,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
                 monitor = (JavaMonitor) UNSAFE.compareAndExchangeReference(obj, monitorOffset, null, newMonitor);
                 if (monitor == null) { // successful
                     JavaMonitorInflateEvent.emit(obj, startTicks, MonitorInflationCause.MONITOR_ENTER);
-                    newMonitor.latestJfrTid = current;
+                    newMonitor.latest = Thread.currentThread();
                     return;
                 }
             }
