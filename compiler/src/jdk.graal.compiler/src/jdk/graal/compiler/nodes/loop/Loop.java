@@ -77,6 +77,7 @@ import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.debug.NeverStripMineNode;
 import jdk.graal.compiler.nodes.debug.NeverWriteSinkNode;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
+import jdk.graal.compiler.nodes.loop.InductionVariable.Direction;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
@@ -316,17 +317,17 @@ public class Loop {
             }
             CompareNode compare = (CompareNode) ifTest;
             Condition condition = null;
-            InductionVariable iv = null;
+            InductionVariable limitCheckedIV = null;
             ValueNode limit = null;
             if (isOutsideLoop(compare.getX())) {
-                iv = getInductionVariables().get(compare.getY());
-                if (iv != null) {
+                limitCheckedIV = getInductionVariables().get(compare.getY());
+                if (limitCheckedIV != null) {
                     condition = compare.condition().asCondition().mirror();
                     limit = compare.getX();
                 }
             } else if (isOutsideLoop(compare.getY())) {
-                iv = getInductionVariables().get(compare.getX());
-                if (iv != null) {
+                limitCheckedIV = getInductionVariables().get(compare.getX());
+                if (limitCheckedIV != null) {
                     condition = compare.condition().asCondition();
                     limit = compare.getY();
                 }
@@ -337,11 +338,16 @@ public class Loop {
             if (negated) {
                 condition = condition.negate();
             }
+            final Direction limitCheckedIVDirection = limitCheckedIV.direction();
+            if (limitCheckedIVDirection == null) {
+                // we do not know which direction the stride goes
+                return false;
+            }
             boolean isLimitIncluded = false;
             boolean unsigned = false;
             switch (condition) {
                 case EQ:
-                    if (iv.initNode() == limit) {
+                    if (limitCheckedIV.initNode() == limit) {
                         // allow "single iteration" case
                         isLimitIncluded = true;
                     } else {
@@ -349,23 +355,23 @@ public class Loop {
                     }
                     break;
                 case NE: {
-                    IntegerStamp initStamp = (IntegerStamp) iv.initNode().stamp(NodeView.DEFAULT);
+                    IntegerStamp initStamp = (IntegerStamp) limitCheckedIV.initNode().stamp(NodeView.DEFAULT);
                     IntegerStamp limitStamp = (IntegerStamp) limit.stamp(NodeView.DEFAULT);
-                    IntegerStamp counterStamp = (IntegerStamp) iv.valueNode().stamp(NodeView.DEFAULT);
-                    if (iv.direction() == InductionVariable.Direction.Up) {
+                    IntegerStamp counterStamp = (IntegerStamp) limitCheckedIV.valueNode().stamp(NodeView.DEFAULT);
+                    if (limitCheckedIVDirection == InductionVariable.Direction.Up) {
                         if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.upperBound()) {
                             // signed: i < MAX_INT
                         } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedUpperBound() && IntegerStamp.sameSign(initStamp, limitStamp)) {
                             unsigned = true;
-                        } else if (!iv.isConstantStride() || !absStrideIsOne(iv) || initStamp.upperBound() > limitStamp.lowerBound()) {
+                        } else if (!limitCheckedIV.isConstantStride() || !absStrideIsOne(limitCheckedIV) || initStamp.upperBound() > limitStamp.lowerBound()) {
                             return false;
                         }
-                    } else if (iv.direction() == InductionVariable.Direction.Down) {
+                    } else if (limitCheckedIVDirection == InductionVariable.Direction.Down) {
                         if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.lowerBound()) {
                             // signed: MIN_INT > i
                         } else if (limitStamp.asConstant() != null && limitStamp.asConstant().asLong() == counterStamp.unsignedLowerBound() && IntegerStamp.sameSign(initStamp, limitStamp)) {
                             unsigned = true;
-                        } else if (!iv.isConstantStride() || !absStrideIsOne(iv) || initStamp.lowerBound() < limitStamp.upperBound()) {
+                        } else if (!limitCheckedIV.isConstantStride() || !absStrideIsOne(limitCheckedIV) || initStamp.lowerBound() < limitStamp.upperBound()) {
                             return false;
                         }
                     } else {
@@ -377,14 +383,14 @@ public class Loop {
                     unsigned = true; // fall through
                 case LE:
                     isLimitIncluded = true;
-                    if (iv.direction() != InductionVariable.Direction.Up) {
+                    if (limitCheckedIV.direction() != InductionVariable.Direction.Up) {
                         return false;
                     }
                     break;
                 case BT:
                     unsigned = true; // fall through
                 case LT:
-                    if (iv.direction() != InductionVariable.Direction.Up) {
+                    if (limitCheckedIV.direction() != InductionVariable.Direction.Up) {
                         return false;
                     }
                     break;
@@ -392,21 +398,21 @@ public class Loop {
                     unsigned = true; // fall through
                 case GE:
                     isLimitIncluded = true;
-                    if (iv.direction() != InductionVariable.Direction.Down) {
+                    if (limitCheckedIV.direction() != InductionVariable.Direction.Down) {
                         return false;
                     }
                     break;
                 case AT:
                     unsigned = true; // fall through
                 case GT:
-                    if (iv.direction() != InductionVariable.Direction.Down) {
+                    if (limitCheckedIV.direction() != InductionVariable.Direction.Down) {
                         return false;
                     }
                     break;
                 default:
                     throw GraalError.shouldNotReachHere(condition.toString()); // ExcludeFromJacocoGeneratedReport
             }
-            counted = new CountedLoopInfo(this, iv, ifNode, limit, isLimitIncluded, negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor(), unsigned);
+            counted = new CountedLoopInfo(this, limitCheckedIV, ifNode, limit, isLimitIncluded, negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor(), unsigned);
             return true;
         }
         return false;
