@@ -1,18 +1,20 @@
 ---
 layout: docs
 toc_group: security-guide
-link_title: Polyglot Sandboxing
-permalink: /security-guide/polyglot-sandbox/
-redirect_from: /reference-manual/embed-languages/sandbox-resource-limits/
+link_title: Sandboxing
+permalink: /security-guide/sandboxing/
+redirect_from: 
+- /security-guide/polyglot-sandbox/
+- /reference-manual/embed-languages/sandbox-resource-limits/
 ---
 
-# Polyglot Sandboxing
+# Sandboxing
 
-GraalVM allows a host application written in a JVM-based language to execute guest code written in Javascript via the [Polyglot Embedding API](../reference-manual/embedding/embed-languages.md).
+GraalVM allows a host application written in a JVM-based language to execute guest code written in Javascript via the [Polyglot API](../reference-manual/embedding/embed-languages.md).
 Configured with a [sandbox policy](#sandbox-policies), a security boundary between a host application and guest code can be established.
 For example, host code can execute untrusted guest code using the [UNTRUSTED](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SandboxPolicy.html#UNTRUSTED) policy.
 Host code can also execute multiple mutually distrusting instances of guest code that will be protected from one another.
-Used this way, polyglot sandboxing supports a multi-tenant scenario:
+Used this way, sandboxing supports a multi-tenant scenario:
 
 ![Sandbox Security Boundary](sandbox_security_boundary.png)
 
@@ -100,7 +102,7 @@ try (Context context = Context.newBuilder("js")
 }
 ```
 
-Since Polyglot version 23.1, the isolated and untrusted policy also requires isolated images of the languages to be specified on the class or module path.
+Since Polyglot API version 23.1, the isolated and untrusted policy also requires isolated images of the languages to be specified on the class or module path.
 Isolated versions of the languages can be downloaded from Maven using the following dependency:
 
 ```xml
@@ -112,8 +114,7 @@ Isolated versions of the languages can be downloaded from Maven using the follow
 </dependency>
 ```
 
-The [embedding guide](../reference-manual/embed-languages/#polyglot-isolates) contains more details on using polyglot isolate dependencies.
-
+The [Embedding Languages guide](../reference-manual/embed-languages/#polyglot-isolates) contains more details on using polyglot isolate dependencies.
 
 ### Untrusted Policy
 
@@ -162,7 +163,7 @@ Therefore the sandboxing policies already restrict host access in the CONSTRAINE
 `HostAccess.CONSTRAINED` is the predefined host access policy for the CONSTRAINED sandbox policy.
 To expose a host class method, it has to be annotated with `@HostAccess.Export`.
 This annotation is not inherited.
-Service providers such as [polyglot file system](https://www.graalvm.org/sdk/javadoc/index.html?org/graalvm/polyglot/io/FileSystem.html) implementations or output stream recipients for standard output and error stream redirections are exposed to guest code invocations.
+Service providers such as [Polyglot API FileSystem](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html) implementations or output stream recipients for standard output and error stream redirections are exposed to guest code invocations.
 
 Guest code can also implement a Java interface that has been annotated with `@Implementable`.
 Host code using such an interface directly interacts with guest code.
@@ -483,7 +484,7 @@ A speculative execution barrier is placed at each target of a conditional branch
 
 ## Sharing Execution Engines
 
-Guest code of different trust domains has to be separated at the Polylgot engine level, that is, only guest code of the same trust domain should share an engine.
+Guest code of different trust domains has to be separated at the polyglot engine level, that is, only guest code of the same trust domain should share an engine.
 When multiple context share an engine, all of them must have the same sandbox policy (the engine's sandbox policy).
 Application developers may choose to share execution engines among execution contexts for performance reasons.
 While the context holds the state of the executed code, the engine holds the code itself.
@@ -494,17 +495,17 @@ Source.newBuilder(…).cached(false).build()
 
 ## Compatibility and Limitations
 
-Polyglot sandboxing is not available in GraalVM Community Edition.
+Sandboxing is not available in GraalVM Community Edition.
 
 Depending on the sandboxing policy, only a subset of Truffle languages, instruments, and options are available.
 In particular, sandboxing is currently only supported for the runtime's [default version](https://github.com/oracle/graaljs/blob/master/docs/user/JavaScriptCompatibility.md) of ECMAScript (ECMAScript 2022).
 Sandboxing is also not supported from within GraalVM's Node.js.
 
-Polyglot sandboxing is not compatible with modifications to the VM setup via (for example) system properties that change the behavior of the VM.
+Sandboxing is not compatible with modifications to the VM setup via (for example) system properties that change the behavior of the VM.
 
 The sandboxing policy is subject to incompatible changes across major GraalVM releases to maintain a secure-by-default posture.
 
-Polyglot sandboxing cannot protect against vulnerabilities in its operating environment, such as vulnerabilities in the operating system or the underlying hardware.
+Sandboxing cannot protect against vulnerabilities in its operating environment, such as vulnerabilities in the operating system or the underlying hardware.
 We recommend to adopt the appropriate external isolation primitives to protect against corresponding risks.
 
 ## Differentiation with Java Security Manager
@@ -531,5 +532,5 @@ We ask that you do not contact project contributors directly or through other ch
 
 ### Related Documentation
 
-- [Polyglot Sandboxing](polyglot-sandbox.md)
+- [Security Guide](security-guide.md)
 - [Security Considerations in Native Image](native-image.md)
