@@ -101,8 +101,6 @@ public class TruffleInvocationPlugins {
                     if (javaType == null) {
                         b.push(JavaKind.Object, object);
                     } else {
-                        assert javaType.isConcrete() || javaType.isArray() : "exact type is not a concrete class: " +
-                                        javaType;
                         TypeReference type = TypeReference.createTrustedWithoutAssumptions(javaType);
                         Stamp piStamp = StampFactory.object(type, true);
                         b.addPush(JavaKind.Object, PiNode.create(object, piStamp, null));
