@@ -136,12 +136,9 @@ public final class ReentrantBlockIterator {
         StateT state = initialState;
         HIRBlock current = start;
 
-        CompilationAlarm compilationAlarm = CompilationAlarm.current();
-
         while (true) { // TERMINATION ARGUMENT: processing all blocks reverse post order until end
                        // of cfg or until a bailout is triggered because of a long compile
             CompilationAlarm.checkProgress(start.getCfg().graph);
-            compilationAlarm.checkExpiration();
             HIRBlock next = null;
             if (stopAtBlock != null && stopAtBlock.test(current)) {
                 states.put(current.getBeginNode(), state);

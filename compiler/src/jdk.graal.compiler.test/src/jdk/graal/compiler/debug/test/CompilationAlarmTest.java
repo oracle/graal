@@ -26,6 +26,8 @@ package jdk.graal.compiler.debug.test;
 
 import java.util.Optional;
 
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.GraalCompiler;
@@ -41,8 +43,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class CompilationAlarmTest extends GraalCompilerTest {
@@ -68,7 +68,7 @@ public class CompilationAlarmTest extends GraalCompilerTest {
                 long start = System.currentTimeMillis();
                 try {
                     while (System.currentTimeMillis() - start < end) {
-                        CompilationAlarm.current().checkExpiration();
+                        CompilationAlarm.checkProgress(graph);
                         if (withProgressCounterEvents) {
                             CompilationAlarm.checkProgress(graph);
                             testThread.events++;
