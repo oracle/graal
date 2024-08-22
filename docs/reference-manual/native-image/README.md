@@ -305,6 +305,7 @@ For different build tweaks and to learn more about build time configuration, see
 
 Native Image will output the progress and various statistics during the build. 
 To learn more about the output and the different build phases, see [Build Output](BuildOutput.md).
+For more detailed insights regarding the contents of a native executable, see [Build Reports](BuildReport.md).
 
 ## Native Image and Third-Party Libraries
 

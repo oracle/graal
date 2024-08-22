@@ -334,7 +334,7 @@ Note, however, that the overall peak throughput of the executable may be lower d
 
 ## Resource Usage Statistics
 
-#### <a name="glossary-garbage-collection"></a>Garbage Collections
+#### <a name="glossary-garbage-collections"></a>Garbage Collections
 The total time spent in all garbage collectors, total GC time divided by the total process time as a percentage, and the total number of garbage collections.
 A large number of collections or time spent in collectors usually indicates that the system is under memory pressure.
 Increase the amount of available memory to reduce the time to build the native binary.
@@ -343,7 +343,7 @@ Increase the amount of available memory to reduce the time to build the native b
 Peak [resident set size](https://en.wikipedia.org/wiki/Resident_set_size) as reported by the operating system.
 This value indicates the maximum amount of memory consumed by the build process.
 You may want to compare this value to the memory limit reported in the [build resources section](#glossary-build-resources).
-If there is enough headroom and the [GC statistics](#glossary-garbage-collection) do not show any problems, the amount of total memory of the system can be reduced to a value closer to the peak RSS to lower operational costs.
+If there is enough headroom and the [GC statistics](#glossary-garbage-collections) do not show any problems, the amount of total memory of the system can be reduced to a value closer to the peak RSS to lower operational costs.
 
 #### <a name="glossary-cpu-load"></a>CPU load
 The CPU time used by the process divided by the total process time.
