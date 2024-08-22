@@ -22,36 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.igvutil.args;
+package jdk.graal.compiler.util.args;
 
 /**
- * Parses a literal boolean ("true" or "false", ignoring case) from command line arguments.
+ * Indicates that a value was provided for a program argument that was not configured.
  */
-public class BooleanValue extends OptionValue<Boolean> {
-
-    public BooleanValue(String name, String help) {
-        super(name, help);
-    }
-
-    public BooleanValue(String name, boolean defaultValue, String help) {
-        super(name, defaultValue, help);
-    }
-
-    @Override
-    public boolean parseValue(String arg) throws InvalidArgumentException {
-        if (arg == null) {
-            throw new InvalidArgumentException(getName(), "no value provided");
-        }
-        switch (arg.toLowerCase()) {
-            case "true":
-                value = true;
-                break;
-            case "false":
-                value = false;
-                break;
-            default:
-                throw new InvalidArgumentException(getName(), String.format("invalid boolean value: \"%s\"", arg));
-        }
-        return true;
+@SuppressWarnings("serial")
+public class UnknownArgumentException extends Exception {
+    UnknownArgumentException(String argumentName) {
+        super("Unknown option '" + argumentName + "'.");
     }
 }

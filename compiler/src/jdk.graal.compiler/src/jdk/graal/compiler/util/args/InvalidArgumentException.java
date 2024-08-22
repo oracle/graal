@@ -22,24 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.igvutil.args;
+package jdk.graal.compiler.util.args;
 
 /**
- * Thrown when a {@code --help} flag is encountered when parsing command-line arguments.
+ * Indicates that a value of a program argument is invalid.
  */
 @SuppressWarnings("serial")
-public class HelpRequestedException extends Exception {
-    /**
-     * The command that the user requested help for.
-     */
-    private final Command command;
-
-    HelpRequestedException(Command command) {
-        super();
-        this.command = command;
-    }
-
-    public Command getCommand() {
-        return command;
+public class InvalidArgumentException extends Exception {
+    InvalidArgumentException(String name, String reason) {
+        super("The argument '" + name + "' could not be parsed: " + reason);
     }
 }

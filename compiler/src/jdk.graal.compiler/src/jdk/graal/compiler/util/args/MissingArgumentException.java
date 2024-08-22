@@ -22,14 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.igvutil.args;
+package jdk.graal.compiler.util.args;
 
 /**
- * Indicates that a value was provided for a program argument that was not configured.
+ * Indicates that a value was not provided for a required program option.
  */
 @SuppressWarnings("serial")
-public class UnknownArgumentException extends Exception {
-    UnknownArgumentException(String argumentName) {
-        super("Unknown option '" + argumentName + "'.");
+public class MissingArgumentException extends Exception {
+    MissingArgumentException(String argumentName) {
+        super("The argument '" + argumentName + "' is required.");
     }
 }

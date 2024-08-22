@@ -22,14 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.igvutil.args;
+package jdk.graal.compiler.util.args;
 
 /**
- * Indicates that a value of a program argument is invalid.
+ * A boolean flag option value that is {@code false} when not present in the program arguments and
+ * {@code true} when it is present.
  */
-@SuppressWarnings("serial")
-public class InvalidArgumentException extends Exception {
-    InvalidArgumentException(String name, String reason) {
-        super("The argument '" + name + "' could not be parsed: " + reason);
+public class Flag extends OptionValue<Boolean> {
+    public Flag(String help) {
+        super("", false, help);
+    }
+
+    @Override
+    public void clear() {
+        value = false;
+    }
+
+    @Override
+    public boolean parseValue(String arg) {
+        value = true;
+        return false;
+    }
+
+    @Override
+    public String getUsage() {
+        // No value, usage is only determined by flag name
+        return "";
     }
 }
