@@ -956,7 +956,13 @@ public class ImageLayerLoader {
         }
     }
 
-    protected ImageHeapConstant getOrCreateConstant(EconomicMap<String, Object> constantsMap, int id, JavaConstant relinkedHostedObject) {
+    /**
+     * Get the {@link ImageHeapConstant} representation for a specific base layer constant id. If
+     * known, the parentReachableHostedObject will point to the corresponding constant in the
+     * underlying host VM, found by querying the parent object that made this constant reachable
+     * (see {@link ImageLayerLoader#getReachableHostedValue(ImageHeapConstant, int)}).
+     */
+    protected ImageHeapConstant getOrCreateConstant(EconomicMap<String, Object> constantsMap, int id, JavaConstant parentReachableHostedObject) {
         if (constants.containsKey(id)) {
             return constants.get(id);
         }
@@ -970,7 +976,7 @@ public class ImageLayerLoader {
 
         String objectOffset = get(baseLayerConstant, OBJECT_OFFSET_TAG);
         int identityHashCode = get(baseLayerConstant, IDENTITY_HASH_CODE_TAG);
-        if (relinkedHostedObject != null && !type.getJavaClass().equals(Class.class)) {
+        if (parentReachableHostedObject != null && !type.getJavaClass().equals(Class.class)) {
             /*
              * The hash codes of DynamicHubs need to be injected before they are used in a map,
              * which happens right after their creation. The injection of their hash codes can be
@@ -979,21 +985,22 @@ public class ImageLayerLoader {
              * Also, for DynamicHub constants, the identity hash code persisted is the hash code of
              * the Class object, which we do not want to inject in the DynamicHub.
              */
-            injectIdentityHashCode(hostedValuesProvider.asObject(Object.class, relinkedHostedObject), identityHashCode);
+            injectIdentityHashCode(hostedValuesProvider.asObject(Object.class, parentReachableHostedObject), identityHashCode);
         }
         String constantType = get(baseLayerConstant, CONSTANT_TYPE_TAG);
         switch (constantType) {
             case INSTANCE_TAG -> {
                 List<List<Object>> instanceData = get(baseLayerConstant, DATA_TAG);
-                JavaConstant hostedObject = getHostedObject(baseLayerConstant, type);
-                if (hostedObject != null && relinkedHostedObject != null) {
-                    Object object = hostedValuesProvider.asObject(Object.class, hostedObject);
-                    Object relinkedObject = hostedValuesProvider.asObject(Object.class, relinkedHostedObject);
-                    AnalysisError.guarantee(object == relinkedObject, "Found discrepancy between hosted value %s and relinked value %s.", object, relinkedObject);
+                JavaConstant foundHostedObject = lookupHostedObject(baseLayerConstant, type);
+                if (foundHostedObject != null && parentReachableHostedObject != null) {
+                    Object foundObject = hostedValuesProvider.asObject(Object.class, foundHostedObject);
+                    Object reachableObject = hostedValuesProvider.asObject(Object.class, parentReachableHostedObject);
+                    AnalysisError.guarantee(foundObject == reachableObject, "Found discrepancy between recipe-found hosted value %s and parent-reachable hosted value %s.", foundObject,
+                                    reachableObject);
                 }
 
                 addBaseLayerObject(id, objectOffset, () -> {
-                    ImageHeapInstance imageHeapInstance = new ImageHeapInstance(type, hostedObject == null ? relinkedHostedObject : hostedObject, identityHashCode);
+                    ImageHeapInstance imageHeapInstance = new ImageHeapInstance(type, foundHostedObject == null ? parentReachableHostedObject : foundHostedObject, identityHashCode);
                     if (instanceData != null) {
                         Object[] fieldValues = getReferencedValues(constantsMap, imageHeapInstance, instanceData, imageLayerSnapshotUtil.getRelinkedFields(type, metaAccess));
                         imageHeapInstance.setFieldValues(fieldValues);
@@ -1021,31 +1028,31 @@ public class ImageLayerLoader {
         return constants.get(id);
     }
 
-    protected JavaConstant getHostedObject(EconomicMap<String, Object> baseLayerConstant, AnalysisType analysisType) {
-        Class<?> clazz = analysisType.getJavaClass();
+    /**
+     * Look up an object in current hosted VM based on the recipe serialized from the base layer.
+     */
+    protected JavaConstant lookupHostedObject(EconomicMap<String, Object> baseLayerConstant, AnalysisType analysisType) {
         boolean simulated = get(baseLayerConstant, SIMULATED_TAG);
         if (!simulated) {
-            return getHostedObject(baseLayerConstant, clazz);
+            Class<?> clazz = analysisType.getJavaClass();
+            return lookupHostedObject(baseLayerConstant, clazz);
         }
         return null;
     }
 
     @SuppressWarnings("unchecked")
-    protected JavaConstant getHostedObject(EconomicMap<String, Object> baseLayerConstant, Class<?> clazz) {
+    protected JavaConstant lookupHostedObject(EconomicMap<String, Object> baseLayerConstant, Class<?> clazz) {
         if (clazz.equals(String.class)) {
             String value = get(baseLayerConstant, VALUE_TAG);
             if (value != null) {
-                return getHostedObject(value.intern());
+                Object object = value.intern();
+                return hostedValuesProvider.forObject(object);
             }
         } else if (Enum.class.isAssignableFrom(clazz)) {
             Enum<?> enumValue = getEnumValue(baseLayerConstant);
-            return getHostedObject(enumValue);
+            return hostedValuesProvider.forObject(enumValue);
         }
         return null;
-    }
-
-    protected JavaConstant getHostedObject(Object object) {
-        return hostedValuesProvider.forObject(object);
     }
 
     @SuppressWarnings("unused")
@@ -1117,17 +1124,17 @@ public class ImageLayerLoader {
                     values[position] = new AnalysisFuture<>(() -> {
                         ensureHubInitialized(parentConstant);
 
-                        JavaConstant hostedObject = relink ? getValueHostedObject(parentConstant, finalPosition) : null;
-                        ImageHeapConstant constant = getOrCreateConstant(constantsMap, constantId, hostedObject);
-                        values[finalPosition] = constant;
+                        JavaConstant hostedConstant = relink ? getReachableHostedValue(parentConstant, finalPosition) : null;
+                        ImageHeapConstant baseLayerConstant = getOrCreateConstant(constantsMap, constantId, hostedConstant);
+                        values[finalPosition] = baseLayerConstant;
 
-                        ensureHubInitialized(constant);
+                        ensureHubInitialized(baseLayerConstant);
 
-                        if (hostedObject != null) {
-                            linkBaseLayerValue(constant, parentConstant, finalPosition);
+                        if (hostedConstant != null) {
+                            addBaseLayerValueToImageHeap(baseLayerConstant, parentConstant, finalPosition);
                         }
 
-                        return constant;
+                        return baseLayerConstant;
                     });
                 } else if (constantId == NULL_POINTER_CONSTANT) {
                     values[position] = JavaConstant.NULL_POINTER;
@@ -1157,12 +1164,16 @@ public class ImageLayerLoader {
         return false;
     }
 
-    private JavaConstant getValueHostedObject(ImageHeapConstant parentConstant, int i) {
+    /**
+     * For a parent constant return the referenced field-position or array-element-index value
+     * corresponding to <code>index</code>.
+     */
+    private JavaConstant getReachableHostedValue(ImageHeapConstant parentConstant, int index) {
         if (parentConstant instanceof ImageHeapObjectArray array) {
-            return getElementValueHostedObject(array, i);
+            return getHostedElementValue(array, index);
         } else if (parentConstant instanceof ImageHeapInstance instance) {
-            AnalysisField field = getFieldFromIndex(instance, i);
-            return getFieldValueHostedObject(instance, field);
+            AnalysisField field = getFieldFromIndex(instance, index);
+            return getHostedFieldValue(instance, field);
         } else {
             throw AnalysisError.shouldNotReachHere("unexpected constant: " + parentConstant);
         }
@@ -1172,7 +1183,7 @@ public class ImageLayerLoader {
         return (AnalysisField) instance.getType().getInstanceFields(true)[i];
     }
 
-    private JavaConstant getElementValueHostedObject(ImageHeapObjectArray array, int idx) {
+    private JavaConstant getHostedElementValue(ImageHeapObjectArray array, int idx) {
         JavaConstant hostedArray = array.getHostedObject();
         JavaConstant rawElementValue = null;
         if (hostedArray != null) {
@@ -1181,7 +1192,7 @@ public class ImageLayerLoader {
         return rawElementValue;
     }
 
-    private JavaConstant getFieldValueHostedObject(ImageHeapInstance instance, AnalysisField field) {
+    private JavaConstant getHostedFieldValue(ImageHeapInstance instance, AnalysisField field) {
         ValueSupplier<JavaConstant> rawFieldValue;
         try {
             JavaConstant hostedInstance = instance.getHostedObject();
@@ -1194,11 +1205,11 @@ public class ImageLayerLoader {
         return rawFieldValue.get();
     }
 
-    public void linkBaseLayerValue(ImageHeapConstant constant, ImageHeapConstant parentConstant, int i) {
+    public void addBaseLayerValueToImageHeap(ImageHeapConstant constant, ImageHeapConstant parentConstant, int i) {
         if (parentConstant instanceof ImageHeapInstance imageHeapInstance) {
-            universe.getHeapScanner().linkBaseLayerValue(constant, getFieldFromIndex(imageHeapInstance, i));
+            universe.getHeapScanner().registerBaseLayerValue(constant, getFieldFromIndex(imageHeapInstance, i));
         } else if (parentConstant instanceof ImageHeapObjectArray) {
-            universe.getHeapScanner().linkBaseLayerValue(constant, i);
+            universe.getHeapScanner().registerBaseLayerValue(constant, i);
         } else {
             throw AnalysisError.shouldNotReachHere("unexpected constant: " + constant);
         }
