@@ -26,6 +26,7 @@ package com.oracle.svm.core.deopt;
 
 import java.lang.ref.WeakReference;
 
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -267,9 +268,9 @@ public final class DeoptimizedFrame {
     }
 
     protected static DeoptimizedFrame factory(int targetContentSize, long sourceEncodedFrameSize, SubstrateInstalledCode sourceInstalledCode, VirtualFrame topFrame,
-                    RelockObjectData[] relockedObjects, CodePointer sourcePC) {
+                    RelockObjectData[] relockedObjects, CodePointer sourcePC, boolean rethrowException) {
         final TargetContent targetContentBuffer = new TargetContent(targetContentSize, ConfigurationValues.getTarget().arch.getByteOrder());
-        return new DeoptimizedFrame(sourceEncodedFrameSize, sourceInstalledCode, topFrame, targetContentBuffer, relockedObjects, sourcePC);
+        return new DeoptimizedFrame(sourceEncodedFrameSize, sourceInstalledCode, topFrame, targetContentBuffer, relockedObjects, sourcePC, rethrowException);
     }
 
     private final long sourceEncodedFrameSize;
@@ -280,9 +281,16 @@ public final class DeoptimizedFrame {
     private final PinnedObject pin;
     private final CodePointer sourcePC;
     private final char[] completedMessage;
+    /**
+     * This flag indicates this DeoptimizedFrame corresponds to a state where
+     * {@link FrameState#rethrowException()} is set. Within the execution, this marks a spot where
+     * we have an exception and are now starting to walk the exceptions handlers to see if execution
+     * should continue in a matching handler or unwind.
+     */
+    private final boolean rethrowException;
 
     private DeoptimizedFrame(long sourceEncodedFrameSize, SubstrateInstalledCode sourceInstalledCode, VirtualFrame topFrame, Deoptimizer.TargetContent targetContent,
-                    RelockObjectData[] relockedObjects, CodePointer sourcePC) {
+                    RelockObjectData[] relockedObjects, CodePointer sourcePC, boolean rethrowException) {
         this.sourceEncodedFrameSize = sourceEncodedFrameSize;
         this.topFrame = topFrame;
         this.targetContent = targetContent;
@@ -293,6 +301,7 @@ public final class DeoptimizedFrame {
         StringBuilderLog sbl = new StringBuilderLog();
         sbl.string("deoptStub: completed for DeoptimizedFrame at ").hex(pin.addressOfObject()).newline();
         this.completedMessage = sbl.getResult().toCharArray();
+        this.rethrowException = rethrowException;
     }
 
     /**
@@ -393,6 +402,13 @@ public final class DeoptimizedFrame {
      * the deoptimization target.
      */
     public void takeException() {
+        if (rethrowException) {
+            /*
+             * This frame already corresponds to the start of an execution handler walk. Nothing
+             * needs to be done.
+             */
+            return;
+        }
         ReturnAddress firstAddressEntry = topFrame.returnAddress;
         CodeInfo info = CodeInfoTable.getImageCodeInfo();
         SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
