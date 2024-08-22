@@ -66,6 +66,7 @@ public final class CompilationAlarm implements AutoCloseable {
     private CompilationAlarm(double period) {
         this.period = period;
         this.expiration = period == 0.0D ? 0L : System.currentTimeMillis() + (long) (period * 1000);
+        this.previous = currentAlarm.get();
     }
 
     /**
@@ -97,14 +98,14 @@ public final class CompilationAlarm implements AutoCloseable {
      * @return {@code true} if this alarm has been active for more than {@linkplain #getPeriod()
      *         period} seconds, {@code false} otherwise
      */
-    public boolean hasExpired() {
-        return this != NEVER_EXPIRES && System.currentTimeMillis() > expiration;
+    private boolean hasExpired() {
+        return expiration != 0 && System.currentTimeMillis() > expiration;
     }
 
     /**
      * Checks whether this alarm {@link #hasExpired()} and if so, raises a bailout exception.
      */
-    public void checkExpiration() {
+    private void checkExpiration() {
         if (hasExpired()) {
             throw new PermanentBailoutException("Compilation exceeded %.3f seconds", period);
         }
@@ -112,10 +113,7 @@ public final class CompilationAlarm implements AutoCloseable {
 
     @Override
     public void close() {
-        if (this != NEVER_EXPIRES) {
-            currentAlarm.set(null);
-            resetProgressDetection();
-        }
+        currentAlarm.set(previous);
     }
 
     /**
@@ -129,9 +127,14 @@ public final class CompilationAlarm implements AutoCloseable {
     private final long expiration;
 
     /**
+     * The previously installed alarm.
+     */
+    private final CompilationAlarm previous;
+
+    /**
      * Starts an alarm for setting a time limit on a compilation if there isn't already an active
      * alarm and {@link CompilationAlarm.Options#CompilationExpirationPeriod}{@code > 0}. The
-     * returned value can be used in a try-with-resource statement to disable the alarm once the
+     * returned value should be used in a try-with-resource statement to disable the alarm once the
      * compilation is finished.
      *
      * @return a {@link CompilationAlarm} if there was no current alarm for the calling thread
@@ -146,14 +149,21 @@ public final class CompilationAlarm implements AutoCloseable {
             if (Assertions.detailedAssertionsEnabled(options)) {
                 period *= 2;
             }
-            CompilationAlarm current = currentAlarm.get();
-            if (current == null) {
-                current = new CompilationAlarm(period);
-                currentAlarm.set(current);
-                return current;
-            }
+            CompilationAlarm current = new CompilationAlarm(period);
+            currentAlarm.set(current);
+            return current;
         }
         return null;
+    }
+
+    /**
+     * Disable the compilation alarm. The returned value should be used in a try-with-resource
+     * statement to restore the previous alarm state.
+     */
+    public static CompilationAlarm disable() {
+        CompilationAlarm current = new CompilationAlarm(0);
+        currentAlarm.set(current);
+        return current;
     }
 
     /**
