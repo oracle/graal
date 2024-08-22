@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,13 +65,13 @@ public class ReinterpretStampDoubleToLongTest extends ReinterpretStampTest {
                 }
 
                 if (Double.compare(lowerBound, upperBound) <= 0) {
-                    ret.add(new Object[]{new FloatStamp(Double.SIZE, lowerBound, upperBound, true)});
-                    ret.add(new Object[]{new FloatStamp(Double.SIZE, lowerBound, upperBound, false)});
+                    ret.add(new Object[]{FloatStamp.create(Double.SIZE, lowerBound, upperBound, true)});
+                    ret.add(new Object[]{FloatStamp.create(Double.SIZE, lowerBound, upperBound, false)});
                 }
             }
         }
 
-        ret.add(new Object[]{new FloatStamp(Double.SIZE, Double.NaN, Double.NaN, false)});
+        ret.add(new Object[]{FloatStamp.createNaN(Double.SIZE)});
 
         return ret;
     }

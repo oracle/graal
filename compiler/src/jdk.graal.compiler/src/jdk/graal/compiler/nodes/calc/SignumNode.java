@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,31 +55,16 @@ public final class SignumNode extends UnaryNode implements ArithmeticLIRLowerabl
     }
 
     private static Stamp computeStamp(Stamp stamp) {
+        if (stamp.isEmpty()) {
+            return stamp;
+        }
         FloatStamp floatStamp = (FloatStamp) stamp;
         if (floatStamp.isNaN()) {
             return floatStamp;
         }
-        if (floatStamp.isNonNaN()) {
-            if (floatStamp.lowerBound() > 0) {
-                return new FloatStamp(floatStamp.getBits(), 1.0D, 1.0D, true);
-            }
-            if (floatStamp.upperBound() < 0) {
-                return new FloatStamp(floatStamp.getBits(), -1.0D, -1.0D, true);
-            }
-        }
-        // Initially make an empty stamp.
-        FloatStamp result = new FloatStamp(floatStamp.getBits(), Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, floatStamp.isNonNaN());
-        if (floatStamp.contains(0.0d)) {
-            // this also covers stamp.contains(-0.0d)
-            result = (FloatStamp) result.meet(new FloatStamp(floatStamp.getBits(), 0.0d, 0.0d, true));
-        }
-        if (floatStamp.upperBound() > 0) {
-            result = (FloatStamp) result.meet(new FloatStamp(floatStamp.getBits(), 1.0d, 1.0d, true));
-        }
-        if (floatStamp.lowerBound() < 0) {
-            result = (FloatStamp) result.meet(new FloatStamp(floatStamp.getBits(), -1.0d, -1.0d, true));
-        }
-        return result;
+        double lowerBound = Math.signum(floatStamp.lowerBound());
+        double upperBound = Math.signum(floatStamp.upperBound());
+        return FloatStamp.create(floatStamp.getBits(), lowerBound, upperBound, floatStamp.isNonNaN());
     }
 
     @Override

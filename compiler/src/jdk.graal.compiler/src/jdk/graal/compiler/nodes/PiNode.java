@@ -164,12 +164,12 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                 break;
             case FLOAT_NON_NAN:
                 // non NAN float stamp
-                piStamp = new FloatStamp(32, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, true);
+                piStamp = FloatStamp.create(Float.SIZE, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, true);
                 pushKind = JavaKind.Float;
                 break;
             case DOUBLE_NON_NAN:
                 // non NAN double stamp
-                piStamp = new FloatStamp(64, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, true);
+                piStamp = FloatStamp.create(Double.SIZE, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, true);
                 pushKind = JavaKind.Double;
                 break;
             default:
