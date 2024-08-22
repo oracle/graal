@@ -67,7 +67,7 @@ public class BuildTime {
     /**
      * Gets {@link Lookup} for method handles to call Graal and JVMCI methods.
      *
-     * @param lookup a {@link Lookup} to resolve hadles to call into native-image host
+     * @param lookup a {@link Lookup} to resolve handles to call into native-image host
      * @return a {@link Lookup} to resolve compiler entry methods
      */
     public static Lookup getLookup(Lookup lookup) {

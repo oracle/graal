@@ -135,6 +135,7 @@ final class GuestGraal {
         return ImageSingletons.lookup(GuestGraal.class);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     GuestGraal(Map<String, MethodHandle> handles) {
         this.getJNIEnv = handles.get("getJNIEnv");
         this.getSavedProperty = handles.get("getSavedProperty");
@@ -423,6 +424,7 @@ final class GuestGraalTruffleToLibGraalEntryPoints {
     private final MethodHandle purgePartialEvaluationCaches;
     private final MethodHandle getCompilerVersion;
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     GuestGraalTruffleToLibGraalEntryPoints(Lookup guestGraalLookup) {
         Map<String, MethodHandle> handles = new HashMap<>();
         try {
