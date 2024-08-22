@@ -61,7 +61,6 @@ import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadStaticFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MergeTypeFlow;
-import com.oracle.graal.pointsto.flow.MonitorEnterTypeFlow;
 import com.oracle.graal.pointsto.flow.NewInstanceTypeFlow;
 import com.oracle.graal.pointsto.flow.NullCheckTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.LoadIndexedTypeFlow;
@@ -506,9 +505,6 @@ public class PointsToStats {
             return "Source @ " + formatSource(flow);
         } else if (flow instanceof CloneTypeFlow) {
             return "Clone @ " + formatSource(flow);
-        } else if (flow instanceof MonitorEnterTypeFlow) {
-            MonitorEnterTypeFlow monitor = (MonitorEnterTypeFlow) flow;
-            return "MonitorEnter @ " + formatMethod(monitor.getSource().getMethod());
         } else {
             return ClassUtil.getUnqualifiedName(flow.getClass()) + "@" + formatSource(flow);
         }

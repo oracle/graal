@@ -116,7 +116,6 @@ import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.NewArrayWithExceptionNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
@@ -1122,18 +1121,6 @@ public class MethodTypeFlowBuilder {
                 });
                 cloneBuilder.addObserverDependency(inputBuilder);
                 state.add(node.asFixedNode(), cloneBuilder);
-            } else if (n instanceof MonitorEnterNode) {
-                MonitorEnterNode node = (MonitorEnterNode) n;
-                TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
-
-                TypeFlowBuilder<?> monitorEntryBuilder = TypeFlowBuilder.create(bb, node, MonitorEnterTypeFlow.class, () -> {
-                    MonitorEnterTypeFlow monitorEntryFlow = new MonitorEnterTypeFlow(AbstractAnalysisEngine.sourcePosition(node), bb);
-                    flowsGraph.addMiscEntryFlow(monitorEntryFlow);
-                    return monitorEntryFlow;
-                });
-                monitorEntryBuilder.addUseDependency(objectBuilder);
-                /* Monitor enters must not be removed. */
-                typeFlowGraphBuilder.registerSinkBuilder(monitorEntryBuilder);
             } else if (n instanceof MacroInvokable node) {
                 /*
                  * Macro nodes can either be constant folded during compilation, or lowered back to
