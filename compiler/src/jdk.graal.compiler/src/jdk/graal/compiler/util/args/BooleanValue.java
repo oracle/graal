@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.util.args;
 
+import java.util.Locale;
+
 /**
  * Parses a literal boolean ("true" or "false", ignoring case) from command line arguments.
  */
@@ -42,7 +44,7 @@ public class BooleanValue extends OptionValue<Boolean> {
         if (arg == null) {
             throw new InvalidArgumentException(getName(), "no value provided");
         }
-        switch (arg.toLowerCase()) {
+        switch (arg.toLowerCase(Locale.US)) {
             case "true":
                 value = true;
                 break;

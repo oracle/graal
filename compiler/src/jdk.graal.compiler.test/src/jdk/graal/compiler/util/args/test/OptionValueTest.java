@@ -33,6 +33,7 @@ import jdk.graal.compiler.util.args.BooleanValue;
 import jdk.graal.compiler.util.args.Flag;
 import jdk.graal.compiler.util.args.IntegerValue;
 import jdk.graal.compiler.util.args.InvalidArgumentException;
+import jdk.graal.compiler.util.args.MultiChoiceValue;
 import jdk.graal.compiler.util.args.OptionValue;
 import jdk.graal.compiler.util.args.StringValue;
 
@@ -97,6 +98,35 @@ public class OptionValueTest {
         Assert.assertFalse(option.parseValue(null));
         Assert.assertTrue(option.isSet());
         Assert.assertTrue(option.getValue());
+    }
+
+    enum TestEnum {
+        OptionA,
+        OptionB,
+        OptionC,
+        OptionD
+    }
+
+    @Test
+    public void testEnum() throws InvalidArgumentException {
+        MultiChoiceValue<TestEnum> option = new MultiChoiceValue<>("", "");
+        option.addChoice("OptionA", TestEnum.OptionA, "");
+        option.addChoice("OptionB", TestEnum.OptionB, "");
+        option.addChoice("OptionD", TestEnum.OptionD, "");
+
+        Assert.assertFalse(option.isSet());
+        Assert.assertTrue(option.parseValue("OptionA"));
+        Assert.assertTrue(option.isSet());
+        Assert.assertEquals(TestEnum.OptionA, option.getValue());
+        Assert.assertTrue(option.parseValue("OptionD"));
+        Assert.assertTrue(option.isSet());
+        Assert.assertEquals(TestEnum.OptionD, option.getValue());
+        try {
+            Assert.assertFalse(option.parseValue("OptionC"));
+            Assert.fail("Expected InvalidArgumentException");
+        } catch (InvalidArgumentException e) {
+            // expected
+        }
     }
 
     @Test

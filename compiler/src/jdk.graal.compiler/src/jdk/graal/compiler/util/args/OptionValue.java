@@ -42,7 +42,7 @@ public abstract class OptionValue<T> {
     /**
      * Default value to return if no value was parsed. Can be null.
      */
-    private final T defaultValue;
+    protected final T defaultValue;
 
     /**
      * Explanatory name for the option.
