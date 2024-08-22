@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,13 +65,13 @@ public class ReinterpretStampFloatToIntTest extends ReinterpretStampTest {
                 }
 
                 if (Float.compare(lowerBound, upperBound) <= 0) {
-                    ret.add(new Object[]{new FloatStamp(Float.SIZE, lowerBound, upperBound, true)});
-                    ret.add(new Object[]{new FloatStamp(Float.SIZE, lowerBound, upperBound, false)});
+                    ret.add(new Object[]{FloatStamp.create(Float.SIZE, lowerBound, upperBound, true)});
+                    ret.add(new Object[]{FloatStamp.create(Float.SIZE, lowerBound, upperBound, false)});
                 }
             }
         }
 
-        ret.add(new Object[]{new FloatStamp(Float.SIZE, Float.NaN, Float.NaN, false)});
+        ret.add(new Object[]{FloatStamp.createNaN(Float.SIZE)});
 
         return ret;
     }
