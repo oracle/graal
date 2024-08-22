@@ -25,18 +25,11 @@
 package jdk.graal.compiler.hotspot.guestgraal.truffle;
 
 import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 
 import java.lang.invoke.MethodHandle;
 import java.net.URI;
 
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetDescription;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetLanguage;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetLineNumber;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetNodeClassName;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetNodeId;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetEnd;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
 import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMethodHandleOrFail;
 
 final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements TruffleSourceLanguagePosition {
@@ -122,13 +115,13 @@ final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements 
     }
 
     private static final class Handles {
-        final MethodHandle getOffsetStart = getHostMethodHandleOrFail(GetOffsetStart);
-        final MethodHandle getOffsetEnd = getHostMethodHandleOrFail(GetOffsetEnd);
-        final MethodHandle getLineNumber = getHostMethodHandleOrFail(GetLineNumber);
-        final MethodHandle getLanguage = getHostMethodHandleOrFail(GetLanguage);
-        final MethodHandle getDescription = getHostMethodHandleOrFail(GetDescription);
-        final MethodHandle getURI = getHostMethodHandleOrFail(GetURI);
-        final MethodHandle getNodeClassName = getHostMethodHandleOrFail(GetNodeClassName);
-        final MethodHandle getNodeId = getHostMethodHandleOrFail(GetNodeId);
+        final MethodHandle getOffsetStart = getHostMethodHandleOrFail(Id.GetOffsetStart);
+        final MethodHandle getOffsetEnd = getHostMethodHandleOrFail(Id.GetOffsetEnd);
+        final MethodHandle getLineNumber = getHostMethodHandleOrFail(Id.GetLineNumber);
+        final MethodHandle getLanguage = getHostMethodHandleOrFail(Id.GetLanguage);
+        final MethodHandle getDescription = getHostMethodHandleOrFail(Id.GetDescription);
+        final MethodHandle getURI = getHostMethodHandleOrFail(Id.GetURI);
+        final MethodHandle getNodeClassName = getHostMethodHandleOrFail(Id.GetNodeClassName);
+        final MethodHandle getNodeId = getHostMethodHandleOrFail(Id.GetNodeId);
     }
 }

@@ -25,6 +25,7 @@
 package jdk.graal.compiler.hotspot.guestgraal.truffle;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -35,22 +36,6 @@ import java.lang.invoke.MethodHandle;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AsJavaConstant;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CancelCompilation;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CompilableToString;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CountDirectCallNodes;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.EngineId;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilableCallCount;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilableName;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilerOptions;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetFailedSpeculationsAddress;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetKnownCallSiteCount;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetNonTrivialNodeCount;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsSameOrSplit;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsTrivial;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationFailed;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.PrepareForCompilation;
 import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMethodHandleOrFail;
 
 final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompilable {
@@ -228,21 +213,21 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     }
 
     private static final class Handles {
-        final MethodHandle getFailedSpeculationsAddress = getHostMethodHandleOrFail(GetFailedSpeculationsAddress);
-        final MethodHandle getCompilerOptions = getHostMethodHandleOrFail(GetCompilerOptions);
-        final MethodHandle engineId = getHostMethodHandleOrFail(EngineId);
-        final MethodHandle prepareForCompilation = getHostMethodHandleOrFail(PrepareForCompilation);
-        final MethodHandle isTrivial = getHostMethodHandleOrFail(IsTrivial);
-        final MethodHandle asJavaConstant = getHostMethodHandleOrFail(AsJavaConstant);
-        final MethodHandle getCompilableName = getHostMethodHandleOrFail(GetCompilableName);
-        final MethodHandle createStringSupplier = getHostMethodHandleOrFail(CreateStringSupplier);
-        final MethodHandle onCompilationFailed = getHostMethodHandleOrFail(OnCompilationFailed);;
-        final MethodHandle getNonTrivialNodeCount = getHostMethodHandleOrFail(GetNonTrivialNodeCount);
-        final MethodHandle countDirectCallNodes = getHostMethodHandleOrFail(CountDirectCallNodes);
-        final MethodHandle getCompilableCallCount = getHostMethodHandleOrFail(GetCompilableCallCount);
-        final MethodHandle compilableToString = getHostMethodHandleOrFail(CompilableToString);
-        final MethodHandle cancelCompilation = getHostMethodHandleOrFail(CancelCompilation);
-        final MethodHandle isSameOrSplit = getHostMethodHandleOrFail(IsSameOrSplit);
-        final MethodHandle getKnownCallSiteCount = getHostMethodHandleOrFail(GetKnownCallSiteCount);
+        final MethodHandle getFailedSpeculationsAddress = getHostMethodHandleOrFail(Id.GetFailedSpeculationsAddress);
+        final MethodHandle getCompilerOptions = getHostMethodHandleOrFail(Id.GetCompilerOptions);
+        final MethodHandle engineId = getHostMethodHandleOrFail(Id.EngineId);
+        final MethodHandle prepareForCompilation = getHostMethodHandleOrFail(Id.PrepareForCompilation);
+        final MethodHandle isTrivial = getHostMethodHandleOrFail(Id.IsTrivial);
+        final MethodHandle asJavaConstant = getHostMethodHandleOrFail(Id.AsJavaConstant);
+        final MethodHandle getCompilableName = getHostMethodHandleOrFail(Id.GetCompilableName);
+        final MethodHandle createStringSupplier = getHostMethodHandleOrFail(Id.CreateStringSupplier);
+        final MethodHandle onCompilationFailed = getHostMethodHandleOrFail(Id.OnCompilationFailed);;
+        final MethodHandle getNonTrivialNodeCount = getHostMethodHandleOrFail(Id.GetNonTrivialNodeCount);
+        final MethodHandle countDirectCallNodes = getHostMethodHandleOrFail(Id.CountDirectCallNodes);
+        final MethodHandle getCompilableCallCount = getHostMethodHandleOrFail(Id.GetCompilableCallCount);
+        final MethodHandle compilableToString = getHostMethodHandleOrFail(Id.CompilableToString);
+        final MethodHandle cancelCompilation = getHostMethodHandleOrFail(Id.CancelCompilation);
+        final MethodHandle isSameOrSplit = getHostMethodHandleOrFail(Id.IsSameOrSplit);
+        final MethodHandle getKnownCallSiteCount = getHostMethodHandleOrFail(Id.GetKnownCallSiteCount);
     }
 }

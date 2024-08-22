@@ -27,13 +27,13 @@ package jdk.graal.compiler.hotspot.guestgraal.truffle;
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerAssumptionDependency;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 import java.lang.invoke.MethodHandle;
 import java.util.function.Consumer;
 
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.ConsumeOptimizedAssumptionDependency;
 import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMethodHandleOrFail;
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 final class HSConsumer extends HSIndirectHandle implements Consumer<OptimizedAssumptionDependency> {
 
@@ -62,7 +62,7 @@ final class HSConsumer extends HSIndirectHandle implements Consumer<OptimizedAss
             } else {
                 compilableHsHandle = ((HSTruffleCompilable) dependency.getCompilable()).hsHandle;
             }
-            installedCode = runtime().translate(dependency.getInstalledCode());
+            installedCode = HotSpotJVMCIRuntime.runtime().translate(dependency.getInstalledCode());
         }
         try {
             HANDLES.consumeOptimizedAssumptionDependency.invoke(hsHandle, compilableHsHandle, installedCode);
@@ -72,6 +72,6 @@ final class HSConsumer extends HSIndirectHandle implements Consumer<OptimizedAss
     }
 
     private static final class Handles {
-        final MethodHandle consumeOptimizedAssumptionDependency = getHostMethodHandleOrFail(ConsumeOptimizedAssumptionDependency);
+        final MethodHandle consumeOptimizedAssumptionDependency = getHostMethodHandleOrFail(Id.ConsumeOptimizedAssumptionDependency);
     }
 }

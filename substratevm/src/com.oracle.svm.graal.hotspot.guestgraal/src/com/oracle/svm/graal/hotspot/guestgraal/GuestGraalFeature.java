@@ -88,14 +88,14 @@ import jdk.vm.ci.code.TargetDescription;
  * dependencies. For example:
  *
  * <pre>
- *      native-image -p jniutils.jar -cp guestgraal-library.jar
+ *      native-image -p jniutils.jar:nativebridge.jar -cp guestgraal-library.jar
  * </pre>
  * <p>
  * If building with mx, execute this from the {@code vm} suite:
  *
  * <pre>
  *      mx --env guestgraal native-image \
- *          -p $(mx --env guestgraal --quiet path JNIUTILS) \
+ *          -p $(mx --env guestgraal --quiet path JNIUTILS):$(mx --env guestgraal --quiet path NATIVEBRIDGE) \ \
  *          -cp $(mx --env guestgraal --quiet path GUESTGRAAL_LIBRARY)
  * </pre>
  * <p>
@@ -190,6 +190,7 @@ public final class GuestGraalFeature implements Feature {
         // Target_jdk_graal_compiler_serviceprovider_VMSupport.getIsolateID needs access to
         // org.graalvm.nativeimage.impl.IsolateSupport
         accessModulesToClass(ModuleSupport.Access.EXPORT, GuestGraalFeature.class, "org.graalvm.nativeimage");
+
         loader = new GuestGraalClassLoader(Options.GuestJavaHome.getValue().resolve(Path.of("lib", "modules")));
 
         buildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.guestgraal.BuildTime");
@@ -418,8 +419,7 @@ public final class GuestGraalFeature implements Feature {
                             hostedGraalSetFoldNodePluginClasses,
                             configResult.encodedConfig());
 
-            MethodHandle getRuntimeHandles = mhl.findStatic(buildTimeClass, "getRuntimeHandles", methodType(Map.class));
-            initGraalRuntimeHandles(getRuntimeHandles);
+            initGraalRuntimeHandles(mhl.findStatic(buildTimeClass, "getRuntimeHandles", methodType(Map.class)));
             initializeTruffle();
         } catch (Throwable e) {
             throw VMError.shouldNotReachHere(e);
@@ -431,10 +431,12 @@ public final class GuestGraalFeature implements Feature {
         ImageSingletons.add(GuestGraal.class, new GuestGraal((Map<String, MethodHandle>) getRuntimeHandles.invoke()));
     }
 
+    @SuppressWarnings("unchecked")
     private void initializeTruffle() throws Throwable {
         Class<?> truffleBuildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime");
-        MethodHandle getLookup = mhl.findStatic(truffleBuildTimeClass, "getLookup", methodType(Lookup.class, Lookup.class));
-        ImageSingletons.add(GuestGraalTruffleToLibGraalEntryPoints.class, new GuestGraalTruffleToLibGraalEntryPoints((Lookup) getLookup.invoke(mhl)));
+        MethodHandle getLookup = mhl.findStatic(truffleBuildTimeClass, "getLookup", methodType(Map.Entry.class, Lookup.class, Class.class, Class.class));
+        Map.Entry<Lookup, Class<?>> truffleGuestGraal = (Map.Entry<Lookup, Class<?>>) getLookup.invoke(mhl, TruffleFromLibGraalStartPoints.class, NativeImageHostEntryPoints.class);
+        ImageSingletons.add(GuestGraalTruffleToLibGraalEntryPoints.class, new GuestGraalTruffleToLibGraalEntryPoints(truffleGuestGraal.getKey(), truffleGuestGraal.getValue()));
         MethodHandle truffleConfigureGraalForLibGraal = mhl.findStatic(truffleBuildTimeClass, "configureGraalForLibGraal", methodType(void.class));
         truffleConfigureGraalForLibGraal.invoke();
     }

@@ -27,21 +27,14 @@ package jdk.graal.compiler.hotspot.guestgraal.truffle;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaConstant;
 
 import java.lang.invoke.MethodHandle;
 import java.util.Map;
 
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AddInlinedTarget;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AddTargetToDequeue;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetDebugProperties;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetPosition;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.HasNextTier;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsLastTier;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.SetCallCounts;
 import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMethodHandleOrFail;
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 final class HSTruffleCompilationTask extends HSIndirectHandle implements TruffleCompilationTask {
 
@@ -80,7 +73,7 @@ final class HSTruffleCompilationTask extends HSIndirectHandle implements Truffle
 
     @Override
     public TruffleSourceLanguagePosition getPosition(JavaConstant node) {
-        long nodeHandle = runtime().translate(node);
+        long nodeHandle = HotSpotJVMCIRuntime.runtime().translate(node);
         Object positionHsHandle;
         try {
             positionHsHandle = HANDLES.getPosition.invoke(hsHandle, nodeHandle);
@@ -125,7 +118,7 @@ final class HSTruffleCompilationTask extends HSIndirectHandle implements Truffle
     @SuppressWarnings("unchecked")
     public Map<String, Object> getDebugProperties(JavaConstant node) {
         try {
-            long nodeHandle = runtime().translate(node);
+            long nodeHandle = HotSpotJVMCIRuntime.runtime().translate(node);
             return (Map<String, Object>) HANDLES.getDebugProperties.invoke(hsHandle, nodeHandle);
         } catch (Throwable t) {
             throw handleException(t);
@@ -133,13 +126,13 @@ final class HSTruffleCompilationTask extends HSIndirectHandle implements Truffle
     }
 
     private static final class Handles {
-        final MethodHandle isCancelled = getHostMethodHandleOrFail(IsCancelled);
-        final MethodHandle hasNextTier = getHostMethodHandleOrFail(HasNextTier);
-        final MethodHandle isLastTier = getHostMethodHandleOrFail(IsLastTier);
-        final MethodHandle getPosition = getHostMethodHandleOrFail(GetPosition);
-        final MethodHandle addTargetToDequeue = getHostMethodHandleOrFail(AddTargetToDequeue);
-        final MethodHandle setCallCounts = getHostMethodHandleOrFail(SetCallCounts);
-        final MethodHandle addInlinedTarget = getHostMethodHandleOrFail(AddInlinedTarget);
-        final MethodHandle getDebugProperties = getHostMethodHandleOrFail(GetDebugProperties);
+        final MethodHandle isCancelled = getHostMethodHandleOrFail(Id.IsCancelled);
+        final MethodHandle hasNextTier = getHostMethodHandleOrFail(Id.HasNextTier);
+        final MethodHandle isLastTier = getHostMethodHandleOrFail(Id.IsLastTier);
+        final MethodHandle getPosition = getHostMethodHandleOrFail(Id.GetPosition);
+        final MethodHandle addTargetToDequeue = getHostMethodHandleOrFail(Id.AddTargetToDequeue);
+        final MethodHandle setCallCounts = getHostMethodHandleOrFail(Id.SetCallCounts);
+        final MethodHandle addInlinedTarget = getHostMethodHandleOrFail(Id.AddInlinedTarget);
+        final MethodHandle getDebugProperties = getHostMethodHandleOrFail(Id.GetDebugProperties);
     }
 }

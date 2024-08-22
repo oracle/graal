@@ -34,13 +34,13 @@ import org.graalvm.word.WordFactory;
 /**
  * Entry points for native-image specific methods called by guest Graal using method handles.
  */
-public final class NativeImageHostEntryPoint {
+public final class NativeImageHostEntryPoints {
 
-    private NativeImageHostEntryPoint() {
+    private NativeImageHostEntryPoints() {
     }
 
     public static void initializeHost(long runtimeClass) {
-        TruffleFromLibGraalStartPoint.initializeJNI(WordFactory.pointer(runtimeClass));
+        TruffleFromLibGraalStartPoints.initializeJNI(WordFactory.pointer(runtimeClass));
     }
 
     public static Object createLocalHandleForLocalReference(long jniLocalRef) {

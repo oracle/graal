@@ -25,10 +25,7 @@
 package jdk.graal.compiler.hotspot.guestgraal.truffle;
 
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
-import jdk.graal.compiler.debug.DebugHandlersFactory;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
-import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import jdk.vm.ci.services.Services;
 
 import java.lang.invoke.MethodHandle;
@@ -41,38 +38,44 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 
 /**
- * Class used to initialize Truffle and Graal compiler in the image build time.
+ * Class used to initialize the Truffle extensions to the Graal compiler in the image build time.
  */
 public class BuildTime {
 
-    private static final String JNI_CALLS_CLASS = "com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPoint";
-    private static final String NATIVE_IMAGE_METHODS_CLASS = "com.oracle.svm.graal.hotspot.guestgraal.NativeImageHostEntryPoint";
-
     private static Lookup hostLookup;
+    private static Class<?> truffleFromLibGraalStartPoint;
+    private static Class<?> nativeImageHostEntryPoint;
     private static Map<String, MethodHandle> hostMethods;
 
     /**
-     * Configures Truffle and graal compiler for libgraal.
+     * Configures Truffle services to the Graal compiler in the image build time.
      */
     public static void configureGraalForLibGraal() {
-        GraalServices.load(TruffleCallBoundaryInstrumentationFactory.class);
-        GraalServices.load(TruffleHostEnvironment.Lookup.class);
-        GraalServices.load(DebugHandlersFactory.class);
         TruffleHostEnvironment.overrideLookup(new LibGraalTruffleHostEnvironmentLookup());
     }
 
     /**
-     * Gets {@link Lookup} for method handles to call Graal and JVMCI methods.
+     * Obtains a {@link Lookup} instance for resolving method handles to invoke Graal and JVMCI
+     * methods.
      *
-     * @param lookup a {@link Lookup} to resolve handles to call into native-image host
-     * @return a {@link Lookup} to resolve compiler entry methods
+     * @param lookup a {@link Lookup} instance used to resolve handles for calling into the
+     *            native-image host.
+     * @param fromLibGraal a class that contains methods for making calls to HotSpot using the JNI
+     *            API.
+     * @param nativeImageSupport a class that provides native-image and JNI helper methods.
+     * @return a {@link Map.Entry} containing a {@link Lookup} instance and a class with compiler
+     *         entry methods. The {@link Lookup} instance can be used to resolve the compiler entry
+     *         methods within the provided class.
      */
-    public static Lookup getLookup(Lookup lookup) {
-        hostLookup = lookup;
-        return MethodHandles.lookup();
+    public static Map.Entry<Lookup, Class<?>> getLookup(Lookup lookup, Class<?> fromLibGraal, Class<?> nativeImageSupport) {
+        hostLookup = Objects.requireNonNull(lookup, "lookup must be non null");
+        truffleFromLibGraalStartPoint = Objects.requireNonNull(fromLibGraal, "fromLibGraal must be non null");
+        nativeImageHostEntryPoint = Objects.requireNonNull(nativeImageSupport, "nativeImageSupport must be non null");
+        return Map.entry(MethodHandles.lookup(), GraalEntryPoints.class);
     }
 
     static MethodHandle getHostMethodHandleOrFail(Id id) {
@@ -106,10 +109,9 @@ public class BuildTime {
     private static Map<String, MethodHandle> initializeHostMethods() {
         try {
             Map<String, MethodHandle> result = new HashMap<>();
-            Class<?> hostClass = hostLookup.findClass(JNI_CALLS_CLASS);
             Set<String> methodNames = new HashSet<>();
             Arrays.stream(Id.values()).map(Id::getMethodName).forEach(methodNames::add);
-            for (Method m : hostClass.getDeclaredMethods()) {
+            for (Method m : truffleFromLibGraalStartPoint.getDeclaredMethods()) {
                 if (Modifier.isStatic(m.getModifiers()) && Modifier.isPublic(m.getModifiers())) {
                     String methodName = m.getName();
                     if (methodNames.remove(methodName)) {
@@ -118,25 +120,24 @@ public class BuildTime {
                 }
             }
             if (!methodNames.isEmpty()) {
-                throw new RuntimeException(String.format("Cannot find methods for following ids %s in %s", methodNames, JNI_CALLS_CLASS));
+                throw new RuntimeException(String.format("Cannot find methods for following ids %s in %s", methodNames, truffleFromLibGraalStartPoint.getName()));
             }
             Arrays.stream(NativeImageHostCalls.class.getDeclaredMethods()).map(Method::getName).forEach(methodNames::add);
-            hostClass = hostLookup.findClass(NATIVE_IMAGE_METHODS_CLASS);
-            for (Method m : hostClass.getDeclaredMethods()) {
+            for (Method m : nativeImageHostEntryPoint.getDeclaredMethods()) {
                 if (Modifier.isStatic(m.getModifiers()) && Modifier.isPublic(m.getModifiers())) {
                     String methodName = m.getName();
                     if (methodNames.remove(methodName)) {
                         if (result.put(methodName, hostLookup.unreflect(m)) != null) {
-                            throw new RuntimeException(String.format("Duplicate methods for name %s in %s", methodName, NATIVE_IMAGE_METHODS_CLASS));
+                            throw new RuntimeException(String.format("Duplicate methods for name %s in %s", methodName, nativeImageHostEntryPoint));
                         }
                     }
                 }
             }
             if (!methodNames.isEmpty()) {
-                throw new RuntimeException(String.format("Cannot find following methods %s in %s", methodNames, NATIVE_IMAGE_METHODS_CLASS));
+                throw new RuntimeException(String.format("Cannot find following methods %s in %s", methodNames, nativeImageHostEntryPoint));
             }
             return result;
-        } catch (ClassNotFoundException | IllegalAccessException e) {
+        } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
         }
     }

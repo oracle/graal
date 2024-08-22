@@ -31,14 +31,13 @@ import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JValue;
 import org.graalvm.jniutils.JNICalls;
+import org.graalvm.jniutils.JNIExceptionWrapper;
+import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 
 import java.util.EnumMap;
 import java.util.function.Function;
-
-import static org.graalvm.jniutils.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
-import static org.graalvm.jniutils.JNIUtil.GetStaticMethodID;
-import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
 /**
  * Helpers for calling methods in HotSpot heap via JNI.
@@ -130,8 +129,8 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
                 public JNIMethodImpl<T> apply(T id) {
                     JClass c = peer;
                     String methodName = id.getMethodName();
-                    try (CCharPointerHolder name = toCString(methodName); CCharPointerHolder sig = toCString(id.getSignature())) {
-                        JMethodID jniId = GetStaticMethodID(env, c, name.get(), sig.get());
+                    try (CCharPointerHolder name = CTypeConversion.toCString(methodName); CCharPointerHolder sig = CTypeConversion.toCString(id.getSignature())) {
+                        JMethodID jniId = JNIUtil.GetStaticMethodID(env, c, name.get(), sig.get());
                         if (jniId.isNull()) {
                             throw new InternalError("No such method: " + methodName);
                         }
@@ -140,7 +139,7 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
                 }
             });
         } catch (InternalError ie) {
-            wrapAndThrowPendingJNIException(env);
+            JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
             throw ie;
         }
     }

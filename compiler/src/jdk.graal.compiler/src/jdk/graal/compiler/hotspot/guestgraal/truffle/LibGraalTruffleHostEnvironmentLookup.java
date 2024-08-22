@@ -27,9 +27,8 @@ package jdk.graal.compiler.hotspot.guestgraal.truffle;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.vm.ci.common.NativeImageReinitialize;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 /**
  * This handles the Truffle host environment lookup on HotSpot with Libgraal.
@@ -76,7 +75,7 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
          * per type. So in theory multiple truffle runtimes can be loaded.
          */
         HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(NativeImageHostCalls.createGlobalHandle(runtimeLocalHandle, true), NativeImageHostCalls.getObjectClass(runtimeLocalHandle));
-        this.previousRuntime = environment = new LibGraalTruffleHostEnvironment(runtime, runtime().getHostJVMCIBackend().getMetaAccess());
+        this.previousRuntime = environment = new LibGraalTruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess());
         return environment;
     }
 

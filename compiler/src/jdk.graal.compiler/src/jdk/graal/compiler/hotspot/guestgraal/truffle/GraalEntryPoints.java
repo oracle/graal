@@ -33,16 +33,16 @@ import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilationSupport;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import java.util.function.Supplier;
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 /**
  * Guest Graal entry points for Truffle to libgraal calls.
  */
-public final class GraalEntryPoint {
+public final class GraalEntryPoints {
 
-    private GraalEntryPoint() {
+    private GraalEntryPoints() {
     }
 
     // HotSpot to libgraal entry points
@@ -97,12 +97,12 @@ public final class GraalEntryPoint {
 
     public static void installTruffleCallBoundaryMethod(Object compiler, long methodHandle) {
         HotSpotTruffleCompilerImpl truffleCompiler = (HotSpotTruffleCompilerImpl) compiler;
-        truffleCompiler.installTruffleCallBoundaryMethod(runtime().unhand(ResolvedJavaMethod.class, methodHandle), null);
+        truffleCompiler.installTruffleCallBoundaryMethod(HotSpotJVMCIRuntime.runtime().unhand(ResolvedJavaMethod.class, methodHandle), null);
     }
 
     public static void installTruffleReservedOopMethod(Object compiler, long methodHandle) {
         HotSpotTruffleCompilerImpl truffleCompiler = (HotSpotTruffleCompilerImpl) compiler;
-        truffleCompiler.installTruffleReservedOopMethod(runtime().unhand(ResolvedJavaMethod.class, methodHandle), null);
+        truffleCompiler.installTruffleReservedOopMethod(HotSpotJVMCIRuntime.runtime().unhand(ResolvedJavaMethod.class, methodHandle), null);
     }
 
     public static int pendingTransferToInterpreterOffset(Object compiler, Object compilableHsHandle) {

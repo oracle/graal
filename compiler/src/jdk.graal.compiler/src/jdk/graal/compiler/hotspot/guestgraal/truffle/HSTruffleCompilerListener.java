@@ -27,15 +27,11 @@ package jdk.graal.compiler.hotspot.guestgraal.truffle;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 
 import java.lang.invoke.MethodHandle;
 import java.util.function.Supplier;
 
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationRetry;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnFailure;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnGraalTierFinished;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnSuccess;
-import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnTruffleTierFinished;
 import static jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime.getHostMethodHandleOrFail;
 
 final class HSTruffleCompilerListener extends HSIndirectHandle implements TruffleCompilerListener {
@@ -100,10 +96,10 @@ final class HSTruffleCompilerListener extends HSIndirectHandle implements Truffl
     }
 
     private static final class Handles {
-        final MethodHandle onSuccess = getHostMethodHandleOrFail(OnSuccess);
-        final MethodHandle onTruffleTierFinished = getHostMethodHandleOrFail(OnTruffleTierFinished);
-        final MethodHandle onGraalTierFinished = getHostMethodHandleOrFail(OnGraalTierFinished);
-        final MethodHandle onFailure = getHostMethodHandleOrFail(OnFailure);
-        final MethodHandle onCompilationRetry = getHostMethodHandleOrFail(OnCompilationRetry);
+        final MethodHandle onSuccess = getHostMethodHandleOrFail(Id.OnSuccess);
+        final MethodHandle onTruffleTierFinished = getHostMethodHandleOrFail(Id.OnTruffleTierFinished);
+        final MethodHandle onGraalTierFinished = getHostMethodHandleOrFail(Id.OnGraalTierFinished);
+        final MethodHandle onFailure = getHostMethodHandleOrFail(Id.OnFailure);
+        final MethodHandle onCompilationRetry = getHostMethodHandleOrFail(Id.OnCompilationRetry);
     }
 }
