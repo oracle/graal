@@ -64,7 +64,7 @@ Next create a native executable with the size optimization on, giving a differen
     </configuration>
     ```
     The `-Os` option enables size optimization. 
-    The option `--emit build-report` generates a build report along with other artifacts in the _target_ directory. 
+    The option `--emit build-report` generates a [Build Report](../BuildReport.md) along with other artifacts in the _target_ directory.
 
 2. Create the second native executable:
     ```bash
