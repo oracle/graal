@@ -1830,7 +1830,7 @@ def register_graalvm_vms():
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
             for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
                 final_config_name = f'{main_config}-{config_suffix}'
-                mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
+                mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name, ['--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED']), _suite, 10)
                 # ' '  force the empty O<> configs as well
             for main_config in ['llvm', 'native-architecture', 'g1gc', 'native-architecture-g1gc', ''] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
                 for optimization_level in optimization_levels:
@@ -1838,7 +1838,7 @@ def register_graalvm_vms():
                         final_config_name = f'{main_config}-{optimization_level}-{config_suffix}'
                     else:
                         final_config_name = f'{optimization_level}-{config_suffix}'
-                    mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
+                    mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name, ['--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED']), _suite, 10)
 
 
     # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries without the need of building it first
