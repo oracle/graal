@@ -28,7 +28,6 @@ import java.nio.ByteOrder;
 import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -196,25 +195,26 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                         .order(ByteOrder.LITTLE_ENDIAN).asCharBuffer();
     }
 
-    private Pair<String, String> cachedOsNameAndVersion;
+    private String cachedOsName;
+    private String cachedOsVersion;
 
     @Override
     protected String osNameValue() {
-        if (cachedOsNameAndVersion == null) {
-            cachedOsNameAndVersion = getOsNameAndVersion();
+        if (cachedOsName == null) {
+            computeOsNameAndVersion();
         }
-        return cachedOsNameAndVersion.getLeft();
+        return cachedOsName;
     }
 
     @Override
     protected String osVersionValue() {
-        if (cachedOsNameAndVersion == null) {
-            cachedOsNameAndVersion = getOsNameAndVersion();
+        if (cachedOsVersion == null) {
+            computeOsNameAndVersion();
         }
-        return cachedOsNameAndVersion.getRight();
+        return cachedOsVersion;
     }
 
-    public Pair<String, String> getOsNameAndVersion() {
+    private void computeOsNameAndVersion() {
         /*
          * Reimplementation of code from java_props_md.c
          */
@@ -270,10 +270,9 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                 NullableNativeMemory.free(versionInfo);
             }
         } while (false);
+        cachedOsVersion = majorVersion + "." + minorVersion;
 
-        String osVersion = majorVersion + "." + minorVersion;
         String osName;
-
         switch (platformId) {
             case VER_PLATFORM_WIN32_WINDOWS:
                 if (majorVersion == 4) {
@@ -389,7 +388,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                 osName = "Windows (unknown)";
                 break;
         }
-        return Pair.create(osName, osVersion);
+        cachedOsName = osName;
     }
 }
 

@@ -356,11 +356,11 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
             String alternatives = "";
 
             if (optionValue instanceof AccumulatingLocatableMultiOptionValue<?> lmov) {
-                if (lmov.getValuesWithOrigins().allMatch(o -> o.getRight().isStable())) {
+                if (lmov.getValuesWithOrigins().allMatch(o -> o.origin().isStable())) {
                     continue;
                 } else {
-                    origins = lmov.getValuesWithOrigins().filter(p -> !isStableOrInternalOrigin(p.getRight())).map(p -> p.getRight().toString()).distinct().collect(Collectors.joining(", "));
-                    alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(option, p.getLeft().toString()))
+                    origins = lmov.getValuesWithOrigins().filter(p -> !isStableOrInternalOrigin(p.origin())).map(p -> p.origin().toString()).distinct().collect(Collectors.joining(", "));
+                    alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(option, p.value().toString()))
                                     .filter(c -> !c.startsWith(CommonOptionParser.HOSTED_OPTION_PREFIX))
                                     .collect(Collectors.joining(", "));
                 }
