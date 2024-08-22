@@ -104,7 +104,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
     }
 
     /**
-     * Convert a normal oop into a colored pointer.
+     * Convert a normal oop into a colored pointer in a single register.
      */
     @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/z_x86_64.ad#L37-L42", sha1 = "344c51c07478c916bdaabb0c697a053e7a2f64dd")
     public static void zColor(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register ref) {
@@ -112,6 +112,15 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
         masm.shlq(ref, UNPATCHED);
         masm.orqImm32(ref, UNPATCHED);
         crb.recordMark(HotSpotMarkId.Z_BARRIER_RELOCATION_FORMAT_STORE_GOOD_AFTER_OR);
+    }
+
+    /**
+     * Move a normal oop into a new register and convert it into a colored pointer.
+     */
+    public static void zColor(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register resultReg, Register writeValue) {
+        Assembler.guaranteeDifferentRegisters(writeValue, resultReg);
+        masm.movq(resultReg, writeValue);
+        zColor(crb, masm, resultReg);
     }
 
     /**
@@ -129,7 +138,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
      */
     @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L304-L321", sha1 = "9a628c1771df79ae8b4cee89d2863fbd4a4964bc")
     @SyncPort(from = "https://github.com/openjdk/jdk/blob/4acafb809c66589fbbfee9c9a4ba7820f848f0e4/src/hotspot/cpu/x86/gc/z/zBarrierSetAssembler_x86.cpp#L370-L414", sha1 = "7688e7aeab5f1aa413690066355a17c18a4273fa")
-    public static void emitStoreBarrier(CompilationResultBuilder crb,
+    public static void emitPreWriteBarrier(CompilationResultBuilder crb,
                     AMD64MacroAssembler masm,
                     LIRInstruction op,
                     GraalHotSpotVMConfig config,
@@ -472,9 +481,12 @@ public class AMD64HotSpotZBarrierSetLIRGenerator implements AMD64ReadBarrierSetL
             tool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
             boolean emitPreWriteBarrier = !location.isInit() || barrierType == BarrierType.POST_INIT_WRITE;
             tool.append(new AMD64HotSpotZPreWriteBarrierOp(isConstantNull ? Value.ILLEGAL : tool.asAllocatable(value), addressValue, tmp, tmp2, config, callTarget, result, storeKind,
-                            emitPreWriteBarrier, nullCheckState));
+                            emitPreWriteBarrier, emitPreWriteBarrier ? state : null));
+            if (emitPreWriteBarrier) {
+                // The pre write barrier performed any necessary null check
+                nullCheckState = null;
+            }
             writeValue = result;
-            nullCheckState = null;
         }
         if (isConstantNull) {
             tool.append(new ZStoreNullOp(QWORD, storeAddress, nullCheckState));
