@@ -44,7 +44,6 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import java.util.EnumSet;
 
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
-import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -59,6 +58,7 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
@@ -84,7 +84,6 @@ import jdk.graal.compiler.lir.amd64.AMD64ArrayRegionCompareToOp;
 import jdk.graal.compiler.lir.amd64.AMD64BigIntegerMulAddOp;
 import jdk.graal.compiler.lir.amd64.AMD64BigIntegerMultiplyToLenOp;
 import jdk.graal.compiler.lir.amd64.AMD64BigIntegerSquareToLenOp;
-import jdk.graal.compiler.lir.amd64.AMD64Binary;
 import jdk.graal.compiler.lir.amd64.AMD64BinaryConsumer;
 import jdk.graal.compiler.lir.amd64.AMD64ByteSwapOp;
 import jdk.graal.compiler.lir.amd64.AMD64CacheWritebackOp;
@@ -349,8 +348,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public void emitCompareBranch(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueLabel, LabelRef falseLabel, double trueLabelProbability) {
         if (cmpKind == AMD64Kind.SINGLE || cmpKind == AMD64Kind.DOUBLE) {
             boolean isSelfEqualsCheck = cond == Condition.EQ && !unorderedIsTrue && left.equals(right);
-            Condition finalCondition = emitCompare(cmpKind, left, right, cond);
-            append(new FloatBranchOp(finalCondition, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability, isSelfEqualsCheck));
+            Condition finalCond = emitFloatCompare(null, cmpKind, left, right, cond, unorderedIsTrue);
+            append(new FloatBranchOp(finalCond, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability, isSelfEqualsCheck));
             return;
         }
 
@@ -403,15 +402,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public void emitCompareBranchMemory(AMD64Kind cmpKind, Value left, AMD64AddressValue right, LIRFrameState state, Condition cond, boolean unorderedIsTrue, LabelRef trueLabel, LabelRef falseLabel,
                     double trueLabelProbability) {
         if (cmpKind.isXMM()) {
-            if (cmpKind == AMD64Kind.SINGLE) {
-                append(new AMD64BinaryConsumer.MemoryRMOp(SSEOp.UCOMIS, PS, asAllocatable(left), right, state));
-                append(new FloatBranchOp(cond, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability));
-            } else if (cmpKind == AMD64Kind.DOUBLE) {
-                append(new AMD64BinaryConsumer.MemoryRMOp(SSEOp.UCOMIS, PD, asAllocatable(left), right, state));
-                append(new FloatBranchOp(cond, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability));
-            } else {
-                throw GraalError.shouldNotReachHere("unexpected kind: " + cmpKind); // ExcludeFromJacocoGeneratedReport
-            }
+            GraalError.guarantee(cmpKind == AMD64Kind.SINGLE || cmpKind == AMD64Kind.DOUBLE, "Must be float");
+            Condition finalCond = emitFloatCompare(state, cmpKind, left, right, cond, unorderedIsTrue);
+            append(new FloatBranchOp(finalCond, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability));
         } else {
             OperandSize size = OperandSize.get(cmpKind);
             if (isConstantValue(left)) {
@@ -478,37 +471,39 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitConditionalMove(PlatformKind cmpKind, Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
-        boolean isFloatComparison = cmpKind == AMD64Kind.SINGLE || cmpKind == AMD64Kind.DOUBLE;
-
-        Condition finalCondition = cond;
-        Value finalTrueValue = trueValue;
-        Value finalFalseValue = falseValue;
-        if (isFloatComparison) {
-            // eliminate the parity check in case of a float comparison
-            Value finalLeft = left;
-            Value finalRight = right;
-            if (unorderedIsTrue != AMD64ControlFlow.trueOnUnordered(finalCondition)) {
-                if (unorderedIsTrue == AMD64ControlFlow.trueOnUnordered(finalCondition.mirror())) {
-                    finalCondition = finalCondition.mirror();
-                    finalLeft = right;
-                    finalRight = left;
-                } else if (finalCondition != Condition.EQ && finalCondition != Condition.NE) {
-                    // negating EQ and NE does not make any sense as we would need to negate
-                    // unorderedIsTrue as well (otherwise, we would no longer fulfill the Java
-                    // NaN semantics)
-                    assert unorderedIsTrue == AMD64ControlFlow.trueOnUnordered(finalCondition.negate()) : Assertions.errorMessage(cmpKind, left, right, cond, unorderedIsTrue, finalCondition);
-                    finalCondition = finalCondition.negate();
-                    finalTrueValue = falseValue;
-                    finalFalseValue = trueValue;
-                }
-            }
-            emitRawCompare(cmpKind, finalLeft, finalRight);
-        } else {
-            finalCondition = emitCompare(cmpKind, left, right, cond);
+        if (cmpKind != AMD64Kind.SINGLE && cmpKind != AMD64Kind.DOUBLE) {
+            Condition finalCondition = emitIntegerCompare(cmpKind, left, right, cond);
+            return emitCondMoveOp(finalCondition, trueValue, falseValue, false, false, false);
         }
 
-        boolean isSelfEqualsCheck = isFloatComparison && finalCondition == Condition.EQ && left.equals(right);
-        return emitCondMoveOp(finalCondition, finalTrueValue, finalFalseValue, isFloatComparison, unorderedIsTrue, isSelfEqualsCheck);
+        Condition finalCond = emitFloatCompare(null, cmpKind, left, right, cond, unorderedIsTrue);
+        boolean finalUnordered = unorderedIsTrue;
+        Value finalTrueValue = trueValue;
+        Value finalFalseValue = falseValue;
+        boolean isSelfEqualsCheck = finalCond == Condition.EQ && left.equals(right);
+        if (!isSelfEqualsCheck && !finalUnordered && finalCond == Condition.EQ) {
+            /*
+             * @formatter:off
+             *
+             * 1. x NE_U y ? a : b can be emitted as:
+             *
+             * ucomisd x, y
+             * cmovp b, a
+             * cmovne b, a
+             *
+             * 2. x EQ_O y ? a : b can be negated into x NE_U y ? b : a
+             *
+             * 3. x EQ_U y ? a : b and x NE_O y ? a : b can be done without querying the parity flag
+             *
+             * @formatter:on
+             */
+            finalCond = Condition.NE;
+            finalUnordered = true;
+            finalTrueValue = falseValue;
+            finalFalseValue = trueValue;
+        }
+
+        return emitCondMoveOp(finalCond, finalTrueValue, finalFalseValue, true, finalUnordered, isSelfEqualsCheck);
     }
 
     private Variable emitCondMoveOp(Condition condition, Value trueValue, Value falseValue, boolean isFloatComparison, boolean unorderedIsTrue) {
@@ -526,14 +521,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             }
         } else if (!isParityCheckNecessary && isIntConstant(trueValue, 0) && isIntConstant(falseValue, 1)) {
             if (isFloatComparison) {
-                if (unorderedIsTrue == AMD64ControlFlow.trueOnUnordered(condition.negate())) {
-                    append(new FloatCondSetOp(result, condition.negate()));
-                } else {
-                    append(new FloatCondSetOp(result, condition));
-                    Variable negatedResult = newVariable(result.getValueKind());
-                    append(new AMD64Binary.ConstOp(AMD64BinaryArithmetic.XOR, OperandSize.get(result.getPlatformKind()), negatedResult, result, 1));
-                    result = negatedResult;
-                }
+                append(new FloatCondSetOp(result, condition.negate()));
             } else {
                 append(new CondSetOp(result, condition.negate()));
             }
@@ -637,7 +625,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
      * @param cond the condition of the comparison
      * @return true if the left and right operands were switched, false otherwise
      */
-    private Condition emitCompare(PlatformKind cmpKind, Value a, Value b, Condition cond) {
+    private Condition emitIntegerCompare(PlatformKind cmpKind, Value a, Value b, Condition cond) {
+        GraalError.guarantee(cmpKind != AMD64Kind.SINGLE && cmpKind != AMD64Kind.DOUBLE, "Must not be float");
         if (LIRValueUtil.isVariable(b)) {
             emitRawCompare(cmpKind, b, a);
             return cond.mirror();
@@ -649,6 +638,38 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     private void emitRawCompare(PlatformKind cmpKind, Value left, Value right) {
         ((AMD64ArithmeticLIRGeneratorTool) arithmeticLIRGen).emitCompareOp((AMD64Kind) cmpKind, asAllocatable(left), loadNonInlinableConstant(right));
+    }
+
+    private Condition emitFloatCompare(LIRFrameState state, PlatformKind kind, Value left, Value right, Condition cond, boolean unordered) {
+        GraalError.guarantee(kind == AMD64Kind.SINGLE || kind == AMD64Kind.DOUBLE, "Must be float");
+        boolean commute;
+        if (cond == Condition.EQ || cond == Condition.NE) {
+            commute = LIRValueUtil.isVariable(right);
+        } else {
+            // If the condition is LT_O, LE_O, GT_U, GE_U, commute the inputs to avoid having to
+            // query the parity flag
+            commute = unordered != AMD64ControlFlow.trueOnUnordered(cond);
+        }
+
+        Value x = left;
+        Value y = right;
+        Condition c = cond;
+        if (commute) {
+            x = right;
+            y = left;
+            c = c.mirror();
+        }
+
+        OperandSize opSize = kind == AMD64Kind.SINGLE ? PS : PD;
+        if (y instanceof AMD64AddressValue addr) {
+            append(new AMD64BinaryConsumer.MemoryRMOp(SSEOp.UCOMIS, opSize, asAllocatable(x), addr, state));
+        } else {
+            if (x instanceof AMD64AddressValue) {
+                x = arithmeticLIRGen.emitLoad(LIRKind.value(kind), x, state, MemoryOrderMode.PLAIN, MemoryExtendKind.DEFAULT);
+            }
+            append(new AMD64BinaryConsumer.Op(SSEOp.UCOMIS, opSize, asAllocatable(x), asAllocatable(y)));
+        }
+        return c;
     }
 
     @Override
