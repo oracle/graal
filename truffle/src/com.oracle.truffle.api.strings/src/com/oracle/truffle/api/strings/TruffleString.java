@@ -65,6 +65,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.littleEndian;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.lang.ref.Reference;
 import java.util.Arrays;
 import java.util.BitSet;
 
@@ -6110,7 +6111,13 @@ public final class TruffleString extends AbstractTruffleString {
             // This is to avoid potential problems with UTF-32 encoded strings, where native code
             // may not read single bytes but 32-bit values.
             checkIntSize();
-            TStringUnsafe.putIntNative(nativePointer.pointer, byteSize, 0);
+            try {
+                TStringUnsafe.putInt(null, nativePointer.pointer + byteSize, 0);
+            } finally {
+                // probably not necessary because the native object is referenced by the return
+                // value, but better safe than sorry
+                Reference.reachabilityFence(nativePointer);
+            }
             TruffleString nativeString = TruffleString.createFromArray(nativePointer, 0, length, stride, encoding, a.codePointLength(), codeRangeA, !cacheResult);
             if (cacheResult) {
                 a.cacheInsert(nativeString);

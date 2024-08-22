@@ -55,6 +55,8 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidFixedWidth;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidMultiByte;
 
+import java.lang.ref.Reference;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
@@ -1460,6 +1462,12 @@ public abstract class AbstractTruffleString {
          * the native pointer's lifetime depends on the pointer object's lifetime.
          */
         private final Object pointerObject;
+        /**
+         * The raw native pointer.
+         * <p>
+         * NOTE: any use of this pointer must be guarded by a reachability fence on
+         * {@link #pointerObject}!
+         */
         final long pointer;
         private byte[] bytes;
         private volatile boolean byteArrayIsValid = false;
@@ -1498,8 +1506,12 @@ public abstract class AbstractTruffleString {
                 if (bytes == null) {
                     bytes = new byte[byteLength];
                 }
-                TStringUnsafe.copyFromNative(pointer, byteOffset, bytes, 0, byteLength);
-                byteArrayIsValid = true;
+                try {
+                    TStringUnsafe.copyFromNative(pointer, byteOffset, bytes, 0, byteLength);
+                    byteArrayIsValid = true;
+                } finally {
+                    Reference.reachabilityFence(pointerObject);
+                }
             }
         }
 
