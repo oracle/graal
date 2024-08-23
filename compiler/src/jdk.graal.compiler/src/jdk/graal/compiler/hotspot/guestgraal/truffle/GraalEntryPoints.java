@@ -34,7 +34,9 @@ import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilationSupport;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 import java.util.function.Supplier;
 
 /**
@@ -176,5 +178,16 @@ public final class GraalEntryPoints {
 
     public static String getCompilerVersion() {
         return HSTruffleCompilerRuntime.COMPILER_VERSION;
+    }
+
+    public static long getCurrentJavaThread() {
+        return HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
+    }
+
+    public static int getLastJavaPCOffset() {
+        HotSpotVMConfigAccess configAccess = new HotSpotVMConfigAccess(HotSpotJVMCIRuntime.runtime().getConfigStore());
+        int anchor = configAccess.getFieldOffset("JavaThread::_anchor", Integer.class, "JavaFrameAnchor");
+        int lastJavaPc = configAccess.getFieldOffset("JavaFrameAnchor::_last_Java_pc", Integer.class, "address");
+        return anchor + lastJavaPc;
     }
 }
