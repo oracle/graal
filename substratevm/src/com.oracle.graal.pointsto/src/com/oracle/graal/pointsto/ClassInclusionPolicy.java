@@ -66,12 +66,16 @@ public abstract class ClassInclusionPolicy {
      * Determine if the given method needs to be included in the image according to the policy.
      */
     public boolean isMethodIncluded(Executable method) {
+        return isMethodIncluded(bb.getMetaAccess().lookupJavaMethod(method));
+    }
+
+    public boolean isMethodIncluded(AnalysisMethod method) {
         /*
          * Methods annotated with @Fold should not be included in the base image as they must be
          * inlined. An extension image would inline the method as well and would not use the method
          * from the base image.
          */
-        return !AnnotationAccess.isAnnotationPresent(bb.getMetaAccess().lookupJavaMethod(method), Fold.class);
+        return !AnnotationAccess.isAnnotationPresent(method, Fold.class);
     }
 
     /**

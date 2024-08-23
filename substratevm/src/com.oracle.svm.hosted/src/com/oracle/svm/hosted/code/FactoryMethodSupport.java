@@ -37,6 +37,7 @@ import com.oracle.svm.core.code.FactoryMethodHolder;
 import com.oracle.svm.core.code.FactoryThrowMethodHolder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
@@ -86,7 +87,11 @@ public class FactoryMethodSupport {
             return new FactoryMethod(name, unwrappedConstructor, unwrappedDeclaringClass, unwrappedSignature, unwrappedConstantPool, throwAllocatedObject);
         });
 
-        return aMetaAccess.getUniverse().lookup(factoryMethod);
+        AnalysisMethod aMethod = aMetaAccess.getUniverse().lookup(factoryMethod);
+        if (HostedImageLayerBuildingSupport.buildingSharedLayer()) {
+            aMetaAccess.getUniverse().getBigbang().registerMethodForBaseImage(aMethod);
+        }
+        return aMethod;
     }
 
     protected AbstractNewObjectNode createNewInstance(HostedGraphKit kit, ResolvedJavaType type, boolean fillContents) {
