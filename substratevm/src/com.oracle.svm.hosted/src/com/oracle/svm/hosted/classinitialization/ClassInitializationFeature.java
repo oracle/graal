@@ -75,8 +75,8 @@ public class ClassInitializationFeature implements InternalFeature {
     public static void processClassInitializationOptions(ClassInitializationSupport initializationSupport) {
         initializeNativeImagePackagesAtBuildTime(initializationSupport);
         ClassInitializationOptions.ClassInitialization.getValue().getValuesWithOrigins().forEach(entry -> {
-            for (String optionValue : entry.getLeft().split(",")) {
-                processClassInitializationOption(initializationSupport, optionValue, entry.getRight());
+            for (String optionValue : entry.value().split(",")) {
+                processClassInitializationOption(initializationSupport, optionValue, entry.origin());
             }
         });
     }

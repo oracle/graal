@@ -37,11 +37,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Pair;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionClassFilter;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
@@ -65,8 +64,8 @@ public class OptionClassFilterBuilder {
                     HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> pathsOption) {
         OptionClassFilterBuilder builder = new OptionClassFilterBuilder(imageClassLoader, baseOption, pathsOption);
 
-        baseOption.getValue().getValuesWithOrigins().forEach(builder::extractBaseOptionValue);
-        pathsOption.getValue().getValuesWithOrigins().forEach(builder::extractPathsOptionValue);
+        baseOption.getValue().getValuesWithOrigins().forEach(o -> builder.extractBaseOptionValue(o.value(), o.origin()));
+        pathsOption.getValue().getValuesWithOrigins().forEach(o -> builder.extractPathsOptionValue(o.value(), o.origin()));
 
         return builder.build();
     }
@@ -82,9 +81,7 @@ public class OptionClassFilterBuilder {
                         .collect(Collectors.toUnmodifiableMap(mRef -> mRef.location().get(), mRef -> imageClassLoader.findModule(mRef.descriptor().name()).get()));
     }
 
-    private void extractBaseOptionValue(Pair<String, OptionOrigin> valueOrigin) {
-        var value = valueOrigin.getLeft();
-        OptionOrigin origin = valueOrigin.getRight();
+    private void extractBaseOptionValue(String value, OptionOrigin origin) {
         URI container = origin.container();
         if (value.isEmpty()) {
             if (origin.commandLineLike()) {
@@ -114,9 +111,7 @@ public class OptionClassFilterBuilder {
         }
     }
 
-    private void extractPathsOptionValue(Pair<String, OptionOrigin> valueOrigin) {
-        var value = valueOrigin.getLeft();
-        OptionOrigin origin = valueOrigin.getRight();
+    private void extractPathsOptionValue(String value, OptionOrigin origin) {
         if (!origin.commandLineLike()) {
             throw UserError.abort("Using '%s' is only allowed on command line.",
                             SubstrateOptionsParser.commandArgument(pathsOption, value), origin);
