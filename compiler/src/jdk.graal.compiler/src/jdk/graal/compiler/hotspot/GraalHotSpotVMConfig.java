@@ -348,8 +348,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int frameInterpreterFrameLastSpOffset = getConstant("frame::interpreter_frame_last_sp_offset", Integer.class, 0, osArch.equals("amd64"));
 
     public final int lockMaskInPlace = getConstant("markWord::lock_mask_in_place", Integer.class);
-    public final int unlockedMask = getConstant("markWord::unlocked_value", Integer.class);
-    public final int monitorMask = getConstant("markWord::monitor_value", Integer.class);
+    public final int unlockedValue = getConstant("markWord::unlocked_value", Integer.class);
+    public final int monitorValue = getConstant("markWord::monitor_value", Integer.class);
 
     // This field has no type in vmStructs.cpp
     public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, null);
@@ -422,7 +422,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int arrayKlassOffset = getFieldValue("java_lang_Class::_array_klass_offset", Integer.class, "int");
 
     public final int basicLockSize = getFieldValue("CompilerToVM::Data::sizeof_BasicLock", Integer.class, "int");
-    public final int basicLockDisplacedHeaderOffset = getFieldOffset("BasicLock::_displaced_header", Integer.class, markWord);
+    public final int basicLockMetadataOffset = JDK >= 24 ? getFieldOffset("BasicLock::_metadata", Integer.class, "uintptr_t") : getFieldOffset("BasicLock::_displaced_header", Integer.class, markWord);
+
+    public final boolean useObjectMonitorTable = getFlag("UseObjectMonitorTable", Boolean.class, false, JDK >= 24);
 
     // JDK-8253180 & JDK-8265932
     public final int threadPollingPageOffset = getFieldOffset("JavaThread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
@@ -482,7 +484,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long intpolyMontgomeryMultP256 = getFieldValue("StubRoutines::_intpoly_montgomeryMult_P256", Long.class, "address", 0L, JDK >= 23);
     public final long intpolyAssign = getFieldValue("StubRoutines::_intpoly_assign", Long.class, "address", 0L, JDK >= 23);
 
-    public final long throwDelayedStackOverflowErrorEntry = getFieldValue("StubRoutines::_throw_delayed_StackOverflowError_entry", Long.class, "address");
+    public final long throwDelayedStackOverflowErrorEntry = getFieldValue(JDK >= 24 ? "CompilerToVM::Data::SharedRuntime_throw_delayed_StackOverflowError_entry"
+                    : "StubRoutines::_throw_delayed_StackOverflowError_entry", Long.class, "address");
 
     public final long jbyteArraycopy = getFieldValue("StubRoutines::_jbyte_arraycopy", Long.class, "address");
     public final long jshortArraycopy = getFieldValue("StubRoutines::_jshort_arraycopy", Long.class, "address");
@@ -641,6 +644,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int threadLockStackOffset = getFieldOffset("JavaThread::_lock_stack", Integer.class, "LockStack", -1, JDK >= 22);
     public final int lockStackTopOffset = getFieldOffset("LockStack::_top", Integer.class, "uint32_t", -1, JDK >= 22);
     public final int lockStackEndOffset = getConstant("LockStack::_end_offset", Integer.class, -1, JDK >= 22);
+    public final int threadOmCacheOffset = getFieldOffset("JavaThread::_om_cache", Integer.class, "OMCache", -1, JDK >= 24);
+    public final int omCacheOopToOopDifference = getConstant("OMCache::oop_to_oop_difference", Integer.class, -1, JDK >= 24);
+    public final int omCacheOopToMonitorDifference = getConstant("OMCache::oop_to_monitor_difference", Integer.class, -1, JDK >= 24);
 
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
     public final long throwKlassExternalNameExceptionAddress = getAddress("JVMCIRuntime::throw_klass_external_name_exception");

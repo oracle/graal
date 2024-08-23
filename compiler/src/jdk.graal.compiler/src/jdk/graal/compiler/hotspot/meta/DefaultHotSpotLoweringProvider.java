@@ -954,9 +954,9 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                 graph.addBeforeFixed(migrationEnd, beginLockScope);
 
                 // write the displaced mark to the correct stack slot
-                AddressNode addressDisplacedMark = createOffsetAddress(graph, beginLockScope, runtime.getVMConfig().basicLockDisplacedHeaderOffset);
+                AddressNode addressDisplacedMark = createOffsetAddress(graph, beginLockScope, runtime.getVMConfig().basicLockMetadataOffset);
                 WriteNode writeStackSlot = graph.add(
-                                new WriteNode(addressDisplacedMark, HotSpotReplacementsUtil.DISPLACED_MARK_WORD_LOCATION, loadDisplacedHeader, BarrierType.NONE, MemoryOrderMode.PLAIN));
+                                new WriteNode(addressDisplacedMark, HotSpotReplacementsUtil.BASICLOCK_METADATA_LOCATION, loadDisplacedHeader, BarrierType.NONE, MemoryOrderMode.PLAIN));
                 graph.addBeforeFixed(migrationEnd, writeStackSlot);
 
                 // load the lock object from the osr buffer
