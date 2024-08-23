@@ -60,7 +60,6 @@ import java.util.spi.ResourceBundleControlProvider;
 import java.util.spi.TimeZoneNameProvider;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -75,10 +74,11 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport;
+import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport.AdaptersByClassKey;
 import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
 import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -472,7 +472,7 @@ public class LocalizationFeature implements InternalFeature {
                 for (Class<? extends LocaleServiceProvider> providerClass : spiClasses) {
                     LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, candidateLocale));
 
-                    optimizedLocalizationSupport.adaptersByClass.put(Pair.create(providerClass, candidateLocale), adapter);
+                    optimizedLocalizationSupport.adaptersByClass.put(new AdaptersByClassKey(providerClass, candidateLocale), adapter);
                     LocaleProviderAdapter existing = optimizedLocalizationSupport.adaptersByType.put(adapter.getAdapterType(), adapter);
                     assert existing == null || existing == adapter : "Overwriting adapter type with a different adapter";
 

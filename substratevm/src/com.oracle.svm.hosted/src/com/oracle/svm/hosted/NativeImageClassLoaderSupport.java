@@ -78,13 +78,13 @@ import java.util.stream.Stream;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
@@ -520,7 +520,7 @@ public class NativeImageClassLoaderSupport {
     }
 
     private Stream<AddExportsAndOpensAndReadsFormatValue> processOption(OptionKey<AccumulatingLocatableMultiOptionValue.Strings> specificOption) {
-        Stream<Pair<String, OptionOrigin>> valuesWithOrigins = specificOption.getValue(parsedHostedOptions).getValuesWithOrigins();
+        var valuesWithOrigins = specificOption.getValue(parsedHostedOptions).getValuesWithOrigins();
         Stream<AddExportsAndOpensAndReadsFormatValue> parsedOptions = valuesWithOrigins.flatMap(valWithOrig -> {
             try {
                 return Stream.of(asAddExportsAndOpensAndReadsFormatValue(specificOption, valWithOrig));
@@ -540,9 +540,9 @@ public class NativeImageClassLoaderSupport {
                     List<Module> targetModules) {
     }
 
-    private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensAndReadsFormatValue(OptionKey<?> option, Pair<String, OptionOrigin> valueOrigin) {
-        OptionOrigin optionOrigin = valueOrigin.getRight();
-        String optionValue = valueOrigin.getLeft();
+    private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensAndReadsFormatValue(OptionKey<?> option, ValueWithOrigin<String> valueOrigin) {
+        OptionOrigin optionOrigin = valueOrigin.origin();
+        String optionValue = valueOrigin.value();
 
         boolean reads = option.equals(NativeImageClassLoaderOptions.AddReads);
         String format = reads ? NativeImageClassLoaderOptions.AddReadsFormat : NativeImageClassLoaderOptions.AddExportsAndOpensFormat;
