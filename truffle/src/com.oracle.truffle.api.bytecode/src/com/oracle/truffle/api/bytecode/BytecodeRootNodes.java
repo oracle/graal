@@ -192,7 +192,7 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
      *
      * @since 24.2
      */
-    public final boolean ensureSources() {
+    public final boolean ensureSourceInformation() {
         return updateImpl(null, BytecodeConfig.WITH_SOURCE.encoding);
     }
 

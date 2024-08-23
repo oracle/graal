@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Base interface to be implemented by the bytecode root node of a Bytecode DSL interpreter. The
@@ -172,6 +173,17 @@ public interface BytecodeRootNode {
      */
     default BytecodeLocation getStartLocation() {
         return new BytecodeLocation(getBytecodeNode(), 0);
+    }
+
+    /**
+     * Returns the source section for this root node and materializes source information if it was
+     * not yet materialized.
+     *
+     * @see BytecodeNode#ensureSourceInformation()
+     * @since 24.2
+     */
+    default SourceSection ensureSourceSection() {
+        return getBytecodeNode().ensureSourceInformation().getSourceSection();
     }
 
     /**

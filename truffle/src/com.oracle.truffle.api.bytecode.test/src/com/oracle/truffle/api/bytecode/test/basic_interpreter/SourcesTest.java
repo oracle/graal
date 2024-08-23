@@ -868,7 +868,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        assertTrue(nodes.ensureSources());
+        assertTrue(nodes.ensureSourceInformation());
 
         BasicInterpreter node = nodes.getNode(0);
         assertSourceSection(node.getSourceSection(), source, 0, 8);
@@ -918,7 +918,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         // call it once to transition to cached
         assertEquals(42L, node.getCallTarget().call(true));
 
-        nodes.ensureSources();
+        nodes.ensureSourceInformation();
         SourceSection[] result = (SourceSection[]) node.getCallTarget().call(false);
         assertSourceSections(result, source, 19, 8, 0, 27);
     }

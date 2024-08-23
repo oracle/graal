@@ -104,4 +104,6 @@ public abstract class SLRootNode extends RootNode {
 
     public abstract void setLocalValues(FrameInstance frame, Object[] args);
 
+    public abstract SourceSection ensureSourceSection();
+
 }

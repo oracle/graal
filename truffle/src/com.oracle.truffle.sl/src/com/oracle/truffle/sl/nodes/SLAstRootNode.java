@@ -140,6 +140,11 @@ public final class SLAstRootNode extends SLRootNode {
         return argumentNodes;
     }
 
+    @Override
+    public SourceSection ensureSourceSection() {
+        return getSourceSection();
+    }
+
     private SLWriteLocalVariableNode[] findArgumentNodes() {
         List<SLWriteLocalVariableNode> writeArgNodes = new ArrayList<>(4);
         NodeUtil.forEachChild(this.getBodyNode(), new NodeVisitor() {

@@ -78,7 +78,7 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
         });
 
         BytecodeLocation location = (BytecodeLocation) root.getCallTarget().call();
-        SourceSection section = location.getSourceLocation();
+        SourceSection section = location.ensureSourceInformation().getSourceLocation();
         assertSame(source, section.getSource());
         assertEquals("getBytecodeLocation", section.getCharacters());
     }

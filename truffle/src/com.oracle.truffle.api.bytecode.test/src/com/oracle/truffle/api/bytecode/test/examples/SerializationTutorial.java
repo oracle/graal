@@ -506,7 +506,7 @@ public class SerializationTutorial {
      */
     public void doTestSourceProgram(SerializableBytecodeNode rootNode) {
         assertEquals(42, rootNode.getCallTarget().call(41));
-        SourceSection section = rootNode.getSourceSection();
+        SourceSection section = rootNode.ensureSourceSection();
         assertNotNull(section);
         assertEquals(BytecodeDSLTestLanguage.ID, section.getSource().getLanguage());
         assertEquals("source1.src", section.getSource().getName());

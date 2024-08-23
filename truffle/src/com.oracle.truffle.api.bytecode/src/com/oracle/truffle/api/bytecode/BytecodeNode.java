@@ -179,6 +179,8 @@ public abstract class BytecodeNode extends Node {
      * @param location the current location
      * @return a source section corresponding to the location. Returns {@code null} if the location
      *         is invalid or source sections are not available.
+     *
+     * @since 24.2
      */
     public final SourceSection getSourceLocation(Frame frame, Node location) {
         int bci = findBytecodeIndexImpl(frame, location);
@@ -192,7 +194,10 @@ public abstract class BytecodeNode extends Node {
      * Gets all {@link SourceSection source locations} associated with a particular location.
      * Returns {@code null} if the node was not parsed {@link BytecodeConfig#WITH_SOURCE with
      * sources} or if there is no associated source section for the given location. A location must
-     * always be provided to get a source location otherwise <code>null</code> will be returned.
+     * always be provided to get a source location otherwise <code>null</code> will be returned. *
+     * <p>
+     * If source sections have not yet been materialized, then <code>null</code> is returned. Source
+     * sections may be materialized by calling {@link #ensureSourceInformation()}.
      *
      * @param frame the current frame
      * @param location the current location
@@ -210,7 +215,11 @@ public abstract class BytecodeNode extends Node {
     /**
      * Finds the most concrete source location associated with the given bytecode index. The method
      * returns <code>null</code> if no source section could be found. Calling this method also
-     * {@link BytecodeRootNodes#ensureSources() ensures source sections} are materialized.
+     * {@link BytecodeRootNodes#ensureSourceInformation() ensures source sections} are materialized. *
+     * <p>
+     * If source sections have not yet been materialized, then <code>null</code> is returned. Source
+     * sections may be materialized by calling {@link #ensureSourceInformation()}.
+     *
      *
      * @param bytecodeIndex the bytecode index, used to determine liveness of source sections. A
      *            valid bytecode index can be obtained by calling
@@ -225,7 +234,11 @@ public abstract class BytecodeNode extends Node {
      * Finds all source locations associated with the given bytecode index. More concrete source
      * sections appear earlier in the array. Typically, a given section will contain the previous
      * source section, but there is no guarantee that this the case. Calling this method also
-     * {@link BytecodeRootNodes#ensureSources() ensures source sections} are materialized.
+     * {@link BytecodeRootNodes#ensureSourceInformation() ensures source sections} are materialized.
+     * <p>
+     * If source sections have not yet been materialized, then <code>null</code> is returned. Source
+     * sections may be materialized by calling {@link BytecodeRootNodes#update(BytecodeConfig)
+     * update} with {@link BytecodeConfig#WITH_SOURCE}.
      *
      * @param bytecodeIndex the bytecode index, used to determine liveness of source sections. A
      *            valid bytecode index can be obtained by calling
@@ -262,7 +275,12 @@ public abstract class BytecodeNode extends Node {
     }
 
     /**
-     * Gets the source location associated with a particular {@link FrameInstance frameInstance}.
+     * Gets the source location associated with a particular {@link FrameInstance frameInstance}. *
+     * <p>
+     * If source sections have not yet been materialized, then <code>null</code> is returned. Source
+     * sections may be materialized by calling {@link BytecodeRootNodes#update(BytecodeConfig)
+     * update} with {@link BytecodeConfig#WITH_SOURCE}.
+     *
      *
      * @param frameInstance the frame instance
      * @return the source location, or null if a location could not be found
@@ -277,7 +295,12 @@ public abstract class BytecodeNode extends Node {
     }
 
     /**
-     * Gets all source locations associated with a particular {@link FrameInstance frameInstance}.
+     * Gets all source locations associated with a particular {@link FrameInstance frameInstance}. *
+     * <p>
+     * If source sections have not yet been materialized, then <code>null</code> is returned. Source
+     * sections may be materialized by calling {@link BytecodeRootNodes#update(BytecodeConfig)
+     * update} with {@link BytecodeConfig#WITH_SOURCE}.
+     *
      *
      * @param frameInstance the frame instance
      * @return the source locations, or null if they could not be found
@@ -388,6 +411,36 @@ public abstract class BytecodeNode extends Node {
      * @since 24.2
      */
     public abstract SourceInformationTree getSourceInformationTree();
+
+    /**
+     * Ensures that sources are materialized for this node and returns an updated bytecode node if
+     * it changed during materialization.
+     *
+     * @see BytecodeLocation#ensureSourceInformation()
+     * @see BytecodeRootNodes#ensureSourceInformation()
+     * @since 24.2
+     */
+    public final BytecodeNode ensureSourceInformation() {
+        if (hasSourceInformation()) {
+            // fast-path optimization
+            return this;
+        }
+        BytecodeRootNode rootNode = this.getBytecodeRootNode();
+        rootNode.getRootNodes().update(BytecodeConfig.WITH_SOURCE);
+        BytecodeNode newNode = getBytecodeRootNode().getBytecodeNode();
+        assert newNode.hasSourceInformation() : "materialization of sources failed";
+        return newNode;
+    }
+
+    /**
+     * Returns <code>true</code> if source information was materialized for this bytecode node,
+     * otherwise <code>false</code>. This methods is guaranteed to return <code>true</code> if
+     * {@link #ensureSourceInformation()} was called prior to this method.
+     *
+     * @see #ensureSourceInformation()
+     * @since 24.2
+     */
+    public abstract boolean hasSourceInformation();
 
     /**
      * Returns all of the {@link ExceptionHandler exception handlers} associated with this node.
@@ -1088,6 +1141,8 @@ public abstract class BytecodeNode extends Node {
     protected abstract int findBytecodeIndex(Frame frame, Node operationNode);
 
     protected abstract int findBytecodeIndex(FrameInstance frameInstance);
+
+    protected abstract int translateBytecodeIndex(BytecodeNode newNode, int bytecodeIndex);
 
     protected abstract boolean validateBytecodeIndex(int bytecodeIndex);
 

@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -388,6 +389,7 @@ public abstract class AbstractBasicInterpreterTest {
         }
 
         if (bytecode.getSourceInformation() != null) {
+            assertTrue(bytecode.hasSourceInformation());
             for (SourceInformation source : bytecode.getSourceInformation()) {
                 assertNotNull(source.toString());
                 assertNotNull(BytecodeLocation.get(bytecode, source.getStartBytecodeIndex()));
@@ -396,6 +398,8 @@ public abstract class AbstractBasicInterpreterTest {
                 }
                 assertNotNull(source.getSourceSection());
             }
+        } else {
+            assertFalse(bytecode.hasSourceInformation());
         }
         List<LocalVariable> locals = bytecode.getLocals();
         for (LocalVariable local : locals) {
@@ -422,7 +426,6 @@ public abstract class AbstractBasicInterpreterTest {
                     assertEquals(local.getInfo(), bytecode.getLocalInfo(0, local.getLocalOffset()));
                 }
             }
-
         }
 
         SourceInformationTree tree = bytecode.getSourceInformationTree();

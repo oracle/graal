@@ -75,6 +75,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
@@ -267,6 +268,11 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
             }
         }
 
+    }
+
+    @Override
+    public final SourceSection ensureSourceSection() {
+        return BytecodeRootNode.super.ensureSourceSection();
     }
 
     @Operation
