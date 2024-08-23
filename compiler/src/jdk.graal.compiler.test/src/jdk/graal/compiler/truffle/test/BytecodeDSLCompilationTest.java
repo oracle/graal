@@ -37,6 +37,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
@@ -59,6 +60,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Before
     @Override
     public void before() {
+        useDefaultCompilationThresholds = true;
         super.before();
         /**
          * Note: we force load the EarlyReturnException class because compilation bails out when it
@@ -69,6 +71,148 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
             Class.forName(BasicInterpreter.EarlyReturnException.class.getName());
         } catch (ClassNotFoundException ex) {
             fail("should not have failed to load EarlyReturnException class");
+        }
+    }
+
+    /**
+     * The benchmark programs implement:
+     *
+     * <pre>
+     * int i = 0;
+     * int sum = 0;
+     * while (i < 5000) {
+     *     int j = 0;
+     *     while (j < i) {
+     *         int temp;
+     *         if (i % 3 < 1) {
+     *             temp = 1;
+     *         } else {
+     *             temp = i % 3;
+     *         }
+     *         j = j + temp;
+     *     }
+     *     sum = sum + j;
+     *     i = i + 1;
+     * }
+     * return sum;
+     * </pre>
+     *
+     * The result should be 12498333.
+     */
+    @Test
+    public void testOSR() {
+        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "osrRoot", b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal iLoc = b.createLocal();
+            BytecodeLocal sumLoc = b.createLocal();
+            BytecodeLocal jLoc = b.createLocal();
+            BytecodeLocal tempLoc = b.createLocal();
+
+            // int i = 0;
+            b.beginStoreLocal(iLoc);
+            b.emitLoadConstant(0L);
+            b.endStoreLocal();
+
+            // int sum = 0;
+            b.beginStoreLocal(sumLoc);
+            b.emitLoadConstant(0L);
+            b.endStoreLocal();
+
+            // while (i < TOTAL_ITERATIONS) {
+            b.beginWhile();
+            b.beginLess();
+            b.emitLoadLocal(iLoc);
+            b.emitLoadConstant(5000L);
+            b.endLess();
+            b.beginBlock();
+
+            // int j = 0;
+            b.beginStoreLocal(jLoc);
+            b.emitLoadConstant(0L);
+            b.endStoreLocal();
+
+            // while (j < i) {
+            b.beginWhile();
+            b.beginLess();
+            b.emitLoadLocal(jLoc);
+            b.emitLoadLocal(iLoc);
+            b.endLess();
+            b.beginBlock();
+
+            // int temp;
+            // if (i % 3 < 1) {
+            b.beginIfThenElse();
+
+            b.beginLess();
+            b.beginMod();
+            b.emitLoadLocal(iLoc);
+            b.emitLoadConstant(3L);
+            b.endMod();
+            b.emitLoadConstant(1L);
+            b.endLess();
+
+            // temp = 1;
+            b.beginStoreLocal(tempLoc);
+            b.emitLoadConstant(1L);
+            b.endStoreLocal();
+
+            // } else {
+            // temp = i % 3;
+            b.beginStoreLocal(tempLoc);
+            b.beginMod();
+            b.emitLoadLocal(iLoc);
+            b.emitLoadConstant(3L);
+            b.endMod();
+            b.endStoreLocal();
+
+            // }
+            b.endIfThenElse();
+
+            // j = j + temp;
+            b.beginStoreLocal(jLoc);
+            b.beginAdd();
+            b.emitLoadLocal(jLoc);
+            b.emitLoadLocal(tempLoc);
+            b.endAdd();
+            b.endStoreLocal();
+
+            // }
+            b.endBlock();
+            b.endWhile();
+
+            // sum = sum + j;
+            b.beginStoreLocal(sumLoc);
+            b.beginAdd();
+            b.emitLoadLocal(sumLoc);
+            b.emitLoadLocal(jLoc);
+            b.endAdd();
+            b.endStoreLocal();
+
+            // i = i + 1;
+            b.beginStoreLocal(iLoc);
+            b.beginAdd();
+            b.emitLoadLocal(iLoc);
+            b.emitLoadConstant(1L);
+            b.endAdd();
+            b.endStoreLocal();
+
+            // }
+            b.endBlock();
+            b.endWhile();
+
+            // return sum;
+            b.beginReturn();
+            b.emitLoadLocal(sumLoc);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        for (int i = 0; i < 10; i++) {
+            target.resetCompilationProfile();
+            assertEquals(12498333L, target.call());
         }
     }
 
