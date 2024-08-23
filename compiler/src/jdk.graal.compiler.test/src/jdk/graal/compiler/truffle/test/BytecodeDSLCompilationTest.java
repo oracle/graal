@@ -101,7 +101,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testOSR() {
-        BasicInterpreter root = parseNodeForCompilation(interpreterClass, "osrRoot", b -> {
+        BasicInterpreter root = parseNode(interpreterClass, false, "osrRoot", b -> {
             b.beginRoot(LANGUAGE);
 
             BytecodeLocal iLoc = b.createLocal();
