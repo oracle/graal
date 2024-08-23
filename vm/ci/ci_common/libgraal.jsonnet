@@ -81,25 +81,9 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   libgraal_truffle_coverage: self.libgraal_truffle_base(['-Ob'], coverage=true),
 
   # Gate for guestgraal
-  guestgraal_compiler:: {
+  guestgraal_base(extra_vm_args=[]):: {
     local pathsep = if self.os == "windows" then ";" else ":",
     local guestgraal_env = std.strReplace(vm.libgraal_env, "libgraal", "guestgraal"),
-    # LibGraal gate tasks currently expected to work
-    local tasks = [
-      "LibGraal Compiler:Basic",
-      "LibGraal Compiler:FatalErrorHandling",
-      "LibGraal Compiler:OOMEDumping",
-      "LibGraal Compiler:SystemicFailureDetection",
-      "LibGraal Compiler:CompilationTimeout:JIT",
-      "LibGraal Compiler:CTW",
-      "LibGraal Compiler:DaCapo",
-      "LibGraal Compiler:ScalaDaCapo",
-      "LibGraal Truffle:unittest",
-      "LibGraal Compiler:CompilationTimeout:Truffle"
-    ] +
-    # Renaissance is missing the msvc redistributable on Windows [GR-50132]
-    if self.os == "windows" then [] else ["LibGraal Compiler:Renaissance"],
-
     run+: [
       ['mx', '--env', guestgraal_env, 'build'],
       ['set-export', 'JNIUTILS_PATH', ['mx', '--env', guestgraal_env, '--quiet', 'path', 'JNIUTILS']],
@@ -112,13 +96,45 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
        '-p', '$JNIUTILS_PATH' + pathsep + '$NATIVEBRIDGE_PATH',
        '-cp', '$GUESTGRAAL_LIBRARY_PATH' + pathsep + '$ENTERPRISE_GUESTGRAAL_LIBRARY_PATH',
        '-H:+UnlockExperimentalVMOptions', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases'],
-      ['mx', '--env', guestgraal_env, 'gate', '--task', std.join(",", tasks), '--extra-vm-argument=-XX:JVMCILibPath=$PWD/' + vm.vm_dir],
+      ['mx', '--env', guestgraal_env, 'gate', '--task', std.join(",", self.tasks), '--extra-vm-argument=-XX:JVMCILibPath=$PWD/' + vm.vm_dir, '--extra-vm-argument=' + std.join(" ", extra_vm_args)]
     ],
     logs+: [
       '*/graal-compiler.log',
-      '*/graal-compiler-ctw.log'
+      '*/graal-compiler-ctw.log',
     ],
-    timelimit: '3:00:00',
+  },
+
+  guestgraal_compiler:: self.guestgraal_base(extra_vm_args=[]) + {
+    # LibGraal gate tasks currently expected to work
+    tasks: [
+      "LibGraal Compiler:Basic",
+      "LibGraal Compiler:FatalErrorHandling",
+      "LibGraal Compiler:OOMEDumping",
+      "LibGraal Compiler:SystemicFailureDetection",
+      "LibGraal Compiler:CompilationTimeout:JIT",
+      "LibGraal Compiler:CTW",
+      "LibGraal Compiler:DaCapo",
+      "LibGraal Compiler:ScalaDaCapo"
+    ] +
+    # Renaissance is missing the msvc redistributable on Windows [GR-50132]
+    if self.os == "windows" then [] else ["LibGraal Compiler:Renaissance"],
+    timelimit: '1:00:00',
+  },
+
+  guestgraal_truffle:: self.guestgraal_base(extra_vm_args=['-DGCUtils.saveHeapDumpTo=.']) + {
+    # Truffle LibGraal gate tasks
+    tasks: [
+      "LibGraal Truffle",
+      "LibGraal Compiler:CompilationTimeout:Truffle"
+    ],
+    environment+: {
+      # The Truffle TCK tests run as a part of Truffle TCK gate, tools tests run as a part of tools gate
+      TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.* com.oracle.truffle.tools.* com.oracle.truffle.regex.*'
+    },
+    logs+: [
+      '*/gcutils_heapdump_*.hprof.gz'
+    ],
+    timelimit: '1:00:00',
   },
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -130,7 +146,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 
     "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {},
     "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
-    "gate-vm-guestgraal_compiler-labsjdk-latest-linux-amd64": {}
+    "gate-vm-guestgraal_compiler-labsjdk-latest-linux-amd64": {},
+    "gate-vm-guestgraal_truffle-labsjdk-latest-linux-amd64": {},
   },
 
   local gates = g.as_gates(gate_jobs),
@@ -190,7 +207,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
       "libgraal_truffle",
       "libgraal_compiler_quickbuild",
       "libgraal_truffle_quickbuild",
-      "guestgraal_compiler"
+      "guestgraal_compiler",
+      "guestgraal_truffle"
     ]
   ],
 
