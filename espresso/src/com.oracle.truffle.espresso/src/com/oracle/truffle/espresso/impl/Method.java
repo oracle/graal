@@ -569,7 +569,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      * of the boot loader are ignored.
      */
     public boolean isForceInline() {
-        return (getModifiers() & ACC_FORCE_INLINE) != 0 && StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader());
+        return (getModifiers() & ACC_FORCE_INLINE) != 0;
     }
 
     public boolean isDontInline() {

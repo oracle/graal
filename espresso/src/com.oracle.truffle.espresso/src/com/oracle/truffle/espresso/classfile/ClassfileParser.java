@@ -165,6 +165,7 @@ public final class ClassfileParser {
     private final ClassfileStream stream;
 
     private final ClassRegistry.ClassDefinitionInfo classDefinitionInfo;
+    private final boolean loaderIsBootOrPlatform;
 
     private Symbol<Type> classType;
 
@@ -179,18 +180,19 @@ public final class ClassfileParser {
 
     private ImmutableConstantPool pool;
 
-    private ClassfileParser(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
+    private ClassfileParser(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, boolean loaderIsBootOrPlatform, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
         this.requestedClassType = requestedClassType;
         this.env = env;
         this.classfile = null;
         this.stream = Objects.requireNonNull(stream);
         this.verifiable = verifiable;
+        this.loaderIsBootOrPlatform = loaderIsBootOrPlatform;
         this.classDefinitionInfo = info;
     }
 
     // Note: only used for reading the class name from class bytes
     private ClassfileParser(ClassLoadingEnv env, ClassfileStream stream) {
-        this(env, stream, false, null, ClassRegistry.ClassDefinitionInfo.EMPTY);
+        this(env, stream, false, false, null, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -224,15 +226,12 @@ public final class ClassfileParser {
 
     public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassName) {
         boolean verifiable = MethodVerifier.needsVerify(env.getLanguage(), loader);
-        return parse(env, stream, verifiable, requestedClassName, ClassRegistry.ClassDefinitionInfo.EMPTY);
+        return parse(env, stream, verifiable, env.loaderIsBootOrPlatform(loader), requestedClassName, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
-    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, Symbol<Type> requestedClassName) {
-        return parse(env, stream, verifiable, requestedClassName, ClassRegistry.ClassDefinitionInfo.EMPTY);
-    }
-
-    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
-        return new ClassfileParser(env, stream, verifiable, requestedClassType, info).parseClass();
+    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, boolean loaderIsBootOrPlatform, Symbol<Type> requestedClassType,
+                    ClassRegistry.ClassDefinitionInfo info) {
+        return new ClassfileParser(env, stream, verifiable, loaderIsBootOrPlatform, requestedClassType, info).parseClass();
     }
 
     private ParserKlass parseClass() {
@@ -720,11 +719,13 @@ public final class ClassfileParser {
             byte[] data = stream.readByteArray(attributeSize);
             ClassfileStream subStream = new ClassfileStream(data, classfile);
             int flags = 0;
-            flags = switch (location) {
-                case Method -> parseMethodVMAnnotations(subStream);
-                case Field -> parseFieldVMAnnotations(subStream);
-                case Class -> 0;
-            };
+            if (loaderIsBootOrPlatform || classDefinitionInfo.forceAllowVMAnnotations()) {
+                flags = switch (location) {
+                    case Method -> parseMethodVMAnnotations(subStream);
+                    case Field -> parseFieldVMAnnotations(subStream);
+                    case Class -> 0;
+                };
+            }
 
             Attribute attribute = new Attribute(Name.RuntimeVisibleAnnotations, data);
             runtimeVisibleAnnotations = attribute;

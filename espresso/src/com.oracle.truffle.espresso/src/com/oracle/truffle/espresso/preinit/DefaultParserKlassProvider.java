@@ -35,6 +35,6 @@ public final class DefaultParserKlassProvider implements ParserKlassProvider {
     @Override
     public ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
         boolean verifiable = MethodVerifier.needsVerify(env.getLanguage(), loader);
-        return ClassfileParser.parse(env, new ClassfileStream(bytes, null), verifiable, typeOrNull, info);
+        return ClassfileParser.parse(env, new ClassfileStream(bytes, null), verifiable, env.loaderIsBootOrPlatform(loader), typeOrNull, info);
     }
 }
