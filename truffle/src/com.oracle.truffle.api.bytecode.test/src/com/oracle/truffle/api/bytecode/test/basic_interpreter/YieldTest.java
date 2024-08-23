@@ -398,7 +398,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
 
         // A suspended invocation should transition.
         cont = (ContinuationResult) rootNode.getCallTarget().call(123L);
-        rootNode.getRootNodes().ensureSources();
+        rootNode.getRootNodes().ensureSourceInformation();
         SourceSection[] result = (SourceSection[]) cont.continueWith(false);
         assertEquals(1, result.length);
         assertEquals(source, result[0].getSource());

@@ -365,7 +365,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         this.add(createContinueAt());
         this.add(createTransitionToCached());
         this.add(createUpdateBytecode());
-        this.add(createEnsureSources());
 
         this.add(createIsInstrumentable());
         this.addOptional(createPrepareForInstrumentation());
@@ -1483,16 +1482,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startReturn().string("encoding << 1").end();
         }
         return encodeInstrumentation;
-    }
-
-    private CodeExecutableElement createEnsureSources() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), abstractBytecodeNode.asType(), "ensureSources");
-        CodeTreeBuilder b = ex.createBuilder();
-        b.statement("nodes.ensureSources()");
-        b.declaration(abstractBytecodeNode.asType(), "newBytecode", "this.bytecode");
-        b.statement("assert newBytecode.sourceInfo != null");
-        b.startReturn().string("newBytecode").end();
-        return ex;
     }
 
     private CodeExecutableElement createIsInstrumentable() {
@@ -9775,6 +9764,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createFindInstruction());
             this.add(createValidateBytecodeIndex());
             this.add(createGetSourceInformation());
+            this.add(createHasSourceInformation());
             this.add(createGetSourceInformationTree());
             this.add(createGetExceptionHandlers());
             this.add(createGetTagTree());
@@ -9817,6 +9807,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 this.add(createGetTagNodes());
             }
 
+            this.add(createTranslateBytecodeIndex());
             if (model.isBytecodeUpdatable()) {
                 this.add(createTransitionState());
                 this.add(createToStableBytecodeIndex());
@@ -10726,6 +10717,31 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
+        private CodeExecutableElement createTranslateBytecodeIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "translateBytecodeIndex");
+            ex.renameArguments("newNode", "bytecodeIndex");
+            CodeTreeBuilder b = ex.createBuilder();
+            if (model.isBytecodeUpdatable()) {
+                b.startReturn();
+                b.startCall("transitionState");
+                b.startGroup();
+                b.cast(this.asType());
+                b.string("newNode");
+                b.end();
+                b.string("bytecodeIndex & 0x0000_FFFF");
+                if (model.enableYield) {
+                    b.string("null");
+                }
+                b.end();
+                b.string(" & 0x0000_FFFF");
+
+                b.end();
+            } else {
+                b.statement("return bytecodeIndex");
+            }
+            return ex;
+        }
+
         private CodeExecutableElement createTransitionState() {
             CodeExecutableElement invalidate = new CodeExecutableElement(Set.of(FINAL), type(int.class), "transitionState");
             invalidate.addParameter(new CodeVariableElement(this.asType(), "newBytecode"));
@@ -11212,14 +11228,17 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert validateBytecodeIndex(bci)");
 
-            emitGetSourceInfo(b);
+            b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
+            b.startIf().string("info == null").end().startBlock();
+            b.startReturn().string("null").end();
+            b.end();
 
             b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
             b.declaration(type(int.class), "startBci", "info[i + SOURCE_INFO_OFFSET_START_BCI]");
             b.declaration(type(int.class), "endBci", "info[i + SOURCE_INFO_OFFSET_END_BCI]");
 
             b.startIf().string("startBci <= bci && bci < endBci").end().startBlock();
-            b.startReturn().string("createSourceSection(localSources, info, i)").end();
+            b.startReturn().string("createSourceSection(sources, info, i)").end();
             b.end();
 
             b.end();
@@ -11235,7 +11254,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert validateBytecodeIndex(bci)");
 
-            emitGetSourceInfo(b);
+            b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
+            b.startIf().string("info == null").end().startBlock();
+            b.startReturn().string("null").end();
+            b.end();
 
             b.declaration(type(int.class), "sectionIndex", "0");
             b.startDeclaration(arrayOf(types.SourceSection), "sections").startNewArray(arrayOf(types.SourceSection), CodeTreeBuilder.singleString("8")).end().end();
@@ -11254,7 +11276,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end(2); // assign
             b.end(); // if
 
-            b.startStatement().string("sections[sectionIndex++] = createSourceSection(localSources, info, i)").end();
+            b.startStatement().string("sections[sectionIndex++] = createSourceSection(sources, info, i)").end();
 
             b.end(); // if
 
@@ -11290,7 +11312,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
             CodeTreeBuilder b = ex.createBuilder();
 
-            emitGetSourceInfo(b);
+            b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
+            b.startIf().string("info == null").end().startBlock();
+            b.startReturn().string("null").end();
+            b.end();
 
             b.lineComment("The source table encodes a preorder traversal of a logical tree of source sections (with entries in reverse).");
             b.lineComment("The most specific source section corresponds to the \"lowest\" node in the tree that covers the whole bytecode range.");
@@ -11309,23 +11334,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startIf().string("mostSpecific != -1").end().startBlock();
             b.startReturn();
-            b.string("createSourceSection(localSources, info, mostSpecific)");
+            b.string("createSourceSection(sources, info, mostSpecific)");
             b.end();
             b.end();
             b.startReturn().string("null").end();
             return ex;
-        }
-
-        private void emitGetSourceInfo(CodeTreeBuilder b) {
-            b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
-            b.declaration(generic(type(List.class), types.Source), "localSources", "this.sources");
-            b.startIf().string("info == null").end().startBlock();
-            b.declaration(this.asType(), "newNode", "getRoot().ensureSources()");
-            b.statement("info = newNode.sourceInfo");
-            b.statement("localSources = newNode.sources");
-            b.statement("assert info != null");
-            b.statement("assert localSources != null");
-            b.end();
         }
 
         private CodeExecutableElement createFindInstruction() {
@@ -11360,6 +11373,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             // we could do more validations here, but they would likely be too expensive
 
             b.returnTrue();
+            return ex;
+        }
+
+        private CodeExecutableElement createHasSourceInformation() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "hasSourceInformation");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return sourceInfo != null");
             return ex;
         }
 

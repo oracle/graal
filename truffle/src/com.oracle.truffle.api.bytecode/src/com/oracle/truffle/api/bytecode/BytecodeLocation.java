@@ -146,6 +146,41 @@ public final class BytecodeLocation {
     }
 
     /**
+     * Updates this location to the newest {@link BytecodeNode bytecode node} of the parent
+     * {@link BytecodeRootNode bytecode root node}, translating the {@link #getBytecodeIndex()
+     * bytecode index} to the new bytecode node in the process. It is useful to update the location
+     * if source information or instrumentations were materialized in the meantime. Note that the
+     * {@link #getBytecodeIndex() bytecode index} may be different in the updated location.
+     *
+     * @since 24.2
+     */
+    public BytecodeLocation update() {
+        BytecodeNode thisNode = this.bytecodes;
+        BytecodeNode newNode = this.bytecodes.getBytecodeRootNode().getBytecodeNode();
+        if (thisNode == newNode) {
+            return this;
+        }
+        int newBytecodeIndex = thisNode.translateBytecodeIndex(newNode, this.bytecodeIndex);
+        return new BytecodeLocation(newNode, newBytecodeIndex);
+    }
+
+    /**
+     * Ensures source information available for this location and {@link #update() updates} this
+     * location to a new location of the bytecode node with source information. Materialization of
+     * source information may be an expensive operation if the source information was not yet
+     * materialzed yet.
+     *
+     * @since 24.2
+     */
+    public BytecodeLocation ensureSourceInformation() {
+        BytecodeNode thisNode = this.bytecodes.ensureSourceInformation();
+        if (thisNode != this.bytecodes) {
+            return update();
+        }
+        return this;
+    }
+
+    /**
      * Computes the most concrete source location of this bytecode location.
      *
      * @see BytecodeNode#getSourceLocation(int)

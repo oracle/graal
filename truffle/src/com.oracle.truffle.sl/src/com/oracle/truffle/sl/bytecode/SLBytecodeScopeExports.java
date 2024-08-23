@@ -243,13 +243,13 @@ final class SLBytecodeScopeExports {
         @ExportMessage
         @TruffleBoundary
         boolean hasSourceLocation() {
-            return this.rootNode.getSourceSection() != null;
+            return this.rootNode.ensureSourceSection() != null;
         }
 
         @ExportMessage
         @TruffleBoundary
         SourceSection getSourceLocation() throws UnsupportedMessageException {
-            SourceSection section = this.rootNode.getSourceSection();
+            SourceSection section = this.rootNode.ensureSourceSection();
             if (section == null) {
                 throw UnsupportedMessageException.create();
             }

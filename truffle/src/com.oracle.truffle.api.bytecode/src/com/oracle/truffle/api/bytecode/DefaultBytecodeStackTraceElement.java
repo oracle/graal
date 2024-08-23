@@ -82,26 +82,27 @@ final class DefaultBytecodeStackTraceElement implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     boolean hasSourceLocation() {
         return getSourceSectionImpl() != null;
     }
 
-    @TruffleBoundary
-    private SourceSection getSourceSectionImpl() {
-        BytecodeLocation location = BytecodeLocation.get(stackTrace);
-        if (location == null) {
-            return null;
-        }
-        return location.getSourceLocation();
-    }
-
     @ExportMessage
+    @TruffleBoundary
     SourceSection getSourceLocation() throws UnsupportedMessageException {
         SourceSection sc = getSourceSectionImpl();
         if (sc == null) {
             throw UnsupportedMessageException.create();
         }
         return sc;
+    }
+
+    private SourceSection getSourceSectionImpl() {
+        BytecodeLocation location = BytecodeLocation.get(stackTrace);
+        if (location == null) {
+            return null;
+        }
+        return location.ensureSourceInformation().getSourceLocation();
     }
 
     @ExportMessage

@@ -105,7 +105,7 @@ public class SplittingTest extends AbstractBasicInterpreterTest {
         assertNotSame(original, split0);
 
         assertNull(split0.getBytecodeNode().getSourceInformation());
-        original.getRootNodes().ensureSources();
+        original.getRootNodes().ensureSourceInformation();
 
         assertNotNull(split0.getBytecodeNode().getSourceInformation());
         assertNotNull(original.getBytecodeNode().getSourceInformation());

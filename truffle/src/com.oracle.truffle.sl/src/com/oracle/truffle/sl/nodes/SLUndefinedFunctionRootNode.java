@@ -75,6 +75,11 @@ public final class SLUndefinedFunctionRootNode extends SLRootNode {
     }
 
     @Override
+    public SourceSection ensureSourceSection() {
+        return null;
+    }
+
+    @Override
     public SLExpressionNode getBodyNode() {
         return null;
     }
