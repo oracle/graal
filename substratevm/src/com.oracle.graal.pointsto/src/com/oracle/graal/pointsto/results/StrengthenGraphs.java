@@ -393,7 +393,8 @@ public abstract class StrengthenGraphs {
             if (n instanceof ValueNode && !(n instanceof LimitedValueProxy) && !(n instanceof PhiNode)) {
                 /*
                  * The stamp of proxy nodes and phi nodes is inferred automatically, so we do not
-                 * need to improve them.
+                 * need to improve them. Macro nodes prohibit changing their stamp because it is
+                 * derived from the macro's fallback invoke.
                  */
                 ValueNode node = (ValueNode) n;
                 /*

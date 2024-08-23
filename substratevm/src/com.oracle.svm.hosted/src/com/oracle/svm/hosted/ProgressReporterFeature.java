@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,9 +68,13 @@ public class ProgressReporterFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         var vectorSpeciesClass = ReflectionUtil.lookupClass(true, "jdk.incubator.vector.VectorSpecies");
         if (vectorSpeciesClass != null && access.isReachable(vectorSpeciesClass)) {
-            LogUtils.warning(
-                            "This application uses a preview of the Vector API, which is functional but slow on Native Image because it is not yet optimized by the Graal compiler. Please keep this in mind when evaluating performance.");
+            warnAboutVectorAPI();
         }
+    }
+
+    protected void warnAboutVectorAPI() {
+        LogUtils.warning(
+                        "This application uses a preview of the Vector API, which is functional but slow on Native Image because it is not yet optimized by the Graal compiler. Please keep this in mind when evaluating performance.");
     }
 
     @Override
