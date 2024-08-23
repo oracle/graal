@@ -679,6 +679,30 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
+    static final class Add {
+        @Specialization
+        static long doInts(long left, long right) {
+            return left + right;
+        }
+    }
+
+    @Operation
+    static final class Mod {
+        @Specialization
+        static long doInts(long left, long right) {
+            return left % right;
+        }
+    }
+
+    @Operation
+    static final class Less {
+        @Specialization
+        static boolean doInts(long left, long right) {
+            return left < right;
+        }
+    }
+
+    @Operation
     public static final class EnableDoubleValueInstrumentation {
         @Specialization
         public static void doEnable(

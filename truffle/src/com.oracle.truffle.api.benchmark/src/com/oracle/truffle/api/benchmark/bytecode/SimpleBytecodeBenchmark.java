@@ -230,7 +230,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
         b.beginWhile();
         b.beginLess();
         b.emitLoadLocal(iLoc);
-        b.emitLoadConstant(TOTAL_ITERATIONS);
+        b.emitLoadConstant(5000);
         b.endLess();
         b.beginBlock();
 
