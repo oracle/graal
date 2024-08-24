@@ -29,6 +29,7 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -101,7 +102,9 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
 
         // JDK-8220738
         a.registerReachabilityHandler(JNIRegistrationJavaNio::registerNetInitIDs, method(a, "sun.nio.ch.Net", "initIDs"));
-        a.registerReachabilityHandler(JNIRegistrationJavaNio::registerFileKeyInitIDs, method(a, "sun.nio.ch.FileKey", "initIDs"));
+        if (JavaVersionUtil.JAVA_SPEC <= 21) {
+            a.registerReachabilityHandler(JNIRegistrationJavaNio::registerFileKeyInitIDs, method(a, "sun.nio.ch.FileKey", "initIDs"));
+        }
 
         if (isPosix()) {
             a.registerReachabilityHandler(JNIRegistrationJavaNio::registerUnixNativeDispatcherInit, method(a, "sun.nio.fs.UnixNativeDispatcher", "init"));
