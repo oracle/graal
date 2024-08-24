@@ -472,7 +472,6 @@ public class MethodTypeFlowBuilder {
         AnalysisError.guarantee(flowsGraph.getReturnFlow() == null, "Expected null return flow");
 
         AnalysisType returnType = TypeFlow.filterUncheckedInterface(method.getSignature().getReturnType());
-        AnalysisError.guarantee(returnType.getJavaKind().isObject(), "Unexpected return type: %s", returnType);
 
         BytecodePosition position = AbstractAnalysisEngine.syntheticSourcePosition(null, method);
         var returnFlow = new FormalReturnTypeFlow(position, returnType);
