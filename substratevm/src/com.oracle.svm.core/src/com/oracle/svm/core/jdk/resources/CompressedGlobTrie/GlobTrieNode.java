@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 public class GlobTrieNode<C> {
     protected static final String STAR = "*";
@@ -46,7 +47,9 @@ public class GlobTrieNode<C> {
     private String content;
     @UnknownObjectField(fullyQualifiedTypes = {"java.util.HashMap", "java.util.ImmutableCollections$MapN", "java.util.ImmutableCollections$Map1"}) //
     private Map<String, GlobTrieNode<C>> children;
+    @UnknownPrimitiveField //
     private boolean isLeaf;
+    @UnknownPrimitiveField //
     private boolean isNewLevel;
 
     /*
