@@ -368,12 +368,18 @@ public class GeneratorUtils {
         return false;
     }
 
-    public static CodeExecutableElement override(DeclaredType type, String methodName) {
+    public static CodeExecutableElement override(DeclaredType type, String methodName, String... argumentNames) {
         ExecutableElement method = ElementUtils.findMethod(type, methodName);
         if (method == null) {
             return null;
         }
-        return CodeExecutableElement.clone(method);
+        if (method.getParameters().size() != argumentNames.length) {
+            throw new IllegalArgumentException(String.format("Wrong number of argument names for method '%s'. Expected: %d, got: %d.",
+                            method.getSimpleName(), method.getParameters().size(), argumentNames.length));
+        }
+        CodeExecutableElement result = CodeExecutableElement.clone(method);
+        result.renameArguments(argumentNames);
+        return result;
     }
 
     public static void addThrownExceptions(CodeExecutableElement executable, List<? extends TypeMirror> thrownTypes) {
