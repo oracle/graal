@@ -67,6 +67,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
+import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
 import com.oracle.svm.hosted.lambda.StableLambdaProxyNameFeature;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -181,6 +182,14 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         }
          */
         return false;
+    }
+
+    @Override
+    public void persistMethod(AnalysisMethod method) {
+        super.persistMethod(method);
+
+        // register this method as persisted for name resolution
+        HostedDynamicLayerInfo.singleton().recordPersistedMethod(hUniverse.lookup(method));
     }
 
     @Override
