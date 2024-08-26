@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.ExpectedSourceTree.expectedSourceTree;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -119,6 +120,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertInstructionSourceSection(instructions.get(1), source, 0, 8);
 
         assertSourceInformationTree(bytecode, est("return 1", est("1")));
+
     }
 
     @Test
@@ -918,8 +920,16 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         // call it once to transition to cached
         assertEquals(42L, node.getCallTarget().call(true));
 
+        BytecodeLocation aLocation = node.getBytecodeNode().getBytecodeLocation(node.getBytecodeNode().getInstructionsAsList().get(3).getBytecodeIndex());
+
+        assertNull(aLocation.getSourceInformation());
+
         nodes.ensureSourceInformation();
         SourceSection[] result = (SourceSection[]) node.getCallTarget().call(false);
         assertSourceSections(result, source, 19, 8, 0, 27);
+
+        aLocation = aLocation.update();
+        assertNotNull(aLocation.getSourceInformation());
+
     }
 }

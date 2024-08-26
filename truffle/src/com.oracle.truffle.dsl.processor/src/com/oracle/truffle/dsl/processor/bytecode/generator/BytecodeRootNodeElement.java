@@ -10800,12 +10800,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
-            b.startIf().string("this == newBytecode || this.bytecodes == newBc").end().startBlock();
+            b.startIf().string("oldBc == null || this == newBytecode || this.bytecodes == newBc").end().startBlock();
             b.lineComment("No change in bytecodes.");
             b.startReturn().string("state").end();
             b.end();
-
-            b.statement("assert oldBc != null");
 
             b.declaration(type(int.class), "oldBci", "state & 0xFFFF");
 
