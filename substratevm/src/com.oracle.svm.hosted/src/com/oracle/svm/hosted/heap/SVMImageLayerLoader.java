@@ -29,8 +29,19 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.C_ENTRY_POINT_LITERAL_CODE_POINTER;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_CLASS_INITIALIZER_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_HAS_INITIALIZER_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_BUILD_TIME_INITIALIZED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_INITIALIZED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_IN_ERROR_STATE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_LINKED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_TRACKED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_FAILED_NO_TRACKING_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INITIALIZED_NO_TRACKING_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_NO_INITIALIZER_NO_TRACKING_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_POINTER_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PERSISTED;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TYPES_TAG;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -56,6 +67,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
@@ -108,6 +120,45 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     public HostedUniverse getHostedUniverse() {
         return hostedUniverse;
+    }
+
+    public ClassInitializationInfo getClassInitializationInfo(AnalysisType type) {
+        int tid = type.getId();
+        EconomicMap<String, Object> typesMap = get(jsonMap, TYPES_TAG);
+        EconomicMap<String, Object> typeMap = get(typesMap, typeIdToIdentifier.get(tid));
+
+        boolean isNoInitializerNoTracking = get(typeMap, IS_NO_INITIALIZER_NO_TRACKING_TAG);
+        boolean isInitializedNoTracking = get(typeMap, IS_INITIALIZED_NO_TRACKING_TAG);
+        boolean isFailedNoTracking = get(typeMap, IS_FAILED_NO_TRACKING_TAG);
+
+        if (isNoInitializerNoTracking) {
+            return ClassInitializationInfo.forNoInitializerInfo(false);
+        } else if (isInitializedNoTracking) {
+            return ClassInitializationInfo.forInitializedInfo(false);
+        } else if (isFailedNoTracking) {
+            return ClassInitializationInfo.forFailedInfo(false);
+        } else {
+            boolean isInitialized = get(typeMap, INFO_IS_INITIALIZED_TAG);
+            boolean isInErrorState = get(typeMap, INFO_IS_IN_ERROR_STATE_TAG);
+            boolean isLinked = get(typeMap, INFO_IS_LINKED_TAG);
+            boolean hasInitializer = get(typeMap, INFO_HAS_INITIALIZER_TAG);
+            boolean isBuildTimeInitialized = get(typeMap, INFO_IS_BUILD_TIME_INITIALIZED_TAG);
+            boolean isTracked = get(typeMap, INFO_IS_TRACKED_TAG);
+
+            ClassInitializationInfo.InitState initState;
+            if (isInitialized) {
+                initState = ClassInitializationInfo.InitState.FullyInitialized;
+            } else if (isInErrorState) {
+                initState = ClassInitializationInfo.InitState.InitializationError;
+            } else {
+                assert isLinked : "Invalid state";
+                Integer classInitializerId = get(typeMap, INFO_CLASS_INITIALIZER_TAG);
+                MethodPointer classInitializer = classInitializerId == null ? null : new MethodPointer(getAnalysisMethod(classInitializerId));
+                return new ClassInitializationInfo(classInitializer, isTracked);
+            }
+
+            return new ClassInitializationInfo(initState, hasInitializer, isBuildTimeInitialized, isTracked);
+        }
     }
 
     @Override

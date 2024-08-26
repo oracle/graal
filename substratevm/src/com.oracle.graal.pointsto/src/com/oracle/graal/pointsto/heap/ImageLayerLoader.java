@@ -308,7 +308,7 @@ public class ImageLayerLoader {
     private final Map<Integer, BaseLayerMethod> baseLayerMethods = new ConcurrentHashMap<>();
 
     /** Map from the type id to its identifier in the jsonMap. */
-    private final Map<Integer, String> typeIdToIdentifier = new HashMap<>();
+    protected final Map<Integer, String> typeIdToIdentifier = new HashMap<>();
 
     /** Map from the method id to its identifier in the jsonMap. */
     private final Map<Integer, String> methodIdToIdentifier = new HashMap<>();

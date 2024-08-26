@@ -120,6 +120,16 @@ public class ImageLayerSnapshotUtil {
     public static final String IDENTITY_HASH_CODE_TAG = "identityHashCode";
     public static final String HUB_IDENTITY_HASH_CODE_TAG = "hub identityHashCode";
     public static final String IS_INITIALIZED_AT_BUILD_TIME_TAG = "is initialized at build time";
+    public static final String IS_NO_INITIALIZER_NO_TRACKING_TAG = "in no initializer no tracking";
+    public static final String IS_INITIALIZED_NO_TRACKING_TAG = "is initialized no tracking";
+    public static final String IS_FAILED_NO_TRACKING_TAG = "is failed no tracking";
+    public static final String INFO_IS_INITIALIZED_TAG = "info is initialized";
+    public static final String INFO_IS_IN_ERROR_STATE_TAG = "info is in error state";
+    public static final String INFO_IS_LINKED_TAG = "info is linked";
+    public static final String INFO_HAS_INITIALIZER_TAG = "info has initializer";
+    public static final String INFO_IS_BUILD_TIME_INITIALIZED_TAG = "info is build time initialized";
+    public static final String INFO_IS_TRACKED_TAG = "info is tracked";
+    public static final String INFO_CLASS_INITIALIZER_TAG = "info class initializer";
     public static final String ID_TAG = "id";
     public static final String ANALYSIS_PARSED_GRAPH_TAG = "analysis parsed graph";
     public static final String STRENGTHENED_GRAPH_TAG = "strengthened graph";

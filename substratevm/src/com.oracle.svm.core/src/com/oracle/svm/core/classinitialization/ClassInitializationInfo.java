@@ -110,7 +110,7 @@ public final class ClassInitializationInfo {
         return slowPathRequired;
     }
 
-    enum InitState {
+    public enum InitState {
         /**
          * Successfully linked/verified (but not initialized yet). Linking happens during image
          * building, so we do not need to track states before linking.
@@ -206,7 +206,7 @@ public final class ClassInitializationInfo {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private ClassInitializationInfo(InitState initState, boolean hasInitializer, boolean buildTimeInitialized, boolean typeReachedTracked) {
+    public ClassInitializationInfo(InitState initState, boolean hasInitializer, boolean buildTimeInitialized, boolean typeReachedTracked) {
         this(initState, typeReachedTracked);
         this.hasInitializer = hasInitializer;
         this.buildTimeInitialized = buildTimeInitialized;
@@ -254,6 +254,18 @@ public final class ClassInitializationInfo {
 
     public boolean isInErrorState() {
         return initState == InitState.InitializationError;
+    }
+
+    public boolean isLinked() {
+        return initState == InitState.Linked;
+    }
+
+    public boolean isTracked() {
+        return typeReached != TypeReached.UNTRACKED;
+    }
+
+    public FunctionPointerHolder getClassInitializer() {
+        return classInitializer;
     }
 
     private boolean isReentrantInitialization(IsolateThread thread) {

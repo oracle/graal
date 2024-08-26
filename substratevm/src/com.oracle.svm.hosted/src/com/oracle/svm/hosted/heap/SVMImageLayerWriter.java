@@ -29,7 +29,17 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.C_ENTRY_POIN
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.HUB_IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_CLASS_INITIALIZER_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_HAS_INITIALIZER_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_BUILD_TIME_INITIALIZED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_INITIALIZED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_IN_ERROR_STATE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_LINKED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_TRACKED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_FAILED_NO_TRACKING_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INITIALIZED_AT_BUILD_TIME_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INITIALIZED_NO_TRACKING_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_NO_INITIALIZER_NO_TRACKING_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LOCATION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_POINTER_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_OFFSET_TAG;
@@ -55,8 +65,10 @@ import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
@@ -116,6 +128,25 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         typeMap.put(HUB_IDENTITY_HASH_CODE_TAG, System.identityHashCode(hub));
 
         typeMap.put(IS_INITIALIZED_AT_BUILD_TIME_TAG, ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(type));
+
+        ClassInitializationInfo info = hub.getClassInitializationInfo();
+        if (info != null) {
+            typeMap.put(IS_NO_INITIALIZER_NO_TRACKING_TAG, info == ClassInitializationInfo.forNoInitializerInfo(false));
+            typeMap.put(IS_INITIALIZED_NO_TRACKING_TAG, info == ClassInitializationInfo.forInitializedInfo(false));
+            typeMap.put(IS_FAILED_NO_TRACKING_TAG, info == ClassInitializationInfo.forFailedInfo(false));
+            typeMap.put(INFO_IS_INITIALIZED_TAG, info.isInitialized());
+            typeMap.put(INFO_IS_IN_ERROR_STATE_TAG, info.isInErrorState());
+            typeMap.put(INFO_IS_LINKED_TAG, info.isLinked());
+            typeMap.put(INFO_HAS_INITIALIZER_TAG, info.hasInitializer());
+            typeMap.put(INFO_IS_BUILD_TIME_INITIALIZED_TAG, info.isBuildTimeInitialized());
+            typeMap.put(INFO_IS_TRACKED_TAG, info.isTracked());
+            FunctionPointerHolder classInitializer = info.getClassInitializer();
+            if (classInitializer != null) {
+                MethodPointer methodPointer = (MethodPointer) classInitializer.functionPointer;
+                AnalysisMethod classInitializerMethod = (AnalysisMethod) methodPointer.getMethod();
+                typeMap.put(INFO_CLASS_INITIALIZER_TAG, classInitializerMethod.getId());
+            }
+        }
 
         super.persistType(type, typeMap);
     }
