@@ -1073,6 +1073,10 @@ public class SVMHost extends HostVM {
 
     @Override
     public Set<AnalysisMethod> loadOpenTypeWorldDispatchTableMethods(AnalysisType type) {
-        return OpenTypeWorldFeature.loadDispatchTable(type);
+        /*
+         * Will be enabled as part of GR-57248
+         */
+        // return OpenTypeWorldFeature.loadDispatchTable(type);
+        return Set.of();
     }
 }

@@ -171,11 +171,15 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         /*
          * If the method is present in a dispatch table of a persisted type, then it also should be
          * persisted.
+         *
+         * Will be enabled as part of GR-57248
          */
+        /*-
         AnalysisType type = method.getDeclaringClass();
         if (type.isReachable()) {
             return type.getOpenTypeWorldDispatchTableMethods().contains(method);
         }
+         */
         return false;
     }
 
