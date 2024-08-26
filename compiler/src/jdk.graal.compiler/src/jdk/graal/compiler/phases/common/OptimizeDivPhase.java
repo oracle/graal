@@ -84,28 +84,28 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         EconomicSetNodeEventListener ec = new EconomicSetNodeEventListener();
         try (NodeEventScope nes = graph.trackNodeEvents(ec)) {
             for (IntegerDivRemNode rem : graph.getNodes(IntegerDivRemNode.TYPE)) {
-                if (rem instanceof SignedRemNode && isDivByNonZeroConstant(rem)) {
+                if (rem instanceof SignedRemNode && isDivByNonZeroConstantNonOverflowingAbs(rem)) {
                     try (DebugCloseable position = rem.withNodeSourcePosition()) {
                         optimizeRem(rem);
                     }
                 }
             }
             for (SignedFloatingIntegerRemNode nonTrappingRem : graph.getNodes(SignedFloatingIntegerRemNode.TYPE)) {
-                if (isDivByNonZeroConstant(nonTrappingRem)) {
+                if (isDivByNonZeroConstantNonOverflowingAbs(nonTrappingRem)) {
                     try (DebugCloseable position = nonTrappingRem.withNodeSourcePosition()) {
                         optimizeRem(nonTrappingRem);
                     }
                 }
             }
             for (IntegerDivRemNode div : graph.getNodes(IntegerDivRemNode.TYPE)) {
-                if (div instanceof SignedDivNode && isDivByNonZeroConstant(div)) {
+                if (div instanceof SignedDivNode && isDivByNonZeroConstantNonOverflowingAbs(div)) {
                     try (DebugCloseable position = div.withNodeSourcePosition()) {
                         optimizeSignedDiv(div);
                     }
                 }
             }
             for (SignedFloatingIntegerDivNode div : graph.getNodes(SignedFloatingIntegerDivNode.TYPE)) {
-                if (isDivByNonZeroConstant(div)) {
+                if (isDivByNonZeroConstantNonOverflowingAbs(div)) {
                     try (DebugCloseable position = div.withNodeSourcePosition()) {
                         optimizeSignedDiv(div);
                     }
@@ -123,8 +123,13 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         return 5.0f;
     }
 
-    protected static boolean isDivByNonZeroConstant(Canonicalizable.Binary<ValueNode> divRemNode) {
-        return divRemNode.getY().isConstant() && divRemNode.getY().asJavaConstant().asLong() != 0;
+    protected static boolean isDivByNonZeroConstantNonOverflowingAbs(Canonicalizable.Binary<ValueNode> divRemNode) {
+        if (divRemNode.getY().isConstant()) {
+            ValueNode divisor = divRemNode.getY();
+            long constantVal = divisor.asJavaConstant().asLong();
+            return constantVal != 0 && !NumUtil.absOverflows(constantVal, IntegerStamp.getBits(divisor.stamp(NodeView.DEFAULT)));
+        }
+        return false;
     }
 
     protected final void optimizeRem(Canonicalizable.Binary<ValueNode> rem) {
@@ -258,7 +263,11 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
     private static Pair<Long, Integer> magicDivideConstants(long divisor, int size) {
         final long twoW = 1L << (size - 1);                // 2 ^ (size - 1).
         long t = twoW + (divisor >>> 63);
-        long ad = Math.abs(divisor);
+        /*
+         * We know the abs here can never overflow because we check that in
+         * #isDivByNonZeroConstantNonOverflowingAbs.
+         */
+        long ad = NumUtil.safeAbs(divisor, 64);
         long anc = t - 1 - Long.remainderUnsigned(t, ad);  // Absolute value of nc.
         long q1 = Long.divideUnsigned(twoW, anc);          // Init. q1 = 2**p/|nc|.
         long r1 = Long.remainderUnsigned(twoW, anc);       // Init. r1 = rem(2**p, |nc|).

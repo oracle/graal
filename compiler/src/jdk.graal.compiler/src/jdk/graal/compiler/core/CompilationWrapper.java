@@ -43,6 +43,7 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
@@ -471,7 +472,7 @@ public abstract class CompilationWrapper<T> {
             return false;
         }
 
-        int maxRate = Math.min(100, Math.abs(maxRateValue));
+        int maxRate = Math.min(100, NumUtil.safeAbs(maxRateValue));
         long now = System.currentTimeMillis();
         long start = getCompilationPeriodStart(now);
 

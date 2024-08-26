@@ -67,6 +67,7 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.options.Option;
 
 @AutomaticallyRegisteredFeature
@@ -296,7 +297,8 @@ public abstract class SubstrateSegfaultHandler {
         if (addr != 0) {
             long delta = addr - CurrentIsolate.getIsolate().rawValue();
             String sign = (delta >= 0 ? "+" : "-");
-            log.string(" (heapBase ").string(sign).string(" ").signed(Math.abs(delta)).string(")");
+            // we don't care if overflow happens in this abs
+            log.string(" (heapBase ").string(sign).string(" ").signed(NumUtil.unsafeAbs(delta)).string(")");
         }
     }
 

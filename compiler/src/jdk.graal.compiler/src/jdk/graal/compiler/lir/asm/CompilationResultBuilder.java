@@ -48,6 +48,7 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
 import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.DataSection.Data;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.type.DataPointerConstant;
@@ -693,7 +694,7 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
         Integer instructionPosition = lirPositions.get(instruction);
         if (labelPosition != null && instructionPosition != null) {
             /* If both LIR positions are known, then check distance between instructions. */
-            return Math.abs(labelPosition - instructionPosition) < maxLIRDistance;
+            return NumUtil.safeAbs(labelPosition - instructionPosition) < maxLIRDistance;
         } else {
             /* Otherwise, it is not possible to make an estimation. */
             return false;

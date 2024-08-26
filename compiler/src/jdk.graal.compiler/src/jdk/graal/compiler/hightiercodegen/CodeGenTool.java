@@ -28,6 +28,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
@@ -39,7 +40,6 @@ import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -82,9 +82,13 @@ public abstract class CodeGenTool {
          *
          * 10^6 takes 7 decimal digits and also 7 hex digits (0xF4240) to represent. After that
          * point, hex is more efficient.
+         *
+         * Note that overflow does not matter here since we are interested in the number of digits
+         * (we check for the MIN_VALUE case below)
          */
-        long abs = Math.abs(i);
-        if (abs >= 1000000) {
+        final long abs = NumUtil.unsafeAbs(i);
+        final boolean isMin = i == Long.MIN_VALUE;
+        if (isMin || abs >= 1000000) {
             if (i < 0) {
                 sb.append('-');
             }

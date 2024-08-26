@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.nodes.loop;
 
-import static java.lang.Math.abs;
-
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -542,7 +540,7 @@ public class CountedLoopInfo {
         if (loop.loopBegin().canNeverOverflow()) {
             return true;
         }
-        if (!isLimitIncluded && getBodyIV().isConstantStride() && abs(getBodyIV().constantStride()) == 1) {
+        if (!isLimitIncluded && getBodyIV().isConstantStride() && Loop.absStrideIsOne(getBodyIV())) {
             return true;
         }
         if (loop.loopBegin().isProtectedNonOverflowingUnsigned()) {
