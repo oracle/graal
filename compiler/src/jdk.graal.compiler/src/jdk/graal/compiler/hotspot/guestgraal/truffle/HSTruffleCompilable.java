@@ -221,7 +221,7 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
         final MethodHandle asJavaConstant = getHostMethodHandleOrFail(Id.AsJavaConstant);
         final MethodHandle getCompilableName = getHostMethodHandleOrFail(Id.GetCompilableName);
         final MethodHandle createStringSupplier = getHostMethodHandleOrFail(Id.CreateStringSupplier);
-        final MethodHandle onCompilationFailed = getHostMethodHandleOrFail(Id.OnCompilationFailed);;
+        final MethodHandle onCompilationFailed = getHostMethodHandleOrFail(Id.OnCompilationFailed);
         final MethodHandle getNonTrivialNodeCount = getHostMethodHandleOrFail(Id.GetNonTrivialNodeCount);
         final MethodHandle countDirectCallNodes = getHostMethodHandleOrFail(Id.CountDirectCallNodes);
         final MethodHandle getCompilableCallCount = getHostMethodHandleOrFail(Id.GetCompilableCallCount);

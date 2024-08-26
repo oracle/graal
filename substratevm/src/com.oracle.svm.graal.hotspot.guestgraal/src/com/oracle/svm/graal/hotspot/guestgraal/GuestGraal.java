@@ -375,6 +375,8 @@ final class GuestGraalLibGraalScope {
 
 final class GuestGraalTruffleToLibGraalEntryPoints {
 
+    private static volatile int lastJavaPCOffset = -1;
+
     // The null MethodHandle values are overwritten reflectively in the constructor
     private final MethodHandle initializeIsolate = null;
     private final MethodHandle registerRuntime = null;
@@ -404,7 +406,6 @@ final class GuestGraalTruffleToLibGraalEntryPoints {
     private final MethodHandle getCompilerVersion = null;
     private final MethodHandle getCurrentJavaThread;
     private final MethodHandle getLastJavaPCOffset;
-    private volatile int lastJavaPCOffset = -1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     GuestGraalTruffleToLibGraalEntryPoints(Lookup guestGraalLookup, Class<?> graalEntryPoints) {
@@ -448,8 +449,16 @@ final class GuestGraalTruffleToLibGraalEntryPoints {
                 methodHandleField.setAccessible(true);
                 methodHandleField.set(this, guestGraalLookup.unreflect(method));
             }
-            getCurrentJavaThread = guestGraalLookup.unreflect(graalMethodByName.get("getCurrentJavaThread"));
-            getLastJavaPCOffset = guestGraalLookup.unreflect(graalMethodByName.get("getLastJavaPCOffset"));
+            Method m = graalMethodByName.get("getCurrentJavaThread");
+            if (m == null) {
+                throw VMError.shouldNotReachHere("Missing guest-graal entry method %s.getCurrentJavaThread.", ClassUtil.getUnqualifiedName(graalEntryPoints));
+            }
+            getCurrentJavaThread = guestGraalLookup.unreflect(m);
+            m = graalMethodByName.get("getLastJavaPCOffset");
+            if (m == null) {
+                throw VMError.shouldNotReachHere("Missing guest-graal entry method %s.getLastJavaPCOffset.", ClassUtil.getUnqualifiedName(graalEntryPoints));
+            }
+            getLastJavaPCOffset = guestGraalLookup.unreflect(m);
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
         }
@@ -458,18 +467,14 @@ final class GuestGraalTruffleToLibGraalEntryPoints {
     private static JNIMethodScope openScope(Enum<?> id, JNIEnv env) throws Throwable {
         Objects.requireNonNull(id, "Id must be non null.");
         String scopeName = ClassUtil.getUnqualifiedName(GuestGraalTruffleToLibGraalEntryPoints.class) + "::" + id;
-        return LibGraalJNIMethodScope.open(scopeName, env, singleton().hasJavaFrameAnchor());
-    }
-
-    private boolean hasJavaFrameAnchor() throws Throwable {
         int offset = lastJavaPCOffset;
         if (offset == -1) {
-            offset = (int) getLastJavaPCOffset.invoke();
+            offset = (int) singleton().getLastJavaPCOffset.invoke();
             lastJavaPCOffset = offset;
         }
-        CLongPointer currentThreadLastJavaPCOffset = (CLongPointer) WordFactory.unsigned((long) getCurrentJavaThread.invoke()).add(offset);
+        CLongPointer currentThreadLastJavaPCOffset = (CLongPointer) WordFactory.unsigned((long) singleton().getCurrentJavaThread.invoke()).add(offset);
         PointerBase javaFrameAnchor = WordFactory.pointer(currentThreadLastJavaPCOffset.read());
-        return javaFrameAnchor.isNonNull();
+        return LibGraalJNIMethodScope.open(scopeName, env, javaFrameAnchor.isNonNull());
     }
 
     private static GuestGraalTruffleToLibGraalEntryPoints singleton() {
@@ -886,6 +891,7 @@ final class GuestGraalTruffleToLibGraalEntryPoints {
     }
 
     @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_LibGraalObject_releaseHandle")
+    @SuppressWarnings("unused")
     public static boolean releaseHandle(JNIEnv jniEnv, JClass jclass, @IsolateThreadContext long isolateThreadId, long handle) {
         try {
             ObjectHandles.getGlobal().destroy(WordFactory.pointer(handle));

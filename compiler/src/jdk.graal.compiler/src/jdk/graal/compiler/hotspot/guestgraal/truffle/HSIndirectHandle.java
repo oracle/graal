@@ -26,14 +26,41 @@ package jdk.graal.compiler.hotspot.guestgraal.truffle;
 
 import java.util.Objects;
 
+/**
+ * Base class for HS proxy classes loaded by {@code GuestGraalClassLoader} that use
+ * {@link java.lang.invoke.MethodHandle}s to perform JNI calls in a native-image host.
+ *
+ * <p>
+ * Implementation: This class maintains a strong reference to an {@code HSObject} instance created
+ * in the native-image host. For global or weak-global JNI references, the {@code HSObject}
+ * registers a cleaner to manage the deletion of the JNI reference. When the
+ * {@link HSIndirectHandle} instance becomes weakly reachable, the corresponding {@code HSObject}
+ * instance in the native-image host also becomes weakly reachable. The registered cleaner then
+ * deletes the associated JNI global or weak-global reference.
+ * </p>
+ */
 class HSIndirectHandle {
 
+    /**
+     * The {@code HSObject} instance created in the native-image host.
+     */
     final Object hsHandle;
 
+    /**
+     * Constructs an {@code HSIndirectHandle} with a non-null {@code HSObject} reference.
+     *
+     * @param hsHandle the reference to {@code HSObject} allocated in the native-image host, must
+     *            not be null.
+     * @throws NullPointerException if {@code hsHandle} is null.
+     */
     HSIndirectHandle(Object hsHandle) {
         this.hsHandle = Objects.requireNonNull(hsHandle, "HsHandle must be non-null");
     }
 
+    /**
+     * Handles exceptions by rethrowing them as either {@link RuntimeException} or {@link Error}, or
+     * wrapping them in a {@link RuntimeException} if they are of another type.
+     */
     static RuntimeException handleException(Throwable t) {
         if (t instanceof RuntimeException rt) {
             throw rt;

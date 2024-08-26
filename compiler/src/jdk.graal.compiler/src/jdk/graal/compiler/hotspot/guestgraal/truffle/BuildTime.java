@@ -37,6 +37,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
@@ -67,11 +68,11 @@ public class BuildTime {
      * @param fromLibGraal a class that contains methods for making calls to HotSpot using the JNI
      *            API.
      * @param nativeImageSupport a class that provides native-image and JNI helper methods.
-     * @return a {@link Map.Entry} containing a {@link Lookup} instance and a class with compiler
-     *         entry methods. The {@link Lookup} instance can be used to resolve the compiler entry
+     * @return a {@link Entry} containing a {@link Lookup} instance and a class with compiler entry
+     *         methods. The {@link Lookup} instance can be used to resolve the compiler entry
      *         methods within the provided class.
      */
-    public static Map.Entry<Lookup, Class<?>> getLookup(Lookup lookup, Class<?> fromLibGraal, Class<?> nativeImageSupport) {
+    public static Entry<Lookup, Class<?>> getLookup(Lookup lookup, Class<?> fromLibGraal, Class<?> nativeImageSupport) {
         hostLookup = Objects.requireNonNull(lookup, "lookup must be non null");
         truffleFromLibGraalStartPoint = Objects.requireNonNull(fromLibGraal, "fromLibGraal must be non null");
         nativeImageHostEntryPoint = Objects.requireNonNull(nativeImageSupport, "nativeImageSupport must be non null");
