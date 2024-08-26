@@ -27,6 +27,11 @@ package jdk.graal.compiler.core.common;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.code.CodeUtil;
 
 /**
@@ -373,4 +378,68 @@ public class NumUtil {
         return s.substring(0, s.length() - 1) + ", ...]";
     }
 
+    /**
+     * Determines if the absolute value of {@code l} overflows. The bit size is derived from the
+     * {@link Stamp} of {@code v}.
+     */
+    public static boolean absOverflows(long l, ValueNode v) {
+        return absOverflows(l, IntegerStamp.getBits(v.stamp(NodeView.DEFAULT)));
+    }
+
+    /**
+     * Determines if the absolute value of {@code l} overflows.
+     */
+    public static boolean absOverflows(long l, int bits) {
+        if (bits == 32) {
+            final int i = (int) l;
+            return i == Integer.MIN_VALUE;
+        } else if (bits == 64) {
+            return l == Long.MIN_VALUE;
+        } else {
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes but is " + bits);
+        }
+    }
+
+    public static long safeAbs(long l, ValueNode v) throws ArithmeticException {
+        return safeAbs(l, IntegerStamp.getBits(v.stamp(NodeView.DEFAULT)));
+    }
+
+    public static long safeAbs(long l) throws ArithmeticException {
+        return safeAbs(l, 64);
+    }
+
+    public static int safeAbs(int i) throws ArithmeticException {
+        return NumUtil.safeToInt(safeAbs(i, 32));
+    }
+
+    /**
+     * Returns {@link Math#absExact} for {@code l}, throws an {@link ArithmeticException} in case of
+     * overflow.
+     */
+    public static long safeAbs(long l, int bits) throws ArithmeticException {
+        if (bits == 32) {
+            final int i = (int) l;
+            return Math.absExact(i);
+        } else if (bits == 64) {
+            return Math.absExact(l);
+        } else {
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes but is " + bits);
+        }
+    }
+
+    /**
+     * Returns {@link Math#abs} for {@code i}. Does NOT throw an {@link ArithmeticException} in case
+     * of overflow. Only use this method if overflow is handled/accepted by the caller.
+     */
+    public static int unsafeAbs(int i) {
+        return Math.abs(i);
+    }
+
+    /**
+     * Returns {@link Math#abs} for {@code i}. Does NOT throw an {@link ArithmeticException} in case
+     * of overflow. Only use this method if overflow is handled/accepted by the caller.
+     */
+    public static long unsafeAbs(long l) {
+        return Math.abs(l);
+    }
 }

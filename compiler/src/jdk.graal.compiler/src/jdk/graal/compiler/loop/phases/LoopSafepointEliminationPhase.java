@@ -26,6 +26,7 @@ package jdk.graal.compiler.loop.phases;
 
 import java.util.Optional;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -45,7 +46,6 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
@@ -57,7 +57,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         //@formatter:on
     }
 
-    private static final long IntegerRangeDistance = Math.abs((long) Integer.MAX_VALUE - (long) Integer.MIN_VALUE);
+    private static final long IntegerRangeDistance = NumUtil.unsafeAbs((long) Integer.MAX_VALUE - (long) Integer.MIN_VALUE);
 
     /**
      * To be implemented by subclasses to perform additional checks. Returns <code>true</code> if
@@ -100,17 +100,21 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                 if (IntegerStamp.subtractionOverflows(upperBoundLimit, lowerBoundStart, 64)) {
                     return false;
                 }
-                final long startToLimitDistance = Math.abs(upperBoundLimit - lowerBoundStart);
+                try {
+                    final long startToLimitDistance = NumUtil.safeAbs(upperBoundLimit - lowerBoundStart);
 
-                /*
-                 * Divide the distance by the absolute value of the stride. For non-constant strides
-                 * assume a worst case stride of 1 since a stride of 0 isn't recognized as an
-                 * induction variable.
-                 */
-                final InductionVariable counter = loop.counted().getLimitCheckedIV();
-                final long stride = counter.isConstantStride() ? Math.abs(counter.constantStride()) : 1;
-                final long strideRelativeStartToLimitDistance = startToLimitDistance / stride;
-                return strideRelativeStartToLimitDistance <= IntegerRangeDistance;
+                    /*
+                     * Divide the distance by the absolute value of the stride. For non-constant
+                     * strides assume a worst case stride of 1 since a stride of 0 isn't recognized
+                     * as an induction variable.
+                     */
+                    final InductionVariable counter = loop.counted().getLimitCheckedIV();
+                    final long stride = counter.isConstantStride() ? NumUtil.safeAbs(counter.constantStride()) : 1;
+                    final long strideRelativeStartToLimitDistance = startToLimitDistance / stride;
+                    return strideRelativeStartToLimitDistance <= IntegerRangeDistance;
+                } catch (ArithmeticException e) {
+                    return false;
+                }
             }
         }
         return false;

@@ -342,7 +342,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             curOffset = curOffset * byteMemoryTransferSize;
         }
         int preOffset = lastImmLoadStoreEncoding.getOffset();
-        if (Math.abs(curOffset - preOffset) != byteMemoryTransferSize) {
+        if (NumUtil.safeAbs(curOffset - preOffset) != byteMemoryTransferSize) {
             return false;
         }
 

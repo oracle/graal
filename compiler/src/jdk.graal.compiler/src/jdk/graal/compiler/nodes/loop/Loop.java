@@ -419,12 +419,8 @@ public class Loop {
     }
 
     public static boolean absStrideIsOne(InductionVariable limitCheckedIV) {
-        /*
-         * While Math.abs can overflow for MIN_VALUE it is fine here. In case of overflow we still
-         * get a value != 1 (namely MIN_VALUE again). Overflow handling for the limit checked IV is
-         * done in CountedLoopInfo and is an orthogonal issue.
-         */
-        return Math.abs(limitCheckedIV.constantStride()) == 1;
+        long constantStride = limitCheckedIV.constantStride();
+        return constantStride == -1L || constantStride == 1L;
     }
 
     public boolean isCfgLoopExit(AbstractBeginNode begin) {

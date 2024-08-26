@@ -78,6 +78,7 @@ import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
 import jdk.graal.compiler.api.replacements.Snippet.VarargsParameter;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.GraalError;
@@ -651,7 +652,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
             // instanceSize returns a negative number for types which should be slow path allocated
-            args.addConst("size", Math.abs(size));
+            args.addConst("size", NumUtil.safeAbs(size));
             args.addConst("forceSlowPath", size < 0);
             args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
@@ -674,7 +675,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
             // instanceSize returns a negative number for types which should be slow path allocated
-            args.addConst("size", Math.abs(size));
+            args.addConst("size", NumUtil.safeAbs(size));
             args.addConst("forceSlowPath", size < 0);
             args.addConst("fillContents", FillContent.fromBoolean(true));
             args.addConst("emitMemoryBarrier", true /* barrier */);
