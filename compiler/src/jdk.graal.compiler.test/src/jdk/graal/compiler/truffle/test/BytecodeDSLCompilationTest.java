@@ -60,7 +60,6 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Before
     @Override
     public void before() {
-        useDefaultCompilationThresholds = true;
         super.before();
         /**
          * Note: we force load the EarlyReturnException class because compilation bails out when it
@@ -71,6 +70,98 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
             Class.forName(BasicInterpreter.EarlyReturnException.class.getName());
         } catch (ClassNotFoundException ex) {
             fail("should not have failed to load EarlyReturnException class");
+        }
+    }
+
+    /**
+     * The benchmark programs implement:
+     *
+     * <pre>
+     * var j = 0;
+     * var i = 0;
+     * var sum = 0;
+     * while (i < 500000) {
+     *     var j = j + 1;
+     *     sum = sum + j;
+     *     i = i + 1;
+     * }
+     * return sum;
+     * </pre>
+     *
+     * The result should be 125000250000.
+     */
+    @Test
+    public void testOSR1() {
+        BasicInterpreter root = parseNode(interpreterClass, false, "osrRoot", b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal iLoc = b.createLocal();
+            BytecodeLocal sumLoc = b.createLocal();
+            BytecodeLocal jLoc = b.createLocal();
+
+            // int j = 0;
+            b.beginStoreLocal(jLoc);
+            b.emitLoadConstant(0L);
+            b.endStoreLocal();
+
+            // int i = 0;
+            b.beginStoreLocal(iLoc);
+            b.emitLoadConstant(0L);
+            b.endStoreLocal();
+
+            // int sum = 0;
+            b.beginStoreLocal(sumLoc);
+            b.emitLoadConstant(0L);
+            b.endStoreLocal();
+
+            // while (i < TOTAL_ITERATIONS) {
+            b.beginWhile();
+            b.beginLess();
+            b.emitLoadLocal(iLoc);
+            b.emitLoadConstant(500000L);
+            b.endLess();
+            b.beginBlock();
+
+            // j = j + 1;
+            b.beginStoreLocal(jLoc);
+            b.beginAdd();
+            b.emitLoadLocal(jLoc);
+            b.emitLoadConstant(1L);
+            b.endAdd();
+            b.endStoreLocal();
+
+            // sum = sum + j;
+            b.beginStoreLocal(sumLoc);
+            b.beginAdd();
+            b.emitLoadLocal(sumLoc);
+            b.emitLoadLocal(jLoc);
+            b.endAdd();
+            b.endStoreLocal();
+
+            // i = i + 1;
+            b.beginStoreLocal(iLoc);
+            b.beginAdd();
+            b.emitLoadLocal(iLoc);
+            b.emitLoadConstant(1L);
+            b.endAdd();
+            b.endStoreLocal();
+
+            // }
+            b.endBlock();
+            b.endWhile();
+
+            // return sum;
+            b.beginReturn();
+            b.emitLoadLocal(sumLoc);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        for (int i = 0; i < 10; i++) {
+            target.resetCompilationProfile();
+            assertEquals(125000250000L, target.call());
         }
     }
 
@@ -97,10 +188,10 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
      * return sum;
      * </pre>
      *
-     * The result should be 12498333.
+     * The result should be 12497500.
      */
     @Test
-    public void testOSR() {
+    public void testOSR2() {
         BasicInterpreter root = parseNode(interpreterClass, false, "osrRoot", b -> {
             b.beginRoot(LANGUAGE);
 
@@ -108,6 +199,11 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
             BytecodeLocal sumLoc = b.createLocal();
             BytecodeLocal jLoc = b.createLocal();
             BytecodeLocal tempLoc = b.createLocal();
+
+            // int j = 0;
+            b.beginStoreLocal(jLoc);
+            b.emitLoadConstant(0L);
+            b.endStoreLocal();
 
             // int i = 0;
             b.beginStoreLocal(iLoc);
@@ -123,14 +219,9 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
             b.beginWhile();
             b.beginLess();
             b.emitLoadLocal(iLoc);
-            b.emitLoadConstant(5000L);
+            b.emitLoadConstant(500000L);
             b.endLess();
             b.beginBlock();
-
-            // int j = 0;
-            b.beginStoreLocal(jLoc);
-            b.emitLoadConstant(0L);
-            b.endStoreLocal();
 
             // while (j < i) {
             b.beginWhile();
@@ -173,7 +264,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
             b.beginStoreLocal(jLoc);
             b.beginAdd();
             b.emitLoadLocal(jLoc);
-            b.emitLoadLocal(tempLoc);
+            b.emitLoadConstant(1L);
             b.endAdd();
             b.endStoreLocal();
 
@@ -211,8 +302,9 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
 
         OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
         for (int i = 0; i < 10; i++) {
+            // reset profile to avoid regular compilation
             target.resetCompilationProfile();
-            assertEquals(12498333L, target.call());
+            assertEquals(124999750000L, target.call());
         }
     }
 
