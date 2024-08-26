@@ -52,6 +52,12 @@ public final class CopySignNode extends BinaryNode implements ArithmeticLIRLower
     }
 
     public static Stamp computeStamp(Stamp magnitude, Stamp sign) {
+        if (magnitude.isEmpty()) {
+            return magnitude;
+        } else if (sign.isEmpty()) {
+            return sign;
+        }
+
         FloatStamp magnitudeStamp = (FloatStamp) magnitude;
         FloatStamp signStamp = (FloatStamp) sign;
         if (magnitudeStamp.isNaN()) {
