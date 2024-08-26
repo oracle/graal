@@ -25,10 +25,12 @@
 package com.oracle.svm.core.jdk;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.BasedOnJDKFile;
+import jdk.internal.module.ModuleBootstrap;
 
 /**
  * Substitution class for {@link java.lang.Module}. We need to substitute native methods
@@ -53,7 +55,7 @@ public final class Target_java_lang_Module {
 
     @Alias
     @TargetElement(onlyWith = JDKLatest.class)
-    public native void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass);
+    public native void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass, boolean jni);
 
     @Substitute
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L275-L479")
@@ -84,4 +86,15 @@ public final class Target_java_lang_Module {
     private static void addExportsToAllUnnamed0(Module from, String pn) {
         ModuleNative.addExportsToAllUnnamed(from, pn);
     }
+}
+
+@TargetClass(className = "jdk.internal.module.ModuleBootstrap", onlyWith = JDKLatest.class)
+final class Target_jdk_internal_module_ModuleBootstrap {
+    /**
+     * Allow all illegal native access. This is a workaround for JDK-8331671 until we have a better
+     * solution. (GR-57608)
+     */
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
+    private static ModuleBootstrap.IllegalNativeAccess ILLEGAL_NATIVE_ACCESS = ModuleBootstrap.IllegalNativeAccess.ALLOW;
 }
