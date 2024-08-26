@@ -341,7 +341,7 @@ public abstract class ImageHeapScanner {
         return array;
     }
 
-    public void linkBaseLayerValue(ImageHeapConstant constant, Object reason) {
+    public void registerBaseLayerValue(ImageHeapConstant constant, Object reason) {
         JavaConstant hostedValue = constant.getHostedObject();
         Object existingSnapshot = imageHeap.getSnapshot(hostedValue);
         if (existingSnapshot != null) {
