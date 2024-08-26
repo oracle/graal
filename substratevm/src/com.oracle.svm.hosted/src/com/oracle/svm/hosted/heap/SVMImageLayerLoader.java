@@ -183,7 +183,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     @Override
-    protected JavaConstant getHostedObject(EconomicMap<String, Object> baseLayerConstant, Class<?> clazz) {
+    protected JavaConstant lookupHostedObject(EconomicMap<String, Object> baseLayerConstant, Class<?> clazz) {
         if (clazz.equals(Class.class)) {
             Integer tid = get(baseLayerConstant, CLASS_ID_TAG);
             /* DynamicHub corresponding to $$TypeSwitch classes are not relinked */
@@ -191,14 +191,13 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 return getDynamicHub(tid);
             }
         }
-        return super.getHostedObject(baseLayerConstant, clazz);
+        return super.lookupHostedObject(baseLayerConstant, clazz);
     }
 
     private JavaConstant getDynamicHub(int tid) {
-        getAnalysisType(tid);
-        AnalysisType type = universe.getType(tid);
+        AnalysisType type = getAnalysisType(tid);
         DynamicHub hub = ((SVMHost) universe.hostVM()).dynamicHub(type);
-        return getHostedObject(hub);
+        return hostedValuesProvider.forObject(hub);
     }
 
     @Override
