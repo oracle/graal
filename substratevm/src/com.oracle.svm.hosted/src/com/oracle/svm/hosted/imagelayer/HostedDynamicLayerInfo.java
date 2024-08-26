@@ -63,7 +63,7 @@ import jdk.graal.compiler.debug.Assertions;
 public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements LayeredImageSingleton {
     private final Map<Integer, Integer> methodIdToOffsetMap;
     private final CGlobalData<PointerBase> cGlobalData;
-    private Set<HostedMethod> priorLayerHostedMethods = new HashSet<>();
+    private final Set<HostedMethod> priorLayerHostedMethods = new HashSet<>();
 
     HostedDynamicLayerInfo() {
         this(0, null, new HashMap<>());
@@ -90,7 +90,7 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
         return new PriorLayerMethodLocation(basePointer, offset);
     }
 
-    public boolean isCompiled(AnalysisMethod aMethod) {
+    public boolean compiledInPriorLayer(AnalysisMethod aMethod) {
         assert !BuildPhaseProvider.isCompileQueueFinished();
         return methodIdToOffsetMap.containsKey(aMethod.getId());
     }
@@ -107,7 +107,7 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
     public void registerHostedMethod(HostedMethod hMethod) {
         assert !BuildPhaseProvider.isHostedUniverseBuilt();
         AnalysisMethod aMethod = hMethod.getWrapped();
-        if (isCompiled(aMethod)) {
+        if (compiledInPriorLayer(aMethod)) {
             assert aMethod.isInBaseLayer() : hMethod;
             priorLayerHostedMethods.add(hMethod);
             hMethod.setCompiledInPriorLayer();
