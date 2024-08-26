@@ -40,10 +40,16 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.test.GraphTest;
+import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.calc.CopySignNode;
+import jdk.graal.compiler.nodes.calc.RoundNode;
+import jdk.graal.compiler.nodes.calc.SignumNode;
 import jdk.vm.ci.meta.JavaKind;
 import org.junit.Assert;
 import org.junit.Test;
@@ -366,12 +372,24 @@ public class FloatStampTest extends GraphTest {
             samples.add(sampleArray);
         }
 
+        ParameterNode param = new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(bits == Float.SIZE ? JavaKind.Float : JavaKind.Double)));
+        RoundNode rint = new RoundNode(param, ArithmeticLIRGeneratorTool.RoundingMode.NEAREST);
+        RoundNode ceil = new RoundNode(param, ArithmeticLIRGeneratorTool.RoundingMode.UP);
+        RoundNode floor = new RoundNode(param, ArithmeticLIRGeneratorTool.RoundingMode.DOWN);
+        SignumNode signum = new SignumNode(param);
+
         for (int i = 0; i < stamps.size(); i++) {
             FloatStamp stamp = stamps.get(i);
             double[] sample = samples.get(i);
             verifyUnary(stamp, sample, FloatStamp.OPS.getAbs()::foldStamp, Math::abs);
             verifyUnary(stamp, sample, FloatStamp.OPS.getNeg()::foldStamp, x -> -x);
             verifyUnary(stamp, sample, FloatStamp.OPS.getSqrt()::foldStamp, bits == Float.SIZE ? x -> (float) Math.sqrt(x) : Math::sqrt);
+            verifyUnary(stamp, sample, signum::foldStamp, Math::signum);
+            if (bits == Double.SIZE) {
+                verifyUnary(stamp, sample, rint::foldStamp, Math::rint);
+                verifyUnary(stamp, sample, ceil::foldStamp, Math::ceil);
+                verifyUnary(stamp, sample, floor::foldStamp, Math::floor);
+            }
         }
 
         for (int i = 0; i < stamps.size(); i++) {
@@ -386,6 +404,7 @@ public class FloatStampTest extends GraphTest {
                 verifyBinary(stamp1, stamp2, sample1, sample2, FloatStamp.OPS.getMin()::foldStamp, Math::min);
                 verifyBinary(stamp1, stamp2, sample1, sample2, FloatStamp.OPS.getMul()::foldStamp, bits == Float.SIZE ? (x, y) -> (float) x * (float) y : (x, y) -> x * y);
                 verifyBinary(stamp1, stamp2, sample1, sample2, FloatStamp.OPS.getSub()::foldStamp, bits == Float.SIZE ? (x, y) -> (float) x - (float) y : (x, y) -> x - y);
+                verifyBinary(stamp1, stamp2, sample1, sample2, CopySignNode::computeStamp, Math::copySign);
             }
         }
     }
