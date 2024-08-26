@@ -83,6 +83,10 @@ public final class RoundNode extends UnaryNode implements ArithmeticLIRLowerable
     }
 
     private static FloatStamp roundStamp(FloatStamp stamp, RoundingMode mode) {
+        if (stamp.isEmpty()) {
+            return stamp;
+        }
+
         double min = stamp.lowerBound();
         min = Math.min(min, round(mode, min));
 
