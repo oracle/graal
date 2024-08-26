@@ -1265,6 +1265,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     private CodeExecutableElement createTransitionToCached() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "transitionToCached");
+        if (model.enableUncachedInterpreter) {
+            ex.addParameter(new CodeVariableElement(types.Frame, "frame"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
+        }
         CodeTreeBuilder b = ex.createBuilder();
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
         b.declaration(abstractBytecodeNode.asType(), "oldBytecode");
@@ -1276,6 +1280,17 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.string("this.numLocals");
         }
         b.end(3);
+
+        if (model.enableUncachedInterpreter) {
+            b.startIf().string("bci > 0").end().startBlock();
+            b.lineComment("initialize local tags");
+            b.declaration(type(int.class), "localCount", "newBytecode.getLocalCount(bci)");
+            b.startFor().string("int localOffset = 0; localOffset < localCount; localOffset++").end().startBlock();
+            b.statement("newBytecode.setLocalValue(bci, frame, localOffset, newBytecode.getLocalValue(bci, frame, localOffset))");
+            b.end();
+            b.end();
+        }
+
         emitFence(b);
         b.startIf().string("oldBytecode == newBytecode").end().startBlock();
         b.returnStatement();
@@ -12207,10 +12222,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 b.statement("int uncachedExecuteCount = this.uncachedExecuteCount_");
                 b.startIf().string("uncachedExecuteCount <= 0").end().startBlock();
-                b.statement("$root.transitionToCached()");
+                b.statement("$root.transitionToCached(frame, 0)");
                 b.startReturn().string("startState").end();
                 b.end();
-
             }
 
             b.declaration(new ArrayCodeTypeMirror(type(byte.class)), "bc", "this.bytecodes");
@@ -12486,7 +12500,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
                         b.startIf().string("--uncachedExecuteCount <= 0").end().startBlock();
                         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                        b.statement("$root.transitionToCached()");
+                        b.statement("$root.transitionToCached(frame, bci)");
                         b.statement("return (sp << 16) | bci");
                         b.end();
                     } else {
@@ -14966,7 +14980,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("uncachedExecuteCount--");
                 b.startIf().string("uncachedExecuteCount <= 0").end().startBlock();
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                b.statement("this.getRoot().transitionToCached()");
+                b.statement("this.getRoot().transitionToCached(frame, bci)");
                 b.end().startElseBlock();
                 b.statement("this.uncachedExecuteCount_ = uncachedExecuteCount");
                 b.end();
