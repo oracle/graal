@@ -133,6 +133,13 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                  * to prevent circular dependency complications.
                  */
                 singletonDuringImageBuild.doAddInternal(ImageLayerBuildingSupport.class, support);
+            } else {
+                /*
+                 * Create a placeholder ImageLayerBuilding support to indicate this is not a layered
+                 * build.
+                 */
+                singletonDuringImageBuild.doAddInternal(ImageLayerBuildingSupport.class, new ImageLayerBuildingSupport(false, false, false) {
+                });
             }
             if (support != null && support.getLoader() != null) {
                 /*
