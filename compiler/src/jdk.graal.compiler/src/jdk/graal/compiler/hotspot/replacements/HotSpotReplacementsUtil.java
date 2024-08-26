@@ -901,6 +901,9 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION = NamedLocationIdentity.mutable("JavaThread::_is_in_tmp_VTMS_transition");
     public static final LocationIdentity HOTSPOT_JAVA_THREAD_IS_DISABLE_SUSPEND = NamedLocationIdentity.mutable("JavaThread::_is_disable_suspend");
     public static final LocationIdentity HOTSPOT_JAVA_LANG_THREAD_IS_IN_VTMS_TRANSITION = NamedLocationIdentity.mutable("Thread::_is_in_VTMS_transition");
+    public static final LocationIdentity HOTSPOT_JAVA_THREAD_CONT_ENTRY = NamedLocationIdentity.mutable("JavaThread::_cont_entry");
+
+    public static final LocationIdentity HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT = NamedLocationIdentity.mutable("ContinuationEntry::_pin_count");
 
     @Fold
     public static int layoutHelperHeaderSizeShift(@InjectedParameter GraalHotSpotVMConfig config) {
