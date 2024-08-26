@@ -112,41 +112,26 @@ public abstract class ImageLayerBuildingSupport {
 
     @Fold
     public static boolean buildingImageLayer() {
-        if (!ImageSingletons.contains(ImageLayerBuildingSupport.class)) {
-            return false;
-        }
         return singleton().buildingImageLayer;
     }
 
     @Fold
     public static boolean buildingInitialLayer() {
-        if (!ImageSingletons.contains(ImageLayerBuildingSupport.class)) {
-            return true;
-        }
         return singleton().buildingInitialLayer;
     }
 
     @Fold
     public static boolean buildingApplicationLayer() {
-        if (!ImageSingletons.contains(ImageLayerBuildingSupport.class)) {
-            return false;
-        }
         return singleton().buildingApplicationLayer;
     }
 
     @Fold
     public static boolean buildingExtensionLayer() {
-        if (!ImageSingletons.contains(ImageLayerBuildingSupport.class)) {
-            return false;
-        }
         return singleton().buildingImageLayer && !singleton().buildingInitialLayer;
     }
 
     @Fold
     public static boolean buildingSharedLayer() {
-        if (!ImageSingletons.contains(ImageLayerBuildingSupport.class)) {
-            return false;
-        }
         return singleton().buildingImageLayer && !singleton().buildingApplicationLayer;
     }
 }
