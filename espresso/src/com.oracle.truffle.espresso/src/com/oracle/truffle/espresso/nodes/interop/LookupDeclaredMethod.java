@@ -26,6 +26,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -35,7 +36,7 @@ public abstract class LookupDeclaredMethod extends AbstractLookupNode {
 
     static final int LIMIT = 2;
 
-    public abstract Method[] execute(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException;
+    public abstract Method[] execute(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException, UnknownIdentifierException;
 
     public boolean isInvocable(Klass klass, String key, boolean isStatic) {
         return isInvocable(klass, key, true, isStatic);
@@ -64,7 +65,7 @@ public abstract class LookupDeclaredMethod extends AbstractLookupNode {
     }
 
     @Specialization(replaces = "doCached")
-    Method[] doGeneric(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
+    Method[] doGeneric(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException, UnknownIdentifierException {
         return doLookup(klass, key, publicOnly, isStatic, arity);
     }
 
