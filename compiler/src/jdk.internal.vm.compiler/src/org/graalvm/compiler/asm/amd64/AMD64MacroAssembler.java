@@ -431,6 +431,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      *
      * @return the position of the emitted call instruction
      */
+    @SuppressWarnings("unused")
     public int indirectCall(PostCallAction postCallAction, Register callReg, boolean mitigateDecodingAsDirectCall, InvokeTarget callTarget,
                     CallingConvention.Type callingConventionType) {
         int indirectCallSize = needsRex(callReg) ? 3 : 2;
@@ -466,6 +467,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         return beforeCall;
     }
 
+    @SuppressWarnings("unused")
     public int directCall(PostCallAction postCallAction, long address, Register scratch, InvokeTarget callTarget) {
         int bytesToEmit = needsRex(scratch) ? 13 : 12;
         mitigateJCCErratum(bytesToEmit);
@@ -491,6 +493,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         return beforeJmp;
     }
 
+    @SuppressWarnings("unused")
     public int call(PostCallAction postCallAction, InvokeTarget callTarget) {
         int beforeCall = position();
         call();

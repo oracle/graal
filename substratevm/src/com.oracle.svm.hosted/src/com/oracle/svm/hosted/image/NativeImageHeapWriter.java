@@ -31,8 +31,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 
-import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
-import jdk.vm.ci.meta.Constant;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;

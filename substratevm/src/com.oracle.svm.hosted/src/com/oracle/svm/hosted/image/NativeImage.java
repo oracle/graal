@@ -568,7 +568,7 @@ public abstract class NativeImage extends AbstractImage {
         return true;
     }
 
-    private void validateNoDirectRelocationsInTextSection(RelocatableBuffer.Info info) {
+    private static void validateNoDirectRelocationsInTextSection(RelocatableBuffer.Info info) {
         if (SubstrateOptions.NoDirectRelocationsInText.getValue() && RelocationKind.isDirect(info.getRelocationKind())) {
             String message = "%nFound direct relocation in text section. This means that the resulting generated image will have relocations present within the text section. If this is okay, you can skip this check by setting the flag %s";
             throw VMError.shouldNotReachHere(message, SubstrateOptionsParser.commandArgument(SubstrateOptions.NoDirectRelocationsInText, "-"));
