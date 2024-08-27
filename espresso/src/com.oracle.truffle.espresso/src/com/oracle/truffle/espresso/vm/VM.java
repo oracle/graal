@@ -1895,7 +1895,7 @@ public final class VM extends NativeEnv {
         try {
             if (isHidden) {
                 // Special handling
-                k = getContext().getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
+                k = getContext().getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong, vmAnnotations));
             } else {
                 k = getContext().getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
             }
