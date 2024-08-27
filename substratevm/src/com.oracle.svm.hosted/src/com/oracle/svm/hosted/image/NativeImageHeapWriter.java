@@ -368,7 +368,7 @@ public final class NativeImageHeapWriter {
                  * Write typeID slots for closed world. In the open world configuration information
                  * is stored in a separate array since it has a variable length.
                  */
-                if (SubstrateOptions.closedTypeWorld()) {
+                if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                     short[] typeIDSlots = (short[]) heap.readInlinedField(dynamicHubLayout.closedTypeWorldTypeCheckSlotsField, con);
                     int typeIDSlotsLength = typeIDSlots.length;
                     for (int i = 0; i < typeIDSlotsLength; i++) {

@@ -334,7 +334,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
          * to see SubstrateMethodAccessor.vtableOffset before we register the transformer.
          */
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "vtableOffset"), new ComputeVTableOffset());
-        if (!SubstrateOptions.closedTypeWorld()) {
+        if (!SubstrateOptions.useClosedTypeWorldHubLayout()) {
             access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "interfaceTypeID"), new ComputeInterfaceTypeID());
         }
 
@@ -471,7 +471,7 @@ final class ComputeVTableOffset implements FieldValueTransformerWithAvailability
 
         if (accessor.getVTableOffset() == SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED) {
             SharedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
-            if (SubstrateOptions.closedTypeWorld()) {
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 return KnownOffsets.singleton().getVTableOffset(member.getVTableIndex(), true);
             } else {
                 return KnownOffsets.singleton().getVTableOffset(member.getVTableIndex(), false);

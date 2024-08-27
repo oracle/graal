@@ -1540,7 +1540,7 @@ public class NativeImageGenerator {
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();
 
             lowerer.setConfiguration(runtimeConfig, options, providers);
-            if (SubstrateOptions.closedTypeWorld()) {
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 TypeSnippets.registerLowerings(options, providers, lowerings);
             } else {
                 OpenTypeWorldSnippets.registerLowerings(options, providers, lowerings);
@@ -1922,7 +1922,7 @@ public class NativeImageGenerator {
                 writer.print("reachable  ");
             }
 
-            if (SubstrateOptions.closedTypeWorld()) {
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 writer.format("type check start %d range %d slot # %d ", type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot());
                 writer.format("type check slots %s  ", slotsToString(type.getClosedTypeWorldTypeCheckSlots()));
             } else {

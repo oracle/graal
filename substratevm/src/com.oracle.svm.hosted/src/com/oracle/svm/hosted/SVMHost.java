@@ -691,7 +691,7 @@ public class SVMHost extends HostVM {
     }
 
     protected void optimizeAfterParsing(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
-        if (!SubstrateOptions.closedTypeWorld()) {
+        if (!SubstrateOptions.useClosedTypeWorldHubLayout()) {
             new OpenTypeWorldConvertCallTargetPhase().apply(graph, getProviders(method.getMultiMethodKey()));
         }
 

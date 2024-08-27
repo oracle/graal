@@ -1266,8 +1266,16 @@ public class SubstrateOptions {
     @Option(help = "Assume new types cannot be added after analysis", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ClosedTypeWorld = new HostedOptionKey<>(true);
 
+    @Option(help = "Use the closed type world dynamichub representation. This is only allowed when the option ClosedTypeWorld is also set to true.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> ClosedTypeWorldHubLayout = new HostedOptionKey<>(true);
+
     @Fold
-    public static boolean closedTypeWorld() {
+    public static boolean useClosedTypeWorldHubLayout() {
+        return useClosedTypeWorld() && ClosedTypeWorldHubLayout.getValue();
+    }
+
+    @Fold
+    public static boolean useClosedTypeWorld() {
         return ClosedTypeWorld.getValue();
     }
 

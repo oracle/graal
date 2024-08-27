@@ -437,7 +437,7 @@ public abstract class NonSnippetLowerings {
                     LoadHubNode hub = graph.unique(new LoadHubNode(runtimeConfig.getProviders().getStampProvider(), graph.addOrUnique(PiNode.create(receiver, nullCheck))));
                     nodesToLower.add(hub);
 
-                    if (SubstrateOptions.closedTypeWorld()) {
+                    if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                         int vtableEntryOffset = knownOffsets.getVTableOffset(method.getVTableIndex(), true);
 
                         AddressNode address = graph.unique(new OffsetAddressNode(hub, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), vtableEntryOffset, graph)));

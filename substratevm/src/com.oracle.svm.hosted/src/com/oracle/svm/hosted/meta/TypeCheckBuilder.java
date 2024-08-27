@@ -156,7 +156,7 @@ public final class TypeCheckBuilder {
 
     public static int buildTypeMetadata(HostedUniverse hUniverse, Collection<HostedType> types, HostedType objectType, HostedType cloneableType, HostedType serializableType) {
         var builder = new TypeCheckBuilder(types, objectType, cloneableType, serializableType);
-        if (SubstrateOptions.closedTypeWorld()) {
+        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
             builder.buildTypeInformation(hUniverse, 0);
             builder.calculateClosedTypeWorldTypeMetadata();
             return builder.getNumTypeCheckSlots();

@@ -55,7 +55,7 @@ public final class VTableBuilder {
 
     public static void buildTables(HostedUniverse hUniverse, HostedMetaAccess hMetaAccess) {
         VTableBuilder builder = new VTableBuilder(hUniverse, hMetaAccess);
-        if (SubstrateOptions.closedTypeWorld()) {
+        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
             builder.buildClosedTypeWorldVTables();
         } else {
             builder.buildOpenTypeWorldDispatchTables();

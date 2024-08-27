@@ -144,12 +144,12 @@ public class DynamicHubLayout {
     }
 
     public int getClosedTypeWorldTypeCheckSlotsOffset() {
-        assert SubstrateOptions.closedTypeWorld();
+        assert SubstrateOptions.useClosedTypeWorldHubLayout();
         return closedTypeWorldTypeCheckSlotsOffset;
     }
 
     public int getClosedTypeWorldTypeCheckSlotsOffset(int index) {
-        assert SubstrateOptions.closedTypeWorld();
+        assert SubstrateOptions.useClosedTypeWorldHubLayout();
         return closedTypeWorldTypeCheckSlotsOffset + index * closedTypeWorldTypeCheckSlotSize;
     }
 
