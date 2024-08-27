@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,36 +24,27 @@
  */
 package com.oracle.svm.core.configure;
 
-import java.util.Collection;
-import java.util.Locale;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+import com.oracle.svm.core.TypeResult;
 
-public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
+public interface ConfigurationConditionResolver<T> {
 
-    @SuppressWarnings("unchecked")
-    static ResourcesRegistry<ConfigurationCondition> singleton() {
-        return ImageSingletons.lookup(ResourcesRegistry.class);
+    static ConfigurationConditionResolver<UnresolvedConfigurationCondition> identityResolver() {
+        return new ConfigurationConditionResolver<>() {
+            @Override
+            public TypeResult<UnresolvedConfigurationCondition> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition) {
+                return TypeResult.forType(unresolvedCondition.getTypeName(), unresolvedCondition);
+            }
+
+            @Override
+            public UnresolvedConfigurationCondition alwaysTrue() {
+                return UnresolvedConfigurationCondition.alwaysTrue();
+            }
+        };
     }
 
-    void addClassBasedResourceBundle(C condition, String basename, String className);
+    TypeResult<T> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition);
 
-    /**
-     * Although the interface-methods below are already defined in the super-interface
-     * {@link RuntimeResourceSupport} they are also needed here for legacy code that accesses them
-     * reflectively.
-     */
-    @Override
-    void addResources(C condition, String pattern);
-
-    @Override
-    void ignoreResources(C condition, String pattern);
-
-    @Override
-    void addResourceBundles(C condition, String name);
-
-    @Override
-    void addResourceBundles(C condition, String basename, Collection<Locale> locales);
+    T alwaysTrue();
 }
