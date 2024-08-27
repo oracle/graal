@@ -619,7 +619,7 @@ public abstract class ClassRegistry {
         return dynamicModuleWrapper;
     }
 
-    public final class DynamicModuleWrapper {
+    public static final class DynamicModuleWrapper {
         private ModuleEntry dynamicProxyModule;
 
         public ModuleEntry getDynamicProxyModule() {
