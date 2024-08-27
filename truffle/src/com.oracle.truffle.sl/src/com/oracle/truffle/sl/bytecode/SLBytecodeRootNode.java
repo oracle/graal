@@ -44,6 +44,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
@@ -140,6 +141,7 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
         return null;
     }
 
+    @TruffleBoundary
     public final Object[] getArgumentNames() {
         Object[] names = new Object[parameterCount];
         int index = 0;
