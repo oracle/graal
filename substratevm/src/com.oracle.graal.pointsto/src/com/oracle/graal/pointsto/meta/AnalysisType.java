@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -1304,7 +1305,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public Set<AnalysisMethod> getOpenTypeWorldDispatchTableMethods() {
-        AnalysisError.guarantee(dispatchTableMethods != null);
+        Objects.requireNonNull(dispatchTableMethods);
         return dispatchTableMethods;
     }
 
