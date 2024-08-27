@@ -223,7 +223,7 @@ public class PrimitiveStampBoundaryTest extends GraalTest {
         IntegerStamp v1stamp = IntegerStamp.create(bits, v1, v1);
         IntegerStamp v2stamp = IntegerStamp.create(32, v2, v2);
         IntegerStamp folded = (IntegerStamp) op.foldStamp(v1stamp, v2stamp);
-        Constant constant = op.foldConstant(JavaConstant.forPrimitiveInt(bits, v1), (int) v2);
+        Constant constant = op.foldConstant(JavaConstant.forPrimitiveInt(bits, v1), JavaConstant.forInt((int) v2));
         assertTrue(constant != null);
         assertTrue(folded.asConstant() != null, "should constant fold %s %s %s %s", op, v1stamp, v2stamp, folded);
         assertTrue(result.meet(folded).equals(result), "result out of range %s %s %s %s %s %s", op, v1stamp, v2stamp, folded, result, result.meet(folded));
