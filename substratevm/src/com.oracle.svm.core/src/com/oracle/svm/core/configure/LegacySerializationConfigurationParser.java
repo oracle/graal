@@ -30,22 +30,21 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+import org.graalvm.util.json.JSONParserException;
 
-import jdk.graal.compiler.util.json.JsonParserException;
-
-final class LegacySerializationConfigurationParser<C> extends SerializationConfigurationParser<C> {
+final class LegacySerializationConfigurationParser extends SerializationConfigurationParser {
 
     private static final String SERIALIZATION_TYPES_KEY = "types";
     private static final String LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY = "lambdaCapturingTypes";
     private static final String PROXY_SERIALIZATION_TYPES_KEY = "proxies";
 
-    private final ProxyConfigurationParser<C> proxyConfigurationParser;
+    private final ProxyConfigurationParser proxyConfigurationParser;
 
-    LegacySerializationConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, boolean strictConfiguration) {
+    LegacySerializationConfigurationParser(ConfigurationConditionResolver conditionResolver, RuntimeSerializationSupport serializationSupport, boolean strictConfiguration) {
         super(conditionResolver, serializationSupport, strictConfiguration);
-        this.proxyConfigurationParser = new ProxyConfigurationParser<>(conditionResolver, strictConfiguration, serializationSupport::registerProxyClass);
+        this.proxyConfigurationParser = new ProxyConfigurationParser(strictConfiguration, serializationSupport::registerProxyClass);
     }
 
     @Override
@@ -55,7 +54,7 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
         } else if (json instanceof EconomicMap) {
             parseNewConfiguration(asMap(json, "First-level of document must be a map of serialization types"));
         } else {
-            throw new JsonParserException("First-level of document must either be an array of serialization lists or a map of serialization types");
+            throw new JSONParserException("First-level of document must either be an array of serialization lists or a map of serialization types");
         }
     }
 
@@ -65,7 +64,7 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
 
     private void parseNewConfiguration(EconomicMap<String, Object> listOfSerializationConfigurationObjects) {
         if (!listOfSerializationConfigurationObjects.containsKey(SERIALIZATION_TYPES_KEY) || !listOfSerializationConfigurationObjects.containsKey(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY)) {
-            throw new JsonParserException("Second-level of document must be arrays of serialization descriptor objects");
+            throw new JSONParserException("Second-level of document must be arrays of serialization descriptor objects");
         }
 
         parseSerializationTypes(asList(listOfSerializationConfigurationObjects.get(SERIALIZATION_TYPES_KEY), "The types property must be an array of serialization descriptor objects"), false);
@@ -87,26 +86,20 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
             checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
         }
 
-        ConfigurationTypeDescriptor targetSerializationClass = new NamedConfigurationTypeDescriptor(asString(data.get(NAME_KEY)));
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, false);
+        NamedConfigurationTypeDescriptor targetSerializationClass = new NamedConfigurationTypeDescriptor(asString(data.get(NAME_KEY)));
+        ConfigurationCondition unresolvedCondition = parseCondition(data, false);
         var condition = conditionResolver.resolveCondition(unresolvedCondition);
         if (!condition.isPresent()) {
             return;
         }
 
         if (lambdaCapturingType) {
-            String className = ((NamedConfigurationTypeDescriptor) targetSerializationClass).name();
+            String className = targetSerializationClass.name();
             serializationSupport.registerLambdaCapturingClass(condition.get(), className);
         } else {
             Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
             String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
-            if (targetSerializationClass instanceof NamedConfigurationTypeDescriptor namedClass) {
-                serializationSupport.registerWithTargetConstructorClass(condition.get(), namedClass.name(), customTargetConstructorClass);
-            } else if (targetSerializationClass instanceof ProxyConfigurationTypeDescriptor proxyClass) {
-                serializationSupport.registerProxyClass(condition.get(), proxyClass.interfaceNames());
-            } else {
-                throw new JsonParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
-            }
+            serializationSupport.registerWithTargetConstructorClass(condition.get(), targetSerializationClass.name(), customTargetConstructorClass);
         }
     }
 }

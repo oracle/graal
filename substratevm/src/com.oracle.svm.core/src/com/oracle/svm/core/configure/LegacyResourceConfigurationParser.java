@@ -29,8 +29,8 @@ import java.net.URI;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
-final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationParser<C> {
-    LegacyResourceConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
+final class LegacyResourceConfigurationParser extends ResourceConfigurationParser {
+    LegacyResourceConfigurationParser(ConfigurationConditionResolver conditionResolver, ResourcesRegistry registry, boolean strictConfiguration) {
         super(conditionResolver, registry, strictConfiguration);
     }
 
