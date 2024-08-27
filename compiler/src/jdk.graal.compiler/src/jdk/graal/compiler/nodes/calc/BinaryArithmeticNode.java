@@ -152,6 +152,12 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return or(v1, v2, view);
         } else if (IntegerStamp.OPS.getXor().equals(op)) {
             return xor(v1, v2, view);
+        } else if (IntegerStamp.OPS.getShl().equals(op)) {
+            return shl(v1, v2, view);
+        } else if (IntegerStamp.OPS.getUShr().equals(op)) {
+            return ushr(v1, v2, view);
+        } else if (IntegerStamp.OPS.getShr().equals(op)) {
+            return shr(v1, v2, view);
         } else if (IntegerStamp.OPS.getMax().equals(op)) {
             return max(v1, v2, view);
         } else if (IntegerStamp.OPS.getMin().equals(op)) {
@@ -491,6 +497,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
      * {@linkplain BinaryArithmeticNode#reassociateMatchedValues}. For example with a constantness
      * criterion: {@code (a * 2) * b => (a * b) * 2}
      *
+     * <p>
      * This method accepts only {@linkplain #mayReassociate() operations that allow reassociation}
      * such as +, -, *, &amp;, |, ^, min, and max.
      */
