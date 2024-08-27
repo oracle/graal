@@ -26,8 +26,11 @@ package com.oracle.svm.core.configure;
 
 import java.net.URI;
 
-final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
-    ResourceMetadataParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
+final class ResourceMetadataParser extends ResourceConfigurationParser {
+    ResourceMetadataParser(ConfigurationConditionResolver conditionResolver, ResourcesRegistry registry, boolean strictConfiguration) {
         super(conditionResolver, registry, strictConfiguration);
     }
 
@@ -41,5 +44,10 @@ final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
         if (bundlesJson != null) {
             parseBundlesObject(bundlesJson);
         }
+    }
+
+    @Override
+    protected ConfigurationCondition parseCondition(EconomicMap<String, Object> data) {
+        return parseCondition(data, true);
     }
 }

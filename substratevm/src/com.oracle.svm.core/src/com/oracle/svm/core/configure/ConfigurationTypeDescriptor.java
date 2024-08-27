@@ -28,9 +28,9 @@ import java.util.Collection;
 
 import org.graalvm.nativeimage.ImageInfo;
 
+import com.oracle.svm.core.util.json.JsonPrintable;
 import com.oracle.svm.util.LogUtils;
 
-import jdk.graal.compiler.util.json.JsonPrintable;
 import jdk.vm.ci.meta.MetaUtil;
 
 /**

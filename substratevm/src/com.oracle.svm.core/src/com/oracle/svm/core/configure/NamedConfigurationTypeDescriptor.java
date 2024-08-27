@@ -28,7 +28,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 
-import jdk.graal.compiler.util.json.JsonWriter;
+import com.oracle.svm.core.util.json.JsonWriter;
 
 public record NamedConfigurationTypeDescriptor(String name) implements ConfigurationTypeDescriptor {
 

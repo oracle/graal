@@ -31,18 +31,18 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.TypeResult;
 
-class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T> {
+class ReflectionMetadataParser<T> extends ReflectionConfigurationParser<T> {
     private static final List<String> OPTIONAL_REFLECT_METADATA_ATTRS = Arrays.asList(CONDITIONAL_KEY,
                     "allDeclaredConstructors", "allPublicConstructors", "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
                     "methods", "fields", "unsafeAllocated");
 
     private final String combinedFileKey;
 
-    ReflectionMetadataParser(String combinedFileKey, ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, boolean strictConfiguration,
+    ReflectionMetadataParser(String combinedFileKey, ConfigurationConditionResolver conditionResolver, ReflectionConfigurationParserDelegate<T> delegate, boolean strictConfiguration,
                     boolean printMissingElements) {
         super(conditionResolver, delegate, strictConfiguration, printMissingElements);
         this.combinedFileKey = combinedFileKey;
@@ -65,12 +65,12 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
             return;
         }
 
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, true);
-        TypeResult<C> conditionResult = conditionResolver.resolveCondition(unresolvedCondition);
+        ConfigurationCondition unresolvedCondition = parseCondition(data, true);
+        TypeResult<ConfigurationCondition> conditionResult = conditionResolver.resolveCondition(unresolvedCondition);
         if (!conditionResult.isPresent()) {
             return;
         }
-        C condition = conditionResult.get();
+        ConfigurationCondition condition = conditionResult.get();
 
         /*
          * Even if primitives cannot be queried through Class.forName, they can be registered to
@@ -82,7 +82,7 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
             return;
         }
 
-        C queryCondition = conditionResolver.alwaysTrue();
+        ConfigurationCondition queryCondition = conditionResolver.alwaysTrue();
         T clazz = result.get();
         delegate.registerType(conditionResult.get(), clazz);
 

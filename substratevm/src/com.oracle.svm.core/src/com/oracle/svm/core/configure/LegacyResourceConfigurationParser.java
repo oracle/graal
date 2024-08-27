@@ -25,18 +25,29 @@
 package com.oracle.svm.core.configure;
 
 import java.net.URI;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
-final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationParser<C> {
-    LegacyResourceConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
+import com.oracle.svm.core.TypeResult;
+
+final class LegacyResourceConfigurationParser extends ResourceConfigurationParser {
+    LegacyResourceConfigurationParser(ConfigurationConditionResolver conditionResolver, ResourcesRegistry registry, boolean strictConfiguration) {
         super(conditionResolver, registry, strictConfiguration);
     }
 
     @Override
     public void parseAndRegister(Object json, URI origin) {
         parseTopLevelObject(asMap(json, "first level of document must be an object"));
+    }
+
+    @Override
+    protected ConfigurationCondition parseCondition(EconomicMap<String, Object> data) {
+        return parseCondition(data, false);
     }
 
     private void parseTopLevelObject(EconomicMap<String, Object> obj) {
@@ -63,5 +74,45 @@ final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationPa
         if (globsObject != null) {
             parseGlobsObject(globsObject);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void parseResourcesObject(Object resourcesObject) {
+        if (resourcesObject instanceof EconomicMap) { // New format
+            EconomicMap<String, Object> resourcesObjectMap = (EconomicMap<String, Object>) resourcesObject;
+            checkAttributes(resourcesObjectMap, "resource descriptor object", Collections.singleton("includes"), Collections.singleton("excludes"));
+            Object includesObject = resourcesObjectMap.get("includes");
+            Object excludesObject = resourcesObjectMap.get("excludes");
+
+            List<Object> includes = asList(includesObject, "Attribute 'includes' must be a list of resources");
+            for (Object object : includes) {
+                parsePatternEntry(object, registry::addResources, "'includes' list");
+            }
+
+            if (excludesObject != null) {
+                List<Object> excludes = asList(excludesObject, "Attribute 'excludes' must be a list of resources");
+                for (Object object : excludes) {
+                    parsePatternEntry(object, registry::ignoreResources, "'excludes' list");
+                }
+            }
+        } else { // Old format: may be deprecated in future versions
+            List<Object> resources = asList(resourcesObject, "Attribute 'resources' must be a list of resources");
+            for (Object object : resources) {
+                parsePatternEntry(object, registry::addResources, "'resources' list");
+            }
+        }
+    }
+
+    private void parsePatternEntry(Object data, BiConsumer<ConfigurationCondition, String> resourceRegistry, String parentType) {
+        EconomicMap<String, Object> resource = asMap(data, "Elements of " + parentType + " must be a resource descriptor object");
+        checkAttributes(resource, "regex resource descriptor object", Collections.singletonList("pattern"), Collections.singletonList(CONDITIONAL_KEY));
+        TypeResult<ConfigurationCondition> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource, false));
+        if (!resolvedConfigurationCondition.isPresent()) {
+            return;
+        }
+
+        Object valueObject = resource.get("pattern");
+        String value = asString(valueObject, "pattern");
+        resourceRegistry.accept(resolvedConfigurationCondition.get(), value);
     }
 }

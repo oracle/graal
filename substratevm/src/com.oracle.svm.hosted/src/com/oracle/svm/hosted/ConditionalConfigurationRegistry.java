@@ -50,7 +50,9 @@ public abstract class ConditionalConfigurationRegistry {
     public void flushConditionalConfiguration(Feature.BeforeAnalysisAccess b) {
         for (Map.Entry<String, Collection<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
             TypeResult<Class<?>> typeResult = ((FeatureImpl.BeforeAnalysisAccessImpl) b).getImageClassLoader().findClass(reachabilityEntry.getKey());
-            b.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), typeResult.get());
+            if (typeResult.isPresent()) {
+                b.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), typeResult.get());
+            }
         }
         pendingReachabilityHandlers.clear();
     }
