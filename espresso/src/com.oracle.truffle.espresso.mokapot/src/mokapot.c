@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 
 
 OS_THREAD_LOCAL MokapotEnv* tls_moka_env = NULL;
@@ -952,7 +953,6 @@ JNIEXPORT jint JNICALL JVM_GetMethodIxByteCodeLength(JNIEnv *env, jclass cb, jin
 JNIEXPORT void JNICALL JVM_GetMethodIxExceptionTableEntry(JNIEnv *env, jclass cb, jint method_index, jint entry_index,
                                         JVM_ExceptionTableEntryType *entry) {
   UNIMPLEMENTED(JVM_GetMethodIxExceptionTableEntry);
-
 }
 
 JNIEXPORT jint JNICALL JVM_GetMethodIxExceptionTableLength(JNIEnv *env, jclass cb, int index) {
@@ -1999,12 +1999,139 @@ jint AttachCurrentThreadAsDaemon(JavaVM *vm, void **penv, void *args) {
     return AttachCurrentThread_helper(vm, penv, args, (*espressoJavaVM)->AttachCurrentThreadAsDaemon);
 }
 
+static int option_starts_with(const char *start, const JavaVMOption *option) {
+    return strncmp(start, option->optionString, strlen(start)) == 0;
+}
+
+static jboolean multiply_by_1k(unsigned long long int *n) {
+    if (*n <= ULLONG_MAX / 1024) {
+        *n *= 1024;
+        return JNI_TRUE;
+    } else {
+        return JNI_FALSE;
+    }
+}
+
+static unsigned long long int parse_long_size(const char *str) {
+    size_t len = strlen(str);
+    if (len == 0 || !isdigit(str[0])) {
+        return 0;
+    }
+    unsigned long long int result;
+    char *end;
+    const char *start = str;
+    errno = 0;
+    if (len > 2 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X')) {
+        // hex
+        start = str + 2;
+        result = strtoull(start, &end, 16);
+    } else {
+        // dec
+        result = strtoull(start, &end, 10);
+    }
+    if (errno != 0 || start == end) {
+        return 0;
+    }
+    switch (*end) {
+        case 't':
+        case 'T':
+            if (multiply_by_1k(&result) != JNI_TRUE) {
+                return 0;
+            }
+        case 'g':
+        case 'G':
+            if (multiply_by_1k(&result) != JNI_TRUE) {
+                return 0;
+            }
+        case 'm':
+        case 'M':
+            if (multiply_by_1k(&result) != JNI_TRUE) {
+                return 0;
+            }
+        case 'k':
+        case 'K':
+            if (multiply_by_1k(&result) != JNI_TRUE) {
+                return 0;
+            }
+            end += 1;
+            break;
+    }
+    if (*end != '\0') {
+        return 0;
+    }
+    return result;
+}
+
+static char *maybe_adjust_max_heap_size(char *option_str, size_t size_offset, jboolean auto_adjust_heap_size) {
+    if (auto_adjust_heap_size != JNI_TRUE) {
+        return option_str;
+    }
+    unsigned long long int sz = parse_long_size(option_str + size_offset);
+    if (sz != 0 && sz < 128ULL * 1024 * 1024) {
+        printf("Adjusting max heap size of %llu to -Xmx128m", sz);
+        return "-Xmx128m";
+    } else {
+        return option_str;
+    }
+}
+
+static jint process_isolate_args(JavaVMInitArgs *initArgs, int *isolate_argc, char ***isolate_argv, int *n_ignored_indices, int **ignored_indices) {
+    // Pull out arguments that need to be handled by isolate creation in SVM and can't be set correctly later
+    // Mark those as ignored so that Espresso_CreateJavaVM knows not to act on them
+    // but still uses them to compose the jvm args as seen by management APIs
+
+    jboolean auto_adjust_heap_size = JNI_TRUE;
+    for (int i = 0; i < initArgs->nOptions; i++) {
+        const JavaVMOption *option = initArgs->options + i;
+        char *optionString = NULL;
+        if (strcmp("-XX:+AutoAdjustHeapSize", option->optionString) == 0) {
+            auto_adjust_heap_size = JNI_TRUE;
+        } else if (strcmp("-XX:-AutoAdjustHeapSize", option->optionString) == 0) {
+            auto_adjust_heap_size = JNI_FALSE;
+        } else if (option_starts_with("-Xms", option) ||
+            option_starts_with("-XX:MinHeapSize=", option) ||
+            option_starts_with("-Xmn", option) ||
+            option_starts_with("-XX:MaxNewSize=", option) ||
+            option_starts_with("-XX:ReservedAddressSpaceSize=", option) ||
+            option_starts_with("-XX:MaxRAM=", option) ||
+            strcmp("-XX:+ExitOnOutOfMemoryError", option->optionString) == 0 ||
+            strcmp("-XX:-ExitOnOutOfMemoryError", option->optionString) == 0) {
+            optionString = option->optionString;
+        } else if (option_starts_with("-Xmx", option)) {
+            optionString = maybe_adjust_max_heap_size(option->optionString, strlen("-Xmx"), auto_adjust_heap_size);
+        } else if (option_starts_with("-XX:MaxHeapSize=", option)) {
+            optionString = maybe_adjust_max_heap_size(option->optionString, strlen("-XX:MaxHeapSize="), auto_adjust_heap_size);
+        } else {
+            continue;
+        }
+        if (*ignored_indices == NULL) {
+            *ignored_indices = malloc(sizeof(int) * initArgs->nOptions);
+            if (*ignored_indices == NULL) {
+                return JNI_ENOMEM;
+            }
+        }
+        (*ignored_indices)[(*n_ignored_indices)++] = i;
+        if (optionString != NULL) {
+            if (*isolate_argv == NULL) {
+                *isolate_argv = malloc(sizeof(char *) * initArgs->nOptions);
+                if (*isolate_argv == NULL) {
+                    return JNI_ENOMEM;
+                }
+                // initial argument that is usually the executable name is ignored
+                (*isolate_argv)[(*isolate_argc)++] = NULL;
+            }
+            (*isolate_argv)[(*isolate_argc)++] = optionString;
+        }
+    }
+    return JNI_OK;
+}
+
 _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_CreateJavaVM(JavaVM **vm_ptr, void **penv, void *args) {
     JavaVMInitArgs *initArgs = args;
     int lib_javavm_type = LIB_JAVAVM_PLAIN;
     jboolean is_sun_standard_launcher = JNI_FALSE;
     for (int i = 0; i < initArgs->nOptions; i++) {
-        const JavaVMOption* option = initArgs->options + i;
+        const JavaVMOption *option = initArgs->options + i;
         if (strcmp("--polyglot", option->optionString) == 0) {
             lib_javavm_type = LIB_JAVAVM_POLYGLOT;
         } else if (strcmp("-Dsun.java.launcher=SUN_STANDARD", option->optionString) == 0) {
@@ -2017,16 +2144,37 @@ _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_CreateJavaVM(JavaVM **vm_ptr, void **pen
     }
     graal_isolate_t *isolate;
     graal_isolatethread_t *thread;
-    graal_create_isolate_params_t params;
-    params.version = 0;
-    params.reserved_address_space_size = 0;
+    graal_create_isolate_params_t params = {0};
+
+    int isolate_argc = 0;
+    char **isolate_argv = NULL;
+    int n_ignored_indices = 0;
+    int *ignored_indices = NULL;
+    int ret = process_isolate_args(initArgs, &isolate_argc, &isolate_argv, &n_ignored_indices, &ignored_indices);
+    if (ret != JNI_OK) {
+        if (isolate_argv != NULL) free(isolate_argv);
+        if (ignored_indices != NULL) free(ignored_indices);
+        return ret;
+    }
+
+    params.version = 4;
+    char ignore_unrecognized_arguments = initArgs->ignoreUnrecognized == JNI_TRUE ? 1 : 0;
+    char exit_on_arg_parse_fail = 0;
+    params._reserved_1 = isolate_argc;
+    params._reserved_2 = isolate_argv;
+    params._reserved_3 = ignore_unrecognized_arguments;
+    params._reserved_4 = exit_on_arg_parse_fail;
 
     if (libjavavm->create_isolate(&params, &isolate, &thread) != 0) {
+        if (isolate_argv != NULL) free(isolate_argv);
+        if (ignored_indices != NULL) free(ignored_indices);
         return JNI_ERR;
     }
     struct JavaVM_ *espressoJavaVM;
     struct JNIEnv_ *espressoJNIEnv;
-    int ret = libjavavm->Espresso_CreateJavaVM(thread, &espressoJavaVM, &espressoJNIEnv, initArgs);
+    ret = libjavavm->Espresso_CreateJavaVM(thread, &espressoJavaVM, &espressoJNIEnv, initArgs, ignored_indices, n_ignored_indices);
+    if (isolate_argv != NULL) free(isolate_argv);
+    if (ignored_indices != NULL) free(ignored_indices);
     if (ret != JNI_OK) {
         libjavavm->detach_all_threads_and_tear_down_isolate(thread);
         return ret;
