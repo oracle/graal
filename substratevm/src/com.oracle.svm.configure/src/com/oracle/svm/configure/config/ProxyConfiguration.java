@@ -31,13 +31,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.ProxyConfigurationParser;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ProxyConfigurationParser;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JsonWriter;
 
 public final class ProxyConfiguration extends ConfigurationBase<ProxyConfiguration, ProxyConfiguration.Predicate> {
     private final Set<ConditionalElement<List<String>>> interfaceLists = ConcurrentHashMap.newKeySet();
@@ -129,8 +130,9 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
     }
 
     @Override
-    public ConfigurationParser createParser() {
-        return new ProxyConfigurationParser(interfaceLists::add, true);
+    public ConfigurationParser createParser(boolean strictMetadata) {
+        VMError.guarantee(!strictMetadata, "Predefined classes configuration is not supported with strict metadata");
+        return new ProxyConfigurationParser(true, (cond, intfs) -> interfaceLists.add(new ConditionalElement<>(cond, intfs)));
     }
 
     @Override

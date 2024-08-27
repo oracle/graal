@@ -31,11 +31,11 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.TypeResult;
 
-final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigurationParser<C, T> {
+final class LegacyReflectionConfigurationParser<T> extends ReflectionConfigurationParser<T> {
 
     private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
                     "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
@@ -45,7 +45,7 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
 
     private final boolean treatAllNameEntriesAsType;
 
-    LegacyReflectionConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ReflectionConfigurationParserDelegate<C, T> delegate, boolean strictConfiguration,
+    LegacyReflectionConfigurationParser(ConfigurationConditionResolver conditionResolver, ReflectionConfigurationParserDelegate<T> delegate, boolean strictConfiguration,
                     boolean printMissingElements, boolean treatAllNameEntriesAsType) {
         super(conditionResolver, delegate, strictConfiguration, printMissingElements);
         this.treatAllNameEntriesAsType = treatAllNameEntriesAsType;
@@ -72,8 +72,8 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
          */
         boolean isType = type.get().definedAsType();
 
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, isType);
-        TypeResult<C> conditionResult = conditionResolver.resolveCondition(unresolvedCondition);
+        ConfigurationCondition unresolvedCondition = parseCondition(data, isType);
+        TypeResult<ConfigurationCondition> conditionResult = conditionResolver.resolveCondition(unresolvedCondition);
         if (!conditionResult.isPresent()) {
             return;
         }
@@ -82,14 +82,14 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
          * Even if primitives cannot be queried through Class.forName, they can be registered to
          * allow getDeclaredMethods() and similar bulk queries at run time.
          */
-        C condition = conditionResult.get();
+        ConfigurationCondition condition = conditionResult.get();
         TypeResult<T> result = delegate.resolveType(condition, typeDescriptor, true);
         if (!result.isPresent()) {
             handleMissingElement("Could not resolve " + typeDescriptor + " for reflection configuration.", result.getException());
             return;
         }
 
-        C queryCondition = isType ? conditionResolver.alwaysTrue() : condition;
+        ConfigurationCondition queryCondition = isType ? conditionResolver.alwaysTrue() : condition;
         T clazz = result.get();
         delegate.registerType(conditionResult.get(), clazz);
 

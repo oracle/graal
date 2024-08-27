@@ -26,8 +26,8 @@ package com.oracle.svm.core.configure;
 
 import java.net.URI;
 
-final class ResourceMetadataParser<C> extends ResourceConfigurationParser<C> {
-    ResourceMetadataParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
+final class ResourceMetadataParser extends ResourceConfigurationParser {
+    ResourceMetadataParser(ConfigurationConditionResolver conditionResolver, ResourcesRegistry registry, boolean strictConfiguration) {
         super(conditionResolver, registry, strictConfiguration);
     }
 
