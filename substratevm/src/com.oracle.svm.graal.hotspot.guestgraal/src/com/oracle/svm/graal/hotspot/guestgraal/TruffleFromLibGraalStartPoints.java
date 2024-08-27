@@ -69,6 +69,7 @@ import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPo
 import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointsGen.callGetOffsetStart;
 import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointsGen.callGetPartialEvaluationMethodInfo;
 import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointsGen.callGetPosition;
+import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointsGen.callGetSuppliedString;
 import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointsGen.callGetURI;
 import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointsGen.callHasNextTier;
 import static com.oracle.svm.graal.hotspot.guestgraal.TruffleFromLibGraalStartPointsGen.callIsCancelled;
@@ -184,6 +185,12 @@ public final class TruffleFromLibGraalStartPoints {
         JNIMethodScope scope = JNIMethodScope.scope();
         long serializedExceptionHandle = LibGraalObjectHandles.create(serializedException);
         return new HSObject(scope, callCreateStringSupplier(calls, scope.getEnv(), serializedExceptionHandle));
+    }
+
+    @TruffleFromLibGraal(Id.GetSuppliedString)
+    public static String getSuppliedString(Object hsHandle) {
+        JNIEnv env = JNIMethodScope.env();
+        return createString(env, callGetSuppliedString(calls, env, ((HSObject) hsHandle).getHandle()));
     }
 
     @TruffleFromLibGraal(Id.IsSuppressedFailure)

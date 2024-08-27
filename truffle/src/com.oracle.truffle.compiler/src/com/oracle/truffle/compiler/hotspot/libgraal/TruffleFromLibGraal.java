@@ -136,6 +136,8 @@ public @interface TruffleFromLibGraal {
         GetOffsetStart,
         @Signature({Object.class, Object.class, long.class})
         GetPosition,
+        @Signature({String.class, Supplier.class})
+        GetSuppliedString,
         @Signature({String.class, Object.class})
         GetURI,
         @Signature({boolean.class, Object.class})

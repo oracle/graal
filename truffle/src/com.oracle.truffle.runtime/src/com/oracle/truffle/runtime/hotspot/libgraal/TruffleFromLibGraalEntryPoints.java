@@ -62,6 +62,7 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetPartialEvaluationMethodInfo;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetPosition;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetSuppliedString;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.HasNextTier;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
@@ -267,6 +268,11 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(CreateStringSupplier)
     static Supplier<String> createStringSupplier(long handle) {
         return new LibGraalStringSupplier(handle);
+    }
+
+    @TruffleFromLibGraal(GetSuppliedString)
+    static String getSuppliedString(Supplier<String> supplier) {
+        return supplier.get();
     }
 
     @TruffleFromLibGraal(IsCancelled)
