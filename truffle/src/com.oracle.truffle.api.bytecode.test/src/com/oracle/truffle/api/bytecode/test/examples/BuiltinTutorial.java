@@ -316,6 +316,7 @@ public class BuiltinTutorial {
         @Override
         CallTarget getOrCreateCallTarget() {
             if (cachedTarget == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 cachedTarget = parse(LanguageWithBuiltins.get(), (b) -> {
                     b.beginRoot();
                     b.beginInlineBuiltin(this);
@@ -431,6 +432,7 @@ public class BuiltinTutorial {
         @Override
         CallTarget getOrCreateCallTarget() {
             if (cachedTarget == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 cachedTarget = parse(LanguageWithBuiltins.get(), parser).getCallTarget();
             }
             return cachedTarget;
@@ -469,6 +471,7 @@ public class BuiltinTutorial {
         @Override
         CallTarget getOrCreateCallTarget() {
             if (cachedTarget == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 cachedTarget = deserialize(getBytes.get()).getCallTarget();
             }
             return cachedTarget;
