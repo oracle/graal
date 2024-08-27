@@ -79,7 +79,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -151,7 +150,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         this.analysisAccess = beforeAnalysisAccess;
     }
 
+<<<<<<< HEAD
     private void register(Consumer<AnalysisUniverse> registrationCallback) {
+=======
+    private void runConditionalInAnalysisTask(ConfigurationCondition condition, Consumer<ConfigurationCondition> task) {
+        if (sealed) {
+            throw new UnsupportedFeatureException("Too late to add classes, methods, and fields for reflective access. Registration must happen in a Feature before the analysis has finished.");
+        }
+
+>>>>>>> fb9b6c06c88 (Eagerly initialize caches in ValueConversions)
         if (universe != null) {
             registrationCallback.accept(universe);
         } else {
