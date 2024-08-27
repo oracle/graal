@@ -106,7 +106,7 @@ public class LocalHelpersTest {
     public static <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodeWithLocalIntrospection parseNode(Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass,
                     BytecodeParser<T> builder) {
         BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> nodes = BytecodeNodeWithLocalIntrospectionBuilder.invokeCreate((Class<? extends BytecodeNodeWithLocalIntrospection>) interpreterClass,
-                        BytecodeConfig.DEFAULT, builder);
+                        null, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(0);
     }
 
@@ -125,7 +125,7 @@ public class LocalHelpersTest {
          * @formatter:on
          */
         BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
 
             b.beginBlock();
             BytecodeLocal foo = makeLocal(b, "foo");
@@ -169,7 +169,7 @@ public class LocalHelpersTest {
          * @formatter:on
          */
         BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
 
             b.beginBlock();
             BytecodeLocal foo = makeLocal(b, "foo");
@@ -236,7 +236,7 @@ public class LocalHelpersTest {
          * @formatter:on
          */
         BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
 
             b.beginBlock();
             BytecodeLocal foo = makeLocal(b, "foo");
@@ -275,7 +275,7 @@ public class LocalHelpersTest {
          * @formatter:on
          */
         BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
 
             b.beginBlock();
             BytecodeLocal foo = makeLocal(b, "foo");
@@ -323,7 +323,7 @@ public class LocalHelpersTest {
          * @formatter:on
          */
         BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
 
             b.beginBlock();
             BytecodeLocal foo = makeLocal(b, "foo");
@@ -337,7 +337,7 @@ public class LocalHelpersTest {
             b.emitLoadConstant(123);
             b.endStoreLocal();
 
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLocal baz = makeLocal(b, "baz");
             BytecodeLocal qux = makeLocal(b, "qux");
@@ -405,7 +405,7 @@ public class LocalHelpersTest {
          * @formatter:on
          */
         BytecodeNodeWithLocalIntrospection bar = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLocal x = makeLocal(b, "x");
             BytecodeLocal y = makeLocal(b, "y");
@@ -439,7 +439,7 @@ public class LocalHelpersTest {
         });
 
         BytecodeNodeWithLocalIntrospection foo = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLocal c = b.createLocal();
 
@@ -476,7 +476,7 @@ public class LocalHelpersTest {
          * @formatter:on
          */
         BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
 
             b.beginBlock();
             BytecodeLocal foo = makeLocal(b, "foo");
@@ -528,7 +528,7 @@ public class LocalHelpersTest {
          * @formatter:on
          */
         BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
 
             b.beginBlock();
             BytecodeLocal foo = makeLocal(b, "foo");
@@ -594,7 +594,7 @@ public class LocalHelpersTest {
         }.getCallTarget();
 
         BytecodeNodeWithLocalIntrospection bar = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
 
             b.beginBlock();
 
@@ -620,7 +620,7 @@ public class LocalHelpersTest {
         });
 
         BytecodeNodeWithLocalIntrospection foo = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
 
             b.beginBlock();
             BytecodeLocal x = makeLocal(b, "x");
@@ -696,7 +696,7 @@ public class LocalHelpersTest {
         }.getCallTarget();
 
         BytecodeNodeWithLocalIntrospection bar = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
 
             BytecodeLocal y = makeLocal(b, "y");
 
@@ -716,7 +716,7 @@ public class LocalHelpersTest {
         });
 
         BytecodeNodeWithLocalIntrospection foo = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             BytecodeLocal x = makeLocal(b, "x");
 
             b.beginStoreLocal(x);
@@ -762,7 +762,7 @@ public class LocalHelpersTest {
         Object fooInfo = new Object();
         Object bazInfo = new Object();
         BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
 
             b.beginBlock();
 

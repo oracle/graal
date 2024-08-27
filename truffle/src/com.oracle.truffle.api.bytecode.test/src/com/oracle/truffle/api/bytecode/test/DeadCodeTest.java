@@ -69,7 +69,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     public void testUnreachableRoot() {
         // return 42
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.emitLoadConstant(42);
@@ -96,7 +96,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // <dead>
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginIfThenElse();
             b.emitLoadConstant(false);
@@ -136,7 +136,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // <dead>
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTry(() -> {
                 b.beginBlock();
@@ -181,7 +181,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // <dead>
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTry(() -> b.emitLoadArgument(0));
             b.beginFinallyTry(() -> {
@@ -235,7 +235,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // <dead>
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTryCatch(() -> {
                 b.beginBlock(); // finally
@@ -289,7 +289,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // <dead>
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.emitLoadConstant(42);
@@ -341,7 +341,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // return 44;
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTryCatch(() -> {
                 b.beginBlock(); // finally
@@ -393,7 +393,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // return 44;
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTryCatch(() -> b.emitLoadConstant(41));
             b.emitThrow(); // try
@@ -442,7 +442,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // <dead>
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginTryCatch();
 
@@ -487,7 +487,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // }
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginWhile();
             b.emitLoadConstant(true);
@@ -521,7 +521,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // <dead>
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginConditional();
             b.emitLoadConstant(true);
@@ -574,7 +574,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // return 42;
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             var label = b.createLabel();
 
@@ -622,7 +622,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // <dead>
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginConditional();
             b.beginBlock();
@@ -658,7 +658,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // return 41;
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginIfThen();
             b.beginBlock();
@@ -694,7 +694,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // return 41;
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginWhile();
             b.beginBlock();
@@ -731,7 +731,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // }
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginIfThenElse();
             b.beginBlock();
@@ -766,7 +766,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
         // }
         // @formatter:on
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.emitLoadConstant(42);
@@ -821,7 +821,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
          * @formatter:on
          */
         DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
 
             BytecodeLabel lbl = b.createLabel();
@@ -946,7 +946,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     }
 
     private static DeadCodeTestRootNode parse(BytecodeParser<DeadCodeTestRootNodeGen.Builder> builder) {
-        BytecodeRootNodes<DeadCodeTestRootNode> nodes = DeadCodeTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<DeadCodeTestRootNode> nodes = DeadCodeTestRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 

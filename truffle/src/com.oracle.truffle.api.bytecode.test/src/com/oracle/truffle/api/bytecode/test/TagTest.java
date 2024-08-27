@@ -113,19 +113,20 @@ import com.oracle.truffle.api.strings.TruffleString.Encoding;
 public class TagTest extends AbstractInstructionTest {
 
     private static TagInstrumentationTestRootNode parseComplete(BytecodeParser<TagInstrumentationTestRootNodeGen.Builder> parser) {
-        BytecodeRootNodes<TagInstrumentationTestRootNode> nodes = TagInstrumentationTestRootNodeGen.create(BytecodeConfig.COMPLETE, parser);
+        BytecodeRootNodes<TagInstrumentationTestRootNode> nodes = TagInstrumentationTestRootNodeGen.create(TagTestLanguage.REF.get(null), BytecodeConfig.COMPLETE, parser);
         TagInstrumentationTestRootNode root = nodes.getNode(0);
         return root;
     }
 
     private static TagInstrumentationTestRootNode parse(BytecodeParser<TagInstrumentationTestRootNodeGen.Builder> parser) {
-        BytecodeRootNodes<TagInstrumentationTestRootNode> nodes = TagInstrumentationTestRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        BytecodeRootNodes<TagInstrumentationTestRootNode> nodes = TagInstrumentationTestRootNodeGen.create(TagTestLanguage.REF.get(null), BytecodeConfig.DEFAULT, parser);
         TagInstrumentationTestRootNode root = nodes.getNode(0);
         return root;
     }
 
     private static TagInstrumentationTestWithPrologAndEpilogRootNode parseProlog(BytecodeParser<TagInstrumentationTestWithPrologAndEpilogRootNodeGen.Builder> parser) {
-        BytecodeRootNodes<TagInstrumentationTestWithPrologAndEpilogRootNode> nodes = TagInstrumentationTestWithPrologAndEpilogRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        BytecodeRootNodes<TagInstrumentationTestWithPrologAndEpilogRootNode> nodes = TagInstrumentationTestWithPrologAndEpilogRootNodeGen.create(TagTestLanguage.REF.get(null), BytecodeConfig.DEFAULT,
+                        parser);
         TagInstrumentationTestWithPrologAndEpilogRootNode root = nodes.getNode(0);
         return root;
     }
@@ -224,7 +225,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testStatementsCached() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             var local = b.createLocal();
             b.beginBlock();
@@ -322,7 +323,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testTagsEmptyErrors() {
         parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             assertFails(() -> b.beginTag(), IllegalArgumentException.class);
             assertFails(() -> b.beginTag((Class<?>) null), NullPointerException.class);
@@ -341,7 +342,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testTagsMismatchError() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginReturn();
             b.beginTag(StatementTag.class, ExpressionTag.class);
             b.emitLoadConstant(42);
@@ -381,7 +382,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testStatementsUncached() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             var local = b.createLocal();
             b.beginBlock();
@@ -501,7 +502,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testStatementsAndExpressionUncached() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             var local = b.createLocal();
             b.beginBlock();
@@ -604,7 +605,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testStatementsAndExpressionCached() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             var local = b.createLocal();
             b.beginBlock();
@@ -706,7 +707,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testImplicitRootTagsNoProlog() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
@@ -737,7 +738,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testRootExceptionHandler() {
         TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.emitThrow();
             b.endRoot();
         });
@@ -771,7 +772,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testRootExceptionHandlerReturnValue() {
         TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
@@ -809,7 +810,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testRootBodyExceptionHandler() {
         TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.emitThrow();
             b.endRoot();
         });
@@ -843,7 +844,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testUnwindInReturn() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginReturn();
             b.beginTag(ExpressionTag.class);
             b.beginAdd();
@@ -892,7 +893,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testUnwindInEnter() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginReturn();
             b.beginTag(ExpressionTag.class);
             b.beginAdd();
@@ -939,7 +940,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testUnwindInRootBody() {
         TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.emitLoadConstant(40);
             b.emitLoadConstant(41);
             b.endRoot();
@@ -983,7 +984,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testUnwindInRoot() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginTag(StatementTag.class);
             b.beginReturn();
             b.emitLoadConstant(41);
@@ -1025,7 +1026,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testImplicitCustomTag() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginReturn();
             b.beginImplicitExpressionAdd();
             b.emitLoadConstant(20);
@@ -1063,7 +1064,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testImplicitCustomProxyTag() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginReturn();
             b.beginImplicitExpressionAddProxy();
             b.emitLoadConstant(20);
@@ -1101,7 +1102,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testImplicitRootBodyTagNoProlog() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
@@ -1134,7 +1135,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testImplicitRootTagNoProlog() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
@@ -1167,7 +1168,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testImplicitRootTagProlog() {
         TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
@@ -1218,7 +1219,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testImplicitRootBodyTagProlog() {
         TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
@@ -1269,7 +1270,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testImplicitRootTagsProlog() {
         TagInstrumentationTestWithPrologAndEpilogRootNode node = parseProlog((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
@@ -1329,7 +1330,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testImplicitJumpAfterReturn() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             var l = b.createLabel();
 
@@ -1383,7 +1384,7 @@ public class TagTest extends AbstractInstructionTest {
             b.beginSource(s);
             b.beginSourceSection(0, 8);
 
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginSourceSection(2, 4);
             b.beginTag(ExpressionTag.class);
             b.emitLoadConstant(42);
@@ -1421,7 +1422,7 @@ public class TagTest extends AbstractInstructionTest {
             b.beginSource(s);
             b.beginSourceSection(0, 8);
 
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.createLocal();
             b.beginSourceSection(2, 4);
             b.beginTag(ExpressionTag.class);
@@ -1484,7 +1485,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testNoSourceSections() {
         TagInstrumentationTestRootNode node = parseComplete((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginTag(ExpressionTag.class);
             b.emitLoadConstant(42);
             b.endTag(ExpressionTag.class);
@@ -1511,7 +1512,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testImplicitJump() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             var l = b.createLabel();
 
@@ -1563,9 +1564,9 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testNestedRoot() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.emitNop(); // pad bytecode to differentiate inner bci's
             b.beginTag(StatementTag.class);
             b.beginReturn();
@@ -1639,9 +1640,9 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testNestedRootDifferentTags() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginReturn();
             b.beginTag(ExpressionTag.class);
             b.emitLoadConstant(42L);
@@ -1697,7 +1698,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testFinallyTry() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             var l = b.createLabel();
 
             b.beginTag(StatementTag.class);
@@ -1766,7 +1767,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testYield() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             b.beginReturn();
             b.beginTag(ExpressionTag.class);
@@ -1875,7 +1876,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testFinallyTryYieldInTry() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             b.beginTag(StatementTag.class);
             b.beginFinallyTry(() -> {
@@ -1979,7 +1980,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testFinallyTryYieldInFinally() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             b.beginTag(StatementTag.class);
             b.beginFinallyTry(() -> {
@@ -2084,10 +2085,10 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testYieldWithNestedRoots() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginTag(StatementTag.class);
 
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             b.beginTag(ExpressionTag.class);
             b.beginYield();
             b.emitLoadConstant(42L);
@@ -2152,7 +2153,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testNodeLibrary() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             b.beginTag(StatementTag.class);
             BytecodeLocal l1 = b.createLocal("l1", "l1_info");
@@ -2291,7 +2292,7 @@ public class TagTest extends AbstractInstructionTest {
             events0.set(attachEventListener(SourceSectionFilter.newBuilder().tagIs(RootTag.class, StatementTag.class, ExpressionTag.class).build()));
         });
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             b.beginTag(StatementTag.class);
             b.beginTag(ExpressionTag.class); // event collection is expected to begin here
@@ -2328,7 +2329,7 @@ public class TagTest extends AbstractInstructionTest {
             events0.set(attachEventListener(SourceSectionFilter.newBuilder().tagIs(RootTag.class, StatementTag.class, ExpressionTag.class).build()));
         });
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             b.beginTag(StatementTag.class);
             b.beginTag(StatementTag.class); // event collection is expected to begin here
@@ -2402,7 +2403,7 @@ public class TagTest extends AbstractInstructionTest {
         AtomicReference<List<Event>> events2 = new AtomicReference<>();
 
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             b.beginTag(StatementTag.class);
             b.beginTag(ExpressionTag.class);
@@ -2461,7 +2462,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testReachabilityFinallyTry() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
 
             b.beginTag(ExpressionTag.class);
@@ -2493,7 +2494,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testReachabilityFinallyTryEarlyExit() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
 
             b.beginTag(ExpressionTag.class);
@@ -2541,7 +2542,7 @@ public class TagTest extends AbstractInstructionTest {
     @Test
     public void testReachabilityYield() {
         TagInstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginRoot();
 
             b.beginFinallyTry(() -> {
                 b.beginYield();

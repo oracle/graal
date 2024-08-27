@@ -48,7 +48,6 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
@@ -214,19 +213,17 @@ public class ParsingTutorial {
      */
     static class BytecodeVisitor implements Visitor {
         final GettingStartedBytecodeRootNodeGen.Builder b;
-        final TruffleLanguage<BytecodeDSLTestLanguage> language;
         final Map<String, BytecodeLocal> locals;
 
         BytecodeLabel currentBreakLabel = null;
 
-        BytecodeVisitor(GettingStartedBytecodeRootNodeGen.Builder b, TruffleLanguage<BytecodeDSLTestLanguage> language) {
+        BytecodeVisitor(GettingStartedBytecodeRootNodeGen.Builder b) {
             this.b = b;
-            this.language = language;
             this.locals = new HashMap<>();
         }
 
         public void visitMethod(Method m) {
-            b.beginRoot(language);
+            b.beginRoot();
             // Allocate locals for this method. Remember the BytecodeLocal instances.
             for (String name : m.locals) {
                 locals.put(name, b.createLocal());
@@ -365,9 +362,9 @@ public class ParsingTutorial {
      */
     public static GettingStartedBytecodeRootNode parse(Method method) {
         BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
-            method.accept(new BytecodeVisitor(b, null)); // TruffleLanguage goes here
+            method.accept(new BytecodeVisitor(b)); // TruffleLanguage goes here
         };
-        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, parser);
         return rootNodes.getNode(0);
     }
 
@@ -496,8 +493,8 @@ public class ParsingTutorial {
      * {@link ForEach}.
      */
     class BytecodeVisitorWithForEach extends BytecodeVisitor {
-        BytecodeVisitorWithForEach(GettingStartedBytecodeRootNodeGen.Builder b, TruffleLanguage<BytecodeDSLTestLanguage> language) {
-            super(b, language);
+        BytecodeVisitorWithForEach(GettingStartedBytecodeRootNodeGen.Builder b) {
+            super(b);
         }
 
         @Override
@@ -570,14 +567,22 @@ public class ParsingTutorial {
         );
         // @formatter:on
         BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
-            method.accept(new BytecodeVisitorWithForEach(b, null)); // TruffleLanguage goes here
+            method.accept(new BytecodeVisitorWithForEach(b));
         };
-        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, parser);
         GettingStartedBytecodeRootNode sumArray = rootNodes.getNode(0);
 
         assertEquals(42, sumArray.getCallTarget().call(new int[]{40, 2}));
         assertEquals(0, sumArray.getCallTarget().call(new int[0]));
         assertEquals(28, sumArray.getCallTarget().call(new int[]{1, 2, 3, 4, 5, 6, 7}));
+    }
+
+    /**
+     * One of the parameters to {@code create} is a language instance. For simplicity, we return
+     * null here.
+     */
+    private static BytecodeDSLTestLanguage getLanguage() {
+        return null;
     }
 
     /**

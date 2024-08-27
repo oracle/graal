@@ -77,7 +77,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     public void testArgumentAbs() {
         // return - (arg0)
         BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAbs();
@@ -126,7 +126,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     public void testArgumentAdd() {
         // return - (arg0)
         BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAdd();
@@ -194,7 +194,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     public void testConstantAbs() {
         // return - (arg0)
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAbs();
@@ -222,7 +222,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     public void testConditionalConstants0() {
         // return - (arg0)
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAbs();
@@ -280,7 +280,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     public void testConditionalConstants1() {
         // return - (arg0)
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAbs();
@@ -337,7 +337,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     public void testConditionalConstants2() {
         // return - (arg0)
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAbs();
@@ -396,7 +396,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
          * invalid. We should not try to boxing eliminate the conditional value.
          */
         BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             /**
              * Setup: The invalid child bci points to the LoadConstant(42L)'s immediate. Allocate
@@ -457,7 +457,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     public void testLocalAbs() {
         // return - (arg0)
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal local = b.createLocal();
 
@@ -504,7 +504,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     public void testLocalSet() {
         // return - (arg0)
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal local = b.createLocal();
 
@@ -552,7 +552,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     public void testLocalSet2() {
         // return - (arg0)
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal local = b.createLocal();
 
@@ -611,7 +611,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         // if (arg0) { x = 42 } else { x /* undefined */ }
         // return 123
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal x = b.createLocal();
 
@@ -688,7 +688,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         // local2 = arg2
         // return getLocals()
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginStoreLocal(b.createLocal());
             b.emitLoadArgument(0);
@@ -750,7 +750,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         // local1 = arg1
         // return getLocal(arg2)
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginStoreLocal(b.createLocal());
             b.emitLoadArgument(0);
@@ -809,7 +809,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     public void testGenericBoxingElimination() {
         // return - (arg0)
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginGenericOperationWithLong();
             b.beginGenericOperationWithLong();
@@ -842,7 +842,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @Test
     public void testIfEnd() {
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginIfThen();
             b.emitTrue();
             b.beginReturn();
@@ -885,7 +885,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @Test
     public void testIfEndElse() {
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginIfThenElse();
             b.emitFalse();
@@ -926,7 +926,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @Test
     public void testWhile() {
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginWhile();
             b.emitTrue();
             b.beginReturn();
@@ -972,7 +972,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @Test
     public void testSwitchQuickening0() {
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginSwitchQuickening0();
@@ -1020,7 +1020,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @Test
     public void testSwitchQuickening1() {
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginGenericOperationWithLong();
@@ -1069,7 +1069,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @Test
     public void testSwitchQuickening2() {
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginPassLongOrInt();
@@ -1121,7 +1121,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @Test
     public void testPopUnboxed() {
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginBlock();
             b.beginPassLongOrInt();
@@ -1179,7 +1179,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @Test
     public void testShortCircuitOrNoReturn() {
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAnd();
@@ -1217,7 +1217,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @Test
     public void testShortCircuitAndNoReturn() {
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginOr();
@@ -1255,7 +1255,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @Test
     public void testShortCircuitOrReturn() {
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginOrReturn();
@@ -1293,7 +1293,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @Test
     public void testShortCircuitAndReturn() {
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAndReturn();
@@ -1330,7 +1330,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @Test
     public void testConstantOperandsAreNotQuickened() {
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginOperationWithConstants(0);
@@ -1359,7 +1359,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @Test
     public void testSameNameSpecializationBoxing() {
         BoxingEliminationTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginAddSameName();
             b.emitLoadArgument(0);
@@ -1396,7 +1396,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     }
 
     private static BoxingEliminationTestRootNode parse(BytecodeParser<BoxingEliminationTestRootNodeGen.Builder> builder) {
-        BytecodeRootNodes<BoxingEliminationTestRootNode> nodes = BoxingEliminationTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<BoxingEliminationTestRootNode> nodes = BoxingEliminationTestRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 

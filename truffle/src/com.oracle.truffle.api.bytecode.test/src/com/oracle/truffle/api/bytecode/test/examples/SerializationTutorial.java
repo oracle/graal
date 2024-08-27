@@ -201,7 +201,7 @@ public class SerializationTutorial {
      */
     static final BytecodeParser<SerializableBytecodeNodeGen.Builder> PARSER = b -> {
         // @formatter:off
-        b.beginRoot(null); // pass your TruffleLanguage here
+        b.beginRoot();
             // return (n < 0 or PLANETS.length - 1 < n) ? NULL : PLANETS[n]
             b.beginReturn();
                 b.beginConditional();
@@ -251,7 +251,7 @@ public class SerializationTutorial {
 
     @Test
     public void testProgram() {
-        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.create(BytecodeConfig.DEFAULT, PARSER);
+        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, PARSER);
         SerializableBytecodeNode rootNode = nodes.getNode(0);
 
         // The fields are set by the parser.
@@ -397,7 +397,7 @@ public class SerializationTutorial {
         // Now, deserialize the bytes to produce a BytecodeRootNodes instance.
         Supplier<DataInput> supplier = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(serialized));
         BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.deserialize(
-                        null, // pass your TruffleLanguage here
+                        getLanguage(),
                         BytecodeConfig.DEFAULT,
                         supplier,
                         new ExampleBytecodeDeserializer());
@@ -435,7 +435,7 @@ public class SerializationTutorial {
     @Test
     public void testSerializeInstanceMethod() throws IOException {
         // Parse (just like before).
-        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.create(BytecodeConfig.DEFAULT, PARSER);
+        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, PARSER);
         SerializableBytecodeNode rootNode = nodes.getNode(0);
         assertEquals("getPlanet", rootNode.name);
 
@@ -450,7 +450,7 @@ public class SerializationTutorial {
         // Now, deserialize (just like before).
         Supplier<DataInput> supplier = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(serialized));
         BytecodeRootNodes<SerializableBytecodeNode> deserializedNodes = SerializableBytecodeNodeGen.deserialize(
-                        null, // pass your TruffleLanguage here
+                        getLanguage(),
                         BytecodeConfig.DEFAULT,
                         supplier,
                         new ExampleBytecodeDeserializer());
@@ -475,7 +475,7 @@ public class SerializationTutorial {
 
     static final BytecodeParser<SerializableBytecodeNodeGen.Builder> PARSER_WITH_SOURCES = b -> {
         // @formatter:off
-        b.beginRoot(null); // pass your TruffleLanguage here
+        b.beginRoot();
         b.beginSource(SOURCE);
             // return arg + 1
             b.beginSourceSection(0, 14);
@@ -515,7 +515,7 @@ public class SerializationTutorial {
 
     @Test
     public void testSourceProgram() {
-        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.create(BytecodeConfig.DEFAULT, PARSER_WITH_SOURCES);
+        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, PARSER_WITH_SOURCES);
         assertEquals(1, nodes.count());
         doTestSourceProgram(nodes.getNode(0));
     }
@@ -589,7 +589,7 @@ public class SerializationTutorial {
         byte[] serialized = output.toByteArray();
         Supplier<DataInput> supplier = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(serialized));
         BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.deserialize(
-                        null, // pass your TruffleLanguage here
+                        getLanguage(),
                         BytecodeConfig.DEFAULT,
                         supplier,
                         new ExampleBytecodeDeserializerWithSources());
@@ -610,9 +610,9 @@ public class SerializationTutorial {
      */
     static final BytecodeParser<SerializableBytecodeNodeGen.Builder> MULTIPLE_ROOT_NODES_PARSER = b -> {
         // @formatter:off
-        b.beginRoot(null); // pass your TruffleLanguage here
+        b.beginRoot();
             // def plusOne(x) = x + 1
-            b.beginRoot(null);
+            b.beginRoot();
                 b.beginReturn();
                     b.beginAddConstant(1);
                         b.emitLoadArgument(0);
@@ -622,7 +622,7 @@ public class SerializationTutorial {
             plusOne.name = "plusOne";
 
             // def timesTwo(x) = x + x
-            b.beginRoot(null);
+            b.beginRoot();
                 b.beginReturn();
                     b.beginAdd();
                         b.emitLoadArgument(0);
@@ -705,7 +705,7 @@ public class SerializationTutorial {
     @Test
     public void testMultipleRootNodesRoundTrip() throws IOException {
         // First, let's parse the nodes normally and test the behaviour.
-        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.create(BytecodeConfig.DEFAULT, MULTIPLE_ROOT_NODES_PARSER);
+        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, MULTIPLE_ROOT_NODES_PARSER);
         assertEquals(3, nodes.count());
         SerializableBytecodeNode rootNode = nodes.getNode(0);
         doTestMultipleRootNodes(rootNode);
@@ -716,7 +716,7 @@ public class SerializationTutorial {
         byte[] serialized = output.toByteArray();
         Supplier<DataInput> supplier = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(serialized));
         BytecodeRootNodes<SerializableBytecodeNode> roundTripNodes = SerializableBytecodeNodeGen.deserialize(
-                        null, // pass your TruffleLanguage here
+                        getLanguage(),
                         BytecodeConfig.DEFAULT,
                         supplier,
                         new ExampleBytecodeDeserializerWithRootNodes());
@@ -724,5 +724,13 @@ public class SerializationTutorial {
         assertEquals(3, roundTripNodes.count());
         SerializableBytecodeNode roundTripRootNode = roundTripNodes.getNode(0);
         doTestMultipleRootNodes(roundTripRootNode);
+    }
+
+    /**
+     * One of the parameters to {@code create} and {@code deserialize} is a language instance. For
+     * simplicity, we return null here.
+     */
+    private static BytecodeDSLTestLanguage getLanguage() {
+        return null;
     }
 }

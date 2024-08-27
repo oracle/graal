@@ -350,10 +350,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     }
 
     private SLBytecodeRootNode createBytecodeBuiltin(TruffleString name, int argumentCount, SLBuiltinNode builtinNode) {
-        SLBytecodeRootNode node = SLBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, (b) -> {
+        SLBytecodeRootNode node = SLBytecodeRootNodeGen.create(this, BytecodeConfig.DEFAULT, (b) -> {
             b.beginSource(BUILTIN_SOURCE);
             b.beginSourceSectionUnavailable();
-            b.beginRoot(this);
+            b.beginRoot();
             b.beginReturn();
             b.beginTag(RootTag.class, RootBodyTag.class);
             b.emitBuiltin(builtinNode, argumentCount);

@@ -42,7 +42,6 @@ package com.oracle.truffle.api.benchmark.bytecode;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
@@ -62,16 +61,16 @@ public class BenchmarkLanguage extends TruffleLanguage<Object> {
         return new Object();
     }
 
-    public static void registerName(String name, Class<? extends BytecodeBenchmarkRootNode> cls, BiConsumer<BenchmarkLanguage, BytecodeBenchmarkRootNodeBuilder> parser) {
+    public static void registerName(String name, Class<? extends BytecodeBenchmarkRootNode> cls, BytecodeParser<BytecodeBenchmarkRootNodeBuilder> parser) {
         registerName(name, l -> {
-            BytecodeRootNodes<BytecodeBenchmarkRootNode> nodes = createNodes(cls, b -> parser.accept(l, b));
+            BytecodeRootNodes<BytecodeBenchmarkRootNode> nodes = createNodes(cls, l, parser);
             return nodes.getNode(nodes.count() - 1).getCallTarget();
         });
     }
 
-    private static <T extends BytecodeBenchmarkRootNodeBuilder> BytecodeRootNodes<BytecodeBenchmarkRootNode> createNodes(Class<? extends BytecodeBenchmarkRootNode> interpreterClass,
-                    BytecodeParser<T> builder) {
-        return BytecodeBenchmarkRootNodeBuilder.invokeCreate(interpreterClass, BytecodeConfig.DEFAULT, builder);
+    private static BytecodeRootNodes<BytecodeBenchmarkRootNode> createNodes(Class<? extends BytecodeBenchmarkRootNode> interpreterClass,
+                    BenchmarkLanguage language, BytecodeParser<BytecodeBenchmarkRootNodeBuilder> builder) {
+        return BytecodeBenchmarkRootNodeBuilder.invokeCreate(interpreterClass, language, BytecodeConfig.DEFAULT, builder);
     }
 
     public static void registerName(String name, Function<BenchmarkLanguage, CallTarget> parser) {

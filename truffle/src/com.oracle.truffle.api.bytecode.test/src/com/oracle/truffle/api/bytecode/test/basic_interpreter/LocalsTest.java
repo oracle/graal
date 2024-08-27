@@ -72,7 +72,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         // l = 42;
         // return l;
         BasicInterpreter root = parseNode("manyLocals", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal[] locals = new BytecodeLocal[localCount];
             for (int i = 0; i < localCount; i++) {
@@ -135,7 +135,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         // return l0;
         // @formatter:on
         BasicInterpreter root = parseNode("scopedLocals", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal l0 = b.createLocal("l0", null);
 
@@ -294,7 +294,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         // return l0
         // @formatter:on
         BasicInterpreter root = parseNode("scopedLocals", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             // l0 = 1
             BytecodeLocal l0 = b.createLocal("l0", null);
@@ -511,7 +511,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
         // return l0
         // @formatter:on
         BasicInterpreter root = parseNode("scopedLocals", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal l0 = b.createLocal("l0", null);
             b.beginStoreLocal(l0);

@@ -96,13 +96,13 @@ public class ConstantOperandTest {
 
     @SuppressWarnings("unchecked")
     private <T extends ConstantOperandTestRootNodeBuilder> ConstantOperandTestRootNode parse(BytecodeParser<? extends T> parser) {
-        return ConstantOperandTestRootNodeBuilder.invokeCreate(interpreterClass, BytecodeConfig.DEFAULT, parser).getNode(0);
+        return ConstantOperandTestRootNodeBuilder.invokeCreate(interpreterClass, LANGUAGE, BytecodeConfig.DEFAULT, parser).getNode(0);
     }
 
     @Test
     public void testBasicConstant() {
         ConstantOperandTestRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginDivConstantDividend(84);
             b.emitLoadArgument(0);
@@ -117,7 +117,7 @@ public class ConstantOperandTest {
     @Test
     public void testBasicConstantAtEnd() {
         ConstantOperandTestRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginDivConstantDivisor();
             b.emitLoadArgument(0);
@@ -132,7 +132,7 @@ public class ConstantOperandTest {
     @Test
     public void testBasicConstantAtBeginAndEnd() {
         ConstantOperandTestRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginGetAttrWithDefault("foo");
             b.emitLoadArgument(0);
@@ -148,7 +148,7 @@ public class ConstantOperandTest {
     @Test
     public void testBasicConstantEmit() {
         ConstantOperandTestRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.emitIntConstant(42);
             b.endReturn();
@@ -161,7 +161,7 @@ public class ConstantOperandTest {
     @Test
     public void testInstrumentationWithConstant() {
         ConstantOperandTestRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginReplaceValue();
             b.emitLoadArgument(0);
@@ -183,7 +183,7 @@ public class ConstantOperandTest {
          * the same in order to update continuation locations after reparsing.
          */
         ConstantOperandTestRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginYield();
             b.beginReplaceValue();
             b.emitLoadConstant(42);
@@ -202,7 +202,7 @@ public class ConstantOperandTest {
     @Test
     public void testConstantWithFallback() {
         ConstantOperandTestRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginCheckValue(42);
             b.emitLoadArgument(0);
@@ -218,7 +218,7 @@ public class ConstantOperandTest {
     @Test
     public void testLocalSetter() {
         ConstantOperandTestRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLocal local = b.createLocal();
             b.beginSetCheckValue(42, local);
             b.emitLoadArgument(0);
@@ -236,8 +236,8 @@ public class ConstantOperandTest {
 
     @Test
     public void testConstantOperandsInProlog() {
-        ConstantOperandsInPrologTestRootNode root = ConstantOperandsInPrologTestRootNodeGen.create(BytecodeConfig.DEFAULT, b -> {
-            b.beginRoot(LANGUAGE, "foo");
+        ConstantOperandsInPrologTestRootNode root = ConstantOperandsInPrologTestRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot("foo");
             b.beginReturn();
             b.emitLoadConstant(42L);
             b.endReturn();
@@ -246,8 +246,8 @@ public class ConstantOperandTest {
         assertEquals(42L, root.getCallTarget().call());
         assertEquals(List.of("foo", 1), root.prologEvents);
 
-        ConstantOperandsInPrologTestRootNode root2 = ConstantOperandsInPrologTestRootNodeGen.create(BytecodeConfig.DEFAULT, b -> {
-            b.beginRoot(LANGUAGE, "bar");
+        ConstantOperandsInPrologTestRootNode root2 = ConstantOperandsInPrologTestRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot("bar");
             b.beginReturn();
             b.emitLoadConstant(42L);
             b.endReturn();
@@ -259,9 +259,9 @@ public class ConstantOperandTest {
 
     @Test
     public void testPrologNull() {
-        ConstantOperandsInPrologTestRootNodeGen.create(BytecodeConfig.DEFAULT, b -> {
-            assertThrows(IllegalArgumentException.class, () -> b.beginRoot(LANGUAGE, null));
-            b.beginRoot(LANGUAGE, "foo");
+        ConstantOperandsInPrologTestRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, b -> {
+            assertThrows(IllegalArgumentException.class, () -> b.beginRoot(null));
+            b.beginRoot("foo");
             assertThrows(IllegalArgumentException.class, () -> b.emitLoadConstant(null));
             b.endRoot(0);
         }).getNode(0);
@@ -270,7 +270,7 @@ public class ConstantOperandTest {
     @Test
     public void testConstantNulls() {
         parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             assertThrows(IllegalArgumentException.class, () -> b.emitLoadConstant(null));
             assertThrows(IllegalArgumentException.class, () -> b.beginGetAttrWithDefault(null));
             assertThrows(IllegalArgumentException.class, () -> b.endGetAttrWithDefault(null));
@@ -280,10 +280,10 @@ public class ConstantOperandTest {
 
     @Test
     public void testConstantOperandsInPrologNestedRoot() {
-        List<ConstantOperandsInPrologTestRootNode> roots = ConstantOperandsInPrologTestRootNodeGen.create(BytecodeConfig.DEFAULT, b -> {
-            b.beginRoot(LANGUAGE, "foo");
+        List<ConstantOperandsInPrologTestRootNode> roots = ConstantOperandsInPrologTestRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot("foo");
 
-            b.beginRoot(LANGUAGE, "bar");
+            b.beginRoot("bar");
             b.beginReturn();
             b.emitLoadConstant(234L);
             b.endReturn();

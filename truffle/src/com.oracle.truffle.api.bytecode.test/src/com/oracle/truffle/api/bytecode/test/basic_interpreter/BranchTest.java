@@ -63,7 +63,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // return 1;
 
         RootCallTarget root = parse("branchForward", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLabel lbl = b.createLabel();
 
@@ -88,7 +88,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
 
         assertThrowsWithMessage("Backward branches are unsupported. Use a While operation to model backward control flow.", IllegalStateException.class, () -> {
             parse("branchBackward", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
 
                 BytecodeLabel lbl = b.createLabel();
                 BytecodeLocal loc = b.createLocal();
@@ -136,7 +136,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // return 42;
 
         BasicInterpreter root = parseNode("branchOutwardBalanced", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLabel lbl = b.createLabel();
 
@@ -173,7 +173,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // return 42;
 
         BasicInterpreter root = parseNode("branchOutwardUnbalanced", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLabel lbl = b.createLabel();
 
@@ -210,7 +210,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // return 42;
 
         BasicInterpreter root = parseNode("branchOutwardUnbalanced", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLabel lbl = b.createLabel();
 
@@ -261,7 +261,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
 
         assertThrowsWithMessage("BytecodeLabel must be emitted inside the same operation it was created in.", IllegalStateException.class, () -> {
             parse("branchInward", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
 
                 BytecodeLabel lbl = b.createLabel();
                 b.emitBranch(lbl);
@@ -295,7 +295,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // };
 
         RootCallTarget root = parse("branchBalancedStack", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginAddOperation();
 
@@ -347,7 +347,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
 
         assertThrowsWithMessage("Branch must be targeting a label that is declared in an enclosing operation of the current root. Jumps into other operations are not permitted.", IllegalStateException.class, () -> {
             parse("branchIntoAnotherBlock", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
 
                 b.beginBlock();
                     BytecodeLabel lbl = b.createLabel();
@@ -376,7 +376,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // return x;
 
         RootCallTarget root = parse("branchForward", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLocal x = b.createLocal();
 
             b.beginBlock();

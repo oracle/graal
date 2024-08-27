@@ -252,7 +252,7 @@ public class GettingStarted {
          */
         BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
             // @formatter:off
-            b.beginRoot(null); // TruffleLanguage goes here
+            b.beginRoot();
                 b.beginReturn();
                     b.beginAdd();
                         b.emitLoadArgument(0);
@@ -268,7 +268,9 @@ public class GettingStarted {
          * {@link BytecodeRootNodes} instance containing the root node(s). These root nodes contain
          * bytecode that implements the series of operations.
          */
-        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(null /*
+                                                                                                                     * TruffleLanguage
+                                                                                                                     */, BytecodeConfig.DEFAULT, parser);
         GettingStartedBytecodeRootNode plusOne = rootNodes.getNode(0);
 
         /**
@@ -316,7 +318,7 @@ public class GettingStarted {
     public void testPlusOneWithLocals() {
         BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
             // @formatter:off
-            b.beginRoot(null); // TruffleLanguage goes here
+            b.beginRoot();
                 b.beginBlock();
                     // Allocate the local.
                     BytecodeLocal x = b.createLocal();
@@ -338,7 +340,7 @@ public class GettingStarted {
             // @formatter:on
         };
 
-        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, parser);
         GettingStartedBytecodeRootNode plusOne = rootNodes.getNode(0);
 
         assertEquals(42, plusOne.getCallTarget().call(41));
@@ -369,7 +371,7 @@ public class GettingStarted {
          */
         BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> ifThenElseParser = b -> {
             // @formatter:off
-            b.beginRoot(null); // TruffleLanguage goes here
+            b.beginRoot();
                 b.beginIfThenElse();
                     // The first operation produces a boolean condition.
                     b.beginEquals();
@@ -390,7 +392,7 @@ public class GettingStarted {
             b.endRoot();
             // @formatter:on
         };
-        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, ifThenElseParser);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, ifThenElseParser);
         GettingStartedBytecodeRootNode checkPassword = rootNodes.getNode(0);
 
         assertEquals("Access granted.", checkPassword.getCallTarget().call(1337));
@@ -408,7 +410,7 @@ public class GettingStarted {
          */
         BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> conditionalParser = b -> {
             // @formatter:off
-            b.beginRoot(null); // TruffleLanguage goes here
+            b.beginRoot();
                 b.beginReturn();
                     b.beginConditional();
                         // The first operation produces a boolean condition.
@@ -427,7 +429,7 @@ public class GettingStarted {
             b.endRoot();
             // @formatter:on
         };
-        rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, conditionalParser);
+        rootNodes = GettingStartedBytecodeRootNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, conditionalParser);
         checkPassword = rootNodes.getNode(0);
 
         assertEquals("Access granted.", checkPassword.getCallTarget().call(1337));
@@ -451,7 +453,7 @@ public class GettingStarted {
     public void testLoop() {
         BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
             // @formatter:off
-            b.beginRoot(null); // TruffleLanguage goes here
+            b.beginRoot();
                 b.beginBlock();
                     BytecodeLocal total = b.createLocal();
                     BytecodeLocal i = b.createLocal();
@@ -497,7 +499,7 @@ public class GettingStarted {
             // @formatter:on
         };
 
-        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, parser);
         GettingStartedBytecodeRootNode sumToN = rootNodes.getNode(0);
 
         assertEquals(10, sumToN.getCallTarget().call(4));
@@ -525,7 +527,7 @@ public class GettingStarted {
     public void testLoopWithBreak() {
         BytecodeParser<GettingStartedBytecodeRootNodeGen.Builder> parser = b -> {
             // @formatter:off
-            b.beginRoot(null); // TruffleLanguage goes here
+            b.beginRoot();
                 b.beginBlock();
                     BytecodeLocal total = b.createLocal();
                     BytecodeLocal i = b.createLocal();
@@ -583,7 +585,7 @@ public class GettingStarted {
             // @formatter:on
         };
 
-        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, parser);
         GettingStartedBytecodeRootNode sumToN = rootNodes.getNode(0);
 
         assertEquals(10, sumToN.getCallTarget().call(4));
@@ -623,7 +625,7 @@ public class GettingStarted {
              *   return arg0 or 42 / 0
              * </pre>
              */
-            b.beginRoot(null); // TruffleLanguage goes here
+            b.beginRoot();
                 b.beginReturn();
                     b.beginOr();
                         b.beginToBool();
@@ -646,7 +648,7 @@ public class GettingStarted {
              *   return arg0 sc_or 42 / 0
              * </pre>
              */
-            b.beginRoot(null); // TruffleLanguage goes here
+            b.beginRoot();
                 b.beginReturn();
                     // This operation produces the converted boolean value.
                     // Note that each operand is implicitly converted (it isn't necessary to emit a ToBool operation).
@@ -663,7 +665,7 @@ public class GettingStarted {
             b.endRoot();
             // @formatter:on
         };
-        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+        BytecodeRootNodes<GettingStartedBytecodeRootNode> rootNodes = GettingStartedBytecodeRootNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, parser);
         GettingStartedBytecodeRootNode eagerOr = rootNodes.getNode(0);
         GettingStartedBytecodeRootNode shortCircuitOr = rootNodes.getNode(1);
 
@@ -687,6 +689,14 @@ public class GettingStarted {
             fail("should not reach here.");
         } catch (ArithmeticException ex) {
         }
+    }
+
+    /**
+     * One of the parameters to {@code create} is a language instance. For simplicity, we return
+     * null here.
+     */
+    private static BytecodeDSLTestLanguage getLanguage() {
+        return null;
     }
 
     /**

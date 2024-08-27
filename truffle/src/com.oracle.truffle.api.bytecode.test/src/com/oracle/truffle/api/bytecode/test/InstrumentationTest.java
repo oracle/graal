@@ -80,7 +80,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 public class InstrumentationTest extends AbstractInstructionTest {
 
     private static InstrumentationTestRootNode parse(BytecodeParser<InstrumentationTestRootNodeGen.Builder> parser) {
-        BytecodeRootNodes<InstrumentationTestRootNode> nodes = InstrumentationTestRootNodeGen.create(BytecodeConfig.WITH_SOURCE, parser);
+        BytecodeRootNodes<InstrumentationTestRootNode> nodes = InstrumentationTestRootNodeGen.create(BytecodeInstrumentationTestLanguage.REF.get(null), BytecodeConfig.WITH_SOURCE, parser);
         return nodes.getNodes().get(nodes.getNodes().size() - 1);
     }
 
@@ -101,7 +101,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
     @Test
     public void testPointInstrumentation1() {
         InstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(BytecodeInstrumentationTestLanguage.REF.get(null));
+            b.beginRoot();
 
             b.emitPointInstrumentation1();
 
@@ -136,7 +136,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
     @Test
     public void testPointInstrumentation2() {
         InstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(BytecodeInstrumentationTestLanguage.REF.get(null));
+            b.beginRoot();
 
             b.emitPointInstrumentation1();
             b.emitPointInstrumentation2();
@@ -192,7 +192,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
     @Test
     public void testPointInstrumentationRecursive() {
         InstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(BytecodeInstrumentationTestLanguage.REF.get(null));
+            b.beginRoot();
 
             b.emitPointInstrumentation1();
             b.beginEnableInstrumentation();
@@ -257,7 +257,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
     @Test
     public void testBoxingElimination() {
         InstrumentationTestRootNode node = parse((b) -> {
-            b.beginRoot(BytecodeInstrumentationTestLanguage.REF.get(null));
+            b.beginRoot();
 
             BytecodeLocal l = b.createLocal();
             b.beginStoreLocal(l);

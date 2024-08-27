@@ -71,14 +71,14 @@ public class TypeSystemTest extends AbstractInstructionTest {
     private static final BytecodeDSLTestLanguage LANGUAGE = null;
 
     private static TypeSystemTestRootNode parse(BytecodeParser<TypeSystemTestRootNodeGen.Builder> builder) {
-        BytecodeRootNodes<TypeSystemTestRootNode> nodes = TypeSystemTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
-        return nodes.getNode(nodes.count() - 1);
+        BytecodeRootNodes<TypeSystemTestRootNode> nodes = TypeSystemTestRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, builder);
+        return nodes.getNode(0);
     }
 
     @Test
     public void testIntToLongCastTypeSystem() {
         TypeSystemTestRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginLongConsumer();
             b.emitIntProducer();
@@ -97,7 +97,7 @@ public class TypeSystemTest extends AbstractInstructionTest {
     @Test
     public void testIntToLongCastNoTypeSystem() {
         TypeSystemTestRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginLongConsumerNoTypeSystem();
             b.emitIntProducer();
@@ -117,7 +117,7 @@ public class TypeSystemTest extends AbstractInstructionTest {
     @Test
     public void testStringToLongCastTypeSystem() {
         TypeSystemTestRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginLongConsumer();
             b.emitStringProducer();
@@ -136,7 +136,7 @@ public class TypeSystemTest extends AbstractInstructionTest {
     @Test
     public void testStringToLongCastNoTypeSystem() {
         TypeSystemTestRootNode root = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginLongConsumerNoTypeSystem();
             b.emitStringProducer();

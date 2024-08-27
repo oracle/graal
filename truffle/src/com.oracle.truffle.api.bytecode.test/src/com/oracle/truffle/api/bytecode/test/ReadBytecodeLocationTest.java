@@ -81,14 +81,14 @@ public class ReadBytecodeLocationTest {
      * and then invoke {@link BytecodeNode#getBytecodeIndex} on $bytecode.
      */
     public BytecodeNodeWithStoredBci parseNode(BytecodeParser<BytecodeNodeWithStoredBciGen.Builder> builder) {
-        return BytecodeNodeWithStoredBciGen.create(BytecodeConfig.WITH_SOURCE, builder).getNode(0);
+        return BytecodeNodeWithStoredBciGen.create(null, BytecodeConfig.WITH_SOURCE, builder).getNode(0);
     }
 
     @Test
     public void testSimple() {
         Source source = Source.newBuilder("test", "arg0 ? foo : bar", "testSimple").build();
         BytecodeNodeWithStoredBci root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginSource(source);
             b.beginSourceSection(0, 16);
             b.beginBlock();
@@ -136,7 +136,7 @@ public class ReadBytecodeLocationTest {
         // be the outer one.
         Source source = Source.newBuilder("test", "return foo", "testSimple").build();
         BytecodeNodeWithStoredBci root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginSource(source);
             b.beginBlock();
 
@@ -169,7 +169,7 @@ public class ReadBytecodeLocationTest {
         // The bci should be updated when an exception is thrown.
         Source source = Source.newBuilder("test", "throw foo", "testSimple").build();
         BytecodeNodeWithStoredBci root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginSource(source);
             b.beginBlock();
 
@@ -207,7 +207,7 @@ public class ReadBytecodeLocationTest {
         // The bci should be updated when a coroutine yields.
         Source source = Source.newBuilder("test", "yield foo; return bar", "testSimple").build();
         BytecodeNodeWithStoredBci root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginSource(source);
             b.beginBlock();
 

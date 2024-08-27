@@ -154,7 +154,7 @@ public class StackTraceTest extends AbstractInstructionTest {
     public void testThrow() {
         int depth = run.depth;
         StackTraceTestRootNode[] nodes = chainCalls(depth, b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.emitDummy();
             b.emitThrowError();
             b.endRoot();
@@ -179,7 +179,7 @@ public class StackTraceTest extends AbstractInstructionTest {
     public void testThrowBehindInterop() {
         int depth = run.depth;
         StackTraceTestRootNode[] nodes = chainCalls(depth, b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginThrowErrorBehindInterop();
             b.emitLoadConstant(new ThrowErrorExecutable());
             b.endThrowErrorBehindInterop();
@@ -206,7 +206,7 @@ public class StackTraceTest extends AbstractInstructionTest {
     public void testCapture() {
         int depth = run.depth;
         StackTraceTestRootNode[] nodes = chainCalls(depth, b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.emitDummy();
             b.beginReturn();
             b.emitCaptureStack();
@@ -232,7 +232,7 @@ public class StackTraceTest extends AbstractInstructionTest {
         StackTraceTestRootNode[] nodes = chainCalls(depth, b -> {
             b.beginSource(s);
             b.beginSourceSection(0, "root0".length());
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.emitDummy();
             b.beginReturn();
             b.emitCaptureStack();
@@ -285,7 +285,7 @@ public class StackTraceTest extends AbstractInstructionTest {
     public void testNoLocation() {
         int depth = run.depth;
         StackTraceTestRootNode[] nodes = chainCalls(depth, b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.emitDummy();
             b.emitThrowErrorNoLocation();
             b.endRoot();
@@ -325,7 +325,7 @@ public class StackTraceTest extends AbstractInstructionTest {
                     b.beginSource(s);
                     b.beginSourceSection(0, name.length());
                 }
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.emitDummy();
                 b.beginReturn();
                 CallTarget target = nodes[index - 1].getCallTarget();
@@ -486,8 +486,8 @@ public class StackTraceTest extends AbstractInstructionTest {
     }
 
     private StackTraceTestRootNode parse(BytecodeParser<StackTraceTestRootNodeBuilder> parser) {
-        BytecodeRootNodes<StackTraceTestRootNode> nodes = StackTraceTestRootNodeBuilder.invokeCreate((Class<? extends StackTraceTestRootNode>) run.interpreter.clazz, BytecodeConfig.WITH_SOURCE,
-                        (BytecodeParser<? extends StackTraceTestRootNodeBuilder>) parser);
+        BytecodeRootNodes<StackTraceTestRootNode> nodes = StackTraceTestRootNodeBuilder.invokeCreate((Class<? extends StackTraceTestRootNode>) run.interpreter.clazz,
+                        LANGUAGE, BytecodeConfig.WITH_SOURCE, (BytecodeParser<? extends StackTraceTestRootNodeBuilder>) parser);
         StackTraceTestRootNode root = nodes.getNodes().get(nodes.getNodes().size() - 1);
         return root;
     }

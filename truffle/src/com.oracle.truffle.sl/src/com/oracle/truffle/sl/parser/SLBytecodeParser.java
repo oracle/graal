@@ -106,7 +106,7 @@ public final class SLBytecodeParser extends SLBaseParser {
 
     private static final boolean DO_LOG_NODE_CREATION = false;
     private static final boolean FORCE_SERIALIZE = false;
-    private static final boolean FORCE_MATERIALZE_COMPLETE = false;
+    private static final boolean FORCE_MATERIALIZE_COMPLETE = false;
 
     private static final Class<?>[] EXPRESSION = new Class<?>[]{ExpressionTag.class};
     private static final Class<?>[] READ_VARIABLE = new Class<?>[]{ExpressionTag.class, ReadVariableTag.class};
@@ -132,10 +132,10 @@ public final class SLBytecodeParser extends SLBaseParser {
                 throw new RuntimeException(ex);
             }
         } else {
-            if (FORCE_MATERIALZE_COMPLETE) {
-                nodes = SLBytecodeRootNodeGen.create(BytecodeConfig.COMPLETE, slParser);
+            if (FORCE_MATERIALIZE_COMPLETE) {
+                nodes = SLBytecodeRootNodeGen.create(language, BytecodeConfig.COMPLETE, slParser);
             } else {
-                nodes = SLBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, slParser);
+                nodes = SLBytecodeRootNodeGen.create(language, BytecodeConfig.DEFAULT, slParser);
             }
         }
 
@@ -201,7 +201,7 @@ public final class SLBytecodeParser extends SLBaseParser {
         int functionStartPos = nameToken.getStartIndex();
         int functionEndPos = ctx.getStop().getStopIndex();
         b.beginSourceSection(functionStartPos, functionEndPos - functionStartPos + 1);
-        b.beginRoot(language);
+        b.beginRoot();
 
         b.beginBlock();
         int parameterCount = enterFunction(ctx).size();

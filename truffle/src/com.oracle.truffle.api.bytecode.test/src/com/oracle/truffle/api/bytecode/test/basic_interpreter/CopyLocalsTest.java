@@ -67,7 +67,7 @@ public class CopyLocalsTest extends AbstractBasicInterpreterTest {
          */
 
         BasicInterpreter foo = parseNode("foo", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginBlock();
             b.beginStoreLocal(b.createLocal());
@@ -114,7 +114,7 @@ public class CopyLocalsTest extends AbstractBasicInterpreterTest {
          */
 
         BasicInterpreter foo = parseNode("foo", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginBlock();
 

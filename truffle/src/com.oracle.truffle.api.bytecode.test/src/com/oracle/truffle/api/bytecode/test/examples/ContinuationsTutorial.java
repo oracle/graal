@@ -111,8 +111,8 @@ public class ContinuationsTutorial {
     @Test
     public void testSimpleContinuation() {
         // @formatter:off
-        BytecodeRootNodes<YieldingBytecodeNode> nodes = YieldingBytecodeNodeGen.create(BytecodeConfig.DEFAULT, b -> {
-            b.beginRoot(null); // pass your TruffleLanguage here
+        BytecodeRootNodes<YieldingBytecodeNode> nodes = YieldingBytecodeNodeGen.create(null /* TruffleLanguage */, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
                 b.beginYield();
                     b.emitLoadConstant(42);
                 b.endYield();
@@ -149,8 +149,8 @@ public class ContinuationsTutorial {
     @Test
     public void testContinuationWithResumeValue() {
         // @formatter:off
-        BytecodeRootNodes<YieldingBytecodeNode> nodes = YieldingBytecodeNodeGen.create(BytecodeConfig.DEFAULT, b -> {
-            b.beginRoot(null); // pass your TruffleLanguage here
+        BytecodeRootNodes<YieldingBytecodeNode> nodes = YieldingBytecodeNodeGen.create(null /* TruffleLanguage */, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
                 BytecodeLocal x = b.createLocal();
                 b.beginStoreLocal(x);
                     b.beginYield();
@@ -192,8 +192,8 @@ public class ContinuationsTutorial {
     @Test
     public void testContinuationWithState() {
         // @formatter:off
-        BytecodeRootNodes<YieldingBytecodeNode> nodes = YieldingBytecodeNodeGen.create(BytecodeConfig.DEFAULT, b -> {
-            b.beginRoot(null); // pass your TruffleLanguage here
+        BytecodeRootNodes<YieldingBytecodeNode> nodes = YieldingBytecodeNodeGen.create(null /* TruffleLanguage */, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
                 BytecodeLocal x = b.createLocal("x", null);
                 b.beginStoreLocal(x);
                     b.emitLoadConstant(0);
@@ -342,9 +342,9 @@ public class ContinuationsTutorial {
     @Test
     public void testResume() {
         // @formatter:off
-        BytecodeRootNodes<YieldingBytecodeNodeWithResume> nodes = YieldingBytecodeNodeWithResumeGen.create(BytecodeConfig.DEFAULT, b -> {
+        BytecodeRootNodes<YieldingBytecodeNodeWithResume> nodes = YieldingBytecodeNodeWithResumeGen.create(null /* TruffleLanguage */, BytecodeConfig.DEFAULT, b -> {
             // def consume(gen)
-            b.beginRoot(null); // pass your TruffleLanguage here
+            b.beginRoot();
                 BytecodeLocal gen = b.createLocal();
 
                 b.beginStoreLocal(gen);
@@ -370,7 +370,7 @@ public class ContinuationsTutorial {
             b.endRoot();
 
             // def countToN(n)
-            b.beginRoot(null); // pass your TruffleLanguage here
+            b.beginRoot();
                 BytecodeLocal i = b.createLocal();
                 b.beginStoreLocal(i);
                     b.emitLoadConstant(0);

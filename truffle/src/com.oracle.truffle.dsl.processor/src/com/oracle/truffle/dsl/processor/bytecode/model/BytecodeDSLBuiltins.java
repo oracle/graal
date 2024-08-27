@@ -106,8 +106,6 @@ public class BytecodeDSLBuiltins {
                                         m.templateType.getSimpleName(), m.templateType.getSimpleName())) //
                         .setTransparent(true) //
                         .setVariadic(true) //
-                        .setOperationBeginArguments(
-                                        new OperationArgument(types.TruffleLanguage, OperationArgument.Encoding.LANGUAGE, "language", "the language to associate with the root node")) //
                         .setDynamicOperands(transparentOperationChild());
         m.ifThenOperation = m.operation(OperationKind.IF_THEN, "IfThen", """
                         IfThen implements an if-then statement. It evaluates {@code condition}, which must produce a boolean. If the value is {@code true}, it executes {@code thens}.

@@ -65,7 +65,7 @@ public class QuickeningTest extends AbstractInstructionTest {
     public void testAbs() {
         // return - (arg0)
         QuickeningTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAbs();
@@ -117,7 +117,7 @@ public class QuickeningTest extends AbstractInstructionTest {
     public void testAddAndNegate() {
         // return - ((arg0 + arg1) + arg0)
         QuickeningTestRootNode node = parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAbs();
@@ -188,8 +188,8 @@ public class QuickeningTest extends AbstractInstructionTest {
     }
 
     private static QuickeningTestRootNode parse(BytecodeParser<QuickeningTestRootNodeGen.Builder> builder) {
-        var nodes = QuickeningTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
-        return nodes.getNode(nodes.count() - 1);
+        var nodes = QuickeningTestRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, builder);
+        return nodes.getNode(0);
     }
 
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true)

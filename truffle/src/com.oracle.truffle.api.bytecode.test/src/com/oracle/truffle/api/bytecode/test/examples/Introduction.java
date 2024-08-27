@@ -92,7 +92,7 @@ public class Introduction {
     public void testInterpreter() {
         BytecodeParser<SampleInterpreterGen.Builder> parser = b -> {
             // @formatter:off
-            b.beginRoot(null); // TruffleLanguage goes here
+            b.beginRoot();
                 b.beginReturn();
                     b.beginAdd();
                         b.emitLoadArgument(0);
@@ -102,7 +102,7 @@ public class Introduction {
             b.endRoot();
             // @formatter:on
         };
-        BytecodeRootNodes<SampleInterpreter> rootNodes = SampleInterpreterGen.create(BytecodeConfig.DEFAULT, parser);
+        BytecodeRootNodes<SampleInterpreter> rootNodes = SampleInterpreterGen.create(getLanguage(), BytecodeConfig.DEFAULT, parser);
 
         SampleInterpreter rootNode = rootNodes.getNode(0);
         // System.out.println(rootNode.dump());
@@ -110,5 +110,13 @@ public class Introduction {
         RootCallTarget callTarget = rootNode.getCallTarget();
         assertEquals(42, callTarget.call(40, 2));
         assertEquals("Hello, world!", callTarget.call("Hello, ", "world!"));
+    }
+
+    /**
+     * One of the parameters to {@code create} is a language instance. For simplicity, we return
+     * null here.
+     */
+    private static BytecodeDSLTestLanguage getLanguage() {
+        return null;
     }
 }

@@ -72,7 +72,7 @@ public class VariadicTest {
             }
 
             var root = parse((b) -> {
-                b.beginRoot(null);
+                b.beginRoot();
                 b.beginReturn();
                 b.beginVariadic0Operation();
                 for (int j = 0; j < variadicCount; j++) {
@@ -99,7 +99,7 @@ public class VariadicTest {
             }
 
             var root = parse((b) -> {
-                b.beginRoot(null);
+                b.beginRoot();
                 b.beginReturn();
                 b.beginVariadic1Operation();
                 for (int j = 0; j < variadicCount; j++) {
@@ -116,7 +116,7 @@ public class VariadicTest {
     }
 
     VariadicOperationsNode parse(BytecodeParser<VariadicOperationsNodeGen.Builder> builder) {
-        return VariadicOperationsNodeGen.create(BytecodeConfig.WITH_SOURCE, builder).getNode(0);
+        return VariadicOperationsNodeGen.create(null, BytecodeConfig.WITH_SOURCE, builder).getNode(0);
     }
 
     @ProvidedTags(ExpressionTag.class)

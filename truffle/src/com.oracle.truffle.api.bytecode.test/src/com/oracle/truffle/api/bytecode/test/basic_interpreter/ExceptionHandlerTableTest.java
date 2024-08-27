@@ -195,7 +195,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         //   return 123;
         // }
         BasicInterpreter root = parseNode("tryCatch", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginTryCatch();
             emitReturn(b, 42);
             emitReturn(b, 123);
@@ -218,7 +218,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         //   return 100
         // }
         BasicInterpreter root = parseNode("tryCatchNestedInTry", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginTryCatch();
                 b.beginTryCatch();
@@ -246,7 +246,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         //   }
         // }
         BasicInterpreter root = parseNode("tryCatchNestedInCatch", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginTryCatch();
                 emitReturn(b, 42);
@@ -273,7 +273,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         //   }
         // }
         BasicInterpreter root = parseNode("tryCatchNestedInCatch", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginTag(ExpressionTag.class);
             b.beginTryCatch();
@@ -308,7 +308,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // }
         // lbl:
         BasicInterpreter root = parseNode("tryCatchBranchOutOfTag", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
@@ -352,7 +352,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         //   lbl:
         // }
         BasicInterpreter root = parseNode("tryCatchBranchWithinTag", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginTag(ExpressionTag.class);
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
@@ -388,7 +388,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         //   B
         // }
         BasicInterpreter root = parseNode("finallyTry", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTry(() -> emitNop(b, "B"));
                 emitNop(b, "A");
             b.endFinallyTry();
@@ -411,7 +411,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // }
         // lbl:
         BasicInterpreter root = parseNode("finallyTry", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
 
@@ -448,7 +448,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // }
         // lbl:
         BasicInterpreter root = parseNode("finallyTry", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
 
@@ -486,7 +486,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         //   C
         // }
         BasicInterpreter root = parseNode("finallyTry", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTry(() -> emitNop(b, "C"));
                 b.beginFinallyTry(() -> emitNop(b, "B"));
                     emitNop(b, "A");
@@ -520,7 +520,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // }
         // outerLbl:
         BasicInterpreter root = parseNode("finallyTry", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
 
             BytecodeLabel outerLbl = b.createLabel();
@@ -573,7 +573,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         // }
         // outerLbl:
         BasicInterpreter root = parseNode("finallyTryNestedEarlyExitsInFinally", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTry(() -> emitNop(b, "G"));
                 b.beginBlock();
                     b.beginFinallyTry(() -> {
@@ -606,7 +606,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         //   123
         // }
         BasicInterpreter root = parseNode("contiguousTagRanges", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginTag(StatementTag.class);
             b.beginBlock();
@@ -637,7 +637,7 @@ public class ExceptionHandlerTableTest extends AbstractBasicInterpreterTest {
         //   B
         // }
         BasicInterpreter root = parseNode("contiguousTagsNotMerged", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginTag(StatementTag.class);
             emitNop(b, "A");

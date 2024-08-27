@@ -72,7 +72,7 @@ public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
     private static final BytecodeDSLTestLanguage LANGUAGE = null;
 
     private static BoxingEliminationTypeSystemRootNode parse(BytecodeParser<BoxingEliminationTypeSystemRootNodeGen.Builder> builder) {
-        BytecodeRootNodes<BoxingEliminationTypeSystemRootNode> nodes = BoxingEliminationTypeSystemRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<BoxingEliminationTypeSystemRootNode> nodes = BoxingEliminationTypeSystemRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 
@@ -81,7 +81,7 @@ public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
     @Ignore
     public void testLocals() {
         BoxingEliminationTypeSystemRootNode node = (BoxingEliminationTypeSystemRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLocal l0 = b.createLocal();
 
             b.beginStoreLocal(l0);
@@ -142,7 +142,7 @@ public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
     @Test
     public void testCustomLocals() {
         BoxingEliminationTypeSystemRootNode node = (BoxingEliminationTypeSystemRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLocal l0 = b.createLocal();
 
             b.beginStoreLocalCustom(l0);
@@ -205,7 +205,7 @@ public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
     @Test
     public void testCastConstantIntToLong() {
         BoxingEliminationTypeSystemRootNode node = (BoxingEliminationTypeSystemRootNode) parse(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginLongConsumer();
             b.emitLoadArgument(0);

@@ -64,7 +64,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         // return 3;
 
         RootCallTarget root = parse("yield", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginYield();
             b.emitLoadConstant(1L);
@@ -98,7 +98,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         // return local;
 
         RootCallTarget root = parse("yieldLocal", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLocal local = b.createLocal();
 
             b.beginStoreLocal(local);
@@ -154,7 +154,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         // frame containing the stack locals).
 
         RootCallTarget root = parse("yieldTee", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLocal local = b.createLocal();
 
             b.beginYield();
@@ -196,7 +196,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         // return (yield 1) + (yield 2);
 
         RootCallTarget root = parse("yieldStack", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAddOperation();
@@ -240,7 +240,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         // @formatter:on
 
         RootCallTarget root = parse("yieldFromFinally", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTry(() -> {
                 b.beginYield();
@@ -281,7 +281,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
 
         // If we update arguments, the resumed code should see the updated value.
         RootCallTarget root = parse("yieldUpdateArguments", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginYield();
             b.emitLoadArgument(0);
@@ -303,7 +303,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
     @Test
     public void testYieldGetSourceRootNode() {
         BasicInterpreter rootNode = parseNode("yieldGetSourceRootNode", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginYield();
             b.emitLoadArgument(0);
@@ -324,7 +324,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
     @Test
     public void testYieldGetLocation() {
         BasicInterpreter rootNode = parseNode("yieldGetLocation", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginYield();
             b.emitCurrentLocation();
@@ -365,7 +365,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
 
         BasicInterpreter rootNode = parseNode("yieldReparseSources", b -> {
             b.beginSource(source);
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal result = b.createLocal();
             b.beginStoreLocal(result);
@@ -415,7 +415,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
     @Test
     public void testYieldTransitionToInstrumented() {
         BasicInterpreter rootNode = parseNode("yieldTransitionToInstrumented", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal result = b.createLocal();
             b.beginStoreLocal(result);
@@ -450,7 +450,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
     @Test
     public void testYieldInstrumentBeforeTransitionToCached() {
         BasicInterpreter rootNode = parseNode("yieldInstrumentBeforeTransitionToCached", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal result = b.createLocal();
             b.beginStoreLocal(result);
@@ -478,7 +478,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
     @Test
     public void testYieldTransitionToInstrumentedInsideContinuation() {
         BasicInterpreter rootNode = parseNode("yieldTransitionToInstrumentedInsideContinuation", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal result = b.createLocal();
             b.beginStoreLocal(result);
@@ -514,7 +514,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
     @Test
     public void testYieldTransitionToInstrumentedInsideContinuationTwice() {
         BasicInterpreter rootNode = parseNode("yieldTransitionToInstrumentedInsideContinuationTwice", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal result = b.createLocal();
             b.beginStoreLocal(result);
@@ -570,7 +570,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         // @formatter:on
 
         BasicInterpreter rootNode = parseNode("yieldFromFinally", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTry(() -> {
                 b.beginYield();

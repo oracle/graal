@@ -99,7 +99,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         RootCallTarget root = parse("finallyTryBasic", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTry(() -> emitAppend(b, 2));
             emitAppend(b, 1);
             b.endFinallyTry();
@@ -123,7 +123,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         RootCallTarget root = parse("finallyTryException", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTry(() -> emitAppend(b, 3));
                 b.beginBlock();
                     emitAppend(b, 1);
@@ -151,7 +151,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(3);
 
         RootCallTarget root = parse("finallyTryReturn", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTry(() -> emitAppend(b, 1));
                 b.beginBlock();
                     emitAppend(b, 2);
@@ -182,7 +182,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(5);
 
         RootCallTarget root = parse("finallyTryBranchOut", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
 
             b.beginFinallyTry(() -> emitAppend(b, 3));
@@ -217,7 +217,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(4);
 
         BasicInterpreter root = parseNode("finallyTryBranchForwardOutOfHandler", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
 
             b.beginFinallyTry(() -> {
@@ -262,7 +262,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(4);
 
         BasicInterpreter root = parseNode("finallyTryBranchForwardOutOfHandler", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
 
             b.beginFinallyTry(() -> {
@@ -310,7 +310,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
         assertThrowsWithMessage("Backward branches are unsupported. Use a While operation to model backward control flow.", IllegalStateException.class, () -> {
             parse("finallyTryBranchBackwardOutOfHandler", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 BytecodeLabel lbl = b.createLabel();
                 BytecodeLocal local = b.createLocal();
 
@@ -382,7 +382,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(8);
 
         BasicInterpreter root = parseNode("finallyTryBranchWithinHandler", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
             b.beginFinallyTry(() -> {
@@ -437,7 +437,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(8);
 
         BasicInterpreter root = parseNode("finallyTryIfThenWithinHandler", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
             b.beginFinallyTry(() -> {
@@ -499,7 +499,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(9);
 
         BasicInterpreter root = parseNode("finallyTryIfThenElseWithinHandler", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
             b.beginFinallyTry(() -> {
@@ -559,7 +559,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(11);
 
         BasicInterpreter root = parseNode("finallyTryConditionalWithinHandler", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
 
@@ -638,7 +638,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(9);
 
         RootCallTarget root = parse("finallyTryLoopWithinHandler", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal local = b.createLocal();
 
@@ -706,7 +706,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(11);
 
         RootCallTarget root = parse("finallyTryShortCircuitOpWithinHandler", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTry(() -> {
                 b.beginBlock();
@@ -784,7 +784,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(7);
 
         RootCallTarget root = parse("finallyTryNonThrowingTryCatchWithinHandler", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTry(() -> {
                 b.beginBlock();
@@ -831,7 +831,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(8);
 
         RootCallTarget root = parse("finallyTryThrowingTryCatchWithinHandler", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTry(() -> {
                 b.beginBlock();
                     emitAppend(b, 3);
@@ -873,7 +873,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
         assertThrowsWithMessage("Operation Block ended without emitting one or more declared labels.", IllegalStateException.class, () -> {
             parse("finallyTryBranchWithinHandlerNoLabel", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
 
                 b.beginFinallyTry(() -> {
                     b.beginBlock();
@@ -905,7 +905,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // This error has nothing to do with try-finally, but it's still useful to ensure this doesn't work.
         assertThrowsWithMessage("BytecodeLabel must be emitted inside the same operation it was created in.", IllegalStateException.class, () -> {
             parse("finallyTryBranchIntoTry", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 BytecodeLabel lbl = b.createLabel();
                 b.beginFinallyTry(() -> {
                     b.beginBlock();
@@ -938,7 +938,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // This error has nothing to do with try-finally, but it's still useful to ensure this doesn't work.
         assertThrowsWithMessage("BytecodeLabel must be emitted inside the same operation it was created in.", IllegalStateException.class, () -> {
             parse("finallyTryBranchIntoFinally", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 BytecodeLabel lbl = b.createLabel();
                 b.beginFinallyTry(() -> {
                     b.beginBlock();
@@ -983,7 +983,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(10);
         // return 0;
         BasicInterpreter root = parseNode("finallyTryBranchIntoOuterFinally", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
 
@@ -1051,7 +1051,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(9);
 
         BasicInterpreter root = parseNode("finallyTryBranchWhileInParentHandler", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
                 b.beginFinallyTry(() -> {
                     b.beginBlock();
@@ -1104,7 +1104,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         RootCallTarget root = parse("finallyTryNestedFinally", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTry(() -> {
                 b.beginFinallyTry(() -> emitAppend(b, 5));
@@ -1152,7 +1152,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(7);
 
         RootCallTarget root = parse("finallyTryNestedInTry", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
             b.beginFinallyTry(() -> emitAppend(b, 6));
@@ -1207,7 +1207,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(10);
 
         RootCallTarget root = parse("finallyTryNestedInFinally", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLabel outerLbl = b.createLabel();
             b.beginFinallyTry(() -> {
@@ -1280,7 +1280,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         RootCallTarget root = parse("finallyTryNestedInFinally", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTry(() -> emitAppend(b, 11));
                 b.beginBlock();
                 BytecodeLabel outerLbl = b.createLabel();
@@ -1343,7 +1343,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         BasicInterpreter root = parseNode("finallyTryNestedTryThrow", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTry(() -> emitAppend(b, 5));
                 b.beginTryCatch();
@@ -1385,7 +1385,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // lbl:
 
         RootCallTarget root = parse("finallyTryHandlerNotGuarded", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
             b.beginFinallyTry(() -> {
                 b.beginBlock();
@@ -1441,7 +1441,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // lbl:
 
         RootCallTarget root = parse("finallyTryOuterHandlerNotGuarded", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
             b.beginFinallyTry(() -> {
                 b.beginBlock();
@@ -1501,7 +1501,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // lbl:
 
         RootCallTarget root = parse("finallyTryOuterHandlerNotGuardedByTryCatch", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
             b.beginFinallyTry(() -> {
                 b.beginBlock();
@@ -1554,7 +1554,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         RootCallTarget root = parse("finallyTryCatchBasic", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTryCatch(() -> emitAppend(b, 2));
             emitAppend(b, 1);
             emitAppend(b, 3);
@@ -1578,7 +1578,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         RootCallTarget root = parse("finallyTryCatchException", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTryCatch(() -> emitAppend(b, 3));
                 b.beginBlock();
                     emitAppend(b, 1);
@@ -1607,7 +1607,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(4);
 
         RootCallTarget root = parse("finallyTryCatchReturn", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTryCatch(() -> emitAppend(b, 2));
                 b.beginBlock();
                     emitAppend(b, 1);
@@ -1637,7 +1637,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         RootCallTarget root = parse("finallyTryCatchBindBasic", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTryCatch(() -> emitAppend(b, 2));
                 b.beginBlock();
                     emitAppend(b, 1);
@@ -1682,7 +1682,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(6);
 
         RootCallTarget root = parse("finallyTryCatchBranchOut", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
 
             b.beginFinallyTryCatch(() -> emitAppend(b, 3));
@@ -1723,7 +1723,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(7);
 
         RootCallTarget root = parse("finallyTryCatchBranchOutOfCatch", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
 
             b.beginFinallyTryCatch(() -> emitAppend(b, 3));
@@ -1770,7 +1770,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(7);
 
         RootCallTarget root = parse("finallyTryCatchBranchWithinHandler", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTryCatch(() -> {
                 b.beginBlock();
@@ -1817,7 +1817,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // arg0.append(7);
 
         RootCallTarget root = parse("finallyTryCatchBranchWithinCatchHandler", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTryCatch(() -> emitAppend(b, 3));
                 b.beginBlock();
@@ -1859,7 +1859,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         RootCallTarget root = parse("finallyTryCatchException", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTryCatch(() -> emitAppend(b, 3));
                 b.beginBlock();
                     emitAppend(b, 1);
@@ -1897,7 +1897,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
 
         RootCallTarget root = parse("finallyTryCatchExceptionInFinally", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginFinallyTryCatch(() -> {
                 b.beginBlock();
                     emitAppend(b, 3);
@@ -1941,7 +1941,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // lbl:
         // arg0.append(8);
         RootCallTarget root = parse("finallyTryNestedFunction", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
             b.beginFinallyTry(() -> {
@@ -1949,16 +1949,16 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
                     for (int i = 0; i < 10; i++) {
                         // Create extra root nodes to detect any serialization mismatches
-                        b.beginRoot(LANGUAGE);
+                        b.beginRoot();
                             emitThrow(b, -123);
                         b.endRoot();
                     }
 
-                    b.beginRoot(LANGUAGE);
+                    b.beginRoot();
                         emitAppend(b, 5);
                     BasicInterpreter f = b.endRoot();
 
-                    b.beginRoot(LANGUAGE);
+                    b.beginRoot();
                         emitAppend(b, 6);
                     BasicInterpreter g = b.endRoot();
 
@@ -1991,7 +1991,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
             for (int i = 0; i < 20; i++) {
                 // Create extra root nodes to detect any serialization mismatches
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                     emitThrow(b, -456);
                 b.endRoot();
             }
@@ -2022,7 +2022,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // lbl:
         // x()
         RootCallTarget root = parse("finallyTryNestedFunction", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
             BytecodeLocal x = b.createLocal();
@@ -2030,16 +2030,16 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
                 b.beginBlock();
                     for (int i = 0; i < 10; i++) {
                         // Create extra root nodes to detect any serialization mismatches
-                        b.beginRoot(LANGUAGE);
+                        b.beginRoot();
                             emitThrow(b, -123);
                         b.endRoot();
                     }
 
-                    b.beginRoot(LANGUAGE);
+                    b.beginRoot();
                         emitAppend(b, 4);
                     BasicInterpreter f = b.endRoot();
 
-                    b.beginRoot(LANGUAGE);
+                    b.beginRoot();
                         emitAppend(b, 5);
                     BasicInterpreter g = b.endRoot();
 
@@ -2069,7 +2069,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
             for (int i = 0; i < 20; i++) {
                 // Create extra root nodes to detect any serialization mismatches
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                     emitThrow(b, -456);
                 b.endRoot();
             }
@@ -2098,25 +2098,25 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
         // lbl:
         BasicInterpreter main = parseNode("finallyTryNestedFunctionFields", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
             b.beginFinallyTry(() -> {
                 b.beginBlock();
                     for (int i = 0; i < 10; i++) {
                         // Create extra root nodes to detect any serialization mismatches
-                        b.beginRoot(LANGUAGE);
+                        b.beginRoot();
                             emitThrow(b, -123);
                         BasicInterpreter dummy = b.endRoot();
                         dummy.setName("dummy" + i);
                     }
 
-                    b.beginRoot(LANGUAGE);
+                    b.beginRoot();
                         b.emitVoidOperation();
                     BasicInterpreter f = b.endRoot();
                     f.name = "f";
 
-                    b.beginRoot(LANGUAGE);
+                    b.beginRoot();
                         b.emitVoidOperation();
                     BasicInterpreter g = b.endRoot();
                     g.name = "g";
@@ -2145,7 +2145,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
             for (int i = 0; i < 20; i++) {
                 // Create extra root nodes to detect any serialization mismatches
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                     emitThrow(b, -456);
                 BasicInterpreter dummy = b.endRoot();
                 dummy.setName("outerDummy" + i);
@@ -2210,23 +2210,23 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         // }
         // lbl:
         BasicInterpreter main = parseNode("finallyTryNestedFunctionFields", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             BytecodeLabel lbl = b.createLabel();
             b.beginFinallyTry(() -> {
                 b.beginBlock();
                     for (int i = 0; i < 10; i++) {
                         // Create extra root nodes to detect any serialization mismatches
-                        b.beginRoot(LANGUAGE);
+                        b.beginRoot();
                             emitThrow(b, -123);
                         b.endRoot();
                     }
 
-                    b.beginRoot(LANGUAGE);
+                    b.beginRoot();
                         b.emitVoidOperation();
                     BasicInterpreter f = b.endRoot();
 
-                    b.beginRoot(LANGUAGE);
+                    b.beginRoot();
                         b.emitVoidOperation();
                     BasicInterpreter g = b.endRoot();
 
@@ -2253,7 +2253,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
             for (int i = 0; i < 20; i++) {
                 // Create extra root nodes to detect any serialization mismatches
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                     emitThrow(b, -456);
                 b.endRoot();
             }
@@ -2285,13 +2285,13 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
         //   if (arg1) f() else g()
         // }
         RootCallTarget root = parse("finallyTryCallOuterFunction", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             emitAppend(b, 2);
             BasicInterpreter f = b.endRoot();
 
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             emitAppend(b, 3);
             BasicInterpreter g = b.endRoot();
 
@@ -2299,7 +2299,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
                 b.beginBlock();
                     for (int i = 0; i < 10; i++) {
                         // Create extra root nodes to detect any serialization mismatches
-                        b.beginRoot(LANGUAGE);
+                        b.beginRoot();
                             emitThrow(b, -123);
                         b.endRoot();
                     }
@@ -2322,7 +2322,7 @@ public class FinallyTryTest extends AbstractBasicInterpreterTest {
 
             for (int i = 0; i < 20; i++) {
                 // Create extra root nodes to detect any serialization mismatches
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                     emitThrow(b, -456);
                 b.endRoot();
             }

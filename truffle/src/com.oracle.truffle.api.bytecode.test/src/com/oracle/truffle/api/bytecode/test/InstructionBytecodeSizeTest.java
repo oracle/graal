@@ -87,17 +87,17 @@ public class InstructionBytecodeSizeTest {
     @Test
     public void testEstimations() throws Exception {
         OneOperationNode node1 = parse1((b) -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.endRoot();
         });
 
         TwoOperationNode node2 = parse2((b) -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.endRoot();
         });
 
         TwentyOperationNode node20 = parse20((b) -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.endRoot();
         });
 
@@ -132,7 +132,7 @@ public class InstructionBytecodeSizeTest {
     @Test
     public void testMany() throws Exception {
         ManyInstructionNode node = parseMany((b) -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.endRoot();
         });
 
@@ -492,22 +492,22 @@ public class InstructionBytecodeSizeTest {
     }
 
     private static OneOperationNode parse1(BytecodeParser<OneOperationNodeGen.Builder> builder) {
-        BytecodeRootNodes<OneOperationNode> nodes = OneOperationNodeGen.create(BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<OneOperationNode> nodes = OneOperationNodeGen.create(null, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 
     private static TwoOperationNode parse2(BytecodeParser<TwoOperationNodeGen.Builder> builder) {
-        BytecodeRootNodes<TwoOperationNode> nodes = TwoOperationNodeGen.create(BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<TwoOperationNode> nodes = TwoOperationNodeGen.create(null, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 
     private static TwentyOperationNode parse20(BytecodeParser<TwentyOperationNodeGen.Builder> builder) {
-        BytecodeRootNodes<TwentyOperationNode> nodes = TwentyOperationNodeGen.create(BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<TwentyOperationNode> nodes = TwentyOperationNodeGen.create(null, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 
     private static ManyInstructionNode parseMany(BytecodeParser<ManyInstructionNodeGen.Builder> builder) {
-        BytecodeRootNodes<ManyInstructionNode> nodes = ManyInstructionNodeGen.create(BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<ManyInstructionNode> nodes = ManyInstructionNodeGen.create(null, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 
