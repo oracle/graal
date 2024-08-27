@@ -130,7 +130,7 @@ public class VariadicTest {
     @GenerateBytecode(boxingEliminationTypes = {long.class}, languageClass = TestLanguage.class, enableYield = true, enableSerialization = true)
     public abstract static class VariadicOperationsNode extends RootNode implements BytecodeRootNode {
 
-        protected VariadicOperationsNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected VariadicOperationsNode(TestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 

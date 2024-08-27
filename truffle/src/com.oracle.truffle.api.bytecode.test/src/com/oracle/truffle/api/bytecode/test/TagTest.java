@@ -2606,8 +2606,7 @@ public class TagTest extends AbstractInstructionTest {
     @OperationProxy(value = ExpressionAdd.class, name = "ImplicitExpressionAddProxy", tags = ExpressionTag.class)
     public abstract static class TagInstrumentationTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected TagInstrumentationTestRootNode(TruffleLanguage<?> language,
-                        FrameDescriptor frameDescriptor) {
+        protected TagInstrumentationTestRootNode(TagTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -2718,8 +2717,7 @@ public class TagTest extends AbstractInstructionTest {
                     enableSerialization = true, boxingEliminationTypes = {int.class})
     public abstract static class TagInstrumentationTestWithPrologAndEpilogRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected TagInstrumentationTestWithPrologAndEpilogRootNode(TruffleLanguage<?> language,
-                        FrameDescriptor frameDescriptor) {
+        protected TagInstrumentationTestWithPrologAndEpilogRootNode(TagTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -2898,7 +2896,7 @@ public class TagTest extends AbstractInstructionTest {
                     enableTagInstrumentation = true)
     public abstract static class ErrorNoRootTag extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected ErrorNoRootTag(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected ErrorNoRootTag(NoRootTagTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -2917,7 +2915,7 @@ public class TagTest extends AbstractInstructionTest {
                     enableTagInstrumentation = true, enableRootTagging = false)
     public abstract static class NoRootTagNoError extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected NoRootTagNoError(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected NoRootTagNoError(NoRootTagTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -2951,7 +2949,7 @@ public class TagTest extends AbstractInstructionTest {
                     enableTagInstrumentation = true)
     public abstract static class ErrorNoRootBodyTag extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected ErrorNoRootBodyTag(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected ErrorNoRootBodyTag(NoRootBodyTagTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -2970,7 +2968,7 @@ public class TagTest extends AbstractInstructionTest {
                     enableTagInstrumentation = true, enableRootBodyTagging = false)
     public abstract static class NoRootBodyTagNoError extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected NoRootBodyTagNoError(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected NoRootBodyTagNoError(NoRootBodyTagTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -2989,7 +2987,7 @@ public class TagTest extends AbstractInstructionTest {
                     enableTagInstrumentation = false)
     public abstract static class ErrorImplicitTag1 extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected ErrorImplicitTag1(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected ErrorImplicitTag1(NoRootBodyTagTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -3010,7 +3008,7 @@ public class TagTest extends AbstractInstructionTest {
                     enableTagInstrumentation = true, enableRootTagging = false)
     public abstract static class ErrorImplicitTag2 extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected ErrorImplicitTag2(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected ErrorImplicitTag2(NoRootTagTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -3033,7 +3031,7 @@ public class TagTest extends AbstractInstructionTest {
     @OperationProxy(value = ExpressionAdd.class, tags = ExpressionTag.class)
     public abstract static class ErrorImplicitTag3 extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected ErrorImplicitTag3(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected ErrorImplicitTag3(NoRootBodyTagTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -3045,7 +3043,7 @@ public class TagTest extends AbstractInstructionTest {
     @OperationProxy(value = ExpressionAdd.class, tags = StatementTag.class)
     public abstract static class ErrorImplicitTag4 extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected ErrorImplicitTag4(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected ErrorImplicitTag4(NoRootTagTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 

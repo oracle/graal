@@ -46,14 +46,12 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.test.VariadicTest.TestLanguage;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -191,7 +189,7 @@ public class TypeSystemTest extends AbstractInstructionTest {
             }
         }
 
-        protected TypeSystemTestRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected TypeSystemTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -258,24 +256,24 @@ public class TypeSystemTest extends AbstractInstructionTest {
     }
 
     @GenerateBytecode(//
-                    languageClass = TestLanguage.class)
+                    languageClass = BytecodeDSLTestLanguage.class)
     @TypeSystemReference(InvalidTypeSystem.class)
     @SuppressWarnings("unused")
     @ExpectError("The used type system is invalid. Fix errors in the type system first.")
     abstract static class InvalidTypeSystemRootNode1 extends RootNode implements BytecodeRootNode {
 
-        protected InvalidTypeSystemRootNode1(TruffleLanguage<?> language, FrameDescriptor d) {
+        protected InvalidTypeSystemRootNode1(BytecodeDSLTestLanguage language, FrameDescriptor d) {
             super(language, d);
         }
 
     }
 
     @GenerateBytecode(//
-                    languageClass = TestLanguage.class)
+                    languageClass = BytecodeDSLTestLanguage.class)
     @SuppressWarnings("unused")
     abstract static class InvalidTypeSystemRootNode2 extends RootNode implements BytecodeRootNode {
 
-        protected InvalidTypeSystemRootNode2(TruffleLanguage<?> language, FrameDescriptor d) {
+        protected InvalidTypeSystemRootNode2(BytecodeDSLTestLanguage language, FrameDescriptor d) {
             super(language, d);
         }
 
@@ -295,7 +293,7 @@ public class TypeSystemTest extends AbstractInstructionTest {
     @TypeSystemReference(TypeSystemTestTypeSystem.class)
     abstract static class SameTypeSystemRootNode extends RootNode implements BytecodeRootNode {
 
-        protected SameTypeSystemRootNode(TruffleLanguage<?> language, FrameDescriptor d) {
+        protected SameTypeSystemRootNode(BytecodeDSLTestLanguage language, FrameDescriptor d) {
             super(language, d);
         }
 

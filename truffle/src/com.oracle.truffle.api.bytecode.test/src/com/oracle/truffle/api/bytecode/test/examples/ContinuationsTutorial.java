@@ -45,7 +45,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
@@ -83,7 +82,7 @@ public class ContinuationsTutorial {
      */
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true)
     public abstract static class YieldingBytecodeNode extends RootNode implements BytecodeRootNode {
-        protected YieldingBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected YieldingBytecodeNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -263,7 +262,7 @@ public class ContinuationsTutorial {
      */
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSpecializationIntrospection = true)
     public abstract static class YieldingBytecodeNodeWithResume extends RootNode implements BytecodeRootNode {
-        protected YieldingBytecodeNodeWithResume(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected YieldingBytecodeNodeWithResume(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 

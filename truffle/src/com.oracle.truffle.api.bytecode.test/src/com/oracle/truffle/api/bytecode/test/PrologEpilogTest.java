@@ -60,7 +60,6 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
@@ -531,7 +530,7 @@ abstract class PrologEpilogBytecodeNode extends DebugBytecodeRootNode implements
     transient RuntimeException throwInExceptionalEpilog = null;
     transient boolean internalExceptionIntercepted = false;
 
-    protected PrologEpilogBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected PrologEpilogBytecodeNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -621,7 +620,7 @@ abstract class PrologEpilogBytecodeNode extends DebugBytecodeRootNode implements
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class DuplicatePrologEpilogErrorNode extends RootNode implements BytecodeRootNode {
-    protected DuplicatePrologEpilogErrorNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected DuplicatePrologEpilogErrorNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -677,7 +676,7 @@ abstract class DuplicatePrologEpilogErrorNode extends RootNode implements Byteco
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadPrologErrorNode extends RootNode implements BytecodeRootNode {
-    protected BadPrologErrorNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BadPrologErrorNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -693,7 +692,7 @@ abstract class BadPrologErrorNode extends RootNode implements BytecodeRootNode {
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadPrologErrorNode2 extends RootNode implements BytecodeRootNode {
-    protected BadPrologErrorNode2(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BadPrologErrorNode2(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -709,7 +708,7 @@ abstract class BadPrologErrorNode2 extends RootNode implements BytecodeRootNode 
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadEpilogErrorNode extends RootNode implements BytecodeRootNode {
-    protected BadEpilogErrorNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BadEpilogErrorNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -726,7 +725,7 @@ abstract class BadEpilogErrorNode extends RootNode implements BytecodeRootNode {
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadEpilogErrorNode2 extends RootNode implements BytecodeRootNode {
-    protected BadEpilogErrorNode2(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BadEpilogErrorNode2(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -747,7 +746,7 @@ abstract class BadEpilogErrorNode2 extends RootNode implements BytecodeRootNode 
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadExceptionalEpilogErrorNode1 extends RootNode implements BytecodeRootNode {
-    protected BadExceptionalEpilogErrorNode1(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BadExceptionalEpilogErrorNode1(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -763,7 +762,7 @@ abstract class BadExceptionalEpilogErrorNode1 extends RootNode implements Byteco
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadExceptionalEpilogErrorNode2 extends RootNode implements BytecodeRootNode {
-    protected BadExceptionalEpilogErrorNode2(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BadExceptionalEpilogErrorNode2(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -799,7 +798,7 @@ abstract class BadExceptionalEpilogErrorNode2 extends RootNode implements Byteco
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadExceptionalEpilogErrorNode3 extends RootNode implements BytecodeRootNode {
-    protected BadExceptionalEpilogErrorNode3(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BadExceptionalEpilogErrorNode3(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 

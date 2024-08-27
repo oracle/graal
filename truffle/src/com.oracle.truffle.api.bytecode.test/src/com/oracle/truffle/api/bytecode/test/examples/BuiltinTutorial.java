@@ -137,7 +137,7 @@ public class BuiltinTutorial {
     @GenerateBytecode(languageClass = LanguageWithBuiltins.class, enableUncachedInterpreter = true, enableSerialization = true)
     public abstract static class BuiltinLanguageRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected BuiltinLanguageRootNode(TruffleLanguage<?> language,
+        protected BuiltinLanguageRootNode(LanguageWithBuiltins language,
                         FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }

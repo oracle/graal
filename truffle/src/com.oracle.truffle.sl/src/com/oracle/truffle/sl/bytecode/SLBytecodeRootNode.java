@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.bytecode;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -129,8 +128,8 @@ import com.oracle.truffle.sl.runtime.SLNull;
 @ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, operator = Operator.OR_RETURN_CONVERTED)
 public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeRootNode {
 
-    protected SLBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
-        super((SLLanguage) language, frameDescriptor);
+    protected SLBytecodeRootNode(SLLanguage language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
     }
 
     protected TruffleString tsName;

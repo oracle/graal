@@ -97,7 +97,7 @@ public class GettingStarted {
          * {@link TruffleLanguage} and a {@link FrameDescriptor} (or
          * {@link FrameDescriptor.Builder}).
          */
-        protected GettingStartedBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected GettingStartedBytecodeRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 

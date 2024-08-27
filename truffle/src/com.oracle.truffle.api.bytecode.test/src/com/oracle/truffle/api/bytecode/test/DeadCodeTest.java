@@ -45,7 +45,6 @@ import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
@@ -960,7 +959,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
     @ShortCircuitOperation(name = "OrReturn", operator = Operator.OR_RETURN_VALUE, booleanConverter = ToBoolean.class)
     public abstract static class DeadCodeTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected DeadCodeTestRootNode(TruffleLanguage<?> language,
+        protected DeadCodeTestRootNode(BytecodeDSLTestLanguage language,
                         FrameDescriptor.Builder frameDescriptor) {
             super(language, customize(frameDescriptor).build());
         }

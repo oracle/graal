@@ -45,7 +45,6 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -195,7 +194,7 @@ public class QuickeningTest extends AbstractInstructionTest {
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true)
     public abstract static class QuickeningTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected QuickeningTestRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected QuickeningTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -243,7 +242,7 @@ public class QuickeningTest extends AbstractInstructionTest {
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true)
     public abstract static class QuickeningTestError1 extends RootNode implements BytecodeRootNode {
 
-        protected QuickeningTestError1(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected QuickeningTestError1(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -275,7 +274,7 @@ public class QuickeningTest extends AbstractInstructionTest {
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true)
     public abstract static class QuickeningTestError2 extends RootNode implements BytecodeRootNode {
 
-        protected QuickeningTestError2(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected QuickeningTestError2(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -299,7 +298,7 @@ public class QuickeningTest extends AbstractInstructionTest {
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true)
     public abstract static class QuickeningTestError3 extends RootNode implements BytecodeRootNode {
 
-        protected QuickeningTestError3(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected QuickeningTestError3(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -321,7 +320,7 @@ public class QuickeningTest extends AbstractInstructionTest {
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true)
     public abstract static class QuickeningTestError4 extends RootNode implements BytecodeRootNode {
 
-        protected QuickeningTestError4(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected QuickeningTestError4(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -349,7 +348,7 @@ public class QuickeningTest extends AbstractInstructionTest {
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true)
     public abstract static class QuickeningTestError5 extends RootNode implements BytecodeRootNode {
 
-        protected QuickeningTestError5(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected QuickeningTestError5(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 

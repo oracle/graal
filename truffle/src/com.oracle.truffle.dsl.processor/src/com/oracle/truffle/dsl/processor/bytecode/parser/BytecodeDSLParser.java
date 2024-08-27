@@ -261,7 +261,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 // not the right number of params
                 return false;
             }
-            if (!ElementUtils.isAssignable(params.get(0).asType(), types.TruffleLanguage)) {
+            if (!ElementUtils.typeEquals(params.get(0).asType(), model.languageClass)) {
                 // wrong first parameter type
                 return false;
             }
@@ -274,9 +274,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         if (viableConstructors.isEmpty()) {
             model.addError(typeElement, "Bytecode DSL class should declare a constructor that has signature (%s, %s) or (%s, %s.%s). The constructor should be visible to subclasses.",
-                            getSimpleName(types.TruffleLanguage),
+                            getSimpleName(model.languageClass),
                             getSimpleName(types.FrameDescriptor),
-                            getSimpleName(types.TruffleLanguage),
+                            getSimpleName(model.languageClass),
                             getSimpleName(types.FrameDescriptor),
                             getSimpleName(types.FrameDescriptor_Builder));
             return;

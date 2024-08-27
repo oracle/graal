@@ -50,7 +50,6 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
@@ -334,7 +333,7 @@ public class ShortCircuitTest {
 @ShortCircuitOperation(name = "BoolAnd", operator = Operator.AND_RETURN_CONVERTED, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class)
 @ShortCircuitOperation(name = "BoolOr", operator = Operator.OR_RETURN_CONVERTED, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class)
 abstract class BytecodeNodeWithShortCircuit extends RootNode implements BytecodeRootNode {
-    protected BytecodeNodeWithShortCircuit(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BytecodeNodeWithShortCircuit(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 

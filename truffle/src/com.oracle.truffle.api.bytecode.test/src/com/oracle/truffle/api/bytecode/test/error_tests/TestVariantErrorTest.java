@@ -59,7 +59,7 @@ public class TestVariantErrorTest {
                     @Variant(suffix = "A", configuration = @GenerateBytecode(languageClass = ErrorLanguage.class))})
     @OperationProxy(ConstantOperation.class)
     public abstract static class SameName extends RootNode implements BytecodeRootNode {
-        protected SameName(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected SameName(ErrorLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
     }
@@ -71,7 +71,7 @@ public class TestVariantErrorTest {
     })
     @OperationProxy(ConstantOperation.class)
     public abstract static class DifferentLanguage extends RootNode implements BytecodeRootNode {
-        protected DifferentLanguage(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected DifferentLanguage(ErrorLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
     }
@@ -83,7 +83,7 @@ public class TestVariantErrorTest {
     })
     @OperationProxy(ConstantOperation.class)
     public abstract static class DifferentYield extends RootNode implements BytecodeRootNode {
-        protected DifferentYield(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected DifferentYield(ErrorLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
     }
@@ -95,7 +95,7 @@ public class TestVariantErrorTest {
     })
     @OperationProxy(ConstantOperation.class)
     public abstract static class DifferentUncachedInterpreters extends RootNode implements BytecodeRootNode {
-        protected DifferentUncachedInterpreters(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected DifferentUncachedInterpreters(ErrorLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
     }

@@ -135,8 +135,7 @@ public class SetTraceFuncTest extends AbstractInstructionTest {
 
         private static final BytecodeConfig TRACE_FUN = SetTraceFuncRootNodeGen.newConfigBuilder().addInstrumentation(TraceFun.class).build();
 
-        protected SetTraceFuncRootNode(TruffleLanguage<?> language,
-                        FrameDescriptor frameDescriptor) {
+        protected SetTraceFuncRootNode(TraceFunLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 

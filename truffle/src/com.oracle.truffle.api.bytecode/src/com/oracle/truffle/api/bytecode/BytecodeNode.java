@@ -215,7 +215,8 @@ public abstract class BytecodeNode extends Node {
     /**
      * Finds the most concrete source location associated with the given bytecode index. The method
      * returns <code>null</code> if no source section could be found. Calling this method also
-     * {@link BytecodeRootNodes#ensureSourceInformation() ensures source sections} are materialized. *
+     * {@link BytecodeRootNodes#ensureSourceInformation() ensures source sections} are materialized.
+     * *
      * <p>
      * If source sections have not yet been materialized, then <code>null</code> is returned. Source
      * sections may be materialized by calling {@link #ensureSourceInformation()}.

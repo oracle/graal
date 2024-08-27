@@ -45,7 +45,6 @@ import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -250,7 +249,7 @@ public class ReadBytecodeLocationTest {
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = true, enableYield = true)
 abstract class BytecodeNodeWithStoredBci extends RootNode implements BytecodeRootNode {
 
-    protected BytecodeNodeWithStoredBci(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BytecodeNodeWithStoredBci(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
