@@ -20,8 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.truffle.espresso.impl;
+package com.oracle.truffle.espresso.impl.shared;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -88,11 +87,11 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
 
         protected final Symbol<Name> name;
 
-        public Symbol<Name> getName() {
+        public final Symbol<Name> getName() {
             return name;
         }
 
-        public String getNameAsString() {
+        public final String getNameAsString() {
             if (name == null) {
                 return "unnamed";
             }
@@ -100,7 +99,7 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
         }
 
         @Override
-        public int hashCode() {
+        public final int hashCode() {
             if (name == null) {
                 return 0;
             }
@@ -108,7 +107,7 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
         }
 
         @Override
-        public boolean equals(Object obj) {
+        public final boolean equals(Object obj) {
             if (obj instanceof NamedEntry) {
                 return Objects.equals(((NamedEntry) obj).getName(), this.getName());
             }

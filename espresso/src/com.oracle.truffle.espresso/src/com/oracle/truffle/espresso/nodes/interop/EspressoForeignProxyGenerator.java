@@ -338,7 +338,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             }
         }
 
-        if (packagePrivateTypes.size() > 0) {
+        if (!packagePrivateTypes.isEmpty()) {
             // all package-private types must be in the same runtime package
             // i.e. same package name and same module (named or unnamed)
             //
@@ -372,7 +372,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                     continue;
                 }
 
-                if (!targetModule.canRead(m, context) || (!m.isOpen() && !intf.packageEntry().isUnqualifiedExported())) {
+                if (!targetModule.canRead(m, context.isJavaBase(m)) || (!m.isOpen() && !intf.packageEntry().isUnqualifiedExported())) {
                     throw new IllegalArgumentException(targetModule + " can't access " + intf.getName());
                 }
             }
@@ -443,7 +443,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     private void ensureAccess(ModuleTable.ModuleEntry target, Klass c) {
         ModuleTable.ModuleEntry m = c.module();
         // add read edge and qualified export for the target module to access
-        if (!target.canRead(m, context)) {
+        if (!target.canRead(m, context.isJavaBase(m))) {
             target.addReads(m);
         }
         PackageTable.PackageEntry pe = c.packageEntry();
