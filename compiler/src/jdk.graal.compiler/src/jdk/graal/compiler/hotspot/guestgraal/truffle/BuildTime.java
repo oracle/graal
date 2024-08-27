@@ -102,8 +102,20 @@ public class BuildTime {
             } else {
                 throw new NoSuchElementException(name);
             }
-        } else {
+        } else if (Services.IS_IN_NATIVE_IMAGE) {
+            /*
+             * The getHostMethodHandleOrFail should never be called in the native-image execution
+             * time.
+             */
             throw new IllegalStateException("Should not be reachable in the libgraal execution time");
+        } else {
+            /*
+             * HS proxy classes and BuildTime are not used in Jargraal, but the CheckGraalInvariants
+             * test eagerly initializes these proxy classes, leading to a call to
+             * getHostMethodHandleOrFail. In this scenario, we return null to prevent the test from
+             * crashing.
+             */
+            return null;
         }
     }
 
