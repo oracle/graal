@@ -24,10 +24,6 @@
  */
 package com.oracle.svm.core.configure;
 
-import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllTypeReachableConditionsAsTypeReached;
-import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
-import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
-
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -46,15 +42,14 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.util.json.JSONParser;
+import org.graalvm.util.json.JSONParserException;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
-
-import jdk.graal.compiler.util.json.JsonParser;
-import jdk.graal.compiler.util.json.JsonParserException;
 
 public abstract class ConfigurationParser {
     public static InputStream openStream(URI uri) throws IOException {
@@ -67,6 +62,8 @@ public abstract class ConfigurationParser {
     }
 
     public static final String CONDITIONAL_KEY = "condition";
+    public static final String TYPE_REACHABLE_KEY = "typeReachable";
+    public static final String TYPE_REACHED_KEY = "typeReached";
     public static final String NAME_KEY = "name";
     public static final String TYPE_KEY = "type";
     public static final String PROXY_KEY = "proxy";
@@ -87,7 +84,7 @@ public abstract class ConfigurationParser {
 
     public void parseAndRegister(URI uri) throws IOException {
         try (Reader reader = openReader(uri)) {
-            parseAndRegister(new JsonParser(reader).parse(), uri);
+            parseAndRegister(new JSONParser(reader).parse(), uri);
         } catch (FileNotFoundException e) {
             /*
              * Ignore: *-config.json files can be missing when reachability-metadata.json is
@@ -101,7 +98,7 @@ public abstract class ConfigurationParser {
     }
 
     public void parseAndRegister(Reader reader) throws IOException {
-        parseAndRegister(new JsonParser(reader).parse(), null);
+        parseAndRegister(new JSONParser(reader).parse(), null);
     }
 
     public abstract void parseAndRegister(Object json, URI origin) throws IOException;
@@ -117,7 +114,7 @@ public abstract class ConfigurationParser {
         if (data instanceof List) {
             return (List<Object>) data;
         }
-        throw new JsonParserException(errorMessage);
+        throw new JSONParserException(errorMessage);
     }
 
     @SuppressWarnings("unchecked")
@@ -125,7 +122,7 @@ public abstract class ConfigurationParser {
         if (data instanceof EconomicMap) {
             return (EconomicMap<String, Object>) data;
         }
-        throw new JsonParserException(errorMessage);
+        throw new JSONParserException(errorMessage);
     }
 
     protected void checkAttributes(EconomicMap<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
@@ -134,7 +131,7 @@ public abstract class ConfigurationParser {
             unseenRequired.remove(key);
         }
         if (!unseenRequired.isEmpty()) {
-            throw new JsonParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
+            throw new JSONParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
         }
         Set<String> unknownAttributes = new HashSet<>();
         for (String key : map.getKeys()) {
@@ -161,14 +158,14 @@ public abstract class ConfigurationParser {
             if (alternativeAttributes.contains(key)) {
                 if (attributeFound) {
                     String message = "Exactly one of [" + String.join(", ", alternativeAttributes) + "] must be set in " + type;
-                    throw new JsonParserException(message);
+                    throw new JSONParserException(message);
                 }
                 attributeFound = true;
             }
         }
         if (!attributeFound) {
             String message = "Exactly one of [" + String.join(", ", alternativeAttributes) + "] must be set in " + type;
-            throw new JsonParserException(message);
+            throw new JSONParserException(message);
         }
     }
 
@@ -194,14 +191,14 @@ public abstract class ConfigurationParser {
         if (value instanceof String) {
             return (String) value;
         }
-        throw new JsonParserException("Invalid string value \"" + value + "\".");
+        throw new JSONParserException("Invalid string value \"" + value + "\".");
     }
 
     protected static String asString(Object value, String propertyName) {
         if (value instanceof String) {
             return (String) value;
         }
-        throw new JsonParserException("Invalid string value \"" + value + "\" for element '" + propertyName + "'");
+        throw new JSONParserException("Invalid string value \"" + value + "\" for element '" + propertyName + "'");
     }
 
     protected static String asNullableString(Object value, String propertyName) {
@@ -212,7 +209,7 @@ public abstract class ConfigurationParser {
         if (value instanceof Boolean) {
             return (boolean) value;
         }
-        throw new JsonParserException("Invalid boolean value '" + value + "' for element '" + propertyName + "'");
+        throw new JSONParserException("Invalid boolean value '" + value + "' for element '" + propertyName + "'");
     }
 
     protected static long asLong(Object value, String propertyName) {
@@ -222,15 +219,19 @@ public abstract class ConfigurationParser {
         if (value instanceof Integer) {
             return (int) value;
         }
-        throw new JsonParserException("Invalid long value '" + value + "' for element '" + propertyName + "'");
+        throw new JSONParserException("Invalid long value '" + value + "' for element '" + propertyName + "'");
     }
 
-    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> data, boolean runtimeCondition) {
+    private static boolean alreadyWarned = false;
+
+    protected ConfigurationCondition parseCondition(EconomicMap<String, Object> data, boolean runtimeCondition) {
         Object conditionData = data.get(CONDITIONAL_KEY);
         if (conditionData != null) {
             EconomicMap<String, Object> conditionObject = asMap(conditionData, "Attribute 'condition' must be an object");
             if (conditionObject.containsKey(TYPE_REACHABLE_KEY) && conditionObject.containsKey(TYPE_REACHED_KEY)) {
                 failOnSchemaError("condition can not have both '" + TYPE_REACHED_KEY + "' and '" + TYPE_REACHABLE_KEY + "' set.");
+            } else if (conditionObject.isEmpty()) {
+                failOnSchemaError("condition can not be empty");
             }
 
             if (conditionObject.containsKey(TYPE_REACHED_KEY)) {
@@ -240,26 +241,34 @@ public abstract class ConfigurationParser {
                 Object object = conditionObject.get(TYPE_REACHED_KEY);
                 var condition = parseTypeContents(object);
                 if (condition.isPresent()) {
-                    String className = ((NamedConfigurationTypeDescriptor) condition.get()).name();
-                    return UnresolvedConfigurationCondition.create(className, true);
+                    if (!alreadyWarned) {
+                        LogUtils.warning("Found typeReached condition in JSON configuration files. " +
+                                        "The typeReached condition is not supported by this version of GraalVM and will be considered as always true. " +
+                                        "Please consider upgrading to the latest GraalVM version to be able to use all the latest features.");
+                        alreadyWarned = true;
+                    }
+                    return ConfigurationCondition.alwaysTrue();
                 }
             } else if (conditionObject.containsKey(TYPE_REACHABLE_KEY)) {
-                if (runtimeCondition && !TreatAllTypeReachableConditionsAsTypeReached.getValue()) {
+                if (runtimeCondition) {
                     failOnSchemaError("'" + TYPE_REACHABLE_KEY + "' condition can not be used with the latest schema. Please use '" + TYPE_REACHED_KEY + "'.");
                 }
                 Object object = conditionObject.get(TYPE_REACHABLE_KEY);
                 var condition = parseTypeContents(object);
                 if (condition.isPresent()) {
                     String className = ((NamedConfigurationTypeDescriptor) condition.get()).name();
-                    return UnresolvedConfigurationCondition.create(className, TreatAllTypeReachableConditionsAsTypeReached.getValue());
+                    return ConfigurationCondition.create(className);
                 }
             }
         }
-        return UnresolvedConfigurationCondition.alwaysTrue();
+        /*
+         * Ensure forward-compatibility with condition types added in the future
+         */
+        return ConfigurationCondition.alwaysTrue();
     }
 
-    private static JsonParserException failOnSchemaError(String message) {
-        throw new JsonParserException(message);
+    private static JSONParserException failOnSchemaError(String message) {
+        throw new JSONParserException(message);
     }
 
     protected record TypeDescriptorWithOrigin(ConfigurationTypeDescriptor typeDescriptor, boolean definedAsType) {

@@ -28,27 +28,26 @@ package com.oracle.svm.core.configure;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
+import org.graalvm.util.json.JSONParserException;
 
-import jdk.graal.compiler.util.json.JsonParserException;
-
-public abstract class SerializationConfigurationParser<C> extends ConfigurationParser {
+public abstract class SerializationConfigurationParser extends ConfigurationParser {
 
     public static final String CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY = "customTargetConstructorClass";
 
-    protected final ConfigurationConditionResolver<C> conditionResolver;
-    protected final RuntimeSerializationSupport<C> serializationSupport;
+    protected final ConfigurationConditionResolver conditionResolver;
+    protected final RuntimeSerializationSupport serializationSupport;
 
-    public static <C> SerializationConfigurationParser<C> create(boolean strictMetadata, ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport,
-                    boolean strictConfiguration) {
+    public static SerializationConfigurationParser create(boolean strictMetadata, RuntimeSerializationSupport serializationSupport, boolean strictConfiguration) {
         if (strictMetadata) {
-            return new SerializationMetadataParser<>(conditionResolver, serializationSupport, strictConfiguration);
+            return new SerializationMetadataParser<>(ConfigurationConditionResolver.identityResolver(), serializationSupport, strictConfiguration);
         } else {
-            return new LegacySerializationConfigurationParser<>(conditionResolver, serializationSupport, strictConfiguration);
+            return new LegacySerializationConfigurationParser(ConfigurationConditionResolver.identityResolver(), serializationSupport, strictConfiguration);
         }
     }
 
-    public SerializationConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, boolean strictConfiguration) {
+    public SerializationConfigurationParser(ConfigurationConditionResolver conditionResolver, RuntimeSerializationSupport serializationSupport, boolean strictConfiguration) {
         super(strictConfiguration);
         this.serializationSupport = serializationSupport;
         this.conditionResolver = conditionResolver;
@@ -62,14 +61,14 @@ public abstract class SerializationConfigurationParser<C> extends ConfigurationP
 
     protected abstract void parseSerializationDescriptorObject(EconomicMap<String, Object> data, boolean lambdaCapturingType);
 
-    protected void registerType(ConfigurationTypeDescriptor targetSerializationClass, C condition, Object optionalCustomCtorValue) {
+    protected void registerType(ConfigurationTypeDescriptor targetSerializationClass, ConfigurationCondition condition, Object optionalCustomCtorValue) {
         String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
         if (targetSerializationClass instanceof NamedConfigurationTypeDescriptor namedClass) {
             serializationSupport.registerWithTargetConstructorClass(condition, namedClass.name(), customTargetConstructorClass);
         } else if (targetSerializationClass instanceof ProxyConfigurationTypeDescriptor proxyClass) {
             serializationSupport.registerProxyClass(condition, proxyClass.interfaceNames());
         } else {
-            throw new JsonParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
+            throw new JSONParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
         }
     }
 }

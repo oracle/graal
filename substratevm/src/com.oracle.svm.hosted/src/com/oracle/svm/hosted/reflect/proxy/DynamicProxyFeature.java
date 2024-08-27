@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 
+import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ProxyConfigurationParser;
@@ -68,7 +69,8 @@ public final class DynamicProxyFeature implements InternalFeature {
         ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("resource configuration", imageClassLoader);
         ProxyRegistry proxyRegistry = new ProxyRegistry(typeResolver, dynamicProxySupport, imageClassLoader);
         ImageSingletons.add(ProxyRegistry.class, proxyRegistry);
-        ProxyConfigurationParser parser = new ProxyConfigurationParser(proxyRegistry, ConfigurationFiles.Options.StrictConfiguration.getValue());
+        ProxyConfigurationParser parser = new ProxyConfigurationParser(ConfigurationFiles.Options.StrictConfiguration.getValue(),
+                        (cond, intfs) -> proxyRegistry.accept(new ConditionalElement<>(cond, intfs)));
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
                         ConfigurationFiles.Options.DynamicProxyConfigurationFiles, ConfigurationFiles.Options.DynamicProxyConfigurationResources,
                         ConfigurationFile.DYNAMIC_PROXY.getFileName());

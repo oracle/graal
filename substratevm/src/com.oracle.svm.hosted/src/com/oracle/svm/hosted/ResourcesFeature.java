@@ -213,10 +213,14 @@ public final class ResourcesFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ResourceConfigurationParser parser = new ResourceConfigurationParser(ImageSingletons.lookup(ResourcesRegistry.class), ConfigurationFiles.Options.StrictConfiguration.getValue());
-        loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "resource",
-                        ConfigurationFiles.Options.ResourceConfigurationFiles, ConfigurationFiles.Options.ResourceConfigurationResources,
-                        ConfigurationFile.RESOURCES.getFileName());
+        ResourceConfigurationParser parser = ResourceConfigurationParser.create(true, ResourcesRegistry.singleton(),
+                        ConfigurationFiles.Options.StrictConfiguration.getValue());
+        loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurationsFromCombinedFile(parser, imageClassLoader, "resource");
+
+        ResourceConfigurationParser legacyParser = ResourceConfigurationParser.create(false, ResourcesRegistry.singleton(),
+                        ConfigurationFiles.Options.StrictConfiguration.getValue());
+        loadedConfigurations += ConfigurationParserUtils.parseAndRegisterConfigurations(legacyParser, imageClassLoader, "resource", ConfigurationFiles.Options.ResourceConfigurationFiles,
+                        ConfigurationFiles.Options.ResourceConfigurationResources, ConfigurationFile.RESOURCES.getFileName());
 
         resourcePatternWorkSet.addAll(Options.IncludeResources.getValue().values());
         excludedResourcePatterns.addAll(Options.ExcludeResources.getValue().values());

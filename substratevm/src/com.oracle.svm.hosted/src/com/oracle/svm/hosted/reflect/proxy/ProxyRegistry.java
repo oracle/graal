@@ -59,7 +59,7 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements C
     public Class<?> createProxyClassForSerialization(ConditionalElement<List<String>> proxies) {
         Class<?>[] interfaces = checkIfInterfacesAreValid(proxies);
         if (interfaces != null) {
-            return dynamicProxySupport.createProxyClassForSerialization(interfaces);
+            return dynamicProxySupport.getProxyClassHosted(interfaces);
         }
 
         return null;
