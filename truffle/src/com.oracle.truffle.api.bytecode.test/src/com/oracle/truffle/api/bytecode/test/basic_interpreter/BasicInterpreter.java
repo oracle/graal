@@ -48,7 +48,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -149,7 +148,7 @@ import com.oracle.truffle.api.source.SourceSection;
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE, javadoc = "ScOr returns the first truthy operand value.")
 public abstract class BasicInterpreter extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-    protected BasicInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BasicInterpreter(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 

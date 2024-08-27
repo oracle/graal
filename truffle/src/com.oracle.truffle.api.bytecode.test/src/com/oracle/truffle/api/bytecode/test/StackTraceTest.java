@@ -63,7 +63,6 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
@@ -358,8 +357,7 @@ public class StackTraceTest extends AbstractInstructionTest {
     })
     public abstract static class StackTraceTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected StackTraceTestRootNode(TruffleLanguage<?> language,
-                        FrameDescriptor frameDescriptor) {
+        protected StackTraceTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 

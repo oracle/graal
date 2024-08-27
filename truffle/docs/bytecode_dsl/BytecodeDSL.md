@@ -20,7 +20,7 @@ Below is the complete Bytecode DSL specification for a small interpreter with a 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 public abstract static class SampleInterpreter extends RootNode implements BytecodeRootNode {
 
-    protected SampleInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected SampleInterpreter(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -44,8 +44,8 @@ From this specification, Bytecode DSL generates a bytecode interpreter in `Sampl
 The generated code contains a builder class that automatically generates bytecode from a series of builder calls. We can build a bytecode program that adds two arguments as follows.
 
 ```
-var rootNodes = SampleInterpreterGen.create(BytecodeConfig.DEFAULT, b -> {
-    b.beginRoot(null); // TruffleLanguage goes here
+var rootNodes = SampleInterpreterGen.create(getLanguage(), BytecodeConfig.DEFAULT, b -> {
+    b.beginRoot();
         b.beginReturn();
             b.beginAdd();
                 b.emitLoadArgument(0);

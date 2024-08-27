@@ -45,7 +45,6 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -70,7 +69,7 @@ public class Introduction {
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
     public abstract static class SampleInterpreter extends RootNode implements BytecodeRootNode {
 
-        protected SampleInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected SampleInterpreter(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 

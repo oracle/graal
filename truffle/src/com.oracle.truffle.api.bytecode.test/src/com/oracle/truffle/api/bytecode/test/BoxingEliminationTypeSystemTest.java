@@ -46,7 +46,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -256,7 +255,7 @@ public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
     @SuppressWarnings("unused")
     abstract static class BoxingEliminationTypeSystemRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected BoxingEliminationTypeSystemRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected BoxingEliminationTypeSystemRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 

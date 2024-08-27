@@ -55,7 +55,6 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -313,7 +312,7 @@ public class ConstantOperandTest {
 
 abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeRootNode {
 
-    protected ConstantOperandTestRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected ConstantOperandTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -405,7 +404,7 @@ abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeR
 abstract class ConstantOperandsInPrologTestRootNode extends RootNode implements BytecodeRootNode {
     public final List<Object> prologEvents = new ArrayList<>();
 
-    protected ConstantOperandsInPrologTestRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected ConstantOperandsInPrologTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -426,7 +425,7 @@ abstract class ConstantOperandsInPrologTestRootNode extends RootNode implements 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 @SuppressWarnings("unused")
 abstract class ConstantOperandErrorRootNode extends RootNode implements BytecodeRootNode {
-    protected ConstantOperandErrorRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected ConstantOperandErrorRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 

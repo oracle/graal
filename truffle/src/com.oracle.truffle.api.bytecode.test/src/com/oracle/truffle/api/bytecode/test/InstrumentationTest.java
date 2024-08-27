@@ -316,7 +316,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
                     boxingEliminationTypes = {int.class})
     public abstract static class InstrumentationTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected InstrumentationTestRootNode(TruffleLanguage<?> language,
+        protected InstrumentationTestRootNode(BytecodeInstrumentationTestLanguage language,
                         FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
@@ -478,7 +478,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
     @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class)
     public abstract static class InstrumentationErrorRootNode1 extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected InstrumentationErrorRootNode1(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected InstrumentationErrorRootNode1(BytecodeInstrumentationTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 

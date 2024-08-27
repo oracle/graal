@@ -48,7 +48,6 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -374,7 +373,7 @@ public class ExceptionInterceptionTest {
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BytecodeNodeInterceptsAll extends RootNode implements BytecodeRootNode {
-    protected BytecodeNodeInterceptsAll(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BytecodeNodeInterceptsAll(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -527,7 +526,7 @@ abstract class BytecodeNodeInterceptsAll extends RootNode implements BytecodeRoo
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BytecodeNodeInterceptsNothing extends RootNode implements BytecodeRootNode {
 
-    protected BytecodeNodeInterceptsNothing(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BytecodeNodeInterceptsNothing(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -553,7 +552,7 @@ abstract class BytecodeNodeInterceptsNothing extends RootNode implements Bytecod
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BytecodeNodeInterceptsCF extends RootNode implements BytecodeRootNode {
 
-    protected BytecodeNodeInterceptsCF(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BytecodeNodeInterceptsCF(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -584,7 +583,7 @@ abstract class BytecodeNodeInterceptsCF extends RootNode implements BytecodeRoot
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BytecodeNodeInterceptsInternal extends RootNode implements BytecodeRootNode {
 
-    protected BytecodeNodeInterceptsInternal(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BytecodeNodeInterceptsInternal(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -616,7 +615,7 @@ abstract class BytecodeNodeInterceptsInternal extends RootNode implements Byteco
 abstract class BytecodeNodeInterceptsTruffleWithEpilog extends RootNode implements BytecodeRootNode {
     public int interceptCount = 0;
 
-    protected BytecodeNodeInterceptsTruffleWithEpilog(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BytecodeNodeInterceptsTruffleWithEpilog(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 

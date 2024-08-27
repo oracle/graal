@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.benchmark.bytecode;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
@@ -60,12 +59,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 })
 abstract class BytecodeBenchmarkRootNode extends RootNode implements BytecodeRootNode {
 
-    protected BytecodeBenchmarkRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BytecodeBenchmarkRootNode(BenchmarkLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
-    }
-
-    protected BytecodeBenchmarkRootNode(TruffleLanguage<?> language, FrameDescriptor.Builder frameDescriptor) {
-        super(language, frameDescriptor.build());
     }
 
     @Operation

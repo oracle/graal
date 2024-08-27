@@ -306,7 +306,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
             private static final long serialVersionUID = 1L;
         }
 
-        protected BytecodeDSLOSRTestRootNode(TruffleLanguage<?> language, FrameDescriptor fd) {
+        protected BytecodeDSLOSRTestRootNode(BytecodeDSLOSRTestLanguage language, FrameDescriptor fd) {
             super(language, fd);
         }
 
@@ -384,7 +384,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
     @GenerateBytecode(languageClass = BytecodeDSLOSRTestLanguage.class, enableYield = true)
     public abstract static class BytecodeDSLOSRTestRootNodeWithYield extends DebugBytecodeRootNode {
 
-        protected BytecodeDSLOSRTestRootNodeWithYield(TruffleLanguage<?> language, FrameDescriptor fd) {
+        protected BytecodeDSLOSRTestRootNodeWithYield(BytecodeDSLOSRTestLanguage language, FrameDescriptor fd) {
             super(language, fd);
         }
 

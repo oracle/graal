@@ -110,7 +110,7 @@ public class SerializationTutorial {
         protected String name = null; // will be serialized
         protected transient String transientField = null; // will not be serialized
 
-        protected SerializableBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected SerializableBytecodeNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 

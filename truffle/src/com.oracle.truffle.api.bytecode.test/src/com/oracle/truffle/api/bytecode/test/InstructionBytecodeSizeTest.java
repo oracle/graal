@@ -51,7 +51,6 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
@@ -60,7 +59,6 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.test.VariadicTest.TestLanguage;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
@@ -184,14 +182,14 @@ public class InstructionBytecodeSizeTest {
     record ContinueAtSizes(int cached, int uncached) {
     }
 
-    @GenerateBytecode(languageClass = TestLanguage.class, //
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableSerialization = true, //
                     enableYield = true, //
                     boxingEliminationTypes = {boolean.class}, //
                     enableUncachedInterpreter = true)
     abstract static class OneOperationNode extends RootNode implements BytecodeRootNode {
 
-        protected OneOperationNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected OneOperationNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -205,14 +203,14 @@ public class InstructionBytecodeSizeTest {
 
     }
 
-    @GenerateBytecode(languageClass = TestLanguage.class, //
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableSerialization = true, //
                     enableYield = true, //
                     boxingEliminationTypes = {boolean.class}, //
                     enableUncachedInterpreter = true)
     abstract static class TwoOperationNode extends RootNode implements BytecodeRootNode {
 
-        protected TwoOperationNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected TwoOperationNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -234,14 +232,14 @@ public class InstructionBytecodeSizeTest {
 
     }
 
-    @GenerateBytecode(languageClass = TestLanguage.class, //
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableSerialization = true, //
                     enableYield = true, //
                     boxingEliminationTypes = {boolean.class}, //
                     enableUncachedInterpreter = true)
     abstract static class TwentyOperationNode extends RootNode implements BytecodeRootNode {
 
-        protected TwentyOperationNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected TwentyOperationNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 
@@ -407,7 +405,7 @@ public class InstructionBytecodeSizeTest {
 
     }
 
-    @GenerateBytecode(languageClass = TestLanguage.class, //
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableSerialization = true, //
                     enableYield = true, //
                     boxingEliminationTypes = {boolean.class, int.class, byte.class, long.class, float.class, double.class}, //
@@ -416,7 +414,7 @@ public class InstructionBytecodeSizeTest {
     @SuppressWarnings({"unused", "truffle"})
     abstract static class ManyInstructionNode extends RootNode implements BytecodeRootNode {
 
-        protected ManyInstructionNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        protected ManyInstructionNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
 

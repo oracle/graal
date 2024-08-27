@@ -48,7 +48,6 @@ import java.lang.reflect.Field;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -1410,7 +1409,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     @ShortCircuitOperation(name = "OrReturn", operator = Operator.OR_RETURN_VALUE, booleanConverter = ToBoolean.class)
     public abstract static class BoxingEliminationTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        protected BoxingEliminationTestRootNode(TruffleLanguage<?> language,
+        protected BoxingEliminationTestRootNode(BytecodeDSLTestLanguage language,
                         FrameDescriptor.Builder frameDescriptor) {
             super(language, customize(frameDescriptor).build());
         }
