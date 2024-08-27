@@ -153,6 +153,7 @@ public final class ModulesSupport {
         }
     }
 
+    @SuppressWarnings("restricted")
     private static boolean loadModulesSupportLibrary() {
         String attachLibPath = System.getProperty("truffle.attach.library");
         try {
