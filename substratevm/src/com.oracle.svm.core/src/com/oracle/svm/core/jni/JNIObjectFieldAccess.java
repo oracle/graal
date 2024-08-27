@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,28 +24,29 @@
  */
 package com.oracle.svm.core.jni;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 
-/**
- * Retains one exception per thread that is pending to be handled in that thread (or none).
- */
-public class JNIThreadLocalPendingException {
-    private static final FastThreadLocalObject<Throwable> pendingException = FastThreadLocalFactory.createObject(Throwable.class, "JNIThreadLocalPendingException.pendingException");
+import com.oracle.svm.core.jni.access.JNIAccessibleField;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Throwable get() {
-        return pendingException.get();
+import jdk.internal.misc.Unsafe;
+
+public class JNIObjectFieldAccess {
+    @Fold
+    public static JNIObjectFieldAccess singleton() {
+        return ImageSingletons.lookup(JNIObjectFieldAccess.class);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void set(Throwable t) {
-        pendingException.set(t);
+    public JNIObjectHandle getObjectField(JNIObjectHandle obj, JNIFieldId fieldId) {
+        Object o = JNIObjectHandles.getObject(obj);
+        long offset = JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
+        Object result = getObjectField0(o, offset);
+        return JNIObjectHandles.createLocal(result);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void clear() {
-        set(null);
+    protected Object getObjectField0(Object obj, long offset) {
+        return Unsafe.getUnsafe().getReference(obj, offset);
     }
 }

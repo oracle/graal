@@ -57,8 +57,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
-import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
@@ -77,9 +75,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * Generated code for taking arguments according to a specific signature and {@link CallVariant} and
- * passing them on to a {@link JNIJavaCallWrapperMethod} which does the actual Java call. This
- * method also enters the isolate and catches any exception.
+ * Generates uninterruptible code for taking arguments according to a specific signature and
+ * {@link CallVariant} and passing them on to a {@link JNIJavaCallWrapperMethod} which does the
+ * actual Java call. This method also enters the isolate and catches any exception.
  */
 public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
 
@@ -163,8 +161,8 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         ValueNode methodId = kit.loadLocal(slotIndex, wordKind);
         slotIndex += wordKind.getSlotCount();
 
-        kit.append(CEntryPointEnterNode.enter(env));
-        ValueNode callAddress = kit.getJavaCallWrapperAddressFromMethodId(methodId);
+        kit.invokeJNIEnterIsolate(env);
+        ValueNode callAddress = kit.invokeGetJavaCallWrapperAddressFromMethodId(methodId);
 
         List<ValueNode> args = new ArrayList<>();
         args.add(receiverOrClassHandle);
@@ -172,7 +170,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         args.add(kit.createInt(nonVirtual ? 1 : 0));
         args.addAll(loadArguments(kit, providers, invokeSignature, args.size(), slotIndex));
 
-        ValueNode formerPendingException = kit.getAndClearPendingException();
+        ValueNode formerPendingException = kit.invokeGetAndClearPendingException();
 
         StampPair returnStamp = StampFactory.forDeclaredType(kit.getAssumptions(), invokeSignature.getReturnType(null), false);
         CallTargetNode callTarget = new IndirectCallTargetNode(callAddress, args.toArray(ValueNode[]::new), returnStamp, invokeSignature.toParameterTypes(null),
@@ -181,9 +179,9 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         int invokeBci = kit.bci();
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(callTarget, kit.getFrameState(), invokeBci);
         kit.noExceptionPart();
-        kit.setPendingException(formerPendingException);
+        kit.invokeSetPendingException(formerPendingException);
         kit.exceptionPart();
-        kit.setPendingException(kit.exceptionObject());
+        kit.invokeSetPendingException(kit.exceptionObject());
         AbstractMergeNode invokeMerge = kit.endInvokeWithException();
 
         ValueNode returnValue = null;
@@ -200,8 +198,7 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
             kit.getFrameState().pop(returnKind);
         }
 
-        CEntryPointLeaveNode leave = new CEntryPointLeaveNode(CEntryPointLeaveNode.LeaveAction.Leave);
-        kit.append(leave);
+        kit.invokeJNILeaveIsolate();
         kit.createReturn(returnValue, returnKind);
         return kit.finalizeGraph();
     }

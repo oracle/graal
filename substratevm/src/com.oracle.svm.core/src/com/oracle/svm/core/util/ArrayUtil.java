@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.jni;
+package com.oracle.svm.core.util;
 
-import java.util.Collections;
-import java.util.List;
+import java.lang.reflect.Array;
 
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-
-/**
- * Automatically enables {@link JNIFeature} when specific options are set.
- */
-@AutomaticallyRegisteredFeature
-@Platforms(InternalPlatform.NATIVE_ONLY.class)
-public class JNIAutomaticFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.JNI.getValue();
+public class ArrayUtil {
+    public static boolean isOutOfBounds(Object array, int start, int count) {
+        return start < 0 || count < 0 || start > Array.getLength(array) - count;
     }
 
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(JNIFeature.class);
+    /**
+     * Should only be used from snippets because this code uses {@link ArrayLengthNode#arrayLength},
+     * which doesn't check if the object is really an array.
+     */
+    public static void boundsCheckInSnippet(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
+        if (fromIndex < 0 || toIndex < 0 || length < 0 || fromIndex > ArrayLengthNode.arrayLength(fromArray) - length || toIndex > ArrayLengthNode.arrayLength(toArray) - length) {
+            throw new ArrayIndexOutOfBoundsException();
+        }
     }
 }
