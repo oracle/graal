@@ -67,21 +67,21 @@ public abstract class ClassRegistry {
      * registry.
      */
     public static final class ClassDefinitionInfo {
-        public static final ClassDefinitionInfo EMPTY = new ClassDefinitionInfo(null, null, null, null, null, false, false);
+        public static final ClassDefinitionInfo EMPTY = new ClassDefinitionInfo(null, null, null, null, null, false, false, false);
 
         // Constructor for regular definition, but with a specified protection domain
         public ClassDefinitionInfo(StaticObject protectionDomain) {
-            this(protectionDomain, null, null, null, null, false, false);
+            this(protectionDomain, null, null, null, null, false, false, false);
         }
 
         // Constructor for Unsafe anonymous class definition.
         public ClassDefinitionInfo(StaticObject protectionDomain, ObjectKlass hostKlass, StaticObject[] patches) {
-            this(protectionDomain, hostKlass, patches, null, null, false, false);
+            this(protectionDomain, hostKlass, patches, null, null, false, false, true);
         }
 
         // Constructor for Hidden class definition.
-        public ClassDefinitionInfo(StaticObject protectionDomain, ObjectKlass dynamicNest, StaticObject classData, boolean isStrongHidden) {
-            this(protectionDomain, null, null, dynamicNest, classData, true, isStrongHidden);
+        public ClassDefinitionInfo(StaticObject protectionDomain, ObjectKlass dynamicNest, StaticObject classData, boolean isStrongHidden, boolean forceAllowVMAnnotations) {
+            this(protectionDomain, null, null, dynamicNest, classData, true, isStrongHidden, forceAllowVMAnnotations);
         }
 
         private ClassDefinitionInfo(StaticObject protectionDomain,
@@ -90,7 +90,8 @@ public abstract class ClassRegistry {
                         ObjectKlass dynamicNest,
                         StaticObject classData,
                         boolean isHidden,
-                        boolean isStrongHidden) {
+                        boolean isStrongHidden,
+                        boolean forceAllowVMAnnotations) {
             // isStrongHidden => isHidden
             assert !isStrongHidden || isHidden;
             this.protectionDomain = protectionDomain;
@@ -100,6 +101,7 @@ public abstract class ClassRegistry {
             this.classData = classData;
             this.isHidden = isHidden;
             this.isStrongHidden = isStrongHidden;
+            this.forceAllowVMAnnotations = forceAllowVMAnnotations;
             assert isAnonymousClass() || patches == null;
         }
 
@@ -114,6 +116,7 @@ public abstract class ClassRegistry {
         public final StaticObject classData;
         public final boolean isHidden;
         public final boolean isStrongHidden;
+        public final boolean forceAllowVMAnnotations;
         public long klassID = -1;
 
         public boolean addedToRegistry() {
@@ -130,6 +133,10 @@ public abstract class ClassRegistry {
 
         public boolean isStrongHidden() {
             return isStrongHidden;
+        }
+
+        public boolean forceAllowVMAnnotations() {
+            return forceAllowVMAnnotations;
         }
 
         public int patchFlags(int classFlags) {

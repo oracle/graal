@@ -904,10 +904,13 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_invoke_LambdaForm$Compiled = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm$Compiled;");
         public static final Symbol<Type> java_lang_invoke_LambdaForm$Hidden = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm$Hidden;");
         public static final Symbol<Type> jdk_internal_vm_annotation_Hidden = StaticSymbols.putType("Ljdk/internal/vm/annotation/Hidden;");
+        public static final Symbol<Type> jdk_internal_vm_annotation_Stable = StaticSymbols.putType("Ljdk/internal/vm/annotation/Stable;");
         public static final Symbol<Type> sun_reflect_CallerSensitive = StaticSymbols.putType("Lsun/reflect/CallerSensitive;");
         public static final Symbol<Type> jdk_internal_reflect_CallerSensitive = StaticSymbols.putType("Ljdk/internal/reflect/CallerSensitive;");
         public static final Symbol<Type> java_lang_invoke_ForceInline = StaticSymbols.putType("Ljava/lang/invoke/ForceInline;");
         public static final Symbol<Type> jdk_internal_vm_annotation_ForceInline = StaticSymbols.putType("Ljdk/internal/vm/annotation/ForceInline;");
+        public static final Symbol<Type> java_lang_invoke_DontInline = StaticSymbols.putType("Ljava/lang/invoke/DontInline;");
+        public static final Symbol<Type> jdk_internal_vm_annotation_DontInline = StaticSymbols.putType("Ljdk/internal/vm/annotation/DontInline;");
 
         // ScopedMemoryAccess
         public static final Symbol<Type> jdk_internal_misc_ScopedMemoryAccess$Scoped = StaticSymbols.putType("Ljdk/internal/misc/ScopedMemoryAccess$Scoped;");
