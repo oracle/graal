@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,12 @@
  */
 package com.oracle.svm.core.configure;
 
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllTypeReachableConditionsAsTypeReached;
+import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
+import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
+
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -37,17 +42,19 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.util.json.JSONParser;
-import org.graalvm.util.json.JSONParserException;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.util.json.JsonParser;
+import jdk.graal.compiler.util.json.JsonParserException;
 
 public abstract class ConfigurationParser {
     public static InputStream openStream(URI uri) throws IOException {
@@ -60,7 +67,15 @@ public abstract class ConfigurationParser {
     }
 
     public static final String CONDITIONAL_KEY = "condition";
-    public static final String TYPE_REACHABLE_KEY = "typeReachable";
+    public static final String NAME_KEY = "name";
+    public static final String TYPE_KEY = "type";
+    public static final String PROXY_KEY = "proxy";
+    public static final String REFLECTION_KEY = "reflection";
+    public static final String JNI_KEY = "jni";
+    public static final String SERIALIZATION_KEY = "serialization";
+    public static final String RESOURCES_KEY = "resources";
+    public static final String BUNDLES_KEY = "bundles";
+    public static final String GLOBS_KEY = "globs";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
     private final boolean strictSchema;
 
@@ -70,7 +85,12 @@ public abstract class ConfigurationParser {
 
     public void parseAndRegister(URI uri) throws IOException {
         try (Reader reader = openReader(uri)) {
-            parseAndRegister(new JSONParser(reader).parse(), uri);
+            parseAndRegister(new JsonParser(reader).parse(), uri);
+        } catch (FileNotFoundException e) {
+            /*
+             * Ignore: *-config.json files can be missing when reachability-metadata.json is
+             * present, and vice-versa
+             */
         }
     }
 
@@ -79,17 +99,23 @@ public abstract class ConfigurationParser {
     }
 
     public void parseAndRegister(Reader reader) throws IOException {
-        parseAndRegister(new JSONParser(reader).parse(), null);
+        parseAndRegister(new JsonParser(reader).parse(), null);
     }
 
     public abstract void parseAndRegister(Object json, URI origin) throws IOException;
+
+    public Object getFromGlobalFile(Object json, String key) {
+        EconomicMap<String, Object> map = asMap(json, "top level of reachability metadata file must be an object");
+        checkAttributes(map, "reachability metadata", Collections.emptyList(), List.of(REFLECTION_KEY, JNI_KEY, SERIALIZATION_KEY, RESOURCES_KEY, BUNDLES_KEY, "reason", "comment"));
+        return map.get(key);
+    }
 
     @SuppressWarnings("unchecked")
     public static List<Object> asList(Object data, String errorMessage) {
         if (data instanceof List) {
             return (List<Object>) data;
         }
-        throw new JSONParserException(errorMessage);
+        throw new JsonParserException(errorMessage);
     }
 
     @SuppressWarnings("unchecked")
@@ -97,7 +123,7 @@ public abstract class ConfigurationParser {
         if (data instanceof EconomicMap) {
             return (EconomicMap<String, Object>) data;
         }
-        throw new JSONParserException(errorMessage);
+        throw new JsonParserException(errorMessage);
     }
 
     protected void checkAttributes(EconomicMap<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
@@ -106,7 +132,7 @@ public abstract class ConfigurationParser {
             unseenRequired.remove(key);
         }
         if (!unseenRequired.isEmpty()) {
-            throw new JSONParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
+            throw new JsonParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
         }
         Set<String> unknownAttributes = new HashSet<>();
         for (String key : map.getKeys()) {
@@ -127,6 +153,23 @@ public abstract class ConfigurationParser {
         }
     }
 
+    public static void checkHasExactlyOneAttribute(EconomicMap<String, Object> map, String type, Collection<String> alternativeAttributes) {
+        boolean attributeFound = false;
+        for (String key : map.getKeys()) {
+            if (alternativeAttributes.contains(key)) {
+                if (attributeFound) {
+                    String message = "Exactly one of [" + String.join(", ", alternativeAttributes) + "] must be set in " + type;
+                    throw new JsonParserException(message);
+                }
+                attributeFound = true;
+            }
+        }
+        if (!attributeFound) {
+            String message = "Exactly one of [" + String.join(", ", alternativeAttributes) + "] must be set in " + type;
+            throw new JsonParserException(message);
+        }
+    }
+
     /**
      * Used to warn about schema errors in configuration files. Should never be used if the type is
      * missing.
@@ -135,7 +178,7 @@ public abstract class ConfigurationParser {
      */
     protected void warnOrFailOnSchemaError(String message) {
         if (strictSchema) {
-            throw new JSONParserException(message);
+            failOnSchemaError(message);
         } else {
             LogUtils.warning(message);
         }
@@ -149,14 +192,14 @@ public abstract class ConfigurationParser {
         if (value instanceof String) {
             return (String) value;
         }
-        throw new JSONParserException("Invalid string value \"" + value + "\".");
+        throw new JsonParserException("Invalid string value \"" + value + "\".");
     }
 
     protected static String asString(Object value, String propertyName) {
         if (value instanceof String) {
             return (String) value;
         }
-        throw new JSONParserException("Invalid string value \"" + value + "\" for element '" + propertyName + "'");
+        throw new JsonParserException("Invalid string value \"" + value + "\" for element '" + propertyName + "'");
     }
 
     protected static String asNullableString(Object value, String propertyName) {
@@ -167,7 +210,7 @@ public abstract class ConfigurationParser {
         if (value instanceof Boolean) {
             return (boolean) value;
         }
-        throw new JSONParserException("Invalid boolean value '" + value + "' for element '" + propertyName + "'");
+        throw new JsonParserException("Invalid boolean value '" + value + "' for element '" + propertyName + "'");
     }
 
     protected static long asLong(Object value, String propertyName) {
@@ -177,21 +220,80 @@ public abstract class ConfigurationParser {
         if (value instanceof Integer) {
             return (int) value;
         }
-        throw new JSONParserException("Invalid long value '" + value + "' for element '" + propertyName + "'");
+        throw new JsonParserException("Invalid long value '" + value + "' for element '" + propertyName + "'");
     }
 
-    protected ConfigurationCondition parseCondition(EconomicMap<String, Object> data) {
+    protected UnresolvedConfigurationCondition parseCondition(EconomicMap<String, Object> data, boolean runtimeCondition) {
         Object conditionData = data.get(CONDITIONAL_KEY);
         if (conditionData != null) {
             EconomicMap<String, Object> conditionObject = asMap(conditionData, "Attribute 'condition' must be an object");
-            Object conditionType = conditionObject.get(TYPE_REACHABLE_KEY);
-            if (conditionType instanceof String) {
-                return ConfigurationCondition.create((String) conditionType);
-            } else {
-                warnOrFailOnSchemaError("'" + TYPE_REACHABLE_KEY + "' should be of type string");
+            if (conditionObject.containsKey(TYPE_REACHABLE_KEY) && conditionObject.containsKey(TYPE_REACHED_KEY)) {
+                failOnSchemaError("condition can not have both '" + TYPE_REACHED_KEY + "' and '" + TYPE_REACHABLE_KEY + "' set.");
+            }
+
+            if (conditionObject.containsKey(TYPE_REACHED_KEY)) {
+                if (!runtimeCondition) {
+                    failOnSchemaError("'" + TYPE_REACHED_KEY + "' condition cannot be used in older schemas. Please migrate the file to the latest schema.");
+                }
+                Object object = conditionObject.get(TYPE_REACHED_KEY);
+                var condition = parseTypeContents(object);
+                if (condition.isPresent()) {
+                    String className = ((NamedConfigurationTypeDescriptor) condition.get()).name();
+                    return UnresolvedConfigurationCondition.create(className, true);
+                }
+            } else if (conditionObject.containsKey(TYPE_REACHABLE_KEY)) {
+                if (runtimeCondition && !TreatAllTypeReachableConditionsAsTypeReached.getValue()) {
+                    failOnSchemaError("'" + TYPE_REACHABLE_KEY + "' condition can not be used with the latest schema. Please use '" + TYPE_REACHED_KEY + "'.");
+                }
+                Object object = conditionObject.get(TYPE_REACHABLE_KEY);
+                var condition = parseTypeContents(object);
+                if (condition.isPresent()) {
+                    String className = ((NamedConfigurationTypeDescriptor) condition.get()).name();
+                    return UnresolvedConfigurationCondition.create(className, TreatAllTypeReachableConditionsAsTypeReached.getValue());
+                }
             }
         }
-        return ConfigurationCondition.alwaysTrue();
+        return UnresolvedConfigurationCondition.alwaysTrue();
     }
 
+    private static JsonParserException failOnSchemaError(String message) {
+        throw new JsonParserException(message);
+    }
+
+    protected record TypeDescriptorWithOrigin(ConfigurationTypeDescriptor typeDescriptor, boolean definedAsType) {
+    }
+
+    protected static Optional<TypeDescriptorWithOrigin> parseName(EconomicMap<String, Object> data, boolean treatAllNameEntriesAsType) {
+        Object name = data.get(NAME_KEY);
+        if (name != null) {
+            NamedConfigurationTypeDescriptor typeDescriptor = new NamedConfigurationTypeDescriptor(asString(name));
+            return Optional.of(new TypeDescriptorWithOrigin(typeDescriptor, treatAllNameEntriesAsType));
+        } else {
+            throw failOnSchemaError("must have type or name specified for an element");
+        }
+    }
+
+    protected static Optional<ConfigurationTypeDescriptor> parseTypeContents(Object typeObject) {
+        if (typeObject instanceof String stringValue) {
+            return Optional.of(new NamedConfigurationTypeDescriptor(stringValue));
+        } else {
+            EconomicMap<String, Object> type = asMap(typeObject, "type descriptor should be a string or object");
+            if (type.containsKey(PROXY_KEY)) {
+                checkHasExactlyOneAttribute(type, "type descriptor object", Set.of(PROXY_KEY));
+                return Optional.of(getProxyDescriptor(type.get(PROXY_KEY)));
+            }
+            /*
+             * We return if we find a future version of a type descriptor (as a JSON object) instead
+             * of failing parsing.
+             */
+            // TODO warn
+            return Optional.empty();
+        }
+    }
+
+    private static ProxyConfigurationTypeDescriptor getProxyDescriptor(Object proxyObject) {
+        List<Object> proxyInterfaces = asList(proxyObject, "proxy interface content should be an interface list");
+        List<String> proxyInterfaceNames = proxyInterfaces.stream().map(obj -> asString(obj, "proxy")).toList();
+        return new ProxyConfigurationTypeDescriptor(proxyInterfaceNames);
+    }
 }

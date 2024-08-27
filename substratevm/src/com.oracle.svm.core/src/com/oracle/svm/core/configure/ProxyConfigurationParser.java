@@ -27,24 +27,31 @@ package com.oracle.svm.core.configure;
 import java.net.URI;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.util.json.JSONParserException;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
+import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+
+import jdk.graal.compiler.util.json.JsonParserException;
 
 /**
  * Parses JSON describing lists of interfaces and register them in the {@link DynamicProxyRegistry}.
  */
-public final class ProxyConfigurationParser extends ConfigurationParser {
-    private final Consumer<ConditionalElement<List<String>>> interfaceListConsumer;
+public final class ProxyConfigurationParser<C> extends ConfigurationParser {
 
-    public ProxyConfigurationParser(Consumer<ConditionalElement<List<String>>> interfaceListConsumer, boolean strictConfiguration) {
+    private final ConfigurationConditionResolver<C> conditionResolver;
+
+    private final BiConsumer<C, List<String>> proxyConfigConsumer;
+
+    public ProxyConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, boolean strictConfiguration,
+                    BiConsumer<C, List<String>> proxyConfigConsumer) {
         super(strictConfiguration);
-        this.interfaceListConsumer = interfaceListConsumer;
+        this.proxyConfigConsumer = proxyConfigConsumer;
+        this.conditionResolver = conditionResolver;
     }
 
     @Override
@@ -58,32 +65,35 @@ public final class ProxyConfigurationParser extends ConfigurationParser {
         for (Object proxyConfigurationObject : proxyConfiguration) {
             if (proxyConfigurationObject instanceof List) {
                 foundInterfaceLists = true;
-                parseInterfaceList(ConfigurationCondition.alwaysTrue(), asList(proxyConfigurationObject, "<shouldn't reach here>"));
+                parseInterfaceList(conditionResolver.alwaysTrue(), asList(proxyConfigurationObject, "<shouldn't reach here>"));
             } else if (proxyConfigurationObject instanceof EconomicMap) {
                 foundProxyConfigurationObjects = true;
                 parseWithConditionalConfig(asMap(proxyConfigurationObject, "<shouldn't reach here>"));
             } else {
-                throw new JSONParserException("Second-level must be composed of either interface lists or proxy configuration objects");
+                throw new JsonParserException("Second-level must be composed of either interface lists or proxy configuration objects");
             }
             if (foundInterfaceLists && foundProxyConfigurationObjects) {
-                throw new JSONParserException("Second-level can only be populated of either interface lists or proxy configuration objects, but these cannot be mixed");
+                throw new JsonParserException("Second-level can only be populated of either interface lists or proxy configuration objects, but these cannot be mixed");
             }
         }
     }
 
-    private void parseInterfaceList(ConfigurationCondition condition, List<?> data) {
+    private void parseInterfaceList(C condition, List<?> data) {
         List<String> interfaces = data.stream().map(ConfigurationParser::asString).collect(Collectors.toList());
 
         try {
-            interfaceListConsumer.accept(new ConditionalElement<>(condition, interfaces));
+            proxyConfigConsumer.accept(condition, interfaces);
         } catch (Exception e) {
-            throw new JSONParserException(e.toString());
+            throw new JsonParserException(e.toString());
         }
     }
 
     private void parseWithConditionalConfig(EconomicMap<String, Object> proxyConfigObject) {
         checkAttributes(proxyConfigObject, "proxy descriptor object", Collections.singleton("interfaces"), Collections.singletonList(CONDITIONAL_KEY));
-        ConfigurationCondition condition = parseCondition(proxyConfigObject);
-        parseInterfaceList(condition, asList(proxyConfigObject.get("interfaces"), "The interfaces property must be an array of fully qualified interface names"));
+        UnresolvedConfigurationCondition condition = parseCondition(proxyConfigObject, false);
+        TypeResult<C> resolvedCondition = conditionResolver.resolveCondition(condition);
+        if (resolvedCondition.isPresent()) {
+            parseInterfaceList(resolvedCondition.get(), asList(proxyConfigObject.get("interfaces"), "The interfaces property must be an array of fully qualified interface names"));
+        }
     }
 }
