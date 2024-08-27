@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.configure.config;
 
+import static com.oracle.svm.core.configure.ConfigurationParser.JNI_KEY;
+import static com.oracle.svm.core.configure.ConfigurationParser.REFLECTION_KEY;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -32,10 +35,10 @@ import java.util.function.Function;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
-import com.oracle.svm.core.util.json.JsonPrintable;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JsonPrintable;
+import com.oracle.svm.core.util.json.JsonWriter;
 
 public class ConfigurationSet {
     @FunctionalInterface
@@ -66,7 +69,7 @@ public class ConfigurationSet {
     }
 
     public ConfigurationSet() {
-        this(new TypeConfiguration(), new TypeConfiguration(), new ResourceConfiguration(), new ProxyConfiguration(), new SerializationConfiguration(),
+        this(new TypeConfiguration(REFLECTION_KEY), new TypeConfiguration(JNI_KEY), new ResourceConfiguration(), new ProxyConfiguration(), new SerializationConfiguration(),
                         new PredefinedClassesConfiguration(new Path[0], hash -> false));
     }
 

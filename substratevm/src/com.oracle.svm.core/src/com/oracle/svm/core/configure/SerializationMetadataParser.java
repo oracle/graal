@@ -29,12 +29,12 @@ import java.util.List;
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
-final class SerializationMetadataParser<C> extends SerializationConfigurationParser<C> {
+final class SerializationMetadataParser<C> extends SerializationConfigurationParser {
 
-    SerializationMetadataParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, boolean strictConfiguration) {
+    SerializationMetadataParser(ConfigurationConditionResolver conditionResolver, RuntimeSerializationSupport serializationSupport, boolean strictConfiguration) {
         super(conditionResolver, serializationSupport, strictConfiguration);
     }
 
@@ -55,7 +55,7 @@ final class SerializationMetadataParser<C> extends SerializationConfigurationPar
             return;
         }
 
-        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, true);
+        ConfigurationCondition unresolvedCondition = parseCondition(data, true);
         var condition = conditionResolver.resolveCondition(unresolvedCondition);
         if (!condition.isPresent()) {
             return;

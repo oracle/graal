@@ -31,14 +31,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
-public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
+public interface ResourcesRegistry extends RuntimeResourceSupport {
 
     @SuppressWarnings("unchecked")
-    static ResourcesRegistry<ConfigurationCondition> singleton() {
+    static ResourcesRegistry singleton() {
         return ImageSingletons.lookup(ResourcesRegistry.class);
     }
 
-    void addClassBasedResourceBundle(C condition, String basename, String className);
+    void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className);
 
     /**
      * Although the interface-methods below are already defined in the super-interface
@@ -46,14 +46,14 @@ public interface ResourcesRegistry<C> extends RuntimeResourceSupport<C> {
      * reflectively.
      */
     @Override
-    void addResources(C condition, String pattern);
+    void addResources(ConfigurationCondition condition, String pattern);
 
     @Override
-    void ignoreResources(C condition, String pattern);
+    void ignoreResources(ConfigurationCondition condition, String pattern);
 
     @Override
-    void addResourceBundles(C condition, String name);
+    void addResourceBundles(ConfigurationCondition condition, String name);
 
     @Override
-    void addResourceBundles(C condition, String basename, Collection<Locale> locales);
+    void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales);
 }

@@ -140,7 +140,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     }
 
     @Override
-    public Class<?> createProxyClassForSerialization(Class<?>... interfaces) {
+    public Class<?> getProxyClassHosted(Class<?>... interfaces) {
         final Class<?>[] intfs = interfaces.clone();
 
         return createProxyClassFromImplementedInterfaces(intfs);
@@ -233,5 +233,9 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Class<?> getJdkProxyClass(ClassLoader loader, Class<?>... interfaces) {
         return java.lang.reflect.Proxy.getProxyClass(loader, interfaces);
+    }
+
+    public static String proxyTypeDescriptor(String... interfaceNames) {
+        return "Proxy[" + String.join(", ", interfaceNames) + "]";
     }
 }
