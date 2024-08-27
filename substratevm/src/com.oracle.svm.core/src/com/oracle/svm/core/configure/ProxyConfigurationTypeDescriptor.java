@@ -30,9 +30,8 @@ import java.util.Collection;
 import java.util.List;
 
 import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
-
-import jdk.graal.compiler.util.json.JsonPrinter;
-import jdk.graal.compiler.util.json.JsonWriter;
+import com.oracle.svm.core.util.json.JsonPrinter;
+import com.oracle.svm.core.util.json.JsonWriter;
 
 public record ProxyConfigurationTypeDescriptor(List<String> interfaceNames) implements ConfigurationTypeDescriptor {
 

@@ -27,21 +27,25 @@ package com.oracle.svm.hosted.config;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
+import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
+import com.oracle.svm.core.configure.ProxyConfigurationTypeDescriptor;
 import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
+import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.ClassUtil;
 
-import jdk.vm.ci.meta.MetaUtil;
-
-public class RegistryAdapter implements ReflectionConfigurationParserDelegate<ConditionalElement<Class<?>>> {
+public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Class<?>> {
     private final ReflectionRegistry registry;
     private final ImageClassLoader classLoader;
 
@@ -59,102 +63,116 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public void registerType(ConditionalElement<Class<?>> type) {
-        registry.register(type.getCondition(), type.getElement());
+    public void registerType(ConfigurationCondition condition, Class<?> type) {
+        registry.register(condition, type);
     }
 
     @Override
-    public TypeResult<ConfigurationCondition> resolveCondition(String typeName) {
-        String canonicalizedName = canonicalizeTypeName(typeName);
-        TypeResult<Class<?>> clazz = classLoader.findClass(canonicalizedName);
-        return clazz.map(Class::getTypeName)
-                        .map(ConfigurationCondition::create);
-    }
-
-    @Override
-    public TypeResult<ConditionalElement<Class<?>>> resolveType(ConfigurationCondition condition, String typeName, boolean allowPrimitives) {
-        String name = canonicalizeTypeName(typeName);
-        TypeResult<Class<?>> clazz = classLoader.findClass(name, allowPrimitives);
-        return clazz.map(c -> new ConditionalElement<>(condition, c));
-    }
-
-    private static String canonicalizeTypeName(String typeName) {
-        String name = typeName;
-        if (name.indexOf('[') != -1) {
-            /* accept "int[][]", "java.lang.String[]" */
-            name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
+    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives) {
+        switch (typeDescriptor.getDescriptorType()) {
+            case NAMED -> {
+                NamedConfigurationTypeDescriptor namedDescriptor = (NamedConfigurationTypeDescriptor) typeDescriptor;
+                return classLoader.findClass(namedDescriptor.name(), allowPrimitives);
+            }
+            case PROXY -> {
+                return resolveProxyType((ProxyConfigurationTypeDescriptor) typeDescriptor);
+            }
+            default -> {
+                throw VMError.shouldNotReachHere("Unknown type descriptor kind: %s", typeDescriptor.getDescriptorType());
+            }
         }
-        return name;
+    }
+
+    private TypeResult<Class<?>> resolveProxyType(ProxyConfigurationTypeDescriptor typeDescriptor) {
+        String typeName = typeDescriptor.toString();
+        List<TypeResult<Class<?>>> interfaceResults = typeDescriptor.interfaceNames().stream().map(name -> {
+            NamedConfigurationTypeDescriptor typeDescriptor1 = new NamedConfigurationTypeDescriptor(name);
+            return classLoader.findClass(typeDescriptor1.name(), false);
+        }).toList();
+        List<Class<?>> interfaces = new ArrayList<>();
+        for (TypeResult<Class<?>> intf : interfaceResults) {
+            if (!intf.isPresent()) {
+                return TypeResult.forException(typeName, intf.getException());
+            }
+            interfaces.add(intf.get());
+        }
+        try {
+            DynamicProxyRegistry proxyRegistry = ImageSingletons.lookup(DynamicProxyRegistry.class);
+            Class<?> proxyClass = proxyRegistry.getProxyClassHosted(interfaces.toArray(Class<?>[]::new));
+            return TypeResult.forType(typeName, proxyClass);
+        } catch (Throwable t) {
+            return TypeResult.forException(typeName, t);
+        }
     }
 
     @Override
-    public void registerPublicClasses(ConditionalElement<Class<?>> type) {
-        registry.register(type.getCondition(), type.getElement().getClasses());
+    public void registerPublicClasses(ConfigurationCondition condition, Class<?> type) {
+        registry.register(condition, type.getClasses());
     }
 
     @Override
-    public void registerDeclaredClasses(ConditionalElement<Class<?>> type) {
-        registry.register(type.getCondition(), type.getElement().getDeclaredClasses());
+    public void registerDeclaredClasses(ConfigurationCondition condition, Class<?> type) {
+        registry.register(condition, type.getDeclaredClasses());
     }
 
     @Override
-    public void registerRecordComponents(ConditionalElement<Class<?>> type) {
+    public void registerRecordComponents(ConfigurationCondition condition, Class<?> type) {
     }
 
     @Override
-    public void registerPermittedSubclasses(ConditionalElement<Class<?>> type) {
+    public void registerPermittedSubclasses(ConfigurationCondition condition, Class<?> type) {
     }
 
     @Override
-    public void registerNestMembers(ConditionalElement<Class<?>> type) {
+    public void registerNestMembers(ConfigurationCondition condition, Class<?> type) {
     }
 
     @Override
-    public void registerSigners(ConditionalElement<Class<?>> type) {
+    public void registerSigners(ConfigurationCondition condition, Class<?> type) {
     }
 
     @Override
-    public void registerPublicFields(ConditionalElement<Class<?>> type) {
-        registry.register(type.getCondition(), false, type.getElement().getFields());
+    public void registerPublicFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        registry.register(condition, false, type.getFields());
     }
 
     @Override
-    public void registerDeclaredFields(ConditionalElement<Class<?>> type) {
-        registry.register(type.getCondition(), false, type.getElement().getDeclaredFields());
+    public void registerDeclaredFields(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        registry.register(condition, false, type.getDeclaredFields());
     }
 
     @Override
-    public void registerPublicMethods(boolean queriedOnly, ConditionalElement<Class<?>> type) {
-        registry.register(type.getCondition(), queriedOnly, type.getElement().getMethods());
+    public void registerPublicMethods(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        registry.register(condition, queriedOnly, type.getMethods());
     }
 
     @Override
-    public void registerDeclaredMethods(boolean queriedOnly, ConditionalElement<Class<?>> type) {
-        registry.register(type.getCondition(), queriedOnly, type.getElement().getDeclaredMethods());
+    public void registerDeclaredMethods(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        registry.register(condition, queriedOnly, type.getDeclaredMethods());
     }
 
     @Override
-    public void registerPublicConstructors(boolean queriedOnly, ConditionalElement<Class<?>> type) {
-        registry.register(type.getCondition(), queriedOnly, type.getElement().getConstructors());
+    public void registerPublicConstructors(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        registry.register(condition, queriedOnly, type.getConstructors());
     }
 
     @Override
-    public void registerDeclaredConstructors(boolean queriedOnly, ConditionalElement<Class<?>> type) {
-        registry.register(type.getCondition(), queriedOnly, type.getElement().getDeclaredConstructors());
+    public void registerDeclaredConstructors(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        registry.register(condition, queriedOnly, type.getDeclaredConstructors());
     }
 
     @Override
-    public void registerField(ConditionalElement<Class<?>> type, String fieldName, boolean allowWrite) throws NoSuchFieldException {
-        registry.register(type.getCondition(), allowWrite, type.getElement().getDeclaredField(fieldName));
+    public void registerField(ConfigurationCondition condition, Class<?> type, String fieldName, boolean allowWrite) throws NoSuchFieldException {
+        registry.register(condition, allowWrite, type.getDeclaredField(fieldName));
     }
 
     @Override
-    public boolean registerAllMethodsWithName(boolean queriedOnly, ConditionalElement<Class<?>> type, String methodName) {
+    public boolean registerAllMethodsWithName(ConfigurationCondition condition, boolean queriedOnly, Class<?> type, String methodName) {
         boolean found = false;
-        Executable[] methods = type.getElement().getDeclaredMethods();
+        Executable[] methods = type.getDeclaredMethods();
         for (Executable method : methods) {
             if (method.getName().equals(methodName)) {
-                registerExecutable(type.getCondition(), queriedOnly, method);
+                registerExecutable(condition, queriedOnly, method);
                 found = true;
             }
         }
@@ -162,17 +180,16 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public boolean registerAllConstructors(boolean queriedOnly, ConditionalElement<Class<?>> type) {
-        Executable[] methods = type.getElement().getDeclaredConstructors();
-        registerExecutable(type.getCondition(), queriedOnly, methods);
+    public boolean registerAllConstructors(ConfigurationCondition condition, boolean queriedOnly, Class<?> type) {
+        Executable[] methods = type.getDeclaredConstructors();
+        registerExecutable(condition, queriedOnly, methods);
         return methods.length > 0;
     }
 
     @Override
-    public void registerUnsafeAllocated(ConditionalElement<Class<?>> clazz) {
-        Class<?> type = clazz.getElement();
+    public void registerUnsafeAllocated(ConfigurationCondition condition, Class<?> type) {
         if (!type.isArray() && !type.isInterface() && !Modifier.isAbstract(type.getModifiers())) {
-            registry.register(clazz.getCondition(), true, clazz.getElement());
+            registry.register(condition, true, type);
             /*
              * Ignore otherwise as the implementation of allocateInstance will anyhow throw an
              * exception.
@@ -181,11 +198,11 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public void registerMethod(boolean queriedOnly, ConditionalElement<Class<?>> type, String methodName, List<ConditionalElement<Class<?>>> methodParameterTypes) throws NoSuchMethodException {
+    public void registerMethod(ConfigurationCondition condition, boolean queriedOnly, Class<?> type, String methodName, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
         Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
         Method method;
         try {
-            method = type.getElement().getDeclaredMethod(methodName, parameterTypesArray);
+            method = type.getDeclaredMethod(methodName, parameterTypesArray);
         } catch (NoClassDefFoundError e) {
             /*
              * getDeclaredMethod() builds a set of all the declared methods, which can fail when a
@@ -196,24 +213,22 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
              * precisely because the application used getMethod() instead of getDeclaredMethod().
              */
             try {
-                method = type.getElement().getMethod(methodName, parameterTypesArray);
+                method = type.getMethod(methodName, parameterTypesArray);
             } catch (Throwable ignored) {
                 throw e;
             }
         }
-        registerExecutable(type.getCondition(), queriedOnly, method);
+        registerExecutable(condition, queriedOnly, method);
     }
 
     @Override
-    public void registerConstructor(boolean queriedOnly, ConditionalElement<Class<?>> type, List<ConditionalElement<Class<?>>> methodParameterTypes) throws NoSuchMethodException {
+    public void registerConstructor(ConfigurationCondition condition, boolean queriedOnly, Class<?> type, List<Class<?>> methodParameterTypes) throws NoSuchMethodException {
         Class<?>[] parameterTypesArray = getParameterTypes(methodParameterTypes);
-        registerExecutable(type.getCondition(), queriedOnly, type.getElement().getDeclaredConstructor(parameterTypesArray));
+        registerExecutable(condition, queriedOnly, type.getDeclaredConstructor(parameterTypesArray));
     }
 
-    static Class<?>[] getParameterTypes(List<ConditionalElement<Class<?>>> methodParameterTypes) {
-        return methodParameterTypes.stream()
-                        .map(ConditionalElement::getElement)
-                        .toArray(Class<?>[]::new);
+    static Class<?>[] getParameterTypes(List<Class<?>> methodParameterTypes) {
+        return methodParameterTypes.toArray(Class<?>[]::new);
     }
 
     private void registerExecutable(ConfigurationCondition condition, boolean queriedOnly, Executable... executable) {
@@ -221,12 +236,12 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public String getTypeName(ConditionalElement<Class<?>> type) {
-        return type.getElement().getTypeName();
+    public String getTypeName(Class<?> type) {
+        return type.getTypeName();
     }
 
     @Override
-    public String getSimpleName(ConditionalElement<Class<?>> type) {
-        return ClassUtil.getUnqualifiedName(type.getElement());
+    public String getSimpleName(Class<?> type) {
+        return ClassUtil.getUnqualifiedName(type);
     }
 }

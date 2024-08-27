@@ -24,27 +24,27 @@
  */
 package com.oracle.svm.core.configure;
 
-import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.TypeResult;
 
-public interface ConfigurationConditionResolver<T> {
+public interface ConfigurationConditionResolver {
 
-    static ConfigurationConditionResolver<UnresolvedConfigurationCondition> identityResolver() {
-        return new ConfigurationConditionResolver<>() {
+    static ConfigurationConditionResolver identityResolver() {
+        return new ConfigurationConditionResolver() {
             @Override
-            public TypeResult<UnresolvedConfigurationCondition> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition) {
+            public TypeResult<ConfigurationCondition> resolveCondition(ConfigurationCondition unresolvedCondition) {
                 return TypeResult.forType(unresolvedCondition.getTypeName(), unresolvedCondition);
             }
 
             @Override
-            public UnresolvedConfigurationCondition alwaysTrue() {
-                return UnresolvedConfigurationCondition.alwaysTrue();
+            public ConfigurationCondition alwaysTrue() {
+                return ConfigurationCondition.alwaysTrue();
             }
         };
     }
 
-    TypeResult<T> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition);
+    TypeResult<ConfigurationCondition> resolveCondition(ConfigurationCondition unresolvedCondition);
 
-    T alwaysTrue();
+    ConfigurationCondition alwaysTrue();
 }
