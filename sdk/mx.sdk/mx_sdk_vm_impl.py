@@ -1719,6 +1719,35 @@ class GraalVmJImage(mx.Project):
                 for name in files:
                     yield join(root, name), relpath(join(root, name), logical_root)
 
+
+def _graalvm_jimage_release_sanity_check(jdk_home, context):
+    if not _suite.is_release():
+        # only check release builds
+        return True
+    if mx_sdk_vm.is_ee_jdk(jdk_home):
+        # no need to check EE
+        return True
+    # check CE release
+    jdk = mx.JDKConfig(jdk_home)
+    out = mx.LinesOutputCapture()
+    jdk.run_java(['-XshowSettings:properties', '-version'], out=out)
+
+    props = {}
+    for l in out.lines:
+        if ' = ' in l:
+            k, v = l.strip().split(' = ', maxsplit=2)
+            props[k] = v
+
+    def _check(k, v):
+        if props.get(k) != v:
+            mx.abort(f'Expected property "{k}" to be "{v}"', context=context)
+
+    _check('java.vendor', 'GraalVM Community')
+    _check('java.vendor.url', 'https://www.graalvm.org/')
+    _check('java.vm.vendor', 'GraalVM Community')
+    return True
+
+
 class GraalVmJImageBuildTask(mx.ProjectBuildTask):
     def __init__(self, subject, args):
         super(GraalVmJImageBuildTask, self).__init__(args, 1, subject)
@@ -1760,6 +1789,8 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         _metadata = BaseGraalVmLayoutDistribution._get_metadata(_sorted_suites, release_file)
         with open(release_file, 'w') as f:
             f.write(_metadata)
+
+        _graalvm_jimage_release_sanity_check(out_dir, self)
 
         with open(self._config_file(), 'w') as f:
             f.write('\n'.join(self._config()))
