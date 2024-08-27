@@ -39,6 +39,7 @@ public final class ProgressReporterCHelper {
         loadCHelperLibrary();
     }
 
+    @SuppressWarnings("restricted")
     private static void loadCHelperLibrary() {
         Path javaHome = Paths.get(System.getProperty("java.home"));
         String libName = System.mapLibraryName("reporterchelper");
