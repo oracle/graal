@@ -70,7 +70,7 @@ public class SplittingTest extends AbstractBasicInterpreterTest {
     public void before() {
         // we can only perform this test if the runtime enables splitting
         Assume.assumeNotNull(split(parseNode("dummy", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.endRoot();
         })));
         context = Context.create();
@@ -90,7 +90,7 @@ public class SplittingTest extends AbstractBasicInterpreterTest {
         BasicInterpreter original = parseNode("bytecodeUpdateInSplits", b -> {
             b.beginSource(s);
             b.beginSourceSection(0, 0);
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginTag(StatementTag.class);
             b.beginReturn();
             b.emitLoadConstant(42L);
@@ -131,7 +131,7 @@ public class SplittingTest extends AbstractBasicInterpreterTest {
         BasicInterpreter original = parseNode("indepentProfile", b -> {
             b.beginSource(s);
             b.beginSourceSection(0, 0);
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginTag(StatementTag.class);
             b.beginReturn();
             b.beginAddOperation();

@@ -95,7 +95,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     public void testSource() {
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginSource(source);
             b.beginSourceSection(0, 8);
 
@@ -137,7 +137,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             for (int i = 0; i < numSourceSections; i++) {
                 b.beginSourceSection(0, numSourceSections - i);
             }
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.emitGetSourcePositions();
             b.endReturn();
@@ -170,7 +170,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter node = parseNodeWithSource("sourceSplitByUnwind", b -> {
             b.beginSource(source);
             b.beginSourceSection(0, 11);
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTry(() -> {
                 b.beginSourceSection(4, 7); // finally
@@ -217,7 +217,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.beginSourceSection(1, 9);
             b.beginSourceSection(2, 8);
 
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.emitLoadArgument(0);
             b.beginSourceSection(3, 7);
             b.beginReturn();
@@ -243,7 +243,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     @Test
     public void testWithoutSource() {
         BasicInterpreter node = parseNode("source", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadConstant(1L);
             b.endReturn();
@@ -265,7 +265,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
         BasicInterpreter node = parseNode("source", b -> {
             b.beginSource(source);
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadConstant(1L);
             b.endReturn();
@@ -282,7 +282,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginSource(source);
             b.beginSourceSectionUnavailable();
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginSourceSection(7, 1);
@@ -309,7 +309,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     public void testSourceNoSourceSet() {
         assertThrowsWithMessage("No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.", IllegalStateException.class, () -> {
             parseNodeWithSource("sourceNoSourceSet", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.beginSourceSection(0, 8);
 
                 b.beginReturn();
@@ -334,7 +334,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.beginSource(source1);
             b.beginSourceSection(0, source1.getLength());
 
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.emitVoidOperation(); // source1, 0, length
             b.beginBlock();
@@ -406,7 +406,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     public void testGetSourcePosition() {
         Source source = Source.newBuilder("test", "return 1", "testGetSourcePosition").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginSource(source);
             b.beginSourceSection(0, 8);
 
@@ -432,7 +432,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     public void testGetSourcePositions() {
         Source source = Source.newBuilder("test", "return 1", "testGetSourcePositions").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginSource(source);
             b.beginSourceSection(0, 8);
 
@@ -458,7 +458,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     public void testGetSourcePositionFrameInstance() {
         Source fooSource = Source.newBuilder("test", "return arg0()", "testGetSourcePositionFrameInstance#foo").build();
         BasicInterpreter foo = parseNodeWithSource("foo", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginSource(fooSource);
             b.beginSourceSection(0, 13);
 
@@ -479,7 +479,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
         Source barSource = Source.newBuilder("test", "return <position>", "testGetSourcePositionFrameInstance#bar").build();
         BasicInterpreter bar = parseNodeWithSource("bar", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginSource(barSource);
             b.beginSourceSection(0, 17);
 
@@ -507,7 +507,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     public void testGetSourcePositionsFrameInstance() {
         Source fooSource = Source.newBuilder("test", "return arg0()", "testGetSourcePositionFrameInstance#foo").build();
         BasicInterpreter foo = parseNodeWithSource("foo", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginSource(fooSource);
             b.beginSourceSection(0, 13);
 
@@ -528,7 +528,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
         Source barSource = Source.newBuilder("test", "return <position>", "testGetSourcePositionFrameInstance#bar").build();
         BasicInterpreter bar = parseNodeWithSource("bar", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginSource(barSource);
             b.beginSourceSection(0, 17);
 
@@ -568,7 +568,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
         Source source = Source.newBuilder("test", "try finally", "sourceFinallyTry").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginSource(source);
             b.beginSourceSection(0, 11);
 
@@ -644,7 +644,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginSource(source);
             b.beginSourceSection(0, 11);
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginFinallyTry(() -> {
                 // finally
@@ -706,7 +706,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
         Source source = Source.newBuilder("test", "try finally", "sourceOfRootWithFinallyTryNotNestedInSource").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginSource(source);
             b.beginSourceSection(0, 11);
 
@@ -775,7 +775,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
         Source source = Source.newBuilder("test", "try finally { def f(){body}; return f }", "sourceRootNodeDeclaredInFinallyTry").build();
         BasicInterpreter node = parseNodeWithSource("source", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginSource(source);
             b.beginSourceSection(0, 39);
 
@@ -784,7 +784,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
                 b.beginSourceSection(14, 23);
 
                 b.beginSourceSection(14, 13);
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.beginSourceSection(22, 4);
                 b.emitGetSourcePositions();
                 b.endSourceSection();
@@ -853,7 +853,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         // Test input taken from testSource above.
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
         BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginSource(source);
             b.beginSourceSection(0, 8);
 
@@ -889,7 +889,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
 
         BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
             b.beginSource(source);
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginSourceSection(0, 27);
             b.beginReturn();

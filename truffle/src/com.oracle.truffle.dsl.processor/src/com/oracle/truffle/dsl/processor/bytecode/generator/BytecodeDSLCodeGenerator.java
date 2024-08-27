@@ -174,7 +174,7 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
         }
 
         // Add helper methods to reflectively invoke static methods.
-        abstractBuilderType.addAll(createReflectiveHelpers(modelList.getTemplateType().asType(), abstractBuilderType.asType()));
+        abstractBuilderType.addAll(createReflectiveHelpers(modelList, abstractBuilderType.asType()));
 
         results.add(abstractBuilderType);
 
@@ -217,17 +217,21 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
         return false;
     }
 
-    private List<CodeExecutableElement> createReflectiveHelpers(TypeMirror templateType, TypeMirror abstractBuilderType) {
+    private List<CodeExecutableElement> createReflectiveHelpers(BytecodeDSLModels modelList, TypeMirror abstractBuilderType) {
         List<CodeExecutableElement> result = new ArrayList<>();
         ProcessorContext ctx = ProcessorContext.getInstance();
+
+        TypeMirror templateType = modelList.getTemplateType().asType();
+        TypeMirror languageClass = modelList.getModels().getFirst().languageClass;
 
         CodeTypeParameterElement tExtendsBasicInterpreter = new CodeTypeParameterElement(CodeNames.of("T"), templateType);
         result.add(createReflectiveHelper("newConfigBuilder", templateType, types.BytecodeConfig_Builder, null));
         result.add(createReflectiveHelper("create", templateType, generic(types.BytecodeRootNodes, tExtendsBasicInterpreter.asType()), tExtendsBasicInterpreter,
+                        new CodeVariableElement(languageClass, "language"),
                         new CodeVariableElement(types.BytecodeConfig, "config"),
                         new CodeVariableElement(generic(types.BytecodeParser, ElementHelpers.wildcard(abstractBuilderType, null)), "builder")));
         result.add(createReflectiveHelper("deserialize", templateType, generic(types.BytecodeRootNodes, tExtendsBasicInterpreter.asType()), tExtendsBasicInterpreter,
-                        new CodeVariableElement(generic(types.TruffleLanguage, ElementHelpers.wildcard(null, null)), "language"),
+                        new CodeVariableElement(languageClass, "language"),
                         new CodeVariableElement(types.BytecodeConfig, "config"),
                         new CodeVariableElement(generic(ctx.getDeclaredType(Supplier.class), ctx.getDeclaredType(DataInput.class)), "input"),
                         new CodeVariableElement(types.BytecodeDeserializer, "callback")));

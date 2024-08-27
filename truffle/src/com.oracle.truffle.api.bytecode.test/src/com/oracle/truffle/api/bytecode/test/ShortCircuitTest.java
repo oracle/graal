@@ -79,7 +79,7 @@ public class ShortCircuitTest {
     public static <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeNodeWithShortCircuit parseNode(Class<? extends BytecodeNodeWithShortCircuit> interpreterClass,
                     BytecodeParser<T> builder) {
         BytecodeRootNodes<BytecodeNodeWithShortCircuit> nodes = BytecodeNodeWithShortCircuitBuilder.invokeCreate((Class<? extends BytecodeNodeWithShortCircuit>) interpreterClass,
-                        BytecodeConfig.DEFAULT, builder);
+                        null, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 
@@ -93,7 +93,7 @@ public class ShortCircuitTest {
 
         // foo -> foo
         BytecodeNodeWithShortCircuit root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginObjectAnd();
             b.emitLoadConstant(foo);
@@ -105,7 +105,7 @@ public class ShortCircuitTest {
 
         // 0 -> 0
         root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginObjectAnd();
             b.emitLoadConstant(0);
@@ -117,7 +117,7 @@ public class ShortCircuitTest {
 
         // true && 123 && foo -> foo
         root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginObjectAnd();
             b.emitLoadConstant(true);
@@ -131,7 +131,7 @@ public class ShortCircuitTest {
 
         // true && 0 && foo -> 0
         root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginObjectAnd();
             b.emitLoadConstant(true);
@@ -150,7 +150,7 @@ public class ShortCircuitTest {
 
         // foo -> true
         BytecodeNodeWithShortCircuit root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginBoolAnd();
             b.emitLoadConstant(foo);
@@ -162,7 +162,7 @@ public class ShortCircuitTest {
 
         // 0 -> false
         root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginBoolAnd();
             b.emitLoadConstant(0);
@@ -174,7 +174,7 @@ public class ShortCircuitTest {
 
         // true && 123 && foo -> true
         root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginBoolAnd();
             b.emitLoadConstant(true);
@@ -188,7 +188,7 @@ public class ShortCircuitTest {
 
         // true && 0 && foo -> false
         root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginBoolAnd();
             b.emitLoadConstant(true);
@@ -207,7 +207,7 @@ public class ShortCircuitTest {
 
         // foo -> foo
         BytecodeNodeWithShortCircuit root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginObjectOr();
             b.emitLoadConstant(foo);
@@ -219,7 +219,7 @@ public class ShortCircuitTest {
 
         // 0 -> 0
         root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginObjectOr();
             b.emitLoadConstant(0);
@@ -231,7 +231,7 @@ public class ShortCircuitTest {
 
         // false || 0 || foo -> foo
         root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginObjectOr();
             b.emitLoadConstant(false);
@@ -245,7 +245,7 @@ public class ShortCircuitTest {
 
         // false || 123 || foo -> 123
         root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginObjectOr();
             b.emitLoadConstant(false);
@@ -264,7 +264,7 @@ public class ShortCircuitTest {
 
         // foo -> true
         BytecodeNodeWithShortCircuit root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginBoolOr();
             b.emitLoadConstant(foo);
@@ -276,7 +276,7 @@ public class ShortCircuitTest {
 
         // 0 -> false
         root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginBoolOr();
             b.emitLoadConstant(0);
@@ -288,7 +288,7 @@ public class ShortCircuitTest {
 
         // false || 0 || foo -> true
         root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginBoolOr();
             b.emitLoadConstant(false);
@@ -302,7 +302,7 @@ public class ShortCircuitTest {
 
         // false || 123 || foo -> true
         root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginBoolOr();
             b.emitLoadConstant(false);

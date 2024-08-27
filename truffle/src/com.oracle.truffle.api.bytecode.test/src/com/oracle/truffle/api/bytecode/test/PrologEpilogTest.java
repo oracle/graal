@@ -134,7 +134,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
                 throw new AssertionError(ex);
             }
         } else {
-            nodes = PrologEpilogBytecodeNodeGen.create(BytecodeConfig.DEFAULT, builder);
+            nodes = PrologEpilogBytecodeNodeGen.create(null, BytecodeConfig.DEFAULT, builder);
         }
         return nodes.getNode(0);
     }
@@ -143,7 +143,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
     public void testSimpleReturn() {
         // return arg0
         PrologEpilogBytecodeNode root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.emitReadArgument();
             b.endReturn();
@@ -162,7 +162,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
         // return 123
         PrologEpilogBytecodeNode root = parseNode(b -> {
             // @formatter:off
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginBlock();
                 b.beginIfThen();
                     b.emitLoadArgument(0);
@@ -196,7 +196,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
     public void testImplicitReturn() {
         // if (arg0) return 42
         PrologEpilogBytecodeNode root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginIfThen();
             b.emitLoadArgument(0);
             b.beginReturn();
@@ -228,7 +228,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
         // @formatter:on
         PrologEpilogBytecodeNode root = parseNode(b -> {
             // @formatter:off
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginFinallyTry(() -> {
                 b.beginReturn();
                     b.emitLoadConstant(-1);
@@ -272,7 +272,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
         // @formatter:on
         PrologEpilogBytecodeNode root = parseNode(b -> {
             // @formatter:off
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginTryCatch();
                 b.beginIfThenElse();
                     b.emitLoadArgument(0);
@@ -309,7 +309,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
     public void testBoxingEliminationInEpilog() {
         PrologEpilogBytecodeNode root = parseNode(b -> {
             // @formatter:off
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadArgument(0);
             b.endReturn();
@@ -330,7 +330,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
     public void testSimpleThrow() {
         // throw "something went wrong"
         PrologEpilogBytecodeNode root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginThrowException();
             b.emitLoadConstant("something went wrong");
             b.endThrowException();
@@ -352,7 +352,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
     public void testThrowInReturn() {
         // return { throw "something went wrong"; arg0 }
         PrologEpilogBytecodeNode root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginBlock();
             b.beginThrowException();
@@ -379,7 +379,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
     public void testThrowInternalErrorInProlog() {
         // internal exceptions in the prolog just bubble up
         PrologEpilogBytecodeNode root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadArgument(0);
             b.endReturn();
@@ -403,7 +403,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
     public void testThrowInternalErrorInReturnEpilog() {
         // internal exceptions in the return epilog just bubble up
         PrologEpilogBytecodeNode root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadArgument(0);
             b.endReturn();
@@ -427,7 +427,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
     public void testThrowInternalErrorInExceptionalEpilog() {
         // internal exceptions in the exceptional epilog just bubble up
         PrologEpilogBytecodeNode root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginThrowException();
             b.emitLoadConstant("something went wrong");
             b.endThrowException();
@@ -451,7 +451,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
     public void testThrowTruffleExceptionInProlog() {
         // truffle exceptions in the prolog are handled by the exceptional epilog
         PrologEpilogBytecodeNode root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadArgument(0);
             b.endReturn();
@@ -475,7 +475,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
     public void testThrowTruffleExceptionInReturnEpilog() {
         // truffle exceptions in the return epilog are handled by the exceptional epilog
         PrologEpilogBytecodeNode root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadArgument(0);
             b.endReturn();
@@ -499,7 +499,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
     public void testThrowTruffleExceptionInExceptionalEpilog() {
         // truffle exceptions in the exceptional epilog just bubble up
         PrologEpilogBytecodeNode root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginThrowException();
             b.emitLoadConstant("something went wrong");
             b.endThrowException();

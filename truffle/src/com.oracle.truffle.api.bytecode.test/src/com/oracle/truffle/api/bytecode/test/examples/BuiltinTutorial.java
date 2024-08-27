@@ -74,7 +74,6 @@ import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
 import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
-import com.oracle.truffle.api.bytecode.test.TagTest.TagTestLanguage;
 import com.oracle.truffle.api.bytecode.test.examples.BuiltinTutorialFactory.ParseIntBuiltinNodeGen;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateCached;
@@ -135,7 +134,7 @@ public class BuiltinTutorial {
      * to show how uncached Java nodes can be integrated for builtins. We also enable serialization
      * as we will need that for the third category of builtins {@link SerializedBuiltin}.
      */
-    @GenerateBytecode(languageClass = TagTestLanguage.class, enableUncachedInterpreter = true, enableSerialization = true)
+    @GenerateBytecode(languageClass = LanguageWithBuiltins.class, enableUncachedInterpreter = true, enableSerialization = true)
     public abstract static class BuiltinLanguageRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected BuiltinLanguageRootNode(TruffleLanguage<?> language,
@@ -214,8 +213,8 @@ public class BuiltinTutorial {
      * builder and returns the parsed root node. This will come in handy to implement
      * {@link AbstractBuiltin#getOrCreateCallTarget()} later.
      */
-    private static BuiltinLanguageRootNode parse(BytecodeParser<BuiltinLanguageRootNodeGen.Builder> parser) {
-        BytecodeRootNodes<BuiltinLanguageRootNode> nodes = BuiltinLanguageRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
+    private static BuiltinLanguageRootNode parse(LanguageWithBuiltins language, BytecodeParser<BuiltinLanguageRootNodeGen.Builder> parser) {
+        BytecodeRootNodes<BuiltinLanguageRootNode> nodes = BuiltinLanguageRootNodeGen.create(language, BytecodeConfig.DEFAULT, parser);
         /**
          * In our language we only ever parse one root node at a time. So we can just return the
          * root node directly.
@@ -317,8 +316,8 @@ public class BuiltinTutorial {
         @Override
         CallTarget getOrCreateCallTarget() {
             if (cachedTarget == null) {
-                cachedTarget = parse((b) -> {
-                    b.beginRoot(null); // normally you would pass a language here
+                cachedTarget = parse(LanguageWithBuiltins.get(), (b) -> {
+                    b.beginRoot();
                     b.beginInlineBuiltin(this);
                     for (int i = 0; i < args; i++) {
                         b.emitLoadArgument(i);
@@ -358,14 +357,14 @@ public class BuiltinTutorial {
     }
 
     /**
-     * Lets verify that calling a builtin works as expected. Note that this test recreate the
-     * ParseInt builtin for every call, which is not ideal. Will will fix this later with
+     * Let's verify that calling a builtin works as expected. Note that this test recreates the
+     * ParseInt builtin for every call, which is not ideal. We will fix this later with
      * {@link LanguageWithBuiltins}.
      */
     @Test
     public void testCallJavaBuiltin() {
-        BuiltinLanguageRootNode root = parse(b -> {
-            b.beginRoot(null);
+        BuiltinLanguageRootNode root = parse(LanguageWithBuiltins.get(), b -> {
+            b.beginRoot();
             b.beginReturn();
             b.beginCallBuiltin(createParseIntBuiltin());
             b.emitLoadArgument(0);
@@ -385,8 +384,8 @@ public class BuiltinTutorial {
      */
     @Test
     public void testInlineJavaBuiltin() {
-        BuiltinLanguageRootNode root = parse(b -> {
-            b.beginRoot(null);
+        BuiltinLanguageRootNode root = parse(LanguageWithBuiltins.get(), b -> {
+            b.beginRoot();
             b.beginReturn();
             b.beginInlineBuiltin(createParseIntBuiltin());
             b.emitLoadArgument(0);
@@ -432,7 +431,7 @@ public class BuiltinTutorial {
         @Override
         CallTarget getOrCreateCallTarget() {
             if (cachedTarget == null) {
-                cachedTarget = parse(parser).getCallTarget();
+                cachedTarget = parse(LanguageWithBuiltins.get(), parser).getCallTarget();
             }
             return cachedTarget;
         }
@@ -444,7 +443,7 @@ public class BuiltinTutorial {
      */
     static BuilderBuiltin createBuilderBuiltin() {
         return new BuilderBuiltin("builderBuiltin", 0, (b) -> {
-            b.beginRoot(LanguageWithBuiltins.get());
+            b.beginRoot();
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
@@ -491,7 +490,7 @@ public class BuiltinTutorial {
              * Alternatively the code could be loaded from file and be preparsed at build time.
              */
             return serialize((b) -> {
-                b.beginRoot(LanguageWithBuiltins.get());
+                b.beginRoot();
                 b.beginReturn();
                 b.emitLoadConstant(42);
                 b.endReturn();
@@ -510,7 +509,7 @@ public class BuiltinTutorial {
      */
     private static BuiltinLanguageRootNode deserialize(byte[] deserialized) {
         try {
-            BytecodeRootNodes<BuiltinLanguageRootNode> nodes = BuiltinLanguageRootNodeGen.deserialize(null, BytecodeConfig.DEFAULT,
+            BytecodeRootNodes<BuiltinLanguageRootNode> nodes = BuiltinLanguageRootNodeGen.deserialize(LanguageWithBuiltins.get(), BytecodeConfig.DEFAULT,
                             () -> SerializationUtils.createDataInput(ByteBuffer.wrap(deserialized)),
                             (context, input) -> {
                                 return input.readInt();
@@ -599,7 +598,12 @@ public class BuiltinTutorial {
          * This allows languages to lookup the language as thread local.
          */
         static LanguageWithBuiltins get() {
-            return REFERENCE.get(null);
+            try {
+                return REFERENCE.get(null);
+            } catch (AssertionError err) {
+                // We may not have entered a polyglot context.
+                return null;
+            }
         }
     }
 

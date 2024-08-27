@@ -74,14 +74,14 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     }
 
     /**
-     * The benchmark programs implement:
+     * The program below implements:
      *
      * <pre>
      * var j = 0;
      * var i = 0;
      * var sum = 0;
      * while (i < 500000) {
-     *     var j = j + 1;
+     *     j = j + 1;
      *     sum = sum + j;
      *     i = i + 1;
      * }
@@ -92,8 +92,8 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testOSR1() {
-        BasicInterpreter root = parseNode(interpreterClass, false, "osrRoot", b -> {
-            b.beginRoot(LANGUAGE);
+        BasicInterpreter root = parseNode(interpreterClass, LANGUAGE, false, "osrRoot", b -> {
+            b.beginRoot();
 
             BytecodeLocal iLoc = b.createLocal();
             BytecodeLocal sumLoc = b.createLocal();
@@ -166,12 +166,12 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     }
 
     /**
-     * The benchmark programs implement:
+     * The program below implements:
      *
      * <pre>
      * int i = 0;
      * int sum = 0;
-     * while (i < 5000) {
+     * while (i < 500000) {
      *     int j = 0;
      *     while (j < i) {
      *         int temp;
@@ -192,8 +192,8 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testOSR2() {
-        BasicInterpreter root = parseNode(interpreterClass, false, "osrRoot", b -> {
-            b.beginRoot(LANGUAGE);
+        BasicInterpreter root = parseNode(interpreterClass, LANGUAGE, false, "osrRoot", b -> {
+            b.beginRoot();
 
             BytecodeLocal iLoc = b.createLocal();
             BytecodeLocal sumLoc = b.createLocal();
@@ -311,7 +311,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Test
     public void testCompiles() {
         BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addTwoConstants", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAddOperation();
@@ -335,7 +335,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     public void testMultipleReturns() {
         // return 30 + (arg0 ? 12 : (return 123; 0))
         BasicInterpreter root = parseNodeForCompilation(interpreterClass, "multipleReturns", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAddOperation();
@@ -369,7 +369,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Test
     public void testInstrumentation() {
         BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addTwoConstantsInstrumented", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginIncrementValue();
@@ -404,7 +404,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Test
     public void testYield() {
         BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addYield", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAddOperation();
@@ -444,7 +444,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     @Test
     public void testYieldInstrumentation() {
         BasicInterpreter root = parseNodeForCompilation(interpreterClass, "addYieldInstrumented", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginIncrementValue();
@@ -493,7 +493,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
     }
 
     private static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeForCompilation(Class<? extends BasicInterpreter> interpreterClass, String rootName, BytecodeParser<T> builder) {
-        BasicInterpreter result = parseNode(interpreterClass, false, rootName, builder);
+        BasicInterpreter result = parseNode(interpreterClass, LANGUAGE, false, rootName, builder);
         result.getBytecodeNode().setUncachedThreshold(0); // force interpreter to skip tier 0
         return result;
     }

@@ -61,6 +61,7 @@ import com.oracle.truffle.api.benchmark.bytecode.manual.ManualNodedBytecodeInter
 import com.oracle.truffle.api.benchmark.bytecode.manual.ManualNodedBytecodeInterpreters.ManualNodedBytecodeInterpreter;
 import com.oracle.truffle.api.benchmark.bytecode.manual.ManualNodedBytecodeInterpreters.ManualNodedBytecodeInterpreterWithoutBE;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
 
 @State(Scope.Benchmark)
 @Warmup(iterations = 5, time = 1)
@@ -208,131 +209,125 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
         b.emitReturn();
     }
 
-    private static BytecodeBenchmarkRootNode createSimpleLoopBytecodeDSL(BenchmarkLanguage lang, BytecodeBenchmarkRootNodeBuilder b) {
-        b.beginRoot(lang);
+    private static BytecodeParser<BytecodeBenchmarkRootNodeBuilder> createBytecodeDSLParser(boolean forceUncached) {
+        return b -> {
+            b.beginRoot();
 
-        BytecodeLocal iLoc = b.createLocal();
-        BytecodeLocal sumLoc = b.createLocal();
-        BytecodeLocal jLoc = b.createLocal();
-        BytecodeLocal tempLoc = b.createLocal();
+            BytecodeLocal iLoc = b.createLocal();
+            BytecodeLocal sumLoc = b.createLocal();
+            BytecodeLocal jLoc = b.createLocal();
+            BytecodeLocal tempLoc = b.createLocal();
 
-        // int i = 0;
-        b.beginStoreLocal(iLoc);
-        b.emitLoadConstant(0);
-        b.endStoreLocal();
+            // int i = 0;
+            b.beginStoreLocal(iLoc);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
 
-        // int sum = 0;
-        b.beginStoreLocal(sumLoc);
-        b.emitLoadConstant(0);
-        b.endStoreLocal();
+            // int sum = 0;
+            b.beginStoreLocal(sumLoc);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
 
-        // while (i < TOTAL_ITERATIONS) {
-        b.beginWhile();
-        b.beginLess();
-        b.emitLoadLocal(iLoc);
-        b.emitLoadConstant(5000);
-        b.endLess();
-        b.beginBlock();
+            // while (i < TOTAL_ITERATIONS) {
+            b.beginWhile();
+            b.beginLess();
+            b.emitLoadLocal(iLoc);
+            b.emitLoadConstant(5000);
+            b.endLess();
+            b.beginBlock();
 
-        // int j = 0;
-        b.beginStoreLocal(jLoc);
-        b.emitLoadConstant(0);
-        b.endStoreLocal();
+            // int j = 0;
+            b.beginStoreLocal(jLoc);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
 
-        // while (j < i) {
-        b.beginWhile();
-        b.beginLess();
-        b.emitLoadLocal(jLoc);
-        b.emitLoadLocal(iLoc);
-        b.endLess();
-        b.beginBlock();
+            // while (j < i) {
+            b.beginWhile();
+            b.beginLess();
+            b.emitLoadLocal(jLoc);
+            b.emitLoadLocal(iLoc);
+            b.endLess();
+            b.beginBlock();
 
-        // int temp;
-        // if (i % 3 < 1) {
-        b.beginIfThenElse();
+            // int temp;
+            // if (i % 3 < 1) {
+            b.beginIfThenElse();
 
-        b.beginLess();
-        b.beginMod();
-        b.emitLoadLocal(iLoc);
-        b.emitLoadConstant(3);
-        b.endMod();
-        b.emitLoadConstant(1);
-        b.endLess();
+            b.beginLess();
+            b.beginMod();
+            b.emitLoadLocal(iLoc);
+            b.emitLoadConstant(3);
+            b.endMod();
+            b.emitLoadConstant(1);
+            b.endLess();
 
-        // temp = 1;
-        b.beginStoreLocal(tempLoc);
-        b.emitLoadConstant(1);
-        b.endStoreLocal();
+            // temp = 1;
+            b.beginStoreLocal(tempLoc);
+            b.emitLoadConstant(1);
+            b.endStoreLocal();
 
-        // } else {
-        // temp = i % 3;
-        b.beginStoreLocal(tempLoc);
-        b.beginMod();
-        b.emitLoadLocal(iLoc);
-        b.emitLoadConstant(3);
-        b.endMod();
-        b.endStoreLocal();
+            // } else {
+            // temp = i % 3;
+            b.beginStoreLocal(tempLoc);
+            b.beginMod();
+            b.emitLoadLocal(iLoc);
+            b.emitLoadConstant(3);
+            b.endMod();
+            b.endStoreLocal();
 
-        // }
-        b.endIfThenElse();
+            // }
+            b.endIfThenElse();
 
-        // j = j + temp;
-        b.beginStoreLocal(jLoc);
-        b.beginAdd();
-        b.emitLoadLocal(jLoc);
-        b.emitLoadLocal(tempLoc);
-        b.endAdd();
-        b.endStoreLocal();
+            // j = j + temp;
+            b.beginStoreLocal(jLoc);
+            b.beginAdd();
+            b.emitLoadLocal(jLoc);
+            b.emitLoadLocal(tempLoc);
+            b.endAdd();
+            b.endStoreLocal();
 
-        // }
-        b.endBlock();
-        b.endWhile();
+            // }
+            b.endBlock();
+            b.endWhile();
 
-        // sum = sum + j;
-        b.beginStoreLocal(sumLoc);
-        b.beginAdd();
-        b.emitLoadLocal(sumLoc);
-        b.emitLoadLocal(jLoc);
-        b.endAdd();
-        b.endStoreLocal();
+            // sum = sum + j;
+            b.beginStoreLocal(sumLoc);
+            b.beginAdd();
+            b.emitLoadLocal(sumLoc);
+            b.emitLoadLocal(jLoc);
+            b.endAdd();
+            b.endStoreLocal();
 
-        // i = i + 1;
-        b.beginStoreLocal(iLoc);
-        b.beginAdd();
-        b.emitLoadLocal(iLoc);
-        b.emitLoadConstant(1);
-        b.endAdd();
-        b.endStoreLocal();
+            // i = i + 1;
+            b.beginStoreLocal(iLoc);
+            b.beginAdd();
+            b.emitLoadLocal(iLoc);
+            b.emitLoadConstant(1);
+            b.endAdd();
+            b.endStoreLocal();
 
-        // }
-        b.endBlock();
-        b.endWhile();
+            // }
+            b.endBlock();
+            b.endWhile();
 
-        // return sum;
-        b.beginReturn();
-        b.emitLoadLocal(sumLoc);
-        b.endReturn();
+            // return sum;
+            b.beginReturn();
+            b.emitLoadLocal(sumLoc);
+            b.endReturn();
 
-        return b.endRoot();
+            BytecodeBenchmarkRootNode root = b.endRoot();
+            if (forceUncached) {
+                root.getBytecodeNode().setUncachedThreshold(Integer.MAX_VALUE);
+            }
+        };
     }
 
     static {
-        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL, BytecodeBenchmarkRootNodeBase.class, (lang, b) -> {
-            createSimpleLoopBytecodeDSL(lang, b);
-        });
-        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_CHECKED, BytecodeBenchmarkRootNodeChecked.class, (lang, b) -> {
-            createSimpleLoopBytecodeDSL(lang, b);
-        });
-        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_UNCACHED, BytecodeBenchmarkRootNodeWithUncached.class, (lang, b) -> {
-            bytecodeUncachedRootNode = createSimpleLoopBytecodeDSL(lang, b);
-            bytecodeUncachedRootNode.getBytecodeNode().setUncachedThreshold(Integer.MAX_VALUE);
-        });
-        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_BE, BytecodeBenchmarkRootNodeBoxingEliminated.class, (lang, b) -> {
-            createSimpleLoopBytecodeDSL(lang, b);
-        });
-        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_ALL, BytecodeBenchmarkRootNodeAll.class, (lang, b) -> {
-            createSimpleLoopBytecodeDSL(lang, b);
-        });
+        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL, BytecodeBenchmarkRootNodeBase.class, createBytecodeDSLParser(false));
+        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_CHECKED, BytecodeBenchmarkRootNodeChecked.class, createBytecodeDSLParser(false));
+        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_UNCACHED, BytecodeBenchmarkRootNodeWithUncached.class, createBytecodeDSLParser(true));
+        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_BE, BytecodeBenchmarkRootNodeBoxingEliminated.class, createBytecodeDSLParser(false));
+        BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_ALL, BytecodeBenchmarkRootNodeAll.class, createBytecodeDSLParser(false));
         BenchmarkLanguage.registerName(NAME_MANUAL, lang -> {
             var builder = ManualBytecodeInterpreters.newBuilder();
             createSimpleLoopManualBytecode(builder);

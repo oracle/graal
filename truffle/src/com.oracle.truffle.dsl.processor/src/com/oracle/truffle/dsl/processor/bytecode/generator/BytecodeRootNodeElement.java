@@ -491,7 +491,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     private CodeExecutableElement createConstructor(CodeTypeElement initialBytecodeNode) {
         CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, this.getSimpleName().toString());
-        ctor.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
+        ctor.addParameter(new CodeVariableElement(model.languageClass, "language"));
         ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
         ctor.addParameter(new CodeVariableElement(bytecodeRootNodesImpl.asType(), "nodes"));
         ctor.addParameter(new CodeVariableElement(type(int.class), "maxLocals"));
@@ -1003,12 +1003,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     private CodeExecutableElement createCreate() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.BytecodeRootNodes, model.templateType.asType()), "create");
+        ex.addParameter(new CodeVariableElement(model.languageClass, "language"));
         ex.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
         ex.addParameter(new CodeVariableElement(parserType, "parser"));
 
         addJavadoc(ex, String.format("""
                         Creates one or more bytecode nodes. This is the entrypoint for creating new {@link %s} instances.
 
+                        @param language the Truffle language instance.
                         @param config indicates whether to parse metadata (e.g., source information).
                         @param parser the parser that invokes a series of builder instructions to generate bytecode.
                         """, model.getName()));
@@ -1017,6 +1019,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         b.declaration("BytecodeRootNodesImpl", "nodes", "new BytecodeRootNodesImpl(parser, config)");
         b.startAssign("Builder builder").startNew(builder.getSimpleName().toString());
+        b.string("language");
         b.string("nodes");
         b.string("config");
         b.end(2);
@@ -1089,7 +1092,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         """);
 
         CodeTreeBuilder init = CodeTreeBuilder.createBuilder();
-        init.startNew(bytecodeBuilderType);
+        init.startNew("Builder");
+        init.string("null"); // language not needed for serialization
         init.startGroup();
         init.startNew(bytecodeRootNodesImpl.asType());
         init.string("parser");
@@ -1100,7 +1104,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         CodeTreeBuilder b = method.createBuilder();
 
-        b.declaration(bytecodeBuilderType, "builder", init.build());
+        b.declaration("Builder", "builder", init.build());
 
         b.startStatement();
         b.startCall("doSerialize");
@@ -1142,7 +1146,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC),
                         generic(types.BytecodeRootNodes, model.getTemplateType().asType()), "deserialize");
 
-        method.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
+        method.addParameter(new CodeVariableElement(model.languageClass, "language"));
         method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
         method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "input"));
         method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
@@ -1153,7 +1157,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                                         Deserializes a byte sequence to bytecode nodes. The bytes must have been produced by a previous call to {@link #serialize}.").newLine()
 
                                         @param language the language instance.
-                                        @param config indicates whether to deserialize metadata (e.g., source information), if available.
+                                        @param config indicates whether to deserialize metadata (e.g., source information).
                                         @param input A function that supplies the bytes to deserialize. This supplier must produce a new {@link DataInput} each time, since the bytes may be processed multiple times for reparsing.
                                         @param callback The language-specific deserializer for constants in the bytecode. This callback must perform the inverse of the callback that was used to {@link #serialize} the nodes to bytes.
                                         """);
@@ -1162,7 +1166,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         b.startTryBlock();
 
-        b.statement("return create(config, (b) -> b.deserialize(language, input, callback, null))");
+        b.statement("return create(language, config, (b) -> b.deserialize(input, callback, null))");
         b.end().startCatchBlock(type(IOError.class), "e");
         b.startThrow().cast(type(IOException.class), "e.getCause()").end();
         b.end();
@@ -2383,6 +2387,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.bytecodeLocalImpl.lazyInit();
             this.bytecodeLabelImpl.lazyInit();
 
+            this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), model.languageClass, "language"));
             this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), bytecodeRootNodesImpl.asType(), "nodes"));
             this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(CharSequence.class), "reparseReason"));
             this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(boolean.class), "parseBytecodes"));
@@ -2402,8 +2407,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 this.serialization = this.add(new CodeVariableElement(Set.of(PRIVATE), serializationElements.asType(), "serialization"));
             }
 
-            this.add(createReparseConstructor());
             this.add(createParseConstructor());
+            this.add(createReparseConstructor());
 
             this.add(createCreateLocal());
             this.add(createCreateLocalAllParameters());
@@ -2571,6 +2576,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             CodeTreeBuilder b = ctor.createBuilder();
             b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
+            b.statement("this.language = nodes.getLanguage()");
             b.statement("this.nodes = nodes");
             b.statement("this.reparseReason = reparseReason");
             b.statement("this.parseBytecodes = parseBytecodes");
@@ -2587,6 +2593,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private CodeExecutableElement createParseConstructor() {
             CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, "Builder");
+            ctor.addParameter(new CodeVariableElement(model.languageClass, "language"));
             ctor.addParameter(new CodeVariableElement(bytecodeRootNodesImpl.asType(), "nodes"));
             ctor.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
 
@@ -2598,6 +2605,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             CodeTreeBuilder b = ctor.createBuilder();
             b.startStatement().startSuperCall().staticReference(bytecodeRootNodesImpl.asType(), "VISIBLE_TOKEN").end().end();
+            b.statement("this.language = language");
             b.statement("this.nodes = nodes");
             b.statement("this.reparseReason = null");
             b.statement("long encoding = BytecodeConfigEncoderImpl.decode(config)");
@@ -2972,7 +2980,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             type(void.class), "deserialize");
             mergeSuppressWarnings(method, "hiding");
 
-            method.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
             method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "bufferSupplier"));
             method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
             method.addParameter(new CodeVariableElement(deserializationElement.asType(), "outerContext"));
@@ -3039,7 +3046,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startStatement().startCall("context.finallyParsers.add");
             b.startGroup().string("() -> ").startCall("deserialize");
-            b.string("language");
             b.startGroup().string("() -> ").startStaticCall(types.SerializationUtils, "createDataInput");
             b.startStaticCall(declaredType(ByteBuffer.class), "wrap").string("finallyParserBytes").end();
             b.end(2);
@@ -3887,7 +3893,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private CodeExecutableElement createBeginRoot(OperationModel rootOperation) {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), type(void.class), "beginRoot");
-            ex.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
             if (model.prolog != null && model.prolog.operation.operationBeginArguments.length != 0) {
                 for (OperationArgument operationArgument : model.prolog.operation.operationBeginArguments) {
                     ex.addParameter(operationArgument.toVariableElement());
@@ -3956,7 +3961,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
 
             b.startStatement().string("RootData operationData = ");
-            b.tree(createOperationData("RootData", "language", safeCastShort("numRoots++")));
+            b.tree(createOperationData("RootData", safeCastShort("numRoots++")));
             b.end();
             b.startIf().string("reparseReason == null").end().startBlock();
             b.statement("builtNodes.add(null)");
@@ -4059,7 +4064,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 if (operation.kind == OperationKind.ROOT) {
                     b.startDeclaration(serializationRootNode.asType(), "node");
                     b.startNew(serializationRootNode.asType());
-                    b.string("serialization.language");
                     b.startStaticCall(types.FrameDescriptor, "newBuilder").end();
                     b.string("serialization.depth");
                     b.startCall("checkOverflowShort").string("serialization.rootCount++").doubleQuote("Root node count").end();
@@ -4800,7 +4804,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
             b.staticReference(types.FrameSlotKind, "Illegal");
             b.end(2);
-            b.declaration(types.TruffleLanguage, "language", "operationData.language");
 
             b.startAssign("result").startNew(BytecodeRootNodeElement.this.asType());
             b.string("language");
@@ -7185,7 +7188,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         name = "RootData";
                         fields = new ArrayList<>(5);
                         fields.addAll(List.of(//
-                                        field(types.TruffleLanguage, "language").asFinal(),
                                         field(type(short.class), "index").asFinal(),
                                         field(type(boolean.class), "producedValue").withInitializer("false"),
                                         field(type(int.class), "childBci").withInitializer(UNINIT),
@@ -7801,7 +7803,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             private CodeExecutableElement createConstructor(CodeTypeElement serializationRoot, List<CodeVariableElement> fields) {
                 CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, serializationRoot.getSimpleName().toString());
-                ctor.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
                 ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
                 for (CodeVariableElement field : fields) {
                     ctor.addParameter(new CodeVariableElement(field.asType(), field.getName().toString()));
@@ -7810,7 +7811,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 // super call
                 b.startStatement().startCall("super");
-                b.string("language");
+                b.string("null"); // language not needed for serialization
                 if (model.fdBuilderConstructor != null) {
                     b.string("builder");
                 } else {
@@ -7897,7 +7898,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 builtNodes.createInitBuilder().startNew("ArrayList<>").end();
                 rootStack.createInitBuilder().startNew("ArrayDeque<>").end();
 
-                addField(this, Set.of(PRIVATE), types.TruffleLanguage, "language");
                 addField(this, Set.of(PRIVATE), int.class, "localCount");
                 addField(this, Set.of(PRIVATE), short.class, "rootCount");
                 addField(this, Set.of(PRIVATE), int.class, "finallyParserCount");
@@ -8127,6 +8127,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createSetNodes());
             this.add(createGetParserImpl());
             this.add(createValidate());
+            this.add(createGetLanguage());
 
             if (model.enableSerialization) {
                 this.add(createSerialize());
@@ -8341,6 +8342,20 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
+        private CodeExecutableElement createGetLanguage() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), model.languageClass, "getLanguage");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startIf().string("nodes.length == 0").end().startBlock();
+            b.startReturn().string("null").end();
+            b.end();
+            b.startReturn().startCall("nodes[0].getLanguage");
+            b.typeLiteral(model.languageClass);
+            b.end(2);
+
+            return ex;
+        }
+
         private CodeExecutableElement createSerialize() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNodes, "serialize");
             ex.renameArguments("buffer", "callback");
@@ -8372,7 +8387,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.string("callback");
 
             // Create a new Builder with this BytecodeRootNodes instance.
-            b.startNew(bytecodeBuilderType);
+            b.startNew("Builder");
+            b.string("getLanguage()");
             b.string("this");
             b.staticReference(types.BytecodeConfig, "COMPLETE");
             b.end();

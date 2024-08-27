@@ -75,8 +75,8 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 public class SetTraceFuncTest extends AbstractInstructionTest {
 
     private static SetTraceFuncRootNode parse(BytecodeParser<SetTraceFuncRootNodeGen.Builder> parser) {
-        BytecodeRootNodes<SetTraceFuncRootNode> nodes = SetTraceFuncRootNodeGen.create(BytecodeConfig.WITH_SOURCE, parser);
-        return nodes.getNodes().get(nodes.getNodes().size() - 1);
+        BytecodeRootNodes<SetTraceFuncRootNode> nodes = SetTraceFuncRootNodeGen.create(TraceFunLanguage.REF.get(null), BytecodeConfig.WITH_SOURCE, parser);
+        return nodes.getNodes().get(0);
     }
 
     @Test
@@ -88,7 +88,7 @@ public class SetTraceFuncTest extends AbstractInstructionTest {
             AtomicInteger firstCounter = new AtomicInteger();
             AtomicInteger secondCounter = new AtomicInteger();
             SetTraceFuncRootNode node = parse((b) -> {
-                b.beginRoot(TraceFunLanguage.REF.get(null));
+                b.beginRoot();
                 b.emitTraceFun();
                 b.emitTraceFun();
 

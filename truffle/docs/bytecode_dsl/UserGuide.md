@@ -72,7 +72,7 @@ The `Builder` class is responsible for validating the well-formedness of these o
 Below is a simple example that generates a bytecode program to add two integer arguments together and return the result:
 ```
 BytecodeParser<SampleInterpreterGen.Builder> parser = (SampleInterpreterGen.Builder b) -> {
-    b.beginRoot(null); // TruffleLanguage goes here
+    b.beginRoot();
         b.beginReturn();
             b.beginAdd();
                 b.emitLoadArgument(0);
@@ -81,7 +81,7 @@ BytecodeParser<SampleInterpreterGen.Builder> parser = (SampleInterpreterGen.Buil
         b.endReturn();
     b.endRoot();
 }
-BytecodeRootNodes<SampleInterpreter> rootNodes = SampleInterpreterGen.create(BytecodeConfig.DEFAULT, parser);
+BytecodeRootNodes<SampleInterpreter> rootNodes = SampleInterpreterGen.create(getLanguage(), BytecodeConfig.DEFAULT, parser);
 ```
 
 You can typically implement a parser using an AST visitor. See the [Parsing tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/ParsingTutorial.java) for an example.
@@ -314,11 +314,11 @@ They can only access locals of the current root or an enclosing root.
 
 Below is a simple example where the inner root reads the outer local from the outer root's frame.
 ```java
-b.beginRoot(/* ... */); // outer root
+b.beginRoot(); // outer root
   b.beginBlock();
     var outerLocal = b.createLocal();
     // ...
-    b.beginRoot(/* ... */); // inner root
+    b.beginRoot(); // inner root
       b.beginLoadLocalMaterialized(outerLocal);
         b.emitGetOuterFrame(); // produces materialized frame of outer root
       b.endLoadLocalMaterialized();

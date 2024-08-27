@@ -69,7 +69,6 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
@@ -220,20 +219,20 @@ public abstract class AbstractBasicInterpreterTest {
     @Parameter(0) public TestRun run;
 
     public <T extends BasicInterpreterBuilder> RootCallTarget parse(String rootName, BytecodeParser<T> builder) {
-        BytecodeRootNode rootNode = parseNode(run.interpreterClass, run.testSerialize, rootName, builder);
+        BytecodeRootNode rootNode = parseNode(run.interpreterClass, LANGUAGE, run.testSerialize, rootName, builder);
         return ((RootNode) rootNode).getCallTarget();
     }
 
     public <T extends BasicInterpreterBuilder> BasicInterpreter parseNode(String rootName, BytecodeParser<T> builder) {
-        return parseNode(run.interpreterClass, run.testSerialize, rootName, builder);
+        return parseNode(run.interpreterClass, LANGUAGE, run.testSerialize, rootName, builder);
     }
 
     public <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeWithSource(String rootName, BytecodeParser<T> builder) {
-        return parseNodeWithSource(run.interpreterClass, run.testSerialize, rootName, builder);
+        return parseNodeWithSource(run.interpreterClass, LANGUAGE, run.testSerialize, rootName, builder);
     }
 
     public <T extends BasicInterpreterBuilder> BytecodeRootNodes<BasicInterpreter> createNodes(BytecodeConfig config, BytecodeParser<T> builder) {
-        return createNodes(run.interpreterClass, run.testSerialize, config, builder);
+        return createNodes(run.interpreterClass, LANGUAGE, run.testSerialize, config, builder);
     }
 
     public BytecodeConfig.Builder createBytecodeConfigBuilder() {
@@ -249,14 +248,13 @@ public abstract class AbstractBasicInterpreterTest {
      * reflection.
      */
     @SuppressWarnings("unchecked")
-    public static <T extends BasicInterpreterBuilder> BytecodeRootNodes<BasicInterpreter> createNodes(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize,
-                    BytecodeConfig config,
-                    BytecodeParser<T> builder) {
+    public static <T extends BasicInterpreterBuilder> BytecodeRootNodes<BasicInterpreter> createNodes(Class<? extends BasicInterpreter> interpreterClass,
+                    BytecodeDSLTestLanguage language, boolean testSerialize, BytecodeConfig config, BytecodeParser<T> builder) {
 
-        BytecodeRootNodes<BasicInterpreter> result = BasicInterpreterBuilder.invokeCreate((Class<? extends BasicInterpreter>) interpreterClass, config,
-                        (BytecodeParser<? extends BasicInterpreterBuilder>) builder);
+        BytecodeRootNodes<BasicInterpreter> result = BasicInterpreterBuilder.invokeCreate((Class<? extends BasicInterpreter>) interpreterClass,
+                        language, config, (BytecodeParser<? extends BasicInterpreterBuilder>) builder);
         if (testSerialize) {
-            assertBytecodeNodesEqual(result, doRoundTrip(interpreterClass, config, result));
+            assertBytecodeNodesEqual(result, doRoundTrip(interpreterClass, language, config, result));
         }
 
         for (BasicInterpreter interpreter : result.getNodes()) {
@@ -452,7 +450,8 @@ public abstract class AbstractBasicInterpreterTest {
         }
     }
 
-    public static <T extends BasicInterpreter> BytecodeRootNodes<T> doRoundTrip(Class<? extends BasicInterpreter> interpreterClass, BytecodeConfig config, BytecodeRootNodes<BasicInterpreter> nodes) {
+    public static <T extends BasicInterpreter> BytecodeRootNodes<T> doRoundTrip(Class<? extends BasicInterpreter> interpreterClass, BytecodeDSLTestLanguage language, BytecodeConfig config,
+                    BytecodeRootNodes<BasicInterpreter> nodes) {
         // Perform a serialize-deserialize round trip.
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
@@ -461,29 +460,30 @@ public abstract class AbstractBasicInterpreterTest {
             throw new AssertionError(ex);
         }
         Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
-        return BasicInterpreterBuilder.invokeDeserialize((Class<? extends BasicInterpreter>) interpreterClass, (TruffleLanguage<?>) LANGUAGE, config, input, DESERIALIZER);
+        return BasicInterpreterBuilder.invokeDeserialize((Class<? extends BasicInterpreter>) interpreterClass, language, config, input, DESERIALIZER);
     }
 
     public BytecodeRootNodes<BasicInterpreter> doRoundTrip(BytecodeRootNodes<BasicInterpreter> nodes) {
-        return AbstractBasicInterpreterTest.doRoundTrip(run.interpreterClass, BytecodeConfig.DEFAULT, nodes);
+        return AbstractBasicInterpreterTest.doRoundTrip(run.interpreterClass, LANGUAGE, BytecodeConfig.DEFAULT, nodes);
     }
 
-    public static <T extends BasicInterpreterBuilder> RootCallTarget parse(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize, String rootName, BytecodeParser<T> builder) {
-        BytecodeRootNode rootNode = parseNode(interpreterClass, testSerialize, rootName, builder);
+    public static <T extends BasicInterpreterBuilder> RootCallTarget parse(Class<? extends BasicInterpreter> interpreterClass, BytecodeDSLTestLanguage language, boolean testSerialize, String rootName,
+                    BytecodeParser<T> builder) {
+        BytecodeRootNode rootNode = parseNode(interpreterClass, language, testSerialize, rootName, builder);
         return ((RootNode) rootNode).getCallTarget();
     }
 
-    public static <T extends BasicInterpreterBuilder> BasicInterpreter parseNode(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize, String rootName,
-                    BytecodeParser<T> builder) {
-        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.DEFAULT, builder);
+    public static <T extends BasicInterpreterBuilder> BasicInterpreter parseNode(Class<? extends BasicInterpreter> interpreterClass, BytecodeDSLTestLanguage language, boolean testSerialize,
+                    String rootName, BytecodeParser<T> builder) {
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(interpreterClass, language, testSerialize, BytecodeConfig.DEFAULT, builder);
         BasicInterpreter op = nodes.getNode(0);
         op.setName(rootName);
         return op;
     }
 
-    public static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeWithSource(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize, String rootName,
-                    BytecodeParser<T> builder) {
-        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.WITH_SOURCE, builder);
+    public static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeWithSource(Class<? extends BasicInterpreter> interpreterClass, BytecodeDSLTestLanguage language, boolean testSerialize,
+                    String rootName, BytecodeParser<T> builder) {
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(interpreterClass, language, testSerialize, BytecodeConfig.WITH_SOURCE, builder);
         BasicInterpreter op = nodes.getNode(0);
         op.setName(rootName);
         return op;

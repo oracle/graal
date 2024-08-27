@@ -68,7 +68,7 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             // collectBcis
             b.beginSource(source);
             b.beginSourceSection(0, "getBytecodeLocation".length());
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
                 b.beginReturn();
                 b.emitGetBytecodeLocation();
                 b.endReturn();
@@ -109,7 +109,7 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
         BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.WITH_SOURCE, b -> {
             // @formatter:off
             // collectBcis
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
                 b.beginReturn();
                 b.emitCollectBytecodeLocations();
                 b.endReturn();
@@ -117,7 +117,7 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             collectBcis.setName("collectBcis");
 
             // baz
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
                 b.beginSource(bazSource);
                 b.beginBlock();
 
@@ -149,7 +149,7 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             baz.setName("baz");
 
             // bar
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
                 b.beginSource(barSource);
 
                 b.beginReturn();
@@ -168,7 +168,7 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             bar.setName("bar");
 
             // foo
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
                 b.beginSource(fooSource);
                 b.beginBlock();
                 BytecodeLocal c = b.createLocal();
@@ -268,7 +268,7 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
         BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.WITH_SOURCE, b -> {
             // @formatter:off
             // collectBcis
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
                 b.beginReturn();
                 b.emitCollectBytecodeLocations();
                 b.endReturn();
@@ -276,7 +276,7 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             collectBcis.setName("collectBcis");
 
             // baz
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
                 b.beginSource(bazSource);
                 b.beginBlock();
 
@@ -308,7 +308,7 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             baz.setName("baz");
 
             // bar
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
                 b.beginSource(barSource);
                 b.beginBlock();
                 BytecodeLocal x = b.createLocal();
@@ -334,7 +334,7 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             bar.setName("bar");
 
             // foo
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
                 b.beginSource(fooSource);
                 b.beginBlock();
 

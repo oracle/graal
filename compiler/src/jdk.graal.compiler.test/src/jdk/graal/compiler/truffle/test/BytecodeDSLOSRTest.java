@@ -62,12 +62,12 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
     private static final BytecodeDSLOSRTestLanguage LANGUAGE = null;
 
     private static BytecodeDSLOSRTestRootNode parseNode(BytecodeParser<BytecodeDSLOSRTestRootNodeGen.Builder> builder) {
-        BytecodeRootNodes<BytecodeDSLOSRTestRootNode> nodes = BytecodeDSLOSRTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<BytecodeDSLOSRTestRootNode> nodes = BytecodeDSLOSRTestRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(0);
     }
 
     private static BytecodeDSLOSRTestRootNode parseNodeWithSources(BytecodeParser<BytecodeDSLOSRTestRootNodeGen.Builder> builder) {
-        BytecodeRootNodes<BytecodeDSLOSRTestRootNode> nodes = BytecodeDSLOSRTestRootNodeGen.create(BytecodeConfig.WITH_SOURCE, builder);
+        BytecodeRootNodes<BytecodeDSLOSRTestRootNode> nodes = BytecodeDSLOSRTestRootNodeGen.create(LANGUAGE, BytecodeConfig.WITH_SOURCE, builder);
         return nodes.getNode(0);
     }
 
@@ -88,7 +88,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
     @Test
     public void testInfiniteInterpreterLoop() {
         BytecodeDSLOSRTestRootNode root = parseNode(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             b.beginWhile();
             b.emitLoadConstant(true);
@@ -118,7 +118,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
          * @formatter:on
          */
         BytecodeDSLOSRTestRootNode root = parseNode(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
 
             BytecodeLocal result = b.createLocal();
@@ -174,7 +174,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
          * @formatter:on
          */
         BytecodeDSLOSRTestRootNode root = parseNodeWithSources(b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
 
             BytecodeLocal result = b.createLocal();
@@ -224,7 +224,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
 
     private static BytecodeParser<BytecodeDSLOSRTestRootNodeWithYieldGen.Builder> getParserForYieldTest(boolean emitYield) {
         return b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
 
             if (emitYield) {
@@ -278,7 +278,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testReturnValueFromLoopYieldingWithYield() {
-        BytecodeDSLOSRTestRootNodeWithYield rootWithYield = BytecodeDSLOSRTestRootNodeWithYieldGen.create(BytecodeConfig.DEFAULT, getParserForYieldTest(true)).getNode(0);
+        BytecodeDSLOSRTestRootNodeWithYield rootWithYield = BytecodeDSLOSRTestRootNodeWithYieldGen.create(LANGUAGE, BytecodeConfig.DEFAULT, getParserForYieldTest(true)).getNode(0);
         ContinuationResult cont = (ContinuationResult) rootWithYield.getCallTarget().call();
         // 1*(# interpreter iterations) + 2*(# compiled iterations)
         assertEquals(OSR_THRESHOLD * 3, cont.continueWith(null));
@@ -286,7 +286,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testReturnValueFromLoopYieldingNoYield() {
-        BytecodeDSLOSRTestRootNodeWithYield rootNoYield = BytecodeDSLOSRTestRootNodeWithYieldGen.create(BytecodeConfig.DEFAULT, getParserForYieldTest(false)).getNode(0);
+        BytecodeDSLOSRTestRootNodeWithYield rootNoYield = BytecodeDSLOSRTestRootNodeWithYieldGen.create(LANGUAGE, BytecodeConfig.DEFAULT, getParserForYieldTest(false)).getNode(0);
         // 1*(# interpreter iterations) + 2*(# compiled iterations)
         assertEquals(OSR_THRESHOLD * 3, rootNoYield.getCallTarget().call());
     }

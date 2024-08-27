@@ -189,7 +189,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return arg0 + arg1;
 
         RootCallTarget root = parse("add", (BasicInterpreterBuilder b) -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAddOperation();
@@ -215,7 +215,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // }
 
         RootCallTarget root = parse("max", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginIfThenElse();
 
             b.beginLessThanOperation();
@@ -250,7 +250,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return arg0;
 
         RootCallTarget root = parse("ifThen", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginIfThen();
 
             b.beginLessThanOperation();
@@ -281,7 +281,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return arg0 < 0 ? 0 : arg0;
 
         RootCallTarget root = parse("conditional", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
 
@@ -322,7 +322,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // lbl:
         // return 0
         RootCallTarget root = parse("conditional", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
 
             BytecodeLabel lbl = b.createLabel();
@@ -354,7 +354,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return j;
 
         RootCallTarget root = parse("sumLoop", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLocal locI = b.createLocal();
             BytecodeLocal locJ = b.createLocal();
 
@@ -404,7 +404,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertThrowsWithMessage("Invalid builder operation argument: The constant parameter must not be null.",
                         IllegalArgumentException.class, () -> {
                             parse("badLoadConstant", b -> {
-                                b.beginRoot(LANGUAGE);
+                                b.beginRoot();
                                 b.beginReturn();
                                 b.emitLoadConstant(null);
                                 b.endReturn();
@@ -423,7 +423,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return 0;
 
         RootCallTarget root = parse("tryCatch", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginTryCatch();
 
@@ -468,7 +468,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // }
 
         RootCallTarget root = parse("tryCatch", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginTryCatch();
 
@@ -516,7 +516,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return ex1.value
         // }
         RootCallTarget root = parse("tryCatch", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginTryCatch();
 
@@ -587,7 +587,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // }
         // }
         RootCallTarget root = parse("tryCatch", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginTryCatch();
 
@@ -630,7 +630,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.",
                         IllegalStateException.class, () -> {
                             parse("badLoadExceptionUsage1", b -> {
-                                b.beginRoot(LANGUAGE);
+                                b.beginRoot();
                                 b.beginReturn();
                                 b.emitLoadException();
                                 b.endReturn();
@@ -643,7 +643,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testMissingEnd1() {
         assertThrowsWithMessage("Unexpected parser end - there are still operations on the stack. Did you forget to end them?", IllegalStateException.class, () -> {
             parse("missingEnd", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
             });
         });
     }
@@ -652,7 +652,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testMissingEnd2() {
         assertThrowsWithMessage("Unexpected parser end - there are still operations on the stack. Did you forget to end them?", IllegalStateException.class, () -> {
             parse("missingEnd", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.beginBlock();
                 b.beginIfThen();
             });
@@ -663,7 +663,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testBadLoadExceptionUsage2() {
         assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
             parse("badLoadExceptionUsage2", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.beginTryCatch();
                 b.beginReturn();
                 b.emitLoadException();
@@ -679,7 +679,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testBadLoadExceptionUsage3() {
         assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
             parse("badLoadExceptionUsage3", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.beginFinallyTryCatch(() -> b.emitVoidOperation());
                 b.beginReturn();
                 b.emitLoadException();
@@ -695,7 +695,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testBadLoadExceptionUsage4() {
         assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
             parse("badLoadExceptionUsage4", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.beginFinallyTryCatch(() -> b.emitLoadException());
                 b.emitVoidOperation();
                 b.emitVoidOperation();
@@ -709,7 +709,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testBadLoadExceptionUsage5() {
         assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
             parse("badLoadExceptionUsage5", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.beginFinallyTry(() -> b.emitLoadException());
                 b.emitVoidOperation();
                 b.endFinallyTry();
@@ -722,13 +722,13 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testBadLoadExceptionUsage6() {
         assertThrowsWithMessage("LoadException can only be used in the catch operation of a TryCatch/FinallyTryCatch operation in the current root.", IllegalStateException.class, () -> {
             parse("testBadLoadExceptionUsage6", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.beginTryCatch();
 
                 b.emitVoidOperation();
 
                 b.beginBlock();
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.emitLoadException();
                 b.endRoot();
                 b.endBlock();
@@ -750,7 +750,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return local1;
 
         RootCallTarget root = parse("variableBoxingElim", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal local0 = b.createLocal();
             BytecodeLocal local1 = b.createLocal();
@@ -807,7 +807,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // goto lbl;
         AbstractInstructionTest.assertFails(() -> {
             parse("undeclaredLabel", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 BytecodeLabel lbl = b.createLabel();
                 b.emitBranch(lbl);
                 b.endRoot();
@@ -823,7 +823,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return 42;
 
         RootCallTarget root = parse("unusedLabel", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
             b.emitLabel(lbl);
             emitReturn(b, 42);
@@ -839,7 +839,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return local;
 
         RootCallTarget root = parse("teeLocal", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal local = b.createLocal();
 
@@ -863,7 +863,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return local;
 
         RootCallTarget root = parse("teeLocal", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal local = b.createLocal();
 
@@ -895,7 +895,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return local;
 
         RootCallTarget root = parse("teeLocal", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             for (int i = 0; i < 64; i++) {
                 b.createLocal();
@@ -922,7 +922,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return local2;
 
         RootCallTarget root = parse("teeLocalRange", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal local1 = b.createLocal();
             BytecodeLocal local2 = b.createLocal();
@@ -947,7 +947,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return local8
 
         RootCallTarget root = parse("teeLocalRange", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal local1 = b.createLocal();
             BytecodeLocal local2 = b.createLocal();
@@ -978,7 +978,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return 42;
 
         RootCallTarget root = parse("teeLocalRangeEmptyRange", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginTeeLocalRange(new BytecodeLocal[]{});
             b.emitLoadConstant(new long[]{});
@@ -998,7 +998,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testAddConstant() {
         // return 40 + arg0
         RootCallTarget root = parse("addConstant", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginAddConstantOperation(40L);
             b.emitLoadArgument(0);
@@ -1014,7 +1014,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testAddConstantAtEnd() {
         // return arg0 + 40
         RootCallTarget root = parse("addConstantAtEnd", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginAddConstantOperationAtEnd();
             b.emitLoadArgument(0);
@@ -1031,10 +1031,10 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return (() -> return 1)();
 
         RootCallTarget root = parse("nestedFunctions", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginInvoke();
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             emitReturn(b, 1);
             BasicInterpreter innerRoot = b.endRoot();
             b.emitLoadConstant(innerRoot);
@@ -1055,14 +1055,14 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // })();
 
         RootCallTarget root = parse("multipleNestedFunctions", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginInvoke();
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             emitReturn(b, 1);
             BasicInterpreter x = b.endRoot();
 
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             emitReturn(b, 2);
             BasicInterpreter y = b.endRoot();
 
@@ -1088,7 +1088,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return x
 
         RootCallTarget root = parse("materializedFrameAccesses", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal x = b.createLocal();
             BytecodeLocal f = b.createLocal();
@@ -1141,7 +1141,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // f(materialize());
 
         BasicInterpreter node = parseNode("materializedFrameAccesses", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal z = b.createLocal();
             BytecodeLocal y = b.createLocal();
@@ -1162,7 +1162,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.emitLoadConstant(40L);
             b.endStoreLocal();
 
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             // add some dummy operations to make the bci
             // of the inner method incompatible with the outer.
@@ -1217,7 +1217,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         BasicInterpreter node = parseNode("localsNonlocalRead", b -> {
             // x = 1
             // return (lambda: x)()
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal xLoc = b.createLocal();
 
@@ -1229,7 +1229,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             b.beginInvoke();
 
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginLoadLocalMaterialized(xLoc);
             b.emitLoadArgument(0);
@@ -1261,7 +1261,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
             // x = 1
             // return (lambda: x)()
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal xLoc = b.createLocal();
 
@@ -1273,7 +1273,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             b.beginInvoke();
 
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginLoadLocalMaterialized(xLoc);
             b.emitLoadArgument(0);
@@ -1311,7 +1311,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             // x = 1
             // if (arg0) (lambda: x = 41)()
             // return x + 1
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal xLoc = b.createLocal();
 
@@ -1319,7 +1319,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.emitLoadConstant(1L);
             b.endStoreLocal();
 
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginStoreLocalMaterialized(xLoc);
             b.emitLoadArgument(0);
             b.emitLoadConstant(41L);
@@ -1389,7 +1389,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return x;
 
         RootCallTarget root = parse("localsNonlocalWrite", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal xLoc = b.createLocal();
 
@@ -1399,7 +1399,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             b.beginInvoke();
 
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginStoreLocalMaterialized(xLoc);
             b.emitLoadArgument(0);
@@ -1438,7 +1438,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             // x = 1
             // (lambda: x = x + 41)()
             // return x
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             for (int i = 0; i < 100; i++) {
                 b.createLocal();
@@ -1449,7 +1449,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.emitLoadConstant(1L);
             b.endStoreLocal();
 
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginStoreLocalMaterialized(xLoc);
             b.emitLoadArgument(0);
             b.beginAddConstantOperation(41L);
@@ -1482,7 +1482,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return veryComplex(7);
 
         RootCallTarget root = parse("variadicZeroVarargs", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginVeryComplexOperation();
@@ -1501,7 +1501,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return veryComplex(7, "foo");
 
         RootCallTarget root = parse("variadicOneVarargs", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginVeryComplexOperation();
@@ -1521,7 +1521,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return veryComplex(7, "foo", "bar", "baz");
 
         RootCallTarget root = parse("variadicFewVarargs", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginVeryComplexOperation();
@@ -1543,7 +1543,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return veryComplex(7, [1330 args]);
 
         RootCallTarget root = parse("variadicManyVarArgs", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginVeryComplexOperation();
@@ -1564,7 +1564,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testVariadicTooFewArguments() {
         assertThrowsWithMessage("Operation VeryComplexOperation expected at least 1 child, but 0 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
             parse("variadicTooFewArguments", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
 
                 b.beginReturn();
                 b.beginVeryComplexOperation();
@@ -1581,7 +1581,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testValidationTooFewArguments() {
         assertThrowsWithMessage("Operation AddOperation expected exactly 2 children, but 1 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
             parse("validationTooFewArguments", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
 
                 b.beginReturn();
                 b.beginAddOperation();
@@ -1598,7 +1598,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testValidationTooManyArguments() {
         assertThrowsWithMessage("Operation AddOperation expected exactly 2 children, but 3 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
             parse("validationTooManyArguments", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
 
                 b.beginReturn();
                 b.beginAddOperation();
@@ -1617,7 +1617,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testValidationNotValueArgument() {
         assertThrowsWithMessage("Operation AddOperation expected a value-producing child at position 0, but a void one was provided. ", IllegalStateException.class, () -> {
             parse("validationNotValueArgument", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
 
                 b.beginReturn();
                 b.beginAddOperation();
@@ -1636,7 +1636,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return 1 && true && "test";
 
         RootCallTarget root = parse("shortCircuitingAllPass", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginScAnd();
@@ -1657,7 +1657,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return 1 && "test" && 0;
 
         RootCallTarget root = parse("shortCircuitingLastFail", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginScAnd();
@@ -1678,7 +1678,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return 0 && "test" && 1;
 
         RootCallTarget root = parse("shortCircuitingFirstFail", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginScAnd();
@@ -1698,7 +1698,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testShortCircuitingNoChildren() {
         assertThrowsWithMessage("Operation ScAnd expected at least 1 child, but 0 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
             parse("shortCircuitingNoChildren", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
 
                 b.beginReturn();
                 b.beginScAnd();
@@ -1714,7 +1714,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testShortCircuitingNonValueChild() {
         assertThrowsWithMessage("Operation ScAnd expected a value-producing child at position 1, but a void one was provided.", IllegalStateException.class, () -> {
             parse("shortCircuitingNonValueChild", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
 
                 b.beginReturn();
                 b.beginScAnd();
@@ -1732,7 +1732,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testEmptyBlock() {
         RootCallTarget root = parse("emptyBlock", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginBlock();
             b.beginBlock();
@@ -1752,7 +1752,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testNoReturn() {
         RootCallTarget root = parse("noReturn", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginBlock();
             b.endBlock();
@@ -1766,7 +1766,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testNoReturnInABranch() {
         RootCallTarget root = parse("noReturn", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginIfThenElse();
             b.emitLoadArgument(0);
@@ -1790,7 +1790,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testBranchPastEnd() {
         RootCallTarget root = parse("noReturn", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginBlock();
             BytecodeLabel label = b.createLabel();
@@ -1814,11 +1814,11 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testBranchIntoOuterRoot() {
         assertThrowsWithMessage("Branch must be targeting a label that is declared in an enclosing operation of the current root.", IllegalStateException.class, () -> {
             parse("branchIntoOuterRoot", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.beginBlock();
                 BytecodeLabel lbl = b.createLabel();
 
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.emitBranch(lbl);
                 b.endRoot();
 
@@ -1832,7 +1832,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testManyBytecodes() {
         BasicInterpreter node = parseNode("manyBytecodes", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             for (int i = 0; i < Short.MAX_VALUE * 2; i++) {
                 b.emitLoadConstant(123L);
@@ -1850,7 +1850,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testManyConstants() {
         BasicInterpreter node = parseNode("manyConstants", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             for (int i = 0; i < Short.MAX_VALUE * 2; i++) {
                 b.emitLoadConstant((long) i);
@@ -1868,7 +1868,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testManyNodes() {
         BasicInterpreter node = parseNode("manyNodes", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             for (int i = 0; i < Short.MAX_VALUE * 2; i++) {
                 b.emitVoidOperation();
@@ -1886,7 +1886,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testManyConditionalBranches() {
         BasicInterpreter node = parseNode("manyConditionalBranches", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
             for (int i = 0; i < Short.MAX_VALUE * 2; i++) {
                 b.beginConditional();
@@ -1908,7 +1908,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testManyLocals() {
         BasicInterpreter node = parseNode("manyLocals", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
 
             for (int i = 0; i < Short.MAX_VALUE - 10; i++) {
@@ -1933,7 +1933,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testTooManyLocals() {
         assertThrows(BytecodeEncodingException.class, () -> {
             parseNode("tooManyLocals", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.beginBlock();
 
                 for (int i = 0; i < Short.MAX_VALUE; i++) {
@@ -1957,7 +1957,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testManyRoots() {
         BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
             for (int i = 0; i < Short.MAX_VALUE; i++) {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.beginReturn();
                 b.emitLoadConstant((long) i);
                 b.endReturn();
@@ -1975,7 +1975,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertThrowsWithMessage("Root node count exceeded maximum value", BytecodeEncodingException.class, () -> {
             createNodes(BytecodeConfig.DEFAULT, b -> {
                 for (int i = 0; i < Short.MAX_VALUE + 1; i++) {
-                    b.beginRoot(LANGUAGE);
+                    b.beginRoot();
                     b.beginReturn();
                     b.emitLoadConstant((long) i);
                     b.endReturn();
@@ -1988,7 +1988,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testManyInstructionsInLoop() {
         BasicInterpreter node = parseNode("manyInstructionsInLoop", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
 
             BytecodeLocal x = b.createLocal();
@@ -2045,7 +2045,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testManyStackValues() {
         BasicInterpreter node = parseNode("manyStackValues", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             for (int i = 0; i < Short.MAX_VALUE - 1; i++) {
                 b.beginAddOperation();
@@ -2068,7 +2068,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testTooManyStackValues() {
         assertThrowsWithMessage("Maximum stack height exceeded", BytecodeEncodingException.class, () -> {
             parseNode("tooManyStackValues", b -> {
-                b.beginRoot(LANGUAGE);
+                b.beginRoot();
                 b.beginReturn();
                 for (int i = 0; i < Short.MAX_VALUE; i++) {
                     b.beginAddOperation();
@@ -2090,7 +2090,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testIntrospectionDataInstructions() {
         BasicInterpreter node = parseNode("introspectionDataInstructions", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAddOperation();
@@ -2126,7 +2126,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testIntrospectionDataInstructionsWithConstant() {
         BasicInterpreter node = parseNode("introspectionDataInstructions", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAddConstantOperation(10L);
@@ -2165,7 +2165,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testIntrospectionDataExceptionHandlers1() {
         BasicInterpreter node = parseNode("introspectionDataExceptionHandlers1", b -> {
             // @formatter:off
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
 
                 b.beginTryCatch(); // h1
@@ -2222,7 +2222,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testIntrospectionDataExceptionHandlers2() {
         BasicInterpreter node = parseNode("testIntrospectionDataExceptionHandlers2", b -> {
             // @formatter:off
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
                 b.beginBlock();
                     b.beginFinallyTry(() -> b.emitVoidOperation());
@@ -2277,7 +2277,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // test case: early return
         BasicInterpreter node = parseNode("testIntrospectionDataExceptionHandlers3", b -> {
             // @formatter:off
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
                 b.beginBlock();
                     b.beginFinallyTry(() -> b.emitVoidOperation());
                         b.beginBlock();
@@ -2304,7 +2304,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // test case: branch out
         node = parseNode("testIntrospectionDataExceptionHandlers3", b -> {
             // @formatter:off
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
                 b.beginBlock();
                     b.beginFinallyTry(() -> b.emitVoidOperation());
@@ -2331,7 +2331,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // test case: early return with branch, and instrumentation in the middle.
         node = parseNode("testIntrospectionDataExceptionHandlers3", b -> {
             // @formatter:off
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLabel lbl = b.createLabel();
                 b.beginBlock();
                     b.beginFinallyTry(() -> b.emitVoidOperation());
@@ -2375,7 +2375,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginSource(source);
             b.beginSourceSection(0, 12);
 
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
 
             b.beginSourceSection(7, 5);
@@ -2438,7 +2438,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.beginSource(source);
             b.beginSourceSection(0, 18);
 
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
 
             b.beginSourceSection(7, 11);
@@ -2495,7 +2495,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testIntrospectionDataInstrumentationInstructions() {
         BasicInterpreter node = parseNode("introspectionDataInstrumentationInstructions", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginTag(ExpressionTag.class);
@@ -2530,7 +2530,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testTags() {
         RootCallTarget root = parse("tags", b -> {
-            b.beginRoot(null);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAddOperation();
@@ -2557,7 +2557,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         // return arg0 + arg1;
 
         BasicInterpreter node = parseNode("cloneUninitializedAdd", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAddOperation();
@@ -2594,7 +2594,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testCloneUninitializedFields() {
         BasicInterpreter node = parseNode("cloneUninitializedFields", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             emitReturn(b, 0);
             b.endRoot();
         });
@@ -2608,7 +2608,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assumeTrue(run.hasBoxingElimination());
 
         BasicInterpreter node = parseNode("cloneUninitializedUnquicken", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginAddOperation();
             b.emitLoadConstant(40L);
@@ -2655,7 +2655,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assumeTrue(run.hasBoxingElimination());
 
         BasicInterpreter node = parseNode("constantOperandBoxingElimination", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginAddConstantOperation(40L);
             b.emitLoadArgument(0);
@@ -2695,7 +2695,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assumeTrue(run.hasBoxingElimination());
 
         BasicInterpreter node = parseNode("constantOperandAtEndBoxingElimination", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginAddConstantOperationAtEnd();
             b.emitLoadArgument(0);
@@ -2737,7 +2737,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         BasicInterpreter node = parseNodeWithSource("invalidBciArgument", b -> {
             b.beginSource(s);
             b.beginSourceSection(0, 16);
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             BytecodeLocal x = b.createLocal("x", null);
             b.beginStoreLocal(x);
             b.emitLoadConstant(42L);

@@ -70,14 +70,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class ExceptionInterceptionTest {
 
     public static BytecodeNodeInterceptsAll parseNode(BytecodeParser<BytecodeNodeInterceptsAllGen.Builder> builder) {
-        BytecodeRootNodes<BytecodeNodeInterceptsAll> nodes = BytecodeNodeInterceptsAllGen.create(BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<BytecodeNodeInterceptsAll> nodes = BytecodeNodeInterceptsAllGen.create(null, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(0);
     }
 
     @Test
     public void testInterceptStackOverflow() {
         BytecodeNodeInterceptsAll root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.emitThrowStackOverflow();
             b.endReturn();
@@ -95,7 +95,7 @@ public class ExceptionInterceptionTest {
     @Test
     public void testInterceptTruffleExceptionSimple() {
         BytecodeNodeInterceptsAll root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginThrow();
             b.emitLoadConstant(123);
@@ -119,7 +119,7 @@ public class ExceptionInterceptionTest {
         // The stack overflow should be intercepted as an internal error and then the converted
         // exception should be intercepted as a Truffle exception.
         BytecodeNodeInterceptsAll root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.emitThrowStackOverflow();
             b.endReturn();
@@ -140,7 +140,7 @@ public class ExceptionInterceptionTest {
     public void testInterceptTruffleExceptionPropagated() {
         // The location should be overridden when it propagates to the root from child.
         BytecodeNodeInterceptsAll child = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginReturn();
             b.beginThrow();
             b.emitLoadConstant(123);
@@ -150,7 +150,7 @@ public class ExceptionInterceptionTest {
         });
 
         BytecodeNodeInterceptsAll root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginBlock();
             b.beginReturn();
             b.beginInvoke();
@@ -188,7 +188,7 @@ public class ExceptionInterceptionTest {
     public void testControlFlowEarlyReturn() {
         // The early return value should be returned.
         BytecodeNodeInterceptsAll root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginBlock();
             b.beginThrowEarlyReturn();
             b.emitLoadConstant(42);
@@ -207,7 +207,7 @@ public class ExceptionInterceptionTest {
     public void testControlFlowUnhandled() {
         // The control flow exception should go unhandled.
         BytecodeNodeInterceptsAll root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginBlock();
             b.emitThrowUnhandledControlFlowException();
             b.beginReturn();
@@ -230,7 +230,7 @@ public class ExceptionInterceptionTest {
         // The control flow exception should be intercepted by the internal handler and then the
         // Truffle handler.
         BytecodeNodeInterceptsAll root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginBlock();
             b.emitThrowControlFlowInternalError();
             b.beginReturn();
@@ -255,7 +255,7 @@ public class ExceptionInterceptionTest {
     public void testControlFlowTruffleException() {
         // The control flow exception should be intercepted by the Truffle handler.
         BytecodeNodeInterceptsAll root = parseNode(b -> {
-            b.beginRoot(null);
+            b.beginRoot();
             b.beginBlock();
             b.beginThrowControlFlowTruffleException();
             b.emitLoadConstant(42);
@@ -280,8 +280,8 @@ public class ExceptionInterceptionTest {
 
     @Test
     public void testInterceptsNothing() {
-        BytecodeNodeInterceptsNothing root = BytecodeNodeInterceptsNothingGen.create(BytecodeConfig.DEFAULT, b -> {
-            b.beginRoot(null);
+        BytecodeNodeInterceptsNothing root = BytecodeNodeInterceptsNothingGen.create(null, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
             b.beginIfThenElse();
             b.emitLoadArgument(0);
             b.emitThrowUnhandledControlFlowException();
@@ -307,8 +307,8 @@ public class ExceptionInterceptionTest {
 
     @Test
     public void testInterceptsCF() {
-        BytecodeNodeInterceptsCF root = BytecodeNodeInterceptsCFGen.create(BytecodeConfig.DEFAULT, b -> {
-            b.beginRoot(null);
+        BytecodeNodeInterceptsCF root = BytecodeNodeInterceptsCFGen.create(null, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
             b.beginIfThenElse();
             b.emitLoadArgument(0);
             b.emitThrowUnhandledControlFlowException();
@@ -329,8 +329,8 @@ public class ExceptionInterceptionTest {
 
     @Test
     public void testInterceptsInternal() {
-        BytecodeNodeInterceptsInternal root = BytecodeNodeInterceptsInternalGen.create(BytecodeConfig.DEFAULT, b -> {
-            b.beginRoot(null);
+        BytecodeNodeInterceptsInternal root = BytecodeNodeInterceptsInternalGen.create(null, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
             b.beginIfThenElse();
             b.emitLoadArgument(0);
             b.emitThrowUnhandledControlFlowException();
@@ -356,8 +356,8 @@ public class ExceptionInterceptionTest {
 
     @Test
     public void testInterceptsOnceWithExceptionalEpilog() {
-        BytecodeNodeInterceptsTruffleWithEpilog root = BytecodeNodeInterceptsTruffleWithEpilogGen.create(BytecodeConfig.DEFAULT, b -> {
-            b.beginRoot(null);
+        BytecodeNodeInterceptsTruffleWithEpilog root = BytecodeNodeInterceptsTruffleWithEpilogGen.create(null, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
             b.emitThrowTruffleException();
             b.endRoot();
         }).getNode(0);

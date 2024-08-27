@@ -51,7 +51,7 @@ public class BindingsTest extends AbstractBasicInterpreterTest {
     @Test
     public void testExplicit() {
         BasicInterpreter node = parseNode("explicitBindings", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.emitExplicitBindingsTest();
             b.endReturn();
@@ -75,7 +75,7 @@ public class BindingsTest extends AbstractBasicInterpreterTest {
     @Test
     public void testImplicit() {
         BasicInterpreter node = parseNode("explicitBindings", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.emitImplicitBindingsTest();
             b.endReturn();

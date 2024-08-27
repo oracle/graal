@@ -61,7 +61,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         // return 20 + 22;
 
         BasicInterpreter root = parseNodeForPE(interpreterClass, "addTwoConstants", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAddOperation();
@@ -81,7 +81,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         // return 40 + 22 + - 20;
 
         BasicInterpreter root = parseNodeForPE(interpreterClass, "addThreeConstants", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAddOperation();
@@ -108,7 +108,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         // return 40 + 22 + - 20;
 
         BasicInterpreter root = parseNodeForPE(interpreterClass, "addThreeConstantsWithConstantOperands", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginAddConstantOperationAtEnd();
@@ -140,7 +140,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         long endValue = 10L;
 
         BasicInterpreter root = parseNodeForPE(interpreterClass, "sum", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             BytecodeLocal i = b.createLocal();
             BytecodeLocal sum = b.createLocal();
@@ -201,7 +201,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         // @formatter:on
 
         BasicInterpreter root = parseNodeForPE(interpreterClass, "sum", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginTryCatch();
 
@@ -249,7 +249,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         // @formatter:on
 
         BasicInterpreter root = parseNodeForPE(interpreterClass, "sum", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginTryCatch();
 
@@ -299,7 +299,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         // return true ? 42 : 21;
 
         BasicInterpreter root = parseNodeForPE(interpreterClass, "conditionalTrue", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginReturn();
             b.beginConditional();
             b.emitLoadConstant(Boolean.TRUE);
@@ -321,7 +321,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         // return false ? 21 : 42;
 
         BasicInterpreter root = parseNodeForPE(interpreterClass, "conditionalFalse", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
 
             b.beginReturn();
             b.beginConditional();
@@ -347,7 +347,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         // return 123
         // @formatter:on
         BasicInterpreter root = parseNodeForPE(interpreterClass, "earlyReturn", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
 
             b.beginEarlyReturn();
@@ -370,15 +370,15 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         // The length of a variadic argument should be PE constant.
 
         // Note: the variadic array length is not PE constant beyond 8 arguments.
-        final int NUM_VARIADIC = 8;
+        final int numVariadic = 8;
         BasicInterpreter root = parseNodeForPE(interpreterClass, "variadicLength", b -> {
-            b.beginRoot(LANGUAGE);
+            b.beginRoot();
             b.beginBlock();
 
             b.beginReturn();
             b.beginVeryComplexOperation();
             b.emitLoadConstant(3L);
-            for (int i = 0; i < NUM_VARIADIC; i++) {
+            for (int i = 0; i < numVariadic; i++) {
                 b.emitLoadNull();
             }
             b.endVeryComplexOperation();
@@ -388,7 +388,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
             b.endRoot();
         });
 
-        assertPartialEvalEquals(RootNode.createConstantNode(3L + NUM_VARIADIC), root);
+        assertPartialEvalEquals(RootNode.createConstantNode(3L + numVariadic), root);
     }
 
     private static Supplier<Object> supplier(Object result) {
@@ -396,7 +396,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     private static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeForPE(Class<? extends BasicInterpreter> interpreterClass, String rootName, BytecodeParser<T> builder) {
-        BasicInterpreter result = parseNode(interpreterClass, false, rootName, builder);
+        BasicInterpreter result = parseNode(interpreterClass, LANGUAGE, false, rootName, builder);
         result.getBytecodeNode().setUncachedThreshold(0); // force interpreter to skip tier 0
         return result;
     }
