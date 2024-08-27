@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
@@ -72,7 +73,7 @@ public final class ClassRegistries {
     }
 
     public void initJavaBaseModule() {
-        this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Symbol.Name.java_base, bootClassRegistry);
+        this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Name.java_base, bootClassRegistry);
     }
 
     public ClassRegistry getClassRegistry(@JavaType(ClassLoader.class) StaticObject classLoader) {
@@ -124,15 +125,33 @@ public final class ClassRegistries {
 
     public ModuleTable.ModuleEntry getPolyglotAPIModule() {
         if (polyglotAPIModule == null) {
-            ModuleRef[] allModuleRefs = getAllModuleRefs();
-            for (ModuleRef module : allModuleRefs) {
-                if ("espresso.polyglot".equals(module.jdwpName())) {
-                    polyglotAPIModule = (ModuleTable.ModuleEntry) module;
-                    break;
+            polyglotAPIModule = findPlatformOrBootModule(Name.espresso_polyglot);
+        }
+        return polyglotAPIModule;
+    }
+
+    private ModuleTable.ModuleEntry findPlatformOrBootModule(Symbol<Name> name) {
+        ModuleTable.ModuleEntry m = bootClassRegistry.modules().lookup(name);
+        if (m != null) {
+            return m;
+        }
+        ObjectKlass platformClassLoaderKlass = context.getMeta().jdk_internal_loader_ClassLoaders$PlatformClassLoader;
+        if (platformClassLoaderKlass == null) {
+            return null;
+        }
+        synchronized (weakClassLoaderSet) {
+            for (StaticObject loader : weakClassLoaderSet) {
+                if (loader != null) {
+                    if (platformClassLoaderKlass.isAssignableFrom(loader.getKlass())) {
+                        m = getClassRegistry(loader).modules().lookup(name);
+                        if (m != null) {
+                            return m;
+                        }
+                    }
                 }
             }
         }
-        return polyglotAPIModule;
+        return null;
     }
 
     public boolean javaBaseDefined() {
@@ -223,7 +242,7 @@ public final class ClassRegistries {
         return list.toArray(ModuleRef.EMPTY_ARRAY);
     }
 
-    public ModuleTable.ModuleEntry findUniqueModule(Symbol<Symbol.Name> name) {
+    public ModuleTable.ModuleEntry findUniqueModule(Symbol<Name> name) {
         ModuleTable.ModuleEntry result = bootClassRegistry.modules().lookup(name);
         synchronized (weakClassLoaderSet) {
             for (StaticObject classLoader : weakClassLoaderSet) {
