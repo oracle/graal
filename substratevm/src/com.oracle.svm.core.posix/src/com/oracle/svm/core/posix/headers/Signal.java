@@ -74,14 +74,19 @@ public class Signal {
     @CFunction
     public static native int sigprocmask(int how, sigset_tPointer set, sigset_tPointer oldset);
 
+    @CFunction
+    public static native int sigemptyset(sigset_tPointer set);
+
+    @CFunction
+    public static native int sigaddset(sigset_tPointer set, int signum);
+
     @CPointerTo(nameOfCType = "sigset_t")
     public interface sigset_tPointer extends PointerBase {
     }
 
     /**
-     * Warning: use {@link PosixUtils#installSignalHandler}. Do NOT introduce calls to
-     * {@code signal} or {@code sigset}, which are not portable, and when running in HotSpot, signal
-     * chaining (libjsig) will print warnings.
+     * WARNING: do NOT introduce direct calls to {@code signal} or {@code sigset} as they are not
+     * portable. Besides that, signal chaining (libjsig) in HotSpot would print warnings.
      */
     public interface SignalDispatcher extends CFunctionPointer {
         @InvokeCFunctionPointer
@@ -191,12 +196,9 @@ public class Signal {
         void sigev_signo(int value);
     }
 
-    /** Don't call this function directly, see {@link PosixUtils#sigaction}. */
-    @CFunction
+    /** Don't call this function directly, use {@link PosixUtils#sigaction} instead. */
+    @CFunction(transition = NO_TRANSITION)
     public static native int sigaction(int signum, sigaction act, sigaction oldact);
-
-    @CConstant
-    public static native int SIGPROF();
 
     @CEnum
     @CContext(PosixDirectives.class)

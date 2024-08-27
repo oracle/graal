@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.posix.headers.Unistd._SC_GETPW_R_SIZE_MAX;
 
 import java.io.FileDescriptor;
@@ -50,6 +51,7 @@ import com.oracle.svm.core.c.libc.GLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.jdk.Target_jdk_internal_misc_Signal;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.posix.headers.Dlfcn;
@@ -64,7 +66,6 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.Wait;
 import com.oracle.svm.core.posix.headers.darwin.DarwinTime;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
@@ -265,21 +266,37 @@ public class PosixUtils {
         return readBytes;
     }
 
-    public static Signal.SignalDispatcher installSignalHandler(Signal.SignalEnum signum, Signal.SignalDispatcher handler, int flags) {
-        return installSignalHandler(signum.getCValue(), handler, flags);
+    /**
+     * Registers a native signal handler. This method ensures that no races can happen with the Java
+     * signal handling. However, there can still be races with native code that registers signals.
+     *
+     * Note that signal handlers must be written in a way that they do NOT destroy the libc
+     * {@code errno} value (i.e., typically, each signal needs to save and restore errno).
+     *
+     * WARNING: methods related to signal handling must not be called from an initialization hook
+     * because the runtime option {@code EnableSignalHandling} is not necessarily initialized yet
+     * when initialization hooks run. So, startup hooks are currently the earliest point where
+     * execution is possible.
+     */
+    public static Signal.SignalDispatcher installSignalHandler(int signum, Signal.SignalDispatcher handler, int flags) {
+        synchronized (Target_jdk_internal_misc_Signal.class) {
+            return installSignalHandlerUnsafe(signum, handler, flags, SubstrateOptions.EnableSignalHandling.getValue());
+        }
+    }
+
+    /** See {@link #installSignalHandler(int, Signal.SignalDispatcher, int)}. */
+    public static void installSignalHandler(Signal.SignalEnum signum, Signal.AdvancedSignalDispatcher handler, int flags) {
+        synchronized (Target_jdk_internal_misc_Signal.class) {
+            installSignalHandlerUnsafe(signum, handler, flags, SubstrateOptions.EnableSignalHandling.getValue());
+        }
     }
 
     /**
-     * Emulates the deprecated {@code signal} function via its replacement {@code sigaction},
-     * assuming BSD semantics (like glibc does, for example).
-     *
-     * Use this or {@code sigaction} directly instead of calling {@code signal} or {@code sigset}:
-     * they are not portable and when running in HotSpot, signal chaining (libjsig) prints warnings.
-     *
-     * Note that this method should not be called from an initialization hook:
-     * {@code EnableSignalHandling} may not be set correctly at the time initialization hooks run.
+     * See {@link #installSignalHandler(int, Signal.SignalDispatcher, int)}, except that this method
+     * does not do any synchronization, so races with the Java signal handling may occur.
      */
-    public static Signal.SignalDispatcher installSignalHandler(int signum, Signal.SignalDispatcher handler, int flags) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static Signal.SignalDispatcher installSignalHandlerUnsafe(int signum, Signal.SignalDispatcher handler, int flags, boolean isSignalHandlingAllowed) {
         int structSigActionSize = SizeOf.get(Signal.sigaction.class);
         Signal.sigaction act = UnsafeStackValue.get(structSigActionSize);
         LibC.memset(act, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
@@ -288,49 +305,36 @@ public class PosixUtils {
 
         Signal.sigaction old = UnsafeStackValue.get(Signal.sigaction.class);
 
-        int result = sigaction(signum, act, old);
+        int result = sigaction(signum, act, old, isSignalHandlingAllowed);
         if (result != 0) {
             return Signal.SIG_ERR();
         }
         return old.sa_handler();
     }
 
-    public static void installSignalHandler(Signal.SignalEnum signum, Signal.AdvancedSignalDispatcher handler, int flags) {
-        installSignalHandler(signum.getCValue(), handler, flags);
+    /** See {@link #installSignalHandlerUnsafe(int, Signal.SignalDispatcher, int, boolean)}. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void installSignalHandlerUnsafe(Signal.SignalEnum signum, Signal.AdvancedSignalDispatcher handler, int flags, boolean isSignalHandlingAllowed) {
+        installSignalHandlerUnsafe(signum.getCValue(), handler, flags, isSignalHandlingAllowed);
     }
 
-    public static void installSignalHandler(int signum, Signal.AdvancedSignalDispatcher handler, int flags) {
+    /** See {@link #installSignalHandlerUnsafe(int, Signal.SignalDispatcher, int, boolean)}. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void installSignalHandlerUnsafe(int signum, Signal.AdvancedSignalDispatcher handler, int flags, boolean isSignalHandlingAllowed) {
         int structSigActionSize = SizeOf.get(Signal.sigaction.class);
         Signal.sigaction act = UnsafeStackValue.get(structSigActionSize);
         LibC.memset(act, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
         act.sa_flags(Signal.SA_SIGINFO() | flags);
         act.sa_sigaction(handler);
 
-        int result = sigaction(signum, act, WordFactory.nullPointer());
+        int result = sigaction(signum, act, WordFactory.nullPointer(), isSignalHandlingAllowed);
         PosixUtils.checkStatusIs0(result, "sigaction failed in installSignalHandler().");
     }
 
-    /*
-     * Avoid races with logic within Util_jdk_internal_misc_Signal#handle0 which reads these
-     * signals.
-     */
-    private static int sigaction(int signum, Signal.sigaction structSigAction, Signal.sigaction old) {
-        VMError.guarantee(SubstrateOptions.EnableSignalHandling.getValue(), "Trying to install a signal handler while signal handling is disabled.");
-
-        if (VMOperation.isInProgress()) {
-            /*
-             * Note this can race with other signals being installed. However, using Java
-             * synchronization is disallowed within a VMOperation. If race-free execution becomes
-             * necessary, then a VMMutex will be needed and additional code will need to be
-             * made @Uninterruptible so that a thread owning the VMMutex cannot block at a
-             * safepoint.
-             */
-            return Signal.sigaction(signum, structSigAction, old);
-        } else {
-            synchronized (Target_jdk_internal_misc_Signal.class) {
-                return Signal.sigaction(signum, structSigAction, old);
-            }
-        }
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static int sigaction(int signum, Signal.sigaction structSigAction, Signal.sigaction old, boolean isSignalHandlingAllowed) {
+        VMError.guarantee(isSignalHandlingAllowed, "Trying to install a signal handler while signal handling is disabled.");
+        return Signal.sigaction(signum, structSigAction, old);
     }
 
     // Checkstyle: stop

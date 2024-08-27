@@ -22,24 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix;
 
-import org.graalvm.nativeimage.StackValue;
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+package com.oracle.svm.core.posix.jdk;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.posix.headers.Time;
-import com.oracle.svm.core.util.BasedOnJDKFile;
-import com.oracle.svm.core.util.PlatformTimeUtils;
-
-@AutomaticallyRegisteredImageSingleton(PlatformTimeUtils.class)
-public final class PosixPlatformTimeUtils extends PlatformTimeUtils {
-
-    @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/posix/os_posix.cpp#L1409-L1415")
-    public SecondsNanos javaTimeSystemUTC() {
-        Time.timespec ts = StackValue.get(Time.timespec.class);
-        int status = PosixUtils.clock_gettime(Time.CLOCK_REALTIME(), ts);
-        PosixUtils.checkStatusIs0(status, "javaTimeSystemUTC: clock_gettime(CLOCK_REALTIME) failed.");
-        return new SecondsNanos(ts.tv_sec(), ts.tv_nsec());
-    }
-}
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;

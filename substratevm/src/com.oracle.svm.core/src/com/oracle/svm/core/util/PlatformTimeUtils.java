@@ -64,5 +64,5 @@ public abstract class PlatformTimeUtils {
         return last;
     }
 
-    protected abstract SecondsNanos javaTimeSystemUTC();
+    public abstract SecondsNanos javaTimeSystemUTC();
 }

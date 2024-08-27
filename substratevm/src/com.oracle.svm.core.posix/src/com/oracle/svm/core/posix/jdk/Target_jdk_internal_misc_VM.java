@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix;
+package com.oracle.svm.core.posix.jdk;
 
-import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.posix.headers.Time;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.PlatformTimeUtils;
+import com.oracle.svm.core.util.PlatformTimeUtils.SecondsNanos;
 
-@AutomaticallyRegisteredImageSingleton(PlatformTimeUtils.class)
-public final class PosixPlatformTimeUtils extends PlatformTimeUtils {
+@TargetClass(className = "jdk.internal.misc.VM")
+final class Target_jdk_internal_misc_VM {
+    @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/share/prims/jvm.cpp#L258-L291")
+    public static long getNanoTimeAdjustment(long offsetInSeconds) {
+        long maxDiffSecs = 0x0100000000L;
+        long minDiffSecs = -maxDiffSecs;
 
-    @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/posix/os_posix.cpp#L1409-L1415")
-    public SecondsNanos javaTimeSystemUTC() {
-        Time.timespec ts = StackValue.get(Time.timespec.class);
-        int status = PosixUtils.clock_gettime(Time.CLOCK_REALTIME(), ts);
-        PosixUtils.checkStatusIs0(status, "javaTimeSystemUTC: clock_gettime(CLOCK_REALTIME) failed.");
-        return new SecondsNanos(ts.tv_sec(), ts.tv_nsec());
+        SecondsNanos time = PlatformTimeUtils.singleton().javaTimeSystemUTC();
+
+        long diff = time.seconds() - offsetInSeconds;
+        if (diff >= maxDiffSecs || diff <= minDiffSecs) {
+            return -1;
+        }
+        return (diff * 1000000000) + time.nanos();
     }
 }
