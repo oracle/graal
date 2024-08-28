@@ -816,17 +816,8 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         if (moduleFrom == moduleTo) {
             return true;
         }
-        /*
-         * Acceptable access to a type in an unnamed module. Note that since unnamed modules can
-         * read all unnamed modules, this also handles the case where module_from is also unnamed
-         * but in a different class loader.
-         */
-        boolean toIsJavaBase = context.isJavaBase(moduleTo);
-        if (!moduleTo.isNamed() && (moduleFrom.canReadAllUnnamed() || moduleFrom.canRead(moduleTo, toIsJavaBase))) {
-            return true;
-        }
         // Establish readability, check if moduleFrom is allowed to read moduleTo.
-        if (!moduleFrom.canRead(moduleTo, toIsJavaBase)) {
+        if (!moduleFrom.canRead(moduleTo, context.isJavaBase(moduleTo))) {
             return false;
         }
         // Access is allowed if moduleTo is open, i.e. all its packages are unqualifiedly

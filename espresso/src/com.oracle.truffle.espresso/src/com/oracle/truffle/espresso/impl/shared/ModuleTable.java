@@ -95,6 +95,14 @@ public abstract class ModuleTable<M, ME extends ModuleTable.ModuleEntry<M>> exte
             if (!isNamed() || mIsJavaBase) {
                 return true;
             }
+            /*
+             * Acceptable access to a type in an unnamed module. Note that since unnamed modules can
+             * read all unnamed modules, this also handles the case where module_from is also
+             * unnamed but in a different class loader.
+             */
+            if (!m.isNamed() && canReadAllUnnamed) {
+                return true;
+            }
             synchronized (this) {
                 if (hasReads()) {
                     return contains(m);
@@ -127,10 +135,6 @@ public abstract class ModuleTable<M, ME extends ModuleTable.ModuleEntry<M>> exte
 
         public void setCanReadAllUnnamed() {
             canReadAllUnnamed = true;
-        }
-
-        public boolean canReadAllUnnamed() {
-            return canReadAllUnnamed;
         }
 
         public boolean isOpen() {
