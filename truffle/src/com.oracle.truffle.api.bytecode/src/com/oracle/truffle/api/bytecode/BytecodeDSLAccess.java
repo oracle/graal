@@ -95,7 +95,26 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLCheckedAccess,
      */
     public abstract ByteArraySupport getByteArraySupport();
 
+    /**
+     * Returns a {@link FrameExtensions} to use for frame accesses.
+     *
+     * @since 24.2
+     */
     public abstract FrameExtensions getFrameExtensions();
+
+    /**
+     * Reads from an int array.
+     *
+     * @since 24.2
+     */
+    public abstract int readInt(int[] arr, int index);
+
+    /**
+     * Writes to an int array.
+     *
+     * @since 24.2
+     */
+    public abstract void writeInt(int[] arr, int index, int value);
 
     /**
      * Reads from an Object array.

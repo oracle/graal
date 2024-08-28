@@ -50,9 +50,7 @@ import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.benchmark.bytecode.BenchmarkLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeDSLAccess;
-import com.oracle.truffle.api.bytecode.BytecodeSupport;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameExtensions;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.memory.ByteArraySupport;
@@ -230,10 +228,7 @@ public class ManualBytecodeInterpreters {
         }
     }
 
-    public static class ManualBytecodeInterpreter extends BaseBytecodeInterpreter {
-        private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(AccessToken.PUBLIC_TOKEN, true);
-        private static final ByteArraySupport BYTES = UFA.getByteArraySupport();
-        private static final FrameExtensions FRAMES = UFA.getFrameExtensions();
+    public static class ManualBytecodeInterpreter extends UncheckedBytecodeInterpreter {
 
         protected ManualBytecodeInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, byte[] bytes, int numLocals, int numConditionalBranches) {
             super(language, frameDescriptor, bytes, numLocals, numConditionalBranches);
@@ -329,7 +324,7 @@ public class ManualBytecodeInterpreters {
                         int profileIdx = BYTES.getIntUnaligned(localBc, bci + 6);
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
-                        if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
+                        if (profileBranch(localBranchProfiles, profileIdx, !cond)) {
                             bci = BYTES.getIntUnaligned(localBc, bci + 2);
                             continue loop;
                         } else {
@@ -348,10 +343,7 @@ public class ManualBytecodeInterpreters {
         }
     }
 
-    public static class ManualCheckedBytecodeInterpreter extends BaseBytecodeInterpreter {
-        private static final BytecodeDSLAccess ACCESS = BytecodeDSLAccess.lookup(PUBLIC_TOKEN, false);
-        private static final ByteArraySupport BYTES = ACCESS.getByteArraySupport();
-        private static final FrameExtensions FRAMES = ACCESS.getFrameExtensions();
+    public static class ManualCheckedBytecodeInterpreter extends CheckedBytecodeInterpreter {
 
         protected ManualCheckedBytecodeInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, byte[] bytes, int numLocals, int numConditionalBranches) {
             super(language, frameDescriptor, bytes, numLocals, numConditionalBranches);
@@ -447,7 +439,7 @@ public class ManualBytecodeInterpreters {
                         int profileIdx = BYTES.getIntUnaligned(localBc, bci + 6);
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
-                        if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
+                        if (profileBranch(localBranchProfiles, profileIdx, !cond)) {
                             bci = BYTES.getIntUnaligned(localBc, bci + 2);
                             continue loop;
                         } else {
@@ -466,10 +458,7 @@ public class ManualBytecodeInterpreters {
         }
     }
 
-    public static class ManualBytecodeInterpreterWithoutBE extends BaseBytecodeInterpreter {
-        private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(AccessToken.PUBLIC_TOKEN, true);
-        private static final ByteArraySupport BYTES = UFA.getByteArraySupport();
-        private static final FrameExtensions FRAMES = UFA.getFrameExtensions();
+    public static class ManualBytecodeInterpreterWithoutBE extends UncheckedBytecodeInterpreter {
 
         protected ManualBytecodeInterpreterWithoutBE(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, byte[] bc, int numLocals, int numConditionalBranches) {
             super(language, frameDescriptor, bc, numLocals, numConditionalBranches);
@@ -565,7 +554,7 @@ public class ManualBytecodeInterpreters {
                         int profileIdx = BYTES.getIntUnaligned(localBc, bci + 6);
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
-                        if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
+                        if (profileBranch(localBranchProfiles, profileIdx, !cond)) {
                             bci = BYTES.getIntUnaligned(localBc, bci + 2);
                             continue loop;
                         } else {
