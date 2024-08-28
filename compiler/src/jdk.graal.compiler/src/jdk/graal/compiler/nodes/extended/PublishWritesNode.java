@@ -27,32 +27,23 @@ package jdk.graal.compiler.nodes.extended;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
-import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.NodeView;
-import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
-import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.nodes.spi.Simplifiable;
-import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
-import jdk.graal.compiler.nodes.util.GraphUtil;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0, allowedUsageTypes = {InputType.Anchor, InputType.Value})
-public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable, ValueProxy, GuardingNode, Simplifiable, AnchoringNode {
+public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable, ValueProxy, GuardingNode, AnchoringNode {
     public static final NodeClass<PublishWritesNode> TYPE = NodeClass.create(PublishWritesNode.class);
 
     @Input
@@ -99,51 +90,6 @@ public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable
             }
             return usage != this;
         });
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        if (!tool.allUsagesAvailable() || hasUsages()) {
-            return;
-        }
-
-        if (allocation instanceof PhiNode) {
-            // TODO
-            return;
-        }
-        
-        // Allocation may be used e.g. as a field value for other allocations
-        if (nonWriteUsages(allocation).isNotEmpty()) {
-            return;
-        }
-
-        if (graph().getGraphState().isAfterStage(GraphState.StageFlag.LOW_TIER_LOWERING)) {
-            // TODO
-            TTY.println("Shit falls away in low tier");
-            return;
-        }
-
-
-        try (DebugContext.Scope scope = getDebug().scope("KillPublishWrites", this)) {
-            getDebug().dump(DebugContext.VERBOSE_LEVEL, graph(), "Before killing %s", allocation);
-
-            for (FixedNode node : GraphUtil.predecessorIterable(this)) {
-                if (node == this) {
-                    GraphUtil.removeFixedWithUnusedInputs(this);
-                } else if (node instanceof WriteNode write && write.getAddress().getBase() == allocation) {
-                    GraphUtil.removeFixedWithUnusedInputs(write);
-                } else if (node == allocation) {
-                    GraphUtil.removeFixedWithUnusedInputs((FixedWithNextNode) allocation);
-                    break;
-                } else {
-                    break;
-                }
-            }
-
-            getDebug().dump(DebugContext.VERBOSE_LEVEL, graph(), "After killing %s", allocation);
-        } catch (Throwable t) {
-            throw getDebug().handle(t);
-        }
     }
 
     @Override

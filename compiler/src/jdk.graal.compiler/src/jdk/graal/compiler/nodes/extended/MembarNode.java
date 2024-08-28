@@ -123,6 +123,10 @@ public final class MembarNode extends FixedWithNextNode implements LIRLowerable,
         this.location = location;
     }
 
+    public FenceKind getFenceKind() {
+        return fence;
+    }
+
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return location;
