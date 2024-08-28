@@ -381,34 +381,37 @@ public class GeneratorUtils {
         return false;
     }
 
-    public static CodeExecutableElement override(DeclaredType type, String methodName, String... argumentNames) {
-        ExecutableElement method = ElementUtils.findMethod(type, methodName);
-        if (method == null) {
-            return null;
-        }
-        if (method.getParameters().size() != argumentNames.length) {
-            throw new IllegalArgumentException(String.format("Wrong number of argument names for method '%s'. Expected: %d, got: %d.",
-                            method.getSimpleName(), method.getParameters().size(), argumentNames.length));
-        }
-        CodeExecutableElement result = CodeExecutableElement.clone(method);
-        result.renameArguments(argumentNames);
-        result.getModifiers().remove(Modifier.DEFAULT);
-        return result;
+    /**
+     * Generates an override of the given method defined on the given type. Does not handle
+     * overloads.
+     */
+    public static CodeExecutableElement override(DeclaredType type, String methodName) {
+        return override(type, methodName, null);
     }
 
-    public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName) {
-        return overrideImplement(type, methodName, (TypeMirror[]) null);
-    }
-
-    public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName, TypeMirror... parameterTypes) {
+    /**
+     * Generates an override of the given method defined on the given type. Parameter types can be
+     * used to disambiguate overloads. Parameter names can be optionally provided to rename the
+     * parameter names in the override.
+     */
+    public static CodeExecutableElement override(DeclaredType type, String methodName, TypeMirror[] parameterTypes, String... parameterNames) {
         ExecutableElement method = ElementUtils.findInstanceMethod((TypeElement) type.asElement(), methodName, parameterTypes);
         if (method == null) {
             return null;
         }
-        return overrideImplement(method);
+        if (parameterNames.length != 0 && method.getParameters().size() != parameterNames.length) {
+            throw new IllegalArgumentException(String.format("Wrong number of argument names for method '%s'. Expected: %d, got: %d.",
+                            method.getSimpleName(), method.getParameters().size(), parameterNames.length));
+        }
+        CodeExecutableElement result = override(method);
+        result.renameArguments(parameterNames);
+        return result;
     }
 
-    public static CodeExecutableElement overrideImplement(ExecutableElement method) {
+    /**
+     * Generates an override of the given method.
+     */
+    public static CodeExecutableElement override(ExecutableElement method) {
         CodeExecutableElement result = CodeExecutableElement.clone(method);
         result.getModifiers().remove(Modifier.ABSTRACT);
         result.getModifiers().remove(Modifier.DEFAULT);

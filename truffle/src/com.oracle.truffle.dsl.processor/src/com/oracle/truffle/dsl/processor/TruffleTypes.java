@@ -222,7 +222,7 @@ public class TruffleTypes {
     public final DeclaredType TruffleLanguage_LanguageReference = c.getDeclaredType(TruffleLanguage_LanguageReference_Name);
     public final DeclaredType TruffleLanguageProvider = c.getDeclaredType(TruffleLanguageProvider_Name);
     public final DeclaredType TruffleLanguage_Registration = c.getDeclaredType(TruffleLanguage_Registration_Name);
-    public final DeclaredType TruffleStackTraceElkement = c.getDeclaredType(TruffleStackTraceElement_Name);
+    public final DeclaredType TruffleStackTraceElement = c.getDeclaredType(TruffleStackTraceElement_Name);
     public final DeclaredType TruffleOptions = c.getDeclaredType(TruffleOptions_Name);
     public final DeclaredType TruffleOptionDescriptors = c.getDeclaredType(TruffleOptionDescriptors_Name);
     public final DeclaredType UnadoptableNode = c.getDeclaredType(UnadoptableNode_Name);

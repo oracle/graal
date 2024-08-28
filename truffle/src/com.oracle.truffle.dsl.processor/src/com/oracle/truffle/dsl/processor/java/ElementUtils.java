@@ -124,37 +124,35 @@ public class ElementUtils {
         return null;
     }
 
-    public static ExecutableElement findInstanceMethod(TypeElement typeElement, String methodName) {
-        for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
-            if (method.getSimpleName().toString().equals(methodName) && !method.getModifiers().contains(Modifier.STATIC)) {
-                return method;
-            }
+    public static ExecutableElement findInstanceMethod(TypeElement typeElement, String methodName, TypeMirror[] parameterTypes) {
+        List<ExecutableElement> matches = ElementFilter.methodsIn(typeElement.getEnclosedElements()).stream() //
+                        .filter(method -> method.getSimpleName().toString().equals(methodName)) //
+                        .filter(method -> !method.getModifiers().contains(STATIC)) //
+                        .filter(method -> parametersMatch(parameterTypes, method)) //
+                        .collect(Collectors.toList());
+        if (matches.isEmpty()) {
+            return null;
         }
-        return null;
+        if (matches.size() > 1) {
+            throw new AssertionError(String.format("Type %s defines more than one method named %s (parameter types: %s)", typeElement.getSimpleName(), methodName, parameterTypes));
+        }
+        return matches.getFirst();
     }
 
-    public static ExecutableElement findInstanceMethod(TypeElement typeElement, String methodName, TypeMirror... parameterTypes) {
-        outer: for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
-            if (!method.getSimpleName().toString().equals(methodName)) {
-                continue;
-            }
-            if (method.getModifiers().contains(STATIC)) {
-                continue;
-            }
-            if (parameterTypes != null) {
-                List<? extends VariableElement> params = method.getParameters();
-                if (parameterTypes.length != params.size()) {
-                    continue;
-                }
-                for (int i = 0; i < parameterTypes.length; i++) {
-                    if (!ElementUtils.typeEquals(parameterTypes[i], params.get(i).asType())) {
-                        continue outer;
-                    }
-                }
-            }
-            return method;
+    private static boolean parametersMatch(TypeMirror[] parameterTypes, ExecutableElement method) {
+        if (parameterTypes == null) {
+            return true;
         }
-        return null;
+        List<? extends VariableElement> params = method.getParameters();
+        if (parameterTypes.length != params.size()) {
+            return false;
+        }
+        for (int i = 0; i < parameterTypes.length; i++) {
+            if (!ElementUtils.typeEquals(parameterTypes[i], params.get(i).asType())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static List<ExecutableElement> findAllPublicMethods(DeclaredType type, String methodName) {
