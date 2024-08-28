@@ -917,8 +917,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
     private CodeExecutableElement createCreateStackTraceElement() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(Object.class), "createStackTraceElement");
-        ex.addParameter(new CodeVariableElement(types.TruffleStackTraceElkement, "stackTraceElement"));
-        ex.renameArguments("stackTraceElement");
+        ex.addParameter(new CodeVariableElement(types.TruffleStackTraceElement, "stackTraceElement"));
         CodeTreeBuilder b = ex.createBuilder();
         b.startReturn();
         b.startCall("createDefaultStackTraceElement");
@@ -1229,7 +1228,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     }
 
     private CodeExecutableElement createGetBytecodeNode() {
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "getBytecodeNode");
+        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeRootNode, "getBytecodeNode");
 
         ex.getModifiers().remove(Modifier.DEFAULT);
         ex.getModifiers().add(Modifier.FINAL);
@@ -1256,7 +1255,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     }
 
     private CodeExecutableElement createGetRootNodes() {
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "getRootNodes");
+        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeRootNode, "getRootNodes");
         ex.setReturnType(generic(types.BytecodeRootNodes, model.templateType.asType()));
         ex.getModifiers().remove(Modifier.DEFAULT);
         ex.getModifiers().add(Modifier.FINAL);
@@ -1416,8 +1415,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         type.add(createDecode1());
         type.add(createDecode2(type));
 
-        CodeExecutableElement encodeTag = GeneratorUtils.overrideImplement(types.BytecodeConfigEncoder, "encodeTag");
-        encodeTag.renameArguments("c");
+        CodeExecutableElement encodeTag = GeneratorUtils.override(types.BytecodeConfigEncoder, "encodeTag", null, "c");
         b = encodeTag.createBuilder();
 
         if (model.getProvidedTags().isEmpty()) {
@@ -1477,8 +1475,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     }
 
     private CodeExecutableElement createEncodeInstrumentation() {
-        CodeExecutableElement encodeInstrumentation = GeneratorUtils.overrideImplement(types.BytecodeConfigEncoder, "encodeInstrumentation");
-        encodeInstrumentation.renameArguments("c");
+        CodeExecutableElement encodeInstrumentation = GeneratorUtils.override(types.BytecodeConfigEncoder, "encodeInstrumentation", null, "c");
         CodeTreeBuilder b = encodeInstrumentation.createBuilder();
 
         if (!model.getInstrumentations().isEmpty()) {
@@ -1659,7 +1656,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     private static CodeExecutableElement overrideImplementRootNodeMethod(BytecodeDSLModel model, String name, TypeMirror... parameterTypes) {
         TruffleTypes types = model.getContext().getTypes();
 
-        CodeExecutableElement result = GeneratorUtils.overrideImplement(types.RootNode, name, parameterTypes);
+        CodeExecutableElement result = GeneratorUtils.override(types.RootNode, name, parameterTypes);
 
         // If the RootNode method is already public, nothing to do.
         if (ElementUtils.getVisibility(result.getModifiers()) == Modifier.PUBLIC) {
@@ -6610,7 +6607,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createToString() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(Object.class), "toString");
+            CodeExecutableElement ex = GeneratorUtils.override(declaredType(Object.class), "toString");
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startDeclaration(type(StringBuilder.class), "b").startNew(type(StringBuilder.class)).end().end();
@@ -7544,10 +7541,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createToString0() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(context.getDeclaredType(Object.class), "toString");
+                CodeExecutableElement ex = GeneratorUtils.override(context.getDeclaredType(Object.class), "toString");
                 CodeTreeBuilder b = ex.createBuilder();
                 b.statement("return \"(\" + toString(null) + \")\"");
-                addOverride(ex);
                 return ex;
             }
 
@@ -7727,7 +7723,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createGetLocalOffset() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeLocal, "getLocalOffset");
+                CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeLocal, "getLocalOffset");
                 CodeTreeBuilder b = ex.createBuilder();
                 b.startReturn().string("frameIndex - USER_LOCALS_START_INDEX").end();
                 return ex;
@@ -7845,7 +7841,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createGetLocalOffset() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeLocal, "getLocalOffset");
+                CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeLocal, "getLocalOffset");
                 CodeTreeBuilder b = ex.createBuilder();
                 emitThrow(b, IllegalStateException.class, null);
                 return ex;
@@ -7956,9 +7952,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createWriteBytecodeNode() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeSerializer_SerializerContext, "writeBytecodeNode");
+                CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeSerializer_SerializerContext, "writeBytecodeNode", null, "buffer", "node");
                 mergeSuppressWarnings(ex, "hiding");
-                ex.renameArguments("buffer", "node");
                 CodeTreeBuilder b = ex.createBuilder();
                 b.startDeclaration(serializationRootNode.asType(), "serializationRoot");
                 b.cast(serializationRootNode.asType()).string("node");
@@ -8078,8 +8073,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createReadBytecodeNode() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeDeserializer_DeserializerContext, "readBytecodeNode");
-                ex.renameArguments("buffer");
+                CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeDeserializer_DeserializerContext, "readBytecodeNode", null, "buffer");
                 CodeTreeBuilder b = ex.createBuilder();
                 b.statement("return getContext(buffer.readInt()).builtNodes.get(buffer.readInt())");
                 return ex;
@@ -8145,18 +8139,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             reason.add(GeneratorUtils.createConstructorUsingFields(Set.of(), reason));
 
-            CodeExecutableElement length = reason.add(GeneratorUtils.overrideImplement(charSequence, "length"));
+            CodeExecutableElement length = reason.add(GeneratorUtils.override(charSequence, "length"));
             length.createBuilder().startReturn().string("toString().length()").end();
 
-            CodeExecutableElement charAt = reason.add(GeneratorUtils.overrideImplement(charSequence, "charAt"));
-            charAt.renameArguments("index");
+            CodeExecutableElement charAt = reason.add(GeneratorUtils.override(charSequence, "charAt", new TypeMirror[]{type(int.class)}, "index"));
             charAt.createBuilder().startReturn().string("toString().charAt(index)").end();
 
-            CodeExecutableElement subSequence = reason.add(GeneratorUtils.overrideImplement(charSequence, "subSequence"));
-            subSequence.renameArguments("start", "end");
+            CodeExecutableElement subSequence = reason.add(GeneratorUtils.override(charSequence, "subSequence", new TypeMirror[]{type(int.class), type(int.class)}, "start", "end"));
             subSequence.createBuilder().startReturn().string("toString().subSequence(start, end)").end();
 
-            CodeExecutableElement toString = reason.add(GeneratorUtils.overrideImplement(charSequence, "toString"));
+            CodeExecutableElement toString = reason.add(GeneratorUtils.override(charSequence, "toString"));
             CodeTreeBuilder b = toString.createBuilder();
             b.startStatement().type(type(StringBuilder.class)).string(" message = ").startNew(type(StringBuilder.class)).end().end();
             String message = String.format("%s requested ", ElementUtils.getSimpleName(model.getTemplateType()));
@@ -8217,10 +8209,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createReparseImpl() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNodes, "updateImpl");
-            addOverride(ex);
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeRootNodes, "updateImpl", null, "encoder", "encoding");
             mergeSuppressWarnings(ex, "hiding");
-            ex.renameArguments("encoder", "encoding");
             CodeTreeBuilder b = ex.createBuilder();
             b.startDeclaration(type(long.class), "maskedEncoding");
             b.startStaticCall(configEncoder.asType(), "decode").string("encoder").string("encoding").end();
@@ -8357,9 +8347,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createSerialize() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNodes, "serialize");
-            ex.renameArguments("buffer", "callback");
-            addOverride(ex);
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeRootNodes, "serialize", null, "buffer", "callback");
             mergeSuppressWarnings(ex, "cast");
 
             addJavadoc(ex, """
@@ -8455,7 +8443,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetKind() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getKind");
+            CodeExecutableElement ex = GeneratorUtils.override(types.ExceptionHandler, "getKind");
             CodeTreeBuilder b = ex.createBuilder();
             if (hasSpecialHandlers()) {
                 b.startSwitch();
@@ -8486,21 +8474,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetStartBytecodeIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getStartBytecodeIndex");
+            CodeExecutableElement ex = GeneratorUtils.override(types.ExceptionHandler, "getStartBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return bytecode.handlers[baseIndex + EXCEPTION_HANDLER_OFFSET_START_BCI]");
             return ex;
         }
 
         private CodeExecutableElement createGetEndBytecodeIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getEndBytecodeIndex");
+            CodeExecutableElement ex = GeneratorUtils.override(types.ExceptionHandler, "getEndBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return bytecode.handlers[baseIndex + EXCEPTION_HANDLER_OFFSET_END_BCI]");
             return ex;
         }
 
         private CodeExecutableElement createGetHandlerBytecodeIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getHandlerBytecodeIndex");
+            CodeExecutableElement ex = GeneratorUtils.override(types.ExceptionHandler, "getHandlerBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
 
             if (hasSpecialHandlers()) {
@@ -8528,7 +8516,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetTagTree() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ExceptionHandler, "getTagTree");
+            CodeExecutableElement ex = GeneratorUtils.override(types.ExceptionHandler, "getTagTree");
             CodeTreeBuilder b = ex.createBuilder();
             if (model.enableTagInstrumentation) {
                 b.startIf().string("getKind() == ").staticReference(types.ExceptionHandler_HandlerKind, "TAG").end().startBlock();
@@ -8559,9 +8547,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGet() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "get", type(int.class));
+            CodeExecutableElement ex = GeneratorUtils.override(declaredType(List.class), "get", new TypeMirror[]{type(int.class)}, "index");
             ex.setReturnType(types.ExceptionHandler);
-            ex.renameArguments("index");
             CodeTreeBuilder b = ex.createBuilder();
             b.declaration(type(int.class), "baseIndex", "index * EXCEPTION_HANDLER_LENGTH");
             b.startIf().string("baseIndex < 0 || baseIndex >= bytecode.handlers.length").end().startBlock();
@@ -8574,7 +8561,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createSize() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "size");
+            CodeExecutableElement ex = GeneratorUtils.override(declaredType(List.class), "size");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return bytecode.handlers.length / EXCEPTION_HANDLER_LENGTH");
             return ex;
@@ -8602,21 +8589,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetStartBytecodeIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getStartBytecodeIndex");
+            CodeExecutableElement ex = GeneratorUtils.override(types.SourceInformation, "getStartBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().string("bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_START_BCI]").end();
             return ex;
         }
 
         private CodeExecutableElement createGetEndBytecodeIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getEndBytecodeIndex");
+            CodeExecutableElement ex = GeneratorUtils.override(types.SourceInformation, "getEndBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().string("bytecode.sourceInfo[baseIndex + SOURCE_INFO_OFFSET_END_BCI]").end();
             return ex;
         }
 
         private CodeExecutableElement createGetSourceSection() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getSourceSection");
+            CodeExecutableElement ex = GeneratorUtils.override(types.SourceInformation, "getSourceSection");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return AbstractBytecodeNode.createSourceSection(bytecode.sources, bytecode.sourceInfo, baseIndex)");
             return ex;
@@ -8637,9 +8624,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGet() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "get", type(int.class));
+            CodeExecutableElement ex = GeneratorUtils.override(declaredType(List.class), "get", new TypeMirror[]{type(int.class)}, "index");
             ex.setReturnType(types.SourceInformation);
-            ex.renameArguments("index");
             CodeTreeBuilder b = ex.createBuilder();
             b.declaration(type(int.class), "baseIndex", "index * SOURCE_INFO_LENGTH");
             b.startIf().string("baseIndex < 0 || baseIndex >= bytecode.sourceInfo.length").end().startBlock();
@@ -8652,7 +8638,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createSize() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "size");
+            CodeExecutableElement ex = GeneratorUtils.override(declaredType(List.class), "size");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return bytecode.sourceInfo.length / SOURCE_INFO_LENGTH");
             return ex;
@@ -8689,7 +8675,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetStartBytecodeIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getStartBytecodeIndex");
+            CodeExecutableElement ex = GeneratorUtils.override(types.SourceInformation, "getStartBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.startIf().string("baseIndex == UNAVAILABLE_ROOT").end().startBlock();
             b.startReturn().string("0").end();
@@ -8699,7 +8685,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetEndBytecodeIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getEndBytecodeIndex");
+            CodeExecutableElement ex = GeneratorUtils.override(types.SourceInformation, "getEndBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.startIf().string("baseIndex == UNAVAILABLE_ROOT").end().startBlock();
             b.startReturn().string("bytecode.bytecodes.length").end();
@@ -8709,7 +8695,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetSourceSection() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformation, "getSourceSection");
+            CodeExecutableElement ex = GeneratorUtils.override(types.SourceInformation, "getSourceSection");
             CodeTreeBuilder b = ex.createBuilder();
             b.startIf().string("baseIndex == UNAVAILABLE_ROOT").end().startBlock();
             b.startReturn().string("null").end();
@@ -8719,7 +8705,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetChildren() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.SourceInformationTree, "getChildren");
+            CodeExecutableElement ex = GeneratorUtils.override(types.SourceInformationTree, "getChildren");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return children");
             return ex;
@@ -8818,21 +8804,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetStartIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.LocalVariable, "getStartIndex");
+            CodeExecutableElement ex = GeneratorUtils.override(types.LocalVariable, "getStartIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return bytecode.locals[baseIndex + LOCALS_OFFSET_START_BCI]");
             return ex;
         }
 
         private CodeExecutableElement createGetEndIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.LocalVariable, "getEndIndex");
+            CodeExecutableElement ex = GeneratorUtils.override(types.LocalVariable, "getEndIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return bytecode.locals[baseIndex + LOCALS_OFFSET_END_BCI]");
             return ex;
         }
 
         private CodeExecutableElement createGetInfo() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.LocalVariable, "getInfo");
+            CodeExecutableElement ex = GeneratorUtils.override(types.LocalVariable, "getInfo");
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(type(int.class), "infoId", "bytecode.locals[baseIndex + LOCALS_OFFSET_INFO]");
@@ -8845,7 +8831,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetName() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.LocalVariable, "getName");
+            CodeExecutableElement ex = GeneratorUtils.override(types.LocalVariable, "getName");
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(type(int.class), "nameId", "bytecode.locals[baseIndex + LOCALS_OFFSET_NAME]");
@@ -8858,7 +8844,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetLocalIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.LocalVariable, "getLocalIndex");
+            CodeExecutableElement ex = GeneratorUtils.override(types.LocalVariable, "getLocalIndex");
             CodeTreeBuilder b = ex.createBuilder();
             if (model.enableLocalScoping) {
                 b.statement("return bytecode.locals[baseIndex + LOCALS_OFFSET_LOCAL_INDEX]");
@@ -8869,7 +8855,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetLocalOffset() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.LocalVariable, "getLocalOffset");
+            CodeExecutableElement ex = GeneratorUtils.override(types.LocalVariable, "getLocalOffset");
             CodeTreeBuilder b = ex.createBuilder();
             if (model.enableLocalScoping) {
                 b.statement("return bytecode.locals[baseIndex + LOCALS_OFFSET_FRAME_INDEX] - USER_LOCALS_START_INDEX");
@@ -8880,7 +8866,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetTypeProfile() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.LocalVariable, "getTypeProfile");
+            CodeExecutableElement ex = GeneratorUtils.override(types.LocalVariable, "getTypeProfile");
             CodeTreeBuilder b = ex.createBuilder();
 
             if (model.usesBoxingElimination()) {
@@ -8918,9 +8904,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGet() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "get", type(int.class));
+            CodeExecutableElement ex = GeneratorUtils.override(declaredType(List.class), "get", new TypeMirror[]{type(int.class)}, "index");
             ex.setReturnType(types.LocalVariable);
-            ex.renameArguments("index");
             CodeTreeBuilder b = ex.createBuilder();
             b.declaration(type(int.class), "baseIndex", "index * LOCALS_LENGTH");
             b.startIf().string("baseIndex < 0 || baseIndex >= bytecode.locals.length").end().startBlock();
@@ -8933,7 +8918,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createSize() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(declaredType(List.class), "size");
+            CodeExecutableElement ex = GeneratorUtils.override(declaredType(List.class), "size");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return bytecode.locals.length / LOCALS_LENGTH");
             return ex;
@@ -8992,14 +8977,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetBytecodeIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "getBytecodeIndex");
+            CodeExecutableElement ex = GeneratorUtils.override(types.Instruction, "getBytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return bci");
             return ex;
         }
 
         private CodeExecutableElement createNext() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "next");
+            CodeExecutableElement ex = GeneratorUtils.override(types.Instruction, "next");
             CodeTreeBuilder b = ex.createBuilder();
             b.declaration(type(int.class), "nextBci", "getNextBytecodeIndex()");
             b.startIf().string("nextBci >= bytecode.bytecodes.length").end().startBlock();
@@ -9010,14 +8995,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetBytecodeNode() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "getBytecodeNode");
+            CodeExecutableElement ex = GeneratorUtils.override(types.Instruction, "getBytecodeNode");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return bytecode");
             return ex;
         }
 
         private CodeExecutableElement createGetName() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "getName");
+            CodeExecutableElement ex = GeneratorUtils.override(types.Instruction, "getName");
             CodeTreeBuilder b = ex.createBuilder();
             b.startSwitch().string("opcode").end().startBlock();
             // Pop any value produced by a transparent operation's child.
@@ -9033,7 +9018,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createIsInstrumentation() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "isInstrumentation");
+            CodeExecutableElement ex = GeneratorUtils.override(types.Instruction, "isInstrumentation");
             CodeTreeBuilder b = ex.createBuilder();
 
             Map<Boolean, List<InstructionModel>> grouped = groupInstructionsByInstrumentation(model.getInstructions());
@@ -9060,7 +9045,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetLength() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "getLength");
+            CodeExecutableElement ex = GeneratorUtils.override(types.Instruction, "getLength");
             CodeTreeBuilder b = ex.createBuilder();
             b.startSwitch().string("opcode").end().startBlock();
             // Pop any value produced by a transparent operation's child.
@@ -9079,7 +9064,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetArguments() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "getArguments");
+            CodeExecutableElement ex = GeneratorUtils.override(types.Instruction, "getArguments");
             CodeTreeBuilder b = ex.createBuilder();
             b.startSwitch().string("opcode").end().startBlock();
             // Pop any value produced by a transparent operation's child.
@@ -9124,7 +9109,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetOperationCode() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction, "getOperationCode");
+            CodeExecutableElement ex = GeneratorUtils.override(types.Instruction, "getOperationCode");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().string("opcode").end();
             return ex;
@@ -9191,7 +9176,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createGetName() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "getName");
+                CodeExecutableElement ex = GeneratorUtils.override(types.Instruction_Argument, "getName");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.statement("return name");
@@ -9261,7 +9246,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createAsBytecodeIndex() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asBytecodeIndex");
+                CodeExecutableElement ex = GeneratorUtils.override(types.Instruction_Argument, "asBytecodeIndex");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
@@ -9273,7 +9258,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createAsInteger() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asInteger");
+                CodeExecutableElement ex = GeneratorUtils.override(types.Instruction_Argument, "asInteger");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
@@ -9292,7 +9277,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createAsLocalOffset() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asLocalOffset");
+                CodeExecutableElement ex = GeneratorUtils.override(types.Instruction_Argument, "asLocalOffset");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
@@ -9306,7 +9291,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createAsLocalIndex() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asLocalIndex");
+                CodeExecutableElement ex = GeneratorUtils.override(types.Instruction_Argument, "asLocalIndex");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
@@ -9320,7 +9305,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createAsConstant() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asConstant");
+                CodeExecutableElement ex = GeneratorUtils.override(types.Instruction_Argument, "asConstant");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
@@ -9335,7 +9320,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createAsCachedNode() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asCachedNode");
+                CodeExecutableElement ex = GeneratorUtils.override(types.Instruction_Argument, "asCachedNode");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(arrayOf(types.Node), "cachedNodes", "this.bytecode.getCachedNodes()");
@@ -9353,7 +9338,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createAsTagNode() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asTagNode");
+                CodeExecutableElement ex = GeneratorUtils.override(types.Instruction_Argument, "asTagNode");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
@@ -9371,7 +9356,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createAsBranchProfile() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "asBranchProfile");
+                CodeExecutableElement ex = GeneratorUtils.override(types.Instruction_Argument, "asBranchProfile");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.declaration(type(byte[].class), "bc", "this.bytecode.bytecodes");
@@ -9402,7 +9387,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             private CodeExecutableElement createGetKind() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.Instruction_Argument, "getKind");
+                CodeExecutableElement ex = GeneratorUtils.override(types.Instruction_Argument, "getKind");
                 ex.getModifiers().add(Modifier.FINAL);
                 CodeTreeBuilder b = ex.createBuilder();
                 b.startReturn();
@@ -9510,7 +9495,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createCreateWrapper() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "createWrapper", "p");
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "createWrapper", null, "p");
             ex.getModifiers().remove(Modifier.ABSTRACT);
             ex.getModifiers().add(Modifier.FINAL);
             CodeTreeBuilder b = ex.createBuilder();
@@ -9637,7 +9622,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createHasTag() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "hasTag", "tag");
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "hasTag", null, "tag");
             ex.getModifiers().remove(Modifier.ABSTRACT);
             ex.getModifiers().add(Modifier.FINAL);
             CodeTreeBuilder b = ex.createBuilder();
@@ -9850,9 +9835,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetLocalCount() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getLocalCount");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getLocalCount", new TypeMirror[]{type(int.class)}, "bci");
             ex.getModifiers().add(FINAL);
-            ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert validateBytecodeIndex(bci)");
             ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.ExplodeLoop));
@@ -9884,8 +9868,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 suffix = ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(specializedType));
             }
 
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getLocalValue" + suffix);
-            ex.renameArguments("bci", "frame", "localOffset");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getLocalValue" + suffix, new TypeMirror[]{type(int.class), types.Frame, type(int.class)}, "bci", "frame",
+                            "localOffset");
             ex.getModifiers().add(FINAL);
 
             CodeTreeBuilder b = ex.createBuilder();
@@ -9966,8 +9950,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 suffix = ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(specializedType));
             }
 
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "setLocalValue" + suffix);
-            ex.renameArguments("bci", "frame", "localOffset", "value");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "setLocalValue" + suffix, null, "bci", "frame", "localOffset", "value");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert validateBytecodeIndex(bci)");
             buildVerifyLocalsIndex(b);
@@ -10234,8 +10217,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetLocalName() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getLocalName");
-            ex.renameArguments("bci", "localOffset");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getLocalName", new TypeMirror[]{type(int.class), type(int.class)}, "bci", "localOffset");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert validateBytecodeIndex(bci)");
             buildVerifyLocalsIndex(b);
@@ -10297,8 +10279,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetLocalInfo() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getLocalInfo");
-            ex.renameArguments("bci", "localOffset");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getLocalInfo", new TypeMirror[]{type(int.class), type(int.class)}, "bci", "localOffset");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert validateBytecodeIndex(bci)");
             buildVerifyLocalsIndex(b);
@@ -10322,7 +10303,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetLocals() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getLocals");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getLocals");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().startNew("LocalVariableList").string("this").end().end();
             return ex;
@@ -10706,7 +10687,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private CodeExecutableElement createFindBytecodeIndex2() {
             // override to make method visible
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findBytecodeIndex", types.Frame, types.Node);
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "findBytecodeIndex", new TypeMirror[]{types.Frame, types.Node});
             ex.getModifiers().add(ABSTRACT);
             return ex;
         }
@@ -10749,8 +10730,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createTranslateBytecodeIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "translateBytecodeIndex");
-            ex.renameArguments("newNode", "bytecodeIndex");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "translateBytecodeIndex", null, "newNode", "bytecodeIndex");
             CodeTreeBuilder b = ex.createBuilder();
             if (model.isBytecodeUpdatable()) {
                 b.startReturn();
@@ -11251,9 +11231,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetSourceLocation() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getSourceLocation", type(int.class));
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getSourceLocation", new TypeMirror[]{type(int.class)}, "bci");
             ex.getModifiers().add(FINAL);
-            ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert validateBytecodeIndex(bci)");
 
@@ -11277,9 +11256,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetSourceLocations() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getSourceLocations", type(int.class));
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getSourceLocations", new TypeMirror[]{type(int.class)}, "bci");
             ex.getModifiers().add(FINAL);
-            ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert validateBytecodeIndex(bci)");
 
@@ -11371,8 +11349,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createFindInstruction() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findInstruction");
-            ex.renameArguments("bci");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "findInstruction", new TypeMirror[]{type(int.class)}, "bci");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
             b.startNew(instructionImpl.asType());
@@ -11383,8 +11360,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createValidateBytecodeIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "validateBytecodeIndex");
-            ex.renameArguments("bci");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "validateBytecodeIndex", new TypeMirror[]{type(int.class)}, "bci");
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(type(byte[].class), "bc", "this.bytecodes");
@@ -11406,14 +11382,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createHasSourceInformation() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "hasSourceInformation");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "hasSourceInformation");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("return sourceInfo != null");
             return ex;
         }
 
         private CodeExecutableElement createGetSourceInformation() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getSourceInformation");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getSourceInformation");
             CodeTreeBuilder b = ex.createBuilder();
             b.startIf().string("sourceInfo == null").end().startBlock();
             b.returnNull();
@@ -11425,7 +11401,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetSourceInformationTree() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getSourceInformationTree");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getSourceInformationTree");
             CodeTreeBuilder b = ex.createBuilder();
             b.startIf().string("sourceInfo == null").end().startBlock();
             b.returnNull();
@@ -11437,7 +11413,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetExceptionHandlers() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getExceptionHandlers");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getExceptionHandlers");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
             b.startNew("ExceptionHandlerList").string("this").end();
@@ -11446,8 +11422,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetTagTree() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getTagTree");
-            ex.renameArguments("bci");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getTagTree");
             CodeTreeBuilder b = ex.createBuilder();
             if (model.enableTagInstrumentation) {
                 b.startIf().string("this.tagRoot == null").end().startBlock();
@@ -11548,8 +11523,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createExecuteOSR() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeOSRNode, "executeOSR");
-            ex.renameArguments("frame", "target", model.enableYield ? "localFrame" : "unused");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeOSRNode, "executeOSR", null, "frame", "target", model.enableYield ? "localFrame" : "unused");
             CodeTreeBuilder b = ex.getBuilder();
             b.startReturn().startCall("continueAt");
             b.string("getRoot()");
@@ -11566,10 +11540,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         private List<CodeElement<Element>> createMetadataMembers() {
             CodeVariableElement osrMetadataField = compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getDeclaredType(Object.class), METADATA_FIELD_NAME));
 
-            CodeExecutableElement getOSRMetadata = GeneratorUtils.overrideImplement(types.BytecodeOSRNode, "getOSRMetadata");
+            CodeExecutableElement getOSRMetadata = GeneratorUtils.override(types.BytecodeOSRNode, "getOSRMetadata");
             getOSRMetadata.getBuilder().startReturn().string(METADATA_FIELD_NAME).end();
 
-            CodeExecutableElement setOSRMetadata = GeneratorUtils.overrideImplement(types.BytecodeOSRNode, "setOSRMetadata");
+            CodeExecutableElement setOSRMetadata = GeneratorUtils.override(types.BytecodeOSRNode, "setOSRMetadata");
             setOSRMetadata.getBuilder().startAssign(METADATA_FIELD_NAME).variable(setOSRMetadata.getParameters().get(0)).end();
 
             return List.of(osrMetadataField, getOSRMetadata, setOSRMetadata);
@@ -11577,14 +11551,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private List<CodeExecutableElement> createStoreAndRestoreParentFrameMethods() {
             // Append parent frame to end of array so that regular argument reads work as expected.
-            CodeExecutableElement storeParentFrameInArguments = GeneratorUtils.overrideImplement(types.BytecodeOSRNode, "storeParentFrameInArguments");
+            CodeExecutableElement storeParentFrameInArguments = GeneratorUtils.override(types.BytecodeOSRNode, "storeParentFrameInArguments");
             CodeTreeBuilder sb = storeParentFrameInArguments.getBuilder();
             sb.declaration(type(Object[].class), "parentArgs", "parentFrame.getArguments()");
             sb.declaration(type(Object[].class), "result", "Arrays.copyOf(parentArgs, parentArgs.length + 1)");
             sb.statement("result[result.length - 1] = parentFrame");
             sb.startReturn().string("result").end();
 
-            CodeExecutableElement restoreParentFrameFromArguments = GeneratorUtils.overrideImplement(types.BytecodeOSRNode, "restoreParentFrameFromArguments");
+            CodeExecutableElement restoreParentFrameFromArguments = GeneratorUtils.override(types.BytecodeOSRNode, "restoreParentFrameFromArguments");
             CodeTreeBuilder rb = restoreParentFrameFromArguments.getBuilder();
             rb.startReturn().cast(types.Frame).string("arguments[arguments.length - 1]").end();
 
@@ -11600,8 +11574,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createFindBytecodeIndex1() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findBytecodeIndex", types.FrameInstance);
-            ex.renameArguments("frameInstance");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "findBytecodeIndex", new TypeMirror[]{types.FrameInstance}, "frameInstance");
             CodeTreeBuilder b = ex.createBuilder();
 
             if (useOperationNodeForBytecodeIndex()) {
@@ -11651,8 +11624,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createFindBytecodeIndex2() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findBytecodeIndex", types.Frame, types.Node);
-            ex.renameArguments("frame", "node");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "findBytecodeIndex", new TypeMirror[]{types.Frame, types.Node}, "frame", "node");
             CodeTreeBuilder b = ex.createBuilder();
 
             if (useOperationNodeForBytecodeIndex()) {
@@ -11671,15 +11643,14 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetBytecodeIndex() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getBytecodeIndex");
-            ex.renameArguments("frame");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getBytecodeIndex", new TypeMirror[]{types.Frame}, "frame");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().string("frame.getInt(" + BCI_INDEX + ")").end();
             return ex;
         }
 
         private CodeExecutableElement createGetLocalTags() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) abstractBytecodeNode.asType(), "getLocalTags");
+            CodeExecutableElement ex = GeneratorUtils.override((DeclaredType) abstractBytecodeNode.asType(), "getLocalTags");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
             switch (tier) {
@@ -11696,7 +11667,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetCachedNodes() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) abstractBytecodeNode.asType(), "getCachedNodes");
+            CodeExecutableElement ex = GeneratorUtils.override((DeclaredType) abstractBytecodeNode.asType(), "getCachedNodes");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
             switch (tier) {
@@ -11713,7 +11684,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetBranchProfiles() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) abstractBytecodeNode.asType(), "getBranchProfiles");
+            CodeExecutableElement ex = GeneratorUtils.override((DeclaredType) abstractBytecodeNode.asType(), "getBranchProfiles");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
             switch (tier) {
@@ -11736,7 +11707,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createCloneUninitialized() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) abstractBytecodeNode.asType(), "cloneUninitialized");
+            CodeExecutableElement ex = GeneratorUtils.override((DeclaredType) abstractBytecodeNode.asType(), "cloneUninitialized");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
             b.startNew(tier.friendlyName + "BytecodeNode");
@@ -11831,7 +11802,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createToCached() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) abstractBytecodeNode.asType(), "toCached");
+            CodeExecutableElement ex = GeneratorUtils.override((DeclaredType) abstractBytecodeNode.asType(), "toCached");
             CodeTreeBuilder b = ex.createBuilder();
             switch (tier) {
                 case UNCACHED:
@@ -11882,7 +11853,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createUpdate() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) abstractBytecodeNode.asType(), "update");
+            CodeExecutableElement ex = GeneratorUtils.override((DeclaredType) abstractBytecodeNode.asType(), "update");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("assert bytecodes_ != null || sourceInfo_ != null");
 
@@ -11988,7 +11959,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetTier() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "getTier");
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getTier");
             CodeTreeBuilder b = ex.createBuilder();
             switch (tier) {
                 case UNCACHED:
@@ -12083,7 +12054,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createToString() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(context.getDeclaredType(Object.class), "toString");
+            CodeExecutableElement ex = GeneratorUtils.override(context.getDeclaredType(Object.class), "toString");
             CodeTreeBuilder b = ex.createBuilder();
             String tierString = switch (tier) {
                 case UNCACHED -> "uncached";
@@ -12190,8 +12161,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createSetUncachedThreshold() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "setUncachedThreshold", "invocationCount");
-            GeneratorUtils.addOverride(ex);
+            CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "setUncachedThreshold", new TypeMirror[]{type(int.class)}, "invocationCount");
             ElementUtils.setVisibility(ex.getModifiers(), PUBLIC);
             ex.getModifiers().remove(ABSTRACT);
 
@@ -14764,7 +14734,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
          * nodes until the node itself is adopted by the root node. We adopt them after insertion.
          */
         private CodeExecutableElement createAdoptNodesAfterUpdate() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) abstractBytecodeNode.asType(), "adoptNodesAfterUpdate");
+            CodeExecutableElement ex = GeneratorUtils.override((DeclaredType) abstractBytecodeNode.asType(), "adoptNodesAfterUpdate");
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("insert(this.cachedNodes_)");
             return ex;
@@ -15072,8 +15042,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createExecute() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "execute");
-            ex.renameArguments("frame");
+            CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "execute", new TypeMirror[]{types.VirtualFrame}, "frame");
 
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -15109,21 +15078,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createGetSourceRootNode() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ContinuationRootNode, "getSourceRootNode");
+            CodeExecutableElement ex = GeneratorUtils.override(types.ContinuationRootNode, "getSourceRootNode");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().string("root").end();
             return ex;
         }
 
         private CodeExecutableElement createGetLocation() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ContinuationRootNode, "getLocation");
+            CodeExecutableElement ex = GeneratorUtils.override(types.ContinuationRootNode, "getLocation");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().string("location").end();
             return ex;
         }
 
         private CodeExecutableElement createFindFrame() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ContinuationRootNode, "findFrame");
+            CodeExecutableElement ex = GeneratorUtils.override(types.ContinuationRootNode, "findFrame");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
             b.cast(types.Frame);
@@ -15182,7 +15151,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createToString() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(context.getDeclaredType(Object.class), "toString");
+            CodeExecutableElement ex = GeneratorUtils.override(context.getDeclaredType(Object.class), "toString");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
             b.startStaticCall(type(String.class), "format");
@@ -15193,7 +15162,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createIsCloningAllowed() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "isCloningAllowed");
+            CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "isCloningAllowed");
             CodeTreeBuilder b = ex.createBuilder();
             b.lineComment("Continuations are unique.");
             b.startReturn();
@@ -15203,7 +15172,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private CodeExecutableElement createIsCloneUninitializedSupported() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "isCloneUninitializedSupported");
+            CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "isCloneUninitializedSupported");
             CodeTreeBuilder b = ex.createBuilder();
             b.lineComment("Continuations are unique.");
             b.startReturn();
@@ -15240,7 +15209,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     continue outer;
                 }
 
-                CodeExecutableElement proxyMethod = GeneratorUtils.overrideImplement(templateMethod);
+                CodeExecutableElement proxyMethod = GeneratorUtils.override(templateMethod);
                 CodeTreeBuilder b = proxyMethod.createBuilder();
 
                 boolean isVoid = ElementUtils.isVoid(proxyMethod.getReturnType());
