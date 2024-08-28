@@ -25,15 +25,22 @@
 package com.oracle.svm.hosted.heap;
 
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FACTORY_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_TYPE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.GENERATED_SERIALIZATION_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RAW_DECLARING_CLASS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RAW_TARGET_CONSTRUCTOR_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TARGET_CONSTRUCTOR_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.THROW_ALLOCATED_OBJECT_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_METHOD_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_TYPE_TAG;
+import static com.oracle.svm.hosted.heap.SVMImageLayerSnapshotUtil.GENERATED_SERIALIZATION;
 
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.heap.ImageLayerWriterHelper;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.hosted.code.FactoryMethod;
 
 public class SVMImageLayerWriterHelper extends ImageLayerWriterHelper {
@@ -42,9 +49,20 @@ public class SVMImageLayerWriterHelper extends ImageLayerWriterHelper {
     }
 
     @Override
+    protected void persistType(AnalysisType type, EconomicMap<String, Object> typeMap) {
+        if (type.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
+            typeMap.put(WRAPPED_TYPE_TAG, GENERATED_SERIALIZATION_TAG);
+            var key = SerializationSupport.singleton().getKeyFromConstructorAccessorClass(type.getJavaClass());
+            typeMap.put(RAW_DECLARING_CLASS_TAG, key.getDeclaringClass().getName());
+            typeMap.put(RAW_TARGET_CONSTRUCTOR_CLASS_TAG, key.getTargetConstructorClass().getName());
+        }
+        super.persistType(type, typeMap);
+    }
+
+    @Override
     protected void persistMethod(AnalysisMethod method, EconomicMap<String, Object> methodMap) {
         if (method.wrapped instanceof FactoryMethod factoryMethod) {
-            methodMap.put(METHOD_TYPE_TAG, FACTORY_TAG);
+            methodMap.put(WRAPPED_METHOD_TAG, FACTORY_TAG);
             AnalysisMethod targetConstructor = method.getUniverse().lookup(factoryMethod.getTargetConstructor());
             if (!method.isReachable() && !imageLayerWriter.isMethodPersisted(targetConstructor)) {
                 imageLayerWriter.persistAnalysisParsedGraph(targetConstructor);

@@ -102,6 +102,10 @@ public class ImageLayerSnapshotUtil {
     public static final String COMPONENT_TYPE_TAG = "component type";
     public static final String SUPER_CLASS_TAG = "super class";
     public static final String INTERFACES_TAG = "interfaces";
+    public static final String WRAPPED_TYPE_TAG = "wrapped type";
+    public static final String GENERATED_SERIALIZATION_TAG = "generated serialization";
+    public static final String RAW_DECLARING_CLASS_TAG = "raw declaring class";
+    public static final String RAW_TARGET_CONSTRUCTOR_CLASS_TAG = "raw target constructor class";
     public static final String CONSTANTS_TAG = "constants";
     public static final String CONSTANTS_TO_RELINK_TAG = "constants to relink";
     public static final String TID_TAG = "tid";
@@ -110,7 +114,7 @@ public class ImageLayerSnapshotUtil {
     public static final String ARGUMENT_IDS_TAG = "argument ids";
     public static final String RETURN_TYPE_TAG = "return type";
     public static final String IS_VAR_ARGS_TAG = "is varArg";
-    public static final String METHOD_TYPE_TAG = "method type";
+    public static final String WRAPPED_METHOD_TAG = "wrapped method";
     public static final String METHOD_TYPE_PARAMETERS_TAG = "method type parameters";
     public static final String METHOD_TYPE_RETURN_TAG = "method type return";
     public static final String FACTORY_TAG = "factory";

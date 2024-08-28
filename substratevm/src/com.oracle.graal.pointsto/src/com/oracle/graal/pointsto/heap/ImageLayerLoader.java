@@ -348,6 +348,10 @@ public class ImageLayerLoader {
         return loadPaths;
     }
 
+    public AnalysisUniverse getUniverse() {
+        return universe;
+    }
+
     public void setUniverse(AnalysisUniverse newUniverse) {
         this.universe = newUniverse;
     }
@@ -448,6 +452,10 @@ public class ImageLayerLoader {
 
     private void loadType(EconomicMap<String, Object> typeData) {
         int tid = get(typeData, ID_TAG);
+
+        if (imageLayerLoaderHelper.loadType(typeData, tid)) {
+            return;
+        }
 
         String name = get(typeData, CLASS_JAVA_NAME_TAG);
         Class<?> clazz = lookupBaseLayerTypeInHostVM(name);

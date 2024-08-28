@@ -90,7 +90,7 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
-    private static final String GENERATED_SERIALIZATION = "jdk.internal.reflect.GeneratedSerializationConstructorAccessor";
+    public static final String GENERATED_SERIALIZATION = "jdk.internal.reflect.GeneratedSerializationConstructorAccessor";
 
     public static final Field companion = ReflectionUtil.lookupField(DynamicHub.class, "companion");
     public static final Field classInitializationInfo = ReflectionUtil.lookupField(DynamicHub.class, "classInitializationInfo");
@@ -149,7 +149,7 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
     @Override
     public String getTypeIdentifier(AnalysisType type) {
         if (type.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
-            getGeneratedSerializationName(type);
+            return getGeneratedSerializationName(type);
         }
         if (isProxyType(type)) {
             return type.toJavaName(true);
