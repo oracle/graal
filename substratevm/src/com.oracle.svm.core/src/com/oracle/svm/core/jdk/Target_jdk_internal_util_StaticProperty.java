@@ -139,6 +139,6 @@ final class Target_jdk_internal_util_StaticProperty {
 
     @Substitute
     public static String javaLocaleUseOldISOCodes() {
-        return SystemPropertiesSupport.singleton().savedProperties.get("java.locale.useOldISOCodes");
+        return SystemPropertiesSupport.singleton().savedProperties.getOrDefault("java.locale.useOldISOCodes", "");
     }
 }
