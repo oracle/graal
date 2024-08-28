@@ -30,6 +30,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.IsolateArguments;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 
@@ -53,6 +54,12 @@ public interface CommittedMemoryProvider {
      */
     @Uninterruptible(reason = "Still being initialized.")
     int initialize(WordPointer heapBasePointer, CEntryPointCreateIsolateParameters parameters);
+
+    @Uninterruptible(reason = "Still being initialized.")
+    default int initialize(WordPointer heapBasePointer, IsolateArguments arguments) {
+        // The default implementation of this method is temporary.
+        return initialize(heapBasePointer, arguments.getParameters());
+    }
 
     /**
      * Tear down <em>for the current isolate</em>. This must be the last method of this interface
