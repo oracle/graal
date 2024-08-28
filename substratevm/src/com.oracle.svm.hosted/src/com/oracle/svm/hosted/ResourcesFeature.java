@@ -190,7 +190,8 @@ public class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addGlob(ConfigurationCondition condition, String module, String glob) {
-            String resolvedGlob = GlobUtils.transformToTriePath(glob, module);
+            String canonicalGlob = Resources.toCanonicalForm(glob);
+            String resolvedGlob = GlobUtils.transformToTriePath(canonicalGlob, module);
             globWorkSet.add(new ConditionalPattern(condition, resolvedGlob));
         }
 
