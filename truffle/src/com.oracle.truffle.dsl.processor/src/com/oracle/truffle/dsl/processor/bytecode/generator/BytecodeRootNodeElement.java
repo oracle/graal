@@ -2085,6 +2085,25 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         return b.build();
     }
 
+    private static CodeTree readIntArray(String array, String index) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startCall("ACCESS.readInt");
+        b.string(array);
+        b.string(index);
+        b.end();
+        return b.build();
+    }
+
+    private static CodeTree writeIntArray(String array, String index, String value) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startCall("ACCESS.writeInt");
+        b.string(array);
+        b.string(index);
+        b.string(value);
+        b.end();
+        return b.build();
+    }
+
     private static CodeTree readTagNode(TypeMirror expectedType, CodeTree index) {
         return readTagNode(expectedType, "tagRoot.tagNodes", index);
     }
@@ -11456,7 +11475,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             } else if (tier.isCached()) {
                 this.add(createCachedConstructor());
                 this.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), arrayOf(types.Node), "cachedNodes_")));
-                this.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(type(int.class)), "branchProfiles_")));
                 this.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(type(boolean.class)), "exceptionProfiles_")));
                 if (model.epilogExceptional != null) {
                     this.add(child(new CodeVariableElement(Set.of(PRIVATE), getCachedDataClassType(model.epilogExceptional.operation.instruction), "epilogExceptionalNode_")));
@@ -11468,9 +11486,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                 this.add(createLoadConstantCompiled());
                 this.add(createAdoptNodesAfterUpdate());
+                this.addAll(createBranchProfileMembers());
+
                 // Define the members required to support OSR.
                 this.getImplements().add(types.BytecodeOSRNode);
-
                 this.add(createExecuteOSR());
                 this.addAll(createMetadataMembers());
                 this.addAll(createStoreAndRestoreParentFrameMethods());
@@ -12143,7 +12162,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.startAssert().string("bci == bc.length").end();
             b.startAssign("this.cachedNodes_").string("result").end();
-            b.startAssign("this.branchProfiles_").startStaticCall(types.BytecodeSupport, "allocateBranchProfiles").string("numConditionalBranches").end(2);
+            b.startAssign("this.branchProfiles_").startCall("allocateBranchProfiles").string("numConditionalBranches").end(2);
             b.startAssign("this.exceptionProfiles_").string("handlers.length == 0 ? EMPTY_EXCEPTION_PROFILES : new boolean[handlers.length / 5]").end();
 
             if (model.epilogExceptional != null) {
@@ -12513,7 +12532,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     if (tier.isUncached()) {
                         b.string(booleanValue);
                     } else {
-                        b.startStaticCall(types.BytecodeSupport, "profileBranch");
+                        b.startCall("profileBranch");
                         b.string("branchProfiles");
                         b.tree(readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BRANCH_PROFILE)));
                         if (model.isBoxingEliminated(type(boolean.class))) {
@@ -14738,6 +14757,75 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("insert(this.cachedNodes_)");
             return ex;
+        }
+
+        private List<CodeElement<Element>> createBranchProfileMembers() {
+            ArrayType branchProfilesType = arrayOf(type(int.class));
+            CodeVariableElement branchProfilesField = compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), branchProfilesType, "branchProfiles_"));
+
+            CodeExecutableElement allocateBranchProfiles = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), branchProfilesType, "allocateBranchProfiles",
+                            new CodeVariableElement(type(int.class), "numProfiles"));
+            allocateBranchProfiles.getBuilder() //
+                            .lineComment("Encoding: [t1, f1, t2, f2, ..., tn, fn]") //
+                            .startReturn().startNewArray(branchProfilesType, CodeTreeBuilder.singleString("numProfiles * 2")).end(2);
+
+            CodeExecutableElement profileBranch = createProfileBranch(branchProfilesType);
+
+            return List.of(branchProfilesField, allocateBranchProfiles, profileBranch);
+        }
+
+        /**
+         * This code implements the same logic as the CountingConditionProfile.
+         */
+        private CodeExecutableElement createProfileBranch(TypeMirror branchProfilesType) {
+            CodeExecutableElement allocateBranchProfiles = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), type(boolean.class), "profileBranch",
+                            new CodeVariableElement(branchProfilesType, "branchProfiles"),
+                            new CodeVariableElement(type(int.class), "profileIndex"),
+                            new CodeVariableElement(type(boolean.class), "condition"));
+
+            CodeTreeBuilder b = allocateBranchProfiles.createBuilder();
+
+            String maxCount = "Integer.MAX_VALUE";
+
+            b.declaration(type(int.class), "t", readIntArray("branchProfiles", "profileIndex * 2"));
+            b.declaration(type(int.class), "f", readIntArray("branchProfiles", "profileIndex * 2 + 1"));
+            b.declaration(type(boolean.class), "val", "condition");
+
+            b.startIf().string("val").end().startBlock();
+            emitProfileBranchCase(b, maxCount, true, "t", "f", "profileIndex * 2");
+            b.end().startElseBlock();
+            emitProfileBranchCase(b, maxCount, false, "f", "t", "profileIndex * 2 + 1");
+            b.end();
+
+            b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
+            b.lineComment("no branch probability calculation in the interpreter");
+            b.startReturn().string("val").end();
+            b.end().startElseBlock();
+            b.declaration(type(int.class), "sum", "t + f");
+            b.startReturn().startStaticCall(types.CompilerDirectives, "injectBranchProbability");
+            b.string("(double) t / (double) sum");
+            b.string("val");
+            b.end(2);
+            b.end();
+
+            return allocateBranchProfiles;
+        }
+
+        private void emitProfileBranchCase(CodeTreeBuilder b, String maxCount, boolean value, String count, String otherCount, String index) {
+            b.startIf().string(count).string(" == 0").end().startBlock();
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            b.end();
+
+            b.startIf().string(otherCount).string(" == 0").end().startBlock();
+            b.lineComment("Make this branch fold during PE");
+            b.statement("val = ", Boolean.toString(value));
+            b.end();
+
+            b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
+            b.startIf().string(count, " < ", maxCount).end().startBlock();
+            b.startStatement().tree(writeIntArray("branchProfiles", index, count + " + 1")).end();
+            b.end();
+            b.end();
         }
 
         private void emitReportLoopCount(CodeTreeBuilder b, CodeTree condition, boolean clear) {

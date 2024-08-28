@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.benchmark.bytecode.manual;
 
-import static com.oracle.truffle.api.benchmark.bytecode.manual.AccessToken.PUBLIC_TOKEN;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,13 +54,9 @@ import com.oracle.truffle.api.benchmark.bytecode.BenchmarkLanguage;
 import com.oracle.truffle.api.benchmark.bytecode.manual.ManualNodedBytecodeInterpretersFactory.AddNodeGen;
 import com.oracle.truffle.api.benchmark.bytecode.manual.ManualNodedBytecodeInterpretersFactory.LtNodeGen;
 import com.oracle.truffle.api.benchmark.bytecode.manual.ManualNodedBytecodeInterpretersFactory.ModNodeGen;
-import com.oracle.truffle.api.bytecode.BytecodeDSLAccess;
-import com.oracle.truffle.api.bytecode.BytecodeSupport;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameExtensions;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
@@ -181,11 +175,7 @@ public class ManualNodedBytecodeInterpreters {
         }
     }
 
-    public static class ManualNodedBytecodeInterpreter extends BaseBytecodeInterpreter {
-
-        private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(PUBLIC_TOKEN, true);
-        private static final ByteArraySupport BYTES = UFA.getByteArraySupport();
-        private static final FrameExtensions FRAMES = UFA.getFrameExtensions();
+    public static class ManualNodedBytecodeInterpreter extends UncheckedBytecodeInterpreter {
 
         @CompilationFinal(dimensions = 1) private final Object[] constants;
         @CompilationFinal(dimensions = 1) private final Node[] nodes;
@@ -222,7 +212,7 @@ public class ManualNodedBytecodeInterpreters {
                 switch (opcode) {
                     // ( -- i)
                     case OP_CONST: {
-                        FRAMES.setInt(frame, sp, UFA.uncheckedCast(UFA.readObject(localConstants, BYTES.getShort(localBc, bci + 2)), Integer.class));
+                        FRAMES.setInt(frame, sp, ACCESS.uncheckedCast(ACCESS.readObject(localConstants, BYTES.getShort(localBc, bci + 2)), Integer.class));
                         sp += 1;
                         bci += 6;
                         continue loop;
@@ -246,7 +236,7 @@ public class ManualNodedBytecodeInterpreters {
                     case OP_ADD: {
                         int lhs = FRAMES.getInt(frame, sp - 2);
                         int rhs = FRAMES.getInt(frame, sp - 1);
-                        FRAMES.setInt(frame, sp - 2, UFA.uncheckedCast(UFA.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), AddNode.class).execute(lhs, rhs));
+                        FRAMES.setInt(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), AddNode.class).execute(lhs, rhs));
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
                         bci += 6;
@@ -256,7 +246,7 @@ public class ManualNodedBytecodeInterpreters {
                     case OP_MOD: {
                         int lhs = FRAMES.getInt(frame, sp - 2);
                         int rhs = FRAMES.getInt(frame, sp - 1);
-                        FRAMES.setInt(frame, sp - 2, UFA.uncheckedCast(UFA.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), ModNode.class).execute(lhs, rhs));
+                        FRAMES.setInt(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), ModNode.class).execute(lhs, rhs));
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
                         bci += 6;
@@ -266,7 +256,7 @@ public class ManualNodedBytecodeInterpreters {
                     case OP_LESS: {
                         int lhs = FRAMES.getInt(frame, sp - 2);
                         int rhs = FRAMES.getInt(frame, sp - 1);
-                        FRAMES.setBoolean(frame, sp - 2, UFA.uncheckedCast(UFA.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), LtNode.class).execute(lhs, rhs));
+                        FRAMES.setBoolean(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), LtNode.class).execute(lhs, rhs));
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
                         bci += 6;
@@ -291,7 +281,7 @@ public class ManualNodedBytecodeInterpreters {
                         int profileIdx = BYTES.getIntUnaligned(localBc, bci + 6);
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
-                        if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
+                        if (profileBranch(localBranchProfiles, profileIdx, !cond)) {
                             bci = BYTES.getIntUnaligned(localBc, bci + 2);
                             continue loop;
                         } else {
@@ -310,11 +300,7 @@ public class ManualNodedBytecodeInterpreters {
         }
     }
 
-    public static class ManualNodedCheckedBytecodeInterpreter extends BaseBytecodeInterpreter {
-
-        private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(PUBLIC_TOKEN, false);
-        private static final ByteArraySupport BYTES = UFA.getByteArraySupport();
-        private static final FrameExtensions FRAMES = UFA.getFrameExtensions();
+    public static class ManualNodedCheckedBytecodeInterpreter extends CheckedBytecodeInterpreter {
 
         @CompilationFinal(dimensions = 1) private final Object[] constants;
         @CompilationFinal(dimensions = 1) private final Node[] nodes;
@@ -352,7 +338,7 @@ public class ManualNodedBytecodeInterpreters {
                 switch (opcode) {
                     // ( -- i)
                     case OP_CONST: {
-                        FRAMES.setInt(frame, sp, UFA.uncheckedCast(UFA.readObject(localConstants, BYTES.getShort(localBc, bci + 2)), Integer.class));
+                        FRAMES.setInt(frame, sp, ACCESS.uncheckedCast(ACCESS.readObject(localConstants, BYTES.getShort(localBc, bci + 2)), Integer.class));
                         sp += 1;
                         bci += 6;
                         continue loop;
@@ -376,7 +362,7 @@ public class ManualNodedBytecodeInterpreters {
                     case OP_ADD: {
                         int lhs = FRAMES.getInt(frame, sp - 2);
                         int rhs = FRAMES.getInt(frame, sp - 1);
-                        FRAMES.setInt(frame, sp - 2, UFA.uncheckedCast(UFA.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), AddNode.class).execute(lhs, rhs));
+                        FRAMES.setInt(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), AddNode.class).execute(lhs, rhs));
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
                         bci += 6;
@@ -386,7 +372,7 @@ public class ManualNodedBytecodeInterpreters {
                     case OP_MOD: {
                         int lhs = FRAMES.getInt(frame, sp - 2);
                         int rhs = FRAMES.getInt(frame, sp - 1);
-                        FRAMES.setInt(frame, sp - 2, UFA.uncheckedCast(UFA.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), ModNode.class).execute(lhs, rhs));
+                        FRAMES.setInt(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), ModNode.class).execute(lhs, rhs));
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
                         bci += 6;
@@ -396,7 +382,7 @@ public class ManualNodedBytecodeInterpreters {
                     case OP_LESS: {
                         int lhs = FRAMES.getInt(frame, sp - 2);
                         int rhs = FRAMES.getInt(frame, sp - 1);
-                        FRAMES.setBoolean(frame, sp - 2, UFA.uncheckedCast(UFA.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), LtNode.class).execute(lhs, rhs));
+                        FRAMES.setBoolean(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), LtNode.class).execute(lhs, rhs));
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
                         bci += 6;
@@ -421,7 +407,7 @@ public class ManualNodedBytecodeInterpreters {
                         int profileIdx = BYTES.getIntUnaligned(localBc, bci + 6);
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
-                        if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
+                        if (profileBranch(localBranchProfiles, profileIdx, !cond)) {
                             bci = BYTES.getIntUnaligned(localBc, bci + 2);
                             continue loop;
                         } else {
@@ -441,11 +427,7 @@ public class ManualNodedBytecodeInterpreters {
     }
 
     @SuppressWarnings("truffle-inlining")
-    public static class ManualNodedBytecodeInterpreterWithoutBE extends BaseBytecodeInterpreter {
-
-        private static final BytecodeDSLAccess UFA = BytecodeDSLAccess.lookup(PUBLIC_TOKEN, true);
-        private static final ByteArraySupport BYTES = UFA.getByteArraySupport();
-        private static final FrameExtensions FRAMES = UFA.getFrameExtensions();
+    public static class ManualNodedBytecodeInterpreterWithoutBE extends UncheckedBytecodeInterpreter {
 
         @CompilationFinal(dimensions = 1) private final Object[] constants;
         @CompilationFinal(dimensions = 1) private final Node[] nodes;
@@ -481,7 +463,7 @@ public class ManualNodedBytecodeInterpreters {
                 switch (opcode) {
                     // ( -- i)
                     case OP_CONST: {
-                        FRAMES.setObject(frame, sp, UFA.uncheckedCast(UFA.readObject(localConstants, BYTES.getShort(localBc, bci + 2)), Integer.class));
+                        FRAMES.setObject(frame, sp, ACCESS.uncheckedCast(ACCESS.readObject(localConstants, BYTES.getShort(localBc, bci + 2)), Integer.class));
                         sp += 1;
                         bci += 6;
                         continue loop;
@@ -505,7 +487,7 @@ public class ManualNodedBytecodeInterpreters {
                     case OP_ADD: {
                         Object lhs = FRAMES.getObject(frame, sp - 2);
                         Object rhs = FRAMES.getObject(frame, sp - 1);
-                        FRAMES.setObject(frame, sp - 2, UFA.uncheckedCast(UFA.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), AddNode.class).execute(lhs, rhs));
+                        FRAMES.setObject(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), AddNode.class).execute(lhs, rhs));
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
                         bci += 6;
@@ -515,7 +497,7 @@ public class ManualNodedBytecodeInterpreters {
                     case OP_MOD: {
                         Object lhs = FRAMES.getObject(frame, sp - 2);
                         Object rhs = FRAMES.getObject(frame, sp - 1);
-                        FRAMES.setObject(frame, sp - 2, UFA.uncheckedCast(UFA.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), ModNode.class).execute(lhs, rhs));
+                        FRAMES.setObject(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), ModNode.class).execute(lhs, rhs));
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
                         bci += 6;
@@ -525,7 +507,7 @@ public class ManualNodedBytecodeInterpreters {
                     case OP_LESS: {
                         Object lhs = FRAMES.getObject(frame, sp - 2);
                         Object rhs = FRAMES.getObject(frame, sp - 1);
-                        FRAMES.setObject(frame, sp - 2, UFA.uncheckedCast(UFA.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), LtNode.class).execute(lhs, rhs));
+                        FRAMES.setObject(frame, sp - 2, ACCESS.uncheckedCast(ACCESS.readObject(localNodes, BYTES.getIntUnaligned(localBc, bci + 2)), LtNode.class).execute(lhs, rhs));
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
                         bci += 6;
@@ -550,7 +532,7 @@ public class ManualNodedBytecodeInterpreters {
                         int profileIdx = BYTES.getIntUnaligned(localBc, bci + 6);
                         FRAMES.clear(frame, sp - 1);
                         sp -= 1;
-                        if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
+                        if (profileBranch(localBranchProfiles, profileIdx, !cond)) {
                             bci = BYTES.getIntUnaligned(localBc, bci + 2);
                             continue loop;
                         } else {

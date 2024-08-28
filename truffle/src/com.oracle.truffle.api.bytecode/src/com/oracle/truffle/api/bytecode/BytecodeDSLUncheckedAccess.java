@@ -81,6 +81,18 @@ final class BytecodeDSLUncheckedAccess extends BytecodeDSLAccess {
     }
 
     @Override
+    public int readInt(int[] arr, int index) {
+        assert index >= 0 && index < arr.length;
+        return UNSAFE.getInt(arr, Unsafe.ARRAY_INT_BASE_OFFSET + index * Unsafe.ARRAY_INT_INDEX_SCALE);
+    }
+
+    @Override
+    public void writeInt(int[] arr, int index, int value) {
+        assert index >= 0 && index < arr.length;
+        UNSAFE.putInt(arr, Unsafe.ARRAY_INT_BASE_OFFSET + index * Unsafe.ARRAY_INT_INDEX_SCALE, value);
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public <T> T readObject(T[] arr, int index) {
         assert index >= 0 && index < arr.length;

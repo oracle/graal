@@ -62,6 +62,16 @@ final class BytecodeDSLCheckedAccess extends BytecodeDSLAccess {
     }
 
     @Override
+    public int readInt(int[] arr, int index) {
+        return arr[index];
+    }
+
+    @Override
+    public void writeInt(int[] arr, int index, int value) {
+        arr[index] = value;
+    }
+
+    @Override
     public <T> T readObject(T[] arr, int index) {
         return arr[index];
     }
