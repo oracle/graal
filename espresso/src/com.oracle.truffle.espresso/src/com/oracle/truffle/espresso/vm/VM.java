@@ -111,6 +111,7 @@ import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.BootClassRegistry;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Field;
@@ -531,23 +532,38 @@ public final class VM extends NativeEnv {
 
     @VmImpl(isJni = true)
     @TruffleBoundary
-    public @JavaType(String.class) StaticObject JVM_GetSystemPackage(@JavaType(String.class) StaticObject name) {
-        String hostPkgName = getMeta().toHostString(name);
-        if (hostPkgName.endsWith("/")) {
-            hostPkgName = hostPkgName.substring(0, hostPkgName.length() - 1);
+    public @JavaType(String.class) StaticObject JVM_GetSystemPackage(@JavaType(String.class) StaticObject name, @Inject Meta meta) {
+        if (StaticObject.isNull(name)) {
+            throw meta.throwNullPointerException();
         }
-        String fileName = getRegistries().getBootClassRegistry().getPackagePath(hostPkgName);
-        return getMeta().toGuestString(fileName);
+        ByteSequence pkg = meta.toByteSequence(name);
+        if (pkg.length() > 0 && pkg.byteAt(pkg.length() - 1) == '/') {
+            pkg = pkg.subSequence(0, pkg.length() - 1);
+        }
+        Symbol<Name> pkgName = getNames().lookup(pkg);
+        if (pkgName == null) {
+            return StaticObject.NULL;
+        }
+        BootClassRegistry bootClassRegistry = getRegistries().getBootClassRegistry();
+        PackageEntry packageEntry = bootClassRegistry.packages().lookup(pkgName);
+        ModuleEntry moduleEntry = packageEntry.module();
+        if (moduleEntry != null) {
+            String location = moduleEntry.location();
+            if (location != null) {
+                return meta.toGuestString(location);
+            }
+        }
+        return meta.toGuestString(packageEntry.getBootClasspathLocation());
     }
 
     @VmImpl(isJni = true)
-    public @JavaType(String[].class) StaticObject JVM_GetSystemPackages() {
-        String[] packages = getRegistries().getBootClassRegistry().getPackages();
-        StaticObject[] array = new StaticObject[packages.length];
-        for (int i = 0; i < packages.length; i++) {
-            array[i] = getMeta().toGuestString(packages[i]);
+    public @JavaType(String[].class) StaticObject JVM_GetSystemPackages(@Inject Meta meta) {
+        Symbol<Name>[] packageSymbols = getRegistries().getBootClassRegistry().getPackages();
+        StaticObject[] array = new StaticObject[packageSymbols.length];
+        for (int i = 0; i < packageSymbols.length; i++) {
+            array[i] = meta.toGuestString(packageSymbols[i]);
         }
-        return StaticObject.createArray(getMeta().java_lang_String.getArrayClass(), array, getContext());
+        return StaticObject.createArray(meta.java_lang_String.getArrayClass(), array, getContext());
     }
 
     @VmImpl
@@ -3440,8 +3456,8 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     public void JVM_DefineModule(@JavaType(internalName = "Ljava/lang/Module;") StaticObject module,
                     boolean is_open,
-                    @SuppressWarnings("unused") @JavaType(String.class) StaticObject version,
-                    @SuppressWarnings("unused") @JavaType(String.class) StaticObject location,
+                    @JavaType(String.class) StaticObject version,
+                    @JavaType(String.class) StaticObject location,
                     @Pointer TruffleObject pkgs,
                     int num_package,
                     @Inject Meta meta,
@@ -3470,18 +3486,22 @@ public final class VM extends NativeEnv {
         }
 
         String hostName = meta.toHostString(guestName);
+        String hostVersion = meta.toHostString(version);
+        String hostLocation = meta.toHostString(location);
         if (hostName.equals(JAVA_BASE)) {
             profiler.profile(5);
-            defineJavaBaseModule(module, extractNativePackages(pkgs, num_package, profiler), profiler);
+            defineJavaBaseModule(module, hostVersion, hostLocation, extractNativePackages(pkgs, num_package, profiler), profiler);
             return;
         }
         profiler.profile(6);
-        defineModule(module, hostName, is_open, extractNativePackages(pkgs, num_package, profiler), profiler);
+        defineModule(module, hostName, hostVersion, hostLocation, is_open, extractNativePackages(pkgs, num_package, profiler), profiler);
     }
 
     @SuppressWarnings("try")
     public void defineModule(StaticObject module,
                     String moduleName,
+                    String moduleVersion,
+                    String moduleLocation,
                     boolean is_open,
                     String[] packages,
                     SubstitutionProfiler profiler) {
@@ -3541,7 +3561,7 @@ public final class VM extends NativeEnv {
             }
             Symbol<Name> moduleSymbol = getNames().getOrCreate(moduleName);
             // Try define module
-            ModuleEntry moduleEntry = moduleTable.createAndAddEntry(moduleSymbol, registry, is_open, module);
+            ModuleEntry moduleEntry = moduleTable.createAndAddEntry(moduleSymbol, moduleVersion, moduleLocation, registry, is_open, module);
             if (moduleEntry == null) {
                 // Module already defined
                 profiler.profile(12);
@@ -3593,7 +3613,7 @@ public final class VM extends NativeEnv {
     }
 
     @SuppressWarnings("try")
-    public void defineJavaBaseModule(StaticObject module, String[] packages, SubstitutionProfiler profiler) {
+    public void defineJavaBaseModule(StaticObject module, String moduleVersion, String moduleLocation, String[] packages, SubstitutionProfiler profiler) {
         Meta meta = getMeta();
         StaticObject loader = meta.java_lang_Module_loader.getObject(module);
         if (!StaticObject.isNull(loader)) {
@@ -3615,6 +3635,7 @@ public final class VM extends NativeEnv {
                 }
             }
             javaBaseEntry.setModule(module);
+            javaBaseEntry.setVersionAndLocation(moduleVersion, moduleLocation);
             meta.HIDDEN_MODULE_ENTRY.setHiddenObject(module, javaBaseEntry);
             getRegistries().processFixupList(module);
         }
@@ -3946,7 +3967,9 @@ public final class VM extends NativeEnv {
                 // Fill in module
                 if (module.isNamed()) {
                     meta.java_lang_StackTraceElement_moduleName.setObject(ste, meta.toGuestString(module.getName()));
-                    // TODO: module version
+                    if (module.version() != null) {
+                        meta.java_lang_StackTraceElement_moduleVersion.setObject(ste, meta.toGuestString(module.version()));
+                    }
                 }
             }
         } else { // foreign frame

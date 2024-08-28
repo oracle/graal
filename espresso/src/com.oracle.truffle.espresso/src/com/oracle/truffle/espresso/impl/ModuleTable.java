@@ -35,13 +35,13 @@ public final class ModuleTable extends com.oracle.truffle.espresso.impl.shared.M
     }
 
     @Override
-    protected ModuleEntry createEntry(Symbol<Name> name, ClassRegistry registry) {
-        return new ModuleEntry(name, registry);
+    protected ModuleEntry createEntry(Symbol<Name> name, ModuleData<StaticObject, ClassRegistry> data) {
+        return new ModuleEntry(name, data);
     }
 
     public static final class ModuleEntry extends com.oracle.truffle.espresso.impl.shared.ModuleTable.ModuleEntry<StaticObject, ClassRegistry> implements ModuleRef {
-        ModuleEntry(Symbol<Name> name, ClassRegistry registry) {
-            super(name, registry);
+        ModuleEntry(Symbol<Name> name, ModuleData<StaticObject, ClassRegistry> data) {
+            super(name, data);
         }
 
         @Override

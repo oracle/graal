@@ -73,7 +73,7 @@ public final class ClassRegistries {
     }
 
     public void initJavaBaseModule() {
-        this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Name.java_base, bootClassRegistry);
+        this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Name.java_base, null, null, bootClassRegistry, true, null);
     }
 
     public ClassRegistry getClassRegistry(@JavaType(ClassLoader.class) StaticObject classLoader) {
@@ -233,12 +233,12 @@ public final class ClassRegistries {
     public ModuleRef[] getAllModuleRefs() {
         ArrayList<ModuleRef> list = new ArrayList<>();
         // add modules from boot registry
-        list.addAll(bootClassRegistry.modules().values());
+        bootClassRegistry.modules().collectValues(list::add);
 
         // add modules from all other registries
         synchronized (weakClassLoaderSet) {
             for (StaticObject classLoader : weakClassLoaderSet) {
-                list.addAll(getClassRegistry(classLoader).modules().values());
+                getClassRegistry(classLoader).modules().collectValues(list::add);
             }
         }
         return list.toArray(ModuleRef.EMPTY_ARRAY);

@@ -28,45 +28,54 @@ import java.util.concurrent.locks.ReadWriteLock;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
-public abstract class ModuleTable<M, R, ME extends ModuleTable.ModuleEntry<M, R>> extends EntryTable<ME, R> {
+public abstract class ModuleTable<M, R, ME extends ModuleTable.ModuleEntry<M, R>> extends EntryTable<ME, ModuleTable.ModuleData<M, R>> {
     public ModuleTable(ReadWriteLock lock) {
         super(lock);
     }
 
-    public ME createAndAddEntry(Symbol<Name> name, R registry, boolean isOpen, M module) {
-        ME moduleEntry = createAndAddEntry(name, registry);
-        if (moduleEntry == null) {
-            return null;
-        }
-        moduleEntry.setModule(module);
-        ((ModuleEntry<M, R>) moduleEntry).isOpen = isOpen;
-        return moduleEntry;
+    public ME createAndAddEntry(Symbol<Name> name, String version, String location, R registry, boolean isOpen, M module) {
+        return createAndAddEntry(name, new ModuleData<>(version, location, registry, module, isOpen));
     }
 
     public ME createUnnamedModuleEntry(M module, R registry) {
-        ME result = createEntry(null, registry);
+        ME result = createEntry(null, new ModuleData<>(null, null, registry, module, true));
         result.setCanReadAllUnnamed();
-        if (module != null) {
-            result.setModule(module);
-        }
-        ((ModuleEntry<M, R>) result).isOpen = true;
         return result;
     }
 
-    public abstract static class ModuleEntry<M, R> extends EntryTable.NamedEntry {
-        // TODO: module versions.
-        protected ModuleEntry(Symbol<Name> name, R data) {
-            super(name);
-            this.registry = data;
-        }
-
+    public static final class ModuleData<M, R> {
+        private final String version;
+        private final String location;
         private final R registry;
+        private final boolean isOpen;
+        private final M module;
+
+        public ModuleData(String version, String location, R registry, M module, boolean isOpen) {
+            this.registry = registry;
+            this.version = version;
+            this.location = location;
+            this.isOpen = isOpen;
+            this.module = module;
+        }
+    }
+
+    public abstract static class ModuleEntry<M, R> extends EntryTable.NamedEntry {
+        private final R registry;
+        private final boolean isOpen;
         private M module;
-        private boolean isOpen;
-
+        private String version;
+        private String location;
         private boolean canReadAllUnnamed;
-
         private ArrayList<ModuleEntry<M, R>> reads;
+
+        protected ModuleEntry(Symbol<Name> name, ModuleData<M, R> data) {
+            super(name);
+            this.version = data.version;
+            this.location = data.location;
+            this.isOpen = data.isOpen;
+            this.registry = data.registry;
+            this.module = data.module;
+        }
 
         public R registry() {
             return registry;
@@ -116,6 +125,14 @@ public abstract class ModuleTable<M, R, ME extends ModuleTable.ModuleEntry<M, R>
             return module;
         }
 
+        public String version() {
+            return version;
+        }
+
+        public String location() {
+            return location;
+        }
+
         public void setCanReadAllUnnamed() {
             canReadAllUnnamed = true;
         }
@@ -134,6 +151,12 @@ public abstract class ModuleTable<M, R, ME extends ModuleTable.ModuleEntry<M, R>
 
         public boolean hasReads() {
             return reads != null && !reads.isEmpty();
+        }
+
+        public void setVersionAndLocation(String moduleVersion, String moduleLocation) {
+            assert version == null && location == null;
+            this.version = moduleVersion;
+            this.location = moduleLocation;
         }
     }
 }

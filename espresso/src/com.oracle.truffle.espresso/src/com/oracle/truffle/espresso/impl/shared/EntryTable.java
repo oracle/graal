@@ -22,12 +22,11 @@
  */
 package com.oracle.truffle.espresso.impl.shared;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.function.Consumer;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
@@ -44,9 +43,16 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
     }
 
     @SuppressWarnings("try")
-    public Collection<T> values() {
+    public void collectValues(Consumer<T> consumer) {
         try (BlockLock block = read()) {
-            return Collections.unmodifiableCollection(entries.values());
+            entries.values().forEach(consumer);
+        }
+    }
+
+    @SuppressWarnings({"try", "unchecked", "rawtypes"})
+    public Symbol<Name>[] getKeys() {
+        try (BlockLock block = read()) {
+            return entries.keySet().toArray(new Symbol[entries.size()]);
         }
     }
 

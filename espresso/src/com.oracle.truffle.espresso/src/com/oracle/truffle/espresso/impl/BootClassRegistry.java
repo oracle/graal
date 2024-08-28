@@ -23,12 +23,10 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ClasspathFile;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
@@ -58,8 +56,6 @@ public final class BootClassRegistry extends ClassRegistry {
         loadKlassCacheHits.inc();
     }
 
-    private final Map<String, String> packageMap = new ConcurrentHashMap<>();
-
     public BootClassRegistry(long loaderID) {
         super(loaderID);
     }
@@ -82,19 +78,13 @@ public final class BootClassRegistry extends ClassRegistry {
         // use of computeIfAbsent to insert the class since the map is modified.
         ObjectKlass result = defineKlass(context, type, classpathFile.contents);
         context.getRegistries().recordConstraint(type, result, getClassLoader());
-        packageMap.put(result.getRuntimePackage().toString(), classpathFile.classpathEntry.path());
+        result.packageEntry().setBootClasspathLocation(classpathFile.classpathEntry.path());
         return result;
     }
 
     @TruffleBoundary
-    public String getPackagePath(String pkgName) {
-        String result = packageMap.get(pkgName);
-        return result;
-    }
-
-    @TruffleBoundary
-    public String[] getPackages() {
-        return packageMap.keySet().toArray(new String[0]);
+    public Symbol<Name>[] getPackages() {
+        return packages().getKeys();
     }
 
     @Override

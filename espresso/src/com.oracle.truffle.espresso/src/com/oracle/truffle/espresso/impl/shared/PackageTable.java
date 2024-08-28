@@ -43,6 +43,7 @@ public abstract class PackageTable<M, R, PE extends PackageTable.PackageEntry<M,
         private ArrayList<ME> exports;
         private boolean isUnqualifiedExported;
         private boolean isExportedAllUnnamed;
+        private String bootClasspathLocation;
 
         public void addExports(ME m) {
             if (isUnqualifiedExported()) {
@@ -103,6 +104,14 @@ public abstract class PackageTable<M, R, PE extends PackageTable.PackageEntry<M,
 
         public ME module() {
             return module;
+        }
+
+        public void setBootClasspathLocation(String bootClasspathLocation) {
+            this.bootClasspathLocation = bootClasspathLocation;
+        }
+
+        public String getBootClasspathLocation() {
+            return bootClasspathLocation;
         }
     }
 }
