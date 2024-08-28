@@ -217,9 +217,6 @@ public class IsolateArgumentParser {
         }
 
         copyStringArguments(arguments);
-
-        // Temporarily needed.
-        overrideParameters(parameters, arguments);
     }
 
     @Uninterruptible(reason = "Tear-down in progress.")
@@ -267,12 +264,6 @@ public class IsolateArgumentParser {
                 }
             }
         }
-    }
-
-    // Temporary method.
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected void overrideParameters(CEntryPointCreateIsolateParameters parameters, IsolateArguments arguments) {
-        parameters.setReservedSpaceSize(WordFactory.unsigned(readLong(arguments, getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize))));
     }
 
     /**

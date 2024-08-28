@@ -30,8 +30,6 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
-
 @RawStructure
 public interface IsolateArguments extends PointerBase {
 
@@ -60,7 +58,6 @@ public interface IsolateArguments extends PointerBase {
     @RawField
     void setProtectionKey(int pkey);
 
-    // Temporary unused.
     @RawField
     int getProtectionKey();
 
@@ -69,12 +66,5 @@ public interface IsolateArguments extends PointerBase {
 
     @RawField
     boolean getIsCompilationIsolate();
-
-    // Temporary field.
-    @RawField
-    void setParameters(CEntryPointCreateIsolateParameters parameters);
-
-    @RawField
-    CEntryPointCreateIsolateParameters getParameters();
 
 }
