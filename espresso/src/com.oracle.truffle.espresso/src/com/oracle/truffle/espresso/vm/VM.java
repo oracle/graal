@@ -3561,7 +3561,7 @@ public final class VM extends NativeEnv {
             }
             Symbol<Name> moduleSymbol = getNames().getOrCreate(moduleName);
             // Try define module
-            ModuleEntry moduleEntry = moduleTable.createAndAddEntry(moduleSymbol, moduleVersion, moduleLocation, registry, is_open, module);
+            ModuleEntry moduleEntry = moduleTable.createAndAddEntry(moduleSymbol, moduleVersion, moduleLocation, is_open, module);
             if (moduleEntry == null) {
                 // Module already defined
                 profiler.profile(12);

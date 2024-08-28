@@ -28,12 +28,12 @@ import java.util.concurrent.locks.ReadWriteLock;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
-public abstract class PackageTable<M, R, PE extends PackageTable.PackageEntry<M, R, ME>, ME extends ModuleTable.ModuleEntry<M, R>> extends EntryTable<PE, ME> {
+public abstract class PackageTable<M, PE extends PackageTable.PackageEntry<M, ME>, ME extends ModuleTable.ModuleEntry<M>> extends EntryTable<PE, ME> {
     public PackageTable(ReadWriteLock lock) {
         super(lock);
     }
 
-    public abstract static class PackageEntry<M, R, ME extends ModuleTable.ModuleEntry<M, R>> extends EntryTable.NamedEntry {
+    public abstract static class PackageEntry<M, ME extends ModuleTable.ModuleEntry<M>> extends EntryTable.NamedEntry {
         protected PackageEntry(Symbol<Name> name, ME module) {
             super(name);
             this.module = module;

@@ -276,7 +276,7 @@ public abstract class ClassRegistry {
     }
 
     public void initUnnamedModule(StaticObject unnamedModule) {
-        this.unnamed = modules.createUnnamedModuleEntry(unnamedModule, this);
+        this.unnamed = modules.createUnnamedModuleEntry(unnamedModule);
     }
 
     /**

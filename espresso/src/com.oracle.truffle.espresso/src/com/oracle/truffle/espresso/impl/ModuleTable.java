@@ -27,20 +27,21 @@ import java.util.concurrent.locks.ReadWriteLock;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public final class ModuleTable extends com.oracle.truffle.espresso.impl.shared.ModuleTable<StaticObject, ClassRegistry, ModuleTable.ModuleEntry> {
+public final class ModuleTable extends com.oracle.truffle.espresso.impl.shared.ModuleTable<StaticObject, ModuleTable.ModuleEntry> {
     public ModuleTable(ReadWriteLock lock) {
         super(lock);
     }
 
     @Override
-    protected ModuleEntry createEntry(Symbol<Name> name, ModuleData<StaticObject, ClassRegistry> data) {
+    protected ModuleEntry createEntry(Symbol<Name> name, ModuleData<StaticObject> data) {
         return new ModuleEntry(name, data);
     }
 
-    public static final class ModuleEntry extends com.oracle.truffle.espresso.impl.shared.ModuleTable.ModuleEntry<StaticObject, ClassRegistry> implements ModuleRef {
-        ModuleEntry(Symbol<Name> name, ModuleData<StaticObject, ClassRegistry> data) {
+    public static final class ModuleEntry extends com.oracle.truffle.espresso.impl.shared.ModuleTable.ModuleEntry<StaticObject> implements ModuleRef {
+        ModuleEntry(Symbol<Name> name, ModuleData<StaticObject> data) {
             super(name, data);
         }
 
@@ -56,7 +57,30 @@ public final class ModuleTable extends com.oracle.truffle.espresso.impl.shared.M
 
         @Override
         public Object classLoader() {
-            return registry().getClassLoader();
+            StaticObject module = module();
+            if (module != null) {
+                assert StaticObject.notNull(module);
+                Meta meta = module.getKlass().getMeta();
+                return meta.java_lang_Module_loader.getObject(module);
+            } else {
+                // this must be the early java.base module
+                assert name.equals(Name.java_base);
+                return StaticObject.NULL;
+            }
+        }
+
+        public ClassRegistry registry(Meta meta) {
+            StaticObject module = module();
+            ClassRegistries registries = meta.getContext().getRegistries();
+            if (module != null) {
+                assert StaticObject.notNull(module);
+                StaticObject loader = meta.java_lang_Module_loader.getObject(module);
+                return registries.getClassRegistry(loader);
+            } else {
+                // this must be the early java.base module
+                assert name.equals(Name.java_base);
+                return registries.getBootClassRegistry();
+            }
         }
     }
 }
