@@ -762,7 +762,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public boolean canUnsafeInstantiateAsInstanceSlowPath() {
-        if (ClassForNameSupport.singleton().canUnsafeInstantiateAsInstance(this)) {
+        if (ClassForNameSupport.canUnsafeInstantiateAsInstance(this)) {
             companion.setUnsafeAllocate();
             return true;
         } else {
@@ -1110,7 +1110,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private RuntimeConditionSet getConditions() {
-        return ClassForNameSupport.singleton().getConditionFor(DynamicHub.toClass(this));
+        return ClassForNameSupport.getConditionFor(DynamicHub.toClass(this));
     }
 
     @Substitute
@@ -1498,7 +1498,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
         Class<?> result;
         try {
-            result = ClassForNameSupport.singleton().forName(name, loader);
+            result = ClassForNameSupport.forName(name, loader);
         } catch (ClassNotFoundException e) {
             if (loader != null && PredefinedClassesSupport.hasBytecodeClasses()) {
                 result = loader.loadClass(name); // may throw
@@ -1577,7 +1577,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.signersEncodingIndex == NO_DATA) {
             return null;
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseObjects(hubMetadata.signersEncodingIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseObjects(hubMetadata.signersEncodingIndex, this);
     }
 
     @Substitute
@@ -1725,7 +1725,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.enclosingMethodInfoIndex == NO_DATA) {
             return null;
         }
-        Object[] enclosingMethod = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseEnclosingMethod(hubMetadata.enclosingMethodInfoIndex);
+        Object[] enclosingMethod = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseEnclosingMethod(hubMetadata.enclosingMethodInfoIndex, this);
         if (enclosingMethod != null) {
             PredefinedClassesSupport.throwIfUnresolvable((Class<?>) enclosingMethod[0], getClassLoader0());
         }
@@ -1761,7 +1761,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.annotationsIndex == NO_DATA) {
             return null;
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(hubMetadata.annotationsIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(hubMetadata.annotationsIndex, this);
     }
 
     @Substitute
@@ -1769,7 +1769,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.typeAnnotationsIndex == NO_DATA) {
             return null;
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(hubMetadata.typeAnnotationsIndex);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(hubMetadata.typeAnnotationsIndex, this);
     }
 
     @Substitute
@@ -1806,7 +1806,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.classesEncodingIndex == NO_DATA) {
             return new Class<?>[0];
         }
-        Class<?>[] declaredClasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.classesEncodingIndex);
+        Class<?>[] declaredClasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.classesEncodingIndex, this);
         for (Class<?> clazz : declaredClasses) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, getClassLoader0());
         }
@@ -1825,7 +1825,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.nestMembersEncodingIndex == NO_DATA) {
             return new Class<?>[]{DynamicHub.toClass(this)};
         }
-        Class<?>[] nestMembers = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.nestMembersEncodingIndex);
+        Class<?>[] nestMembers = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.nestMembersEncodingIndex, this);
         for (Class<?> clazz : nestMembers) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, getClassLoader0());
         }
@@ -1877,7 +1877,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (hubMetadata == null || hubMetadata.permittedSubclassesEncodingIndex == NO_DATA) {
             return new Class<?>[0];
         }
-        Class<?>[] permittedSubclasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.permittedSubclassesEncodingIndex);
+        Class<?>[] permittedSubclasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(hubMetadata.permittedSubclassesEncodingIndex, this);
         for (Class<?> clazz : permittedSubclasses) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, getClassLoader0());
         }
