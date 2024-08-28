@@ -434,7 +434,7 @@ public final class GuestGraalFeature implements Feature {
     @SuppressWarnings("unchecked")
     private void initializeTruffle() throws Throwable {
         Class<?> truffleBuildTimeClass = loader.loadClassOrFail("jdk.graal.compiler.hotspot.guestgraal.truffle.BuildTime");
-        MethodHandle getLookup = mhl.findStatic(truffleBuildTimeClass, "getLookup", methodType(Map.Entry.class, Lookup.class, Class.class, Class.class));
+        MethodHandle getLookup = mhl.findStatic(truffleBuildTimeClass, "initializeLookup", methodType(Map.Entry.class, Lookup.class, Class.class, Class.class));
         Map.Entry<Lookup, Class<?>> truffleGuestGraal = (Map.Entry<Lookup, Class<?>>) getLookup.invoke(mhl, TruffleFromLibGraalStartPoints.class, NativeImageHostEntryPoints.class);
         ImageSingletons.add(GuestGraalTruffleToLibGraalEntryPoints.class, new GuestGraalTruffleToLibGraalEntryPoints(truffleGuestGraal.getKey(), truffleGuestGraal.getValue()));
         MethodHandle truffleConfigureGraalForLibGraal = mhl.findStatic(truffleBuildTimeClass, "configureGraalForLibGraal", methodType(void.class));

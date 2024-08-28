@@ -377,7 +377,13 @@ final class GuestGraalTruffleToLibGraalEntryPoints {
 
     private static volatile int lastJavaPCOffset = -1;
 
-    // The null MethodHandle values are overwritten reflectively in the constructor
+    /*
+     * Each of the following MethodHandle fields corresponds to a TruffleToLibGraal.Id value. The
+     * naming convention requires that each field name match the method name returned by
+     * TruffleToLibGraal.Id.getMethodName(). Additionally, the GraalEntryPoints method that the
+     * MethodHandle references must also follow this naming convention. The null MethodHandle values
+     * are overwritten reflectively in the constructor
+     */
     private final MethodHandle initializeIsolate = null;
     private final MethodHandle registerRuntime = null;
     private final MethodHandle initializeRuntime = null;
@@ -404,6 +410,7 @@ final class GuestGraalTruffleToLibGraalEntryPoints {
     private final MethodHandle getDataPatchesCount = null;
     private final MethodHandle purgePartialEvaluationCaches = null;
     private final MethodHandle getCompilerVersion = null;
+
     private final MethodHandle getCurrentJavaThread;
     private final MethodHandle getLastJavaPCOffset;
 
@@ -511,7 +518,7 @@ final class GuestGraalTruffleToLibGraalEntryPoints {
     public static long initializeRuntime(JNIEnv env, JClass hsClazz, @IsolateThreadContext long isolateThreadId,
                     JObject truffleRuntime, JClass hsClassLoaderDelegate) {
         try (JNIMethodScope s = openScope(Id.InitializeRuntime, env)) {
-            HSObject hsHandle = new HSObject(env, truffleRuntime);
+            HSObject hsHandle = new HSObject(env, truffleRuntime, true, false);
             Object hsTruffleRuntime = singleton().initializeRuntime.invoke(hsHandle, hsClassLoaderDelegate.rawValue());
             return LibGraalObjectHandles.create(hsTruffleRuntime);
         } catch (Throwable t) {

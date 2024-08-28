@@ -115,7 +115,16 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
         if (constant.isNull()) {
             return null;
         }
-        long jniLocalRef = HotSpotJVMCIRuntime.runtime().getJObjectValue((HotSpotObjectConstant) constant);
+        long jniLocalRef;
+        try {
+            jniLocalRef = HotSpotJVMCIRuntime.runtime().getJObjectValue((HotSpotObjectConstant) constant);
+        } catch (IllegalStateException ise) {
+            /*
+             * TODO: GR-57161: IllegalStateException: Cannot call getJObjectValue without Java frame
+             * anchor
+             */
+            return null;
+        }
         Object compilableHsHandle = NativeImageHostCalls.createLocalHandleForLocalReference(jniLocalRef);
         return compilableHsHandle == null ? null : new HSTruffleCompilable(compilableHsHandle);
     }

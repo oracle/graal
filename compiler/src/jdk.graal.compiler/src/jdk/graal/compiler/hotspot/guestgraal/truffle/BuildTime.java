@@ -62,6 +62,11 @@ public class BuildTime {
     /**
      * Obtains a {@link Lookup} instance for resolving method handles to invoke Graal and JVMCI
      * methods.
+     * <p>
+     * This method is invoked reflectively by {@code GuestGraalFeature.initializeTruffle()} in the
+     * native-image classloader to facilitate the exchange of lookup instances between the
+     * native-image classloader and the guest Graal classloader.
+     * </p>
      *
      * @param lookup a {@link Lookup} instance used to resolve handles for calling into the
      *            native-image host.
@@ -72,7 +77,10 @@ public class BuildTime {
      *         methods. The {@link Lookup} instance can be used to resolve the compiler entry
      *         methods within the provided class.
      */
-    public static Entry<Lookup, Class<?>> getLookup(Lookup lookup, Class<?> fromLibGraal, Class<?> nativeImageSupport) {
+    public static Entry<Lookup, Class<?>> initializeLookup(Lookup lookup, Class<?> fromLibGraal, Class<?> nativeImageSupport) {
+        if (hostLookup != null) {
+            throw new IllegalStateException("Host lookup has already been initialized. BuildTime.initializeLookup should only be called once during the native image build process.");
+        }
         hostLookup = Objects.requireNonNull(lookup, "lookup must be non null");
         truffleFromLibGraalStartPoint = Objects.requireNonNull(fromLibGraal, "fromLibGraal must be non null");
         nativeImageHostEntryPoint = Objects.requireNonNull(nativeImageSupport, "nativeImageSupport must be non null");
@@ -107,7 +115,7 @@ public class BuildTime {
              * The getHostMethodHandleOrFail should never be called in the native-image execution
              * time.
              */
-            throw new IllegalStateException("Should not be reachable in the libgraal execution time");
+            throw new IllegalStateException("Should not be reachable at libgraal runtime");
         } else {
             /*
              * HS proxy classes and BuildTime are not used in Jargraal, but the CheckGraalInvariants
