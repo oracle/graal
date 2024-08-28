@@ -3455,7 +3455,7 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     @TruffleBoundary
     public void JVM_DefineModule(@JavaType(internalName = "Ljava/lang/Module;") StaticObject module,
-                    boolean is_open,
+                    boolean isOpen,
                     @JavaType(String.class) StaticObject version,
                     @JavaType(String.class) StaticObject location,
                     @Pointer TruffleObject pkgs,
@@ -3494,7 +3494,7 @@ public final class VM extends NativeEnv {
             return;
         }
         profiler.profile(6);
-        defineModule(module, hostName, hostVersion, hostLocation, is_open, extractNativePackages(pkgs, num_package, profiler), profiler);
+        defineModule(module, hostName, hostVersion, hostLocation, isOpen, extractNativePackages(pkgs, num_package, profiler), profiler);
     }
 
     @SuppressWarnings("try")
@@ -3502,7 +3502,7 @@ public final class VM extends NativeEnv {
                     String moduleName,
                     String moduleVersion,
                     String moduleLocation,
-                    boolean is_open,
+                    boolean isOpen,
                     String[] packages,
                     SubstitutionProfiler profiler) {
         Meta meta = getMeta();
@@ -3561,7 +3561,7 @@ public final class VM extends NativeEnv {
             }
             Symbol<Name> moduleSymbol = getNames().getOrCreate(moduleName);
             // Try define module
-            ModuleEntry moduleEntry = moduleTable.createAndAddEntry(moduleSymbol, moduleVersion, moduleLocation, is_open, module);
+            ModuleEntry moduleEntry = moduleTable.createAndAddEntry(moduleSymbol, moduleVersion, moduleLocation, isOpen, module);
             if (moduleEntry == null) {
                 // Module already defined
                 profiler.profile(12);
