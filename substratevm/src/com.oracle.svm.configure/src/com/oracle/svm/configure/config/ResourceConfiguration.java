@@ -48,6 +48,7 @@ import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -210,7 +211,12 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     }
 
     public void addGlobPattern(UnresolvedConfigurationCondition condition, String pattern, String module) {
-        ResourceEntry element = new ResourceEntry(escapePossibleGlobWildcards(pattern), module);
+        /*
+         * prevent patterns discovered by the agent to be written in the non-canonical form. Example
+         * canonical path: foo/1.txt; non-canonical path: foo/bar/../1.txt
+         */
+        String canonicalPattern = Resources.toCanonicalForm(pattern);
+        ResourceEntry element = new ResourceEntry(escapePossibleGlobWildcards(canonicalPattern), module);
         addedGlobs.add(new ConditionalElement<>(condition, element));
     }
 
