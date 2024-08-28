@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
+import java.util.function.Function;
+
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
 
 public interface MultiLayeredImageSingleton extends LayeredImageSingleton {
@@ -35,5 +38,19 @@ public interface MultiLayeredImageSingleton extends LayeredImageSingleton {
     @SuppressWarnings("unused")
     static <T extends MultiLayeredImageSingleton> T[] getAllLayers(Class<T> key) {
         throw VMError.shouldNotReachHere("This can only be called during runtime");
+    }
+
+    default <T extends MultiLayeredImageSingleton, U> U getSingletonData(T singleton, T[] singletons, Function<T, U> getSingletonDataFunction) {
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            for (var layerSingleton : singletons) {
+                U result = getSingletonDataFunction.apply(layerSingleton);
+                if (result != null) {
+                    return result;
+                }
+            }
+            return null;
+        } else {
+            return getSingletonDataFunction.apply(singleton);
+        }
     }
 }
