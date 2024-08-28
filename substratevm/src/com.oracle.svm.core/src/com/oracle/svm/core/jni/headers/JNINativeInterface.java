@@ -50,10 +50,12 @@ import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetArrayLengthFun
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetBooleanFieldFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetByteArrayElementsFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetFieldIDFunctionPointer;
+import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetIntFieldFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetMethodIDFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetObjectArrayElementFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetObjectClassFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetObjectFieldFunctionPointer;
+import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetStaticIntFieldFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetStaticObjectFieldFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetStringUTFCharsFunctionPointer;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes.GetSuperclassFunctionPointer;
@@ -667,10 +669,10 @@ public interface JNINativeInterface extends PointerBase {
     void setGetShortField(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getGetIntField();
+    GetIntFieldFunctionPointer getGetIntField();
 
     @CField
-    void setGetIntField(CFunctionPointer p);
+    void setGetIntField(GetIntFieldFunctionPointer p);
 
     @CField
     CFunctionPointer getGetLongField();
@@ -967,10 +969,10 @@ public interface JNINativeInterface extends PointerBase {
     void setGetStaticShortField(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getGetStaticIntField();
+    GetStaticIntFieldFunctionPointer getGetStaticIntField();
 
     @CField
-    void setGetStaticIntField(CFunctionPointer p);
+    void setGetStaticIntField(GetStaticIntFieldFunctionPointer p);
 
     @CField
     CFunctionPointer getGetStaticLongField();

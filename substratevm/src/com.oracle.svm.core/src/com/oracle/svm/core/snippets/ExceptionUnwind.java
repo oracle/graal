@@ -232,6 +232,7 @@ public abstract class ExceptionUnwind {
             }
 
             /* No handler found in this frame, walk to caller frame. */
+            VMError.guarantee(!CodeInfoQueryResult.isEntryPoint(codeInfoQueryResult.getEncodedFrameSize()), "Entry point methods must have an exception handler.");
             hasCalleeSavedRegisters = CodeInfoQueryResult.hasCalleeSavedRegisters(codeInfoQueryResult.getEncodedFrameSize());
             if (!JavaStackWalker.continueWalk(walk, codeInfoQueryResult, deoptFrame)) {
                 /* No more caller frame found. */

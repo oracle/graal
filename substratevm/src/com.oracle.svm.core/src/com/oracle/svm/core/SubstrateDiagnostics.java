@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
 import java.util.ArrayList;
@@ -1284,7 +1285,8 @@ public class SubstrateDiagnostics {
                  * image build, it can happen that the singleton does not exist yet. In that case,
                  * the value will be copied to the image heap when executing the constructor of the
                  * singleton. This is a bit cumbersome but necessary because we can't use a static
-                 * field.
+                 * field. We also need to mark the option as used at run-time (see feature) as the
+                 * static analysis would otherwise remove the option from the image.
                  */
                 if (ImageSingletons.contains(Options.class)) {
                     Options.singleton().loopOnFatalError = newValue;
@@ -1292,11 +1294,26 @@ public class SubstrateDiagnostics {
             }
         };
 
+        @Option(help = "Determines if implicit exceptions are fatal if they don't have a stack trace.", type = OptionType.Debug)//
+        public static final RuntimeOptionKey<Boolean> ImplicitExceptionWithoutStacktraceIsFatal = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                super.onValueUpdate(values, oldValue, newValue);
+
+                /* See comment above. */
+                if (ImageSingletons.contains(Options.class)) {
+                    Options.singleton().implicitExceptionWithoutStacktraceIsFatal = newValue;
+                }
+            }
+        };
+
         private volatile boolean loopOnFatalError;
+        private boolean implicitExceptionWithoutStacktraceIsFatal;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public Options() {
             this.loopOnFatalError = Options.LoopOnFatalError.getValue();
+            this.implicitExceptionWithoutStacktraceIsFatal = Options.ImplicitExceptionWithoutStacktraceIsFatal.getValue();
         }
 
         @Fold
@@ -1306,6 +1323,11 @@ public class SubstrateDiagnostics {
 
         public static boolean shouldLoopOnFatalError() {
             return singleton().loopOnFatalError;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static boolean implicitExceptionWithoutStacktraceIsFatal() {
+            return singleton().implicitExceptionWithoutStacktraceIsFatal;
         }
     }
 }

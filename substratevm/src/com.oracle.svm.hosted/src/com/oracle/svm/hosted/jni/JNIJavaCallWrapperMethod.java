@@ -71,10 +71,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * Generated code with a specific signature for calling a Java method that has a compatible
- * signature from native code. The wrapper takes care of transitioning to a Java context and back to
- * native code, for catching and retaining unhandled exceptions, and if required, for unboxing
- * object handle arguments and boxing an object return value.
+ * Generates interruptible code with a specific signature for calling a Java method that has a
+ * compatible signature from native code. Note that the generated interruptible code is called by a
+ * separately generated wrapper (see {@link JNIJavaCallVariantWrapperMethod}) that takes care of
+ * transitioning to a Java context and back to native code, as well as catching and retaining
+ * unhandled exceptions.
  *
  * @see <a href=
  *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">Java 8 JNI
@@ -174,7 +175,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
         JavaKind wordKind = providers.getWordTypes().getWordKind();
         int slotIndex = 0;
         ValueNode receiverOrClassHandle = kit.loadLocal(slotIndex, wordKind);
-        ValueNode receiverOrClass = kit.unboxHandle(receiverOrClassHandle);
+        ValueNode receiverOrClass = kit.invokeUnboxHandle(receiverOrClassHandle);
         slotIndex += wordKind.getSlotCount();
         ValueNode methodId = kit.loadLocal(slotIndex, wordKind);
         slotIndex += wordKind.getSlotCount();
@@ -186,19 +187,19 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
 
         JavaKind returnKind = returnValue.getStackKind();
         if (returnKind.isObject()) {
-            returnValue = kit.boxObjectInLocalHandle(returnValue);
+            returnValue = kit.invokeBoxObjectInLocalHandle(returnValue);
         }
         kit.createReturn(returnValue, returnKind);
         return kit.finalizeGraph();
     }
 
     private ValueNode createCall(JNIGraphKit kit, Signature invokeSignature, ValueNode methodId, ValueNode receiverOrClass, ValueNode nonVirtual, ValueNode[] args) {
-        ValueNode declaringClass = kit.getDeclaringClassForMethod(methodId);
+        ValueNode declaringClass = kit.invokeGetDeclaringClassForMethod(methodId);
         if (!invokeSignature.getReturnKind().isObject()) {
             return createRegularMethodCall(kit, invokeSignature, methodId, receiverOrClass, nonVirtual, args);
         }
 
-        ValueNode newObjectAddress = kit.getNewObjectAddress(methodId);
+        ValueNode newObjectAddress = kit.invokeGetNewObjectAddress(methodId);
         kit.startIf(IntegerEqualsNode.create(newObjectAddress, kit.createWord(0), NodeView.DEFAULT), BranchProbabilityData.unknown());
         kit.thenPart();
         ValueNode methodReturnValue = createRegularMethodCall(kit, invokeSignature, methodId, receiverOrClass, nonVirtual, args);
@@ -210,8 +211,8 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
 
     private static ValueNode createRegularMethodCall(JNIGraphKit kit, Signature invokeSignature, ValueNode methodId,
                     ValueNode receiverOrClass, ValueNode nonVirtual, ValueNode[] args) {
-        ValueNode methodAddress = kit.getJavaCallAddress(methodId, receiverOrClass, nonVirtual);
-        ValueNode isStatic = kit.isStaticMethod(methodId);
+        ValueNode methodAddress = kit.invokeGetJavaCallAddress(methodId, receiverOrClass, nonVirtual);
+        ValueNode isStatic = kit.invokeIsStaticMethod(methodId);
         kit.startIf(IntegerEqualsNode.create(isStatic, kit.createInt(0), NodeView.DEFAULT), BranchProbabilityData.unknown());
         kit.thenPart();
         ValueNode nonstaticResult = createMethodCallWithReceiver(kit, invokeSignature, methodAddress, receiverOrClass, args);
@@ -245,7 +246,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
 
     protected ValueNode createConstructorCall(JNIGraphKit kit, Signature invokeSignature, ValueNode methodId,
                     @SuppressWarnings("unused") ValueNode declaringClass, ValueNode receiverOrClass, ValueNode[] args) {
-        ValueNode methodAddress = kit.getJavaCallAddress(methodId, receiverOrClass, kit.createInt(1));
+        ValueNode methodAddress = kit.invokeGetJavaCallAddress(methodId, receiverOrClass, kit.createInt(1));
         return createMethodCallWithReceiver(kit, invokeSignature, methodAddress, receiverOrClass, args);
     }
 
@@ -310,7 +311,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
             }
             ValueNode value = kit.loadLocal(slotIndex, loadKind);
             if (kind.isObject()) {
-                value = kit.unboxHandle(value);
+                value = kit.invokeUnboxHandle(value);
                 value = kit.checkObjectType(value, type, false);
             } else if (kind != loadKind) {
                 value = kit.maskNumericIntBytes(value, kind);
