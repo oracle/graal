@@ -1343,6 +1343,7 @@ suite = {
             },
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
+                "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
             ],
             "checkstyle" : "com.oracle.svm.hosted",
             "javaCompliance" : "21+",

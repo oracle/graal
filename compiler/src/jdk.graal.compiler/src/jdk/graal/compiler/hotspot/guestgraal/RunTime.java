@@ -29,8 +29,14 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.runtime.JVMCIBackend;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.debug.GlobalMetrics;
@@ -142,6 +148,59 @@ public class RunTime {
             }
             return runtime.translate(installedCode);
         }
+    }
+
+    @SuppressWarnings({"unused", "try"})
+    public static long hashConstantOopFields(long typeHandle, boolean useScope, int iterations,
+                    int oopsPerIteration, boolean verbose, Runnable doReferenceHandling) {
+        HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+        JVMCIBackend backend = runtime.getHostJVMCIBackend();
+        ConstantReflectionProvider constantReflection = backend.getConstantReflection();
+        HotSpotResolvedJavaType type = runtime.unhand(HotSpotResolvedJavaType.class, typeHandle);
+        ResolvedJavaField[] staticFields = type.getStaticFields();
+        JavaConstant receiver = null;
+        long hash = 13;
+
+        Object scopeDescription = "TestingOopHandles";
+
+        int remainingIterations = iterations;
+        while (remainingIterations-- > 0) {
+            ResolvedJavaField lastReadField = null;
+            try (CompilationContext scope = useScope ? HotSpotGraalServices.openLocalCompilationContext(scopeDescription) : null) {
+                if (verbose && useScope) {
+                    System.out.println("Opened " + scopeDescription);
+                }
+                int remainingOops = oopsPerIteration;
+                while (remainingOops-- > 0) {
+                    for (ResolvedJavaField field : staticFields) {
+                        if (field.getType().getJavaKind() == JavaKind.Object) {
+                            JavaConstant value = constantReflection.readFieldValue(field, receiver);
+                            if (value != null) {
+                                lastReadField = field;
+                                hash = hash ^ value.hashCode();
+                            }
+                        }
+                    }
+                }
+            }
+            if (!useScope) {
+                System.gc();
+                if (verbose) {
+                    System.out.println("calling reference handling");
+                }
+                doReferenceHandling.run();
+                if (verbose) {
+                    System.out.println("called reference handling");
+                }
+                // Need one more remote oop creation to trigger releasing
+                // of remote oops that were wrapped in weakly reachable
+                // IndirectHotSpotObjectConstantImpl objects just collected.
+                constantReflection.readFieldValue(lastReadField, receiver);
+            } else if (verbose) {
+                System.out.println(" Closed " + scopeDescription);
+            }
+        }
+        return hash;
     }
 
     private static long jniEnvironmentOffset = Integer.MAX_VALUE;
