@@ -73,7 +73,7 @@ public final class ClassRegistries {
     }
 
     public void initJavaBaseModule() {
-        this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Name.java_base, null, null, true, null);
+        this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Name.java_base, null, null, false, null);
     }
 
     public ClassRegistry getClassRegistry(@JavaType(ClassLoader.class) StaticObject classLoader) {
