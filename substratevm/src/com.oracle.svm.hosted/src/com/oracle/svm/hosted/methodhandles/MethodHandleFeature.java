@@ -33,7 +33,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.Iterator;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -163,17 +162,7 @@ public class MethodHandleFeature implements InternalFeature {
         access.registerReachabilityHandler(MethodHandleFeature::registerInvokersFunctionsForReflection,
                         ReflectionUtil.lookupMethod(access.findClassByName("java.lang.invoke.Invokers"), "getFunction", byte.class));
 
-        access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionBoxFunctionsForReflection,
-                        ReflectionUtil.lookupMethod(ValueConversions.class, "boxExact", Wrapper.class));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionUnboxFunctionsForReflection,
-                        ReflectionUtil.lookupMethod(ValueConversions.class, "unbox", Wrapper.class, int.class));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionConvertFunctionsForReflection,
-                        ReflectionUtil.lookupMethod(ValueConversions.class, "convertPrimitive", Wrapper.class, Wrapper.class));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionIgnoreForReflection,
-                        ReflectionUtil.lookupMethod(ValueConversions.class, "ignore"));
+        eagerlyInitializeValueConversionsCaches();
 
         access.registerClassInitializerReachabilityHandler(MethodHandleFeature::registerDelegatingMHFunctionsForReflection,
                         access.findClassByName("java.lang.invoke.DelegatingMethodHandle"));
@@ -328,42 +317,30 @@ public class MethodHandleFeature implements InternalFeature {
         RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "directVarHandleTarget", access.findClassByName("java.lang.invoke.VarHandle")));
     }
 
-    private static void registerValueConversionBoxFunctionsForReflection(DuringAnalysisAccess access) {
-        for (Wrapper type : Wrapper.values()) {
-            if (type.primitiveType().isPrimitive() && type != Wrapper.VOID) {
-                RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, "box" + type.wrapperSimpleName(), type.primitiveType()));
-            }
-        }
-    }
+    /**
+     * Eagerly initialize method handle caches in {@link ValueConversions} so that 1) we avoid
+     * reflection registration for conversion methods, and 2) the static analysis already sees a
+     * consistent snapshot that does not change after analysis when the JDK needs more conversions.
+     */
+    private static void eagerlyInitializeValueConversionsCaches() {
+        ValueConversions.ignore();
 
-    private static void registerValueConversionUnboxFunctionsForReflection(DuringAnalysisAccess access) {
-        for (Wrapper type : Wrapper.values()) {
-            if (type.primitiveType().isPrimitive() && type != Wrapper.VOID) {
-                RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, "unbox" + type.wrapperSimpleName(), type.wrapperType()));
-                RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, "unbox" + type.wrapperSimpleName(), Object.class, boolean.class));
-            }
-        }
-    }
-
-    private static void registerValueConversionConvertFunctionsForReflection(DuringAnalysisAccess access) {
         for (Wrapper src : Wrapper.values()) {
-            for (Wrapper dest : Wrapper.values()) {
-                if (src != dest && src.primitiveType().isPrimitive() && src != Wrapper.VOID && dest.primitiveType().isPrimitive() && dest != Wrapper.VOID) {
-                    RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, valueConverterName(src, dest), src.primitiveType()));
+            if (src != Wrapper.VOID && src.primitiveType().isPrimitive()) {
+                ValueConversions.boxExact(src);
+
+                ValueConversions.unboxExact(src, false);
+                ValueConversions.unboxExact(src, true);
+                ValueConversions.unboxWiden(src);
+                ValueConversions.unboxCast(src);
+            }
+
+            for (Wrapper dst : Wrapper.values()) {
+                if (src != Wrapper.VOID && dst != Wrapper.VOID && (src == dst || (src.primitiveType().isPrimitive() && dst.primitiveType().isPrimitive()))) {
+                    ValueConversions.convertPrimitive(src, dst);
                 }
             }
         }
-    }
-
-    private static String valueConverterName(Wrapper src, Wrapper dest) {
-        String srcType = src.primitiveSimpleName();
-        String destType = dest.primitiveSimpleName();
-        /* Capitalize first letter of destination type */
-        return srcType + "To" + destType.substring(0, 1).toUpperCase(Locale.ROOT) + destType.substring(1);
-    }
-
-    private static void registerValueConversionIgnoreForReflection(DuringAnalysisAccess access) {
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, "ignore", Object.class));
     }
 
     private static void registerDelegatingMHFunctionsForReflection(DuringAnalysisAccess access) {
