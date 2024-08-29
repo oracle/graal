@@ -1326,10 +1326,13 @@ public final class ObjectKlass extends Klass {
         if (!inUnnamedPackage()) {
             return packageEntry.module();
         }
+        StaticObject classLoader;
         if (getHostClass() != null) {
-            return getRegistries().getClassRegistry(getHostClass().getDefiningClassLoader()).getUnnamedModule();
+            classLoader = getHostClass().getDefiningClassLoader();
+        } else {
+            classLoader = getDefiningClassLoader();
         }
-        return getRegistries().getClassRegistry(getDefiningClassLoader()).getUnnamedModule();
+        return getRegistries().getClassRegistry(classLoader).getUnnamedModule();
     }
 
     @Override
