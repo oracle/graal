@@ -207,11 +207,6 @@ public class GuestGraalSubstitutions {
         }
     }
 
-    /**
-     * Constant used to mark (and disable) Truffle support code.
-     */
-    private static final boolean INCLUDE_TRUFFLE = Boolean.getBoolean("disable.spotbugs.unwritten.field.check");
-
     @TargetClass(className = "jdk.graal.compiler.serviceprovider.VMSupport", classLoader = GuestGraalClassLoaderSupplier.class, onlyWith = GuestGraalFeature.IsEnabled.class)
     final class Target_jdk_graal_compiler_serviceprovider_VMSupport {
 
@@ -239,16 +234,13 @@ public class GuestGraalSubstitutions {
             final JNIMethodScope scope;
 
             LibGraalCompilationRequestScope() {
-                if (INCLUDE_TRUFFLE) {
-                    JNI.JNIEnv env = GuestGraal.getJNIEnv();
-                    // This scope is required to allow Graal compilations of host methods to call
-                    // methods in the TruffleCompilerRuntime. This is, for example, required to find
-                    // out
-                    // about Truffle-specific method annotations.
-                    scope = LibGraalJNIMethodScope.open("<called from VM>", env, false);
-                } else {
-                    scope = null;
-                }
+                JNI.JNIEnv env = GuestGraal.getJNIEnv();
+                /*
+                 * This scope is required to allow Graal compilations of host methods to call
+                 * methods in the TruffleCompilerRuntime. This is, for example, required to find out
+                 * about Truffle-specific method annotations.
+                 */
+                scope = LibGraalJNIMethodScope.open("<called from VM>", env, false);
             }
 
             @Override
