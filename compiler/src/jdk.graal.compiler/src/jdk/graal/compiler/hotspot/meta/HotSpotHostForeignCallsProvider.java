@@ -164,10 +164,16 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+// Joonhwan including Instrumentation Buffer
+import jdk.graal.compiler.hotspot.meta.joonhwan.InstrumentationBuffer;
+
 /**
  * HotSpot implementation of {@link ForeignCallsProvider}.
  */
 public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCallsProviderImpl implements ArrayCopyForeignCalls {
+
+    //Joonhwan adding HotSpotForeignCallDescriptors to be registered as a JavaCallStub
+    public static final HotSpotForeignCallDescriptor ADD_TO_BUFFER = new  HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, NO_LOCATIONS, "instrumentationBufferAdd", void.class, long.class);
 
     public static final HotSpotForeignCallDescriptor JAVA_TIME_MILLIS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "javaTimeMillis", long.class);
     public static final HotSpotForeignCallDescriptor JAVA_TIME_NANOS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "javaTimeNanos", long.class);
@@ -391,6 +397,10 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                 invokeJavaMethodStub(options, providers, desc, invokeJavaMethodAddress, method);
             }
         }
+        
+        //
+        ResolvedJavaMethod addToBufferMethod = findMethod(providers.getMetaAccess(), InstrumentationBuffer.class, ADD_TO_BUFFER.getName());
+        invokeJavaMethodStub(options, providers, ADD_TO_BUFFER, invokeJavaMethodAddress, addToBufferMethod);   
     }
 
     private void registerArraycopyDescriptor(EconomicMap<Long, ForeignCallDescriptor> descMap, JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation,
