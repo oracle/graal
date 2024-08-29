@@ -585,7 +585,7 @@ public final class DebuggerConnection implements Commands {
                         case JDWP.StackFrame.ID: {
                             switch (packet.cmd) {
                                 case JDWP.StackFrame.GET_VALUES.ID:
-                                    result = JDWP.StackFrame.GET_VALUES.createReply(packet, context);
+                                    result = JDWP.StackFrame.GET_VALUES.createReply(packet, context, controller);
                                     break;
                                 case JDWP.StackFrame.SET_VALUES.ID:
                                     result = JDWP.StackFrame.SET_VALUES.createReply(packet, context);
