@@ -124,6 +124,13 @@ public class ElementUtils {
         return null;
     }
 
+    /**
+     * Finds the method named {@code methodName} defined by {@code typeElement}. Returns
+     * {@code null} if no method exists. Throws an error if more than one method exists.
+     * <p>
+     * Overloads are disambiguated using the arity and types of {@code parameters}. These elements
+     * can be null, in which case the parameter type is not checked.
+     */
     public static ExecutableElement findInstanceMethod(TypeElement typeElement, String methodName, TypeMirror[] parameterTypes) {
         List<ExecutableElement> matches = ElementFilter.methodsIn(typeElement.getEnclosedElements()).stream() //
                         .filter(method -> method.getSimpleName().toString().equals(methodName)) //
@@ -148,6 +155,9 @@ public class ElementUtils {
             return false;
         }
         for (int i = 0; i < parameterTypes.length; i++) {
+            if (parameterTypes[i] == null) {
+                continue;
+            }
             if (!ElementUtils.typeEquals(parameterTypes[i], params.get(i).asType())) {
                 return false;
             }
@@ -2176,7 +2186,7 @@ public class ElementUtils {
     public static ExecutableElement findOverride(ExecutableElement method, TypeElement type) {
         TypeElement searchType = type;
         while (searchType != null && !elementEquals(method.getEnclosingElement(), searchType)) {
-            ExecutableElement override = findInstanceMethod(searchType, method.getSimpleName().toString(), method.getParameters().stream().map((p -> p.asType())).toArray(TypeMirror[]::new));
+            ExecutableElement override = findInstanceMethod(searchType, method.getSimpleName().toString(), method.getParameters().stream().map(VariableElement::asType).toArray(TypeMirror[]::new));
             if (override != null) {
                 return override;
             }

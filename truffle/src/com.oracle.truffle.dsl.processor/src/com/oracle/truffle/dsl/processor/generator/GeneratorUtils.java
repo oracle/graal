@@ -382,26 +382,37 @@ public class GeneratorUtils {
     }
 
     /**
-     * Generates an override of the given method defined on the given type. Does not handle
-     * overloads.
+     * Generates an override of the given method defined on the given type that takes no parameters.
      */
     public static CodeExecutableElement override(DeclaredType type, String methodName) {
-        return override(type, methodName, null);
+        return override(type, methodName, new String[0]);
     }
 
     /**
-     * Generates an override of the given method defined on the given type. Parameter types can be
-     * used to disambiguate overloads. Parameter names can be optionally provided to rename the
-     * parameter names in the override.
+     * Generates an override of the given method defined on the given type. Updates the result's
+     * parameters to have the given parameter names.
      */
-    public static CodeExecutableElement override(DeclaredType type, String methodName, TypeMirror[] parameterTypes, String... parameterNames) {
+    public static CodeExecutableElement override(DeclaredType type, String methodName, String[] parameterNames) {
+        return override(type, methodName, parameterNames, new TypeMirror[parameterNames.length]);
+    }
+
+    /**
+     * Generates an override of the given method defined on the given type. Updates the result's
+     * parameters to have the given parameter names. Uses the given parameter types (which can be
+     * {@code null}) to disambiguate overloads.
+     * <p>
+     * Callers must specify parameter names because the parent method may change its parameter
+     * names. Additionally, if the parent {@code type} is loaded from a class file, the original
+     * source parameter names are (usually) not available.
+     */
+    public static CodeExecutableElement override(DeclaredType type, String methodName, String[] parameterNames, TypeMirror[] parameterTypes) {
+        if (parameterNames.length != parameterTypes.length) {
+            throw new AssertionError(String.format("number of parameter names (%d) did not match number of parameter types (%d)", parameterNames.length, parameterTypes.length));
+        }
+
         ExecutableElement method = ElementUtils.findInstanceMethod((TypeElement) type.asElement(), methodName, parameterTypes);
         if (method == null) {
             return null;
-        }
-        if (parameterNames.length != 0 && method.getParameters().size() != parameterNames.length) {
-            throw new IllegalArgumentException(String.format("Wrong number of argument names for method '%s'. Expected: %d, got: %d.",
-                            method.getSimpleName(), method.getParameters().size(), parameterNames.length));
         }
         CodeExecutableElement result = override(method);
         result.renameArguments(parameterNames);
