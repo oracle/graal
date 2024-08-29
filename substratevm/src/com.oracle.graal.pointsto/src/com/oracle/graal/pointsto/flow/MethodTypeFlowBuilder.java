@@ -468,7 +468,11 @@ public class MethodTypeFlowBuilder {
         return false;
     }
 
-    private void insertAllInstantiatedTypesReturn() {
+    /**
+     * If a method has opaque return, we model it conservatively by returning a) all instantiated
+     * subtypes of its return type for an object type or b) any primitive value for a primitive.
+     */
+    private void handleOpaqueReturn() {
         AnalysisError.guarantee(flowsGraph.getReturnFlow() == null, "Expected null return flow");
 
         AnalysisType returnType = TypeFlow.filterUncheckedInterface(method.getSignature().getReturnType());
@@ -625,9 +629,9 @@ public class MethodTypeFlowBuilder {
              */
             AnalysisType returnType = method.getSignature().getReturnType();
             if (returnType.getJavaKind().isObject()) {
-                // GR-52421: the return type state should not be all-instantiated, it should be the
+                // GR-52421: the return should not be opaque, it should be the
                 // persisted result of the open-world analysis
-                insertAllInstantiatedTypesReturn();
+                handleOpaqueReturn();
             }
             // GR-52421: verify that tracked parameter state is subset of persisted state
             insertPlaceholderParamAndReturnFlows();
@@ -636,12 +640,12 @@ public class MethodTypeFlowBuilder {
 
         // assert method.getAnnotation(Fold.class) == null : method;
         if (handleNodeIntrinsic()) {
-            assert !method.getReturnsAllInstantiatedTypes() : method;
+            assert !method.hasOpaqueReturn() : method;
             return;
         }
 
-        if (method.getReturnsAllInstantiatedTypes()) {
-            insertAllInstantiatedTypesReturn();
+        if (method.hasOpaqueReturn()) {
+            handleOpaqueReturn();
         }
 
         boolean insertPlaceholderFlows = bb.getHostVM().getMultiMethodAnalysisPolicy().insertPlaceholderParamAndReturnFlows(method.getMultiMethodKey());
@@ -953,10 +957,10 @@ public class MethodTypeFlowBuilder {
 
             } else if (n instanceof ReturnNode) {
                 /*
-                 * Return type flows within the graph do not need to be linked when all instantiated
-                 * types are returned.
+                 * Return type flows within the graph do not need to be linked if the method has
+                 * opaque return.
                  */
-                if (!method.getReturnsAllInstantiatedTypes()) {
+                if (!method.hasOpaqueReturn()) {
                     ReturnNode node = (ReturnNode) n;
                     if (node.result() != null && bb.isSupportedJavaKind(node.result().getStackKind())) {
                         TypeFlowBuilder<?> returnFlowBuilder = uniqueReturnFlowBuilder(node);

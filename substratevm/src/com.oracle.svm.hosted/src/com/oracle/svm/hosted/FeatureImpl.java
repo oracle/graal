@@ -496,7 +496,7 @@ public class FeatureImpl {
         public void registerOpaqueMethodReturn(Method method) {
             AnalysisMethod aMethod = bb.getMetaAccess().lookupJavaMethod(method);
             VMError.guarantee(aMethod.getAllMultiMethods().size() == 1, "Opaque method return called for method with >1 multimethods: %s ", method);
-            aMethod.setReturnsAllInstantiatedTypes();
+            aMethod.setOpaqueReturn();
         }
     }
 
