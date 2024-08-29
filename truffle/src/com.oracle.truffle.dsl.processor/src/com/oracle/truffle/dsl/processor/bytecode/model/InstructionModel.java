@@ -444,10 +444,6 @@ public final class InstructionModel implements PrettyPrintable {
         }
     }
 
-    public boolean hasConditionalBranch() {
-        return kind == InstructionKind.BRANCH_FALSE;
-    }
-
     public InstructionModel addImmediate(ImmediateKind immediateKind, String immediateName) {
         immediates.add(new InstructionImmediate(byteLength, immediateKind, immediateName));
         byteLength += immediateKind.width.byteSize;

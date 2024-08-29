@@ -1713,9 +1713,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
     }
 
-    private static boolean needsCachedInitialization(InstructionImmediate immediate) {
+    private static boolean needsCachedInitialization(InstructionModel instruction, InstructionImmediate immediate) {
         return switch (immediate.kind()) {
-            case BRANCH_PROFILE, NODE_PROFILE -> true;
+            case NODE_PROFILE -> true;
+            // branch.backward does not need its own profile (it references an existing profile).
+            case BRANCH_PROFILE -> instruction.kind != InstructionKind.BRANCH_BACKWARD;
             default -> false;
         };
     }
@@ -2039,6 +2041,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         return b.build();
     }
 
+    private static String readInt(String array, String index) {
+        return String.format("BYTES.getInt(%s, %s)", array, index);
+    }
+
     private static String writeInt(String array, String index, String value) {
         return String.format("BYTES.putInt(%s, %s, %s)", array, index, value);
     }
@@ -2300,7 +2306,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
     }
 
     private static String cachedDataClassName(InstructionModel instr) {
-        if (!instr.isCustomInstruction()) {
+        if (!instr.hasNodeImmediate()) {
             return null;
         }
         if (instr.quickeningBase != null) {
@@ -5881,7 +5887,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.startIf().string("reachable").end().startBlock();
                         b.statement("operationData.falseBranchFixupBci = bci + " + model.branchFalseInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target").offset());
                         b.end();
-                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
+                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchFalseArguments(model.branchFalseInstruction));
                         b.end().startElseBlock();
                         b.statement("int toUpdate = operationData.falseBranchFixupBci");
                         b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
@@ -5895,7 +5901,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.startIf().string("reachable").end().startBlock();
                         b.statement("operationData.falseBranchFixupBci = bci + " + model.branchFalseInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target").offset());
                         b.end();
-                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
+                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchFalseArguments(model.branchFalseInstruction));
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
                         b.startIf().string("reachable").end().startBlock();
                         b.statement("operationData.endBranchFixupBci = bci + " + model.branchInstruction.getImmediate(ImmediateKind.BYTECODE_INDEX).offset());
@@ -5921,7 +5927,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.startIf().string("reachable").end().startBlock();
                         b.statement("operationData.falseBranchFixupBci = bci + " + model.branchFalseInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target").offset());
                         b.end();
-                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
+                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchFalseArguments(model.branchFalseInstruction));
 
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
                         if (model.usesBoxingElimination()) {
@@ -5949,18 +5955,36 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.end();
                         break;
                     case WHILE:
+                        InstructionImmediate branchTarget = model.branchFalseInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
                         emitCastOperationData(b, op, "operationSp - 1");
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.startIf().string("reachable").end().startBlock();
-                        b.statement("operationData.endBranchFixupBci = bci + " + model.branchFalseInstruction.findImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target").offset());
+                        b.statement("operationData.endBranchFixupBci = bci + " + branchTarget.offset());
                         b.end();
-                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
+                        buildEmitInstruction(b, model.branchFalseInstruction, emitBranchFalseArguments(model.branchFalseInstruction));
                         b.end().startElseBlock();
-                        buildEmitInstruction(b, model.branchBackwardInstruction, new String[]{"operationData.whileStartBci"});
                         b.statement("int toUpdate = operationData.endBranchFixupBci");
                         b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
+                        /**
+                         * To emit a branch.backward, we need the branch profile from the
+                         * branch.false instruction. Since we have the offset of the branch target
+                         * (toUpdate) we can obtain the branch profile with a bit of offset math.
+                         *
+                         * Note that we do not emit branch.backward when branch.false was not
+                         * emitted (i.e., when toUpdate == UNINIT). This is OK, because it should be
+                         * impossible to reach the end of a loop body if the loop body cannot be
+                         * entered.
+                         */
+                        InstructionImmediate branchProfile = model.branchFalseInstruction.findImmediate(ImmediateKind.BRANCH_PROFILE, "branch_profile");
+                        int offset = branchProfile.offset() - branchTarget.offset();
+                        if (ImmediateKind.BRANCH_PROFILE.width != ImmediateWidth.INT) {
+                            throw new AssertionError("branch profile width changed");
+                        }
+                        String readBranchProfile = readInt("bc", "toUpdate + " + offset + " /* loop branch profile */");
+                        buildEmitInstruction(b, model.branchBackwardInstruction, new String[]{"operationData.whileStartBci", readBranchProfile});
                         b.statement(writeInt("bc", "toUpdate", "bci"));
                         b.end();
+
                         b.end();
                         break;
                     case TRY_CATCH:
@@ -6065,11 +6089,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return branchArguments;
         }
 
-        private String[] emitBranchArguments(InstructionModel instruction) {
-            List<InstructionImmediate> immedates = instruction.getImmediates();
-            String[] branchArguments = new String[immedates.size()];
+        private String[] emitBranchFalseArguments(InstructionModel instruction) {
+            List<InstructionImmediate> immediates = instruction.getImmediates();
+            String[] branchArguments = new String[immediates.size()];
             for (int index = 0; index < branchArguments.length; index++) {
-                InstructionImmediate immediate = immedates.get(index);
+                InstructionImmediate immediate = immediates.get(index);
                 branchArguments[index] = switch (immediate.kind()) {
                     case BYTECODE_INDEX -> (index == 0) ? UNINIT : "childBci";
                     case BRANCH_PROFILE -> "allocateBranchProfile()";
@@ -6080,10 +6104,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private String[] emitMergeConditionalArguments(InstructionModel instr) {
-            List<InstructionImmediate> immedates = instr.getImmediates();
-            String[] branchArguments = new String[immedates.size()];
+            List<InstructionImmediate> immediates = instr.getImmediates();
+            String[] branchArguments = new String[immediates.size()];
             for (int index = 0; index < branchArguments.length; index++) {
-                InstructionImmediate immediate = immedates.get(index);
+                InstructionImmediate immediate = immediates.get(index);
                 branchArguments[index] = switch (immediate.kind()) {
                     case BYTECODE_INDEX -> (index == 0) ? "operationData.thenReachable ? operationData.child0Bci : -1"
                                     : "operationData.elseReachable ? operationData.child1Bci : -1";
@@ -6094,10 +6118,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private String[] emitPopArguments(String childBciName) {
-            List<InstructionImmediate> immedates = model.popInstruction.getImmediates();
-            String[] branchArguments = new String[immedates.size()];
+            List<InstructionImmediate> immediates = model.popInstruction.getImmediates();
+            String[] branchArguments = new String[immediates.size()];
             for (int index = 0; index < branchArguments.length; index++) {
-                InstructionImmediate immediate = immedates.get(index);
+                InstructionImmediate immediate = immediates.get(index);
                 branchArguments[index] = switch (immediate.kind()) {
                     case BYTECODE_INDEX -> childBciName;
                     default -> throw new AssertionError("Unexpected immediate: " + immediate);
@@ -12093,9 +12117,34 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private CodeExecutableElement createCachedConstructor() {
 
-            record CachedInitializationKey(int instructionLength, List<InstructionImmediate> immediates, String nodeName) {
+            record CachedInitializationKey(int instructionLength, List<InstructionImmediate> immediates, String nodeName) implements Comparable<CachedInitializationKey> {
                 CachedInitializationKey(InstructionModel instr) {
-                    this(instr.getInstructionLength(), instr.getImmediates().stream().filter((i) -> needsCachedInitialization(i)).toList(), cachedDataClassName(instr));
+                    this(instr.getInstructionLength(), instr.getImmediates().stream().filter((i) -> needsCachedInitialization(instr, i)).toList(),
+                                    cachedDataClassName(instr));
+                }
+
+                @Override
+                public int compareTo(CachedInitializationKey o) {
+                    // Order by # of immediates to initialize.
+                    int compare = Integer.compare(this.immediates.size(), o.immediates.size());
+                    if (compare != 0) {
+                        return compare;
+                    }
+                    // Order by immediate kind.
+                    for (int i = 0; i < this.immediates.size(); i++) {
+                        ImmediateKind thisKind = this.immediates.get(i).kind();
+                        ImmediateKind otherKind = o.immediates.get(i).kind();
+                        compare = thisKind.compareTo(otherKind);
+                        if (compare != 0) {
+                            return compare;
+                        }
+                    }
+                    // Order by length.
+                    compare = Integer.compare(this.instructionLength, o.instructionLength);
+                    if (compare != 0) {
+                        return compare;
+                    }
+                    return 0;
                 }
             }
 
@@ -12120,10 +12169,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             Map<CachedInitializationKey, List<InstructionModel>> grouped = model.getInstructions().stream()//
                             .filter((i -> !i.isQuickening())) //
                             .collect(Collectors.groupingBy(CachedInitializationKey::new));
+            List<CachedInitializationKey> sortedKeys = grouped.keySet().stream().sorted().toList();
 
-            for (var entry : grouped.entrySet()) {
-                CachedInitializationKey key = entry.getKey();
-                List<InstructionModel> instructions = entry.getValue();
+            for (CachedInitializationKey key : sortedKeys) {
+                List<InstructionModel> instructions = grouped.get(key);
                 for (InstructionModel instr : instructions) {
                     b.startCase().tree(createInstructionConstant(instr)).end();
                     for (InstructionModel quick : instr.getFlattenedQuickenedInstructions()) {
@@ -13408,6 +13457,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.string("frame == ", localFrame(), " ? null : ", localFrame());
                 b.end();
             }
+
+            /**
+             * When a while loop is compiled by OSR, its "false" branch profile may be zero, in
+             * which case the compiler will stop at loop exits. To coerce the compiler to compile
+             * the code after the loop, we encode the branch profile index in the branch.backwards
+             * instruction and use it here to force the false profile to a non-zero value.
+             */
+            InstructionImmediate branchProfile = model.branchBackwardInstruction.findImmediate(ImmediateKind.BRANCH_PROFILE, "loop_header_branch_profile");
+            b.declaration(type(int.class), "branchProfileIndex", readImmediate("bc", "bci", branchProfile));
+            b.startStatement().startCall("ensureFalseProfile").string("branchProfiles_").string("branchProfileIndex").end(2);
 
             b.startAssign("Object osrResult");
             b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
@@ -14770,8 +14829,9 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             .startReturn().startNewArray(branchProfilesType, CodeTreeBuilder.singleString("numProfiles * 2")).end(2);
 
             CodeExecutableElement profileBranch = createProfileBranch(branchProfilesType);
+            CodeExecutableElement ensureFalseProfile = createEnsureFalseProfile(branchProfilesType);
 
-            return List.of(branchProfilesField, allocateBranchProfiles, profileBranch);
+            return List.of(branchProfilesField, allocateBranchProfiles, profileBranch, ensureFalseProfile);
         }
 
         /**
@@ -14809,6 +14869,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.end();
 
             return allocateBranchProfiles;
+        }
+
+        private CodeExecutableElement createEnsureFalseProfile(TypeMirror branchProfilesType) {
+            CodeExecutableElement ensureFalseProfile = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), type(void.class), "ensureFalseProfile",
+                            new CodeVariableElement(branchProfilesType, "branchProfiles"),
+                            new CodeVariableElement(type(int.class), "profileIndex"));
+            CodeTreeBuilder b = ensureFalseProfile.createBuilder();
+
+            b.startIf().tree(readIntArray("branchProfiles", "profileIndex * 2 + 1")).string(" == 0").end().startBlock();
+            b.statement(writeIntArray("branchProfiles", "profileIndex * 2 + 1", "1"));
+            b.end();
+
+            return ensureFalseProfile;
         }
 
         private void emitProfileBranchCase(CodeTreeBuilder b, String maxCount, boolean value, String count, String otherCount, String index) {

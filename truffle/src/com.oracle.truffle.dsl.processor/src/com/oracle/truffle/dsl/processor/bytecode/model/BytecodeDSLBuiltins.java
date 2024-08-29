@@ -66,7 +66,8 @@ public class BytecodeDSLBuiltins {
         m.branchInstruction = m.instruction(InstructionKind.BRANCH, "branch", m.signature(void.class)) //
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
         m.branchBackwardInstruction = m.instruction(InstructionKind.BRANCH_BACKWARD, "branch.backward", m.signature(void.class)) //
-                        .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
+                        .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target") //
+                        .addImmediate(ImmediateKind.BRANCH_PROFILE, "loop_header_branch_profile");
         m.branchFalseInstruction = m.instruction(InstructionKind.BRANCH_FALSE, "branch.false", m.signature(void.class, Object.class)) //
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target") //
                         .addImmediate(ImmediateKind.BRANCH_PROFILE, "branch_profile");

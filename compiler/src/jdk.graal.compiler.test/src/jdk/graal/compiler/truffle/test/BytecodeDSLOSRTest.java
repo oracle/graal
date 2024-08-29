@@ -222,6 +222,48 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         assertEquals(OSR_THRESHOLD * 3, root.getCallTarget().call());
     }
 
+    @Test
+    public void testNoImmediateDeoptAfterOSRLoop() {
+        /**
+         * When OSR is performed for a loop, the loop exit branch often has never been taken. Bytecode
+         * DSL interpreters should force the branch profile to a non-zero value so that OSR code does
+         * not immediately deopt when exiting the loop.
+         *
+         * @formatter:off
+         * i = 0;
+         * while (i < arg0) {
+         *   i += 1;
+         * }
+         * return inCompiledCode;
+         * @formatter:on
+         */
+        BytecodeDSLOSRTestRootNode root = parseNode(b -> {
+            b.beginRoot();
+            BytecodeLocal i = b.createLocal();
+            b.beginStoreLocal(i);
+            b.emitLoadConstant(0);
+            b.endStoreLocal();
+
+            b.beginWhile();
+            b.beginLt();
+            b.emitLoadLocal(i);
+            b.emitLoadArgument(0);
+            b.endLt();
+            b.beginIncrement(i);
+            b.emitLoadLocal(i);
+            b.endIncrement();
+            b.endWhile();
+
+            b.beginReturn();
+            b.emitInCompiledCode();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(true, root.getCallTarget().call(OSR_THRESHOLD + 1));
+    }
+
     private static BytecodeParser<BytecodeDSLOSRTestRootNodeWithYieldGen.Builder> getParserForYieldTest(boolean emitYield) {
         return b -> {
             b.beginRoot();
@@ -317,6 +359,14 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
                 if (CompilerDirectives.inCompiledCode()) {
                     throw new InCompiledCodeException();
                 }
+            }
+        }
+
+        @Operation
+        static final class InCompiledCode {
+            @Specialization
+            public static boolean perform() {
+                return CompilerDirectives.inCompiledCode();
             }
         }
 
