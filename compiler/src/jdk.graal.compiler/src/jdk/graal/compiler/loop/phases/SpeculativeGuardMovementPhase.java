@@ -695,7 +695,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                      * loop IV we also have to compute a different max trip count node for this
                      * purpose.
                      */
-                    InductionVariable countedLoopInitModifiedIV = iv.getLoop().counted().getBodyIV();
+                    InductionVariable countedLoopInitModifiedIV = iv.getLoop().counted().getLimitCheckedIV();
                     boolean initIsParentIV = false;
                     boolean initIsParentPhi = false;
                     ValueNode currentRootInit = currentIv.getRootIV().initNode();
