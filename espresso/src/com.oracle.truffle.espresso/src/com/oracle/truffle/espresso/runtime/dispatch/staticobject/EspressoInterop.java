@@ -566,7 +566,7 @@ public class EspressoInterop extends BaseInterop {
                         return EspressoFunction.createInstanceInvocable(candidates[0], receiver);
                     }
                 }
-            } catch (ArityException e) {
+            } catch (ArityException | UnknownIdentifierException e) {
                 /* Ignore */
             }
             // Class<T>.static == Klass<T>
