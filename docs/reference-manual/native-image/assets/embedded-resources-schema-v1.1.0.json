@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/embedded-resources-schema-v1.0.0.json",
+  "default": [],
+  "items": {
+    "properties": {
+      "name": {
+        "type": "string",
+        "title": "Name of the resource that was registered"
+      },
+      "module": {
+        "type": "string",
+        "title": "Module of the resource that was registered"
+      },
+      "is_directory": {
+        "type": "boolean",
+        "default": false,
+        "title": "Describes whether the registered resource is a directory or not"
+      },
+      "is_missing": {
+        "type": "boolean",
+        "default": false,
+        "title": "Describes whether the resource is missing on the system or not"
+      },
+      "entries": {
+        "default": [],
+        "items": {
+          "properties": {
+            "origin": {
+              "type": "string",
+              "title": "Resource path"
+            },
+            "registration_origin": {
+              "type": "string",
+              "title": "Configuration file or other registration origin that is responsible for including this resource in the native image"
+            },
+            "size": {
+              "type": "integer",
+              "title": "Size of the resource expressed in bytes"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "title": "Source of the resource defined with name and module properties"
+        },
+        "type": "array",
+        "title": "List of sources for the resource defined with name and module properties"
+      }
+    },
+    "required": [
+      "name",
+      "entries"
+    ],
+    "additionalProperties": false,
+    "type": "object",
+    "title": "Resource that was registered"
+  },
+  "type": "array",
+  "title": "JSON schema for the embedded-resources.json that shows all resources that were registered."
+}

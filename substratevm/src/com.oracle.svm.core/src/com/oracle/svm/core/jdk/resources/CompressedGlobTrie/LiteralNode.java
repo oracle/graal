@@ -25,7 +25,7 @@
 
 package com.oracle.svm.core.jdk.resources.CompressedGlobTrie;
 
-final class LiteralNode extends GlobTrieNode {
+final class LiteralNode<C> extends GlobTrieNode<C> {
     LiteralNode(String content) {
         super(content);
     }

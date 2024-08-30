@@ -516,7 +516,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
 
         if (needsAllEncodings) {
-            RuntimeResourceSupport.singleton().addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
+            RuntimeResourceSupport.singleton().addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$", "Truffle needsAllEncodings flag is set");
         }
     }
 

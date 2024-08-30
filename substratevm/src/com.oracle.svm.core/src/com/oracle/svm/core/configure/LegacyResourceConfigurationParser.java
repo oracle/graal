@@ -36,10 +36,10 @@ final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationPa
 
     @Override
     public void parseAndRegister(Object json, URI origin) {
-        parseTopLevelObject(asMap(json, "first level of document must be an object"));
+        parseTopLevelObject(asMap(json, "first level of document must be an object"), origin);
     }
 
-    private void parseTopLevelObject(EconomicMap<String, Object> obj) {
+    private void parseTopLevelObject(EconomicMap<String, Object> obj, Object origin) {
         Object resourcesObject = null;
         Object bundlesObject = null;
         Object globsObject = null;
@@ -55,13 +55,13 @@ final class LegacyResourceConfigurationParser<C> extends ResourceConfigurationPa
         }
 
         if (resourcesObject != null) {
-            parseResourcesObject(resourcesObject);
+            parseResourcesObject(resourcesObject, origin);
         }
         if (bundlesObject != null) {
             parseBundlesObject(bundlesObject);
         }
         if (globsObject != null) {
-            parseGlobsObject(globsObject);
+            parseGlobsObject(globsObject, origin);
         }
     }
 }
