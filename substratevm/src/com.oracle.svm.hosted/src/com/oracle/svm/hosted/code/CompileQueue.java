@@ -757,7 +757,17 @@ public class CompileQueue {
 
         @Override
         protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
-            return ((HostedMethod) method).compilationInfo.getCompilationGraph().getEncodedGraph();
+            HostedMethod hostedMethod = (HostedMethod) method;
+            CompilationGraph compilationGraph = hostedMethod.compilationInfo.getCompilationGraph();
+            if (compilationGraph == null) {
+                /*
+                 * We have compiled this method in a prior layer, but don't have the graph available
+                 * here.
+                 */
+                assert hostedMethod.isCompiledInPriorLayer() : method;
+                return null;
+            }
+            return compilationGraph.getEncodedGraph();
         }
 
         @Override
