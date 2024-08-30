@@ -41,6 +41,7 @@ import static com.oracle.svm.jvmtiagentbase.Support.handleException;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
+import static com.oracle.svm.jvmtiagentbase.Support.readObjectField;
 import static com.oracle.svm.jvmtiagentbase.Support.testException;
 import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
@@ -54,13 +55,20 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
+import jdk.internal.module.ModuleLoaderMap;
 
+import jdk.internal.org.objectweb.asm.ClassReader;
+import jdk.internal.org.objectweb.asm.ClassVisitor;
+import jdk.internal.org.objectweb.asm.ModuleVisitor;
+import jdk.internal.org.objectweb.asm.Opcodes;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -134,6 +142,8 @@ final class BreakpointInterceptor {
     private static Supplier<InterceptedState> interceptedStateSupplier;
 
     private static Map<Long, Breakpoint> installedBreakpoints;
+    private static Set<String> internalModules;
+    private static Set<String> JDKPackages = Set.of("java/", "jdk/", "javax/", "org/graalvm/");
 
     /**
      * A map from {@link JNIMethodId} to entry point addresses for bound Java {@code native}
@@ -159,6 +169,13 @@ final class BreakpointInterceptor {
 
     /** Enables tracking of reflection queries for fine-tuned configuration. */
     private static boolean trackReflectionMetadata = false;
+
+    /** Enables tracing class instrumentation. */
+    private static boolean experimentalInstrumentSupport = false;
+
+    private static List<String> experimentalPredefineClassRules;
+
+    private static int preMainIndex = 0;
 
     /**
      * Locations in methods where explicit calls to {@code ClassLoader.loadClass} have been found.
@@ -1188,6 +1205,116 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    /**
+     * This breakpoint is set on the method
+     * {@code sun.instrument.InstrumentationImpl#transform(Module, ClassLoader, String, Class, ProtectionDomain, byte[], boolean)}.
+     *
+     * @param jniEnvironment the jni environment
+     * @param thread current thread
+     * @param bp current break point
+     * @param interceptedState the state
+     * @return true if everything is good
+     */
+    private static boolean recordTransform(JNIEnvironment jniEnvironment, JNIObjectHandle thread, Breakpoint bp, InterceptedState interceptedState) {
+        CIntPointer sizePrt = StackValue.get(CIntPointer.class);
+        if (jvmtiFunctions().GetArgumentsSize().invoke(jvmtiEnv(), bp.method, sizePrt) != JvmtiError.JVMTI_ERROR_NONE) {
+            return false;
+        }
+        int argSize = sizePrt.read();
+        assert argSize == 7;
+        // Invoke current method to get the result
+        JNIValue args = StackValue.get(6, JNIValue.class);
+        for (int i = 0; i < 6; i++) {
+            JNIObjectHandle arg = getObjectArgument(thread, i + 1);
+            args.addressOf(i).setObject(arg);
+        }
+        JNIObjectHandle receiver = getReceiver(thread);
+        JNIObjectHandle ret = jniFunctions().getCallObjectMethodA().invoke(jniEnvironment, receiver, bp.method, args);
+        if (testException(jniEnvironment)) {
+            return false;
+        }
+        byte[] returnedData;
+
+        if (ret.notEqual(nullHandle())) {
+            returnedData = fromJNIByteArray(jniEnvironment, ret);
+        } else {
+            returnedData = null;
+        }
+
+        byte[] inputData;
+        JNIObjectHandle inputClassData = getObjectArgument(thread, 6);
+        if (inputClassData.equal(nullHandle())) {
+            inputData = null;
+        } else {
+            inputData = fromJNIByteArray(jniEnvironment, inputClassData);
+        }
+
+        if (returnedData != null && inputData != null && !Arrays.equals(returnedData, inputData)) {
+            // The input and output are different, the class must have been modified
+            String transformTargetClassName = fromJniString(jniEnvironment, getObjectArgument(thread, 3));
+            JNIObjectHandle moduleValue = getObjectArgument(thread, 1);
+            JNIObjectHandle classValue = getObjectArgument(thread, 4);
+            String moduleName = getModuleName(jniEnvironment, moduleValue, classValue);
+            boolean isJDKInternal = isJDKInternalModule(moduleName);
+            tracer.traceCall("instrument", "transform", null, null, null, null, interceptedState.getFullStackTraceOrNull(), transformTargetClassName, returnedData, isJDKInternal, moduleName);
+        }
+        check(jvmtiFunctions().ForceEarlyReturnObject().invoke(jvmtiEnv(), thread, ret));
+        return true;
+    }
+
+    /**
+     * If a class belongs to one of the JDK internal modules, then it's a JDK internal class.
+     * 
+     */
+    private static boolean isJDKInternalModule(String moduleName) {
+        boolean isJDKInternal = false;
+        if (moduleName != null &&
+                        internalModules != null && internalModules.contains(moduleName)) {
+            isJDKInternal = true;
+        }
+        return isJDKInternal;
+    }
+
+    private static String getModuleName(JNIEnvironment jniEnvironment, JNIObjectHandle moduleValue, JNIObjectHandle classValue) {
+        JNIObjectHandle newModuleValue;
+        if (moduleValue.equal(nullHandle())) {
+            newModuleValue = readObjectField(jniEnvironment, classValue, agent.handles().javaLangClassModule);
+        } else {
+            newModuleValue = moduleValue;
+        }
+
+        if (newModuleValue.notEqual(nullHandle())) {
+            return fromJniString(jniEnvironment, readObjectField(jniEnvironment, newModuleValue, agent.handles().javaLangModuleName));
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unused")
+    private static boolean recordPreMain(JNIEnvironment jniEnvironment, JNIObjectHandle thread, Breakpoint bp, InterceptedState interceptedState) {
+        String methodName = fromJniString(jniEnvironment, getObjectArgument(thread, 2));
+        if ("agentmain".equals(methodName)) {
+            System.out.println("agentmain is not supported.");
+        } else if ("premain".equals(methodName)) {
+            preMainIndex++;
+            String className = fromJniString(jniEnvironment, getObjectArgument(thread, 1));
+            String optionString = fromJniString(jniEnvironment, getObjectArgument(thread, 3));
+            tracer.traceCall("instrument", "premain", null, null, null, null, interceptedState.getFullStackTraceOrNull(), className, preMainIndex, optionString);
+        } else {
+            System.out.println("Unrecognized method " + methodName + " skip.");
+        }
+        return true;
+    }
+
+    private static byte[] fromJNIByteArray(JNIEnvironment jniEnvironment, JNIObjectHandle jniByteArrayObj) {
+        int length = jniFunctions().getGetArrayLength().invoke(jniEnvironment, jniByteArrayObj);
+        CCharPointer isCopy = StackValue.get(CCharPointer.class);
+        isCopy.write((byte) 1);
+        CCharPointer dataPtr = jniFunctions().getGetByteArrayElements().invoke(jniEnvironment, jniByteArrayObj, isCopy);
+        byte[] inputData = new byte[length];
+        CTypeConversion.asByteBuffer(dataPtr, length).get(inputData);
+        return inputData;
+    }
+
     @CEntryPoint
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static void onBreakpoint(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread, JNIMethodId method, @SuppressWarnings("unused") long location) {
@@ -1287,25 +1414,107 @@ final class BreakpointInterceptor {
                     JNIObjectHandle loader, CCharPointer name, @SuppressWarnings("unused") JNIObjectHandle protectionDomain, int classDataLen, CCharPointer classData,
                     @SuppressWarnings("unused") CIntPointer newClassDataLen, @SuppressWarnings("unused") CCharPointerPointer newClassData) {
         InterceptedState state = interceptedStateSupplier.get();
-        if (loader.equal(nullHandle())) { // boot class loader
-            return;
-        }
-        String className = fromCString(name);
-        if (className != null && AccessAdvisor.PROXY_CLASS_NAME_PATTERN.matcher(className).matches()) {
-            // Proxy classes are handled using a different mechanism, so we ignore them here
-            return;
-        }
-        for (JNIObjectHandle builtinLoader : builtinClassLoaders) {
-            if (jniFunctions().getIsSameObject().invoke(jni, loader, builtinLoader)) {
+
+        if (experimentalInstrumentSupport) {
+            /**
+             * When a class is dynamically defined by a java agent, its classloader is probably the
+             * bootstrap classloader. As the java agent is loaded by bootstrap classloader. So we
+             * can't tell if a class is dynamic by its classloader, but need to check in the
+             * following steps:
+             */
+            String className = fromCString(name);
+            /** 1. Exclude the proxy classes */
+            if (AccessAdvisor.PROXY_CLASS_NAME_PATTERN.matcher(className).matches()) {
                 return;
             }
+            /**
+             * 2. Exclude the classes from popular JDK packages. This is a simple and fast check. We
+             * don't list all JDK packages here. Missed classes will fall into the following checks.
+             */
+            for (String jdkPackage : JDKPackages) {
+                if (className.startsWith(jdkPackage)) {
+                    return;
+                }
+            }
+            /**
+             * 3. We allow user to explicitly set known dynamic classes.
+             */
+            boolean configuredDynamic = false;
+            if (!experimentalPredefineClassRules.isEmpty()) {
+                for (String predefineClassRule : experimentalPredefineClassRules) {
+                    if (className.startsWith(predefineClassRule)) {
+                        configuredDynamic = true;
+                        break;
+                    }
+                }
+            }
+            byte[] data = new byte[classDataLen];
+            CTypeConversion.asByteBuffer(classData, classDataLen).get(data);
+
+            boolean isDynamic = true;
+            if (!configuredDynamic) {
+                /**
+                 * 4. Now read the class data to get class source and class module.
+                 */
+                String[] names = new String[2];
+
+                Arrays.fill(names, null);
+                ClassReader cr = new ClassReader(data);
+                ClassVisitor cv = new ClassVisitor(Opcodes.ASM8) {
+                    @Override
+                    public void visitSource(String source, String debug) {
+                        names[0] = source;
+                        super.visitSource(source, debug);
+                    }
+
+                    @Override
+                    public ModuleVisitor visitModule(String moduleName, int access, String version) {
+                        names[1] = moduleName;
+                        return super.visitModule(moduleName, access, version);
+                    }
+                };
+                try {
+                    cr.accept(cv, 0);
+                } catch (UnsupportedOperationException e) {
+                    // Ignore. It is taken as not dynamic class.
+                }
+                /**
+                 * 5. A class with source is not dynamic
+                 */
+                if (names[0] != null && !names[0].isEmpty()) {
+                    isDynamic = false;
+                }
+                /**
+                 * 6. A class within JDK internal module is not dynamic
+                 */
+                if (names[1] != null && internalModules != null && internalModules.contains(names[1])) {
+                    isDynamic = false;
+                }
+            }
+            if (isDynamic) {
+                tracer.traceCall("instrument", "dynamicGen", null, null, null, null, null, className, data);
+            }
+        } else {
+            if (loader.equal(nullHandle())) { // boot class loader
+                return;
+            }
+            String className = fromCString(name);
+            if (className != null && AccessAdvisor.PROXY_CLASS_NAME_PATTERN.matcher(className).matches()) {
+                // Proxy classes are handled using a different mechanism, so we ignore them here
+                return;
+            }
+            for (JNIObjectHandle builtinLoader : builtinClassLoaders) {
+                if (jniFunctions().getIsSameObject().invoke(jni, loader, builtinLoader)) {
+                    return;
+                }
+            }
+            if (jniFunctions().getIsInstanceOf().invoke(jni, loader, agent.handles().jdkInternalReflectDelegatingClassLoader)) {
+                return;
+            }
+            byte[] data = new byte[classDataLen];
+            CTypeConversion.asByteBuffer(classData, classDataLen).get(data);
+            tracer.traceCall("classloading", "onClassFileLoadHook", null, null, null, null, state.getFullStackTraceOrNull(), className, data);
         }
-        if (jniFunctions().getIsInstanceOf().invoke(jni, loader, agent.handles().jdkInternalReflectDelegatingClassLoader)) {
-            return;
-        }
-        byte[] data = new byte[classDataLen];
-        CTypeConversion.asByteBuffer(classData, classDataLen).get(data);
-        tracer.traceCall("classloading", "onClassFileLoadHook", null, null, null, null, state.getFullStackTraceOrNull(), className, data);
     }
 
     private static final CEntryPointLiteral<CFunctionPointer> onBreakpointLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onBreakpoint",
@@ -1323,7 +1532,8 @@ final class BreakpointInterceptor {
 
     public static void onLoad(JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, Tracer writer, NativeImageAgent nativeImageTracingAgent,
                     Supplier<InterceptedState> currentThreadJavaStackAccessSupplier,
-                    boolean exptlClassLoaderSupport, boolean exptlClassDefineSupport, boolean exptlUnsafeAllocationSupport, boolean trackReflectionData) {
+                    boolean exptlClassLoaderSupport, boolean exptlClassDefineSupport, boolean exptlUnsafeAllocationSupport,
+                    boolean trackReflectionData, boolean exptlInstrumentSupport, List<String> predefineClassRules) {
         BreakpointInterceptor.tracer = writer;
         BreakpointInterceptor.agent = nativeImageTracingAgent;
         BreakpointInterceptor.interceptedStateSupplier = currentThreadJavaStackAccessSupplier;
@@ -1331,6 +1541,8 @@ final class BreakpointInterceptor {
         BreakpointInterceptor.experimentalClassDefineSupport = exptlClassDefineSupport;
         BreakpointInterceptor.experimentalUnsafeAllocationSupport = exptlUnsafeAllocationSupport;
         BreakpointInterceptor.trackReflectionMetadata = trackReflectionData;
+        BreakpointInterceptor.experimentalInstrumentSupport = exptlInstrumentSupport;
+        BreakpointInterceptor.experimentalPredefineClassRules = predefineClassRules;
 
         JvmtiCapabilities capabilities = UnmanagedMemory.calloc(SizeOf.get(JvmtiCapabilities.class));
         check(jvmti.getFunctions().GetCapabilities().invoke(jvmti, capabilities));
@@ -1351,6 +1563,14 @@ final class BreakpointInterceptor {
             guarantee(jvmti.getFunctions().GetJLocationFormat().invoke(jvmti, formatPtr) == JvmtiError.JVMTI_ERROR_NONE &&
                             formatPtr.read() == JvmtiLocationFormat.JVMTI_JLOCATION_JVMBCI.getCValue(), "Expecting BCI locations");
         }
+
+        if (exptlInstrumentSupport) {
+            capabilities.setCanForceEarlyReturn(1);
+            internalModules = new HashSet<>();
+            internalModules.addAll(ModuleLoaderMap.bootModules());
+            internalModules.addAll(ModuleLoaderMap.platformModules());
+        }
+
         check(jvmti.getFunctions().AddCapabilities().invoke(jvmti, capabilities));
         UnmanagedMemory.free(capabilities);
 
@@ -1404,6 +1624,13 @@ final class BreakpointInterceptor {
             System.arraycopy(CLASS_PREDEFINITION_BREAKPOINT_SPECIFICATIONS, 0, breakpointSpecifications, existingBreakpointSpecifications.length,
                             CLASS_PREDEFINITION_BREAKPOINT_SPECIFICATIONS.length);
         }
+
+        if (experimentalInstrumentSupport) {
+            BreakpointSpecification[] existingBreakpointSpecifications = breakpointSpecifications;
+            breakpointSpecifications = Arrays.copyOf(existingBreakpointSpecifications, existingBreakpointSpecifications.length + INSTRUMENTATION_BREAKPOINTS.length);
+            System.arraycopy(INSTRUMENTATION_BREAKPOINTS, 0, breakpointSpecifications, existingBreakpointSpecifications.length, INSTRUMENTATION_BREAKPOINTS.length);
+        }
+
         for (BreakpointSpecification br : breakpointSpecifications) {
             JNIObjectHandle clazz = nullHandle();
             if (lastClassName != null && lastClassName.equals(br.className)) {
@@ -1637,6 +1864,7 @@ final class BreakpointInterceptor {
                     brk("jdk/internal/reflect/ReflectionFactory",
                                     "newConstructorForSerialization",
                                     "(Ljava/lang/Class;Ljava/lang/reflect/Constructor;)Ljava/lang/reflect/Constructor;", BreakpointInterceptor::customTargetConstructorSerialization),
+
                     optionalBrk("java/util/ResourceBundle",
                                     "getBundleImpl",
                                     "(Ljava/lang/Module;Ljava/lang/Module;Ljava/lang/String;Ljava/util/Locale;Ljava/util/ResourceBundle$Control;)Ljava/util/ResourceBundle;",
@@ -1716,6 +1944,13 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::getNestMembers),
                     optionalBrk("java/lang/Class", "getSigners", "()[Ljava/lang/Object;",
                                     BreakpointInterceptor::getSigners)
+    };
+
+    private static final BreakpointSpecification[] INSTRUMENTATION_BREAKPOINTS = {
+                    brk("sun/instrument/TransformerManager",
+                                    "transform",
+                                    "(Ljava/lang/Module;Ljava/lang/ClassLoader;Ljava/lang/String;Ljava/lang/Class;Ljava/security/ProtectionDomain;[B)[B", BreakpointInterceptor::recordTransform),
+                    brk("sun/instrument/InstrumentationImpl", "loadClassAndStartAgent", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V", BreakpointInterceptor::recordPreMain)
     };
 
     private static boolean allocateInstance(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {

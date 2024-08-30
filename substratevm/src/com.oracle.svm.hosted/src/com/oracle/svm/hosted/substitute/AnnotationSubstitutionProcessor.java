@@ -47,6 +47,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import com.oracle.svm.util.LogUtils;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -58,6 +59,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.annotate.Advice;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -85,6 +87,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+
 public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     /**
@@ -106,11 +110,15 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> polymorphicMethodSubstitutions;
     private final Map<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
     private final ClassInitializationSupport classInitializationSupport;
+    private AspectProcessor aspectProcessor;
+    private SnippetReflectionProvider snippetReflectionProvider;
 
-    public AnnotationSubstitutionProcessor(ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
+    public AnnotationSubstitutionProcessor(ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport,
+                    SnippetReflectionProvider snippetReflectionProvider) {
         this.imageClassLoader = imageClassLoader;
         this.metaAccess = metaAccess;
         this.classInitializationSupport = classInitializationSupport;
+        this.snippetReflectionProvider = snippetReflectionProvider;
 
         deleteAnnotations = new HashMap<>();
         typeSubstitutions = new ConcurrentHashMap<>();
@@ -133,6 +141,26 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private ResolvedJavaType findTypeSubstitution(ResolvedJavaType type) {
+        Class<?> originalClass = snippetReflectionProvider.originalClass(type);
+        if (originalClass != null) {
+            List<Class<?>> annotatedClasses = aspectProcessor.handleSubClassAspect(originalClass);
+            if (annotatedClasses != null) {
+                for (Class<?> annotatedClass : annotatedClasses) {
+                    ResolvedJavaType resolvedAnnotatedType = metaAccess.lookupJavaType(annotatedClass);
+                    if (!typeSubstitutions.containsKey(resolvedAnnotatedType)) {
+                        try {
+                            handleAliasClass(annotatedClass, originalClass, lookupAnnotation(annotatedClass, TargetClass.class));
+                        } catch (UserError.UserException e) {
+                            if (e.getMessage().startsWith("Already registered:")) {
+                                // ignore
+                            } else {
+                                throw e;
+                            }
+                        }
+                    }
+                }
+            }
+        }
         ResolvedJavaType substitution = typeSubstitutions.get(type);
         if (substitution != null) {
             return substitution;
@@ -293,6 +321,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     public void init() {
+        aspectProcessor = new AspectProcessor(imageClassLoader);
+        aspectProcessor.registerAspects();
+        aspectProcessor.handleMatchersAspect();
         List<Class<?>> annotatedClasses = findTargetClasses();
 
         /* Sort by name to make processing order predictable for debugging. */
@@ -442,7 +473,15 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             AnnotatedMethod substitution = new AnnotatedMethod(original, annotated);
             register(methodSubstitutions, annotated, original, substitution);
         } else if (aliasAnnotation != null) {
-            register(methodSubstitutions, annotated, original, original);
+            /**
+             * Put a special Substitution for {@link Alias#noSubstitution()} case. This substitution
+             * has the same annotated and original.
+             */
+            if (aliasAnnotation.noSubstitution()) {
+                register(methodSubstitutions, annotated, null, new SubstitutionMethod(original, original, false, true));
+            } else {
+                register(methodSubstitutions, annotated, original, original);
+            }
         }
     }
 
@@ -808,7 +847,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         String originalName = "";
         if (targetElementAnnotation != null) {
             originalName = targetElementAnnotation.name();
-            if (!isIncluded(targetElementAnnotation, originalClass, annotatedElement)) {
+            if (!isIncluded(targetElementAnnotation.onlyWith(), originalClass, annotatedElement)) {
                 return null;
             }
         }
@@ -887,8 +926,8 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
-    private static boolean isIncluded(TargetElement targetElementAnnotation, Class<?> originalClass, AnnotatedElement annotatedElement) {
-        for (Class<?> onlyWithClass : targetElementAnnotation.onlyWith()) {
+    public static boolean isIncluded(Class<?>[] onlyWithClasses, Class<?> originalClass, AnnotatedElement annotatedElement) {
+        for (Class<?> onlyWithClass : onlyWithClasses) {
             Object onlyWithProvider;
             try {
                 onlyWithProvider = ReflectionUtil.newInstance(onlyWithClass);
@@ -921,9 +960,38 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             substitutions.put(annotated, target);
         }
         if (original != null) {
-            guarantee(!substitutions.containsKey(original) || substitutions.get(original) == original || substitutions.get(original) == target,
-                            "Substition: %s conflicts with previously registered: %s", original, substitutions.get(original));
-            substitutions.put(original, target);
+            if (!substitutions.containsKey(original) || substitutions.get(original) == original || substitutions.get(original) == target) {
+                substitutions.put(original, target);
+            } else {
+                if (substitutions.containsKey(original)) {
+                    T existingItem = substitutions.get(original);
+                    if (existingItem instanceof SubstitutionMethod && original == target) {
+                        // Alias don't conflict with substitution, ignore
+                        return;
+                    }
+                    if (existingItem != original && existingItem != target) {
+                        boolean incomingIsAgentSupport = annotated instanceof ResolvedJavaMethod && ((ResolvedJavaMethod) annotated).getDeclaredAnnotation(Advice.ForAgentSupport.class) != null;
+                        boolean existingIsAgentSupport = existingItem instanceof ResolvedJavaMethod && ((ResolvedJavaMethod) existingItem).getDeclaredAnnotation(Advice.ForAgentSupport.class) != null;
+                        if (incomingIsAgentSupport && existingIsAgentSupport) {
+                            throw UserError.abort("User provided agent support advice methods are conflicted: %s, %s", annotated, existingItem);
+                        }
+                        String messageFormat = "Could not apply advice for method %s with substitution %s. Because it conflicts with %s";
+                        // newly incoming substitute method is for agent support, keep the existing
+                        // one.
+                        if (incomingIsAgentSupport) {
+                            LogUtils.warning(messageFormat, original, annotated, existingItem);
+                            return;
+                        }
+                        // existing substitute method is for agent support, replace it.
+                        if (existingIsAgentSupport) {
+                            substitutions.put(original, target);
+                            LogUtils.warning(messageFormat, original, existingItem, annotated);
+                            return;
+                        }
+                    }
+                }
+                throw UserError.abort("Substitution: %s conflicts with previously registered: %s", original, substitutions.get(original));
+            }
         }
     }
 

@@ -308,6 +308,9 @@ suite = {
                     "jdk.internal.util",
                     "jdk.internal.org.objectweb.asm",
                 ],
+                "java.instrument":[
+                  "java.lang.instrument"
+                ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
                     "sun.management",
@@ -627,6 +630,8 @@ suite = {
                     "jdk.internal.vm.annotation",
                     "jdk.internal.org.objectweb.asm",
                     "sun.net.www",
+                    "jdk.internal.org.objectweb.asm.tree",
+                    "jdk.internal.org.objectweb.asm.commons",
                     "sun.reflect.annotation",
                     "sun.security.jca",
                     "sun.security.provider",
@@ -640,6 +645,9 @@ suite = {
                     "sun.util.cldr",
                     "sun.util.locale",
                     "sun.invoke.util",
+                ],
+                "java.instrument":[
+                    "java.lang.instrument"
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver", # Needed for javadoc links (MXBeanIntrospector,DefaultMXBeanMappingFactory, MXBeanProxy)
@@ -1440,7 +1448,11 @@ suite = {
             "requiresConcealed" : {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
-                ]
+                ],
+                "java.base": [
+                    "jdk.internal.module",
+                    "jdk.internal.org.objectweb.asm",
+                ],
             },
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
@@ -1988,6 +2000,9 @@ suite = {
                 "requiresConcealed" : {
                     "jdk.internal.vm.ci" : [
                         "jdk.vm.ci.meta",
+                    ],
+                    "java.base": [
+                        "jdk.internal.module",
                     ],
                 },
                 "requires": [

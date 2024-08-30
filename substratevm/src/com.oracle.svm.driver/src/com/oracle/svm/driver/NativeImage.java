@@ -68,6 +68,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.core.configure.ConfigurationFiles;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
 
@@ -272,6 +274,10 @@ public class NativeImage {
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
     final String oHDeadlockWatchdogInterval = oH(SubstrateOptions.DeadlockWatchdogInterval);
 
+    final String oHConfigurationFileDirectories = oH(ConfigurationFiles.Options.ConfigurationFileDirectories);
+    final String oHInstrumentConfigurationFiles = oH(ConfigurationFiles.Options.InstrumentConfigurationFiles);
+    final String oHInstrumentConfigurationResources = oH(ConfigurationFiles.Options.InstrumentConfigurationResources);
+
     final Map<String, String> imageBuilderEnvironment = new HashMap<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageBuilderModulePath = new LinkedHashSet<>();
@@ -280,6 +286,7 @@ public class NativeImage {
     private final ArrayList<String> imageBuilderJavaArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageModulePath = new LinkedHashSet<>();
+    private final LinkedHashSet<Path> imageInstrumentPath = new LinkedHashSet<>();
     private final ArrayList<String> customJavaArgs = new ArrayList<>();
     private final LinkedHashSet<Path> customImageClasspath = new LinkedHashSet<>();
     private final ArrayList<OptionHandler<? extends NativeImage>> optionHandlers = new ArrayList<>();
@@ -694,6 +701,16 @@ public class NativeImage {
                 forEachPropertyValue(properties.get("Args"), args, resolver);
             } else {
                 args.accept(oH(type.optionKey) + resourceRoot.relativize(resourcePath));
+            }
+            /*
+             * Add instrumentation classes path at the very beginning of image classpath, so they
+             * will override all the same name classes in the path appended later.
+             */
+            if (type == MetaInfFileType.InstrumentConfiguration) {
+                Path instrumentClassesPath = resourcePath.getParent().resolve(ConfigurationFile.INSTRUMENT_CLASSES_SUBDIR);
+                if (Files.isDirectory(instrumentClassesPath)) {
+                    imageInstrumentPath.add(instrumentClassesPath);
+                }
             }
             args.apply(true);
 
@@ -1479,7 +1496,7 @@ public class NativeImage {
     String imageName;
     Path imagePath;
 
-    protected static List<String> createImageBuilderArgs(List<String> imageArgs, List<Path> imagecp, List<Path> imagemp) {
+    protected static List<String> createImageBuilderArgs(List<String> imageArgs, List<Path> imagecp, List<Path> imagemp, List<Path> instpath) {
         List<String> result = new ArrayList<>();
         if (!imagecp.isEmpty()) {
             result.add(SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
@@ -1488,6 +1505,10 @@ public class NativeImage {
         if (!imagemp.isEmpty()) {
             result.add(SubstrateOptions.IMAGE_MODULEPATH_PREFIX);
             result.add(imagemp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+        }
+        if (!instpath.isEmpty()) {
+            result.add(SubstrateOptions.INSTRUMENT_CLASSPATH_PREFIX);
+            result.add(instpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
         }
         result.addAll(imageArgs);
         return result;
@@ -1568,6 +1589,8 @@ public class NativeImage {
         }
         List<Path> finalImageModulePath = applicationModules.values().stream().toList();
 
+        List<Path> finalImageInstrumentPath = lookForInstrumentedClassPath(finalImageArgs);
+
         if (!addModules.isEmpty()) {
 
             arguments.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" +
@@ -1613,7 +1636,7 @@ public class NativeImage {
         Path keepAliveFileInContainer = Path.of("/keep_alive");
         arguments.addAll(Arrays.asList(SubstrateOptions.KEEP_ALIVE_PREFIX, (useContainer ? keepAliveFileInContainer : keepAliveFile).toString()));
 
-        List<String> finalImageBuilderArgs = createImageBuilderArgs(finalImageArgs, finalImageClassPath, finalImageModulePath);
+        List<String> finalImageBuilderArgs = createImageBuilderArgs(finalImageArgs, finalImageClassPath, finalImageModulePath, finalImageInstrumentPath);
 
         /* Construct ProcessBuilder command from final arguments */
         List<String> command = new ArrayList<>();
@@ -1735,6 +1758,27 @@ public class NativeImage {
                 p.destroy();
             }
         }
+    }
+
+    private static void checkInstrumentConfigOptions(String commaSeparatedList, List<Path> ret, Function<Path, Path> pathMapper) {
+        if (commaSeparatedList != null) {
+            String[] paths = commaSeparatedList.split(",");
+            for (String path : paths) {
+                Path d = Paths.get(path);
+                Path instrumentClassesDir = pathMapper.apply(d).resolve(ConfigurationFile.INSTRUMENT_CLASSES_SUBDIR);
+                if (Files.isDirectory(instrumentClassesDir)) {
+                    ret.add(instrumentClassesDir);
+                }
+            }
+        }
+    }
+
+    private List<Path> lookForInstrumentedClassPath(List<String> finalImageArgs) {
+        List<Path> ret = new ArrayList<>(imageInstrumentPath);
+        checkInstrumentConfigOptions(getHostedOptionArgumentValue(finalImageArgs, oHConfigurationFileDirectories), ret, Function.identity());
+        checkInstrumentConfigOptions(getHostedOptionArgumentValue(finalImageArgs, oHInstrumentConfigurationFiles), ret, p -> p.getParent());
+        checkInstrumentConfigOptions(getHostedOptionArgumentValue(finalImageArgs, oHInstrumentConfigurationResources), ret, p -> p.getParent());
+        return ret;
     }
 
     private Set<String> getBuiltInModules() {

@@ -132,6 +132,8 @@ public final class AccessAdvisor {
 
         internalAccessFilter = HierarchyFilterNode.createInclusiveRoot();
         excludeInaccessiblePackages(internalAccessFilter);
+        // Don't need code for instrumenting in native image
+        internalAccessFilter.addOrGetChildren("sun.instrument.**", ConfigurationFilter.Inclusion.Exclude);
         internalAccessFilter.removeRedundantNodes();
 
         accessWithoutCallerFilter = HierarchyFilterNode.createInclusiveRoot(); // in addition to

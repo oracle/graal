@@ -46,6 +46,7 @@ import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
+import com.oracle.svm.core.configure.InstrumentConfigurationParser;
 import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.util.LogUtils;
 
@@ -265,13 +266,17 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
         ConfigurationSet omittedConfigurationSet;
 
         try {
-            omittedConfigurationSet = omittedCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, null, null);
+            omittedConfigurationSet = omittedCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, null, null, null);
             List<LazyValue<Path>> predefinedClassDestDirs = new ArrayList<>();
             for (URI pathUri : outputCollection.getPredefinedClassesConfigPaths()) {
                 predefinedClassDestDirs.add(PredefinedClassesConfigurationParser.directorySupplier(Paths.get(pathUri).getParent()));
             }
+            List<LazyValue<Path>> instrumentClassDestDirs = new ArrayList<>();
+            for (URI pathUri : outputCollection.getInstrumentConfigPaths()) {
+                instrumentClassDestDirs.add(InstrumentConfigurationParser.directorySupplier(Paths.get(pathUri).getParent()));
+            }
             Predicate<String> shouldExcludeClassesWithHash = omittedConfigurationSet.getPredefinedClassesConfiguration()::containsClassWithHash;
-            configurationSet = inputCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, predefinedClassDestDirs, shouldExcludeClassesWithHash);
+            configurationSet = inputCollection.loadConfigurationSet(ConfigurationFileCollection.FAIL_ON_EXCEPTION, predefinedClassDestDirs, shouldExcludeClassesWithHash, instrumentClassDestDirs);
         } catch (IOException e) {
             throw e;
         } catch (Throwable t) {

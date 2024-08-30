@@ -30,6 +30,8 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationPredefinedClass;
 import com.oracle.svm.configure.config.ConfigurationType;
+import com.oracle.svm.configure.config.ConfigurationInstrument;
+import com.oracle.svm.configure.config.InstrumentConfiguration;
 import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
@@ -42,7 +44,8 @@ import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
 
 public class ConditionalConfigurationPredicate implements TypeConfiguration.Predicate, ProxyConfiguration.Predicate,
-                ResourceConfiguration.Predicate, SerializationConfiguration.Predicate, PredefinedClassesConfiguration.Predicate {
+                ResourceConfiguration.Predicate, SerializationConfiguration.Predicate, PredefinedClassesConfiguration.Predicate,
+                InstrumentConfiguration.Predicate {
 
     private final ComplexFilter filter;
 
@@ -100,5 +103,15 @@ public class ConditionalConfigurationPredicate implements TypeConfiguration.Pred
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean testExcludeClass(ConfigurationInstrument.Class instrumentClass) {
+        return !filter.includes(instrumentClass.getName());
+    }
+
+    @Override
+    public boolean testExcludeMethod(ConfigurationInstrument.Method premain) {
+        return !filter.includes(premain.getClassName());
     }
 }

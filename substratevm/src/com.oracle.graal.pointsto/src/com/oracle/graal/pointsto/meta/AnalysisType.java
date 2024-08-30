@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
 
@@ -1094,6 +1095,23 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         Object resolvedMethod = resolvedMethods.get(method);
         if (resolvedMethod == null) {
+
+            /**
+             * A special pattern to allow an alias method stick to the original method. See
+             * {@link com.oracle.svm.core.annotate.Alias#noSubstitution()}
+             */
+            ResolvedJavaMethod wrappedMethod = ((AnalysisMethod) method).unwrapTowardsOriginalMethod();
+            Class<?> subMethodClass = ReflectionUtil.lookupClass(true, "com.oracle.svm.hosted.substitute.SubstitutionMethod");
+            if (subMethodClass != null) {
+                if (subMethodClass.isAssignableFrom(wrappedMethod.getClass())) {
+                    ResolvedJavaMethod original = ReflectionUtil.readField(subMethodClass, "original", wrappedMethod);
+                    ResolvedJavaMethod annotated = ReflectionUtil.readField(subMethodClass, "annotated", wrappedMethod);
+                    if (original == annotated) {
+                        resolvedMethods.putIfAbsent(method, method);
+                        return (AnalysisMethod) method;
+                    }
+                }
+            }
             ResolvedJavaMethod originalMethod = OriginalMethodProvider.getOriginalMethod(method);
             Object newResolvedMethod = null;
             if (originalMethod != null) {

@@ -198,4 +198,8 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         Method method = ReflectionUtil.lookupMethod(getParent().getClass(), "appendToClassPathForInstrumentation", String.class);
         ReflectionUtil.invokeMethod(method, getParent(), classPathEntry);
     }
+
+    public static Class<?> defineClass(ClassLoader classLoader, String name, byte[] b, int offset, int length) {
+        return ReflectionUtil.invokeMethod(defineClass, classLoader, name, b, offset, length);
+    }
 }
