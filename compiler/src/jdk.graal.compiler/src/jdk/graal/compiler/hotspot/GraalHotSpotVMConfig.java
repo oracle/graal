@@ -370,6 +370,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      */
     public final int identityHashCodeShift = getConstant("markWord::hash_shift", Integer.class);
 
+    public final int contEntry = getFieldOffset("JavaThread::_cont_entry", Integer.class, "ContinuationEntry*", -1, JDK >= 24);
+    public final int pinCount = getFieldOffset("ContinuationEntry::_pin_count", Integer.class, "uint32_t", -1, JDK >= 24);
+
     /**
      * Identity hash code value when uninitialized.
      */
