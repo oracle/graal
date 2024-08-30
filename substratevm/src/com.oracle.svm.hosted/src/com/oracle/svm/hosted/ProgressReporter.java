@@ -140,7 +140,7 @@ public class ProgressReporter {
         PARSING("Parsing methods", true, true),
         INLINING("Inlining methods", true, false),
         COMPILING("Compiling methods", true, true),
-        LAYOUTING("Layouting methods", true, true),
+        LAYING_OUT("Laying out methods", true, true),
         CREATING("Creating image", true, true);
 
         private static final int NUM_STAGES = values().length;
@@ -511,7 +511,7 @@ public class ProgressReporter {
     }
 
     public ReporterClosable printLayouting() {
-        return print(TimerCollection.Registry.LAYOUT, BuildStage.LAYOUTING);
+        return print(TimerCollection.Registry.LAYOUT, BuildStage.LAYING_OUT);
     }
 
     // TODO: merge printCreationStart and printCreationEnd at some point (GR-35721).
