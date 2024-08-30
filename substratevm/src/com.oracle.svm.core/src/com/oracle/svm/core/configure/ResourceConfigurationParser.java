@@ -65,7 +65,7 @@ public abstract class ResourceConfigurationParser<C> extends ConfigurationParser
     }
 
     @SuppressWarnings("unchecked")
-    protected void parseResourcesObject(Object resourcesObject) {
+    protected void parseResourcesObject(Object resourcesObject, Object origin) {
         if (resourcesObject instanceof EconomicMap) { // New format
             EconomicMap<String, Object> resourcesObjectMap = (EconomicMap<String, Object>) resourcesObject;
             checkAttributes(resourcesObjectMap, "resource descriptor object", Collections.singleton("includes"), Collections.singleton("excludes"));
@@ -74,7 +74,7 @@ public abstract class ResourceConfigurationParser<C> extends ConfigurationParser
 
             List<Object> includes = asList(includesObject, "Attribute 'includes' must be a list of resources");
             for (Object object : includes) {
-                parsePatternEntry(object, registry::addResources, "'includes' list");
+                parsePatternEntry(object, (condition, pattern) -> registry.addResources(condition, pattern, origin), "'includes' list");
             }
 
             if (excludesObject != null) {
@@ -86,7 +86,7 @@ public abstract class ResourceConfigurationParser<C> extends ConfigurationParser
         } else { // Old format: may be deprecated in future versions
             List<Object> resources = asList(resourcesObject, "Attribute 'resources' must be a list of resources");
             for (Object object : resources) {
-                parsePatternEntry(object, registry::addResources, "'resources' list");
+                parsePatternEntry(object, (condition, pattern) -> registry.addResources(condition, pattern, origin), "'resources' list");
             }
         }
     }
@@ -146,10 +146,10 @@ public abstract class ResourceConfigurationParser<C> extends ConfigurationParser
         resourceRegistry.accept(resolvedConfigurationCondition.get(), value);
     }
 
-    protected void parseGlobsObject(Object globsObject) {
+    protected void parseGlobsObject(Object globsObject, Object origin) {
         List<Object> globs = asList(globsObject, "Attribute 'globs' must be a list of glob patterns");
         for (Object object : globs) {
-            parseGlobEntry(object, registry::addGlob);
+            parseGlobEntry(object, (condition, module, glob) -> registry.addGlob(condition, module, glob, origin));
         }
     }
 

@@ -52,9 +52,9 @@ public interface RuntimeResourceSupport<C> {
         return ImageSingletons.lookup(RuntimeResourceSupport.class);
     }
 
-    void addResources(C condition, String pattern);
+    void addResources(C condition, String pattern, Object origin);
 
-    void addGlob(C condition, String module, String glob);
+    void addGlob(C condition, String module, String glob, Object origin);
 
     void ignoreResources(C condition, String pattern);
 
@@ -65,16 +65,16 @@ public interface RuntimeResourceSupport<C> {
     /* Following functions are used only from features */
     void addCondition(ConfigurationCondition configurationCondition, Module module, String resourcePath);
 
-    void addResourceEntry(Module module, String resourcePath);
+    void addResourceEntry(Module module, String resourcePath, Object origin);
 
-    default void addResource(Module module, String resourcePath) {
-        addResource(ConfigurationCondition.alwaysTrue(), module, resourcePath);
+    default void addResource(Module module, String resourcePath, Object origin) {
+        addResource(ConfigurationCondition.alwaysTrue(), module, resourcePath, origin);
     }
 
-    default void addResource(ConfigurationCondition condition, Module module, String resourcePath) {
-        addResourceEntry(module, resourcePath);
+    default void addResource(ConfigurationCondition condition, Module module, String resourcePath, Object origin) {
+        addResourceEntry(module, resourcePath, origin);
         addCondition(condition, module, resourcePath);
     }
 
-    void injectResource(Module module, String resourcePath, byte[] resourceContent);
+    void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin);
 }

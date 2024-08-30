@@ -144,6 +144,7 @@ public class LocalizationSupport {
         if (bundle instanceof PropertyResourceBundle) {
             String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
             String resourceName;
+            String origin = "Added for PropertyResourceBundle: " + bundleName;
             if (bundleNameWithModule.length < 2) {
                 resourceName = toSlashSeparated(control.toBundleName(bundleName, locale)).concat(".properties");
 
@@ -151,18 +152,18 @@ public class LocalizationSupport {
                 Set<Module> modules = packageToModules.getOrDefault(packageName(bundleName), Collections.emptySet());
 
                 for (Module m : modules) {
-                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName);
+                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName, origin);
                 }
 
                 if (modules.isEmpty()) {
-                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(null, resourceName);
+                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(null, resourceName, origin);
                 }
             } else {
                 if (findModule != null) {
                     resourceName = toSlashSeparated(control.toBundleName(bundleNameWithModule[1], locale)).concat(".properties");
                     Optional<Module> module = findModule.apply(bundleNameWithModule[0]);
                     String finalResourceName = resourceName;
-                    module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName));
+                    module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName, origin));
                 }
             }
         }
