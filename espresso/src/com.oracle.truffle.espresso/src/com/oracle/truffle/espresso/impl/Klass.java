@@ -163,11 +163,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             if (receiver.isArray() && COMPONENT.equals(member)) {
                 return true;
             }
-            if (receiver.getSuperKlass() != null && SUPER.equals(member)) {
-                return true;
-            }
-
-            return false;
+            return receiver.getSuperKlass() != null && SUPER.equals(member);
         }
     }
 
@@ -208,7 +204,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                         return EspressoFunction.createStaticInvocable(candidates[0]);
                     }
                 }
-            } catch (ArityException e) {
+            } catch (ArityException | UnknownIdentifierException e) {
                 /* ignore and continue */
             }
 
@@ -311,26 +307,16 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         // Specialization prevents caching a node that would leak the context
         @Specialization(guards = "language.isShared()")
         static Object doShared(Klass receiver, String member, Object[] arguments,
-                        @Bind("$node") Node node,
-                        @Cached @Shared InlinedBranchProfile error,
                         @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary receiverInterop,
                         @Bind("getLang(receiverInterop)") @SuppressWarnings("unused") EspressoLanguage language) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-            return invokeMember(receiver, member, arguments, node, receiverInterop, error, InteropLookupAndInvokeFactory.NonVirtualNodeGen.getUncached());
+            return invokeMember(receiver, member, arguments, InteropLookupAndInvokeFactory.NonVirtualNodeGen.getUncached());
         }
 
         @Specialization
         static Object invokeMember(Klass receiver, String member,
                         Object[] arguments,
-                        @Bind("$node") Node node,
-                        @CachedLibrary("receiver") InteropLibrary receiverInterop,
-                        @Cached InlinedBranchProfile error,
                         @Cached InteropLookupAndInvoke.NonVirtual lookupAndInvoke)
                         throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-            if (!receiverInterop.isMemberInvocable(receiver, member)) {
-                // Not invocable, no matter the arity or argument types.
-                error.enter(node);
-                throw UnknownIdentifierException.create(member);
-            }
             return lookupAndInvoke.execute(null, receiver, arguments, member);
         }
     }
@@ -525,7 +511,12 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
             ObjectKlass objectKlass = (ObjectKlass) receiver;
             StaticObject instance = allocateNewInstance(EspressoContext.get(lookupAndInvoke), objectKlass);
-            lookupAndInvoke.execute(instance, objectKlass, arguments, INIT_NAME);
+            try {
+                lookupAndInvoke.execute(instance, objectKlass, arguments, INIT_NAME);
+            } catch (UnknownIdentifierException e) {
+                error.enter(node);
+                throw UnsupportedMessageException.create();
+            }
             return instance;
         }
 
@@ -1382,10 +1373,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             if (statics && m.isStatic()) {
                 return true;
             }
-            if (instances && !m.isStatic()) {
-                return true;
-            }
-            return false;
+            return instances && !m.isStatic();
         }
     }
 
@@ -1778,8 +1766,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     @Override
     public int getStatus() {
-        if (this instanceof ObjectKlass) {
-            ObjectKlass objectKlass = (ObjectKlass) this;
+        if (this instanceof ObjectKlass objectKlass) {
             int status = 0;
             if (objectKlass.isErroneous()) {
                 return ClassStatusConstants.ERROR;
