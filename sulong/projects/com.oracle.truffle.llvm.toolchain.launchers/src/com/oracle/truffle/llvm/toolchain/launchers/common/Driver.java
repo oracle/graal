@@ -200,7 +200,7 @@ public class Driver {
             // set exit code
             int exitCode = p.exitValue();
             if (verbose) {
-                System.out.println("exit code: " + exitCode);
+                System.err.println("exit code: " + exitCode);
             }
             return exitCode;
         } catch (IOException ioe) {
@@ -251,9 +251,9 @@ public class Driver {
             System.out.println("GraalVM version: " + getVersion());
         }
         if (verbose) {
-            System.out.println("GraalVM wrapper script for " + getTool());
-            System.out.println("GraalVM version: " + getVersion());
-            System.out.println("running: " + String.join(" ", toolArgs));
+            System.err.println("GraalVM wrapper script for " + getTool());
+            System.err.println("GraalVM version: " + getVersion());
+            System.err.println("running: " + String.join(" ", toolArgs));
         }
         if (help) {
             if (!earlyExit) {
