@@ -529,7 +529,7 @@ public class FrameInfoDecoder {
         return (encodedBci & DURING_CALL_MASK) != 0;
     }
 
-    protected static boolean decodeRethrowException(long encodedBci) {
+    public static boolean decodeRethrowException(long encodedBci) {
         return (encodedBci & RETHROW_EXCEPTION_MASK) != 0;
     }
 
