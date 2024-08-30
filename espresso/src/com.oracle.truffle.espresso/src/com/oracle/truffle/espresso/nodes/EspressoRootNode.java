@@ -153,8 +153,15 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     @Override
     protected Object translateStackTraceElement(TruffleStackTraceElement element) {
-        Node location = element.getLocation();
-        return new ForeignStackTraceElementObject(getMethod(), location != null ? location.getEncapsulatingSourceSection() : getEncapsulatingSourceSection());
+        SourceSection sourceSection;
+        if (element.hasBytecodeIndex()) {
+            sourceSection = getMethodVersion().getSourceSectionAtBCI(element.getBytecodeIndex());
+        } else if (element.getLocation() != null) {
+            sourceSection = element.getLocation().getEncapsulatingSourceSection();
+        } else {
+            sourceSection = getEncapsulatingSourceSection();
+        }
+        return new ForeignStackTraceElementObject(getMethod(), sourceSection);
     }
 
     @Override
@@ -475,5 +482,13 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     @Override
     protected final boolean isTrivial() {
         return !methodNode.getMethodVersion().isSynchronized() && methodNode.isTrivial();
+    }
+
+    @Override
+    public boolean isInternal() {
+        if (getMethod().isHidden()) {
+            return true;
+        }
+        return super.isInternal();
     }
 }
