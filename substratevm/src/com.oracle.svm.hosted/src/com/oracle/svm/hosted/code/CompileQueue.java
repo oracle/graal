@@ -757,17 +757,7 @@ public class CompileQueue {
 
         @Override
         protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
-            HostedMethod hostedMethod = (HostedMethod) method;
-            CompilationGraph compilationGraph = hostedMethod.compilationInfo.getCompilationGraph();
-            if (compilationGraph == null) {
-                /*
-                 * We have compiled this method in a prior layer, but don't have the graph available
-                 * here.
-                 */
-                assert hostedMethod.isCompiledInPriorLayer() : method;
-                return null;
-            }
-            return compilationGraph.getEncodedGraph();
+            return ((HostedMethod) method).compilationInfo.getCompilationGraph().getEncodedGraph();
         }
 
         @Override
@@ -855,6 +845,16 @@ public class CompileQueue {
     }
 
     private boolean makeInlineDecision(HostedMethod method, HostedMethod callee) {
+        // GR-57832 this will be removed
+        if (callee.compilationInfo.getCompilationGraph() == null) {
+            /*
+             * We have compiled this method in a prior layer, but don't have the graph available
+             * here.
+             */
+            assert callee.isCompiledInPriorLayer() : method;
+            return false;
+        }
+
         if (universe.hostVM().neverInlineTrivial(method.getWrapped(), callee.getWrapped())) {
             return false;
         }
