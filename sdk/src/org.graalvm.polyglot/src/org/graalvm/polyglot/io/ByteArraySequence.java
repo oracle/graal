@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -142,18 +142,16 @@ final class ByteArraySequence implements ByteSequence {
     }
 
     public ByteSequence subSequence(int startIndex, int endIndex) {
-        int l = endIndex - startIndex;
-        if (l < 0) {
-            throw new IndexOutOfBoundsException(String.valueOf(l));
-        }
-        final int realStartIndex = start + startIndex;
-        if (realStartIndex < 0) {
+        if (startIndex < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(startIndex));
         }
-        if (endIndex > length()) {
-            throw new IndexOutOfBoundsException(String.valueOf(realStartIndex + l));
+        if (endIndex < startIndex) {
+            throw new IndexOutOfBoundsException(String.valueOf((long) endIndex - startIndex));
         }
-        return new ByteArraySequence(buffer, realStartIndex, l);
+        if (endIndex > length()) {
+            throw new IndexOutOfBoundsException(String.valueOf(endIndex));
+        }
+        return new ByteArraySequence(buffer, start + startIndex, endIndex - startIndex);
     }
 
 }
