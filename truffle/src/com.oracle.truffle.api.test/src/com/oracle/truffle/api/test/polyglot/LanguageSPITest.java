@@ -3091,15 +3091,13 @@ public class LanguageSPITest {
         try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
             context.initialize(ProxyLanguage.ID);
             context.enter();
-            Env env = com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext.get(null).getEnv();
+            Env env = ProxyLanguage.LanguageContext.get(null).getEnv();
             LanguageInfo languageInfo = env.getLanguageInfo(ProxyLanguage.class);
             assertEquals(ProxyLanguage.ID, languageInfo.getId());
 
             assertFails(() -> env.getLanguageInfo(InvalidLanguageClass.class), IllegalArgumentException.class);
 
-            @SuppressWarnings("unchecked")
-            Class<? extends TruffleLanguage<?>> hostLanguage = (Class<? extends TruffleLanguage<?>>) Class.forName("com.oracle.truffle.host.HostLanguage");
-
+            Class<? extends TruffleLanguage<?>> hostLanguage = InteropLibrary.getUncached().getLanguage(env.asBoxedGuestValue(1));
             assertEquals("host", env.getLanguageInfo(hostLanguage).getId());
         }
     }

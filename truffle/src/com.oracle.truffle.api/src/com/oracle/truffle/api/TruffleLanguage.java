@@ -2836,6 +2836,7 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Returns the {@link LanguageInfo language info} for a given language class if available.
+         * The class may be obtained with <code>InteropLibrary.getLanguage(Object)</code>.
          * Throws an {@link IllegalArgumentException} if the provided language is not registered.
          *
          * @param languageClass the language class to convert
