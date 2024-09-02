@@ -72,4 +72,12 @@ public class WasmMemoryFactory {
             }
         }
     }
+
+    public static long getMaximumAllowedSize(boolean unsafeMemory) {
+        if (unsafeMemory) {
+            return UnsafeWasmMemory.MAX_ALLOWED_SIZE;
+        } else {
+            return NativeWasmMemory.MAX_ALLOWED_SIZE;
+        }
+    }
 }

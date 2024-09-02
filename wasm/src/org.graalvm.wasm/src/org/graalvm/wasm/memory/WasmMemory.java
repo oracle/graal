@@ -41,6 +41,7 @@
 package org.graalvm.wasm.memory;
 
 import static java.lang.Long.compareUnsigned;
+import static org.graalvm.wasm.Assert.assertUnsignedLongLessOrEqual;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
@@ -119,6 +120,8 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     protected final boolean shared;
 
     protected WasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
+        assertUnsignedLongLessOrEqual(initialSize, maxAllowedSize, Failure.MEMORY_SIZE_LIMIT_EXCEEDED, "Initial memory size exceeds implementation limit");
+
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
         assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
