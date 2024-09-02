@@ -1139,7 +1139,9 @@ native_image = mx_sdk_vm.GraalVmJreComponent(
             build_args=driver_build_args + [
                 '--features=com.oracle.svm.agent.NativeImageAgent$RegistrationFeature',
                 '--enable-url-protocols=jar',
-            ],
+            ] + svm_experimental_options([
+                '-H:+TreatAllTypeReachableConditionsAsTypeReached',
+            ]),
             headers=False,
             home_finder=False,
         ),
@@ -1448,6 +1450,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             main_class='com.oracle.svm.configure.ConfigurationTool',
             build_args=svm_experimental_options([
                 '-H:-ParseRuntimeOptions',
+                '-H:+TreatAllTypeReachableConditionsAsTypeReached',
             ]),
             extra_jvm_args=_native_image_configure_extra_jvm_args(),
             home_finder=False,
