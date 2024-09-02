@@ -279,20 +279,6 @@ public class MethodHandleFeature implements InternalFeature {
         }
     }
 
-<<<<<<< HEAD
-    private static String valueConverterName(Wrapper src, Wrapper dest) {
-        String srcType = src.primitiveSimpleName();
-        String destType = dest.primitiveSimpleName();
-        /* Capitalize first letter of destination type */
-        return srcType + "To" + destType.substring(0, 1).toUpperCase() + destType.substring(1);
-    }
-
-    private static void registerValueConversionIgnoreForReflection(DuringAnalysisAccess access) {
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(ValueConversions.class, "ignore", Object.class));
-    }
-
-=======
->>>>>>> fb9b6c06c88 (Eagerly initialize caches in ValueConversions)
     private static void registerDelegatingMHFunctionsForReflection(DuringAnalysisAccess access) {
         Class<?> delegatingMHClazz = access.findClassByName("java.lang.invoke.DelegatingMethodHandle");
         RuntimeReflection.register(ReflectionUtil.lookupMethod(delegatingMHClazz, "getTarget"));
