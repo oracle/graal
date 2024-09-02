@@ -92,6 +92,9 @@ public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable
         });
     }
 
+    @NodeIntrinsic
+    public static native Object publishWrites(Object object);
+
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         generator.setResult(this, generator.operand(allocation));
