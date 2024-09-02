@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -259,6 +259,9 @@ public class ProcessHarnessManager {
         }
         Collections.addAll(commandArgs, "-Xss56m", "-Xms4g", "-Xmx4g", "-esa", "-ea", "-Djava.awt.headless=true",
                         "-cp", classpath, "-p", modulepath, "--add-modules", "org.graalvm.polyglot");
+        if (Runtime.version().feature() > 21) {
+            commandArgs.add("--illegal-native-access=allow");
+        }
 
         copyProperty(commandArgs, "polyglot.engine.WarnInterpreterOnly");
         copyProperty(commandArgs, "truffle.nfi.library");
