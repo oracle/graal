@@ -60,15 +60,6 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
         return NotApplicable.ifApplied(this, GraphState.StageFlag.LOW_TIER_LOWERING, graphState);
     }
 
-    /*
-     * Allocation: register the node
-     * Memory kill to init: mark it
-     * Memory access to init with unpublished kills: error
-     * return with unpublished kills: error
-     * publish writes: unregister the node.
-     * store_store barrier: clear writes
-     */
-
     private static final class AllocData {
         private final EconomicSet<AbstractNewObjectNode> unpublished;
         private int liveWrites;
@@ -117,7 +108,7 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
     }
 
     private static class InitWriteTestDataClosure extends ReentrantNodeIterator.NodeIteratorClosure<AllocData> {
-        private void processAlloc(AbstractNewObjectNode allocation, AllocData state) {
+        private static void processAlloc(AbstractNewObjectNode allocation, AllocData state) {
             if (allocation.emitMemoryBarrier() && allocation.fillContents()) {
                 // Will emit memory barrier upon lowering, can ignore for now
                 return;
@@ -125,18 +116,17 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
             state.register(allocation);
         }
 
-        private void processMemoryKill(SingleMemoryKill checkpoint, AllocData state) {
-            processMemoryKill(checkpoint.getKilledLocationIdentity(), checkpoint, state);
+        private static void processMemoryKill(SingleMemoryKill checkpoint, AllocData state) {
+            processMemoryKill(checkpoint.getKilledLocationIdentity(), state);
         }
 
-        private void processMemoryKill(MultiMemoryKill checkpoint, AllocData state) {
+        private static void processMemoryKill(MultiMemoryKill checkpoint, AllocData state) {
             for (LocationIdentity identity : checkpoint.getKilledLocationIdentities()) {
-                processMemoryKill(identity, checkpoint, state);
+                processMemoryKill(identity, state);
             }
         }
 
-
-        private void processMemoryKill(LocationIdentity identity, MemoryKill checkpoint, AllocData state) {
+        private static void processMemoryKill(LocationIdentity identity, AllocData state) {
             if (!identity.isInit()) {
                 // We're only concerned with init memory
                 return;
@@ -144,7 +134,7 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
             state.markWrite();
         }
 
-        private void processNonKillAccess(MemoryAccess access, AllocData state) {
+        private static void processNonKillAccess(MemoryAccess access, AllocData state) {
             if (!access.getLocationIdentity().isInit()) {
                 // We're only concerned with init memory
                 return;
@@ -152,7 +142,7 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
             assert state.hasNoLiveKills() : "reading from init memory when there are live writes";
         }
 
-        private void markPublished(ValueNode node, AllocData currentState) {
+        private static void markPublished(ValueNode node, AllocData currentState) {
             if (node instanceof ValuePhiNode phi) {
                 for (ValueNode value : phi.values()) {
                     markPublished(value, currentState);
@@ -162,11 +152,11 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private void processPublish(PublishWritesNode publish, AllocData currentState) {
+        private static void processPublish(PublishWritesNode publish, AllocData currentState) {
             markPublished(publish.allocation(), currentState);
         }
 
-        private void processBarrier(MembarNode membar, AllocData currentState) {
+        private static void processBarrier(MembarNode membar, AllocData currentState) {
             if (!membar.getKilledLocationIdentity().isInit()) {
                 return;
             }
