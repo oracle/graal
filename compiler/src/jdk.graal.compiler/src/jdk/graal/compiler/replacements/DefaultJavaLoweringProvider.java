@@ -908,139 +908,186 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         memoryWrite.setGuard(write.getGuard());
     }
 
+    public static class WriteCollector {
+        private final List<ValueNode> writes = new ArrayList<>();
+
+        public void recordWrite(ValueNode kill) {
+            writes.add(kill.asNode());
+        }
+
+        public PublishWritesNode publish(StructuredGraph graph, FixedNode lastNode, ValueNode newObject) {
+            PublishWritesNode published = graph.add(new PublishWritesNode(newObject, writes));
+            graph.addBeforeFixed(lastNode, published);
+            writes.clear();
+            return published;
+        }
+    }
+
     @SuppressWarnings("try")
     protected void lowerCommitAllocationNode(CommitAllocationNode commit, LoweringTool tool) {
         StructuredGraph graph = commit.graph();
-        if (graph.getGuardsStage() == GraphState.GuardsStage.FIXED_DEOPTS) {
+        if (graph.getGuardsStage() != GraphState.GuardsStage.FIXED_DEOPTS) {
+            return;
+        }
 
-            // Record starting position for each object
-            int[] valuePositions = new int[commit.getVirtualObjects().size()];
-            for (int objIndex = 0, valuePos = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-                valuePositions[objIndex] = valuePos;
-                valuePos += commit.getVirtualObjects().get(objIndex).entryCount();
-            }
+        List<VirtualObjectNode> virtualObjects = commit.getVirtualObjects();
+        // Record starting position for each object
+        int[] valuePositions = new int[virtualObjects.size()];
+        for (int objIndex = 0, valuePos = 0; objIndex < virtualObjects.size(); objIndex++) {
+            valuePositions[objIndex] = valuePos;
+            valuePos += virtualObjects.get(objIndex).entryCount();
+        }
 
-            /*
-             * Try to emit the allocations in an order where objects are allocated before they are
-             * needed by other allocations. In the worst case there might be cycles which can't be
-             * broken and those stores might need to be performed as if we aren't writing to
-             * INIT_MEMORY. This ensures that GC barrier assumptions aren't violated.
-             */
-            int[] emissionOrder = new int[commit.getVirtualObjects().size()];
-            computeAllocationEmissionOrder(commit, emissionOrder);
+        /*
+         * Try to emit the allocations in an order where objects are allocated before they are
+         * needed by other allocations. In the worst case there might be cycles which can't be
+         * broken and those stores might need to be performed as if we aren't writing to
+         * INIT_MEMORY. This ensures that GC barrier assumptions aren't violated.
+         */
+        int[] emissionOrder = new int[virtualObjects.size()];
+        computeAllocationEmissionOrder(commit, emissionOrder);
 
-            List<AbstractNewObjectNode> recursiveLowerings = new ArrayList<>();
-            ValueNode[] allocations = new ValueNode[commit.getVirtualObjects().size()];
-            BitSet omittedValues = new BitSet();
-            for (int objIndex : emissionOrder) {
-                VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
-                try (DebugCloseable nsp = graph.withNodeSourcePosition(virtual)) {
-                    int entryCount = virtual.entryCount();
-                    AbstractNewObjectNode newObject;
-                    if (virtual instanceof VirtualInstanceNode) {
-                        newObject = graph.add(new NewInstanceNode(virtual.type(), true));
-                    } else {
-                        assert virtual instanceof VirtualArrayNode : Assertions.errorMessageContext("virtual", virtual);
-                        newObject = graph.add(new NewArrayNode(((VirtualArrayNode) virtual).componentType(), ConstantNode.forInt(entryCount, graph), true));
+        List<AbstractNewObjectNode> recursiveLowerings = new ArrayList<>();
+        ValueNode[] allocations = new ValueNode[virtualObjects.size()];
+        WriteCollector[] collectors = new WriteCollector[virtualObjects.size()];
+        BitSet omittedValues = new BitSet();
+        for (int objIndex : emissionOrder) {
+            VirtualObjectNode virtual = virtualObjects.get(objIndex);
+            try (DebugCloseable nsp = graph.withNodeSourcePosition(virtual)) {
+                int entryCount = virtual.entryCount();
+                AbstractNewObjectNode newObject = createUninitializedObject(virtual, graph);
+
+                recursiveLowerings.add(newObject);
+                graph.addBeforeFixed(commit, newObject);
+                allocations[objIndex] = newObject;
+                collectors[objIndex] = new WriteCollector();
+                int valuePos = valuePositions[objIndex];
+                for (int i = 0; i < entryCount; i++) {
+                    ValueNode value = commit.getValues().get(valuePos);
+                    if (value instanceof VirtualObjectNode) {
+                        value = allocations[virtualObjects.indexOf(value)];
                     }
-                    // The final STORE_STORE barrier will be emitted by finishAllocatedObjects
-                    newObject.clearEmitMemoryBarrier();
+                    if (value == null) {
+                        omittedValues.set(valuePos);
+                    } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                        // Constant.illegal is always the defaultForKind, so it is skipped
+                        JavaKind valueKind = value.getStackKind();
+                        JavaKind storageKind = virtual.entryKind(tool.getMetaAccessExtensionProvider(), i);
 
-                    recursiveLowerings.add(newObject);
-                    graph.addBeforeFixed(commit, newObject);
-                    allocations[objIndex] = newObject;
-                    int valuePos = valuePositions[objIndex];
-                    for (int i = 0; i < entryCount; i++) {
-                        ValueNode value = commit.getValues().get(valuePos);
-                        if (value instanceof VirtualObjectNode) {
-                            value = allocations[commit.getVirtualObjects().indexOf(value)];
-                        }
-                        if (value == null) {
-                            omittedValues.set(valuePos);
-                        } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
-                            // Constant.illegal is always the defaultForKind, so it is skipped
-                            JavaKind valueKind = value.getStackKind();
-                            JavaKind storageKind = virtual.entryKind(tool.getMetaAccessExtensionProvider(), i);
-
-                            // Truffle requires some leniency in terms of what can be put where:
-                            assert valueKind.getStackKind() == storageKind.getStackKind() ||
-                                            (valueKind == JavaKind.Long || valueKind == JavaKind.Double || (valueKind == JavaKind.Int && virtual instanceof VirtualArrayNode) ||
-                                                            (valueKind == JavaKind.Float && virtual instanceof VirtualArrayNode)) : Assertions.errorMessageContext("valueKind", valueKind,
-                                                                            "virtual",
-                                                                            virtual);
-                            AddressNode address = null;
-                            BarrierType barrierType = null;
-                            if (virtual instanceof VirtualInstanceNode) {
-                                ResolvedJavaField field = ((VirtualInstanceNode) virtual).field(i);
-                                long offset = fieldOffset(field);
-                                if (offset >= 0) {
-                                    address = createOffsetAddress(graph, newObject, offset);
-                                    barrierType = barrierSet.fieldWriteBarrierType(field, getStorageKind(field));
-                                }
-                            } else {
-                                assert virtual instanceof VirtualArrayNode : Assertions.errorMessageContext("virtual", virtual);
-                                address = createOffsetAddress(graph, newObject, metaAccess.getArrayBaseOffset(storageKind) + i * metaAccess.getArrayIndexScale(storageKind));
-                                barrierType = barrierSet.arrayWriteBarrierType(storageKind);
+                        // Truffle requires some leniency in terms of what can be put where:
+                        assert valueKind.getStackKind() == storageKind.getStackKind() ||
+                                (valueKind == JavaKind.Long || valueKind == JavaKind.Double || (valueKind == JavaKind.Int && virtual instanceof VirtualArrayNode) ||
+                                        (valueKind == JavaKind.Float && virtual instanceof VirtualArrayNode)) : Assertions.errorMessageContext("valueKind", valueKind,
+                                "virtual",
+                                virtual);
+                        AddressNode address = null;
+                        BarrierType barrierType = null;
+                        if (virtual instanceof VirtualInstanceNode) {
+                            ResolvedJavaField field = ((VirtualInstanceNode) virtual).field(i);
+                            long offset = fieldOffset(field);
+                            if (offset >= 0) {
+                                address = createOffsetAddress(graph, newObject, offset);
+                                barrierType = barrierSet.fieldWriteBarrierType(field, getStorageKind(field));
                             }
-                            if (address != null) {
-                                WriteNode write = new WriteNode(address, LocationIdentity.init(), arrayImplicitStoreConvert(graph, storageKind, value, commit, virtual, valuePos), barrierType,
-                                                MemoryOrderMode.PLAIN);
-                                graph.addAfterFixed(newObject, graph.add(write));
-                            }
+                        } else {
+                            assert virtual instanceof VirtualArrayNode : Assertions.errorMessageContext("virtual", virtual);
+                            address = createOffsetAddress(graph, newObject, metaAccess.getArrayBaseOffset(storageKind) + i * metaAccess.getArrayIndexScale(storageKind));
+                            barrierType = barrierSet.arrayWriteBarrierType(storageKind);
                         }
-                        valuePos++;
+                        if (address != null) {
+                            WriteNode write = graph.add(
+                                    new WriteNode(address, LocationIdentity.init(), arrayImplicitStoreConvert(graph, storageKind, value, commit, virtual, valuePos), barrierType,
+                                            MemoryOrderMode.PLAIN));
+                            graph.addAfterFixed(newObject, write);
+                            collectors[objIndex].recordWrite(write);
+                        }
                     }
+                    valuePos++;
                 }
-            }
-            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-                VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
-                try (DebugCloseable nsp = graph.withNodeSourcePosition(virtual)) {
-                    int entryCount = virtual.entryCount();
-                    ValueNode newObject = allocations[objIndex];
-                    int valuePos = valuePositions[objIndex];
-                    for (int i = 0; i < entryCount; i++) {
-                        if (omittedValues.get(valuePos)) {
-                            ValueNode value = commit.getValues().get(valuePos);
-                            assert value instanceof VirtualObjectNode : Assertions.errorMessageContext("value", value);
-                            ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
-                            if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
-                                JavaKind entryKind = virtual.entryKind(metaAccessExtensionProvider, i);
-                                assert entryKind == JavaKind.Object : Assertions.errorMessageContext("entryKind", entryKind);
-                                assert allocValue.getStackKind() == JavaKind.Object : Assertions.errorMessageContext("entryKind", entryKind);
-                                AddressNode address = null;
-                                BarrierType barrierType = null;
-                                if (virtual instanceof VirtualInstanceNode) {
-                                    VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
-                                    ResolvedJavaField field = virtualInstance.field(i);
-                                    if (fieldOffset(field) >= 0) {
-                                        address = createFieldAddress(graph, newObject, field);
-                                        barrierType = barrierSet.fieldWriteBarrierType(field, getStorageKind(field));
-                                    }
-                                } else {
-                                    assert virtual instanceof VirtualArrayNode : Assertions.errorMessage(commit, virtual);
-                                    address = createArrayAddress(graph, newObject, entryKind, ConstantNode.forInt(i, graph));
-                                    barrierType = barrierSet.arrayWriteBarrierType(entryKind);
-                                }
-                                if (address != null) {
-                                    barrierType = barrierSet.postAllocationInitBarrier(barrierType);
-                                    WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType, MemoryOrderMode.PLAIN);
-                                    graph.addBeforeFixed(commit, graph.add(write));
-                                }
-                            }
-                        }
-                        valuePos++;
-                    }
-                }
-            }
-
-            finishAllocatedObjects(tool, commit, commit, allocations);
-            graph.removeFixed(commit);
-
-            for (AbstractNewObjectNode recursiveLowering : recursiveLowerings) {
-                recursiveLowering.lower(tool);
             }
         }
 
+        writeOmittedValues(commit, graph, allocations, omittedValues, collectors);
+        publishWrites(commit, graph, allocations, collectors);
+
+        finishAllocatedObjects(tool, commit, commit, allocations);
+        graph.removeFixed(commit);
+
+        for (AbstractNewObjectNode recursiveLowering : recursiveLowerings) {
+            recursiveLowering.lower(tool);
+        }
+    }
+
+    public void publishWrites(CommitAllocationNode commit, StructuredGraph graph, ValueNode[] allocations, WriteCollector[] collectors) {
+        for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+            allocations[objIndex] = collectors[objIndex].publish(graph, commit, allocations[objIndex]);
+        }
+    }
+
+    public AbstractNewObjectNode createUninitializedObject(VirtualObjectNode virtual, StructuredGraph graph) {
+        AbstractNewObjectNode ret;
+        if (virtual instanceof VirtualInstanceNode virtualInstance) {
+            ret = graph.add(createUninitializedInstance(virtualInstance));
+        } else {
+            ValueNode length = ConstantNode.forInt(virtual.entryCount(), graph);
+            ret = graph.add(createUninitializedArray((VirtualArrayNode) virtual, length));
+        }
+        // The final STORE_STORE barrier will be emitted by finishAllocatedObjects
+        ret.clearEmitMemoryBarrier();
+        return ret;
+    }
+
+    protected NewInstanceNode createUninitializedInstance(VirtualInstanceNode virtual) {
+        return new NewInstanceNode(virtual.type(), true);
+    }
+
+    protected NewArrayNode createUninitializedArray(VirtualArrayNode virtual, ValueNode length) {
+        return new NewArrayNode(virtual.componentType(), length, true);
+    }
+
+    @SuppressWarnings("try")
+    public void writeOmittedValues(CommitAllocationNode commit, StructuredGraph graph, ValueNode[] allocations, BitSet omittedValues, WriteCollector[] collectors) {
+        int valuePos = 0;
+        for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+            VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
+            try (DebugCloseable nsp = graph.withNodeSourcePosition(virtual)) {
+                int entryCount = virtual.entryCount();
+                ValueNode newObject = allocations[objIndex];
+                for (int i = 0; i < entryCount; i++, valuePos++) {
+                    if (!omittedValues.get(valuePos)) {
+                        continue;
+                    }
+                    ValueNode value = commit.getValues().get(valuePos);
+                    assert value instanceof VirtualObjectNode : Assertions.errorMessageContext("value", value);
+                    ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
+                    if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
+                        JavaKind entryKind = virtual.entryKind(metaAccessExtensionProvider, i);
+                        assert entryKind == JavaKind.Object : Assertions.errorMessageContext("entryKind", entryKind);
+                        assert allocValue.getStackKind() == JavaKind.Object : Assertions.errorMessageContext("entryKind", entryKind);
+                        AddressNode address = null;
+                        BarrierType barrierType = null;
+                        if (virtual instanceof VirtualInstanceNode virtualInstance) {
+                            ResolvedJavaField field = virtualInstance.field(i);
+                            if (fieldOffset(field) >= 0) {
+                                address = createFieldAddress(graph, newObject, field);
+                                barrierType = barrierSet.fieldWriteBarrierType(field, getStorageKind(field));
+                            }
+                        } else {
+                            assert virtual instanceof VirtualArrayNode : Assertions.errorMessage(commit, virtual);
+                            address = createArrayAddress(graph, newObject, entryKind, ConstantNode.forInt(i, graph));
+                            barrierType = barrierSet.arrayWriteBarrierType(entryKind);
+                        }
+                        if (address != null) {
+                            barrierType = barrierSet.postAllocationInitBarrier(barrierType);
+                            WriteNode write = graph.add(
+                                    new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType, MemoryOrderMode.PLAIN));
+                            graph.addBeforeFixed(commit, write);
+                            collectors[objIndex].recordWrite(write);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private static void computeAllocationEmissionOrder(CommitAllocationNode commit, int[] order) {
@@ -1093,12 +1140,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     public void finishAllocatedObjects(LoweringTool tool, FixedWithNextNode insertAfter, CommitAllocationNode commit, ValueNode[] allocations) {
         FixedWithNextNode insertionPoint = insertAfter;
         StructuredGraph graph = commit.graph();
-        for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-            PublishWritesNode anchor = graph.add(new PublishWritesNode(allocations[objIndex]));
-            allocations[objIndex] = anchor;
-            graph.addAfterFixed(insertionPoint, anchor);
-            insertionPoint = anchor;
-        }
         /*
          * Note that the FrameState that is assigned to these MonitorEnterNodes isn't the correct
          * state. It will be the state from before the allocation occurred instead of a valid state

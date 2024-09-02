@@ -24,15 +24,21 @@
  */
 package jdk.graal.compiler.nodes.extended;
 
+import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import java.util.List;
+
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
@@ -40,14 +46,20 @@ import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0, allowedUsageTypes = {InputType.Anchor, InputType.Value})
-public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable, ValueProxy, GuardingNode, AnchoringNode {
+public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable, ValueProxy, Simplifiable, GuardingNode, AnchoringNode {
     public static final NodeClass<PublishWritesNode> TYPE = NodeClass.create(PublishWritesNode.class);
 
     @Input
     ValueNode allocation;
+
+    @OptionalInput(Memory)
+    NodeInputList<ValueNode> writes;
 
     public ValueNode allocation() {
         return allocation;
@@ -56,6 +68,11 @@ public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable
     public PublishWritesNode(ValueNode newObject) {
         super(TYPE, newObject.stamp(NodeView.DEFAULT));
         this.allocation = newObject;
+    }
+
+    public PublishWritesNode(ValueNode newObject, List<ValueNode> writes) {
+        this(newObject);
+        this.writes = new NodeInputList<>(this, writes);
     }
 
     @Override
@@ -73,23 +90,50 @@ public class PublishWritesNode extends FixedWithNextNode implements LIRLowerable
         for (AddressNode address : allocation.usages().filter(AddressNode.class)) {
             assertTrue(address.usages().filter(n ->
                     // n is a non-writing access (a.k.a. a read)
-                    n instanceof MemoryAccess && !MemoryKill.isMemoryKill(n)
-            ).isEmpty(), "%s has unpublished reads", allocation);
+                    n instanceof MemoryAccess && !MemoryKill.isMemoryKill(n)).isEmpty(), "%s has unpublished reads", allocation);
         }
         return true;
     }
 
-    private static boolean isUsedByWritesOnly(AddressNode address) {
-        return address.usages().filter(n -> !MemoryKill.isMemoryKill(n)).isEmpty();
+    private boolean isUsedByWritesOnly(AddressNode address) {
+        if (writes == null) {
+            // Conservative
+            return false;
+        }
+        return address.usages().filter(n -> !writes.contains(n)).isEmpty();
     }
 
     private NodeIterable<Node> nonWriteUsages(Node node) {
         return node.usages().filter(usage -> {
             if (usage instanceof AddressNode addressNode) {
-                return isUsedByWritesOnly(addressNode);
+                return !isUsedByWritesOnly(addressNode);
             }
             return usage != this;
         });
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (graph().getGraphState().isAfterStage(GraphState.StageFlag.LOW_TIER_LOWERING)) {
+            return;
+        }
+
+        if (!tool.allUsagesAvailable() || hasUsages()) {
+            return;
+        }
+
+        if (nonWriteUsages(allocation).isNotEmpty()) {
+            return;
+        }
+
+        getDebug().dump(DebugContext.VERBOSE_LEVEL, graph(), "Before killing %s", this);
+        GraphUtil.removeFixedWithUnusedInputs(this);
+        for (ValueNode valueNode : writes) {
+            tool.addToWorkList(valueNode.inputs());
+            GraphUtil.removeFixedWithUnusedInputs((FixedWithNextNode) valueNode);
+        }
+        getDebug().dump(DebugContext.VERBOSE_LEVEL, graph(), "After killing %s", this);
+        tool.addToWorkList(allocation);
     }
 
     @NodeIntrinsic
