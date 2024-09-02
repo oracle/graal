@@ -93,6 +93,8 @@ public class ClassLoaderFeature implements InternalFeature {
                 return registry.getConstant(PLATFORM_KEY_NAME);
             } else if (loader == bootClassLoader) {
                 return registry.getConstant(BOOT_KEY_NAME);
+            } else if (HostedClassLoaderPackageManagement.isGeneratedSerializationClassLoader(loader)) {
+                return registry.getConstant(HostedClassLoaderPackageManagement.getClassLoaderSerializationLookupKey(loader));
             } else {
                 throw VMError.shouldNotReachHere("Currently unhandled class loader seen in extension layer: %s", loader);
             }
@@ -133,6 +135,14 @@ public class ClassLoaderFeature implements InternalFeature {
             public Object transform(Object receiver, Object originalValue) {
                 assert receiver instanceof ClassLoader : receiver;
                 assert originalValue instanceof ConcurrentHashMap : "Underlying representation has changed: " + originalValue;
+
+                if (ImageLayerBuildingSupport.buildingInitialLayer()) {
+                    var registry = CrossLayerConstantRegistry.singletonOrNull();
+                    ClassLoader classLoader = (ClassLoader) receiver;
+                    if (HostedClassLoaderPackageManagement.isGeneratedSerializationClassLoader(classLoader)) {
+                        registry.registerHeapConstant(HostedClassLoaderPackageManagement.getClassLoaderSerializationLookupKey(classLoader), receiver);
+                    }
+                }
 
                 /* Retrieving initial package state for this class loader. */
                 ConcurrentHashMap<String, Package> packages = HostedClassLoaderPackageManagement.singleton().getRegisteredPackages((ClassLoader) receiver);

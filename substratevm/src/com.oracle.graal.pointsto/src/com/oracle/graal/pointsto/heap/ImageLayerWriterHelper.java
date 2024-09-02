@@ -27,12 +27,18 @@ package com.oracle.graal.pointsto.heap;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 
 public class ImageLayerWriterHelper {
     protected final ImageLayerWriter imageLayerWriter;
 
     public ImageLayerWriterHelper(ImageLayerWriter imageLayerWriter) {
         this.imageLayerWriter = imageLayerWriter;
+    }
+
+    @SuppressWarnings("unused")
+    protected void persistType(AnalysisType type, EconomicMap<String, Object> typeMap) {
+        /* No additional information to persist */
     }
 
     @SuppressWarnings("unused")

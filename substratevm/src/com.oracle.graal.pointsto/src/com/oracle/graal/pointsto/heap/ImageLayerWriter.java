@@ -314,6 +314,8 @@ public class ImageLayerWriter {
         typeMap.put(IS_INSTANTIATED, type.isInstantiated());
         typeMap.put(IS_UNSAFE_ALLOCATED, type.isUnsafeAllocated());
         typeMap.put(IS_REACHABLE, type.isReachable());
+
+        imageLayerWriterHelper.persistType(type, typeMap);
     }
 
     /**

@@ -34,6 +34,11 @@ public class ImageLayerLoaderHelper {
     }
 
     @SuppressWarnings("unused")
+    protected boolean loadType(EconomicMap<String, Object> typeData, int tid) {
+        return false;
+    }
+
+    @SuppressWarnings("unused")
     protected boolean loadMethod(EconomicMap<String, Object> methodData, int mid) {
         return false;
     }

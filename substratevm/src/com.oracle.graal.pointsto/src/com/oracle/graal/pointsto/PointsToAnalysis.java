@@ -298,9 +298,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     @Override
-    public AnalysisMethod forcedAddRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+    public AnalysisMethod forcedAddRootMethod(AnalysisMethod method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
         AnalysisError.guarantee(isBaseLayerAnalysisEnabled());
-        PointsToAnalysisMethod analysisMethod = assertPointsToAnalysisMethod(metaAccess.lookupJavaMethod(method));
+        PointsToAnalysisMethod analysisMethod = assertPointsToAnalysisMethod(method);
         postTask(ignore -> {
             MethodTypeFlow typeFlow = analysisMethod.getTypeFlow();
             /*

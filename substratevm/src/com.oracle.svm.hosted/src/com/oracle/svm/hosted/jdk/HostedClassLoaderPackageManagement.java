@@ -46,6 +46,7 @@ import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.BootLoaderSupport;
 import com.oracle.svm.hosted.ClassLoaderFeature;
@@ -83,6 +84,9 @@ public class HostedClassLoaderPackageManagement implements LayeredImageSingleton
     private static final String APP_KEY = "AppPackageNames";
     private static final String PLATFORM_KEY = "PlatformPackageNames";
     private static final String BOOT_KEY = "BootPackageNames";
+    private static final String GENERATED_SERIALIZATION_KEY = "GeneratedSerializationNames";
+
+    private static final String GENERATED_SERIALIZATION_PACKAGE = "jdk.internal.reflect";
 
     private static final Method packageGetPackageInfo = ReflectionUtil.lookupMethod(Package.class, "getPackageInfo");
 
@@ -152,6 +156,9 @@ public class HostedClassLoaderPackageManagement implements LayeredImageSingleton
                 if (priorAppPackageNames.contains(packageName)) {
                     return true;
                 }
+            } else if (isGeneratedSerializationClassLoader(classLoader)) {
+                VMError.guarantee(packageName.equals(GENERATED_SERIALIZATION_PACKAGE), "Unexpected package %s in generated serialization class loader", packageValue);
+                return true;
             } else {
                 throw VMError.shouldNotReachHere("Currently unhandled class loader seen in extension layer: %s", classLoader);
             }
@@ -159,6 +166,14 @@ public class HostedClassLoaderPackageManagement implements LayeredImageSingleton
 
         var loaderPackages = registeredPackages.get(classLoader);
         return loaderPackages != null && loaderPackages.containsKey(packageName);
+    }
+
+    public static boolean isGeneratedSerializationClassLoader(ClassLoader classLoader) {
+        return SerializationSupport.singleton().isGeneratedSerializationClassLoader(classLoader);
+    }
+
+    public static String getClassLoaderSerializationLookupKey(ClassLoader classLoader) {
+        return GENERATED_SERIALIZATION_KEY + SerializationSupport.singleton().getClassLoaderSerializationLookupKey(classLoader);
     }
 
     /**

@@ -98,7 +98,6 @@ import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
@@ -232,6 +231,7 @@ import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 import com.oracle.svm.hosted.heap.ObservableImageHeapMapProviderImpl;
 import com.oracle.svm.hosted.heap.SVMImageHeapScanner;
 import com.oracle.svm.hosted.heap.SVMImageHeapVerifier;
+import com.oracle.svm.hosted.heap.SVMImageLayerLoader;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
@@ -530,8 +530,11 @@ public class NativeImageGenerator {
 
         var hostedOptionValues = new HostedOptionValues(optionProvider.getHostedValues());
         HostedImageLayerBuildingSupport imageLayerSupport = HostedImageLayerBuildingSupport.initialize(hostedOptionValues);
-        ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement(imageLayerSupport.getLoader() != null || imageLayerSupport.getWriter() != null),
-                        imageLayerSupport);
+        SVMImageLayerLoader imageLayerLoader = imageLayerSupport.getLoader();
+        if (imageLayerLoader != null) {
+            imageLayerLoader.setImageClassLoader(loader);
+        }
+        ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement(imageLayerLoader != null || imageLayerSupport.getWriter() != null), imageLayerSupport);
 
         ImageSingletons.add(LayeredImageSingletonSupport.class, (LayeredImageSingletonSupport) ImageSingletonsSupportImpl.get());
         ImageSingletons.add(ProgressReporter.class, reporter);
@@ -979,7 +982,7 @@ public class NativeImageGenerator {
                     imageLayerWriter.setAnalysisUniverse(aUniverse);
                 }
 
-                ImageLayerLoader imageLayerLoader = null;
+                SVMImageLayerLoader imageLayerLoader = null;
                 if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
                     imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
                     imageLayerLoader.setUniverse(aUniverse);

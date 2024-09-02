@@ -155,6 +155,29 @@ public class SerializationSupport implements SerializationRegistry {
         return null;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean isGeneratedSerializationClassLoader(ClassLoader classLoader) {
+        var constructorAccessorsCursor = constructorAccessors.getEntries();
+        while (constructorAccessorsCursor.advance()) {
+            if (constructorAccessorsCursor.getValue().getClass().getClassLoader() == classLoader) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public String getClassLoaderSerializationLookupKey(ClassLoader classLoader) {
+        var constructorAccessorsCursor = constructorAccessors.getEntries();
+        while (constructorAccessorsCursor.advance()) {
+            if (constructorAccessorsCursor.getValue().getClass().getClassLoader() == classLoader) {
+                var key = constructorAccessorsCursor.getKey();
+                return key.declaringClass.getName() + key.targetConstructorClass.getName();
+            }
+        }
+        throw VMError.shouldNotReachHere("No constructor accessor uses the class loader %s", classLoader);
+    }
+
     private final EconomicMap<Class<?>, RuntimeConditionSet> classes = EconomicMap.create();
     private final EconomicMap<String, RuntimeConditionSet> lambdaCapturingClasses = EconomicMap.create();
 

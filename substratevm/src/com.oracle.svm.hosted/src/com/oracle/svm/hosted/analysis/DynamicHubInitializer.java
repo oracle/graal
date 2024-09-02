@@ -52,6 +52,7 @@ import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -218,12 +219,16 @@ public class DynamicHubInitializer {
         AnalysisError.guarantee(hub.getClassInitializationInfo() == null, "Class initialization info already computed for %s.", type.toJavaName(true));
         boolean initializedAtBuildTime = SimulateClassInitializerSupport.singleton().trySimulateClassInitializer(bb, type);
         ClassInitializationInfo info;
-        boolean typeReachedTracked = ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type);
-        if (initializedAtBuildTime) {
-            info = type.getClassInitializer() == null ? ClassInitializationInfo.forNoInitializerInfo(typeReachedTracked)
-                            : ClassInitializationInfo.forInitializedInfo(typeReachedTracked);
+        if (type.getWrapped() instanceof BaseLayerType) {
+            info = HostedImageLayerBuildingSupport.singleton().getLoader().getClassInitializationInfo(type);
         } else {
-            info = buildRuntimeInitializationInfo(type, typeReachedTracked);
+            boolean typeReachedTracked = ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type);
+            if (initializedAtBuildTime) {
+                info = type.getClassInitializer() == null ? ClassInitializationInfo.forNoInitializerInfo(typeReachedTracked)
+                                : ClassInitializationInfo.forInitializedInfo(typeReachedTracked);
+            } else {
+                info = buildRuntimeInitializationInfo(type, typeReachedTracked);
+            }
         }
         hub.setClassInitializationInfo(info);
         if (rescan) {
