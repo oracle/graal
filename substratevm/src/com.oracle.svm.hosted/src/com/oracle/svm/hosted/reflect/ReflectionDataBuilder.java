@@ -983,22 +983,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public void registerHeapReflectionField(Field reflectField, ScanReason reason) {
         AnalysisField analysisField = metaAccess.lookupJavaField(reflectField);
-<<<<<<< HEAD
-        if (heapFields.put(analysisField, reflectField) == null && !SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
-            registerTypesForField(analysisField, reflectField);
-            if (analysisField.getDeclaringClass().isAnnotation()) {
-                processAnnotationField(reflectField);
-=======
         if (heapFields.put(analysisField, reflectField) == null) {
             if (sealed) {
                 throw new UnsupportedFeatureException("Registering new field for reflection when the image heap is already sealed: " + reflectField);
             }
             if (!SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
-                registerTypesForField(analysisField, reflectField, false);
+                registerTypesForField(analysisField, reflectField);
                 if (analysisField.getDeclaringClass().isAnnotation()) {
-                    processAnnotationField(ConfigurationCondition.alwaysTrue(), reflectField);
+                    processAnnotationField(reflectField);
                 }
->>>>>>> 439d980f100 (Reset Provider.Service.constructorCache field)
             }
         }
     }
