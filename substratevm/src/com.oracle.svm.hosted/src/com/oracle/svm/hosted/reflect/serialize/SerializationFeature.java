@@ -306,6 +306,10 @@ public class SerializationFeature implements InternalFeature {
                         Arrays.stream(t.getDeclaredConstructors(false))),
                         t.getClassInitializer() == null ? Stream.empty() : Stream.of(t.getClassInitializer()));
     }
+
+    public static Object getConstructorAccessor(Constructor<?> constructor) {
+        return SerializationBuilder.getConstructorAccessor(constructor);
+    }
 }
 
 final class SerializationDenyRegistry implements RuntimeSerializationSupport<ConfigurationCondition> {
@@ -691,7 +695,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
     }
 
-    private static Object getConstructorAccessor(Constructor<?> constructor) {
+    static Object getConstructorAccessor(Constructor<?> constructor) {
         try {
             return getConstructorAccessorMethod.invoke(constructor);
         } catch (ReflectiveOperationException e) {

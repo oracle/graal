@@ -304,11 +304,11 @@ public class ImageLayerLoader {
     protected final Map<Integer, ImageHeapConstant> constants = new ConcurrentHashMap<>();
     private final List<Path> loadPaths;
     private final Map<Integer, BaseLayerType> baseLayerTypes = new ConcurrentHashMap<>();
-    private final Map<Integer, Integer> typeToHubIdentityHashCode = new HashMap<>();
+    private final Map<Integer, Integer> typeToHubIdentityHashCode = new ConcurrentHashMap<>();
     private final Map<Integer, BaseLayerMethod> baseLayerMethods = new ConcurrentHashMap<>();
 
     /** Map from the type id to its identifier in the jsonMap. */
-    private final Map<Integer, String> typeIdToIdentifier = new HashMap<>();
+    protected final Map<Integer, String> typeIdToIdentifier = new HashMap<>();
 
     /** Map from the method id to its identifier in the jsonMap. */
     private final Map<Integer, String> methodIdToIdentifier = new HashMap<>();
@@ -346,6 +346,10 @@ public class ImageLayerLoader {
 
     public List<Path> getLoadPaths() {
         return loadPaths;
+    }
+
+    public AnalysisUniverse getUniverse() {
+        return universe;
     }
 
     public void setUniverse(AnalysisUniverse newUniverse) {
@@ -448,6 +452,10 @@ public class ImageLayerLoader {
 
     private void loadType(EconomicMap<String, Object> typeData) {
         int tid = get(typeData, ID_TAG);
+
+        if (imageLayerLoaderHelper.loadType(typeData, tid)) {
+            return;
+        }
 
         String name = get(typeData, CLASS_JAVA_NAME_TAG);
         Class<?> clazz = lookupBaseLayerTypeInHostVM(name);
@@ -581,7 +589,7 @@ public class ImageLayerLoader {
      * Tries to look up the base layer type in the current VM. Some types cannot be looked up by
      * name (for example $$Lambda types), so this method can return null.
      */
-    public static Class<?> lookupBaseLayerTypeInHostVM(String type) {
+    public Class<?> lookupBaseLayerTypeInHostVM(String type) {
         int arrayType = 0;
         String componentType = type;
         /*
@@ -594,7 +602,7 @@ public class ImageLayerLoader {
         }
         Class<?> clazz = lookupPrimitiveClass(componentType);
         if (clazz == null) {
-            clazz = ReflectionUtil.lookupClass(true, componentType);
+            clazz = lookupClass(true, componentType);
         }
         if (clazz == null) {
             return null;
@@ -637,7 +645,7 @@ public class ImageLayerLoader {
             Executable method = null;
             Class<?> clazz = lookupBaseLayerTypeInHostVM(className);
             if (clazz != null) {
-                Class<?>[] argumentClasses = arguments.stream().map(ImageLayerLoader::lookupBaseLayerTypeInHostVM).toList().toArray(new Class<?>[0]);
+                Class<?>[] argumentClasses = arguments.stream().map(this::lookupBaseLayerTypeInHostVM).toList().toArray(new Class<?>[0]);
                 method = lookupMethodByReflection(name, clazz, argumentClasses);
             }
 
@@ -680,13 +688,17 @@ public class ImageLayerLoader {
     }
 
     private static Executable lookupMethodByReflection(String name, Class<?> clazz, Class<?>[] argumentClasses) {
-        Executable method;
-        if (name.equals(CONSTRUCTOR_NAME)) {
-            method = ReflectionUtil.lookupConstructor(true, clazz, argumentClasses);
-        } else {
-            method = ReflectionUtil.lookupMethod(true, clazz, name, argumentClasses);
+        try {
+            Executable method;
+            if (name.equals(CONSTRUCTOR_NAME)) {
+                method = ReflectionUtil.lookupConstructor(true, clazz, argumentClasses);
+            } else {
+                method = ReflectionUtil.lookupMethod(true, clazz, name, argumentClasses);
+            }
+            return method;
+        } catch (NoClassDefFoundError e) {
+            return null;
         }
-        return method;
     }
 
     private void createBaseLayerMethod(EconomicMap<String, Object> methodData, int mid, String name) {
@@ -1277,12 +1289,16 @@ public class ImageLayerLoader {
     }
 
     @SuppressWarnings("unchecked")
-    protected static Enum<?> getEnumValue(EconomicMap<String, Object> enumData) {
+    protected Enum<?> getEnumValue(EconomicMap<String, Object> enumData) {
         String className = get(enumData, ENUM_CLASS_TAG);
-        Class<?> enumClass = ReflectionUtil.lookupClass(false, className);
+        Class<?> enumClass = lookupClass(false, className);
         String name = get(enumData, ENUM_NAME_TAG);
         /* asSubclass produces an "unchecked" warning */
         return Enum.valueOf(enumClass.asSubclass(Enum.class), name);
+    }
+
+    public Class<?> lookupClass(boolean optional, String className) {
+        return ReflectionUtil.lookupClass(optional, className);
     }
 
     public static <T> T get(EconomicMap<String, Object> innerMap, String elementIdentifier) {

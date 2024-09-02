@@ -142,4 +142,9 @@ public interface BigBang extends ReachabilityAnalysis {
     default void registerTypeForBaseImage(Class<?> cls) {
 
     }
+
+    @SuppressWarnings("unused")
+    default void registerMethodForBaseImage(AnalysisMethod method) {
+
+    }
 }

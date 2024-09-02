@@ -102,6 +102,10 @@ public class ImageLayerSnapshotUtil {
     public static final String COMPONENT_TYPE_TAG = "component type";
     public static final String SUPER_CLASS_TAG = "super class";
     public static final String INTERFACES_TAG = "interfaces";
+    public static final String WRAPPED_TYPE_TAG = "wrapped type";
+    public static final String GENERATED_SERIALIZATION_TAG = "generated serialization";
+    public static final String RAW_DECLARING_CLASS_TAG = "raw declaring class";
+    public static final String RAW_TARGET_CONSTRUCTOR_CLASS_TAG = "raw target constructor class";
     public static final String CONSTANTS_TAG = "constants";
     public static final String CONSTANTS_TO_RELINK_TAG = "constants to relink";
     public static final String TID_TAG = "tid";
@@ -110,7 +114,7 @@ public class ImageLayerSnapshotUtil {
     public static final String ARGUMENT_IDS_TAG = "argument ids";
     public static final String RETURN_TYPE_TAG = "return type";
     public static final String IS_VAR_ARGS_TAG = "is varArg";
-    public static final String METHOD_TYPE_TAG = "method type";
+    public static final String WRAPPED_METHOD_TAG = "wrapped method";
     public static final String METHOD_TYPE_PARAMETERS_TAG = "method type parameters";
     public static final String METHOD_TYPE_RETURN_TAG = "method type return";
     public static final String FACTORY_TAG = "factory";
@@ -120,6 +124,16 @@ public class ImageLayerSnapshotUtil {
     public static final String IDENTITY_HASH_CODE_TAG = "identityHashCode";
     public static final String HUB_IDENTITY_HASH_CODE_TAG = "hub identityHashCode";
     public static final String IS_INITIALIZED_AT_BUILD_TIME_TAG = "is initialized at build time";
+    public static final String IS_NO_INITIALIZER_NO_TRACKING_TAG = "in no initializer no tracking";
+    public static final String IS_INITIALIZED_NO_TRACKING_TAG = "is initialized no tracking";
+    public static final String IS_FAILED_NO_TRACKING_TAG = "is failed no tracking";
+    public static final String INFO_IS_INITIALIZED_TAG = "info is initialized";
+    public static final String INFO_IS_IN_ERROR_STATE_TAG = "info is in error state";
+    public static final String INFO_IS_LINKED_TAG = "info is linked";
+    public static final String INFO_HAS_INITIALIZER_TAG = "info has initializer";
+    public static final String INFO_IS_BUILD_TIME_INITIALIZED_TAG = "info is build time initialized";
+    public static final String INFO_IS_TRACKED_TAG = "info is tracked";
+    public static final String INFO_CLASS_INITIALIZER_TAG = "info class initializer";
     public static final String ID_TAG = "id";
     public static final String ANALYSIS_PARSED_GRAPH_TAG = "analysis parsed graph";
     public static final String STRENGTHENED_GRAPH_TAG = "strengthened graph";
@@ -234,9 +248,12 @@ public class ImageLayerSnapshotUtil {
     }
 
     public static class GraphDecoder extends ObjectCopier.Decoder {
+        private final ImageLayerLoader imageLayerLoader;
+
         @SuppressWarnings("this-escape")
         public GraphDecoder(ClassLoader classLoader, ImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod) {
             super(classLoader);
+            this.imageLayerLoader = imageLayerLoader;
             addBuiltin(new NodeClassBuiltIn());
             addBuiltin(new ImageHeapConstantBuiltIn(null, imageLayerLoader));
             addBuiltin(new AnalysisTypeBuiltIn(null, imageLayerLoader));
@@ -244,6 +261,11 @@ public class ImageLayerSnapshotUtil {
             addBuiltin(new AnalysisFieldBuiltIn(null, imageLayerLoader));
             addBuiltin(new FieldLocationIdentityBuiltIn(null, imageLayerLoader));
             addBuiltin(new NamedLocationIdentityArrayBuiltIn());
+        }
+
+        @Override
+        public Class<?> loadClass(String className) {
+            return imageLayerLoader.lookupClass(false, className);
         }
     }
 

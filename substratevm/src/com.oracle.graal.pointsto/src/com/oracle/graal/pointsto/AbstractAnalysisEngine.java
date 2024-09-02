@@ -364,6 +364,13 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         }
     }
 
+    @Override
+    public void registerMethodForBaseImage(AnalysisMethod method) {
+        if (classInclusionPolicy.isMethodIncluded(method)) {
+            classInclusionPolicy.includeMethod(method);
+        }
+    }
+
     public static <T, U> U getOrDefault(T cls, Function<T, U> getMembers, U backup) {
         try {
             return getMembers.apply(cls);
