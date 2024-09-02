@@ -99,6 +99,11 @@ import jdk.internal.misc.Unsafe;
  */
 final class GuestGraal {
 
+    /*
+     * See jdk.graal.compiler.hotspot.guestgraal.BuildTime.getRuntimeHandles to see how these
+     * handles are initialized and what their target methods are.
+     */
+
     private final MethodHandle getJNIEnv;
     private final MethodHandle getSavedProperty;
     private final MethodHandle ttyPrintf;
@@ -239,9 +244,6 @@ final class GuestGraal {
                     long timeAndMemBufferAddress,
                     long profilePathBufferAddress) {
         try (JNIMethodScope jniScope = new JNIMethodScope("compileMethod", jniEnv)) {
-            if (methodHandle == 0L) {
-                return 0L;
-            }
             String profileLoadPath;
             if (profilePathBufferAddress > 0) {
                 profileLoadPath = CTypeConversion.toJavaString(WordFactory.pointer(profilePathBufferAddress));
