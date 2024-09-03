@@ -48,7 +48,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -318,7 +317,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
         }
 
         private static boolean logErrorMessages() {
-            return SubstrateUtil.assertionsEnabled() || Options.LogOpenTypeWorldDiscrepancies.getValue();
+            return Options.LogOpenTypeWorldDiscrepancies.getValue();
         }
 
         private static boolean generateErrorMessage() {

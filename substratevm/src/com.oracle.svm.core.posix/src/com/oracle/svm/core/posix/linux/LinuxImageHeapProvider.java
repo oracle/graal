@@ -163,6 +163,14 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         int layerCount = 0;
         Pointer currentSection = ImageLayerSection.getInitialLayerSection().get();
         Pointer currentHeapStart = firstHeapStart;
+        WordPointer curEndPointer = endPointer;
+        if (endPointer.isNull()) {
+            /*
+             * When endPointer is null, we still need to track it locally to compute the next heap
+             * starting location.
+             */
+            curEndPointer = StackValue.get(WordPointer.class);
+        }
         while (currentSection.isNonNull()) {
             var cachedFDPointer = ImageLayerSection.getCachedImageFDs().get().addressOf(layerCount);
             var cachedOffsetsPointer = ImageLayerSection.getCachedImageHeapOffsets().get().addressOf(layerCount);
@@ -174,7 +182,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             Word heapWritableBegin = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_WRITEABLE_BEGIN));
             Word heapWritableEnd = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_WRITEABLE_END));
 
-            result = initializeImageHeap(currentHeapStart, remainingSize, endPointer,
+            result = initializeImageHeap(currentHeapStart, remainingSize, curEndPointer,
                             cachedFDPointer, cachedOffsetsPointer, MAGIC.get(),
                             heapBegin, heapEnd,
                             heapRelocBegin, heapAnyRelocPointer, heapRelocEnd,
@@ -183,7 +191,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                 freeImageHeap(selfReservedHeapBase);
                 return result;
             }
-            Pointer newHeapStart = endPointer.read(); // aligned
+            Pointer newHeapStart = curEndPointer.read(); // aligned
             remainingSize = remainingSize.subtract(newHeapStart.subtract(currentHeapStart));
             currentHeapStart = newHeapStart;
 

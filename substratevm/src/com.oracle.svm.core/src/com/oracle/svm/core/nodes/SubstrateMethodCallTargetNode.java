@@ -46,7 +46,11 @@ public final class SubstrateMethodCallTargetNode extends MethodCallTargetNode {
     private JavaTypeProfile staticTypeProfile;
 
     public SubstrateMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp) {
-        super(TYPE, invokeKind, targetMethod, arguments, returnStamp, null);
+        this(invokeKind, targetMethod, arguments, returnStamp, null);
+    }
+
+    public SubstrateMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp, JavaTypeProfile typeProfile) {
+        super(TYPE, invokeKind, targetMethod, arguments, returnStamp, typeProfile);
     }
 
     public void setProfiles(JavaTypeProfile typeProfile, JavaMethodProfile methodProfile) {
