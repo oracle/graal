@@ -244,8 +244,8 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
-    public void setReturnsAllInstantiatedTypes() {
-        super.setReturnsAllInstantiatedTypes();
-        assert !getTypeFlow().flowsGraphCreated() : "must call setReturnsAllInstantiatedTypes before typeflow is created";
+    public void setOpaqueReturn() {
+        super.setOpaqueReturn();
+        assert !getTypeFlow().flowsGraphCreated() : "must call setOpaqueReturn before typeflow is created";
     }
 }
