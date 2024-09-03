@@ -73,11 +73,10 @@ public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
                     newFlows.cloneOriginalFlows(bb);
                     newFlows.linkCloneFlows(bb);
                     /*
-                     * If this method returns all instantiated types, then it will not be linked to
-                     * any internal flows. Instead, it needs to be linked to its declared type's
-                     * flow.
+                     * If this method has opaque return, then it will not be linked to any internal
+                     * flows. Instead, it needs to be linked to its declared type's flow.
                      */
-                    if (flowsGraph.method.getReturnsAllInstantiatedTypes()) {
+                    if (flowsGraph.method.hasOpaqueReturn()) {
                         var newReturnFlow = newFlows.getReturnFlow();
                         newReturnFlow.getDeclaredType().getTypeFlow(bb, true).addUse(bb, newReturnFlow);
                     }

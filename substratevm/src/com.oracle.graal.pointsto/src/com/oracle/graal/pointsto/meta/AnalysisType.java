@@ -488,8 +488,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AllInstantiatedTypeFlow instantiatedTypesNonNull;
 
     /*
-     * Returns a type flow containing all types that are assignable from this type and are also
-     * instantiated.
+     * Returns a generic type flow containing a) all types that are assignable from this type and
+     * are also instantiated for objects or b) any primitive value for primitives.
      */
     public TypeFlow<?> getTypeFlow(@SuppressWarnings("unused") BigBang bb, boolean includeNull) {
         if (isPrimitive() || isWordType()) {
